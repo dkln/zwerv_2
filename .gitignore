@@ -1,0 +1,27 @@
+# Godot
+.godot/
+*.import.tmp
+/android/
+/export/
+/build/
+*.translation
+
+# Python (tile-generator)
+__pycache__/
+*.pyc
+
+# OS / editors
+.DS_Store
+Thumbs.db
+*.swp
+.vscode/
+.idea/
+
+# Grove LOD-bibliotheken worden automatisch opnieuw gemaakt (zelfde item-ID's als de gewone).
+assets/libraries/*_lod.res
+
+# Let op: de overige assets/libraries/*.res NIET negeren. De kaarten verwijzen naar de
+# item-ID's in die bibliotheken; opnieuw opbouwen vanaf nul kan andere ID's geven.
+# Gebruik eventueel Git LFS voor *.res en *.vox:
+#   git lfs track "*.res" "*.vox"
+assets/libraries/*_lod2.res
