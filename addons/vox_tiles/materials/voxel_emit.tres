@@ -1,6 +1,6 @@
-[gd_resource type="ShaderMaterial" load_steps=2 format=3]
+[gd_resource type="ShaderMaterial" format=3 uid="uid://bv526akgjdq1k"]
 
-[ext_resource type="Shader" path="res://addons/vox_tiles/materials/voxel.gdshader" id="1"]
+[ext_resource type="Shader" uid="uid://b4yhv18226hgx" path="res://addons/vox_tiles/materials/voxel.gdshader" id="1"]
 
 [resource]
 render_priority = 0
@@ -8,5 +8,8 @@ shader = ExtResource("1")
 shader_parameter/roughness = 0.5
 shader_parameter/metallic = 0.0
 shader_parameter/specular = 0.3
-shader_parameter/emission_energy = 3.0
+shader_parameter/emission_energy = 6.0
 shader_parameter/tintbaar = 0.0
+shader_parameter/voxel_rand = 0.0
+shader_parameter/voxel_ruis = 0.035
+shader_parameter/voxel_grootte = 0.125

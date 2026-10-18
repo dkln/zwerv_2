@@ -137,9 +137,12 @@ WATER_START = 225  # in elk .vox bestand staan de waterkleuren vanaf deze index
 
 # Kleurvariatie binnen groepen (asfalt1..4, gras1..5, baksteen1..5, ...): elke
 # variant wordt naar het groepsgemiddelde getrokken. 1.0 = origineel, 0 = één kleur.
-VARIATIE = 0.5
+VARIATIE = 0.65
 # groepen waarvan de nummers bewust heel andere kleuren zijn
-_VASTE_GROEPEN = {"gordijn", "stof", "reclame", "sedum", "glas"}
+_VASTE_GROEPEN = {"gordijn", "stof", "reclame", "sedum", "glas",
+                  # bestrating: het patroon zit juist in de kleurverschillen
+                  "tegel", "klinker", "kei", "plein", "band", "goot", "grind",
+                  "asfalt", "fietsasfalt", "busbaan"}
 
 
 def _demp_variatie(entries):

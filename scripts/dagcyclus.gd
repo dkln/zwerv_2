@@ -62,3 +62,6 @@ func _pas_toe() -> void:
 	if _lucht:
 		_lucht.sky_top_color = Color(0.05, 0.07, 0.16).lerp(Color(0.3, 0.5, 0.85), licht)
 		_lucht.sky_horizon_color = Color(0.12, 0.12, 0.22).lerp(Color(0.7, 0.8, 0.92), licht).lerp(Color(0.95, 0.6, 0.4), warm * licht * 0.6)
+		# glas spiegelt dezelfde lucht (voxel_glass.gdshader)
+		RenderingServer.global_shader_parameter_set("zwervr_lucht_boven", _lucht.sky_top_color.lightened(0.1))
+		RenderingServer.global_shader_parameter_set("zwervr_lucht_horizon", _lucht.sky_horizon_color)

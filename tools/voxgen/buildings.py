@@ -127,7 +127,7 @@ class Bld:
     def interior(self, face, u0, u1, z0, z1, d, key, office=False):
         r = h(self.seed, key, 1, 77)
         lit = r < (0.45 if office else 0.3)
-        cur = pick(["gordijn1", "gordijn2", "gordijn3"], self.seed, key, 2, 78) if h(self.seed, key, 3, 79) < 0.65 and not office else None
+        cur = None   # geen gordijnen in de ramen
         for z in range(z0, z1):
             for u in range(u0, u1):
                 if office:

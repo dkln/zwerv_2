@@ -192,10 +192,21 @@ Rook, water, vlaggen en voxelstructuur
 - Voxelstructuur: `materials/voxel.gdshader` tekent (optioneel) lichte randen en kleine
   helderheidsverschillen per voxel (`voxel_ruis`; randjes via `voxel_rand`, standaard uit), zodat grote
   vlakken minder vlak ogen.
-- Water golft: het oppervlak deint op en neer en heeft fijne rimpels
-  (`materials/voxel_water.tres`: `golf_hoogte`, `golf_snelheid`,
-  `golf_schaal`, `rimpel_sterkte`, `rimpel_snelheid`, `opacity`). De importer
-  maakt het wateroppervlak daarvoor per voxel fijnmazig.
+- Water golft met golven uit vier richtingen (niet rechtlijnig) en heeft lichte,
+  bewegende vlekken en glinsteringen (`materials/voxel_water.tres`:
+  `golf_hoogte`, `golf_snelheid`, `golf_lengte`, `vlekken`, `glinstering`). De
+  importer maakt het wateroppervlak daarvoor per voxel fijnmazig.
+- Spiegeling in water, zonder raytracing: de shader volgt de gespiegelde
+  kijkstraal in 12 stappen over het scherm (diepte- en schermbuffer) en toont
+  zwak wat hij raakt (bruggen, bomen, gevels). Raakt hij niets, dan spiegelt de
+  lucht (kleuren uit de dagcyclus, shader globals `zwervr_lucht_*`). Instelbaar:
+  `spiegeling`, `lucht_spiegeling`, `stap`, `stappen`, `dikte`, `rimpeling`.
+  DetailNiveau zet de spiegeling uit vanaf `grof_vanaf`. De ingebouwde SSR van
+  Godot werkt niet met de orthografische camera en staat uit.
+- Glas heeft een goedkope, nagebootste spiegeling (lucht, horizon, straat en
+  lichte strepen; `spiegeling`, `opacity`).
+- Lampen, verkeerslichten en verlichte ramen (emit-materiaal, energie 6) geven
+  een zachte gloed via de glow van de Environment (drempel 1,6).
 - Vlaggen wapperen via `materials/voxel_vlag.tres` (`snelheid`, `sterkte`,
   `golflengte`). Hoe verder van de mast, hoe meer beweging.
 - In MagicaVoxel: paletkleuren 225-232 worden water, 233-248 worden
@@ -240,7 +251,9 @@ Wil je één tile opnieuw laten genereren: verwijder het `.vox` bestand en draai
 de generator.
 
 Generator-bestanden (`tools/voxgen/`):
-- `palette.py`   kleurenpalet + materiaaltypes (metal/glass/emit/water/flag)
+- `palette.py`   kleurenpalet + materiaaltypes (metal/glass/emit/water/flag);
+  `VARIATIE` (standaard 0,65) dempt de kleurverschillen binnen groepen als
+  asfalt1..4, gras1..5 en baksteen1..5 (bestrating zoals tegels en klinkers niet)
 - `vox.py`       voxelmodel, tekenfuncties, .vox schrijver (palet per bestand)
 - `common.py`    maten, registry, pixelfont en pictogrammen
 - `ground.py`, `ground2.py`, `ground3.py`   grond: wegen, stoepen, pleinen,

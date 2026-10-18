@@ -25,11 +25,13 @@ extends Node
 
 const Bakker = preload("res://scripts/bakker.gd")
 const CACHE_MAP := "user://samengevoegd"
+const WATER: ShaderMaterial = preload("res://addons/vox_tiles/materials/voxel_water.tres")
 
 var _cam: Camera3D
 var _zon: DirectionalLight3D
 var _paren := []   # [origineel, grof, heel grof]
 var _niveau := -1
+var _spiegelen := true
 
 
 func _ready() -> void:
@@ -147,6 +149,11 @@ func _process(_delta: float) -> void:
 				if p[i] != null:
 					p[i].visible = i == keuze
 	var root := get_parent()
+	# spiegeling in het water alleen dichtbij (kost rekentijd per waterpixel)
+	var spiegelen := zoom < grof_vanaf
+	if spiegelen != _spiegelen:
+		_spiegelen = spiegelen
+		WATER.set_shader_parameter("stappen", 12 if spiegelen else 0)
 	var details := root.get_node_or_null("Details")
 	if details:
 		details.visible = zoom < details_tot

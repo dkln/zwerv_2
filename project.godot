@@ -83,3 +83,11 @@ zwervr_variatie={
 "type": "float",
 "value": 0.0
 }
+zwervr_lucht_boven={
+"type": "color",
+"value": Color(0.42, 0.6, 0.86, 1)
+}
+zwervr_lucht_horizon={
+"type": "color",
+"value": Color(0.78, 0.85, 0.92, 1)
+}

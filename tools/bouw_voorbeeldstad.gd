@@ -87,8 +87,14 @@ func _maak_scene(naam: String) -> Node3D:
 	e.ssil_radius = 6.0
 	e.ssil_intensity = 0.9
 	e.glow_enabled = true
-	e.glow_intensity = 0.5
-	e.glow_hdr_threshold = 1.2
+	# lampen (emit-materiaal, energie 6) krijgen een zachte gloed; de drempel ligt
+	# boven zonbeschenen witte gevels
+	e.set_glow_level(2, 1.0)
+	e.set_glow_level(3, 1.0)
+	e.set_glow_level(4, 0.6)
+	e.set_glow_level(5, 0.4)
+	e.glow_intensity = 0.8
+	e.glow_hdr_threshold = 1.6
 	e.adjustment_enabled = true
 	e.adjustment_saturation = 1.12
 	e.adjustment_contrast = 1.14
@@ -108,7 +114,7 @@ func _maak_scene(naam: String) -> Node3D:
 	zon.shadow_opacity = 0.8
 	zon.shadow_bias = 0.03
 	zon.shadow_normal_bias = 1.2
-	zon.shadow_blur = 1.5
+	zon.shadow_blur = 0.7
 	zon.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
 	zon.directional_shadow_max_distance = 500.0
 	root.add_child(zon)

@@ -1,16 +1,16 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://dut338t3wcjpr"]
 
 [ext_resource type="MeshLibrary" path="res://assets/libraries/grond.res" id="1_1ejos"]
 [ext_resource type="MeshLibrary" path="res://assets/libraries/gebouwen.res" id="2_nhm8j"]
 [ext_resource type="MeshLibrary" path="res://assets/libraries/details.res" id="3_fl6kk"]
 [ext_resource type="MeshLibrary" path="res://assets/libraries/props.res" id="4_1vjfi"]
-[ext_resource type="Script" path="res://scripts/vrije_camera.gd" id="5_58m6s"]
-[ext_resource type="Script" path="res://scripts/rondleiding.gd" id="6_1f7s8"]
-[ext_resource type="Script" path="res://scripts/detail_niveau.gd" id="7_7ehtc"]
-[ext_resource type="Script" path="res://scripts/dagcyclus.gd" id="8_fpg7e"]
-[ext_resource type="Script" path="res://scripts/rook.gd" id="9_8hhg7"]
-[ext_resource type="Script" path="res://scripts/tint_kaart.gd" id="10_bmqur"]
-[ext_resource type="Script" path="res://scripts/tint_vlak.gd" id="11_f7bmu"]
+[ext_resource type="Script" uid="uid://dlucym4vhnmai" path="res://scripts/vrije_camera.gd" id="5_58m6s"]
+[ext_resource type="Script" uid="uid://b2v8s5b556w64" path="res://scripts/rondleiding.gd" id="6_1f7s8"]
+[ext_resource type="Script" uid="uid://drgatielkm1r7" path="res://scripts/detail_niveau.gd" id="7_7ehtc"]
+[ext_resource type="Script" uid="uid://la2atcj3yrgr" path="res://scripts/dagcyclus.gd" id="8_fpg7e"]
+[ext_resource type="Script" uid="uid://k8b7erpj24ym" path="res://scripts/rook.gd" id="9_8hhg7"]
+[ext_resource type="Script" uid="uid://eklmp7o72tx7" path="res://scripts/tint_kaart.gd" id="10_bmqur"]
+[ext_resource type="Script" uid="uid://cp1dyg1qeiygy" path="res://scripts/tint_vlak.gd" id="11_f7bmu"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_0q5ds"]
 sky_top_color = Color(0.3, 0.5, 0.85, 1)
@@ -411,11 +411,10 @@ transform = Transform3D(0.8910065, -0.4008498, 0.21313564, 0, 0.4694716, 0.88294
 light_color = Color(1, 0.93, 0.82, 1)
 light_energy = 1.55
 shadow_enabled = true
-shadow_opacity = 0.8
 shadow_bias = 0.03
 shadow_normal_bias = 1.2
+shadow_opacity = 0.8
 shadow_blur = 1.5
-directional_shadow_mode = 2
 directional_shadow_max_distance = 500.0
 
 [node name="Vullicht" type="DirectionalLight3D" parent="." unique_id=533190302]
