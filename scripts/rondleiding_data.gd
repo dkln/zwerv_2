@@ -32,6 +32,13 @@ const STAD := [
 	["winkelstraat", "Winkelstraat (wandelgebied)", "Autovrije straat met alle winkel- en horecatypes, terrassen, bomen, fontein en paaltjes bij de ingangen.", 312, 366, 60],
 ]
 
+## Close-ups van het water; in de rondleiding direct na het kanaal.
+const WATER := [
+	["water_spiegeling", "Water: spiegeling", "Bomen, lantaarns, boten en kademuren spiegelen in de gracht. De shader volgt de gespiegelde kijkstraal over het scherm (geen raytracing); raakt hij niets, dan spiegelt de lucht.", 37, 37, 20],
+	["water_golven", "Water: golven en glinstering", "Golven uit vier richtingen laten het oppervlak onregelmatig deinen; lichte vlekken drijven mee en kleine glinsteringen flonkeren. Het riet beweegt in de wind.", 12, 96, 20],
+	["water_brug", "Water: brug en steigers", "De houten boogbrug en de steigers spiegelen in de vijver; de golven vervormen de spiegeling.", 96, 276, 18],
+]
+
 const STIJLNAMEN := {
 	"klassiek_rood": "Klassiek (rode baksteen)", "klassiek_donker": "Klassiek (donkere baksteen)", "klassiek_geel": "Klassiek (gele baksteen)",
 	"herenhuis_1600": "Herenhuis 1600", "herenhuis_1900": "Herenhuis 1900", "jaren30": "Jaren-30 bovenhuizen", "jaren60": "Jaren-60 woningen",
@@ -86,4 +93,12 @@ static func stops(root: Node) -> Array:
 		lijst.append({"slug": "wijk_" + naam.replace(":", "_"), "titel": t, "tekst": u,
 			"x": (w["x"] + w["w"] / 2.0) * 4.0, "z": (w["z"] + w["d"] / 2.0) * 4.0,
 			"grootte": maxf(w["w"], w["d"]) * 4.0 * 0.62 + 12.0})
+	# water-close-ups direct na het kanaal (of vooraan als er geen kanaal is)
+	var na := 0
+	for k in lijst.size():
+		if lijst[k]["slug"] == "wijk_kanaal":
+			na = k + 1
+	for s in WATER:
+		lijst.insert(na, {"slug": s[0], "titel": s[1], "tekst": s[2], "x": float(s[3]), "z": float(s[4]), "grootte": float(s[5])})
+		na += 1
 	return lijst

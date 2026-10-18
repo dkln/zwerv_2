@@ -16,6 +16,8 @@ uniform float voxel_grootte = 0.125;
 global uniform sampler2D zwervr_tint_kaart : filter_nearest, repeat_disable;
 global uniform vec4 zwervr_tint_gebied;      // x0, z0, breedte, diepte (meters)
 global uniform float zwervr_variatie;        // willekeurige kleurvariatie per 4x4 m cel (0..1)
+// 0 = dag, 1 = nacht (dagcyclus): lampen en verlichte ramen branden overdag gedimd
+global uniform float zwervr_nacht;
 
 varying vec3 wpos;
 varying vec3 vpos;
@@ -66,5 +68,5 @@ void fragment() {
 	ROUGHNESS = roughness;
 	METALLIC = metallic;
 	SPECULAR = specular;
-	EMISSION = COLOR.rgb * emission_energy;
+	EMISSION = COLOR.rgb * emission_energy * mix(0.25, 1.0, zwervr_nacht);
 }

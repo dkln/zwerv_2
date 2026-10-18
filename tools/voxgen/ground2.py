@@ -334,6 +334,7 @@ for _d in range(1, 7):
 # ------------------------------------------------------------------ zwembad buiten (plaats op laag -1)
 
 PH = FLOOR + WALK  # 11: rand komt op stoepniveau van laag 0
+ZW_TOP = PH - 4    # water tot (exclusief) deze hoogte: 50 cm onder de rand
 ZWEMWATER = mix("water_zwembad", "water_zwembad", "water3", seed=301, weights=[3, 3, 1])
 
 
@@ -353,17 +354,16 @@ def zwembad(edges="", trap=False):
             else:
                 m.set(x, y, 0, "paneel_blauw" if (x + y) % 8 else "tegel_wit")
                 m.set(x, y, 1, "paneel_blauw" if (x // 4 + y // 4) % 2 else "glas_lood_blauw" if False else "tegel_wit")
-                for z in range(2, PH - 2):
+                for z in range(2, ZW_TOP):
                     m.set(x, y, z, ZWEMWATER)
             if d == 3:
-                for z in range(2, PH - 2):
+                for z in range(2, ZW_TOP):
                     m.set(x, y, z, ZWEMWATER)
     if trap and "v" in edges:
         for i in range(5):
             for x in range(10, 22):
                 for z in range(0, PH - 2 - i * 2):
-                    if z < 2 or True:
-                        m.set(x, 3 + i, z, "tegel_wit" if z < PH - 3 - i * 2 else "natuursteen1")
+                    m.set(x, 3 + i, z, "tegel_wit" if z < PH - 3 - i * 2 else "natuursteen1")
     return m
 
 
@@ -389,8 +389,11 @@ def kinderbad():
             d = dist(x, y, 16, 16)
             column(m, x, y, WALK, TEGEL_WIT)
             if d < 13:
-                m.set(x, y, WALK - 1, "paneel_blauw")
-                m.set(x, y, WALK, ZWEMWATER)
+                # verzonken: water 25 cm onder de rand
+                m.set(x, y, WALK - 3, "paneel_blauw")
+                m.set(x, y, WALK - 2, ZWEMWATER)
+                m.set(x, y, WALK - 1, 0)
+                m.set(x, y, WALK, 0)
             elif d < 15:
                 m.set(x, y, WALK, "natuursteen1")
     return m

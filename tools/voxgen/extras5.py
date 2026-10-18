@@ -244,8 +244,10 @@ def x_dakzwembad(b):
     for ly in range(6, 26):
         for lx in range(6, 22):
             edge = lx in (6, 21) or ly in (6, 25)
+            # rand van 25 cm rond het verzonken water
             m.set(O + lx, O + ly, 1, "tegel_wit" if edge else "water_zwembad")
             m.set(O + lx, O + ly, 2, "tegel_wit" if edge else 0)
+            m.set(O + lx, O + ly, 3, "tegel_wit" if edge else 0)
     for ly in (8, 14, 20):
         for lx in range(24, 28):
             m.set(O + lx, O + ly, 2, "bord_wit")

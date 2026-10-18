@@ -5,9 +5,13 @@ extends Camera3D
 
 @export var snelheid := 12.0
 @export var gevoeligheid := 0.003
-## Isometrische weergave (orthografisch, 45 graden gedraaid, ~35 graden naar beneden).
+## Isometrische weergave (perspectief met smalle kijkhoek, 45 graden gedraaid,
+## ~35 graden naar beneden; zie scripts/iso_camera.gd).
 @export var isometrisch := true
+## Meter in beeld bij het starten.
 @export var iso_grootte := 140.0
+
+const Iso = preload("res://scripts/iso_camera.gd")
 
 var _yaw := 0.0
 var _pitch := 0.0
@@ -15,11 +19,10 @@ var _pitch := 0.0
 
 func _ready() -> void:
 	if isometrisch:
-		projection = Camera3D.PROJECTION_ORTHOGONAL
-		size = iso_grootte
-		rotation_degrees = Vector3(-35.264, 45.0, 0.0)
-		near = 1.0
-		far = 4000.0
+		# focus = het punt op de grond waar de camera nu naar kijkt
+		var focus := global_position + (-global_transform.basis.z) * Iso.afstand_tot_grond(self)
+		focus.y = 0.0
+		Iso.plaats(self, focus, iso_grootte)
 	_yaw = rotation.y
 	_pitch = rotation.x
 

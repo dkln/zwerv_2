@@ -52,6 +52,7 @@ func _pas_toe() -> void:
 	_zon.light_color = Color(1.0, 0.93 - warm * 0.25, 0.82 - warm * 0.45)
 	_zon.light_energy = 1.55 * licht
 	_zon.shadow_enabled = licht > 0.05
+	RenderingServer.global_shader_parameter_set("zwervr_nacht", 1.0 - licht)
 	if _vul:
 		# 's nachts wordt het vullicht een zwak blauw maanlicht
 		_vul.light_energy = lerpf(0.12, 0.22, licht)
@@ -62,6 +63,8 @@ func _pas_toe() -> void:
 	if _lucht:
 		_lucht.sky_top_color = Color(0.05, 0.07, 0.16).lerp(Color(0.3, 0.5, 0.85), licht)
 		_lucht.sky_horizon_color = Color(0.12, 0.12, 0.22).lerp(Color(0.7, 0.8, 0.92), licht).lerp(Color(0.95, 0.6, 0.4), warm * licht * 0.6)
+		_lucht.ground_horizon_color = _lucht.sky_horizon_color
+		_lucht.ground_bottom_color = _lucht.sky_horizon_color.lerp(_lucht.sky_top_color, 0.5)
 		# glas spiegelt dezelfde lucht (voxel_glass.gdshader)
 		RenderingServer.global_shader_parameter_set("zwervr_lucht_boven", _lucht.sky_top_color.lightened(0.1))
 		RenderingServer.global_shader_parameter_set("zwervr_lucht_horizon", _lucht.sky_horizon_color)

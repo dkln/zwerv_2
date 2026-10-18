@@ -15,9 +15,11 @@ const MATERIAL_PATHS := [
 	"res://addons/vox_tiles/materials/voxel_emit.tres",
 	"res://addons/vox_tiles/materials/voxel_water.tres",
 	"res://addons/vox_tiles/materials/voxel_vlag.tres",
+	"res://addons/vox_tiles/materials/voxel_paneel.tres",
 ]
 
 const WIND_MATERIAAL := "res://addons/vox_tiles/materials/voxel_wind.tres"
+const DRIJF_MATERIAAL := "res://addons/vox_tiles/materials/voxel_drijf.tres"
 
 const AO_CURVE := [0.34, 0.56, 0.79, 1.0]
 
@@ -34,7 +36,8 @@ const RICHTINGEN := [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0), V
 ## blok: afmeting van de gridcel (bijv. 4x3x4). De driehoeken worden dan per zijde
 ## van die cel gegroepeerd (meta "vlakken" en "dicht"), zodat het samenvoegen
 ## (scripts/bakker.gd) vlakken tegen een buurblok kan weglaten.
-static func build(vox, voxel_size: float, use_ao: bool, kleur_tolerantie := 0, wind := false, blok := Vector3.ZERO) -> ArrayMesh:
+## drijven: het model deint mee met het water (boten, boeien, waterlelies).
+static func build(vox, voxel_size: float, use_ao: bool, kleur_tolerantie := 0, wind := false, blok := Vector3.ZERO, drijven := false) -> ArrayMesh:
 	var sx: int = vox.size.x
 	var sy: int = vox.size.y
 	var sz: int = vox.size.z
@@ -215,9 +218,14 @@ static func build(vox, voxel_size: float, use_ao: bool, kleur_tolerantie := 0, w
 		arrays[Mesh.ARRAY_NORMAL] = PackedVector3Array(s.n)
 		arrays[Mesh.ARRAY_COLOR] = PackedColorArray(s.c)
 		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-		var mat = load(WIND_MATERIAAL if (wind and m == Parser.MAT_OPAQUE) else MATERIAL_PATHS[m])
+		var pad: String = MATERIAL_PATHS[m]
+		if drijven and m != Parser.MAT_WATER and m != Parser.MAT_GLASS and m != Parser.MAT_EMIT:
+			pad = DRIJF_MATERIAAL
+		elif wind and m == Parser.MAT_OPAQUE:
+			pad = WIND_MATERIAAL
+		var mat = load(pad)
 		mesh.surface_set_material(mesh.get_surface_count() - 1, mat)
-		mesh.surface_set_name(mesh.get_surface_count() - 1, ["opaque", "metal", "glass", "emit", "water", "vlag"][m])
+		mesh.surface_set_name(mesh.get_surface_count() - 1, ["opaque", "metal", "glass", "emit", "water", "vlag", "paneel"][m])
 	if blok != Vector3.ZERO:
 		# zijden die helemaal dicht zijn (ondoorzichtig) verbergen de zijde van de buurcel
 		var dicht := 0

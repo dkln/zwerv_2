@@ -6,16 +6,16 @@ render_mode blend_mix, cull_back, depth_draw_opaque, specular_schlick_ggx;
 // De golven lopen in wereldcoördinaten door over aangrenzende tiles.
 // Spiegeling: de gespiegelde kijkstraal wordt in een paar stappen over het
 // scherm gevolgd (diepte- en schermbuffer, geen raytracing). Wat hij raakt,
-// spiegelt zwak in het water; anders spiegelt de lucht. DetailNiveau zet de
-// spiegeling uit als je ver uitzoomt (stappen = 0).
+// spiegelt in het water; anders spiegelt de lucht. (De SSR van Godot gaf hier
+// geen zichtbare spiegeling.)
 
 uniform float golf_hoogte : hint_range(0.0, 0.2) = 0.04;   // meter
 uniform float golf_snelheid = 0.7;
 uniform float golf_lengte = 6.0;                            // meter tussen twee toppen
 uniform float vlekken : hint_range(0.0, 1.0) = 0.35;       // lichte bewegende vlekken
-uniform float glinstering : hint_range(0.0, 1.0) = 0.4;
-uniform float spiegeling : hint_range(0.0, 1.0) = 0.3;        // voor gespiegelde objecten
-uniform float lucht_spiegeling : hint_range(0.0, 1.0) = 0.1;  // voor de lucht
+uniform float glinstering : hint_range(0.0, 1.0) = 0.1;
+uniform float spiegeling : hint_range(0.0, 1.0) = 0.17;        // voor gespiegelde objecten
+uniform float lucht_spiegeling : hint_range(0.0, 1.0) = 0.06;  // voor de lucht
 uniform float stap = 1.0;                                   // meter per stap
 uniform int stappen = 12;
 uniform float dikte = 2.0;                                  // meter: hoe dik een geraakt object telt
@@ -77,7 +77,7 @@ void fragment() {
 	float vlek = smoothstep(0.45, 0.95, v1 * 0.6 + v2 * 0.4);
 	// glinsteringen: kleine, snel wisselende lichtpuntjes
 	float gl = smoothstep(0.86, 0.98, ruis(wpos.xz * 3.1 + vec2(t * 0.5, -t * 0.4)) * ruis(wpos.xz * 2.3 - vec2(t * 0.3)) * 1.6);
-	vec3 basis = COLOR.rgb * (0.42 + vlek * vlekken * 0.35);
+	vec3 basis = COLOR.rgb * (0.55 + vlek * vlekken * 0.35);
 
 	vec3 n = normalize((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz);
 	vec3 kijk = -normalize((INV_VIEW_MATRIX * vec4(VIEW, 0.0)).xyz);
@@ -105,7 +105,7 @@ void fragment() {
 		}
 	}
 	float fres = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 2.0);
-	float s = clamp(mix(lucht_spiegeling, spiegeling, raak) + fres * 0.1, 0.0, 1.0) * is_top;
+	float s = clamp(mix(lucht_spiegeling, spiegeling, raak) + fres * 0.05, 0.0, 1.0) * is_top;
 	ALBEDO = basis * (1.0 - s);
 	EMISSION = kleur * s + vec3(gl * glinstering * 0.6) * is_top;
 	ROUGHNESS = 0.35;

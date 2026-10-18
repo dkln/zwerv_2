@@ -4,13 +4,15 @@ extends Node
 ## Zet `actief` uit om zelf rond te kijken met de vrije camera.
 
 const Data = preload("res://scripts/rondleiding_data.gd")
+const Iso = preload("res://scripts/iso_camera.gd")
 
 @export var actief := true
 @export var camera_pad := NodePath("../Camera")
 @export var reistijd := 3.0          ## seconden tussen twee stops
 @export var kijktijd := 7.0          ## seconden per stop
 @export var inzoomen := 0.9          ## camera zoomt tijdens het kijken langzaam naar deze factor
-@export var afstand := 300.0
+## De rondleiding begint bij de eerste stop waarvan de naam dit bevat (leeg = bij het begin).
+@export var begin_bij := "kanaal"
 
 var _cam: Camera3D
 var _stops := []
@@ -29,22 +31,27 @@ func _ready() -> void:
 		return
 	_cam.set_process(false)
 	_cam.set_process_unhandled_input(false)
-	_cam.projection = Camera3D.PROJECTION_ORTHOGONAL
-	_cam.rotation_degrees = Vector3(-35.264, 45, 0)
-	_cam.near = 1.0
-	_cam.far = 4000.0
 	_stops = Data.stops(owner if owner else get_parent())
 	_maak_bijschrift()
 	if _stops.is_empty():
 		return
-	var s: Dictionary = _stops[0]
-	_cam.global_position = _pos(s)
-	_cam.size = s["grootte"]
+	if begin_bij != "":
+		for k in _stops.size():
+			if begin_bij in str(_stops[k]["slug"]):
+				_i = k
+				break
+	var s: Dictionary = _stops[_i]
+	Iso.plaats(_cam, _focus(s), s["grootte"])
 	_volgende()
 
 
-func _pos(s: Dictionary) -> Vector3:
-	return Vector3(s["x"], 0, s["z"]) + Vector3(1, 1, 1).normalized() * afstand
+func _focus(s: Dictionary) -> Vector3:
+	return Vector3(s["x"], 0, s["z"])
+
+
+## Zoomen = de afstand veranderen (perspectiefcamera met vaste kijkhoek).
+func _pos(s: Dictionary, zoom := 1.0, drift := Vector3.ZERO) -> Vector3:
+	return Iso.positie(_focus(s) + drift, float(s["grootte"]) * zoom)
 
 
 func _volgende() -> void:
@@ -54,13 +61,11 @@ func _volgende() -> void:
 	# reizen: positie en zoom tegelijk; bijschrift vervaagt eerst
 	t.tween_property(_paneel, "modulate:a", 0.0, 0.5)
 	t.parallel().tween_property(_cam, "global_position", _pos(s), reistijd)
-	t.parallel().tween_property(_cam, "size", s["grootte"], reistijd)
 	t.tween_callback(_toon.bind(s))
 	t.tween_property(_paneel, "modulate:a", 1.0, 0.6)
 	# kijken: langzaam inzoomen en een klein stukje meedrijven
 	var drift: Vector3 = Vector3(-1, 0, 1).normalized() * float(s["grootte"]) * 0.04
-	t.parallel().tween_property(_cam, "size", s["grootte"] * inzoomen, kijktijd).set_trans(Tween.TRANS_LINEAR)
-	t.parallel().tween_property(_cam, "global_position", _pos(s) + drift, kijktijd).set_trans(Tween.TRANS_LINEAR)
+	t.parallel().tween_property(_cam, "global_position", _pos(s, inzoomen, drift), kijktijd).set_trans(Tween.TRANS_LINEAR)
 	t.tween_callback(func():
 		_i += 1
 		_volgende())

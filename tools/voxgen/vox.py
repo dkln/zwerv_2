@@ -214,6 +214,8 @@ def _matl(mat):
         return {"_type": "_emit", "_emit": "1", "_flux": "2", "_ldr": "0.5"}
     if mat == "metal":
         return {"_type": "_metal", "_metal": "0.7", "_rough": "0.3", "_sp": "0.5"}
+    if mat == "paneel":   # glanzend metaal (zonnepanelen); importer: _rough < 0.15
+        return {"_type": "_metal", "_metal": "0.8", "_rough": "0.1", "_sp": "0.8"}
     return {"_type": "_diffuse"}
 
 

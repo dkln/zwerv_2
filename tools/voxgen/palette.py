@@ -65,7 +65,7 @@ _ENTRIES = [
     ("dakgrind1", (150, 146, 138)), ("dakgrind2", (130, 126, 120)),
     ("bitumen1", (46, 46, 48)), ("bitumen2", (56, 56, 58)),
     ("zink1", (150, 156, 160), "metal"), ("zink2", (130, 136, 140), "metal"),
-    ("zonnepaneel", (30, 40, 70), "metal"),
+    ("zonnepaneel", (30, 40, 70), "paneel"),
     # --- deuren / details
     ("deur_groen", (28, 72, 50)), ("deur_rood", (130, 30, 30)), ("deur_blauw", (30, 50, 100)),
     ("deur_zwart", (24, 24, 26)), ("deur_wit", (230, 230, 226)),

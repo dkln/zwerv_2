@@ -8,6 +8,8 @@ const MAT_GLASS := 2
 const MAT_EMIT := 3
 const MAT_WATER := 4
 const MAT_FLAG := 5
+## glanzend metaal (MagicaVoxel: metal met _rough < 0.15), bijv. zonnepanelen
+const MAT_PANEEL := 6
 
 ## Palet-indices die als water worden behandeld (glas-materiaal in MagicaVoxel).
 const WATER_START := 225
@@ -39,6 +41,7 @@ static func load_file(path: String) -> RefCounted:
 	var got_size := false
 	var got_xyzi := false
 	var matl_types := {}
+	var matl_rough := {}
 	while f.get_position() < f.get_length():
 		var id := f.get_buffer(4).get_string_from_ascii()
 		var content := f.get_32()
@@ -68,6 +71,7 @@ static func load_file(path: String) -> RefCounted:
 				var mid := f.get_32()
 				var d := _read_dict(f)
 				matl_types[mid] = d.get("_type", "_diffuse")
+				matl_rough[mid] = float(d.get("_rough", "1"))
 		f.seek(start + content + children)
 	for i in range(1, 256):
 		var t: String = matl_types.get(i, "_diffuse")
@@ -77,7 +81,7 @@ static func load_file(path: String) -> RefCounted:
 		elif t == "_emit":
 			m = MAT_EMIT
 		elif t == "_metal":
-			m = MAT_METAL
+			m = MAT_PANEEL if float(matl_rough.get(i, 1.0)) < 0.15 else MAT_METAL
 		if i >= FLAG_START and i <= FLAG_END:
 			m = MAT_FLAG
 		out.materials[i] = m

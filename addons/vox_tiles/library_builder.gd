@@ -65,6 +65,12 @@ static func build_category(cat: String, changed: Dictionary, previews: bool, for
 	for id in lib.get_item_list():
 		by_name[lib.get_item_name(id)] = id
 		next_id = maxi(next_id, id + 1)
+	# vast register naam -> id: een tile die even ontbreekt (bijv. tijdens het
+	# opnieuw genereren) krijgt bij terugkomst dezelfde id, zodat kaarten kloppen
+	var register := _lees_register(cat)
+	for naam in register:
+		next_id = maxi(next_id, int(register[naam]) + 1)
+	var register_gewijzigd := false
 	var seen := {}
 	var dirty := false
 	var need_preview: Array[int] = []
@@ -79,12 +85,18 @@ static func build_category(cat: String, changed: Dictionary, previews: bool, for
 		var id: int
 		var is_new := not by_name.has(key)
 		if is_new:
-			id = next_id
-			next_id += 1
+			if register.has(key) and not lib.get_item_list().has(int(register[key])):
+				id = int(register[key])
+			else:
+				id = next_id
+				next_id += 1
 			lib.create_item(id)
 			lib.set_item_name(id, key)
 		else:
 			id = by_name[key]
+		if int(register.get(key, -1)) != id:
+			register[key] = id
+			register_gewijzigd = true
 		if force or is_new or changed.has(path) or lib.get_item_mesh(id) != mesh:
 			lib.set_item_mesh(id, mesh)
 			lib.set_item_shapes(id, _shapes(mesh, cfg.collision, key))
@@ -109,6 +121,8 @@ static func build_category(cat: String, changed: Dictionary, previews: bool, for
 	for niveau in ["lod", "lod2"]:
 		if dirty or force or not ResourceLoader.exists(lod_path(cat, niveau)):
 			_bouw_lod(cat, lib, niveau)
+	if register_gewijzigd:
+		_schrijf_register(cat, register)
 	if dirty:
 		DirAccess.make_dir_recursive_absolute(LIB_ROOT)
 		var err := ResourceSaver.save(lib, lib_path)
@@ -117,6 +131,29 @@ static func build_category(cat: String, changed: Dictionary, previews: bool, for
 		else:
 			print("Vox Tiles: bibliotheek '%s' bijgewerkt (%d items)" % [cat, lib.get_item_list().size()])
 	return dirty
+
+
+static func register_path(cat: String) -> String:
+	return LIB_ROOT.path_join(cat + "_ids.json")
+
+
+static func _lees_register(cat: String) -> Dictionary:
+	var f := FileAccess.open(register_path(cat), FileAccess.READ)
+	if f == null:
+		return {}
+	var d = JSON.parse_string(f.get_as_text())
+	return d if d is Dictionary else {}
+
+
+static func _schrijf_register(cat: String, register: Dictionary) -> void:
+	DirAccess.make_dir_recursive_absolute(LIB_ROOT)
+	var namen := register.keys()
+	namen.sort()
+	var geordend := {}
+	for n in namen:
+		geordend[n] = int(register[n])
+	var f := FileAccess.open(register_path(cat), FileAccess.WRITE)
+	f.store_string(JSON.stringify(geordend, "\t"))
 
 
 const EXACT := ["hallen/", "parkeergarage", "overkapping", "pilaren", "zuilengang", "poort", "luchtboog",

@@ -45,11 +45,25 @@ func _get_import_options(path: String, preset_index: int) -> Array[Dictionary]:
 		{"name": "lod_kleur_tolerantie", "default_value": 24},
 		{"name": "lod2_verkleining", "default_value": 2},
 		# bomen en planten bewegen in de wind
-		{"name": "wind", "default_value": path.contains("/bomen/") or path.contains("/planten/")},
+		{"name": "wind", "default_value": _standaard_wind(path)},
+		# boten, boeien en waterlelies deinen mee met het water
+		{"name": "drijven", "default_value": _standaard_drijven(path)},
 		# afmeting van de gridcel: driehoeken per celzijde groeperen zodat verborgen
 		# zijden tegen buurblokken bij het samenvoegen wegvallen (0 = niet)
 		{"name": "blok", "default_value": _standaard_blok(path)},
 	]
+
+
+static func _standaard_drijven(path: String) -> bool:
+	for naam in ["sloep", "roeiboot", "reddingsboei", "woonboot", "water_lelies"]:
+		if path.get_file().begins_with(naam):
+			return true
+	return false
+
+
+static func _standaard_wind(path: String) -> bool:
+	return path.contains("/bomen/") or path.contains("/planten/") or path.contains("/haag") \
+		or path.contains("bloembak") or path.contains("riet") and not path.contains("/daken/")
 
 
 static func _standaard_blok(path: String) -> Vector3:
@@ -86,20 +100,21 @@ func _import(source_file: String, save_path: String, options: Dictionary, platfo
 		return ERR_PARSE_ERROR
 	var vs: float = options.get("voxel_size", 0.125)
 	var wind: bool = options.get("wind", false)
+	var drijven: bool = options.get("drijven", _standaard_drijven(source_file))
 	var blok: Vector3 = options.get("blok", _standaard_blok(source_file))
-	var mesh := Mesher.build(vox, vs, options.get("ambient_occlusion", true), options.get("kleur_samenvoegen", 14), wind, blok)
+	var mesh := Mesher.build(vox, vs, options.get("ambient_occlusion", true), options.get("kleur_samenvoegen", 14), wind, blok, drijven)
 	mesh.resource_name = source_file.get_file().get_basename()
 	# grove versie voor als je ver uitzoomt: gelijkende kleuren samengevoegd, geen AO
 	var tol: int = options.get("lod_kleur_tolerantie", 24)
 	if tol > 0:
-		var lod := Mesher.build(vox, vs, false, tol, wind, blok)
+		var lod := Mesher.build(vox, vs, false, tol, wind, blok, drijven)
 		lod.resource_name = mesh.resource_name + "_lod"
 		mesh.set_meta("lod", lod)
 	# heel grove versie voor de verste zoom: blokjes van f x f x f voxels samengevoegd
 	var f: int = options.get("lod2_verkleining", 2)
 	if f > 1:
 		var klein = Mesher.verklein(vox, f)
-		var lod2 := Mesher.build(klein, vs * f, false, 40, wind, blok)
+		var lod2 := Mesher.build(klein, vs * f, false, 40, wind, blok, drijven)
 		lod2.resource_name = mesh.resource_name + "_lod2"
 		mesh.set_meta("lod2", lod2)
 	return ResourceSaver.save(mesh, "%s.%s" % [save_path, _get_save_extension()])

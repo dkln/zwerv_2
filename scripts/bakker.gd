@@ -6,11 +6,13 @@ extends RefCounted
 
 const Mesher = preload("res://addons/vox_tiles/vox_mesher.gd")
 const VLAG := "res://addons/vox_tiles/materials/voxel_vlag.tres"
+const WIND := "res://addons/vox_tiles/materials/voxel_wind.tres"
+const DRIJF := "res://addons/vox_tiles/materials/voxel_drijf.tres"
 
 ## chunkgrootte in cellen
 const CHUNK := 8
 ## ophogen als de uitkomst verandert (maakt de cache in user://samengevoegd ongeldig)
-const VERSIE := 1
+const VERSIE := 3
 ## rekentijd per frame; de rest gebeurt in volgende frames
 const BUDGET_USEC := 6000
 
@@ -25,7 +27,7 @@ static func bak(gm: GridMap, lib: MeshLibrary, naam: String, boven_verbergen: bo
 	var dicht := {}   # item -> bitmasker
 	var chunks := {}  # Vector3i(chunk x, chunk z, schaduw) -> {materiaal: [v, n, c]}
 	var schaduw := {}
-	var los := []     # cellen met vlaggen: als losse mesh (de vlag-shader rekent lokaal)
+	var los := []     # cellen met vlaggen of wind: als losse mesh
 	var basis_cache := {}
 	var start := Time.get_ticks_usec()
 	var teller := 0
@@ -127,7 +129,8 @@ static func _splits(mesh: ArrayMesh) -> Array:
 	var vlakken: Array = mesh.get_meta("vlakken", [])
 	for s in mesh.get_surface_count():
 		var mat := mesh.surface_get_material(s)
-		if mat == null or mat.resource_path == VLAG:
+		# vlag-, wind- en drijf-shaders rekenen in lokale coördinaten: die tiles blijven los
+		if mat == null or mat.resource_path in [VLAG, WIND, DRIJF]:
 			return []
 		var a := mesh.surface_get_arrays(s)
 		if a[Mesh.ARRAY_INDEX] != null or a[Mesh.ARRAY_COLOR] == null:

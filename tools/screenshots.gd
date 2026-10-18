@@ -58,12 +58,7 @@ func _init() -> void:
 		titel.text = it["titel"]
 		tekst.text = it["tekst"]
 		var focus := Vector3(it["x"], 0, it["z"])
-		cam.projection = Camera3D.PROJECTION_ORTHOGONAL
-		cam.size = it["grootte"]
-		cam.near = 1.0
-		cam.far = 4000.0
-		cam.rotation_degrees = Vector3(-35.264, 45, 0)
-		cam.global_position = focus + Vector3(1, 1, 1).normalized() * 300.0
+		preload("res://scripts/iso_camera.gd").plaats(cam, focus, it["grootte"])
 		for i in 10:
 			await process_frame
 		var bestand := "%02d_%s.png" % [nr, it["slug"]]

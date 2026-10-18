@@ -21,7 +21,10 @@ Snel starten
 4. Druk op F5/F6: een automatische rondleiding vliegt isometrisch langs alle
    situaties, met titel en uitleg in beeld (node `Rondleiding`; zet `actief`
    uit om zelf rond te kijken). Daarnaast: De camera staat standaard in
-   isometrische stand (orthografisch, 45 graden gedraaid). Zet `isometrisch`
+   isometrische stand: een perspectiefcamera met een smalle kijkhoek (20°),
+   45 graden gedraaid en ~35 graden naar beneden (`scripts/iso_camera.gd`).
+   Een echte perspectiefcamera, omdat Godot schaduwsplits en SSR alleen daarmee
+   goed berekent; zoomen = de afstand veranderen. Zet `isometrisch`
    op de Camera-node uit voor een vrije perspectief-camera (rechtermuisknop =
    kijken, WASD = bewegen, Q/E = omlaag/omhoog, Shift = sneller).
    `iso_grootte` bepaalt hoeveel meter van de kaart in beeld is.
@@ -198,15 +201,23 @@ Rook, water, vlaggen en voxelstructuur
   importer maakt het wateroppervlak daarvoor per voxel fijnmazig.
 - Spiegeling in water, zonder raytracing: de shader volgt de gespiegelde
   kijkstraal in 12 stappen over het scherm (diepte- en schermbuffer) en toont
-  zwak wat hij raakt (bruggen, bomen, gevels). Raakt hij niets, dan spiegelt de
-  lucht (kleuren uit de dagcyclus, shader globals `zwervr_lucht_*`). Instelbaar:
-  `spiegeling`, `lucht_spiegeling`, `stap`, `stappen`, `dikte`, `rimpeling`.
-  DetailNiveau zet de spiegeling uit vanaf `grof_vanaf`. De ingebouwde SSR van
-  Godot werkt niet met de orthografische camera en staat uit.
+  wat hij raakt (bruggen, bomen, gevels); anders spiegelt de lucht (kleuren uit
+  de dagcyclus). Instelbaar in `materials/voxel_water.tres`: `spiegeling`,
+  `lucht_spiegeling`, `stap`, `stappen`, `dikte`, `rimpeling`. De SSR van Godot
+  gaf hier geen zichtbare spiegeling en staat uit.
+- Drijvende objecten (sloep, roeiboot, reddingsboei, woonboot, waterlelies;
+  import-optie `drijven`) deinen mee: `materials/voxel_drijf.tres` volgt dezelfde
+  golf als het water en laat het object licht rollen en stampen (`rollen`).
+  Houd `golf_hoogte`, `golf_snelheid` en `golf_lengte` gelijk aan die van het
+  water. Zulke tiles worden niet samengevoegd.
+- Zonnepanelen hebben een eigen glanzend materiaal (`materials/voxel_paneel.tres`,
+  een gewoon StandardMaterial3D). In MagicaVoxel: metaal met ruwheid onder 0,15.
 - Glas heeft een goedkope, nagebootste spiegeling (lucht, horizon, straat en
   lichte strepen; `spiegeling`, `opacity`).
 - Lampen, verkeerslichten en verlichte ramen (emit-materiaal, energie 6) geven
-  een zachte gloed via de glow van de Environment (drempel 1,6).
+  's nachts een zachte gloed via de glow van de Environment (drempel 1,6).
+  Overdag branden ze op 25% (shader global `zwervr_nacht`, gezet door de
+  dagcyclus), zodat verlichte ramen overdag geen witte vlekken zijn.
 - Vlaggen wapperen via `materials/voxel_vlag.tres` (`snelheid`, `sterkte`,
   `golflengte`). Hoe verder van de mast, hoe meer beweging.
 - In MagicaVoxel: paletkleuren 225-232 worden water, 233-248 worden
@@ -319,7 +330,8 @@ Rondleiding, prestaties en uiterlijk
 ------------------------------------
 - `Rondleiding` (`scripts/rondleiding.gd`): stops komen uit
   `scripts/rondleiding_data.gd` (vaste gebieden + alle demowijken). Instelbaar:
-  `reistijd`, `kijktijd`, `inzoomen`.
+  `reistijd`, `kijktijd`, `inzoomen`, `begin_bij` (standaard "kanaal": de
+  rondleiding begint bij het kanaal).
 - `DetailNiveau` (`scripts/detail_niveau.gd`): schakelt bij het uitzoomen naar
   grove tiles (`grof_vanaf`, standaard 100 m in beeld) en heel grove tiles
   (`heel_grof_vanaf`, 130 m), verbergt Details (vanaf 120 m) en Props (vanaf
@@ -332,8 +344,8 @@ Rondleiding, prestaties en uiterlijk
   komt uit de shader (`voxel_ruis`). Gras en boomkruinen hebben hun detail in de
   kleur van de voxels, niet in uitstekende voxels.
 - Schaduwen: vlakke tiles (lager dan 0,7 m) en kleine details werpen geen
-  schaduw; de zon gebruikt 4 schaduwsplits (4096 px). De orthogonale modus gaf bij de verre isometrische camera vrijwel geen schaduw.
-- Rendering (`project.godot`): MSAA 4x + FXAA, debanding, FSR-schaling 0,77,
+  schaduw; de zon gebruikt 4 schaduwsplits (4096 px).
+- Rendering (`project.godot`): FSR 2 op 77% (met eigen temporele anti-aliasing; MSAA/FXAA uit), debanding,
   depth prepass uit; GridMaps gebruiken octant-grootte 4 (snelst gemeten).
 - Samenvoegen (`scripts/bakker.gd`, aangestuurd door `DetailNiveau`, export
   `bakken`): bij het starten worden de lagen Gebouwen en Grond samengevoegd tot
@@ -352,9 +364,11 @@ Rondleiding, prestaties en uiterlijk
   lange schaduwen. Alle licht is realtime.
 - Bomen en planten bewegen in de wind (`materials/voxel_wind.tres`:
   `wind_sterkte`, `wind_snelheid`, `wind_hoogte`); de importer kiest dit
-  materiaal automatisch voor `props/bomen` en `props/planten` (import-optie `wind`).
-- Scherptediepte (tilt-shift): Camera > Attributes (focus op 250–330 m; de
-  camera staat op 300 m van het focuspunt).
+  materiaal automatisch voor `props/bomen`, `props/planten`, hagen, bloembakken
+  en riet (import-optie `wind`). Tiles met wind (of een vlag) worden niet
+  samengevoegd, omdat die shaders in lokale coördinaten rekenen.
+- Scherptediepte (tilt-shift): Camera > Attributes; DetailNiveau schaalt de
+  afstanden mee met de afstand tot de grond (export `scherptediepte`).
 - Lettertype: Rubik (`assets/fonts/Rubik.ttf`, OFL-licentie), ingesteld als
   projectfont.
 - Meten: `Godot --script tools/fps_test.gd -- 20 rondleiding` of

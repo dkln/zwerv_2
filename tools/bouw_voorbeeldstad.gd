@@ -65,8 +65,10 @@ func _maak_scene(naam: String) -> Node3D:
 	var sm := ProceduralSkyMaterial.new()
 	sm.sky_top_color = Color(0.3, 0.5, 0.85)
 	sm.sky_horizon_color = Color(0.7, 0.8, 0.92)
-	sm.ground_horizon_color = Color(0.6, 0.65, 0.7)
-	sm.ground_bottom_color = Color(0.25, 0.27, 0.3)
+	# de camera kijkt omlaag: buiten de kaart zie je de "grond" van de lucht,
+	# die krijgt daarom luchtkleuren
+	sm.ground_horizon_color = Color(0.7, 0.8, 0.92)
+	sm.ground_bottom_color = Color(0.55, 0.66, 0.82)
 	sky.sky_material = sm
 	e.background_mode = Environment.BG_SKY
 	e.sky = sky
@@ -97,7 +99,7 @@ func _maak_scene(naam: String) -> Node3D:
 	e.glow_hdr_threshold = 1.6
 	e.adjustment_enabled = true
 	e.adjustment_saturation = 1.12
-	e.adjustment_contrast = 1.14
+	e.adjustment_contrast = 1.1
 	e.fog_enabled = false
 	e.fog_light_color = Color(0.7, 0.78, 0.88)
 	e.fog_density = 0.0005
@@ -111,10 +113,10 @@ func _maak_scene(naam: String) -> Node3D:
 	zon.light_energy = 1.55
 	zon.light_color = Color(1.0, 0.93, 0.82)
 	zon.shadow_enabled = true
-	zon.shadow_opacity = 0.8
+	zon.shadow_opacity = 0.82
 	zon.shadow_bias = 0.03
 	zon.shadow_normal_bias = 1.2
-	zon.shadow_blur = 0.7
+	zon.shadow_blur = 0.4
 	zon.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
 	zon.directional_shadow_max_distance = 500.0
 	root.add_child(zon)
@@ -137,12 +139,14 @@ func _maak_scene(naam: String) -> Node3D:
 	cam.set_script(load("res://scripts/vrije_camera.gd"))
 	# isometrische camera, gericht op het midden van de oude stad
 	var focus := Vector3(72, 0, 60)
-	cam.position = focus + Vector3(1, 1, 1).normalized() * 300.0
-	cam.rotation_degrees = Vector3(-35.264, 45, 0)
-	cam.projection = Camera3D.PROJECTION_ORTHOGONAL
-	cam.size = 140.0
-	cam.far = 4000.0
-	# scherptediepte (tilt-shift): scherp rond het focuspunt op 300 m, wazig ervoor en erachter
+	var Iso = load("res://scripts/iso_camera.gd")
+	cam.position = Iso.positie(focus, 140.0)
+	cam.rotation_degrees = Iso.ROTATIE
+	cam.fov = Iso.FOV
+	cam.near = 2.0
+	cam.far = 6000.0
+	# scherptediepte (tilt-shift): scherp rond het focuspunt, wazig ervoor en erachter;
+	# DetailNiveau schaalt de afstanden mee met de zoom
 	var attr := CameraAttributesPractical.new()
 	attr.dof_blur_far_enabled = true
 	attr.dof_blur_far_distance = 330.0

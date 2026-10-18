@@ -39,6 +39,12 @@ func _init():
 		env.ssao_enabled = false
 		env.ssil_enabled = false
 		env.glow_enabled = false
+	if "w" in vlaggen:
+		sc.get_node("Omgeving").environment.ssr_enabled = false
+	if "2" in vlaggen:
+		sc.get_node("Zon").directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
+	if "1" in vlaggen:
+		sc.get_node("Zon").directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
 	if "d" in vlaggen:
 		sc.get_node("DetailNiveau").queue_free()
 	get_root().add_child(sc)

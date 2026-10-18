@@ -12,26 +12,26 @@ extends Node
 @export var bakken: Array[String] = ["Gebouwen", "Grond"]
 ## Lagen waarin tiles even hoog zijn als de cel (bovenkant mag weg onder een buurblok).
 @export var boven_verbergen: Array[String] = ["Gebouwen"]
-## Vanaf deze zoomgrootte (meter in beeld, orthografisch) worden grove tiles gebruikt.
+## Vanaf deze zoomgrootte (meter in beeld, zie scripts/iso_camera.gd) worden grove tiles gebruikt.
 @export var grof_vanaf := 100.0
 ## Vanaf deze zoomgrootte de heel grove tiles (blokjes van 25 cm).
 @export var heel_grof_vanaf := 130.0
 ## Vanaf deze zoomgrootte worden de Details-laag en de Props-laag verborgen.
 @export var details_tot := 120.0
 @export var props_tot := 300.0
-## Schaduwafstand = afstand camera-focus + factor * zoomgrootte.
+## Schaduwafstand = afstand camera-grond + factor * zoomgrootte.
 @export var schaduw_factor := 1.0
-@export var camera_afstand := 300.0
+## Scherptediepte (tilt-shift) schaalt mee met de afstand tot de grond.
+@export var scherptediepte := true
 
 const Bakker = preload("res://scripts/bakker.gd")
+const Iso = preload("res://scripts/iso_camera.gd")
 const CACHE_MAP := "user://samengevoegd"
-const WATER: ShaderMaterial = preload("res://addons/vox_tiles/materials/voxel_water.tres")
 
 var _cam: Camera3D
 var _zon: DirectionalLight3D
 var _paren := []   # [origineel, grof, heel grof]
 var _niveau := -1
-var _spiegelen := true
 
 
 func _ready() -> void:
@@ -133,7 +133,8 @@ func _bewaar(node: Node3D, pad: String) -> void:
 func _process(_delta: float) -> void:
 	if _cam == null:
 		return
-	var zoom := _cam.size if _cam.projection == Camera3D.PROJECTION_ORTHOGONAL else _cam.global_position.y * 1.5
+	var zoom := Iso.grootte(_cam)
+	var afstand := Iso.afstand_tot_grond(_cam)
 	var niveau := 0
 	if zoom > heel_grof_vanaf:
 		niveau = 2
@@ -149,11 +150,6 @@ func _process(_delta: float) -> void:
 				if p[i] != null:
 					p[i].visible = i == keuze
 	var root := get_parent()
-	# spiegeling in het water alleen dichtbij (kost rekentijd per waterpixel)
-	var spiegelen := zoom < grof_vanaf
-	if spiegelen != _spiegelen:
-		_spiegelen = spiegelen
-		WATER.set_shader_parameter("stappen", 12 if spiegelen else 0)
 	var details := root.get_node_or_null("Details")
 	if details:
 		details.visible = zoom < details_tot
@@ -161,4 +157,10 @@ func _process(_delta: float) -> void:
 	if props:
 		props.visible = zoom < props_tot
 	if _zon:
-		_zon.directional_shadow_max_distance = camera_afstand + zoom * schaduw_factor
+		_zon.directional_shadow_max_distance = afstand + zoom * schaduw_factor
+	var attr := _cam.attributes as CameraAttributesPractical
+	if attr and scherptediepte:
+		attr.dof_blur_far_distance = afstand * 1.1
+		attr.dof_blur_far_transition = afstand * 0.47
+		attr.dof_blur_near_distance = afstand * 0.83
+		attr.dof_blur_near_transition = afstand * 0.37
