@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://cmgvc54q4cn58"
 path="res://.godot/imported/hal_sport_wand_deur_dak.vox-be3ec4cb0bce38d6d8fd03caeb275288.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/hal_sport_wand_deur_dak.vox-be3ec4cb0bce38d6d
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 3, 4)

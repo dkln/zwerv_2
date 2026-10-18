@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://c86wm1k2qgnbq"
 path="res://.godot/imported/hortensia.vox-f0bd72ffc48ecb6698d9d312d9b4a0f0.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/hortensia.vox-f0bd72ffc48ecb6698d9d312d9b4a0f
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=true
+blok=Vector3(0, 0, 0)

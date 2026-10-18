@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://di2qgoppgos2b"
 path="res://.godot/imported/klassiek_donker_verd_drie_ramen_hoek.vox-02a78c806c79c70f6992f94ecff8b338.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/klassiek_donker_verd_drie_ramen_hoek.vox-02a7
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 3, 4)

@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://dkwa1lbbt2dyl"
 path="res://.godot/imported/museum_klassiek_verd_relief_hoek.vox-59c4ab41269e50d97e379b7cfc9a9a7a.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/museum_klassiek_verd_relief_hoek.vox-59c4ab41
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 3, 4)

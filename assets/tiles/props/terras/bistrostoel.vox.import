@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://ds6a4m3skfw8t"
 path="res://.godot/imported/bistrostoel.vox-f183b80fa1b3845b481b3b1f88333fc7.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/bistrostoel.vox-f183b80fa1b3845b481b3b1f88333
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(0, 0, 0)

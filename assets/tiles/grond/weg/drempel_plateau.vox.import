@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://juac6t2m41fy"
 path="res://.godot/imported/drempel_plateau.vox-e7f71dca46198c1b6cfe4398495ab028.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/drempel_plateau.vox-e7f71dca46198c1b6cfe43984
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 1.5, 4)

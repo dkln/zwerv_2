@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://1locppdsc6jb"
 path="res://.godot/imported/klassiek_rood_gevel_trap.vox-d9c9f7a4d6ac62785c7d251aebc15e61.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/klassiek_rood_gevel_trap.vox-d9c9f7a4d6ac6278
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 3, 4)

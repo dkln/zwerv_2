@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://dc5cabg0fimgk"
 path="res://.godot/imported/bedrijfspand_bg_roldeur_hoek.vox-f9ef904cfc4ce417b6b8c8b65fe8ee25.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/bedrijfspand_bg_roldeur_hoek.vox-f9ef904cfc4c
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 3, 4)

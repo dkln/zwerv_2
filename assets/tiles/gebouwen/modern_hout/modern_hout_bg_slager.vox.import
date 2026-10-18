@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://dfjvy32vv3ssw"
 path="res://.godot/imported/modern_hout_bg_slager.vox-f5150087f865419d48a4d0f9a6ad4be9.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/modern_hout_bg_slager.vox-f5150087f865419d48a
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 3, 4)

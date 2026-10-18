@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://deo1015mp4x2y"
 path="res://.godot/imported/schuifdeur_glas.vox-e40cdd16a5819bce342e163dbb70d7a1.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/schuifdeur_glas.vox-e40cdd16a5819bce342e163db
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(0, 0, 0)

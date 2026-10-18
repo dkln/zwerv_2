@@ -260,7 +260,7 @@ Na het genereren (vanuit de projectmap):
     # 1. alle tiles importeren
     /Applications/Godot.app/Contents/MacOS/Godot --headless --import
     # 2. bibliotheken bijwerken (zonder previews; de editor maakt die bij openen)
-    /Applications/Godot.app/Contents/MacOS/Godot --headless --script tools/build_libraries.gd
+    /Applications/Godot.app/Contents/MacOS/Godot --headless --script tools/build_libraries.gd [-- force]
     # 3. voorbeeldkaart opnieuw bouwen (overschrijft scenes/wereld.tscn!)
     /Applications/Godot.app/Contents/MacOS/Godot --headless --script tools/bouw_voorbeeldstad.gd
 
@@ -308,17 +308,35 @@ Rondleiding, prestaties en uiterlijk
   `scripts/rondleiding_data.gd` (vaste gebieden + alle demowijken). Instelbaar:
   `reistijd`, `kijktijd`, `inzoomen`.
 - `DetailNiveau` (`scripts/detail_niveau.gd`): schakelt bij het uitzoomen naar
-  grove tiles (`grof_vanaf`, standaard 200 m in beeld) en heel grove tiles
-  (`heel_grof_vanaf`, 330 m), verbergt Details (vanaf 160 m) en Props (vanaf
-  380 m) en past de schaduwafstand aan het zoomniveau aan. De grove versies
+  grove tiles (`grof_vanaf`, standaard 100 m in beeld) en heel grove tiles
+  (`heel_grof_vanaf`, 130 m), verbergt Details (vanaf 120 m) en Props (vanaf
+  300 m) en past de schaduwafstand aan het zoomniveau aan. De grove versies
   maakt de importer zelf: gelijkende kleuren samengevoegd (`lod`) en blokjes
   van 2x2x2 voxels (`lod2`). De grove bibliotheken (`*_lod.res`, `*_lod2.res`)
   worden automatisch gemaakt en staan in `.gitignore`.
+- Ook het volle detailniveau voegt bijna gelijke kleuren samen (import-optie
+  `kleur_samenvoegen`, standaard 14) voor minder driehoeken; de fijne korrel
+  komt uit de shader (`voxel_ruis`). Gras en boomkruinen hebben hun detail in de
+  kleur van de voxels, niet in uitstekende voxels.
 - Schaduwen: vlakke tiles (lager dan 0,7 m) en kleine details werpen geen
-  schaduw; de zon gebruikt 2 schaduwlagen.
+  schaduw; de zon gebruikt 4 schaduwsplits (4096 px). De orthogonale modus gaf bij de verre isometrische camera vrijwel geen schaduw.
+- Rendering (`project.godot`): MSAA 4x + FXAA, debanding, FSR-schaling 0,77,
+  depth prepass uit; GridMaps gebruiken octant-grootte 4 (snelst gemeten).
+- Samenvoegen (`scripts/bakker.gd`, aangestuurd door `DetailNiveau`, export
+  `bakken`): bij het starten worden de lagen Gebouwen en Grond samengevoegd tot
+  grote meshes (chunks van 8x8 cellen, per LOD-niveau). Zijden die tegen een
+  dichte buurcel liggen en alle onderkanten vallen daarbij weg. De importer
+  groepeert de driehoeken daarvoor per celzijde (import-optie `blok`: 4x3x4 voor
+  gebouwen, 4x1,5x4 voor grond). Tot het samenvoegen klaar is, zie je de gewone
+  GridMaps; het resultaat wordt bewaard in `user://samengevoegd/`, zodat de
+  volgende start direct klaar is (zolang de kaart en de tiles niet veranderen).
+  Je bewerkt gewoon de GridMaps; botsingen blijven daar ook. Tiles met een vlag
+  blijven losse meshes (de vlag-shader rekent in lokale coördinaten).
 - `Dagcyclus` (`scripts/dagcyclus.gd`): basis voor dag en nacht (`tijd`,
-  `snelheid`). De schaduwwerpende zon blijft minimaal `min_hoogte` graden hoog,
-  zodat schaduwen nooit extreem lang worden. Alle licht is realtime.
+  `snelheid`). De zon komt schuin van opzij (oost tot zuidoost, gezien vanuit de
+  isometrische camera), zodat de schaduwen in beeld vallen en de gevels licht
+  houden, en blijft tussen `min_hoogte` (36°) en `max_hoogte` (44°) hoog: geen
+  lange schaduwen. Alle licht is realtime.
 - Bomen en planten bewegen in de wind (`materials/voxel_wind.tres`:
   `wind_sterkte`, `wind_snelheid`, `wind_hoogte`); de importer kiest dit
   materiaal automatisch voor `props/bomen` en `props/planten` (import-optie `wind`).

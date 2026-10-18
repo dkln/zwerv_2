@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://5oygvkytcedy"
 path="res://.godot/imported/magazijn_bg_kantoor.vox-3bda8e12d76dd4d2c00ba797e1598fdf.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/magazijn_bg_kantoor.vox-3bda8e12d76dd4d2c00ba
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 3, 4)

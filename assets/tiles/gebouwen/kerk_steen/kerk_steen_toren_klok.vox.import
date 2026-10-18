@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://b5ml6ucla33vx"
 path="res://.godot/imported/kerk_steen_toren_klok.vox-47fb6f227f3daba9fa9c162aa8fdc325.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/kerk_steen_toren_klok.vox-47fb6f227f3daba9fa9
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 3, 4)

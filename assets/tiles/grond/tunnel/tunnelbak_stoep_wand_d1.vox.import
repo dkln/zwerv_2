@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://ccky35taeb8qw"
 path="res://.godot/imported/tunnelbak_stoep_wand_d1.vox-d89c7c44a18e98677a9ad5cd0751d01f.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/tunnelbak_stoep_wand_d1.vox-d89c7c44a18e98677
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 1.5, 4)

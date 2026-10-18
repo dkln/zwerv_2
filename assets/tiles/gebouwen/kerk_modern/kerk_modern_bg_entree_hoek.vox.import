@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://cb4g3w6skbaye"
 path="res://.godot/imported/kerk_modern_bg_entree_hoek.vox-f2c777b06f13c477d54ef2b8a54f78a6.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/kerk_modern_bg_entree_hoek.vox-f2c777b06f13c4
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 3, 4)

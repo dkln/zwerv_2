@@ -5,8 +5,8 @@ extends Node
 
 @export_range(0.0, 24.0) var tijd := 13.0          ## uur van de dag
 @export var snelheid := 0.0                         ## uren per seconde (0 = stilstaand)
-@export_range(10.0, 80.0) var min_hoogte := 50.0     ## graden; voorkomt lange schaduwen
-@export_range(30.0, 89.0) var max_hoogte := 72.0
+@export_range(10.0, 80.0) var min_hoogte := 36.0     ## graden; voorkomt lange schaduwen
+@export_range(30.0, 89.0) var max_hoogte := 44.0
 @export var zon_pad := NodePath("../Zon")
 @export var vul_pad := NodePath("../Vullicht")
 @export var omgeving_pad := NodePath("../Omgeving")
@@ -42,7 +42,10 @@ func _pas_toe() -> void:
 	var dag := clampf((tijd - 6.0) / 12.0, 0.0, 1.0)
 	var echte_hoogte := sin(dag * PI)                 # 0 aan de horizon, 1 in de middag
 	var licht := clampf(echte_hoogte * 3.0, 0.0, 1.0) if tijd > 5.5 and tijd < 18.5 else 0.0
-	var azimut := lerpf(-90.0, 90.0, dag) + 180.0     # graden rond de verticale as
+	# draaiing rond de verticale as: 90 = licht uit het oosten, 0 = uit het zuiden.
+	# De camera kijkt vanuit het zuidoosten; de zon blijft schuin van opzij
+	# (oost tot zuidoost) zodat schaduwen zichtbaar in beeld vallen en de gevels licht houden.
+	var azimut := lerpf(110.0, 55.0, dag)
 	var hoogte := lerpf(min_hoogte, max_hoogte, echte_hoogte)
 	_zon.rotation_degrees = Vector3(-hoogte, azimut, 0.0)
 	var warm := 1.0 - echte_hoogte

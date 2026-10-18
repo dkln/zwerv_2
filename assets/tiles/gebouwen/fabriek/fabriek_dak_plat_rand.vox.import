@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://qjakx41k2pr8"
 path="res://.godot/imported/fabriek_dak_plat_rand.vox-c1f9d500a8d553f9051db5d4745196b6.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/fabriek_dak_plat_rand.vox-c1f9d500a8d553f9051
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 3, 4)

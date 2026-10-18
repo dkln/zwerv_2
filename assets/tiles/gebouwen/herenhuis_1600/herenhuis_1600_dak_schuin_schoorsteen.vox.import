@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://2yx5qm54er02"
 path="res://.godot/imported/herenhuis_1600_dak_schuin_schoorsteen.vox-c31df2c83ead4c0ead4a92a14ab24c8b.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/herenhuis_1600_dak_schuin_schoorsteen.vox-c31
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 3, 4)

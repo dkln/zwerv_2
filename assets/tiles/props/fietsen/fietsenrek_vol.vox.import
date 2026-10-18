@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://dhn44777e6t2e"
 path="res://.godot/imported/fietsenrek_vol.vox-0697f3d0c780ce1ec3edbd18cce6a0c4.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/fietsenrek_vol.vox-0697f3d0c780ce1ec3edbd18cc
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(0, 0, 0)

@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://ccrcy735ura3t"
 path="res://.godot/imported/zink_schuin_afgeplat_hoek_buiten.vox-6100d84c30f3f38af11f50ba58b8cca2.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/zink_schuin_afgeplat_hoek_buiten.vox-6100d84c
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 3, 4)

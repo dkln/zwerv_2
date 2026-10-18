@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://rqvljk0eojfq"
 path="res://.godot/imported/schuur_rood_dak_schuin_hoek_buiten.vox-5365a1b7a7141de1cb52466eab2bb5b8.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/schuur_rood_dak_schuin_hoek_buiten.vox-5365a1
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 3, 4)

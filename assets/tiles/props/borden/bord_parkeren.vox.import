@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://bev8li56rym3"
 path="res://.godot/imported/bord_parkeren.vox-a67066c91ee01b8cbaeda334a0f8376e.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/bord_parkeren.vox-a67066c91ee01b8cbaeda334a0f
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(0, 0, 0)

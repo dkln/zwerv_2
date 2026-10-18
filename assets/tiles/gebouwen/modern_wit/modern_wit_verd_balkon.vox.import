@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://dsaa0sqjk3we4"
 path="res://.godot/imported/modern_wit_verd_balkon.vox-1a61f33320e42aa06a34714243f519e0.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/modern_wit_verd_balkon.vox-1a61f33320e42aa06a
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 3, 4)

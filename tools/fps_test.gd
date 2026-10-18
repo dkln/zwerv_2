@@ -24,6 +24,16 @@ func _init():
 	var vlaggen: String = a[4] if a.size() > 4 else ""
 	if "s" in vlaggen:
 		sc.get_node("Zon").shadow_enabled = false
+		if sc.has_node("Dagcyclus"):
+			sc.get_node("Dagcyclus").queue_free()
+	for o in [4, 8]:
+		if ("o%d" % o) in vlaggen:
+			for n in ["Grond", "Gebouwen", "Props", "Details"]:
+				sc.get_node(n).cell_octant_size = o
+	if "p" in vlaggen:
+		sc.get_node("Props").queue_free()
+	if "g" in vlaggen:
+		sc.get_node("Gebouwen").queue_free()
 	if "e" in vlaggen:
 		var env: Environment = sc.get_node("Omgeving").environment
 		env.ssao_enabled = false
@@ -34,6 +44,8 @@ func _init():
 	get_root().add_child(sc)
 
 func _process(delta: float) -> bool:
+	if _frames == 0 and _t == 0.0 and delta > 1.0:
+		return false   # eerste frame na het laden/samenvoegen telt niet mee
 	_t += delta
 	if _t < 8.0:
 		return false   # opwarmen: shaders compileren, LOD-kopieën maken

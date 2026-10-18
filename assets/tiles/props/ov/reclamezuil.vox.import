@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://bj0p78y6xvv08"
 path="res://.godot/imported/reclamezuil.vox-aacfa726d40b814ef243233a0604b9d0.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/reclamezuil.vox-aacfa726d40b814ef243233a0604b
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(0, 0, 0)

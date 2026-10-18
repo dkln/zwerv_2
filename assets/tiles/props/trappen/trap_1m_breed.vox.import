@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://j8qm8hwbeul1"
 path="res://.godot/imported/trap_1m_breed.vox-2af447f86baefc8888b018e3fb979221.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/trap_1m_breed.vox-2af447f86baefc8888b018e3fb9
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(0, 0, 0)

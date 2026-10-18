@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://24rdyh6ppo1w"
 path="res://.godot/imported/vlag_eu.vox-4b6555cd7c80b640971824159890ac30.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/vlag_eu.vox-4b6555cd7c80b640971824159890ac30.
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(0, 0, 0)

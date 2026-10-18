@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://dtjh0xrltamgq"
 path="res://.godot/imported/museum_klassiek_bg_raam_boog.vox-91489de36797861526dc078c39ab3e98.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/museum_klassiek_bg_raam_boog.vox-91489de36797
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 3, 4)

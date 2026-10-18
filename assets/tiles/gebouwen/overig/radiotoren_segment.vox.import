@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://bhh4l4m2gxfic"
 path="res://.godot/imported/radiotoren_segment.vox-079b6e256b293a6e31fe2fb96643895a.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/radiotoren_segment.vox-079b6e256b293a6e31fe2f
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 3, 4)

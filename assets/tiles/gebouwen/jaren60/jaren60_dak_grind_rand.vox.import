@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://p786xitolifn"
 path="res://.godot/imported/jaren60_dak_grind_rand.vox-3322c3d9b30670b9a6fb26f22a8b307e.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/jaren60_dak_grind_rand.vox-3322c3d9b30670b9a6
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 3, 4)

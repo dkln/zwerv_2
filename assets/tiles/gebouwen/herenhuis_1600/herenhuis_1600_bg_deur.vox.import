@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://dey5srx3x6qfi"
 path="res://.godot/imported/herenhuis_1600_bg_deur.vox-0e64b17a34b6397b854cc05499d16335.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/herenhuis_1600_bg_deur.vox-0e64b17a34b6397b85
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 3, 4)

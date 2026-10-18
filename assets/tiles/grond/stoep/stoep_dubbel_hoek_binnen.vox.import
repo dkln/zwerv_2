@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://cs2s0fexyxj86"
 path="res://.godot/imported/stoep_dubbel_hoek_binnen.vox-4c4bcffe6e8a9a61648d3735522334dd.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/stoep_dubbel_hoek_binnen.vox-4c4bcffe6e8a9a61
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 1.5, 4)

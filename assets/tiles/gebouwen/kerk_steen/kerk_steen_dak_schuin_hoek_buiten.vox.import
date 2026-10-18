@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://1w3jyhcgpw63"
 path="res://.godot/imported/kerk_steen_dak_schuin_hoek_buiten.vox-fcd7912888f133e8dd2371e0e8d69f81.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/kerk_steen_dak_schuin_hoek_buiten.vox-fcd7912
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 3, 4)

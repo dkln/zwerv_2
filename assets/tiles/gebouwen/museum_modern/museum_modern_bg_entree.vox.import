@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://btnhnk0fvqjk0"
 path="res://.godot/imported/museum_modern_bg_entree.vox-079a6c60ec5452c9a5d96971fe1b000e.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/museum_modern_bg_entree.vox-079a6c60ec5452c9a
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 3, 4)

@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://p22ijlkq1mjm"
 path="res://.godot/imported/plein_dambord.vox-1fade5e747231cd9262ef2b6c4470d55.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/plein_dambord.vox-1fade5e747231cd9262ef2b6c44
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 1.5, 4)

@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://bph02qgeok2ys"
 path="res://.godot/imported/jaren30_verd_raam.vox-336040507246548daddc7d12c45542f4.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/jaren30_verd_raam.vox-336040507246548daddc7d1
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 3, 4)

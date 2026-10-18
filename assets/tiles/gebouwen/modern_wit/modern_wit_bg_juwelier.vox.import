@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://b8o228mrtn2fj"
 path="res://.godot/imported/modern_wit_bg_juwelier.vox-f7fa76949a5a708b237cb2d504bc3922.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/modern_wit_bg_juwelier.vox-f7fa76949a5a708b23
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 3, 4)

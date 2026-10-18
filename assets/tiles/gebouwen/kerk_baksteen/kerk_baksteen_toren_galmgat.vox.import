@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://buriv7bun20m8"
 path="res://.godot/imported/kerk_baksteen_toren_galmgat.vox-9cb1f17f5a3bb778d7a2b96cce22e29c.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/kerk_baksteen_toren_galmgat.vox-9cb1f17f5a3bb
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 3, 4)

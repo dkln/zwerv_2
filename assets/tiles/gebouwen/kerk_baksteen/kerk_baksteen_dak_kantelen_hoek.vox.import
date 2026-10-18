@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://c8pr8wroyvoxh"
 path="res://.godot/imported/kerk_baksteen_dak_kantelen_hoek.vox-7e1a4e3b81179d193fdf9d16781feabd.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/kerk_baksteen_dak_kantelen_hoek.vox-7e1a4e3b8
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 3, 4)

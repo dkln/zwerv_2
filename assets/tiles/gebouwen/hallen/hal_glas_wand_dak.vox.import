@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://b5ngjbeepwjsb"
 path="res://.godot/imported/hal_glas_wand_dak.vox-f69c15ed21f8cd66862903050751b675.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/hal_glas_wand_dak.vox-f69c15ed21f8cd668629030
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 3, 4)

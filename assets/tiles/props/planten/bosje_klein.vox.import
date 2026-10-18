@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://b26vr8dgwedxi"
 path="res://.godot/imported/bosje_klein.vox-b3d846f6e91fc7d579efe50eb8a5f479.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/bosje_klein.vox-b3d846f6e91fc7d579efe50eb8a5f
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=true
+blok=Vector3(0, 0, 0)

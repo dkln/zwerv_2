@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://0wq8g1hpexil"
 path="res://.godot/imported/heuvel_gras_top.vox-4c846a6aa2e4ed444ebbe7ee92f0304f.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/heuvel_gras_top.vox-4c846a6aa2e4ed444ebbe7ee9
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 1.5, 4)

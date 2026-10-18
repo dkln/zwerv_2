@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://cim6qkvororuq"
 path="res://.godot/imported/bord_eenrichting_fiets_uitgezonderd.vox-c72bfb9f3e69ef38f3c96510a46f1ffb.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/bord_eenrichting_fiets_uitgezonderd.vox-c72bf
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(0, 0, 0)

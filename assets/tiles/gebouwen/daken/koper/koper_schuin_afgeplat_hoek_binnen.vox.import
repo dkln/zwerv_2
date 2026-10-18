@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://cen2t8jofvpk0"
 path="res://.godot/imported/koper_schuin_afgeplat_hoek_binnen.vox-f1381c25c8bb9cac6c1a3d0f4e3a7f36.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/koper_schuin_afgeplat_hoek_binnen.vox-f1381c2
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 3, 4)

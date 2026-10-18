@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://b6pus3t7tup11"
 path="res://.godot/imported/modern_wit_verd_raam_breed_hoek.vox-571ccfe8697a826f644f4779623f155f.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/modern_wit_verd_raam_breed_hoek.vox-571ccfe86
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 3, 4)

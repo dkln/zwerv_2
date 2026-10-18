@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://bq2p4tlu51ndy"
 path="res://.godot/imported/opstap_3_treden.vox-776ee32da60bc362145f9e598aff6ce3.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/opstap_3_treden.vox-776ee32da60bc362145f9e598
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(0, 0, 0)

@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://d3sniiotvv4k5"
 path="res://.godot/imported/plein_klinkers.vox-aae66a21de75889279cd00bcc8537279.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/plein_klinkers.vox-aae66a21de75889279cd00bcc8
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 1.5, 4)

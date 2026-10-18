@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://b6p4exxiu7shh"
 path="res://.godot/imported/kabelhaspel.vox-6fa9b8c7e55e96f42b6672c6b315474c.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/kabelhaspel.vox-6fa9b8c7e55e96f42b6672c6b3154
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(0, 0, 0)

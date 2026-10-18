@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://b6xhw6s882vv0"
 path="res://.godot/imported/kantoor_80_verd_spiegelband.vox-75ce585abeeabec952b004444de9218d.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/kantoor_80_verd_spiegelband.vox-75ce585abeeab
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 3, 4)

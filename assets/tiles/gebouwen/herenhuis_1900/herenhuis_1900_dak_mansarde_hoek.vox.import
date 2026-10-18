@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://bnfeg14phi13k"
 path="res://.godot/imported/herenhuis_1900_dak_mansarde_hoek.vox-e33a24bd5964652da982a1f8b6fa89ee.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/herenhuis_1900_dak_mansarde_hoek.vox-e33a24bd
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 3, 4)

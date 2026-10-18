@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://cfjpitlp45mnb"
 path="res://.godot/imported/hogeschool_verd_band.vox-f905df993b27f999f4a14a472412fd7d.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/hogeschool_verd_band.vox-f905df993b27f999f4a1
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 3, 4)

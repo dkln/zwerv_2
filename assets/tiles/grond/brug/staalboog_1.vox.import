@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://dsgfb6wu0ena4"
 path="res://.godot/imported/staalboog_1.vox-a6d9be0d1a719b7c3b65b5230ceef8c9.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/staalboog_1.vox-a6d9be0d1a719b7c3b65b5230ceef
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 1.5, 4)

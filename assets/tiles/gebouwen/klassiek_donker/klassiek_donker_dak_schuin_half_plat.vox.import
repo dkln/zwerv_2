@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://cn07q2lwxplux"
 path="res://.godot/imported/klassiek_donker_dak_schuin_half_plat.vox-1d48fe71540285d54b3e6fd2dba278b1.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/klassiek_donker_dak_schuin_half_plat.vox-1d48
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 3, 4)

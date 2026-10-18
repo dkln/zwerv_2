@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://c0wa0n2iroe55"
 path="res://.godot/imported/buitenlamp_modern.vox-cc4fb7a1cf920f8b16bd44584d79d4a1.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/buitenlamp_modern.vox-cc4fb7a1cf920f8b16bd445
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(0, 0, 0)

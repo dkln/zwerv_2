@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://bvbr5e6hhg74c"
 path="res://.godot/imported/schuur_zwart_dak_schuin_schoorsteen.vox-174f3be9b5036df7d7cdbcf62e0af333.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/schuur_zwart_dak_schuin_schoorsteen.vox-174f3
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 3, 4)

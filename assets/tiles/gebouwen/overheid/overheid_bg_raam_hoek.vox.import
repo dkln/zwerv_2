@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://dmr1uva6ms0a2"
 path="res://.godot/imported/overheid_bg_raam_hoek.vox-2453bb29e44ae91431b873da20ae01bc.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/overheid_bg_raam_hoek.vox-2453bb29e44ae91431b
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 3, 4)

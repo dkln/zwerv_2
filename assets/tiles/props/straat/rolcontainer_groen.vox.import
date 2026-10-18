@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://d4nis3jqephrq"
 path="res://.godot/imported/rolcontainer_groen.vox-2e6fefbe59c5c7f9ceb5aeeba5770fde.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/rolcontainer_groen.vox-2e6fefbe59c5c7f9ceb5ae
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(0, 0, 0)

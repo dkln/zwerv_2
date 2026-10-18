@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://ct0jsprbp1o5e"
 path="res://.godot/imported/rijstrook_stop_tekst.vox-d4d454446b193435787265b7f597bc6e.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/rijstrook_stop_tekst.vox-d4d454446b1934357872
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 1.5, 4)

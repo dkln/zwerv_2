@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://btrif6vfxcqrj"
 path="res://.godot/imported/ruiterstandbeeld.vox-0fab90c3472daec931a7495dfa1cc85c.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/ruiterstandbeeld.vox-0fab90c3472daec931a7495d
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(0, 0, 0)

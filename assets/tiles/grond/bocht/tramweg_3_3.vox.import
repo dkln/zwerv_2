@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://dufl1behanr14"
 path="res://.godot/imported/tramweg_3_3.vox-68dc248175692cc7182cb30a4142b9aa.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/tramweg_3_3.vox-68dc248175692cc7182cb30a4142b
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 1.5, 4)

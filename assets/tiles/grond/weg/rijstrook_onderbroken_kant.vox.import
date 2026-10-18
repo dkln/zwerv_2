@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://yu3kflo2q5t5"
 path="res://.godot/imported/rijstrook_onderbroken_kant.vox-af892d75ccfee3d8ca6c44ece79cc02c.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/rijstrook_onderbroken_kant.vox-af892d75ccfee3
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 1.5, 4)

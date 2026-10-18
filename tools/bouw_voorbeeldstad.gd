@@ -51,6 +51,7 @@ func _gridmap(naam: String, lib: String, cell: Vector3, center_xz: bool, y: floa
 	gm.cell_center_z = center_xz
 	gm.cell_center_y = false
 	gm.position.y = y
+	gm.cell_octant_size = 4
 	return gm
 
 
@@ -82,7 +83,7 @@ func _maak_scene(naam: String) -> Node3D:
 	e.ssao_power = 1.6
 	e.ssao_detail = 0.8
 	e.ssao_light_affect = 0.15
-	e.ssil_enabled = true
+	e.ssil_enabled = false
 	e.ssil_radius = 6.0
 	e.ssil_intensity = 0.9
 	e.glow_enabled = true
@@ -90,7 +91,7 @@ func _maak_scene(naam: String) -> Node3D:
 	e.glow_hdr_threshold = 1.2
 	e.adjustment_enabled = true
 	e.adjustment_saturation = 1.12
-	e.adjustment_contrast = 1.1
+	e.adjustment_contrast = 1.14
 	e.fog_enabled = false
 	e.fog_light_color = Color(0.7, 0.78, 0.88)
 	e.fog_density = 0.0005
@@ -104,13 +105,12 @@ func _maak_scene(naam: String) -> Node3D:
 	zon.light_energy = 1.55
 	zon.light_color = Color(1.0, 0.93, 0.82)
 	zon.shadow_enabled = true
+	zon.shadow_opacity = 0.8
 	zon.shadow_bias = 0.03
 	zon.shadow_normal_bias = 1.2
 	zon.shadow_blur = 1.5
-	zon.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
+	zon.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
 	zon.directional_shadow_max_distance = 500.0
-	zon.directional_shadow_split_1 = 0.35
-	zon.directional_shadow_blend_splits = true
 	root.add_child(zon)
 	# zacht vullicht van de andere kant (zonder schaduw), zodat schaduwzijden niet zwart worden
 	var vul := DirectionalLight3D.new()

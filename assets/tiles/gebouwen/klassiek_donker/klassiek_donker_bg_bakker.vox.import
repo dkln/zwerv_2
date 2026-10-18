@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://n04bud5ksasd"
 path="res://.godot/imported/klassiek_donker_bg_bakker.vox-ae745b0212a822fbdd5cb53b6b3b0f33.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/klassiek_donker_bg_bakker.vox-ae745b0212a822f
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 3, 4)

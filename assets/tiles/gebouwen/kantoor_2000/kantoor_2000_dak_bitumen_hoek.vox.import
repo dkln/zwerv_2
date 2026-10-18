@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://pwp6x4ox5v8s"
 path="res://.godot/imported/kantoor_2000_dak_bitumen_hoek.vox-dd906b89197cacc6403f59ede8654e88.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/kantoor_2000_dak_bitumen_hoek.vox-dd906b89197
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 3, 4)

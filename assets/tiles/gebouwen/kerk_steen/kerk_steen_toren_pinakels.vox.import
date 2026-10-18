@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://drbmbryic1fmy"
 path="res://.godot/imported/kerk_steen_toren_pinakels.vox-184e48ddef0a03b8a66d48c9bc77ec86.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/kerk_steen_toren_pinakels.vox-184e48ddef0a03b
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 3, 4)

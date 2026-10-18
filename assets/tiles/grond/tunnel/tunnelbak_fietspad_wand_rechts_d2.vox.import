@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://cl8lp04fegq4p"
 path="res://.godot/imported/tunnelbak_fietspad_wand_rechts_d2.vox-238fc0d03548a0d7ae30b56659607b5c.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/tunnelbak_fietspad_wand_rechts_d2.vox-238fc0d
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 1.5, 4)

@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://hvn05j36y502"
 path="res://.godot/imported/pannen_oranje_schuin_afgeplat_hoek_binnen.vox-5929bce9d5c5ae35581a1ce00afbbfa9.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/pannen_oranje_schuin_afgeplat_hoek_binnen.vox
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 3, 4)

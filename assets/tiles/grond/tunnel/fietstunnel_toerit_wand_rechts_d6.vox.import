@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://xut2ho6v0n72"
 path="res://.godot/imported/fietstunnel_toerit_wand_rechts_d6.vox-48846ca969e1efe9e44a0e45ae16c02e.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/fietstunnel_toerit_wand_rechts_d6.vox-48846ca
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 1.5, 4)

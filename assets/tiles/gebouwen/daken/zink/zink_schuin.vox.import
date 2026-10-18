@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://b37tprbeyb05w"
 path="res://.godot/imported/zink_schuin.vox-71b02fb96fe4a79252ac70c155ea312d.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/zink_schuin.vox-71b02fb96fe4a79252ac70c155ea3
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 3, 4)

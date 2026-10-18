@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://c37rbm2ib1yjw"
 path="res://.godot/imported/tram_klinker_recht.vox-a01367bd9d55c7759451cd319b492d3c.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/tram_klinker_recht.vox-a01367bd9d55c7759451cd
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 1.5, 4)

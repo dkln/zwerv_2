@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://bubdqycvte2ul"
 path="res://.godot/imported/magazijn_bg_loopdeur.vox-5f1985133cf83de00d0142502eb7a13e.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/magazijn_bg_loopdeur.vox-5f1985133cf83de00d01
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 3, 4)

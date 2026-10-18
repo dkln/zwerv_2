@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://rv84fg1mnefg"
 path="res://.godot/imported/modern_wit_bg_deur_hoek.vox-cc1ceba103fcbfca09c1739ec69b4b64.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/modern_wit_bg_deur_hoek.vox-cc1ceba103fcbfca0
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 3, 4)

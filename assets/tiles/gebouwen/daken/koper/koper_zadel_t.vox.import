@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://gwm2dcljgn58"
 path="res://.godot/imported/koper_zadel_t.vox-3b049cd0d9dc1df3be17488773ae3969.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/koper_zadel_t.vox-3b049cd0d9dc1df3be17488773a
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 3, 4)

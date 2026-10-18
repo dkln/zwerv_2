@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://blrn1pw8e5m3j"
 path="res://.godot/imported/museum_modern_verd_lichtstrook.vox-af590dc97f5d8ae22e24b450da46d693.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/museum_modern_verd_lichtstrook.vox-af590dc97f
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 3, 4)

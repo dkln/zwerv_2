@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://df3wqk60se6tf"
 path="res://.godot/imported/herenhuis_1900_bg_telefoon.vox-b32281c284135de09bb6845d9a138622.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/herenhuis_1900_bg_telefoon.vox-b32281c284135d
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 3, 4)

@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://pxmrgoyjyywf"
 path="res://.godot/imported/kerk_modern_dak_plat_rand.vox-698c9fc016ec2eec1547fa41c42ab8b0.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/kerk_modern_dak_plat_rand.vox-698c9fc016ec2ee
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 3, 4)

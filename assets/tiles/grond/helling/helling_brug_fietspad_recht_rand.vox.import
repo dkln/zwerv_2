@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://b2slgi4k563sn"
 path="res://.godot/imported/helling_brug_fietspad_recht_rand.vox-258d7af935a7490f457ff60fa53cbdf9.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/helling_brug_fietspad_recht_rand.vox-258d7af9
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 1.5, 4)

@@ -135,6 +135,34 @@ _WATER = [
 ]
 WATER_START = 225  # in elk .vox bestand staan de waterkleuren vanaf deze index
 
+# Kleurvariatie binnen groepen (asfalt1..4, gras1..5, baksteen1..5, ...): elke
+# variant wordt naar het groepsgemiddelde getrokken. 1.0 = origineel, 0 = één kleur.
+VARIATIE = 0.5
+# groepen waarvan de nummers bewust heel andere kleuren zijn
+_VASTE_GROEPEN = {"gordijn", "stof", "reclame", "sedum", "glas"}
+
+
+def _demp_variatie(entries):
+    import re
+    groepen = {}
+    for i, e in enumerate(entries):
+        m = re.match(r"^(.*?)_?(\d+)$", e[0])
+        if m and m.group(1) not in _VASTE_GROEPEN:
+            groepen.setdefault(m.group(1), []).append(i)
+    uit = list(entries)
+    for leden in groepen.values():
+        if len(leden) < 2:
+            continue
+        gem = [sum(entries[i][1][k] for i in leden) / len(leden) for k in range(3)]
+        for i in leden:
+            e = entries[i]
+            kleur = tuple(int(round(gem[k] + (e[1][k] - gem[k]) * VARIATIE)) for k in range(3))
+            uit[i] = (e[0], kleur) + tuple(e[2:])
+    return uit
+
+
+_ENTRIES = _demp_variatie(_ENTRIES)
+
 # Globale kleur-id's (onbeperkt aantal). Bij het schrijven krijgt elk .vox
 # bestand een eigen palet met de gebruikte kleuren (max 224 + 8 water).
 PALETTE = {}

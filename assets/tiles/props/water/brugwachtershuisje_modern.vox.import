@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://dcctvpavosfnx"
 path="res://.godot/imported/brugwachtershuisje_modern.vox-8b7d0f8f3b6e33f643c6c603bf6d74f4.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/brugwachtershuisje_modern.vox-8b7d0f8f3b6e33f
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(0, 0, 0)

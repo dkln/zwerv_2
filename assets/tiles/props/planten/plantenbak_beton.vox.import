@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://bxsl4fwv1v5x0"
 path="res://.godot/imported/plantenbak_beton.vox-3953e25d4d0bb2b8f5cbb8469bd15395.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/plantenbak_beton.vox-3953e25d4d0bb2b8f5cbb846
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=true
+blok=Vector3(0, 0, 0)

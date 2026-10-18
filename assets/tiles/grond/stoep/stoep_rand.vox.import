@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://dvpdtao56cxsm"
 path="res://.godot/imported/stoep_rand.vox-40c5669493c0aadf374405ce03fe9579.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/stoep_rand.vox-40c5669493c0aadf374405ce03fe95
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 1.5, 4)

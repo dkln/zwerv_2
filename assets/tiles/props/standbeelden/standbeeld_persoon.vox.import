@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://dn0nwhhl1bcc6"
 path="res://.godot/imported/standbeeld_persoon.vox-ad35f4e2e8ea988564c5b68a331226a1.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/standbeeld_persoon.vox-ad35f4e2e8ea988564c5b6
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(0, 0, 0)

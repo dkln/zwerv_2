@@ -9,7 +9,7 @@ uniform float emission_energy = 0.0;
 uniform float tintbaar = 1.0;
 // voxelstructuur: lichte randen en kleine helderheidsverschillen per voxel
 uniform float voxel_rand : hint_range(0.0, 0.5) = 0.0;
-uniform float voxel_ruis : hint_range(0.0, 0.3) = 0.05;
+uniform float voxel_ruis : hint_range(0.0, 0.3) = 0.035;
 uniform float voxel_grootte = 0.125;
 // wind: hoe hoger in het model, hoe meer beweging (de voet staat stil)
 uniform float wind_sterkte = 0.06;      // meter uitwijking bovenin

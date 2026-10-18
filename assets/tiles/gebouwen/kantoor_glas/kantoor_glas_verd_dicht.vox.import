@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://db58ehl0d2aud"
 path="res://.godot/imported/kantoor_glas_verd_dicht.vox-c927b7420699cf1e2cabd5e1ccfc7862.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/kantoor_glas_verd_dicht.vox-c927b7420699cf1e2
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 3, 4)

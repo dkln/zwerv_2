@@ -1,6 +1,7 @@
 # Godot
 .godot/
 *.import.tmp
+*.tmp
 /android/
 /export/
 /build/
@@ -19,9 +20,12 @@ Thumbs.db
 
 # Grove LOD-bibliotheken worden automatisch opnieuw gemaakt (zelfde item-ID's als de gewone).
 assets/libraries/*_lod.res
+assets/libraries/*_lod2.res
 
 # Let op: de overige assets/libraries/*.res NIET negeren. De kaarten verwijzen naar de
 # item-ID's in die bibliotheken; opnieuw opbouwen vanaf nul kan andere ID's geven.
 # Gebruik eventueel Git LFS voor *.res en *.vox:
 #   git lfs track "*.res" "*.vox"
-assets/libraries/*_lod2.res
+
+# De samengevoegde meshes (scripts/bakker.gd) staan in user://samengevoegd/,
+# buiten het project; die hoeven hier niet genegeerd te worden.

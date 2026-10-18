@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://bs85vyw7tugh"
 path="res://.godot/imported/snelweg_blokmarkering.vox-3c1e5ccf4ea137a8cfe2da1fe1ecaf57.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/snelweg_blokmarkering.vox-3c1e5ccf4ea137a8cfe
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 1.5, 4)

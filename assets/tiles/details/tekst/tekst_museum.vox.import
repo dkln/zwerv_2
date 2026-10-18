@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://bvjho8j75ahsx"
 path="res://.godot/imported/tekst_museum.vox-d5db147d9a1dfd25af8b8209c91a15f8.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/tekst_museum.vox-d5db147d9a1dfd25af8b8209c91a
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(0, 0, 0)

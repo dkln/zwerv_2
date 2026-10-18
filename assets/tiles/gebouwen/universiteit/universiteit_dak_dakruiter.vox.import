@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://brg55x7l3m6t4"
 path="res://.godot/imported/universiteit_dak_dakruiter.vox-e096e235ad961588a4bf8d036276de57.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/universiteit_dak_dakruiter.vox-e096e235ad9615
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 3, 4)

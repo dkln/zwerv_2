@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://ev67qsuuiwsg"
 path="res://.godot/imported/weg_putdeksel.vox-a188c3f78d43551a7c7114c31627dd00.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/weg_putdeksel.vox-a188c3f78d43551a7c7114c3162
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 1.5, 4)

@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://bmswtv1nl6ji5"
 path="res://.godot/imported/tuinmuur_hoog.vox-626b2c8f6f9f918a1f984ca22381ac34.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/tuinmuur_hoog.vox-626b2c8f6f9f918a1f984ca2238
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(0, 0, 0)

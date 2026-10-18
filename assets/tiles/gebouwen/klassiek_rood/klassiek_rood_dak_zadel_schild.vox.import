@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://cwr6g0wr66eca"
 path="res://.godot/imported/klassiek_rood_dak_zadel_schild.vox-ad941ff94bcbab61f508838eb43535cc.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/klassiek_rood_dak_zadel_schild.vox-ad941ff94b
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 3, 4)

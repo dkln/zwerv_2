@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://we5178aeloao"
 path="res://.godot/imported/luxe_appartement_penthouse_tegenover.vox-95eadf2e55ee195147bd7566c01f2abf.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/luxe_appartement_penthouse_tegenover.vox-95ea
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 3, 4)

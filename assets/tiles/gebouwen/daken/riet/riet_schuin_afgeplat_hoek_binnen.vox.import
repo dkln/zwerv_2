@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://56igplixp17u"
 path="res://.godot/imported/riet_schuin_afgeplat_hoek_binnen.vox-fffb0c2171a5a9b62a0f08d88a2c338e.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/riet_schuin_afgeplat_hoek_binnen.vox-fffb0c21
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 3, 4)

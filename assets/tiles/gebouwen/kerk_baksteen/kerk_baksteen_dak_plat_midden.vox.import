@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://b2mdflkume48h"
 path="res://.godot/imported/kerk_baksteen_dak_plat_midden.vox-875a025026ecd97ce975c4922f362628.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/kerk_baksteen_dak_plat_midden.vox-875a025026e
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 3, 4)

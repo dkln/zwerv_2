@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://bj0xebbu7ttqj"
 path="res://.godot/imported/klassiek_rood_bg_kapper.vox-b95ce6886d6d75355121046bcb8c9810.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/klassiek_rood_bg_kapper.vox-b95ce6886d6d75355
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 3, 4)

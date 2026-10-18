@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://mibbusn0c8uo"
 path="res://.godot/imported/drukknop_voetganger.vox-bdea8483ca23e13ca647b9d5d6bc2e6b.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/drukknop_voetganger.vox-bdea8483ca23e13ca647b
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(0, 0, 0)

@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://b68jk67lbmcsb"
 path="res://.godot/imported/brug_dek_weg_midden.vox-282e20f777faf44e50bfb2a931e2c44f.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/brug_dek_weg_midden.vox-282e20f777faf44e50bfb
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 1.5, 4)

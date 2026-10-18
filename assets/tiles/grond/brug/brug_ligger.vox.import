@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://devx5g3qw8dpu"
 path="res://.godot/imported/brug_ligger.vox-a827b61aa122c946d7d26d773e6c7625.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/brug_ligger.vox-a827b61aa122c946d7d26d773e6c7
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 1.5, 4)

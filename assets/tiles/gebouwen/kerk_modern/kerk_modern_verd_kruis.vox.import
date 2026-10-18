@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://bi563iyaxbwlb"
 path="res://.godot/imported/kerk_modern_verd_kruis.vox-7571aad63e9414bed6430e6aa24c0ea3.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/kerk_modern_verd_kruis.vox-7571aad63e9414bed6
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 3, 4)

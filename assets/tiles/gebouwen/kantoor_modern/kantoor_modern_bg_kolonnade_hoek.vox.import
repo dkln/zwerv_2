@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://dkf6jnxebdfin"
 path="res://.godot/imported/kantoor_modern_bg_kolonnade_hoek.vox-4b044bcfec3a502782f1a7418bcd4328.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/kantoor_modern_bg_kolonnade_hoek.vox-4b044bcf
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 3, 4)

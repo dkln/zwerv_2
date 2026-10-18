@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://c1vk2p6vwf8ht"
 path="res://.godot/imported/klimop.vox-b567dbf609f37bfc8e7efc675f4c99cf.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/klimop.vox-b567dbf609f37bfc8e7efc675f4c99cf.m
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(0, 0, 0)

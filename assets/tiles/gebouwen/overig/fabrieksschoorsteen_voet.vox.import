@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://cxn6e53141koj"
 path="res://.godot/imported/fabrieksschoorsteen_voet.vox-b4d218a807675059eb8ced947a0ee4be.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/fabrieksschoorsteen_voet.vox-b4d218a807675059
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 3, 4)

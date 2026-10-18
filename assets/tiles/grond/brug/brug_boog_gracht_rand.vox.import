@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://kbrkt41042ol"
 path="res://.godot/imported/brug_boog_gracht_rand.vox-b5d8c64ad3aa455eb9e6bfda94e632bd.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/brug_boog_gracht_rand.vox-b5d8c64ad3aa455eb9e
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 1.5, 4)

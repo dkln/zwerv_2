@@ -21,10 +21,20 @@ const WIND_MATERIAAL := "res://addons/vox_tiles/materials/voxel_wind.tres"
 
 const AO_CURVE := [0.34, 0.56, 0.79, 1.0]
 
+## groepen van driehoeken: de 6 zijden van de cel (+x, -x, boven, onder, +z, -z) en de rest
+const GROEPEN := 7
+const BOVEN := 2
+const ONDER := 3
+const REST := 6
+const RICHTINGEN := [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0), Vector3i(0, -1, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1)]
+
 
 ## kleur_tolerantie > 0: kleuren die minder dan zoveel (0..255 per kanaal) verschillen
 ## worden samengevoegd tot grotere vlakken (voor de grove LOD-versie).
-static func build(vox, voxel_size: float, use_ao: bool, kleur_tolerantie := 0, wind := false) -> ArrayMesh:
+## blok: afmeting van de gridcel (bijv. 4x3x4). De driehoeken worden dan per zijde
+## van die cel gegroepeerd (meta "vlakken" en "dicht"), zodat het samenvoegen
+## (scripts/bakker.gd) vlakken tegen een buurblok kan weglaten.
+static func build(vox, voxel_size: float, use_ao: bool, kleur_tolerantie := 0, wind := false, blok := Vector3.ZERO) -> ArrayMesh:
 	var sx: int = vox.size.x
 	var sy: int = vox.size.y
 	var sz: int = vox.size.z
@@ -88,7 +98,12 @@ static func build(vox, voxel_size: float, use_ao: bool, kleur_tolerantie := 0, w
 	var strides := [1, SX, SX * SY]
 	var surf := []
 	for m in MATERIAL_PATHS.size():
-		surf.append({"v": [], "n": [], "c": []})
+		var groepen := []
+		for g in GROEPEN:
+			groepen.append({"v": [], "n": [], "c": []})
+		surf.append(groepen)
+	var bedekt := PackedFloat32Array()
+	bedekt.resize(GROEPEN)
 
 	var center := Vector3(sx * 0.5, sy * 0.5, 0.0)
 	var base0 := 1 + SX + SX * SY
@@ -177,14 +192,23 @@ static func build(vox, voxel_size: float, use_ao: bool, kleur_tolerantie := 0, w
 						for yy in hgt:
 							for k in w:
 								mask[ju + k + (jv + yy) * du] = 0
-						_emit_quad(surf, key, a, u, v, sgn, i, ju, jv, w, hgt, lin, mats, center, voxel_size, normal_vox)
+						_emit_quad(surf, key, a, u, v, sgn, i, ju, jv, w, hgt, lin, mats, center, voxel_size, normal_vox, blok, bedekt)
 						ju += w
 
 	var mesh := ArrayMesh.new()
+	var vlakken := []
 	for m in MATERIAL_PATHS.size():
-		var s: Dictionary = surf[m]
+		var s := {"v": [], "n": [], "c": []}
+		var grens := PackedInt32Array([0])
+		for g in GROEPEN:
+			var d: Dictionary = surf[m][g]
+			s.v.append_array(d.v)
+			s.n.append_array(d.n)
+			s.c.append_array(d.c)
+			grens.append(s.v.size())
 		if s.v.size() == 0:
 			continue
+		vlakken.append(grens)
 		var arrays := []
 		arrays.resize(Mesh.ARRAY_MAX)
 		arrays[Mesh.ARRAY_VERTEX] = PackedVector3Array(s.v)
@@ -194,6 +218,15 @@ static func build(vox, voxel_size: float, use_ao: bool, kleur_tolerantie := 0, w
 		var mat = load(WIND_MATERIAAL if (wind and m == Parser.MAT_OPAQUE) else MATERIAL_PATHS[m])
 		mesh.surface_set_material(mesh.get_surface_count() - 1, mat)
 		mesh.surface_set_name(mesh.get_surface_count() - 1, ["opaque", "metal", "glass", "emit", "water", "vlag"][m])
+	if blok != Vector3.ZERO:
+		# zijden die helemaal dicht zijn (ondoorzichtig) verbergen de zijde van de buurcel
+		var dicht := 0
+		for g in 6:
+			var opp: float = blok.x * blok.z if g == ONDER or g == BOVEN else (blok.z * blok.y if g < 2 else blok.x * blok.y)
+			if bedekt[g] >= opp - 0.001:
+				dicht |= 1 << g
+		mesh.set_meta("vlakken", vlakken)
+		mesh.set_meta("dicht", dicht)
 	return mesh
 
 
@@ -210,13 +243,21 @@ static func verklein(vox, f: int):
 	var ny := ceili(sy / float(f))
 	var nz := ceili(sz / float(f))
 	uit.size = Vector3i(nx, ny, nz)
+	# alleen de bovenste laag van elk blok telt mee: wat je van boven ziet
+	# (asfalt, gras) wint van de grondlaag eronder
 	var tel := {}
+	var top := {}
 	var vx: PackedByteArray = vox.voxels
 	for i in range(0, vx.size(), 4):
 		var k := Vector3i(vx[i] / f, vx[i + 1] / f, vx[i + 2] / f)
-		var d: Dictionary = tel.get(k, {})
+		var z: int = vx[i + 2]
+		if z > top.get(k, -1):
+			top[k] = z
+			tel[k] = {}
+		elif z < top[k]:
+			continue
+		var d: Dictionary = tel[k]
 		d[vx[i + 3]] = d.get(vx[i + 3], 0) + 1
-		tel[k] = d
 	var uv := PackedByteArray()
 	for k in tel:
 		var d: Dictionary = tel[k]
@@ -240,13 +281,35 @@ static func _ao(s1: int, s2: int, c: int) -> int:
 	return 3 - (s1 + s2 + c)
 
 
+## Op welke zijde van de cel ligt dit vlak (helemaal binnen de rechthoek van die zijde)?
+static func _celzijde(pts: Array, n: Vector3, blok: Vector3) -> int:
+	var half := Vector3(blok.x * 0.5, blok.y, blok.z * 0.5)
+	var lo := Vector3(-half.x, 0.0, -half.z)
+	var g := -1
+	for k in 6:
+		if n.is_equal_approx(Vector3(RICHTINGEN[k])):
+			g = k
+	if g < 0:
+		return REST
+	var p0: Vector3 = pts[0]
+	var vlak: float = [half.x, lo.x, half.y, lo.y, half.z, lo.z][g]
+	var as_: int = [0, 0, 1, 1, 2, 2][g]
+	if absf(p0[as_] - vlak) > 0.001:
+		return REST
+	for p in pts:
+		for k in 3:
+			if p[k] < lo[k] - 0.001 or p[k] > half[k] + 0.001:
+				return REST
+	return g
+
+
 static func _to_godot(p: Vector3, center: Vector3, vs: float) -> Vector3:
 	return Vector3(p.x - center.x, p.z, -(p.y - center.y)) * vs
 
 
 static func _emit_quad(surf: Array, key: int, a: int, u: int, v: int, sgn: int, i: int,
 		ju: int, jv: int, w: int, hgt: int, lin: PackedColorArray, mats: PackedByteArray,
-		center: Vector3, vs: float, normal_vox: Vector3) -> void:
+		center: Vector3, vs: float, normal_vox: Vector3, blok := Vector3.ZERO, bedekt := PackedFloat32Array()) -> void:
 	var c := key & 0xFF
 	var ao := [(key >> 8) & 3, (key >> 10) & 3, (key >> 12) & 3, (key >> 14) & 3]
 	var plane := float(i + (1 if sgn > 0 else 0))
@@ -269,7 +332,12 @@ static func _emit_quad(surf: Array, key: int, a: int, u: int, v: int, sgn: int, 
 		tris = [[0, 1, 3], [1, 2, 3]]
 	else:
 		tris = [[0, 1, 2], [0, 2, 3]]
-	var s: Dictionary = surf[mats[c]]
+	var groep := REST
+	if blok != Vector3.ZERO:
+		groep = _celzijde(pts, n, blok)
+		if groep != REST and mats[c] != Parser.MAT_GLASS and mats[c] != Parser.MAT_WATER:
+			bedekt[groep] += w * hgt * vs * vs
+	var s: Dictionary = surf[mats[c]][groep]
 	for t in tris:
 		var p0: Vector3 = pts[t[0]]
 		var p1: Vector3 = pts[t[1]]

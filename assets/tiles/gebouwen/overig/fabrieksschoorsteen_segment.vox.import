@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://qrf5n4veqowi"
 path="res://.godot/imported/fabrieksschoorsteen_segment.vox-193d55e57f73edb209222788f8e70a28.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/fabrieksschoorsteen_segment.vox-193d55e57f73e
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 3, 4)

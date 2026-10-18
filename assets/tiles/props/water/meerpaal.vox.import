@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://cloaa7r0ay4wo"
 path="res://.godot/imported/meerpaal.vox-23c12d19f9c3c675f0fe1722452a8c0a.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/meerpaal.vox-23c12d19f9c3c675f0fe1722452a8c0a
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(0, 0, 0)

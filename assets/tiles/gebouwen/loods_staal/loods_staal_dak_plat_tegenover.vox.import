@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://covb4r7ld40eu"
 path="res://.godot/imported/loods_staal_dak_plat_tegenover.vox-30b4f20122a0377b035bc417bfcf7093.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/loods_staal_dak_plat_tegenover.vox-30b4f20122
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 3, 4)

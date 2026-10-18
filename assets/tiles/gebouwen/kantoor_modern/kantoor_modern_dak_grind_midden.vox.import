@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://dehrvj4fy8ujw"
 path="res://.godot/imported/kantoor_modern_dak_grind_midden.vox-52486fb09b348d832a51d261aa335c58.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/kantoor_modern_dak_grind_midden.vox-52486fb09
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 3, 4)

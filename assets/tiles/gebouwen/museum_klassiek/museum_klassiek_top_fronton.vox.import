@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://ngqnr3bre58c"
 path="res://.godot/imported/museum_klassiek_top_fronton.vox-47bf3726dcc4fd03d30045f7366de5bd.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/museum_klassiek_top_fronton.vox-47bf3726dcc4f
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 3, 4)

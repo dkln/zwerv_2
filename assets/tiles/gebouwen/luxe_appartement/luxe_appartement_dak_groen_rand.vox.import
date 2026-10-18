@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://112luup3qdx6"
 path="res://.godot/imported/luxe_appartement_dak_groen_rand.vox-1798696ae4df91c7f8195b6f037fe91b.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/luxe_appartement_dak_groen_rand.vox-1798696ae
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 3, 4)

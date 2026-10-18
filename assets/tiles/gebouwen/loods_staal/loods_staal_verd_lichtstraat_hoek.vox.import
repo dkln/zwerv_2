@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://ckilo1rm0qxse"
 path="res://.godot/imported/loods_staal_verd_lichtstraat_hoek.vox-3ffaf9df414a311a397a0c52675c504e.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/loods_staal_verd_lichtstraat_hoek.vox-3ffaf9d
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 3, 4)

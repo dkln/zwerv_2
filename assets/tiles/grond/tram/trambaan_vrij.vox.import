@@ -1,6 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
+importer_version=3
 type="ArrayMesh"
 uid="uid://bvk4dd40exiq6"
 path="res://.godot/imported/trambaan_vrij.vox-7b8a4d2935ce2aa97c75b3eeb834f9ae.mesh"
@@ -14,6 +15,8 @@ dest_files=["res://.godot/imported/trambaan_vrij.vox-7b8a4d2935ce2aa97c75b3eeb83
 
 voxel_size=0.125
 ambient_occlusion=true
+kleur_samenvoegen=14
 lod_kleur_tolerantie=24
 lod2_verkleining=2
 wind=false
+blok=Vector3(4, 1.5, 4)
