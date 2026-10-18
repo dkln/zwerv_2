@@ -15,6 +15,8 @@ func _init() -> void:
 	var sc: Node = load("res://scenes/wereld.tscn").instantiate()
 	var cam: Camera3D = sc.get_node("Camera")
 	cam.set_script(null)
+	if sc.has_node("Rondleiding"):
+		sc.get_node("Rondleiding").set("actief", false)
 	get_root().add_child(sc)
 	get_root().size = Vector2i(1600, 900)
 	var laag := CanvasLayer.new()
@@ -35,6 +37,10 @@ func _init() -> void:
 	paneel.add_child(vb)
 	var titel := Label.new()
 	titel.add_theme_font_size_override("font_size", 34)
+	var vet := FontVariation.new()
+	vet.base_font = load("res://assets/fonts/Rubik.ttf")
+	vet.variation_opentype = {TextServerManager.get_primary_interface().name_to_tag("wght"): 650}
+	titel.add_theme_font_override("font", vet)
 	titel.add_theme_color_override("font_color", Color(1, 1, 1))
 	vb.add_child(titel)
 	var tekst := Label.new()
@@ -57,7 +63,7 @@ func _init() -> void:
 		cam.near = 1.0
 		cam.far = 4000.0
 		cam.rotation_degrees = Vector3(-35.264, 45, 0)
-		cam.global_position = focus + Vector3(1, 1, 1).normalized() * 600.0
+		cam.global_position = focus + Vector3(1, 1, 1).normalized() * 300.0
 		for i in 10:
 			await process_frame
 		var bestand := "%02d_%s.png" % [nr, it["slug"]]

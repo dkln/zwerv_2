@@ -1064,11 +1064,11 @@ def trap_metaal():
 
 def struik(m, cx, cy, cz, rx, ry, rz, colors, seed, flowers=None):
     def keep(x, y, z, d):
-        return d < 0.6 or h(x, y, z, seed) < 0.75
+        return True   # gesloten vorm; de variatie zit in de kleur
     def cfun(x, y, z):
-        if flowers and h(x, y, z, seed + 1) < 0.18:
-            return pick(flowers, x, y, z, seed + 2)
-        return pick(colors, x, y, z, seed + 3)
+        if flowers and h(x // 2, y // 2, z // 2, seed + 1) < 0.18:
+            return pick(flowers, x // 2, y // 2, z // 2, seed + 2)
+        return pick(colors, x // 2, y // 2, z // 2, seed + 3)
     m.ellipsoid(cx, cy, cz, rx, ry, rz, cfun, keep)
 
 
@@ -1234,17 +1234,18 @@ def crown_clusters(m, cx, cy, base, top, radius, n, leaves, seed, shape="rond", 
         m.line((cx, cy, base - 4), (px, py, pz), "schors2", 0.6)
 
         def cfun(x, y, z, pz=pz, sr=sr):
-            if blossom and h(x, y, z, seed + 5) < 0.45:
-                return pick(blossom, x, y, z, seed + 6)
+            bx, by, bz = x // 2, y // 2, z // 2   # kleur per blokje van 2x2x2: minder losse vlakjes
+            if blossom and h(bx, by, bz, seed + 5) < 0.4:
+                return pick(blossom, bx, by, bz, seed + 6)
             rel = (z - (pz - sr)) / (2 * sr)
-            if rel > 0.7 and h(x, y, z, seed + 7) < 0.5:
+            if rel > 0.7 and h(bx, by, bz, seed + 7) < 0.5:
                 return P[light]
             if rel < 0.3:
                 return P[leaves[-1]]
-            return pick(leaves, x, y, z, seed + 8)
+            return pick(leaves, bx, by, bz, seed + 8)
 
         def keep(x, y, z, d):
-            return d < 0.55 or h(x, y, z, seed + 9) < 0.62
+            return True   # gesloten kruin; de variatie zit in de kleur
 
         m.ellipsoid(px, py, pz, sr, sr, sr * (1.25 if shape == "zuil" else 0.85), cfun, keep)
 
@@ -1259,7 +1260,7 @@ def loofboom(seed, size=1.0, leaves=("blad1", "blad2", "blad4", "blad3"), bark="
     cx = cy = Wd / 2
     th = trunk_h or int(Ht * 0.42)
     trunk(m, cx, cy, th, 1.6 * size + 0.4, bark)
-    crown_clusters(m, cx, cy, th, Ht - R * 0.55, R, 9, list(leaves), seed, shape, blossom, light)
+    crown_clusters(m, cx, cy, th, Ht - R * 0.55, R, 6, list(leaves), seed, shape, blossom, light)
     return m
 
 
@@ -1310,7 +1311,7 @@ def den():
         z = 30 + layer * 6
         r = 13 - layer * 1.3
         def keep(x, y, zz, d):
-            return d < 0.7 or h(x, y, zz, 112) < 0.6
+            return True
         m.ellipsoid(16, 16, z, r, r, 3, mix("naald1", "naald2", "naald3", seed=113), keep)
     m.set(16, 16, 86, "naald3")
     m.set(16, 16, 85, "naald3")
@@ -1332,15 +1333,16 @@ def treurwilg():
     m = V(48, 48, 72)
     trunk(m, 24, 24, 30, 2.2, "schors2")
     crown_clusters(m, 24, 24, 34, 60, 18, 8, ["blad4", "blad_licht", "blad2"], 115, "breed")
-    # hangende takken
-    for i in range(140):
+    # hangende takken: minder, als blokjes van 2x2 met één kleur per tak
+    for i in range(48):
         a = h(i, 0, 0, 116) * math.tau
         r = 10 + h(i, 1, 0, 116) * 10
-        x, y = 24 + math.cos(a) * r, 24 + math.sin(a) * r
+        x = int(24 + math.cos(a) * r) // 2 * 2
+        y = int(24 + math.sin(a) * r) // 2 * 2
         top = 52 - int(r * 0.4)
         length = 18 + int(h(i, 2, 0, 116) * 20)
-        for z in range(max(2, top - length), top):
-            m.set(x, y, z, "blad_licht" if z % 3 else "blad4")
+        kleur = "blad_licht" if i % 3 else "blad4"
+        m.box(x, y, max(2, top - length), x + 2, y + 2, top, kleur)
     return m
 
 

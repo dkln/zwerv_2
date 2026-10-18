@@ -1,0 +1,14 @@
+[gd_resource type="ShaderMaterial" load_steps=2 format=3]
+
+[ext_resource type="Shader" path="res://addons/vox_tiles/materials/voxel_wind.gdshader" id="1"]
+
+[resource]
+render_priority = 0
+shader = ExtResource("1")
+shader_parameter/roughness = 0.95
+shader_parameter/metallic = 0.0
+shader_parameter/specular = 0.25
+shader_parameter/emission_energy = 0.0
+shader_parameter/wind_sterkte = 0.06
+shader_parameter/wind_snelheid = 1.1
+shader_parameter/wind_hoogte = 8.0

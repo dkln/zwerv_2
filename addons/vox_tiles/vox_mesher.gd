@@ -17,12 +17,14 @@ const MATERIAL_PATHS := [
 	"res://addons/vox_tiles/materials/voxel_vlag.tres",
 ]
 
+const WIND_MATERIAAL := "res://addons/vox_tiles/materials/voxel_wind.tres"
+
 const AO_CURVE := [0.34, 0.56, 0.79, 1.0]
 
 
 ## kleur_tolerantie > 0: kleuren die minder dan zoveel (0..255 per kanaal) verschillen
 ## worden samengevoegd tot grotere vlakken (voor de grove LOD-versie).
-static func build(vox, voxel_size: float, use_ao: bool, kleur_tolerantie := 0) -> ArrayMesh:
+static func build(vox, voxel_size: float, use_ao: bool, kleur_tolerantie := 0, wind := false) -> ArrayMesh:
 	var sx: int = vox.size.x
 	var sy: int = vox.size.y
 	var sz: int = vox.size.z
@@ -189,7 +191,7 @@ static func build(vox, voxel_size: float, use_ao: bool, kleur_tolerantie := 0) -
 		arrays[Mesh.ARRAY_NORMAL] = PackedVector3Array(s.n)
 		arrays[Mesh.ARRAY_COLOR] = PackedColorArray(s.c)
 		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-		var mat = load(MATERIAL_PATHS[m])
+		var mat = load(WIND_MATERIAAL if (wind and m == Parser.MAT_OPAQUE) else MATERIAL_PATHS[m])
 		mesh.surface_set_material(mesh.get_surface_count() - 1, mat)
 		mesh.surface_set_name(mesh.get_surface_count() - 1, ["opaque", "metal", "glass", "emit", "water", "vlag"][m])
 	return mesh

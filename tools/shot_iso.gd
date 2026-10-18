@@ -6,6 +6,8 @@ func _init():
 	var sc: Node = load(a[0]).instantiate()
 	var cam: Camera3D = sc.get_node("Camera")
 	cam.set_script(null)
+	if sc.has_node("Rondleiding"):
+		sc.get_node("Rondleiding").set("actief", false)
 	get_root().add_child(sc)
 	get_root().size = Vector2i(1920, 1080)
 	await process_frame
@@ -15,7 +17,7 @@ func _init():
 	cam.far = 4000.0
 	cam.near = 1.0
 	cam.rotation_degrees = Vector3(-35.264, 45, 0)
-	cam.global_position = focus + Vector3(1, 1, 1).normalized() * 500.0
+	cam.global_position = focus + Vector3(1, 1, 1).normalized() * 300.0
 	for i in 15:
 		await process_frame
 	get_root().get_texture().get_image().save_png(a[1])

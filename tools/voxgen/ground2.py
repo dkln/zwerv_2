@@ -550,11 +550,10 @@ def bos():
     for y in range(T):
         for x in range(T):
             r = h(x, y, 0, 308)
-            if r < 0.04:
-                m.set(x, y, WALK, "blad3")
-                m.set(x, y, WALK + 1, "varen" if False else "blad4")
-            elif r < 0.07:
-                m.set(x, y, WALK, "herfst2")
+            if r < 0.06:
+                m.set(x, y, WALK - 1, "blad3")
+            elif r < 0.09:
+                m.set(x, y, WALK - 1, "herfst2")
     return m
 
 
@@ -574,7 +573,7 @@ def heide():
     for y in range(T):
         for x in range(T):
             if h(x, y, 0, 312) < 0.25:
-                m.set(x, y, WALK, pick(["bloem_paars", "gras5"], x, y, 1, 313))
+                m.set(x, y, WALK - 1, pick(["bloem_paars", "gras5"], x, y, 1, 313))
     return m
 
 

@@ -216,3 +216,133 @@ def tui(i):
 
 for _i in range(4):
     register(f"grond/brug/tuibrug_{_i}", (lambda i: lambda: tui(i))(_i))
+
+
+# ------------------------------------------------------------------ kinderkopjes / keien
+
+from ground import keien_tile, gras_tile, column  # noqa: E402
+
+
+@tile("grond/weg/straat_keien_middengoot")
+def straat_keien_goot():
+    m = keien_tile()
+    for y in range(T):
+        for x in range(14, 18):
+            m.clear(x, y, 0, x + 1, y + 1, 12)
+            column(m, x, y, ROAD - (1 if x in (15, 16) else 0), mix("goot1", "goot2", seed=610))
+            if ROAD - 1 <= 0:
+                m.set(x, y, 0, "goot2")
+    return m
+
+
+@tile("grond/natuur/keienpad")
+def keienpad():
+    m = gras_tile(tufts=0.05)
+    k = keien_tile(top=3)
+    for y in range(T):
+        for x in range(10, 22):
+            m.clear(x, y, 0, x + 1, y + 1, 8)
+            for z in range(k.sz):
+                c = k.get(x, y, z)
+                if c:
+                    m.set(x, y, z, c)
+    return m
+
+
+@tile("grond/plein/plein_keien")
+def plein_keien():
+    return keien_tile(top=3)
+
+
+@tile("grond/stoep/stoep_keien_rand")
+def stoep_keien_rand():
+    from ground import stoep
+    m = stoep("v")
+    k = keien_tile(top=3)
+    for y in range(1, T):
+        for x in range(T):
+            for z in range(3):
+                m.set(x, y, z, k.get(x, y, z))
+    return m
+
+
+# ------------------------------------------------------------------ afgeronde bochten voor hele straatprofielen
+
+from ground import rijstrook, stoep, fietspad_recht, straat_klinkers, weg_vlak, klinker_fn, GRAS as _GRAS  # noqa: E402
+from ground import tram_rails_straight  # noqa: E402
+
+
+def _tram(l, r):
+    m = rijstrook(l, r)
+    tram_rails_straight(m)
+    return m
+
+
+# profiel = delen van links (binnenbocht) naar rechts (buitenbocht); rijrichting langs y
+BOCHT_PROFIELEN = {
+    "straat": (lambda: [stoep("r"), weg_vlak(), stoep("l")], "stoep"),
+    "klinkerstraat": (lambda: [stoep("r", surface=klinker_fn), straat_klinkers(), stoep("l", surface=klinker_fn)], "stoep"),
+    "weg": (lambda: [stoep("r", goot=True), rijstrook("geen", "kant").rot90(2), rijstrook("onderbroken", "kant"), stoep("l", goot=True)], "stoep"),
+    "hoofdweg": (lambda: [stoep("r", goot=True), fietspad_recht(), rijstrook("geen", "kant").rot90(2),
+                          rijstrook("onderbroken", "kant"), fietspad_recht(), stoep("l", goot=True)], "stoep"),
+    "tramweg": (lambda: [stoep("r"), _tram("geen", "kant").rot90(2), _tram("onderbroken", "kant"), stoep("l")], "stoep"),
+    "laan": (lambda: [stoep("r"), rijstrook("onderbroken", "kant").rot90(2), rijstrook("geen", "geen").rot90(2),
+                      stoep("lr", surface=_GRAS), rijstrook("geen", "geen"), rijstrook("onderbroken", "kant"), stoep("l")], "stoep"),
+    "fietspad": (lambda: [gras_tile(tufts=0.03), fietspad_recht(), gras_tile(tufts=0.03)], "gras"),
+}
+BOCHT_STRAAL = 1   # binnenstraal in tiles
+
+
+def _profiel(delen):
+    hoogte = max(d.sz for d in delen)
+    p = V(T * len(delen), T, hoogte)
+    for i, d in enumerate(delen):
+        p.paste(d, i * T, 0, 0)
+    return p
+
+
+_bocht_cache = {}
+
+
+def _bocht_bron(naam):
+    if naam not in _bocht_cache:
+        maak, vul = BOCHT_PROFIELEN[naam]
+        delen = maak()
+        binnen = stoep("") if vul == "stoep" else gras_tile(tufts=0.03)
+        buiten = gras_tile(tufts=0.05)
+        _bocht_cache[naam] = (_profiel(delen), len(delen), binnen, buiten)
+    return _bocht_cache[naam]
+
+
+def bocht_tile(naam, i, j):
+    p, w, binnen, buiten = _bocht_bron(naam)
+    rin = BOCHT_STRAAL * T
+    rout = rin + w * T
+    rmid = (rin + rout) / 2.0
+    m = V(T, T, p.sz)
+    for y in range(T):
+        for x in range(T):
+            X = i * T + x + 0.5
+            Y = j * T + y + 0.5
+            r = math.hypot(X, Y)
+            if r < rin:
+                bron, bx, by = binnen, x, y
+            elif r >= rout:
+                bron, bx, by = buiten, x, y
+            else:
+                u = min(int(r - rin), w * T - 1)
+                s = math.atan2(Y, X) * rmid
+                bron, bx, by = p, u, int(s) % T
+            for z in range(min(bron.sz, m.sz)):
+                c = bron.get(bx, by, z)
+                if c:
+                    m.set(x, y, z, c)
+    return m
+
+
+for _naam in BOCHT_PROFIELEN:
+    _w = len(BOCHT_PROFIELEN[_naam][0]())
+    _n = BOCHT_STRAAL + _w
+    for _i in range(_n):
+        for _j in range(_n):
+            register(f"grond/bocht/{_naam}_{_i}_{_j}", (lambda n, a, b: lambda: bocht_tile(n, a, b))(_naam, _i, _j))

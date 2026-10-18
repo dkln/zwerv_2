@@ -18,7 +18,9 @@ Snel starten
 2. Open `scenes/wereld.tscn` (voorbeeldkaart) of `scenes/nieuwe_kaart.tscn` (leeg).
 3. Selecteer een GridMap-node (Grond / Gebouwen / Details / Props); onderin
    verschijnt het tile-palet. Zoek op naam, klik een tile, en klik in de 3D-view.
-4. Druk op F5/F6 om de kaart te bekijken. De camera staat standaard in
+4. Druk op F5/F6: een automatische rondleiding vliegt isometrisch langs alle
+   situaties, met titel en uitleg in beeld (node `Rondleiding`; zet `actief`
+   uit om zelf rond te kijken). Daarnaast: De camera staat standaard in
    isometrische stand (orthografisch, 45 graden gedraaid). Zet `isometrisch`
    op de Camera-node uit voor een vrije perspectief-camera (rechtermuisknop =
    kijken, WASD = bewegen, Q/E = omlaag/omhoog, Shift = sneller).
@@ -298,3 +300,42 @@ uit het zuid-zuidoosten met schaduwen (in de isometrische stand krijgen zowel
 de zuid- als de oostgevels licht), een zacht blauwig vullicht zonder schaduw,
 lucht-ambient, SSAO, glow en een lichte kleur/contrast-correctie. Pas
 `Zon`, `Vullicht` en `Omgeving` in de scene aan voor een andere sfeer.
+
+
+Rondleiding, prestaties en uiterlijk
+------------------------------------
+- `Rondleiding` (`scripts/rondleiding.gd`): stops komen uit
+  `scripts/rondleiding_data.gd` (vaste gebieden + alle demowijken). Instelbaar:
+  `reistijd`, `kijktijd`, `inzoomen`.
+- `DetailNiveau` (`scripts/detail_niveau.gd`): schakelt bij het uitzoomen naar
+  grove tiles (`grof_vanaf`, standaard 200 m in beeld) en heel grove tiles
+  (`heel_grof_vanaf`, 330 m), verbergt Details (vanaf 160 m) en Props (vanaf
+  380 m) en past de schaduwafstand aan het zoomniveau aan. De grove versies
+  maakt de importer zelf: gelijkende kleuren samengevoegd (`lod`) en blokjes
+  van 2x2x2 voxels (`lod2`). De grove bibliotheken (`*_lod.res`, `*_lod2.res`)
+  worden automatisch gemaakt en staan in `.gitignore`.
+- Schaduwen: vlakke tiles (lager dan 0,7 m) en kleine details werpen geen
+  schaduw; de zon gebruikt 2 schaduwlagen.
+- `Dagcyclus` (`scripts/dagcyclus.gd`): basis voor dag en nacht (`tijd`,
+  `snelheid`). De schaduwwerpende zon blijft minimaal `min_hoogte` graden hoog,
+  zodat schaduwen nooit extreem lang worden. Alle licht is realtime.
+- Bomen en planten bewegen in de wind (`materials/voxel_wind.tres`:
+  `wind_sterkte`, `wind_snelheid`, `wind_hoogte`); de importer kiest dit
+  materiaal automatisch voor `props/bomen` en `props/planten` (import-optie `wind`).
+- Scherptediepte (tilt-shift): Camera > Attributes (focus op 250–330 m; de
+  camera staat op 300 m van het focuspunt).
+- Lettertype: Rubik (`assets/fonts/Rubik.ttf`, OFL-licentie), ingesteld als
+  projectfont.
+- Meten: `Godot --script tools/fps_test.gd -- 20 rondleiding` of
+  `-- 10 140` (vaste zoom 140 m). Sluit de Godot-editor tijdens het meten, anders
+  delen ze de GPU. `tools/driehoeken.gd` toont het aantal driehoeken per tile en
+  LOD-niveau.
+
+Afgeronde bochten
+-----------------
+In `grond/bocht/` staan bochten voor hele straatprofielen (straat,
+klinkerstraat, weg, hoofdweg, tramweg, laan, fietspad). Elke bocht bestaat uit
+(n x n) tiles: `<profiel>_<i>_<j>`, met n = 1 + aantal delen van het profiel.
+De weg komt van het zuiden en buigt af naar het westen; leg cel (i, j) op
+(x + i, z - j) en draai alles samen. In `tools/bouw_voorbeeldstad.gd` doet
+`bocht(x, z, profiel, draaiing)` dit inclusief de rechte stukken.

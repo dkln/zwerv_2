@@ -8,12 +8,12 @@ extends Node
 @export var zon_pad := NodePath("../Zon")
 @export var lagen: Array[String] = ["Grond", "Gebouwen"]
 ## Vanaf deze zoomgrootte (meter in beeld, orthografisch) worden grove tiles gebruikt.
-@export var grof_vanaf := 200.0
+@export var grof_vanaf := 140.0
 ## Vanaf deze zoomgrootte de heel grove tiles (blokjes van 25 cm).
-@export var heel_grof_vanaf := 330.0
+@export var heel_grof_vanaf := 240.0
 ## Vanaf deze zoomgrootte worden de Details-laag en de Props-laag verborgen.
-@export var details_tot := 160.0
-@export var props_tot := 380.0
+@export var details_tot := 120.0
+@export var props_tot := 300.0
 ## Schaduwafstand = afstand camera-focus + factor * zoomgrootte.
 @export var schaduw_factor := 1.4
 @export var camera_afstand := 300.0

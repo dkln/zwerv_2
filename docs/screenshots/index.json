@@ -380,27 +380,42 @@
     "titel": "Bedrijventerrein"
   },
   {
-    "bestand": "77_wijk_lussen.png",
+    "bestand": "77_wijk_tint.png",
+    "tekst": "Dezelfde panden met elk een eigen tint via TintVlak-nodes: origineel, warm, koel, groenig, lichter, donkerder, oker en rozig. Rechts kleurt één groot vlak een heel blok inclusief de grond.",
+    "titel": "Tint-shader"
+  },
+  {
+    "bestand": "78_wijk_bochten.png",
+    "tekst": "Elke straatsoort maakt een vloeiende bocht: straat, klinkerstraat, weg, tramweg, fietspad, hoofdweg met fietspaden en een laan met middenberm. Markeringen, rails en stoepranden lopen mee.",
+    "titel": "Afgeronde bochten"
+  },
+  {
+    "bestand": "79_wijk_dorpskern.png",
+    "tekst": "Brink met keienplein, keienstraten met keienstoepen en een middengoot, en een keienpad naar de kerk.",
+    "titel": "Dorpskern met kinderkopjes"
+  },
+  {
+    "bestand": "80_wijk_lussen.png",
     "tekst": "Lussen met bochten, T-splitsingen, kruisingen en eindstukken; spoor met wissel, overweg, perron en grote bochten.",
     "titel": "Fiets-, tram- en spoorlussen"
   },
   {
-    "bestand": "78_wijk_dijk.png",
+    "bestand": "81_wijk_dijk.png",
     "tekst": "Elke helling als oprit naar een dijk, flauwe hellingen in twee delen, en heuvels van gras, zand en grind.",
     "titel": "Dijk met hellingen en heuvels"
   },
   {
-    "bestand": "79_wijk_tunnelpark.png",
+    "bestand": "82_wijk_tunnelpark.png",
     "tekst": "Autotunnel met toerit, open bak en weg erboven; een verdiepte weg die trapsgewijs dieper gaat; onderdoorgangen en een fietstunnel.",
     "titel": "Tunnelpark"
   },
   {
-    "bestand": "80_wijk_kanaal.png",
+    "bestand": "83_wijk_kanaal.png",
     "tekst": "Alle brugdekken, bakstenen boogbruggen, ophaalbrug, voetbrug, stalen boogbrug, tuibrug, viaduct op pijlers en een loopbrug.",
     "titel": "Kanaal met bruggen"
   },
   {
-    "bestand": "81_wijk_natuurpark.png",
+    "bestand": "84_wijk_natuurpark.png",
     "tekst": "Vijver met alle oever- en waterkanttypes, sloot met duiker, terrastuin met trappen, pleinmozaïek en een buitenzwembad.",
     "titel": "Natuur- en recreatiepark"
   }

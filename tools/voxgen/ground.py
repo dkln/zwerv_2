@@ -675,17 +675,15 @@ def plein_vlonder():
 # ------------------------------------------------------------- natuur
 
 def gras_tile(flowers=0.0, tufts=0.06, tall=False, base=GRAS, seed=50):
+    """Grastile; variatie en bloemen zitten in de kleur van het oppervlak (niets steekt uit)."""
     m = flat(base, top=WALK, sz=8)
     for y in range(T):
         for x in range(T):
             r = h(x, y, 0, seed)
             if r < flowers:
-                m.set(x, y, WALK, "gras3")
-                m.set(x, y, WALK + 1, pick(["bloem_wit", "bloem_geel", "bloem_paars", "bloem_rood", "bloem_roze"], x, y, 1, seed))
-            elif r < flowers + tufts:
-                m.set(x, y, WALK, pick(["gras2", "gras4", "gras_droog"], x, y, 2, seed))
-                if tall and h(x, y, 3, seed) < 0.5:
-                    m.set(x, y, WALK + 1, pick(["gras4", "gras_droog"], x, y, 4, seed))
+                m.set(x, y, WALK - 1, pick(["bloem_wit", "bloem_geel", "bloem_paars", "bloem_rood", "bloem_roze"], x, y, 1, seed))
+            elif r < flowers + tufts * (2 if tall else 1):
+                m.set(x, y, WALK - 1, pick(["gras2", "gras4", "gras_droog"], x, y, 2, seed))
     return m
 
 

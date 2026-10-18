@@ -136,6 +136,16 @@ func _maak_scene(naam: String) -> Node3D:
 	cam.projection = Camera3D.PROJECTION_ORTHOGONAL
 	cam.size = 140.0
 	cam.far = 4000.0
+	# scherptediepte (tilt-shift): scherp rond het focuspunt op 300 m, wazig ervoor en erachter
+	var attr := CameraAttributesPractical.new()
+	attr.dof_blur_far_enabled = true
+	attr.dof_blur_far_distance = 330.0
+	attr.dof_blur_far_transition = 140.0
+	attr.dof_blur_near_enabled = true
+	attr.dof_blur_near_distance = 250.0
+	attr.dof_blur_near_transition = 110.0
+	attr.dof_blur_amount = 0.07
+	cam.attributes = attr
 	root.add_child(cam)
 	if naam == "Wereld":
 		var rl := Node.new()
@@ -2244,6 +2254,8 @@ func _demowijken(z0: int) -> int:
 	_verkeerslichten()
 	_bedrijventerrein()
 	_tint_demo()
+	_bochten()
+	_dorpskern()
 	_lussen_en_spoor()
 	_dijk_met_hellingen()
 	_tunnelpark()
@@ -3687,3 +3699,111 @@ func _tint_demo() -> void:
 					B(x, v, z, "klassiek_geel/klassiek_geel_" + ("bg_raam" if v == 0 else "verd_raam"), sides[0] if sides.size() > 0 else "S")
 			B(x, 3, z, "klassiek_geel/klassiek_geel_dak_plat_midden", "S")
 	_tint_vlak(Vector3(bx * 4 + 4.0, 0, (o.y + 4) * 4.0), Color(0.7, 0.85, 1.15), Vector2i(2, 4), 1.0, "Tint_blok_inclusief_grond")
+
+
+# ------------------------------------------------------------------ afgeronde bochten: straten die de hoek om gaan
+
+## Straatprofielen: delen van binnenbocht naar buitenbocht, als [tile, draaiing] voor een
+## rechte weg die van zuid naar noord loopt.
+const PROFIELEN := {
+	"straat": [["stoep/stoep_rand", 1], ["weg/weg_vlak", 0], ["stoep/stoep_rand", 3]],
+	"klinkerstraat": [["stoep/stoep_klinker_rand", 1], ["weg/straat_klinkers", 0], ["stoep/stoep_klinker_rand", 3]],
+	"weg": [["stoep/stoep_goot_rand", 1], ["weg/rijstrook_geen_kant", 2], ["weg/rijstrook_onderbroken_kant", 0], ["stoep/stoep_goot_rand", 3]],
+	"hoofdweg": [["stoep/stoep_goot_rand", 1], ["fietspad/fietspad_recht", 0], ["weg/rijstrook_geen_kant", 2],
+		["weg/rijstrook_onderbroken_kant", 0], ["fietspad/fietspad_recht", 0], ["stoep/stoep_goot_rand", 3]],
+	"tramweg": [["stoep/stoep_rand", 1], ["tram/tram_rijstrook_geen_kant", 2], ["tram/tram_rijstrook_onderbroken_kant", 0], ["stoep/stoep_rand", 3]],
+	"laan": [["stoep/stoep_rand", 1], ["weg/rijstrook_onderbroken_kant", 2], ["weg/rijstrook_geen_geen", 2], ["weg/middenberm_gras", 1],
+		["weg/rijstrook_geen_geen", 0], ["weg/rijstrook_onderbroken_kant", 0], ["stoep/stoep_rand", 3]],
+	"fietspad": [["natuur/gras", 0], ["fietspad/fietspad_recht", 0], ["natuur/gras", 0]],
+}
+
+
+func _draai_offset(o: Vector2i, k: int) -> Vector2i:
+	var v := o
+	for i in (k % 4 + 4) % 4:
+		v = Vector2i(v.y, -v.x)
+	return v
+
+
+## Legt een afgeronde bocht van een straatprofiel. (hx, hz) = de cel waarvan de
+## noord-west hoek het middelpunt van de bocht is; k = draaiing in kwartslagen.
+## De weg komt van het zuiden en buigt af naar het westen (k=0).
+func bocht(hx: int, hz: int, profiel: String, k := 0, recht := 3) -> void:
+	var delen: Array = PROFIELEN[profiel]
+	var n: int = 1 + delen.size()
+	for i in n:
+		for j in n:
+			var o := _draai_offset(Vector2i(i, -j), k)
+			G(hx + o.x, hz + o.y, "bocht/%s_%d_%d" % [profiel, i, j], k)
+	# rechte stukken: naar het zuiden (onder de bocht) en naar het westen (links)
+	for d in delen.size():
+		var deel: Array = delen[d]
+		for r in range(1, recht + 1):
+			var o1 := _draai_offset(Vector2i(1 + d, r), k)
+			G(hx + o1.x, hz + o1.y, deel[0], (int(deel[1]) + k) % 4)
+			var o2 := _draai_offset(Vector2i(-r, -(1 + d)), k)
+			G(hx + o2.x, hz + o2.y, deel[0], (int(deel[1]) + 3 + k) % 4)
+
+
+func _bochten() -> void:
+	_wijk_naam = "bochten"
+	var o := _wijk(92, 34)
+	vlak(o.x + 1, o.y + 1, o.x + 90, o.y + 32, "natuur/gras")
+	var x := o.x + 5
+	var z := o.y + 12
+	for profiel in ["straat", "klinkerstraat", "weg", "tramweg", "fietspad"]:
+		var n: int = 1 + PROFIELEN[profiel].size()
+		bocht(x, z, profiel, 0)
+		x += n + 7
+	# brede profielen op een tweede rij, ook een keer andersom gedraaid
+	x = o.x + 6
+	z = o.y + 26
+	for profiel in ["hoofdweg", "laan"]:
+		var n: int = 1 + PROFIELEN[profiel].size()
+		bocht(x + 3, z, profiel, 0)
+		x += n + 8
+	bocht(x + 16, o.y + 18, "weg", 2)
+	for i in 30:
+		Pr((o.x + 2 + i * 3) * 4.0, (o.y + 1) * 4.0 + 1.0, ["bomen/linde", "verlichting/lantaarn_modern", "planten/struik"][i % 3])
+
+
+# ------------------------------------------------------------------ dorpskern met kinderkopjes
+
+func _dorpskern() -> void:
+	_wijk_naam = "dorpskern"
+	var o := _wijk(30, 20)
+	vlak(o.x + 1, o.y + 1, o.x + 28, o.y + 18, "natuur/gras")
+	var cx := o.x + 14
+	var cz := o.y + 9
+	# brink (dorpsplein) met kinderkopjes en een boom
+	vlak(cx - 3, cz - 2, cx + 3, cz + 2, "plein/plein_keien")
+	Pr(cx * 4 + 2.0, cz * 4 + 2.0, "bomen/linde")
+	Pr((cx - 2) * 4 + 2.0, cz * 4 + 2.0, "straat/bank_hout", "E")
+	Pr((cx + 2) * 4 + 2.0, cz * 4 + 2.0, "straat/bank_hout", "W")
+	Pr((cx + 1) * 4 + 2.0, (cz - 1) * 4 + 2.0, "verlichting/lantaarn_klassiek")
+	# keienstraten vanuit het plein, met stoepen van keien en een middengoot
+	for z in range(o.y + 1, cz - 2):
+		G(cx, z, "weg/straat_keien_middengoot")
+		G(cx - 1, z, "stoep/stoep_keien_rand", "E")
+		G(cx + 1, z, "stoep/stoep_keien_rand", "W")
+	for z in range(cz + 3, o.y + 19):
+		G(cx, z, "weg/straat_keien")
+		G(cx - 1, z, "stoep/stoep_keien_rand", "E")
+		G(cx + 1, z, "stoep/stoep_keien_rand", "W")
+	for x in range(o.x + 1, cx - 3):
+		G(x, cz, "weg/straat_keien", "E")
+		G(x, cz - 1, "stoep/stoep_keien_rand", "S")
+		G(x, cz + 1, "stoep/stoep_keien_rand", "N")
+	# keienpad naar de kerk
+	for x in range(cx + 4, o.x + 26):
+		G(x, cz, "natuur/keienpad", "E")
+	toren(o.x + 26, cz, "kerk_baksteen", ["toren_portaal", "toren_raam", "toren_klok", "toren_spits_onder", "toren_spits_boven"], "W")
+	# klassieke huisjes rond de brink
+	for i in range(4):
+		var hx := cx - 3 + i * 2
+		for zz in [cz - 4, cz + 4]:
+			var naar := "S" if zz < cz else "N"
+			B(hx, 0, zz, "klassiek_rood/klassiek_rood_" + ["bg_deur", "bg_raam", "bg_winkel_luifel", "bg_deur"][i], naar)
+			B(hx, 1, zz, "klassiek_rood/klassiek_rood_dak_zadel", "E")
+	Pr((cx - 3) * 4.0, (cz - 2) * 4.0, "paaltjes/amsterdammertje")
+	Pr((cx + 4) * 4.0, (cz + 3) * 4.0, "paaltjes/amsterdammertje")

@@ -55,6 +55,8 @@ const WIJKTEKST := {
 	"natuurpark": ["Natuur- en recreatiepark", "Vijver met alle oever- en waterkanttypes, sloot met duiker, terrastuin met trappen, pleinmozaïek en een buitenzwembad."],
 	"rest": ["Overige tiles", "Tiles die (nog) nergens anders een plek hadden."],
 	"verkeerslichten": ["Verkeerslichten in alle standen", "Twee kruisingen met lichten voor auto, fiets, voetganger, bus/tram (OV-sein) en masten: links noord-zuid groen en oost-west rood, rechts noord-zuid oranje."],
+	"bochten": ["Afgeronde bochten", "Elke straatsoort maakt een vloeiende bocht: straat, klinkerstraat, weg, tramweg, fietspad, hoofdweg met fietspaden en een laan met middenberm. Markeringen, rails en stoepranden lopen mee."],
+	"dorpskern": ["Dorpskern met kinderkopjes", "Brink met keienplein, keienstraten met keienstoepen en een middengoot, en een keienpad naar de kerk."],
 	"tint": ["Tint-shader", "Dezelfde panden met elk een eigen tint via TintVlak-nodes: origineel, warm, koel, groenig, lichter, donkerder, oker en rozig. Rechts kleurt één groot vlak een heel blok inclusief de grond."],
 	"bedrijventerrein": ["Bedrijventerrein", "Grote stalen loods met laaddocks, loods met stenen plint en tondak, magazijn, fabriek met sheddak en schoorsteen, kleinere units, containers, silo's en hekwerk."],
 }

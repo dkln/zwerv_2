@@ -96,6 +96,10 @@ func _maak_bijschrift() -> void:
 	vb.add_child(_teller)
 	_titel = Label.new()
 	_titel.add_theme_font_size_override("font_size", 34)
+	var vet := FontVariation.new()
+	vet.base_font = load("res://assets/fonts/Rubik.ttf")
+	vet.variation_opentype = {TextServerManager.get_primary_interface().name_to_tag("wght"): 650}
+	_titel.add_theme_font_override("font", vet)
 	vb.add_child(_titel)
 	_tekst = Label.new()
 	_tekst.add_theme_font_size_override("font_size", 19)
