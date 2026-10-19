@@ -1,6 +1,9 @@
 shader_type spatial;
 render_mode blend_mix, cull_disabled, depth_draw_opaque, diffuse_burley;
 
+// kleur per voxel uit de texture-atlas van de bibliotheek (UV); niet ingesteld = wit
+uniform sampler2D albedo_atlas : source_color, hint_default_white, filter_nearest_mipmap;
+
 // Laat vlaggen wapperen. Hoe verder een voxel van de mast (het midden van het
 // model) zit, hoe meer hij beweegt.
 uniform float snelheid = 3.0;
@@ -21,7 +24,7 @@ void vertex() {
 }
 
 void fragment() {
-	ALBEDO = COLOR.rgb;
+	ALBEDO = (COLOR.rgb * texture(albedo_atlas, UV).rgb);
 	ROUGHNESS = 0.85;
 	SPECULAR = 0.2;
 }

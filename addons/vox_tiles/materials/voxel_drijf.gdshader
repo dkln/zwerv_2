@@ -1,6 +1,9 @@
 shader_type spatial;
 render_mode blend_mix, cull_back, depth_draw_opaque, diffuse_burley, specular_schlick_ggx;
 
+// kleur per voxel uit de texture-atlas van de bibliotheek (UV); niet ingesteld = wit
+uniform sampler2D albedo_atlas : source_color, hint_default_white, filter_nearest_mipmap;
+
 uniform float roughness : hint_range(0.0, 1.0) = 0.9;
 uniform float metallic : hint_range(0.0, 1.0) = 0.0;
 uniform float specular : hint_range(0.0, 1.0) = 0.35;
@@ -9,7 +12,7 @@ uniform float emission_energy = 0.0;
 uniform float tintbaar = 1.0;
 // voxelstructuur: lichte randen en kleine helderheidsverschillen per voxel
 uniform float voxel_rand : hint_range(0.0, 0.5) = 0.0;
-uniform float voxel_ruis : hint_range(0.0, 0.3) = 0.035;
+uniform float voxel_ruis : hint_range(0.0, 0.3) = 0.0;   // kleurvariatie zit in de .vox zelf
 uniform float voxel_grootte = 0.125;
 // deinen: drijvende objecten volgen dezelfde golven als het water
 // (houd golf_hoogte, golf_snelheid en golf_lengte gelijk aan voxel_water.tres)
@@ -72,7 +75,7 @@ void vertex() {
 }
 
 void fragment() {
-	vec3 c = COLOR.rgb;
+	vec3 c = (COLOR.rgb * texture(albedo_atlas, UV).rgb);
 	if (tintbaar > 0.5) {
 		// voxelstructuur: positie binnen de voxel op dit vlak
 		vec3 an = abs(wnorm);
@@ -101,5 +104,5 @@ void fragment() {
 	ROUGHNESS = roughness;
 	METALLIC = metallic;
 	SPECULAR = specular;
-	EMISSION = COLOR.rgb * emission_energy;
+	EMISSION = (COLOR.rgb * texture(albedo_atlas, UV).rgb) * emission_energy;
 }

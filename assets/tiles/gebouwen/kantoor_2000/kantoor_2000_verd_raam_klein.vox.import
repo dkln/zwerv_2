@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=4
+importer_version=5
 type="ArrayMesh"
 uid="uid://6m04iieg85v8"
 path="res://.godot/imported/kantoor_2000_verd_raam_klein.vox-c3461c22e96f3151dff656c8bc79131f.mesh"
@@ -15,8 +15,9 @@ dest_files=["res://.godot/imported/kantoor_2000_verd_raam_klein.vox-c3461c22e96f
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=0
+color_merge=14
 lod_color_tolerance=24
 lod2_downscale=2
+textured=true
 animation=0
 cell_block=Vector3(4, 3, 4)

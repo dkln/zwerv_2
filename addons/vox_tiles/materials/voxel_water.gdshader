@@ -1,6 +1,9 @@
 shader_type spatial;
 render_mode blend_mix, cull_back, depth_draw_opaque, specular_schlick_ggx;
 
+// kleur per voxel uit de texture-atlas van de bibliotheek (UV); niet ingesteld = wit
+uniform sampler2D albedo_atlas : source_color, hint_default_white, filter_nearest_mipmap;
+
 // Golvend water. Het oppervlak deint met golven uit verschillende richtingen
 // (daardoor niet rechtlijnig) en heeft lichte, bewegende vlekken en glinsteringen.
 // De golven lopen in wereldcoördinaten door over aangrenzende tiles.
@@ -77,7 +80,7 @@ void fragment() {
 	float vlek = smoothstep(0.45, 0.95, v1 * 0.6 + v2 * 0.4);
 	// glinsteringen: kleine, snel wisselende lichtpuntjes
 	float gl = smoothstep(0.86, 0.98, ruis(wpos.xz * 3.1 + vec2(t * 0.5, -t * 0.4)) * ruis(wpos.xz * 2.3 - vec2(t * 0.3)) * 1.6);
-	vec3 basis = COLOR.rgb * (0.55 + vlek * vlekken * 0.35);
+	vec3 basis = (COLOR.rgb * texture(albedo_atlas, UV).rgb) * (0.55 + vlek * vlekken * 0.35);
 
 	vec3 n = normalize((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz);
 	vec3 kijk = -normalize((INV_VIEW_MATRIX * vec4(VIEW, 0.0)).xyz);

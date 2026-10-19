@@ -9,7 +9,7 @@ uniform float emission_energy = 0.0;
 uniform float tintbaar = 1.0;
 // voxelstructuur: lichte randen en kleine helderheidsverschillen per voxel
 uniform float voxel_rand : hint_range(0.0, 0.5) = 0.0;
-uniform float voxel_ruis : hint_range(0.0, 0.3) = 0.035;
+uniform float voxel_ruis : hint_range(0.0, 0.3) = 0.0;   // kleurvariatie zit in de .vox zelf
 uniform float voxel_grootte = 0.125;
 // asfalt: donkergrijze bovenvlakken krijgen korrel, slijtplekken en een lichte glans
 uniform float asfalt : hint_range(0.0, 1.0) = 0.0;
@@ -24,6 +24,10 @@ uniform int relief_soort = 0;
 uniform float relief_sterkte : hint_range(0.0, 1.0) = 0.5;   // hoe ver de randen afronden
 uniform float relief_holte : hint_range(0.0, 1.0) = 0.35;    // hoe donker de voegen zijn
 uniform float relief_staand : hint_range(0.0, 1.0) = 1.0;    // sterkte op staande vlakken
+
+// kleur per voxel uit de texture-atlas van de bibliotheek (UV); niet ingesteld = wit, dan
+// zit de kleur in de vertexkleur. De vertexkleur draagt altijd de ambient occlusion.
+uniform sampler2D albedo_atlas : source_color, hint_default_white, filter_nearest_mipmap;
 
 // Globale tint-instellingen (zie Project > Shader Globals en de TintKaart-node).
 global uniform sampler2D zwervr_tint_kaart : filter_nearest, repeat_disable;
@@ -124,7 +128,8 @@ void vertex() {
 }
 
 void fragment() {
-	vec3 c = COLOR.rgb;
+	vec3 basis = COLOR.rgb * texture(albedo_atlas, UV).rgb;   // kleur * AO
+	vec3 c = basis;
 	if (tintbaar > 0.5) {
 		// voxelstructuur: positie binnen de voxel op dit vlak
 		vec3 an = abs(wnorm);
@@ -162,7 +167,7 @@ void fragment() {
 		c *= 1.0 - holte;
 		ruw = min(1.0, ruw + holte * 0.3);
 	}
-	float a = asfalt > 0.0 ? asfalt * mix(1.0, is_asfalt(COLOR.rgb), asfalt_kleurcheck) * smoothstep(0.85, 0.95, wnorm.y) : 0.0;
+	float a = asfalt > 0.0 ? asfalt * mix(1.0, is_asfalt(basis), asfalt_kleurcheck) * smoothstep(0.85, 0.95, wnorm.y) : 0.0;
 	if (a > 0.0) {
 		vec2 p = vpos.xz;
 		// slijtplekken van een paar meter: iets donkerder en gladder (bandensporen, olie)
@@ -193,5 +198,5 @@ void fragment() {
 	ROUGHNESS = clamp(ruw, 0.0, 1.0);
 	METALLIC = metallic;
 	SPECULAR = spec;
-	EMISSION = COLOR.rgb * emission_energy * mix(0.25, 1.0, zwervr_nacht);
+	EMISSION = basis * emission_energy * mix(0.25, 1.0, zwervr_nacht);
 }

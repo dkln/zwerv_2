@@ -5,6 +5,7 @@ extends RefCounted
 ## remove tiles.
 
 const TileMetadata = preload("res://addons/vox_tiles/tile_metadata.gd")
+const Atlas = preload("res://addons/vox_tiles/atlas.gd")
 
 const TILE_ROOT := "res://assets/tiles"
 const LIB_ROOT := "res://assets/libraries"
@@ -85,6 +86,7 @@ static func build_category(cat: String, changed: Dictionary, previews: bool, for
 	var seen := {}
 	var dirty := false
 	var need_preview: Array[int] = []
+	var sources := {}   # item id -> imported mesh (before the atlas copy)
 	for path in files:
 		var key := path.trim_prefix(root + "/").get_basename()
 		seen[key] = true
@@ -123,10 +125,15 @@ static func build_category(cat: String, changed: Dictionary, previews: bool, for
 			registry_changed = true
 		if wanted < 0:
 			TileMetadata.store_id(path, id)
-		if force or is_new or changed.has(path) or lib.get_item_mesh(id) != mesh:
-			lib.set_item_mesh(id, mesh)
+		sources[id] = mesh
+		# the library holds atlas copies; a reimport outside the editor shows in the
+		# time stamp of the .import file, which is written on every import
+		var stamp := FileAccess.get_modified_time(path + ".import")
+		var current := lib.get_item_mesh(id)
+		if force or is_new or changed.has(path) or current == null or current.get_meta("source_stamp", -1) != stamp:
 			lib.set_item_shapes(id, _shapes(mesh, cfg.collision, key))
 			_set_shadow(lib, id, mesh)
+			mesh.set_meta("source_stamp", stamp)
 			dirty = true
 			need_preview.append(id)
 		elif previews and lib.get_item_preview(id) == null:
@@ -135,6 +142,20 @@ static func build_category(cat: String, changed: Dictionary, previews: bool, for
 		if not seen.has(k):
 			lib.remove_item(by_name[k])
 			dirty = true
+	# any change: rebuild the texture atlases (every tile's UVs depend on the packing)
+	var missing_lods := not ResourceLoader.exists(lod_path(cat, "lod")) or not ResourceLoader.exists(lod_path(cat, "lod2"))
+	if dirty or force or missing_lods:
+		var stamps := {}
+		for id in sources:
+			stamps[id] = sources[id].get_meta("source_stamp", FileAccess.get_modified_time(sources[id].resource_path + ".import"))
+		var main := Atlas.build(sources)
+		for id in sources:
+			var m: Mesh = main.meshes[id]
+			m.set_meta("source_stamp", stamps[id])
+			lib.set_item_mesh(id, m)
+		for level in ["lod", "lod2"]:
+			_build_lod(cat, lib, level, sources)
+		dirty = true
 	if previews and need_preview.size() > 0 and Engine.is_editor_hint():
 		var meshes: Array[Mesh] = []
 		for id in need_preview:
@@ -144,9 +165,6 @@ static func build_category(cat: String, changed: Dictionary, previews: bool, for
 			if i < tex.size() and tex[i] != null:
 				lib.set_item_preview(need_preview[i], tex[i])
 		dirty = true
-	for level in ["lod", "lod2"]:
-		if dirty or force or not ResourceLoader.exists(lod_path(cat, level)):
-			_build_lod(cat, lib, level)
 	if registry_changed:
 		_write_registry(cat, registry)
 	if dirty:
@@ -216,23 +234,25 @@ static func _set_shadow(lib: MeshLibrary, id: int, mesh: Mesh) -> void:
 	lib.set_item_mesh_cast_shadow(id, mode)
 
 
-## Coarse library with the same item IDs; meshes come from the import's "lod" metadata.
-static func _build_lod(cat: String, lib: MeshLibrary, level := "lod") -> void:
+## Coarse library with the same item IDs; meshes from the import's "lod"/"lod2" meta
+## of `sources` (item id -> imported mesh), with their own texture atlas.
+static func _build_lod(cat: String, lib: MeshLibrary, level: String, sources: Dictionary) -> void:
+	var coarse := {}
+	for id in sources:
+		var m: Mesh = sources[id]
+		coarse[id] = m.get_meta(level) if m.has_meta(level) else m
+	var packed := Atlas.build(coarse)
 	var lod := MeshLibrary.new()
 	for id in lib.get_item_list():
-		var m := lib.get_item_mesh(id)
 		lod.create_item(id)
 		lod.set_item_name(id, lib.get_item_name(id))
-		if m == null:
-			continue
-		var coarse: Mesh = m.get_meta(level) if m.has_meta(level) else m
-		lod.set_item_mesh(id, coarse)
-		_set_shadow(lod, id, m)
+		if packed.meshes.has(id):
+			lod.set_item_mesh(id, packed.meshes[id])
+			_set_shadow(lod, id, sources[id])
 	DirAccess.make_dir_recursive_absolute(LIB_ROOT)
 	ResourceSaver.save(lod, lod_path(cat, level))
 
 
-## Collision shapes for an item as [shape, transform], per CATEGORIES mode.
 static func _shapes(mesh: Mesh, mode: String, key := "") -> Array:
 	if mode == "auto":
 		mode = "block"

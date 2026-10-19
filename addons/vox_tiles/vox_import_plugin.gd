@@ -19,13 +19,15 @@ const DEFAULTS := {
 	"voxel_size": 0.125,
 	"ambient_occlusion": true,
 	# merge colours that differ less than this (0..255) into larger faces (fewer
-	# triangles). 0: keep every colour, the per-voxel variation drawn in the .vox
-	# is the texture (the coarse LOD versions still merge, see lod_color_tolerance)
-	"color_merge": 0,
+	# triangles); the shader adds the per-voxel variation back on top
+	"color_merge": 14,
 	# colour merging of the "lod" version
 	"lod_color_tolerance": 24,
 	# the "lod2" version merges blocks of n x n x n voxels
 	"lod2_downscale": 2,
+	# colours in a texture per tile instead of the vertex colours, so faces merge by
+	# shape (far fewer triangles); library_builder.gd packs the textures into an atlas
+	"textured": true,
 	# Auto: from the tile metadata, otherwise guessed from the file name
 	"animation": AnimationMode.AUTO,
 }
@@ -126,12 +128,13 @@ func _import(source_file: String, save_path: String, options: Dictionary, platfo
 		return ERR_PARSE_ERROR
 	var animation := _animation(options, source_file, meta)
 	var block: Vector3 = options.get("cell_block", default_block(source_file))
+	var textured: bool = _option(options, "textured")
 	var mesh := Mesher.build(vox, _option(options, "voxel_size"), _option(options, "ambient_occlusion"),
-		_option(options, "color_merge"), animation, block)
+		_option(options, "color_merge"), animation, block, textured)
 	mesh.resource_name = source_file.get_file().get_basename()
 	# a .lod.vox is only used through its tile: no coarse versions of the coarse version
 	if not TileMetadata.is_lod_file(source_file):
-		var err := _add_lods(mesh, vox, source_file, meta, options, animation, block)
+		var err := _add_lods(mesh, vox, source_file, meta, options, animation, block, textured)
 		if err != OK:
 			return err
 	return ResourceSaver.save(mesh, "%s.%s" % [save_path, _get_save_extension()])
@@ -139,7 +142,7 @@ func _import(source_file: String, save_path: String, options: Dictionary, platfo
 
 ## Attaches the coarse versions to the mesh as meta "lod" and "lod2".
 func _add_lods(mesh: ArrayMesh, vox, source_file: String, meta: Dictionary, options: Dictionary,
-		animation: String, block: Vector3) -> Error:
+		animation: String, block: Vector3, textured: bool) -> Error:
 	var vs: float = _option(options, "voxel_size")
 	var lod_path := TileMetadata.lod_path_for(source_file)
 	if FileAccess.file_exists(lod_path):
@@ -150,22 +153,22 @@ func _add_lods(mesh: ArrayMesh, vox, source_file: String, meta: Dictionary, opti
 		if lod_vox == null:
 			return ERR_PARSE_ERROR
 		var lod_vs := vs * float(vox.size.x) / float(maxi(lod_vox.size.x, 1))
-		mesh.set_meta("lod2", _coarse(mesh, "lod", lod_vox, lod_vs, _option(options, "color_merge"), animation, block))
+		mesh.set_meta("lod2", _coarse(mesh, "lod", lod_vox, lod_vs, _option(options, "color_merge"), animation, block, textured))
 		return OK
 	# lod: similar colours merged, no AO
 	var tol: int = _option(options, "lod_color_tolerance")
 	if tol > 0:
-		_coarse(mesh, "lod", vox, vs, tol, animation, block)
+		_coarse(mesh, "lod", vox, vs, tol, animation, block, textured)
 	# lod2: blocks of f x f x f voxels merged into one
 	var f: int = _option(options, "lod2_downscale")
 	if f > 1:
-		_coarse(mesh, "lod2", Mesher.downscale(vox, f), vs * f, LOD2_COLOR_TOLERANCE, animation, block)
+		_coarse(mesh, "lod2", Mesher.downscale(vox, f), vs * f, LOD2_COLOR_TOLERANCE, animation, block, textured)
 	return OK
 
 
 ## Builds a coarse mesh (no AO), stores it as meta `level` on the mesh and returns it.
-func _coarse(mesh: ArrayMesh, level: String, vox, vs: float, tol: int, animation: String, block: Vector3) -> ArrayMesh:
-	var lod := Mesher.build(vox, vs, false, tol, animation, block)
+func _coarse(mesh: ArrayMesh, level: String, vox, vs: float, tol: int, animation: String, block: Vector3, textured: bool) -> ArrayMesh:
+	var lod := Mesher.build(vox, vs, false, tol, animation, block, textured)
 	lod.resource_name = mesh.resource_name + "_" + level
 	mesh.set_meta(level, lod)
 	return lod

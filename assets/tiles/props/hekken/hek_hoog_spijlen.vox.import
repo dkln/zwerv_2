@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=4
+importer_version=5
 type="ArrayMesh"
 uid="uid://bfr2g04ub5gwx"
 path="res://.godot/imported/hek_hoog_spijlen.vox-c267c00e2f715f2dcea5b137eb60a4b8.mesh"
@@ -15,8 +15,9 @@ dest_files=["res://.godot/imported/hek_hoog_spijlen.vox-c267c00e2f715f2dcea5b137
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=0
+color_merge=14
 lod_color_tolerance=24
 lod2_downscale=2
+textured=true
 animation=0
 cell_block=Vector3(0, 0, 0)

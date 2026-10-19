@@ -166,7 +166,8 @@ static func _split(mesh: ArrayMesh) -> Array:
 	var face_ranges: Array = mesh.get_meta("face_ranges", [])
 	for s in mesh.get_surface_count():
 		var mat := mesh.surface_get_material(s)
-		if mat == null or mat.resource_path in LOCAL_MATERIALS:
+		# atlas copies of the materials keep their original path in meta "base_path"
+		if mat == null or mat.get_meta("base_path", mat.resource_path) in LOCAL_MATERIALS:
 			return []
 		var a := mesh.surface_get_arrays(s)
 		if a[Mesh.ARRAY_INDEX] != null or a[Mesh.ARRAY_COLOR] == null:

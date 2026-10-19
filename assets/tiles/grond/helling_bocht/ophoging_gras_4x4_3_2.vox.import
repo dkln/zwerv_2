@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=4
+importer_version=5
 type="ArrayMesh"
 uid="uid://bqxpnsv4713w1"
 path="res://.godot/imported/ophoging_gras_4x4_3_2.vox-ebb3ded42bd99c142389a2bb36847c8c.mesh"
@@ -15,8 +15,9 @@ dest_files=["res://.godot/imported/ophoging_gras_4x4_3_2.vox-ebb3ded42bd99c14238
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=0
+color_merge=14
 lod_color_tolerance=24
 lod2_downscale=2
+textured=true
 animation=0
 cell_block=Vector3(4, 1.5, 4)

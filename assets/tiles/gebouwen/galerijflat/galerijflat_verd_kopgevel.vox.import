@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=4
+importer_version=5
 type="ArrayMesh"
 uid="uid://cdpc36qigms6s"
 path="res://.godot/imported/galerijflat_verd_kopgevel.vox-c75affc62fecb4230097e4c73e34c8aa.mesh"
@@ -15,8 +15,9 @@ dest_files=["res://.godot/imported/galerijflat_verd_kopgevel.vox-c75affc62fecb42
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=0
+color_merge=14
 lod_color_tolerance=24
 lod2_downscale=2
+textured=true
 animation=0
 cell_block=Vector3(4, 3, 4)

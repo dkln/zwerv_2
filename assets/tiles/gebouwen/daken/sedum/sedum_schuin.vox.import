@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=4
+importer_version=5
 type="ArrayMesh"
 uid="uid://cohv6irr1bkej"
 path="res://.godot/imported/sedum_schuin.vox-edc085e7648e5f094454bdf34c69f2b0.mesh"
@@ -15,8 +15,9 @@ dest_files=["res://.godot/imported/sedum_schuin.vox-edc085e7648e5f094454bdf34c69
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=0
+color_merge=14
 lod_color_tolerance=24
 lod2_downscale=2
+textured=true
 animation=0
 cell_block=Vector3(4, 3, 4)

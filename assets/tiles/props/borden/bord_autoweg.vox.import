@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=4
+importer_version=5
 type="ArrayMesh"
 uid="uid://cvp1sbi1x2s16"
 path="res://.godot/imported/bord_autoweg.vox-8a153fd41641f3b086cec465065d3058.mesh"
@@ -15,8 +15,9 @@ dest_files=["res://.godot/imported/bord_autoweg.vox-8a153fd41641f3b086cec465065d
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=0
+color_merge=14
 lod_color_tolerance=24
 lod2_downscale=2
+textured=true
 animation=0
 cell_block=Vector3(0, 0, 0)

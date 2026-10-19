@@ -51,7 +51,12 @@ const DIRECTIONS := [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0), V
 ## block: size of the grid cell (e.g. 4x3x4). Triangles are then grouped per side
 ## of that cell (meta "face_ranges" and "solid_faces"), so merging
 ## (scripts/layer_baker.gd) can drop faces that lie against a neighbouring block.
-static func build(vox, voxel_size: float, use_ao: bool, color_tolerance := 0, animation := "", block := Vector3.ZERO) -> ArrayMesh:
+## textured: faces are merged by material and AO only, regardless of colour; the colour
+## of every voxel goes into a small texture per tile (meta "albedo", an Image; UV points
+## into it) and the vertex colour only carries the AO. library_builder.gd packs these
+## textures into one atlas per library. Without it the colour is in the vertex colours.
+## UV2 always holds tile-local voxel coordinates for the relief shaders (_face_uv).
+static func build(vox, voxel_size: float, use_ao: bool, color_tolerance := 0, animation := "", block := Vector3.ZERO, textured := false) -> ArrayMesh:
 	var sx: int = vox.size.x
 	var sy: int = vox.size.y
 	var sz: int = vox.size.z
@@ -117,13 +122,14 @@ static func build(vox, voxel_size: float, use_ao: bool, color_tolerance := 0, an
 	for m in MATERIAL_PATHS.size():
 		var groups := []
 		for g in GROUPS:
-			groups.append({"v": [], "n": [], "c": [], "u": []})
+			groups.append({"v": [], "n": [], "c": [], "u": [], "u2": []})
 		surf.append(groups)
 	var covered := PackedFloat32Array()
 	covered.resize(GROUPS)
 
 	var center := Vector3(sx * 0.5, sy * 0.5, 0.0)
 	var base0 := 1 + SX + SX * SY
+	var quads := []   # textured: [key, a, sgn, i, ju, jv, w, hgt, texel colours] per merged face
 
 	for a in 3:
 		var u := (a + 1) % 3
@@ -148,7 +154,7 @@ static func build(vox, voxel_size: float, use_ao: bool, color_tolerance := 0, an
 						var c: int = vol[idx]
 						if c == 0:
 							continue
-						var cg: int = group[c]
+						var cg: int = (mats[c] + 1) if textured else group[c]
 						var nidx: int = idx + sgn * sa
 						var n: int = vol[nidx]
 						var vis := false
@@ -194,7 +200,7 @@ static func build(vox, voxel_size: float, use_ao: bool, color_tolerance := 0, an
 							continue
 						var w := 1
 						# don't merge water: a fine grid lets the wave shader deform the surface
-						var single: bool = mats[key & 0xFF] == Parser.MAT_WATER
+						var single: bool = _key_material(key, mats, textured) == Parser.MAT_WATER
 						while not single and ju + w < du and mask[ju + w + jv * du] == key:
 							w += 1
 						var hgt := 1
@@ -209,13 +215,22 @@ static func build(vox, voxel_size: float, use_ao: bool, color_tolerance := 0, an
 						for yy in hgt:
 							for k in w:
 								mask[ju + k + (jv + yy) * du] = 0
-						_emit_quad(surf, key, a, u, v, sgn, i, ju, jv, w, hgt, lin, mats, center, voxel_size, normal_vox, block, covered)
+						if textured:
+							var texels := PackedColorArray()
+							for yy in hgt:
+								for k in w:
+									texels.append(vox.palette[vol[base0 + i * sa + (ju + k) * su + (jv + yy) * sv]])
+							quads.append([key, a, sgn, i, ju, jv, w, hgt, texels])
+						else:
+							_emit_quad(surf, key, a, u, v, sgn, i, ju, jv, w, hgt, lin, mats, center, voxel_size, normal_vox, block, covered)
 						ju += w
 
 	var mesh := ArrayMesh.new()
+	if textured:
+		mesh.set_meta("albedo", _pack_texels(quads, surf, mats, center, voxel_size, block, covered))
 	var face_ranges := []
 	for m in MATERIAL_PATHS.size():
-		var s := {"v": [], "n": [], "c": [], "u": []}
+		var s := {"v": [], "n": [], "c": [], "u": [], "u2": []}
 		var bounds := PackedInt32Array([0])
 		for g in GROUPS:
 			var d: Dictionary = surf[m][g]
@@ -223,6 +238,7 @@ static func build(vox, voxel_size: float, use_ao: bool, color_tolerance := 0, an
 			s.n.append_array(d.n)
 			s.c.append_array(d.c)
 			s.u.append_array(d.u)
+			s.u2.append_array(d.u2)
 			bounds.append(s.v.size())
 		if s.v.size() == 0:
 			continue
@@ -232,7 +248,9 @@ static func build(vox, voxel_size: float, use_ao: bool, color_tolerance := 0, an
 		arrays[Mesh.ARRAY_VERTEX] = PackedVector3Array(s.v)
 		arrays[Mesh.ARRAY_NORMAL] = PackedVector3Array(s.n)
 		arrays[Mesh.ARRAY_COLOR] = PackedColorArray(s.c)
-		arrays[Mesh.ARRAY_TEX_UV] = PackedVector2Array(s.u)
+		if textured:
+			arrays[Mesh.ARRAY_TEX_UV] = PackedVector2Array(s.u)
+		arrays[Mesh.ARRAY_TEX_UV2] = PackedVector2Array(s.u2)
 		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 		var path: String = MATERIAL_PATHS[m]
 		if animation == "float" and Parser.is_opaque(m) and m != Parser.MAT_EMIT:
@@ -299,6 +317,65 @@ static func downscale(vox, f: int):
 	return out
 
 
+## Material of a greedy-mesh key: textured keys store material + 1, others a colour.
+static func _key_material(key: int, mats: PackedByteArray, textured: bool) -> int:
+	return (key & 0xFF) - 1 if textured else mats[key & 0xFF]
+
+
+## Textured mode: packs the texels of all merged faces into one image (rows of
+## rectangles, tallest first, each with a 1-texel border copied from its edge so
+## filtering and mipmaps don't bleed the neighbours in), then emits the faces with
+## UVs into it. Returns the image (sRGB colours, RGBA8).
+static func _pack_texels(quads: Array, surf: Array, mats: PackedByteArray, center: Vector3, vs: float,
+		block: Vector3, covered: PackedFloat32Array) -> Image:
+	var order := range(quads.size())
+	order.sort_custom(func(p, q): return quads[p][7] > quads[q][7])
+	var area := 0
+	var widest := 0
+	for q in quads:
+		area += (q[6] + 2) * (q[7] + 2)
+		widest = maxi(widest, q[6] + 2)
+	# rows about as wide as the square root of the area (but never narrower than a face)
+	var width := maxi(widest, ceili(sqrt(area * 1.15)))
+	var pos := []   # texel position (inside the border) per quad
+	pos.resize(quads.size())
+	var x := 0
+	var y := 0
+	var row := 0
+	for k in order:
+		var w: int = quads[k][6] + 2
+		var h: int = quads[k][7] + 2
+		if x + w > width:
+			x = 0
+			y += row
+			row = 0
+		pos[k] = Vector2i(x + 1, y + 1)
+		x += w
+		row = maxi(row, h)
+	# exact size, no power of two: the library atlas packs these images tightly
+	var used_width := 0
+	for k in order:
+		used_width = maxi(used_width, pos[k].x - 1 + quads[k][6] + 2)
+	var img := Image.create(maxi(used_width, 1), maxi(y + row, 1), false, Image.FORMAT_RGBA8)
+	width = img.get_width()
+	for k in quads.size():
+		var q: Array = quads[k]
+		var w: int = q[6]
+		var h: int = q[7]
+		var texels: PackedColorArray = q[8]
+		var p: Vector2i = pos[k]
+		for ty in range(-1, h + 1):
+			for tx in range(-1, w + 1):
+				img.set_pixel(p.x + tx, p.y + ty, texels[clampi(ty, 0, h - 1) * w + clampi(tx, 0, w - 1)])
+		var a: int = q[1]
+		var normal_vox := Vector3.ZERO
+		normal_vox[a] = q[2]
+		var uv_rect := Rect2(Vector2(p) / Vector2(width, img.get_height()), Vector2(w, h) / Vector2(width, img.get_height()))
+		_emit_quad(surf, q[0], a, (a + 1) % 3, (a + 2) % 3, q[2], q[3], q[4], q[5], w, h, PackedColorArray(), mats,
+			center, vs, normal_vox, block, covered, uv_rect)
+	return img
+
+
 ## Ambient occlusion level (0 = darkest, 3 = none) of a face corner from its two
 ## side neighbours and the diagonal neighbour (1 = opaque voxel there).
 static func _ao(s1: int, s2: int, c: int) -> int:
@@ -351,22 +428,28 @@ static func _to_godot(p: Vector3, center: Vector3, vs: float) -> Vector3:
 ## Also adds the area of opaque faces to covered[side] for the "solid_faces" meta.
 static func _emit_quad(surf: Array, key: int, a: int, u: int, v: int, sgn: int, i: int,
 		ju: int, jv: int, w: int, hgt: int, lin: PackedColorArray, mats: PackedByteArray,
-		center: Vector3, vs: float, normal_vox: Vector3, block := Vector3.ZERO, covered := PackedFloat32Array()) -> void:
+		center: Vector3, vs: float, normal_vox: Vector3, block := Vector3.ZERO, covered := PackedFloat32Array(),
+		uv_rect := Rect2()) -> void:
+	var textured := uv_rect.size != Vector2.ZERO
 	var c := key & 0xFF
+	var mat: int = c - 1 if textured else mats[c]
 	var ao := [(key >> 8) & 3, (key >> 10) & 3, (key >> 12) & 3, (key >> 14) & 3]
 	var plane := float(i + (1 if sgn > 0 else 0))
 	var corners := [Vector2(ju, jv), Vector2(ju + w, jv), Vector2(ju + w, jv + hgt), Vector2(ju, jv + hgt)]
 	var pts := []
 	var uvs := []
+	var uv2s := []
 	for k in 4:
 		var p := Vector3.ZERO
 		p[a] = plane
 		p[u] = corners[k].x
 		p[v] = corners[k].y
 		pts.append(_to_godot(p, center, vs))
-		uvs.append(_face_uv(p, a, i))
+		uv2s.append(_face_uv(p, a, i))
+		# texture: corner k of the face = corner of its texel rectangle (u right, v down)
+		uvs.append(uv_rect.position + uv_rect.size * (corners[k] - corners[0]) / Vector2(w, hgt))
 	var n := Vector3(normal_vox.x, normal_vox.z, -normal_vox.y)
-	var base: Color = lin[c]
+	var base: Color = Color.WHITE if textured else lin[c]
 	var cols := []
 	for k in 4:
 		var f: float = AO_CURVE[ao[k]]
@@ -379,9 +462,9 @@ static func _emit_quad(surf: Array, key: int, a: int, u: int, v: int, sgn: int, 
 	var side := REST
 	if block != Vector3.ZERO:
 		side = _cell_side(pts, n, block)
-		if side != REST and Parser.is_opaque(mats[c]):
+		if side != REST and Parser.is_opaque(mat):
 			covered[side] += w * hgt * vs * vs
-	var s: Dictionary = surf[mats[c]][side]
+	var s: Dictionary = surf[mat][side]
 	for t in tris:
 		var p0: Vector3 = pts[t[0]]
 		var p1: Vector3 = pts[t[1]]
@@ -395,3 +478,4 @@ static func _emit_quad(surf: Array, key: int, a: int, u: int, v: int, sgn: int, 
 			s.n.append(n)
 			s.c.append(cols[k])
 			s.u.append(uvs[k])
+			s.u2.append(uv2s[k])

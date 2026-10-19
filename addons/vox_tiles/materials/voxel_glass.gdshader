@@ -1,6 +1,9 @@
 shader_type spatial;
 render_mode blend_mix, cull_back, depth_draw_always, specular_schlick_ggx;
 
+// kleur per voxel uit de texture-atlas van de bibliotheek (UV); niet ingesteld = wit
+uniform sampler2D albedo_atlas : source_color, hint_default_white, filter_nearest_mipmap;
+
 // Glas met een nagebootste spiegeling (goedkoop, geen schermbuffer): de gespiegelde
 // kijkrichting kiest tussen lucht, horizon en een donkere stad/straat,
 // met lichte schuine strepen. Schuin bekeken spiegelt glas meer (fresnel).
@@ -30,7 +33,7 @@ void fragment() {
 	omgeving += streep * 0.12;
 	float fres = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 3.0);
 	float s = clamp(spiegeling + fres * 0.4, 0.0, 1.0);
-	ALBEDO = COLOR.rgb * 0.7 * (1.0 - s);
+	ALBEDO = (COLOR.rgb * texture(albedo_atlas, UV).rgb) * 0.7 * (1.0 - s);
 	EMISSION = omgeving * s;
 	ROUGHNESS = 0.04;
 	METALLIC = 0.0;
