@@ -1,7 +1,4 @@
 {
 	"id": 651,
-	"materials": {
-		"3": "gravel",
-		"4": "gravel"
-	}
+	"same_as": "kantoor_modern/kantoor_modern_dak_plat_rand"
 }

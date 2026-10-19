@@ -1,7 +1,4 @@
 {
 	"id": 626,
-	"materials": {
-		"1": "asphalt",
-		"2": "asphalt"
-	}
+	"same_as": "fabriek/fabriek_dak_plat_midden"
 }

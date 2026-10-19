@@ -1,3 +1,7 @@
 {
-	"id": 316
+	"id": 316,
+	"smooth": {
+		"shape": "steil",
+		"lift": 2
+	}
 }

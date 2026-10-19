@@ -1,10 +1,4 @@
 {
 	"id": 1070,
-	"materials": {
-		"1": "stone",
-		"2": "stone",
-		"5": "stone",
-		"6": "stone",
-		"7": "glass"
-	}
+	"same_as": "luxe_appartement/luxe_appartement_bg_glas_hoek"
 }

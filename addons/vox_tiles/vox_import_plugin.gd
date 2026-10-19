@@ -7,10 +7,14 @@ extends EditorImportPlugin
 ## (`<name>.tile.json`, tile_metadata.gd) -> build the mesh (vox_mesher.gd) ->
 ## attach two coarse versions as meta "lod" and "lod2", which library_builder.gd
 ## puts in the coarse libraries. A hand-made `<name>.lod.vox` replaces both.
+## Slope variants listed in the metadata ("slopes", see slopes.gd) are built the same
+## way from a padded block of the tile, moved onto the smooth slope, and attached as
+## meta "slopes" ({shape: ArrayMesh}).
 
 const Parser = preload("res://addons/vox_tiles/vox_parser.gd")
 const Mesher = preload("res://addons/vox_tiles/vox_mesher.gd")
 const TileMetadata = preload("res://addons/vox_tiles/tile_metadata.gd")
+const Slopes = preload("res://addons/vox_tiles/slopes.gd")
 
 enum AnimationMode { AUTO, NONE, WIND, FLOAT }
 
@@ -137,6 +141,25 @@ func _import(source_file: String, save_path: String, options: Dictionary, platfo
 		var err := _add_lods(mesh, vox, source_file, meta, options, animation, block, textured)
 		if err != OK:
 			return err
+		# a tile that is the padded block of a slope itself ("smooth", see slopes.gd)
+		var own := Slopes.own_plan(vox, meta, TileMetadata.path_for(source_file))
+		if not own.is_empty():
+			_smooth_all(mesh, own, options, block)
+		var slopes := {}
+		var vs: float = _option(options, "voxel_size")
+		for shape in Slopes.shapes_of(meta, TileMetadata.path_for(source_file)):
+			# mesh the tile on a padded block, then move it onto the smooth slope
+			var plan := Slopes.plan(vox, shape, meta)
+			var padded = Slopes.build(vox, plan)
+			var slope := Mesher.build(padded, vs, _option(options, "ambient_occlusion"),
+				_option(options, "color_merge"), animation, block, textured)
+			slope.resource_name = mesh.resource_name + "_" + shape
+			# automatic coarse versions only: a .lod.vox belongs to the flat tile
+			_add_lods(slope, padded, "", {}, options, animation, block, textured)
+			_smooth_all(slope, plan, options, block)
+			slopes[shape] = slope
+		if not slopes.is_empty():
+			mesh.set_meta("slopes", slopes)
 	return ResourceSaver.save(mesh, "%s.%s" % [save_path, _get_save_extension()])
 
 
@@ -144,8 +167,8 @@ func _import(source_file: String, save_path: String, options: Dictionary, platfo
 func _add_lods(mesh: ArrayMesh, vox, source_file: String, meta: Dictionary, options: Dictionary,
 		animation: String, block: Vector3, textured: bool) -> Error:
 	var vs: float = _option(options, "voxel_size")
-	var lod_path := TileMetadata.lod_path_for(source_file)
-	if FileAccess.file_exists(lod_path):
+	var lod_path := TileMetadata.lod_path_for(source_file) if source_file != "" else ""
+	if lod_path != "" and FileAccess.file_exists(lod_path):
 		# hand-made coarse version for both levels; it may have a lower resolution
 		# (e.g. 16x16 instead of 32x32), its voxels then get bigger
 		var lod_meta := TileMetadata.read(lod_path)
@@ -164,6 +187,16 @@ func _add_lods(mesh: ArrayMesh, vox, source_file: String, meta: Dictionary, opti
 	if f > 1:
 		_coarse(mesh, "lod2", Mesher.downscale(vox, f), vs * f, LOD2_COLOR_TOLERANCE, animation, block, textured)
 	return OK
+
+
+## Moves a mesh of a padded block and its coarse versions onto the smooth slope (Slopes.smooth).
+func _smooth_all(mesh: ArrayMesh, plan: Dictionary, options: Dictionary, block: Vector3) -> void:
+	var vs: float = _option(options, "voxel_size")
+	Slopes.smooth(mesh, plan, vs, block)
+	if mesh.has_meta("lod"):
+		Slopes.smooth(mesh.get_meta("lod"), plan, vs, block)
+	if mesh.has_meta("lod2"):
+		Slopes.smooth(mesh.get_meta("lod2"), plan, vs, block, _option(options, "lod2_downscale"))
 
 
 ## Builds a coarse mesh (no AO), stores it as meta `level` on the mesh and returns it.

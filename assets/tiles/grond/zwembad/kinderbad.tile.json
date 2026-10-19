@@ -2,7 +2,8 @@
 	"id": 294,
 	"materials": {
 		"2": "stone",
-		"5": "stone",
+		"3": "plaster",
+		"5": "paving",
 		"225": "water",
 		"226": "water"
 	}

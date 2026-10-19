@@ -1,6 +1,4 @@
 {
 	"id": 950,
-	"materials": {
-		"1": "metal"
-	}
+	"same_as": "kerk_steen/kerk_steen_dak_plat_midden"
 }

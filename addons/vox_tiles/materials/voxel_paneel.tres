@@ -1,8 +1,13 @@
-[gd_resource type="StandardMaterial3D" format=3]
+[gd_resource type="ShaderMaterial" load_steps=2 format=3]
+
+[ext_resource type="Shader" path="res://addons/vox_tiles/materials/voxel.gdshader" id="1"]
 
 [resource]
 resource_name = "voxel_paneel"
-vertex_color_use_as_albedo = true
-metallic = 0.8
-metallic_specular = 0.8
-roughness = 0.12
+render_priority = 0
+shader = ExtResource("1")
+shader_parameter/roughness = 0.12
+shader_parameter/metallic = 0.8
+shader_parameter/specular = 0.8
+shader_parameter/emission_energy = 0.0
+shader_parameter/tintbaar = 0.0

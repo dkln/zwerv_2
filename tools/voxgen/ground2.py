@@ -12,11 +12,11 @@ z=WALK (3); one ground layer is FLOOR (8) voxels.
 """
 from functools import partial
 
-from common import T, ROAD, WALK, FLOOR, tile, register, text_pixels
+from common import T, ROAD, WALK, FLOOR, tile, register, slopes, smooth, text_pixels
 from palette import P
 from vox import V, mix, pick, h, blocky
 from ground import (new, column, flat, paint, line_y, line_x, paint_bitmap, lane, sidewalk, grass_tile, water_tile,
-                    shear, paver_fn, track_straight, grass_floor, arrow, bike_path_one_way, stairs_1m, train_level_crossing,
+                    padded, paver_fn, track_straight, grass_floor, arrow, bike_path_one_way, stairs_1m, train_level_crossing,
                     train_straight, tram_rails_straight, ASPHALT, BIKE_ASPHALT, BUS, MARK, PAVING, CURB, GRASS, SAND,
                     CONCRETE, CONCRETE_DARK, NATURAL_STONE, WATER, DASH, bike_path_straight, road_plain, street_pavers,
                     square_tiles, grass, dist, brick_fn)
@@ -230,36 +230,16 @@ def parking_lot_aisle():
 
 # ------------------------------------------------------------------ gentle slopes (0.5 m per tile)
 
-# Height offsets (voxels) as a function of (x, y): rise towards the back (+y).
-GENTLE_A = lambda x, y: y // 8       # lower half of a 1 m rise: 0..3
-GENTLE_B = lambda x, y: 4 + y // 8   # upper half: 4..7
-STEEP = lambda x, y: y // 4          # full 1 m (one ground layer) per tile
-
-
-def _sheared(make, offset):
-    """Build a flat tile with `make()` and shear it with height function `offset`."""
-    return shear(make(), offset)
-
-
-_src = {
-    "weg_vlak": road_plain,
-    "rijstrook_onderbroken_kant": lambda: lane("onderbroken", "kant"),
-    "rijstrook_geen_kant": lambda: lane("geen", "kant"),
-    "fietspad_recht": bike_path_straight,
-    "stoep_vol": lambda: sidewalk(""),
-    "stoep_rand": lambda: sidewalk("v"),
-    "stoep_goot_rand": lambda: sidewalk("v", gutter=True),
-    "straat_klinkers": street_pavers,
-    "plein_tegels": square_tiles,
-    "gras": grass,
-}
-for _n, _f in _src.items():
-    register(f"grond/helling/flauw_{_n}_a", partial(_sheared, _f, GENTLE_A))
-    register(f"grond/helling/flauw_{_n}_b", partial(_sheared, _f, GENTLE_B))
+# Made by the importer (addons/vox_tiles/slopes.gd): grond/helling/flauw_<name>_a (lower
+# half of a 1 m rise over two tiles, 0..3 voxels) and _b (upper half, 4..7 voxels).
+for _p in ("weg/weg_vlak", "weg/rijstrook_onderbroken_kant", "weg/rijstrook_geen_kant", "fietspad/fietspad_recht",
+           "stoep/stoep_vol", "stoep/stoep_rand", "stoep/stoep_goot_rand", "weg/straat_klinkers",
+           "plein/plein_tegels", "natuur/gras"):
+    slopes("grond/" + _p, "flauw_a", "flauw_b")
 
 # extra steep slopes for sidewalk corners and the one-way bike path beside the road
-register("grond/helling/helling_stoep_hoek_buiten", partial(_sheared, lambda: sidewalk("vr"), STEEP))
-register("grond/helling/helling_fietspad_eenrichting", partial(_sheared, bike_path_one_way, STEEP))
+slopes("grond/stoep/stoep_hoek_buiten", "steil")
+slopes("grond/fietspad/fietspad_eenrichting", "steil")
 
 
 def _stair_top(y):
@@ -379,7 +359,7 @@ def access_ramp(depth, wall=True, bicycle=False):
     if not bicycle:
         line_y(base, 31, dash=DASH)
         line_y(base, 2)
-    m = shear(base, STEEP)
+    m = padded(base)   # smoothed into a slope by the importer (smooth() below)
     if not wall:
         return m
     out = V(T, T, depth * FLOOR + 8)
@@ -397,8 +377,11 @@ def access_ramp(depth, wall=True, bicycle=False):
 for _d in range(1, 7):
     register(f"grond/tunnel/tunnel_toerit_wand_d{_d}", partial(access_ramp, _d))
     register(f"grond/tunnel/tunnel_toerit_d{_d}", partial(access_ramp, _d, False))
+    smooth(f"grond/tunnel/tunnel_toerit_wand_d{_d}", "steil", keep_x=(0, 1))
+    smooth(f"grond/tunnel/tunnel_toerit_d{_d}", "steil")
 for _d in range(1, 7):
     register(f"grond/tunnel/fietstunnel_toerit_wand_d{_d}", partial(access_ramp, _d, True, True))
+    smooth(f"grond/tunnel/fietstunnel_toerit_wand_d{_d}", "steil", keep_x=(0, 1))
 
 
 # ------------------------------------------------------------------ outdoor pool (place on layer -1)
@@ -860,6 +843,7 @@ register("grond/tunnel/tunnel_rijstrook_wand_rechts", partial(_mirrored, tunnel,
 register("grond/tunnel/tunnel_rijstrook_wand_rechts_portaal", partial(_mirrored, tunnel, True, portal=True))
 for _d in range(1, 7):
     register(f"grond/tunnel/tunnel_toerit_wand_rechts_d{_d}", partial(_mirrored, access_ramp, _d))
+    smooth(f"grond/tunnel/tunnel_toerit_wand_rechts_d{_d}", "steil", keep_x=(30, 31))
 
 
 @tile("grond/parkeren/parkeerstrook_langs")

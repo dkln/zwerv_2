@@ -6,5 +6,10 @@
 		"3": "stone",
 		"4": "stone",
 		"5": "stone"
-	}
+	},
+	"slopes": [
+		"steil",
+		"flauw_a",
+		"flauw_b"
+	]
 }

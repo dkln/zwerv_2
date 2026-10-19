@@ -1,8 +1,8 @@
 shader_type spatial;
 render_mode blend_mix, cull_back, depth_draw_opaque, diffuse_burley, specular_schlick_ggx;
 
-// kleur per voxel uit de texture-atlas van de bibliotheek (UV); niet ingesteld = wit
-uniform sampler2D albedo_atlas : source_color, hint_default_white, filter_nearest_mipmap;
+#include "res://addons/vox_tiles/materials/voxel_colour.gdshaderinc"
+
 
 uniform float roughness : hint_range(0.0, 1.0) = 0.9;
 uniform float metallic : hint_range(0.0, 1.0) = 0.0;
@@ -75,7 +75,7 @@ void vertex() {
 }
 
 void fragment() {
-	vec3 c = (COLOR.rgb * texture(albedo_atlas, UV).rgb);
+	vec3 c = voxel_albedo(UV, COLOR);
 	if (tintbaar > 0.5) {
 		// voxelstructuur: positie binnen de voxel op dit vlak
 		vec3 an = abs(wnorm);
@@ -104,5 +104,5 @@ void fragment() {
 	ROUGHNESS = roughness;
 	METALLIC = metallic;
 	SPECULAR = specular;
-	EMISSION = (COLOR.rgb * texture(albedo_atlas, UV).rgb) * emission_energy;
+	EMISSION = voxel_albedo(UV, COLOR) * emission_energy;
 }

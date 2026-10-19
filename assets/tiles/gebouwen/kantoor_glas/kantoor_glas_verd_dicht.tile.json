@@ -1,7 +1,4 @@
 {
 	"id": 33,
-	"materials": {
-		"5": "stone",
-		"6": "stone"
-	}
+	"same_as": "kantoor_glas/kantoor_glas_blok_dicht"
 }

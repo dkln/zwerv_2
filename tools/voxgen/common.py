@@ -10,6 +10,13 @@ y = front->back, z = up; the front of a tile is the y=0 side).
 """
 
 TILES = {}  # tile path (without .vox) -> function returning a vox.V model
+SLOPES = {}  # tile path -> slope shapes the importer makes of it (addons/vox_tiles/slopes.gd)
+CURVES = {}  # curve cell tile path -> (i, j, parts) for the curve slope shapes
+SMOOTH = {}  # tile path -> {"shape", "lift", "keep_x"}: tile is a padded block the importer smooths
+
+# slope shapes, in the order they are written to the metadata
+SLOPE_SHAPES = ("steil", "flauw_a", "flauw_b", "hoek_buiten", "hoek_binnen", "brug", "brug_rand",
+                "bocht", "bocht_rechts", "brug_bocht", "brug_bocht_rechts", "brug_vlak")
 
 T = 32          # ground tile width in voxels (4 m at 0.125 m/voxel)
 ROAD = 2        # top of the road surface (z)
@@ -21,6 +28,27 @@ STOREY = 24     # height of one building storey (3 m)
 def register(path, fn):
     """Register ``fn`` (no-argument callable returning a V) as the builder for tile ``path``."""
     TILES[path] = fn
+
+
+def slopes(path, *shapes, curve=None):
+    """Let the importer also make the given slope shapes of flat tile ``path``; they become
+    tiles grond/helling/helling_<name> (steil), flauw_<name>_a / _b,
+    helling_<name>_hoek_buiten / _binnen and helling_brug_<name> / helling_brug_<name>_rand.
+    The curve shapes of a flat curve cell need ``curve=(i, j, parts)``: they become
+    grond/helling_bocht/<profile>[_rechts]_<i>_<j>, helling_bocht/brug_<profile>[_rechts]_<i>_<j>
+    and brug/bocht_<profile>_<i>_<j>. Written to the metadata as "slopes" and "curve"."""
+    have = set(SLOPES.get(path, ())) | set(shapes)
+    SLOPES[path] = [s for s in SLOPE_SHAPES if s in have]
+    if curve:
+        CURVES[path] = list(curve)
+
+
+def smooth(path, shape, lift=2, keep_x=()):
+    """Tile ``path`` is a flat surface raised by ``lift`` voxels on a fill block (ground.padded);
+    the importer moves it onto the smooth slope ``shape`` (steil, flauw_a, flauw_b,
+    hoek_buiten, hoek_binnen or heuvel_top), except the columns x in ``keep_x`` (a wall).
+    Written to the metadata as "smooth" (addons/vox_tiles/slopes.gd)."""
+    SMOOTH[path] = {"shape": shape, "lift": lift, "keep_x": list(keep_x)} if keep_x else {"shape": shape, "lift": lift}
 
 
 def tile(path):

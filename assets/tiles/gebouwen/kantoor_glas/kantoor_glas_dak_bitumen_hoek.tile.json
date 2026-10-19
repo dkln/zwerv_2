@@ -1,8 +1,4 @@
 {
 	"id": 633,
-	"materials": {
-		"5": "asphalt",
-		"6": "asphalt",
-		"7": "metal"
-	}
+	"same_as": "kantoor_glas/kantoor_glas_dak_plat_hoek"
 }

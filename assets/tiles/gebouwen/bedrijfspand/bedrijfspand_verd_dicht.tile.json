@@ -1,9 +1,4 @@
 {
 	"id": 946,
-	"materials": {
-		"1": "stone",
-		"2": "stone",
-		"3": "metal",
-		"4": "metal"
-	}
+	"same_as": "bedrijfspand/bedrijfspand_bg_dicht"
 }

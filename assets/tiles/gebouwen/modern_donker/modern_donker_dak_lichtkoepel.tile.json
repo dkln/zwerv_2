@@ -1,8 +1,4 @@
 {
 	"id": 160,
-	"materials": {
-		"2": "glass",
-		"3": "gravel",
-		"4": "gravel"
-	}
+	"same_as": "modern_wit/modern_wit_dak_lichtkoepel"
 }

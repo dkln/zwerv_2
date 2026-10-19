@@ -28,6 +28,9 @@ const MATERIAL_PATHS := [
 	"res://addons/vox_tiles/materials/voxel_baksteen.tres",
 	"res://addons/vox_tiles/materials/voxel_grind.tres",
 	"res://addons/vox_tiles/materials/voxel_gelakt.tres",
+	"res://addons/vox_tiles/materials/voxel_tegel.tres",
+	"res://addons/vox_tiles/materials/voxel_kei.tres",
+	"res://addons/vox_tiles/materials/voxel_stuc.tres",
 ]
 
 const WIND_MATERIAL := "res://addons/vox_tiles/materials/voxel_wind.tres"
@@ -53,7 +56,8 @@ const DIRECTIONS := [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0), V
 ## (scripts/layer_baker.gd) can drop faces that lie against a neighbouring block.
 ## textured: faces are merged by material and AO only, regardless of colour; the colour
 ## of every voxel goes into a small texture per tile (meta "albedo", an Image; UV points
-## into it) and the vertex colour only carries the AO. library_builder.gd packs these
+## into it). The vertex colour then holds the face's average colour (rgb, for far away)
+## and the AO (alpha). library_builder.gd packs these
 ## textures into one atlas per library. Without it the colour is in the vertex colours.
 ## UV2 always holds tile-local voxel coordinates for the relief shaders (_face_uv).
 static func build(vox, voxel_size: float, use_ao: bool, color_tolerance := 0, animation := "", block := Vector3.ZERO, textured := false) -> ArrayMesh:
@@ -367,11 +371,17 @@ static func _pack_texels(quads: Array, surf: Array, mats: PackedByteArray, cente
 		for ty in range(-1, h + 1):
 			for tx in range(-1, w + 1):
 				img.set_pixel(p.x + tx, p.y + ty, texels[clampi(ty, 0, h - 1) * w + clampi(tx, 0, w - 1)])
+		# average colour of the face (linear): the shader fades to it from afar, so the
+		# atlas needs no mipmaps that would bleed neighbouring tiles in
+		var avg := Color(0, 0, 0)
+		for t in texels:
+			avg += t.srgb_to_linear()
+		avg /= float(texels.size())
 		var a: int = q[1]
 		var normal_vox := Vector3.ZERO
 		normal_vox[a] = q[2]
 		var uv_rect := Rect2(Vector2(p) / Vector2(width, img.get_height()), Vector2(w, h) / Vector2(width, img.get_height()))
-		_emit_quad(surf, q[0], a, (a + 1) % 3, (a + 2) % 3, q[2], q[3], q[4], q[5], w, h, PackedColorArray(), mats,
+		_emit_quad(surf, q[0], a, (a + 1) % 3, (a + 2) % 3, q[2], q[3], q[4], q[5], w, h, PackedColorArray([avg]), mats,
 			center, vs, normal_vox, block, covered, uv_rect)
 	return img
 
@@ -449,11 +459,14 @@ static func _emit_quad(surf: Array, key: int, a: int, u: int, v: int, sgn: int, 
 		# texture: corner k of the face = corner of its texel rectangle (u right, v down)
 		uvs.append(uv_rect.position + uv_rect.size * (corners[k] - corners[0]) / Vector2(w, hgt))
 	var n := Vector3(normal_vox.x, normal_vox.z, -normal_vox.y)
-	var base: Color = Color.WHITE if textured else lin[c]
 	var cols := []
 	for k in 4:
 		var f: float = AO_CURVE[ao[k]]
-		cols.append(Color(base.r * f, base.g * f, base.b * f, 1.0))
+		if textured:
+			# textured: rgb = average colour of the face (lin[0]), alpha = AO
+			cols.append(Color(lin[0].r, lin[0].g, lin[0].b, f))
+		else:
+			cols.append(Color(lin[c].r * f, lin[c].g * f, lin[c].b * f, 1.0))
 	var tris: Array
 	if ao[0] + ao[2] < ao[1] + ao[3]:
 		tris = [[0, 1, 3], [1, 2, 3]]

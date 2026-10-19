@@ -1,10 +1,4 @@
 {
 	"id": 812,
-	"materials": {
-		"1": "stone",
-		"2": "stone",
-		"3": "stone",
-		"4": "stone",
-		"5": "stone"
-	}
+	"same_as": "herenhuis_1600/herenhuis_1600_blok_dicht"
 }

@@ -31,6 +31,9 @@ MATERIALS = {
     "brick": ("baksteen", "metselwerk"),
     "gravel": ("grind", "kleine ronde steentjes"),
     "painted": ("gelakt", "gelakt metaal: palen, borden"),
+    "paving": ("tegels", "stoeptegels van 3 x 3 voxels met voegen"),
+    "cobble": ("keien", "bolle keien met voegen"),
+    "plaster": ("stuc", "stucwerk met haarscheurtjes en putjes"),
 }
 
 
@@ -247,7 +250,7 @@ svg .slot-normal{fill:var(--normal)} svg .slot-water{fill:var(--water)} svg .slo
 .m-metal{background:#9aa3ad;color:#111}.m-panel{background:#3a5f8a;color:#fff}.m-glass{background:#a9d4e6;color:#111}
 .m-water{background:#2f6f88;color:#fff}.m-emit{background:#ffd75e;color:#111}.m-flag{background:#c8402e;color:#fff}
 .m-asphalt{background:#3a3a3e;color:#fff}.m-stone{background:#b8b2a6;color:#111}.m-brick{background:#9d4735;color:#fff}
-.m-gravel{background:#8f8a7e;color:#fff}.m-painted{background:#2f5d3a;color:#fff}
+.m-gravel{background:#8f8a7e;color:#fff}.m-painted{background:#2f5d3a;color:#fff}\n.m-paving{background:#8e8c86;color:#fff}.m-cobble{background:#6e6a64;color:#fff}.m-plaster{background:#e3ddd0;color:#111}
 .key{list-style:none;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:6px 16px;font-size:14px}
 .count{color:var(--muted);font-size:14px}
 @media (max-width:860px){.wrap{grid-template-columns:1fr;padding:20px 16px}nav{position:static}}

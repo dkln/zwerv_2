@@ -38,7 +38,8 @@ THEMES = {
 COLUMNS = 16
 # material tag in palette.py -> material name in Godot / the tile metadata
 _TAG_TO_META = {None: "opaque", "paneel": "panel"}
-for _tag in ("metal", "glass", "emit", "water", "flag", "asphalt", "stone", "brick", "gravel", "painted"):
+for _tag in ("metal", "glass", "emit", "water", "flag", "asphalt", "stone", "brick", "gravel", "painted",
+             "paving", "cobble", "plaster"):
     _TAG_TO_META[_tag] = _tag
 
 

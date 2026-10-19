@@ -5,11 +5,23 @@
 		"2": "asphalt",
 		"3": "asphalt",
 		"4": "asphalt",
-		"5": "stone",
-		"6": "stone",
-		"7": "stone",
-		"8": "stone",
+		"5": "paving",
+		"6": "paving",
+		"7": "paving",
+		"8": "paving",
 		"9": "stone",
 		"10": "stone"
-	}
+	},
+	"slopes": [
+		"bocht",
+		"bocht_rechts",
+		"brug_bocht",
+		"brug_bocht_rechts",
+		"brug_vlak"
+	],
+	"curve": [
+		2,
+		1,
+		3
+	]
 }

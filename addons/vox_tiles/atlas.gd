@@ -33,7 +33,8 @@ static func build(meshes: Dictionary) -> Dictionary:
 	for key in images:
 		var img: Image = images[key]
 		atlas.blit_rect(img, Rect2i(Vector2i.ZERO, img.get_size()), layout.positions[key])
-	atlas.generate_mipmaps()
+	# no mipmaps: from afar the shader uses each face's average colour instead
+	# (voxel_colour.gdshaderinc), so neighbouring tiles never bleed into each other
 	var texture := ImageTexture.create_from_image(atlas)
 	var materials := {}   # base material -> copy that samples this atlas
 	for key in meshes:
@@ -109,8 +110,6 @@ static func _atlas_material(base: Material, texture: Texture2D, materials: Dicti
 		copy.set_meta("base_path", base.resource_path)
 		if copy is ShaderMaterial:
 			copy.set_shader_parameter(ATLAS_PARAM, texture)
-		elif copy is BaseMaterial3D:
-			copy.albedo_texture = texture
-			copy.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST_WITH_MIPMAPS
+			copy.set_shader_parameter("use_atlas", true)
 		materials[base] = copy
 	return materials[base]

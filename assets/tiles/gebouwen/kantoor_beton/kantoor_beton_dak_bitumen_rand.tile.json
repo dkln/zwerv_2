@@ -1,11 +1,4 @@
 {
 	"id": 627,
-	"materials": {
-		"1": "stone",
-		"2": "stone",
-		"3": "stone",
-		"4": "asphalt",
-		"5": "asphalt",
-		"6": "metal"
-	}
+	"same_as": "kantoor_beton/kantoor_beton_dak_plat_rand"
 }

@@ -7,6 +7,7 @@
 		"4": "asphalt",
 		"7": "stone",
 		"8": "stone",
+		"9": "plaster",
 		"10": "stone",
 		"11": "stone",
 		"12": "stone",
@@ -14,6 +15,6 @@
 		"14": "painted",
 		"15": "painted",
 		"16": "emit",
-		"17": "stone"
+		"17": "paving"
 	}
 }

@@ -1,11 +1,4 @@
 {
 	"id": 694,
-	"materials": {
-		"1": "brick",
-		"2": "brick",
-		"3": "brick",
-		"4": "stone",
-		"5": "stone",
-		"6": "stone"
-	}
+	"same_as": "kerk_baksteen/kerk_baksteen_blok_dicht"
 }

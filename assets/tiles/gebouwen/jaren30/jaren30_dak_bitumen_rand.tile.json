@@ -1,11 +1,4 @@
 {
 	"id": 500,
-	"materials": {
-		"1": "asphalt",
-		"2": "asphalt",
-		"3": "metal",
-		"4": "brick",
-		"5": "brick",
-		"6": "brick"
-	}
+	"same_as": "jaren30/jaren30_dak_plat_rand"
 }

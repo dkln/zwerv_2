@@ -1,12 +1,4 @@
 {
 	"id": 895,
-	"materials": {
-		"1": "brick",
-		"2": "brick",
-		"3": "brick",
-		"4": "gravel",
-		"5": "gravel",
-		"6": "metal",
-		"7": "stone"
-	}
+	"same_as": "school/school_dak_plat_rand"
 }

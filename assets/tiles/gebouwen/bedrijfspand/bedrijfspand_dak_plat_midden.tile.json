@@ -1,7 +1,4 @@
 {
 	"id": 942,
-	"materials": {
-		"1": "metal",
-		"2": "metal"
-	}
+	"same_as": "loods_staal/loods_staal_dak_plat_midden"
 }

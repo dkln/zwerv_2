@@ -9,5 +9,13 @@
 		"10": "stone",
 		"11": "stone",
 		"12": "metal"
+	},
+	"smooth": {
+		"shape": "steil",
+		"lift": 2,
+		"keep_x": [
+			30,
+			31
+		]
 	}
 }

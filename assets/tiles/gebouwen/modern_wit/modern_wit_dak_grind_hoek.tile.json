@@ -1,8 +1,4 @@
 {
 	"id": 806,
-	"materials": {
-		"4": "gravel",
-		"5": "gravel",
-		"6": "metal"
-	}
+	"same_as": "modern_wit/modern_wit_dak_plat_hoek"
 }

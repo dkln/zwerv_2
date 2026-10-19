@@ -1,7 +1,4 @@
 {
 	"id": 836,
-	"materials": {
-		"4": "stone",
-		"5": "stone"
-	}
+	"same_as": "museum_modern/museum_modern_bg_dicht"
 }

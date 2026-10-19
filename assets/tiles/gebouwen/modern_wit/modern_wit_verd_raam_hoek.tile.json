@@ -1,6 +1,9 @@
 {
 	"id": 227,
 	"materials": {
+		"1": "plaster",
+		"2": "plaster",
+		"3": "plaster",
 		"5": "stone",
 		"6": "stone",
 		"7": "glass",

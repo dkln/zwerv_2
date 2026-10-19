@@ -6,5 +6,10 @@
 		"3": "asphalt",
 		"4": "asphalt",
 		"6": "metal"
-	}
+	},
+	"slopes": [
+		"steil",
+		"brug",
+		"brug_rand"
+	]
 }

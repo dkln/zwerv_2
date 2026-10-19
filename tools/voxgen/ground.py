@@ -14,7 +14,7 @@ one storey and tiles can be stacked (bridges, dikes, canals).
 import math
 from functools import partial
 
-from common import T, ROAD, WALK, FLOOR, tile, register, PICTO, text_pixels
+from common import T, ROAD, WALK, FLOOR, tile, register, slopes, smooth, PICTO, text_pixels
 from palette import P
 from vox import V, mix, blocky, pick, h, col
 
@@ -1708,6 +1708,8 @@ def bridge_abutment():
 
 def shear(flat_tile, offset_fn, fill=EARTH, thin=False, rails=None):
     """Shear a flat tile into a ramp: column (x, y) is raised by offset_fn(x, y) voxels.
+    The plain ramps of existing flat tiles are made by the importer instead (``slopes``
+    below, addons/vox_tiles/slopes.gd does the same shear with fill=EARTH).
 
     The output is FLOOR + 1 voxels taller than the input.
     fill:  colour for the solid embankment below the raised surface (falsy = hollow).
@@ -1740,6 +1742,12 @@ def shear(flat_tile, offset_fn, fill=EARTH, thin=False, rails=None):
     return out
 
 
+def padded(flat_tile, lift=2, fill=EARTH):
+    """A flat tile raised by `lift` voxels on a `fill` block: the importer moves it onto a
+    smooth slope (common.smooth, addons/vox_tiles/slopes.gd) instead of 1-voxel steps."""
+    return shear(flat_tile, lambda x, y: lift, fill=fill)
+
+
 # Ramp offset functions (x, y) -> z offset; rise one ground storey (8 voxels) over 32 voxels.
 STRAIGHT = lambda x, y: y // 4                # rises towards the back
 CORNER_OUT = lambda x, y: min(x, y) // 4      # outer corner: high only at back-right
@@ -1770,14 +1778,19 @@ def _ramp(src, offset_fn=STRAIGHT, **kw):
     return shear(src(), offset_fn, **kw)
 
 
-for _n, _f in RAMP_SOURCES.items():
-    register(f"grond/helling/helling_{_n}", partial(_ramp, _f))
+# steep ramps (1 m per tile) grond/helling/helling_<name>, made by the importer
+for _p in ("weg/weg_vlak", "weg/rijstrook_onderbroken_kant", "weg/rijstrook_geen_kant", "weg/rijstrook_streep_kant",
+           "weg/rijstrook_onderbroken_geen", "snelweg/snelweg_rijstrook", "snelweg/snelweg_vluchtstrook",
+           "fietspad/fietspad_recht", "stoep/stoep_vol", "stoep/stoep_rand", "stoep/stoep_goot_rand",
+           "weg/straat_klinkers", "plein/plein_tegels", "natuur/gras", "spoor/trein_recht", "tram/tram_recht"):
+    slopes("grond/" + _p, "steil")
 
-for _n in ("weg_vlak", "rijstrook_onderbroken_kant", "rijstrook_geen_kant", "fietspad_recht", "stoep_vol", "trein_recht", "tram_recht"):
-    _f = RAMP_SOURCES[_n]
-    register(f"grond/helling/helling_brug_{_n}_rand", partial(_ramp, _f, thin=True, rails=(0,)))
-    register(f"grond/helling/helling_brug_{_n}", partial(_ramp, _f, thin=True))
+# bridge ramps grond/helling/helling_brug_<name> (thin deck) and helling_brug_<name>_rand
+# (parapet on the left), made by the importer like shear(thin=True, rails=(0,))
+for _p in ("weg/weg_vlak", "weg/rijstrook_onderbroken_kant", "weg/rijstrook_geen_kant", "fietspad/fietspad_recht",
+           "stoep/stoep_vol", "spoor/trein_recht", "tram/tram_recht"):
+    slopes("grond/" + _p, "brug", "brug_rand")
 
-register("grond/helling/helling_gras_hoek_buiten", partial(_ramp, grass, CORNER_OUT))
-register("grond/helling/helling_gras_hoek_binnen", partial(_ramp, grass, CORNER_IN))
-register("grond/helling/helling_dijk_beton", partial(_ramp, partial(flat, CONCRETE, top=WALK), fill=CONCRETE_DARK))
+slopes("grond/natuur/gras", "hoek_buiten", "hoek_binnen")
+register("grond/helling/helling_dijk_beton", lambda: padded(flat(CONCRETE, top=WALK), fill=CONCRETE_DARK))
+smooth("grond/helling/helling_dijk_beton", "steil")

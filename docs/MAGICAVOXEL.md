@@ -110,15 +110,21 @@ lichtgevend, enzovoort. Er zijn twee bronnen:
 
 | materiaal  | effect in Godot                                                  |
 |------------|------------------------------------------------------------------|
-| `asphalt`  | steenkorrel, slijtplekken en een lichte glans op liggende vlakken |
-| `stone`    | tegels, keien, natuursteen en beton: lichte korrel en reliëf     |
-| `brick`    | metselwerk                                                       |
+| `asphalt`  | steenkorrel, slijtplekken, haarscheurtjes, putjes en een lichte glans op liggende vlakken |
+| `stone`    | natuursteen, beton, klinkers: licht reliëf per voxel en wat haarscheurtjes |
+| `paving`   | stoeptegels: tegels van 3 x 3 voxels met voegen en een afgeronde rand |
+| `cobble`   | keien: bolle stenen van 2 x 2 voxels                             |
+| `brick`    | metselwerk: voegen precies op het verband van 3 x 1 voxels (elke laag 2 verspringend), puntjes |
+| `plaster`  | stucwerk: haarscheurtjes en kleine putjes                        |
 | `gravel`   | grind: kleine ronde steentjes                                    |
 | `painted`  | gelakt metaal: halfglanzend met een lichte metaalglans (lantaarnpalen, verkeersborden) |
 | `flag`     | wappert (ook buiten de vaste vlagplekken, als je dat in de metadata zet) |
 
 Kleuren uit de sjablonen krijgen deze materialen automatisch via `generate.py --meta`
-(zie het overzicht bij het sjabloon, kolom "materiaal").
+(zie het overzicht bij het sjabloon, kolom "materiaal"). Het reliëf (voegen, randen,
+scheurtjes) zit in de shader en volgt het voxelraster van de tile: teken stenen en
+tegels dus op het raster zoals de generator dat doet (baksteen 3 x 1, tegels 3 x 3).
+Van ver vervaagt het vanzelf.
 
 
 ## 5. Metadata: `<naam>.tile.json`

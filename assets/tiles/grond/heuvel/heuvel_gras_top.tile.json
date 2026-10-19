@@ -1,3 +1,7 @@
 {
-	"id": 319
+	"id": 319,
+	"smooth": {
+		"shape": "heuvel_top",
+		"lift": 2
+	}
 }

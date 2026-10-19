@@ -1,8 +1,4 @@
 {
 	"id": 795,
-	"materials": {
-		"5": "gravel",
-		"6": "gravel",
-		"7": "metal"
-	}
+	"same_as": "modern_hout/modern_hout_dak_plat_hoek"
 }

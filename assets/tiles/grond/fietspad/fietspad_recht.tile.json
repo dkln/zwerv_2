@@ -4,5 +4,12 @@
 		"1": "asphalt",
 		"2": "asphalt",
 		"3": "asphalt"
-	}
+	},
+	"slopes": [
+		"steil",
+		"flauw_a",
+		"flauw_b",
+		"brug",
+		"brug_rand"
+	]
 }

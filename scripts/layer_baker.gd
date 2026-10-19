@@ -26,7 +26,7 @@ const LOCAL_MATERIALS := [
 ## Chunk size in cells (along x and z).
 const CHUNK := 8
 ## Bump when the output changes (invalidates the cache in user://merged).
-const VERSION := 5
+const VERSION := 6
 ## Compute time per frame in microseconds; the rest continues in following frames.
 const BUDGET_USEC := 6000
 
@@ -40,8 +40,8 @@ static func bake(gm: GridMap, lib: MeshLibrary, name: String, hide_tops: bool, p
 	var out := Node3D.new()
 	out.name = name
 	out.transform = gm.transform
-	var cache := {}   # mesh -> [{mat, groups: [[v, n, c, uv] x Mesher.GROUPS]}]
-	var chunks := {}  # Vector3i(chunk x, chunk z, cast shadow) -> {material: [v, n, c, uv]}
+	var cache := {}   # mesh -> [{mat, groups: [[v, n, c, uv, uv2] x Mesher.GROUPS]}]
+	var chunks := {}  # Vector3i(chunk x, chunk z, cast shadow) -> {material: [v, n, c, uv, uv2]}
 	var shadow := {}  # item -> cast shadow setting
 	var loose := []   # [mesh, transform] of tiles that stay a separate mesh
 	var basis_cache := {}  # orthogonal index -> Basis
@@ -100,7 +100,7 @@ static func bake(gm: GridMap, lib: MeshLibrary, name: String, hide_tops: bool, p
 			var mat: Material = part.mat
 			var target: Array = chunk.get(mat, [])
 			if target.is_empty():
-				target = [PackedVector3Array(), PackedVector3Array(), PackedColorArray(), PackedVector2Array()]
+				target = [PackedVector3Array(), PackedVector3Array(), PackedColorArray(), PackedVector2Array(), PackedVector2Array()]
 				chunk[mat] = target
 			for g in Mesher.GROUPS:
 				if (hidden >> g) & 1:
@@ -111,7 +111,8 @@ static func bake(gm: GridMap, lib: MeshLibrary, name: String, hide_tops: bool, p
 				target[0].append_array(xf * gr[0])
 				target[1].append_array(rot * gr[1])
 				target[2].append_array(gr[2])
-				target[3].append_array(gr[3])   # tile-local voxel UVs stay valid in the chunk
+				target[3].append_array(gr[3])   # atlas UVs
+				target[4].append_array(gr[4])   # tile-local voxel coordinates (relief) stay valid in the chunk
 	# build one mesh per chunk, one surface per material
 	var built := 0
 	for key in chunks:
@@ -129,6 +130,8 @@ static func bake(gm: GridMap, lib: MeshLibrary, name: String, hide_tops: bool, p
 			arrays[Mesh.ARRAY_COLOR] = d[2]
 			if d[3].size() == d[0].size():
 				arrays[Mesh.ARRAY_TEX_UV] = d[3]
+			if d[4].size() == d[0].size():
+				arrays[Mesh.ARRAY_TEX_UV2] = d[4]
 			mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 			mesh.surface_set_material(mesh.get_surface_count() - 1, mat)
 		if mesh.get_surface_count() == 0:
@@ -158,7 +161,7 @@ static func _basis(gm: GridMap, orientation: int, cache: Dictionary) -> Basis:
 
 
 ## Splits each surface of `mesh` into its Mesher.GROUPS face groups:
-## [{mat, groups: [[vertices, normals, colours, uvs] per group]}]. Returns an empty array
+## [{mat, groups: [[vertices, normals, colours, uvs, uv2s] per group]}]. Returns an empty array
 ## if the mesh must stay separate (local-coordinate shader, indexed or uncoloured surface).
 ## Without "face_ranges" meta all triangles go into the last group (never hidden).
 static func _split(mesh: ArrayMesh) -> Array:
@@ -176,8 +179,9 @@ static func _split(mesh: ArrayMesh) -> Array:
 		var n: PackedVector3Array = a[Mesh.ARRAY_NORMAL]
 		var k: PackedColorArray = a[Mesh.ARRAY_COLOR]
 		var uv: PackedVector2Array = a[Mesh.ARRAY_TEX_UV] if a[Mesh.ARRAY_TEX_UV] != null else PackedVector2Array()
-		if uv.size() != v.size():
-			uv.resize(v.size())   # older meshes without UVs: zeros (no relief pattern)
+		var uv2: PackedVector2Array = a[Mesh.ARRAY_TEX_UV2] if a[Mesh.ARRAY_TEX_UV2] != null else PackedVector2Array()
+		uv.resize(v.size())    # meshes without them get zeros
+		uv2.resize(v.size())
 		var bounds: PackedInt32Array
 		if s < face_ranges.size():
 			bounds = face_ranges[s]
@@ -186,6 +190,6 @@ static func _split(mesh: ArrayMesh) -> Array:
 		var groups := []
 		for g in Mesher.GROUPS:
 			groups.append([v.slice(bounds[g], bounds[g + 1]), n.slice(bounds[g], bounds[g + 1]),
-				k.slice(bounds[g], bounds[g + 1]), uv.slice(bounds[g], bounds[g + 1])])
+				k.slice(bounds[g], bounds[g + 1]), uv.slice(bounds[g], bounds[g + 1]), uv2.slice(bounds[g], bounds[g + 1])])
 		parts.append({"mat": mat, "groups": groups})
 	return parts

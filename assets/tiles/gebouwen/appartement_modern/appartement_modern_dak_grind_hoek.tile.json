@@ -1,8 +1,4 @@
 {
 	"id": 236,
-	"materials": {
-		"4": "gravel",
-		"5": "gravel",
-		"6": "metal"
-	}
+	"same_as": "appartement_modern/appartement_modern_dak_plat_hoek"
 }

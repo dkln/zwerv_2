@@ -1,9 +1,4 @@
 {
 	"id": 15,
-	"materials": {
-		"1": "stone",
-		"2": "stone",
-		"3": "stone",
-		"4": "stone"
-	}
+	"same_as": "kantoor_beton/kantoor_beton_blok_dicht"
 }

@@ -1,3 +1,15 @@
 {
-	"id": 426
+	"id": 426,
+	"slopes": [
+		"bocht",
+		"bocht_rechts",
+		"brug_bocht",
+		"brug_bocht_rechts",
+		"brug_vlak"
+	],
+	"curve": [
+		2,
+		3,
+		3
+	]
 }

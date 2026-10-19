@@ -7,9 +7,11 @@ Usage:
   python3 tools/voxgen/generate.py --only weg  # only tiles whose path contains 'weg' (tile paths are Dutch)
   python3 tools/voxgen/generate.py --list      # list all tiles
   python3 tools/voxgen/generate.py --meta      # only (re)write the .tile.json metadata of existing tiles
+  python3 tools/voxgen/generate.py --dedup     # only replace identical tiles by aliases (dedupe.py)
 
 By default existing .vox files are NOT overwritten, so manual changes made in
-MagicaVoxel are kept. Importing the tile modules below fills common.TILES via
+MagicaVoxel are kept. Alias tiles (dedupe.py) count as existing. After creating
+tiles, identical tiles are replaced by aliases. Importing the tile modules below fills common.TILES via
 their @tile/register calls; each tile path maps to <OUT>/<path>.vox.
 """
 import argparse
@@ -37,6 +39,7 @@ import extras5  # noqa: E402,F401
 import extras6  # noqa: E402,F401
 import extras7  # noqa: E402,F401
 from vox import write_vox, write_metadata  # noqa: E402
+from dedupe import dedupe, is_alias  # noqa: E402
 
 # Output root; read by main() at call time (tests patch it).
 
@@ -50,6 +53,7 @@ def main():
     ap.add_argument("--only", default=None, metavar="TEXT", help="only tiles whose path contains TEXT")
     ap.add_argument("--list", action="store_true", help="list the tile paths and exit")
     ap.add_argument("--meta", action="store_true", help="only write metadata for existing tiles")
+    ap.add_argument("--dedup", action="store_true", help="only replace identical tiles by aliases")
     ap.add_argument("--palettes", action="store_true", help="write MagicaVoxel palettes (tools/voxgen/paletten)")
     a = ap.parse_args()
 
@@ -69,6 +73,10 @@ def main():
             print("  " + os.path.relpath(path))
         return
 
+    if a.dedup:
+        _dedupe()
+        return
+
     if a.meta:
         # every .vox on disk, generated or made by hand (not the coarse .lod.vox versions)
         on_disk = []
@@ -86,7 +94,7 @@ def main():
     t0 = time.time()
     for n in names:
         path = os.path.join(OUT, n + ".vox")
-        if os.path.exists(path) and not a.force:
+        if (os.path.exists(path) or is_alias(OUT, n)) and not a.force:
             skipped += 1
             continue
         os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -96,6 +104,16 @@ def main():
         made += 1
         print(f"  {n:60s} {m.sx}x{m.sy}x{m.sz}  {cnt} voxels")
     print(f"{made} created, {skipped} skipped (already existed) in {time.time() - t0:.1f}s")
+    if made:
+        _dedupe()
+
+
+def _dedupe():
+    """Replace identical tiles by aliases and report them."""
+    pairs = dedupe(OUT)
+    for alias, kept in pairs:
+        print(f"  {alias:60s} -> alias of {kept}")
+    print(f"{len(pairs)} identical tiles replaced by aliases")
 
 
 if __name__ == "__main__":

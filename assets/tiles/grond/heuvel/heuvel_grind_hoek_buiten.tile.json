@@ -5,5 +5,9 @@
 		"3": "gravel",
 		"4": "gravel",
 		"5": "gravel"
+	},
+	"smooth": {
+		"shape": "hoek_buiten",
+		"lift": 2
 	}
 }

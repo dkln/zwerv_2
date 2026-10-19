@@ -16,6 +16,7 @@ import struct
 from array import array
 
 from palette import PALETTE, MATERIALS, P, ORDER, WATER_START, FLAG_START
+from common import SLOPES, CURVES, SMOOTH
 
 
 def h(x, y=0, z=0, seed=0):
@@ -400,7 +401,8 @@ def _read_dict(body, pos):
     return out
 
 
-# Surface materials MagicaVoxel doesn't know (asphalt, stone, brick, gravel, painted) can only be found by
+# Surface materials MagicaVoxel doesn't know (asphalt, stone, brick, gravel, painted, paving, cobble, plaster)
+# can only be found by
 # colour. rgb -> material, only where unambiguous: different palette entries can
 # share an rgb (e.g. 'antraciet2' and 'metaal_donker').
 _COLOR_MATERIALS = {}
@@ -410,7 +412,7 @@ for _gid, _rgb in PALETTE.items():
     if MATERIALS.get(_gid) not in ("water", "flag"):
         _COLOR_MATERIALS.setdefault(_rgb, set()).add(MATERIALS.get(_gid))
 _SURFACE_COLOR = {rgb: next(iter(m)) for rgb, m in _COLOR_MATERIALS.items()
-                  if len(m) == 1 and next(iter(m)) in ("asphalt", "stone", "brick", "gravel", "painted")}
+                  if len(m) == 1 and next(iter(m)) in ("asphalt", "stone", "brick", "gravel", "painted", "paving", "cobble", "plaster")}
 
 
 def _material_at(slot, rgb, matl):
@@ -454,8 +456,12 @@ def write_metadata(vox_path, name):
     - ``"animation"`` (from tile_animation).
     - ``"materials"``: palette index (as string) -> material for every *used*
       index whose colour has a special material (water, flag, glass, metal,
-      panel, emit, asphalt, stone, brick, gravel, painted). The palette is read back from the .vox
+      panel, emit, asphalt, stone, brick, gravel, painted, paving, cobble,
+      plaster). The palette is read back from the .vox
       itself, so the metadata stays correct after edits in MagicaVoxel.
+    - ``"slopes"``: slope shapes the importer makes of the tile, and ``"curve"``:
+      [i, j, parts] of a curve cell for the curve shapes (common.slopes).
+    - ``"smooth"``: the tile is a padded block the importer smooths (common.smooth).
     The file is removed when there is nothing to record and left untouched when
     its content would not change. Returns the metadata dict, or None.
     """
@@ -480,6 +486,12 @@ def write_metadata(vox_path, name):
             mats[str(i)] = mat
     if mats:
         meta["materials"] = mats
+    if name in SLOPES:
+        meta["slopes"] = SLOPES[name]
+    if name in CURVES:
+        meta["curve"] = CURVES[name]
+    if name in SMOOTH:
+        meta["smooth"] = SMOOTH[name]
     if not meta:
         if old is not None:
             os.remove(meta_path)

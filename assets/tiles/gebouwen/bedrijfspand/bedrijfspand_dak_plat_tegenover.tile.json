@@ -1,7 +1,4 @@
 {
 	"id": 944,
-	"materials": {
-		"2": "metal",
-		"3": "metal"
-	}
+	"same_as": "loods_staal/loods_staal_dak_plat_tegenover"
 }

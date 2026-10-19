@@ -1,9 +1,4 @@
 {
 	"id": 290,
-	"materials": {
-		"1": "asphalt",
-		"2": "asphalt",
-		"3": "asphalt",
-		"4": "asphalt"
-	}
+	"same_as": "weg/rijstrook_dubbel_kant"
 }

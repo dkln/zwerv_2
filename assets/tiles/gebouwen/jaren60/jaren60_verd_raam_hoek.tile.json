@@ -1,10 +1,4 @@
 {
 	"id": 564,
-	"materials": {
-		"1": "stone",
-		"2": "stone",
-		"4": "glass",
-		"7": "brick",
-		"8": "brick"
-	}
+	"same_as": "jaren60/jaren60_verd_raam"
 }

@@ -1,9 +1,4 @@
 {
 	"id": 590,
-	"materials": {
-		"1": "stone",
-		"2": "stone",
-		"3": "stone",
-		"4": "stone"
-	}
+	"same_as": "bocht/weg_2_4"
 }

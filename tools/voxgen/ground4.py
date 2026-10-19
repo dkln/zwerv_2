@@ -25,7 +25,7 @@ not generated (e.g. (3, 3) for n=4; (3, 4), (4, 3), (4, 4) for n=5).
 Rising curves rise R = rise_floors(w) floors over the arc (slope along the centre line
 ~1 m per 4 m like the straight ramps): straat / klinkerstraat / fietspad (n=4): R=4,
 weg (n=5): R=5. The height is constant across the road (radially level) and grows
-linearly with the angle, in 1-voxel steps.
+linearly with the angle (the importer makes the surface smooth, addons/vox_tiles/slopes.gd).
 
 * ``grond/helling_bocht/<profile>_<i>_<j>`` (embankment, rises START -> END: climbing
   you turn LEFT). START is at height 0: it joins a flat road on floor 0 (or the top of
@@ -82,7 +82,7 @@ outer 3; tunnel tiles 1).
 import math
 from functools import partial
 
-from common import T, WALK, FLOOR, register
+from common import T, WALK, FLOOR, register, slopes
 from palette import P
 from vox import V
 from ground import EARTH, CONCRETE, CONCRETE_DARK, grass_tile
@@ -233,19 +233,6 @@ def curve_cell(src, w, i, j, height=None, deck=False, ground_fill=None):
 
 # ------------------------------------------------------------------ tile builders
 
-def rising_curve(profile, i, j, right=False, deck=False):
-    """Cell (i, j) of the rising curve of `profile` (embankment, or bridge deck with `deck`)."""
-    p, w, _, outer_src = _curve_source(profile)
-    hf = partial(rise_height, floors=rise_floors(w), right=right)
-    return curve_cell(p, w, i, j, hf, deck=deck, ground_fill=None if deck else outer_src)
-
-
-def flat_bridge_curve(profile, i, j):
-    """Cell (i, j) of the flat curved bridge deck of `profile`."""
-    p, w, _, _ = _curve_source(profile)
-    return curve_cell(p, w, i, j, deck=True)
-
-
 def fill_block(w, i, j, grass=False):
     """One floor of solid earth with the footprint of the profile ring in cell (i, j);
     with `grass` the rest of the cell is a grass tile (for floor 0)."""
@@ -268,14 +255,15 @@ def tunnel_curve(i, j):
 
 # ------------------------------------------------------------------ registration
 
+# the rising curves and flat curved bridge decks are made by the importer from the flat
+# curve cells grond/bocht/<profile>_<i>_<j> (addons/vox_tiles/slopes.gd does what
+# curve_cell does here: rise_height for bocht / bocht_rechts, deck=True for brug_*; off
+# the ring a cell on floor 0 keeps the flat cell's columns)
 for _pname in RISING_PROFILES:
     _w = len(CURVE_PROFILES[_pname][0]())
     for (_i, _j) in used_cells(_w):
-        for _suffix, _right in (("", False), ("_rechts", True)):
-            register(f"grond/helling_bocht/{_pname}{_suffix}_{_i}_{_j}", partial(rising_curve, _pname, _i, _j, _right))
-            register(f"grond/helling_bocht/brug_{_pname}{_suffix}_{_i}_{_j}",
-                     partial(rising_curve, _pname, _i, _j, _right, True))
-        register(f"grond/brug/bocht_{_pname}_{_i}_{_j}", partial(flat_bridge_curve, _pname, _i, _j))
+        slopes(f"grond/bocht/{_pname}_{_i}_{_j}", "bocht", "bocht_rechts", "brug_bocht", "brug_bocht_rechts", "brug_vlak",
+               curve=(_i, _j, _w))
 
 for _w in sorted({len(CURVE_PROFILES[_p][0]()) for _p in RISING_PROFILES}):
     _n = curve_size(_w)

@@ -1,3 +1,10 @@
 {
-	"id": 65
+	"id": 65,
+	"slopes": [
+		"steil",
+		"flauw_a",
+		"flauw_b",
+		"hoek_buiten",
+		"hoek_binnen"
+	]
 }

@@ -7,5 +7,10 @@
 		"10": "gravel",
 		"12": "metal",
 		"13": "metal"
-	}
+	},
+	"slopes": [
+		"steil",
+		"brug",
+		"brug_rand"
+	]
 }

@@ -1,7 +1,4 @@
 {
 	"id": 404,
-	"materials": {
-		"1": "gravel",
-		"2": "gravel"
-	}
+	"same_as": "school/school_dak_plat_midden"
 }

@@ -12,7 +12,7 @@ RNG seed; do not rename them.
 """
 import math
 
-from common import T, WALK, FLOOR, register, tile
+from common import T, WALK, FLOOR, register, tile, smooth
 from palette import P
 from vox import V, mix, pick, h, blocky
 from ground import (column, new, lane, sidewalk, paint, bike_path_straight, paver_fn,
@@ -322,6 +322,7 @@ register("grond/tunnel/tunnel_fiets_wand_rechts", lambda: tunnel(True, bicycle=T
 register("grond/tunnel/tunnel_fiets_wand_rechts_portaal", lambda: tunnel(True, bicycle=True, portal=True).mirror_x())
 for _d in range(1, 7):
     register(f"grond/tunnel/fietstunnel_toerit_wand_rechts_d{_d}", (lambda d: lambda: access_ramp(d, True, True).mirror_x())(_d))
+    smooth(f"grond/tunnel/fietstunnel_toerit_wand_rechts_d{_d}", "steil", keep_x=(30, 31))
 
 
 # ------------------------------------------------------------------ classic streetlights

@@ -219,10 +219,13 @@ for _entries, _forced in ((_ENTRIES, None), (_WATER, "water"), (_FLAG, "flag")):
 # Colours that already have a material tag keep it.
 _SURFACE_GROUPS = {
     "asphalt": ("asfalt", "asfalt_reparatie", "fietsasfalt", "busbaan", "bitumen"),
-    "stone": ("tegel", "tegel_wit", "ribbel", "band", "goot", "klinker", "kei", "plein", "plein_donker",
+    "stone": ("ribbel", "band", "goot", "klinker", "plein", "plein_donker",
               "plein_rood", "natuursteen", "marmer", "donkersteen", "leisteen", "beton", "beton_donker"),
     "brick": ("baksteen", "baksteen30", "geelsteen", "geelsteen60"),
     "gravel": ("grind", "grind_roest", "dakgrind"),
+    "paving": ("tegel", "tegel_wit"),
+    "cobble": ("kei",),
+    "plaster": ("stuc",),
     # painted metal: lamp posts, bollards, road signs
     "painted": ("amsterdamgroen", "bord_blauw", "bord_geel", "bord_groen", "bord_oranje", "bord_rood",
                 "bord_wit", "bord_zwart"),

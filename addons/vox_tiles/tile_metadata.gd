@@ -15,6 +15,16 @@ extends RefCounted
 ##     left out = guessed from the file name (vox_import_plugin.gd).
 ##   materials: palette index (as shown in MagicaVoxel) or "#rrggbb" colour -> one of
 ##     Parser.MATERIAL_NAMES. Colours not listed keep the material set in MagicaVoxel.
+##   slopes: slope shapes made of the tile while importing it (slopes.gd), e.g.
+##     ["steil", "flauw_a", "flauw_b"]; each becomes an item grond/helling/... .
+##   curve: [i, j, parts] of a flat curve cell, for the curve shapes (slopes.gd).
+##   smooth: {"shape": "steil", "lift": 2, "keep_x": [0, 1]}: the tile is the padded block
+##     of a slope; the importer moves it onto the smooth slope (slopes.gd own_plan()).
+##
+##   An alias tile has only this file, no .vox: {"id": 121, "same_as": "weg/weg_vlak"}.
+##   same_as: another tile of the same category (path below assets/tiles/<category>);
+##     the alias gets its own item (name and id) with that tile's mesh
+##     (library_builder.gd). tools/voxgen/dedupe.py turns identical tiles into aliases.
 ##
 ## - `<name>.lod.vox`: a hand-made coarse version, used instead of the automatic LOD
 ##   versions. It is not a tile of its own. It may have its own `<name>.lod.tile.json`;

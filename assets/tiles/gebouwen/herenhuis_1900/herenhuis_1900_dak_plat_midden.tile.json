@@ -1,7 +1,4 @@
 {
 	"id": 469,
-	"materials": {
-		"1": "metal",
-		"2": "metal"
-	}
+	"same_as": "overheid/overheid_dak_plat_midden"
 }

@@ -5,5 +5,9 @@
 		"3": "stone",
 		"4": "stone",
 		"5": "stone"
+	},
+	"smooth": {
+		"shape": "steil",
+		"lift": 2
 	}
 }

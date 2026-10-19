@@ -2,10 +2,13 @@
 extends RefCounted
 ## Builds one MeshLibrary per category from all .vox files in assets/tiles/<category>.
 ## Item IDs stay stable (by name), so existing maps don't break when you add or
-## remove tiles.
+## remove tiles. Alias tiles (a .tile.json with "same_as", see tile_metadata.gd) get
+## their own item with the mesh of the tile they point to; the slope variants of a
+## tile (its "slopes", see slopes.gd) get items of their own as well.
 
 const TileMetadata = preload("res://addons/vox_tiles/tile_metadata.gd")
 const Atlas = preload("res://addons/vox_tiles/atlas.gd")
+const Slopes = preload("res://addons/vox_tiles/slopes.gd")
 
 const TILE_ROOT := "res://assets/tiles"
 const LIB_ROOT := "res://assets/libraries"
@@ -53,6 +56,27 @@ static func list_vox(dir_path: String, out: PackedStringArray) -> void:
 	d.list_dir_end()
 
 
+## Appends the vox paths of all alias tiles below dir_path (recursively) to out:
+## `<name>.vox` for every `<name>.tile.json` with a "same_as" and no `<name>.vox`.
+static func list_aliases(dir_path: String, out: PackedStringArray) -> void:
+	var d := DirAccess.open(dir_path)
+	if d == null:
+		return
+	d.list_dir_begin()
+	var f := d.get_next()
+	while f != "":
+		var path := dir_path.path_join(f)
+		if d.current_is_dir():
+			if not f.begins_with("."):
+				list_aliases(path, out)
+		elif f.ends_with(".tile.json"):
+			var vox := path.trim_suffix(".tile.json") + ".vox"
+			if not TileMetadata.is_lod_file(vox) and not FileAccess.file_exists(vox) and TileMetadata.read(vox).has("same_as"):
+				out.append(vox)
+		f = d.get_next()
+	d.list_dir_end()
+
+
 ## Brings the library of a category in line with the tiles on disk: adds new
 ## tiles, updates changed ones, removes deleted ones, keeps item ids stable
 ## (registry <category>_ids.json, or a pinned "id" in the tile metadata) and
@@ -87,6 +111,9 @@ static func build_category(cat: String, changed: Dictionary, previews: bool, for
 	var dirty := false
 	var need_preview: Array[int] = []
 	var sources := {}   # item id -> imported mesh (before the atlas copy)
+	# [item name, .vox path, mesh, own tile?]: every tile, then the slope variants
+	# its import made (they have no metadata of their own; ids from the registry)
+	var entries := []
 	for path in files:
 		var key := path.trim_prefix(root + "/").get_basename()
 		seen[key] = true
@@ -95,10 +122,23 @@ static func build_category(cat: String, changed: Dictionary, previews: bool, for
 		var mesh := load(path) as Mesh
 		if mesh == null:
 			continue
+		entries.append([key, path, mesh, true])
+		var slopes: Dictionary = mesh.get_meta("slopes", {})
+		for shape in slopes:
+			var slope_key := Slopes.item_name(key, shape)
+			if seen.has(slope_key) or files.has(root.path_join(slope_key) + ".vox"):
+				push_warning("Vox Tiles: slope %s of %s already exists as a tile, skipped" % [slope_key, key])
+				continue
+			seen[slope_key] = true
+			entries.append([slope_key, path, slopes[shape], false])
+	for entry in entries:
+		var key: String = entry[0]
+		var path: String = entry[1]
+		var mesh: Mesh = entry[2]
 		var id: int
 		var is_new := not by_name.has(key)
 		# an "id" in the tile metadata pins the item id (see tile_metadata.gd)
-		var wanted := _wanted_id(path, key, lib, registry)
+		var wanted := _wanted_id(path, key, lib, registry) if entry[3] else -1
 		if is_new:
 			if wanted >= 0:
 				id = wanted
@@ -123,21 +163,55 @@ static func build_category(cat: String, changed: Dictionary, previews: bool, for
 		if int(registry.get(key, -1)) != id:
 			registry[key] = id
 			registry_changed = true
-		if wanted < 0:
+		if wanted < 0 and entry[3]:
 			TileMetadata.store_id(path, id)
 		sources[id] = mesh
 		# the library holds atlas copies; a reimport outside the editor shows in the
 		# time stamp of the .import file, which is written on every import
 		var stamp := FileAccess.get_modified_time(path + ".import")
+		mesh.set_meta("source_stamp", stamp)
 		var current := lib.get_item_mesh(id)
 		if force or is_new or changed.has(path) or current == null or current.get_meta("source_stamp", -1) != stamp:
 			lib.set_item_shapes(id, _shapes(mesh, cfg.collision, key))
 			_set_shadow(lib, id, mesh)
-			mesh.set_meta("source_stamp", stamp)
 			dirty = true
 			need_preview.append(id)
 		elif previews and lib.get_item_preview(id) == null:
 			need_preview.append(id)
+	# alias tiles: an item of their own (name, id) that shares the mesh of their tile
+	var aliases := {}   # alias item id -> item id of the tile it points to
+	var alias_files := PackedStringArray()
+	list_aliases(root, alias_files)
+	alias_files.sort()
+	for path in alias_files:
+		var key := path.trim_prefix(root + "/").get_basename()
+		var target := str(TileMetadata.read(path).get("same_as"))
+		var target_id := int(registry.get(target, -1))
+		if not sources.has(target_id):
+			push_warning("Vox Tiles: %s: same_as \"%s\" is not a tile of '%s'" % [TileMetadata.path_for(path), target, cat])
+			continue
+		seen[key] = true
+		var id: int = by_name.get(key, -1)
+		var wanted := _wanted_id(path, key, lib, registry)
+		if wanted >= 0 and wanted != id:
+			if id >= 0:
+				lib.remove_item(id)
+			id = wanted
+		elif id < 0:
+			var reserved := int(registry.get(key, -1))
+			id = reserved if reserved >= 0 and not lib.get_item_list().has(reserved) else next_id
+		if not lib.get_item_list().has(id):
+			lib.create_item(id)
+			lib.set_item_name(id, key)
+		if lib.get_item_mesh(id) != lib.get_item_mesh(target_id):
+			dirty = true   # new or changed alias: the coarse libraries need it too
+		next_id = maxi(next_id, id + 1)
+		if int(registry.get(key, -1)) != id:
+			registry[key] = id
+			registry_changed = true
+		if wanted < 0:
+			TileMetadata.store_id(path, id)
+		aliases[id] = target_id
 	for k in by_name:
 		if not seen.has(k):
 			lib.remove_item(by_name[k])
@@ -147,15 +221,22 @@ static func build_category(cat: String, changed: Dictionary, previews: bool, for
 	if dirty or force or missing_lods:
 		var stamps := {}
 		for id in sources:
-			stamps[id] = sources[id].get_meta("source_stamp", FileAccess.get_modified_time(sources[id].resource_path + ".import"))
+			stamps[id] = sources[id].get_meta("source_stamp")
 		var main := Atlas.build(sources)
 		for id in sources:
 			var m: Mesh = main.meshes[id]
 			m.set_meta("source_stamp", stamps[id])
 			lib.set_item_mesh(id, m)
 		for level in ["lod", "lod2"]:
-			_build_lod(cat, lib, level, sources)
+			_build_lod(cat, lib, level, sources, aliases)
 		dirty = true
+	for id in aliases:
+		var target_id: int = aliases[id]
+		if force or lib.get_item_mesh(id) != lib.get_item_mesh(target_id):
+			lib.set_item_mesh(id, lib.get_item_mesh(target_id))
+			lib.set_item_shapes(id, _shapes(sources[target_id], cfg.collision, lib.get_item_name(id)))
+			_set_shadow(lib, id, sources[target_id])
+			dirty = true
 	if previews and need_preview.size() > 0 and Engine.is_editor_hint():
 		var meshes: Array[Mesh] = []
 		for id in need_preview:
@@ -165,6 +246,11 @@ static func build_category(cat: String, changed: Dictionary, previews: bool, for
 			if i < tex.size() and tex[i] != null:
 				lib.set_item_preview(need_preview[i], tex[i])
 		dirty = true
+	for id in aliases:
+		var preview := lib.get_item_preview(aliases[id])
+		if lib.get_item_preview(id) != preview:
+			lib.set_item_preview(id, preview)
+			dirty = true
 	if registry_changed:
 		_write_registry(cat, registry)
 	if dirty:
@@ -235,8 +321,9 @@ static func _set_shadow(lib: MeshLibrary, id: int, mesh: Mesh) -> void:
 
 
 ## Coarse library with the same item IDs; meshes from the import's "lod"/"lod2" meta
-## of `sources` (item id -> imported mesh), with their own texture atlas.
-static func _build_lod(cat: String, lib: MeshLibrary, level: String, sources: Dictionary) -> void:
+## of `sources` (item id -> imported mesh), with their own texture atlas. Alias items
+## (`aliases`: item id -> id of their tile) share the mesh of their tile.
+static func _build_lod(cat: String, lib: MeshLibrary, level: String, sources: Dictionary, aliases: Dictionary) -> void:
 	var coarse := {}
 	for id in sources:
 		var m: Mesh = sources[id]
@@ -246,9 +333,10 @@ static func _build_lod(cat: String, lib: MeshLibrary, level: String, sources: Di
 	for id in lib.get_item_list():
 		lod.create_item(id)
 		lod.set_item_name(id, lib.get_item_name(id))
-		if packed.meshes.has(id):
-			lod.set_item_mesh(id, packed.meshes[id])
-			_set_shadow(lod, id, sources[id])
+		var src: int = aliases.get(id, id)
+		if packed.meshes.has(src):
+			lod.set_item_mesh(id, packed.meshes[src])
+			_set_shadow(lod, id, sources[src])
 	DirAccess.make_dir_recursive_absolute(LIB_ROOT)
 	ResourceSaver.save(lod, lod_path(cat, level))
 

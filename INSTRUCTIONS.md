@@ -117,7 +117,9 @@ Hoogtes en lagen (grond):
 - Een grond-laag is 1 m hoog. Wegdek ligt op 0,25 m, stoep en gras op 0,375 m.
 - Hellingen (`helling/helling_*`) stijgen 1 laag over 1 tile; flauwe hellingen
   (`helling/flauw_*_a` en `_b`) stijgen 0,5 m per tile (a eerst, dan b).
-  Zet `terrein/grond_blok` eronder als je verder ophoogt.
+  Zet `terrein/grond_blok` eronder als je verder ophoogt. De meeste hellingen
+  hebben geen eigen `.vox`: de importer maakt ze van de vlakke tile (`slopes` in
+  de tile-metadata, zie hieronder).
 - Bruggen: brugdek op de gewenste laag, `brug_pijler` eronder gestapeld,
   `brug_pijler_kop` direct onder het dek en `brug_pijler_gras/stoep/water` op
   laag 0 (grond + pijler in één tile). Stalen boogbrug: `staalboog_1..5` (5 tiles
@@ -305,6 +307,33 @@ MagicaVoxel niet kent:
   `python3 tools/voxgen/generate.py --meta`. Die leest het palet uit de `.vox`
   zelf, dus het klopt ook na je eigen aanpassingen in MagicaVoxel.
 - In het Import-paneel van Godot kun je `animation` per tile overschrijven.
+- `slopes`: hellingen die de importer van deze (vlakke) tile maakt, bv.
+  `["steil", "flauw_a", "flauw_b"]`. Vormen: `steil` (1 m per tile) wordt
+  `helling/helling_<naam>`, `flauw_a`/`flauw_b` worden `helling/flauw_<naam>_a`/`_b`,
+  `hoek_buiten`/`hoek_binnen` worden `helling/helling_<naam>_hoek_buiten`/`_binnen`,
+  `brug`/`brug_rand` (brugoprit, dunne plaat; `_rand` met borstwering links) worden
+  `helling/helling_brug_<naam>` en `helling/helling_brug_<naam>_rand`.
+  Een cel van een vlakke bocht (`bocht/<profiel>_<i>_<j>`) heeft daarnaast
+  `"curve": [i, j, delen]` en de bochtvormen `bocht`/`bocht_rechts` (stijgende
+  bocht, `helling_bocht/<profiel>[_rechts]_<i>_<j>`), `brug_bocht`/`brug_bocht_rechts`
+  (`helling_bocht/brug_<profiel>[_rechts]_<i>_<j>`) en `brug_vlak`
+  (`brug/bocht_<profiel>_<i>_<j>`).
+  Er is geen eigen `.vox` voor; pas je de vlakke tile aan, dan veranderen de
+  hellingen mee. Zo kun je van elk wegdeel een helling maken. Hellingen zijn glad
+  (geen voxeltrapjes): de importer bouwt de tile op een opgehoogd blok en schuift de
+  mesh daarna op het schuine vlak.
+- `smooth`: voor hellingen zonder eigen vlakke tile (heuvels, betondijk,
+  tunneltoeritten) is de `.vox` zelf het opgehoogde blok (vlak oppervlak `lift`
+  voxels boven de grond, met vulling eronder), bv.
+  `{"shape": "steil", "lift": 2, "keep_x": [0, 1]}`. De importer maakt er een gladde
+  helling van (`steil`, `flauw_a`, `flauw_b`, `hoek_buiten`, `hoek_binnen` of
+  `heuvel_top`); kolommen in `keep_x` (een tunnelwand) blijven staan.
+- Alias-tile: alleen een `.tile.json`, zonder `.vox`, met
+  `{"id": 285, "same_as": "weg/weg_vlak"}` (pad binnen dezelfde categorie). Hij
+  houdt zijn eigen naam en ID in de bibliotheek, maar gebruikt de mesh van de tile
+  waar hij naar wijst. Zo staan identieke tiles maar één keer in het atlas.
+  Wil je een alias weer een eigen model geven: verwijder zijn `.tile.json` en
+  genereer hem opnieuw (of sla een `.vox` onder zijn naam op).
 
 
 Nieuwe tile toevoegen: zet een nieuw `.vox` bestand in de juiste map onder
@@ -325,11 +354,14 @@ De tiles worden gemaakt door een Python-generator (alleen standaard Python 3):
     python3 tools/voxgen/generate.py --list       # lijst van alle tiles
     python3 tools/voxgen/generate.py --only weg   # alleen tiles met 'weg' in het pad
     python3 tools/voxgen/generate.py --force --only klassiek_rood   # overschrijven
+    python3 tools/voxgen/generate.py --dedup      # alleen identieke tiles ontdubbelen
 
 LET OP: `--force` overschrijft bestaande bestanden, dus ook je eigen
 aanpassingen in MagicaVoxel. Zonder `--force` blijven bestaande tiles staan.
 Wil je één tile opnieuw laten genereren: verwijder het `.vox` bestand en draai
-de generator.
+de generator. Na het maken van tiles worden identieke tiles (zelfde voxels,
+kleuren, materialen en importopties, binnen een categorie) vervangen door
+alias-tiles naar de tile met de kortste naam (`dedupe.py`).
 
 Generator-bestanden (`tools/voxgen/`):
 - `palette.py`   kleurenpalet + materiaaltypes (metal/glass/emit/water/flag);
@@ -348,6 +380,7 @@ Generator-bestanden (`tools/voxgen/`):
   heuvels, loopbruggen, winkels, tunnelbakken, boulevards, luxe appartementen,
   groendaken, standbeelden, universiteit, hogeschool, kolonnades)
 - `generate.py`  schrijft alles naar `assets/tiles/`
+- `dedupe.py`    vervangt identieke tiles door alias-tiles
 
 Na het genereren (vanuit de projectmap):
 

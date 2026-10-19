@@ -1,7 +1,4 @@
 {
 	"id": 601,
-	"materials": {
-		"3": "asphalt",
-		"4": "asphalt"
-	}
+	"same_as": "kantoor_80/kantoor_80_dak_plat_hoek"
 }

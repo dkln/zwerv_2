@@ -11,11 +11,11 @@ rename them.
 """
 import math
 
-from common import T, ROAD, WALK, FLOOR, register, tile
+from common import T, ROAD, WALK, FLOOR, register, tile, smooth
 from palette import P
 from vox import V, mix, h
-from ground import (column, flat, new, grass_tile, shear, line_y, ASPHALT, GRASS, EARTH, SAND, GRAVEL,
-                    CONCRETE_DARK, WATER, CORNER_IN, CORNER_OUT, STRAIGHT, brick_fn)
+from ground import (column, flat, new, grass_tile, padded, line_y, ASPHALT, GRASS, EARTH, SAND, GRAVEL,
+                    CONCRETE_DARK, WATER, brick_fn)
 from buildings import STYLES, S, pitched
 from buildings2 import reg_style, flat_roofs
 from details import att, wd
@@ -258,20 +258,18 @@ def block(mat, top):
     return m
 
 
-def _hill_top(x, y):
-    """Shear offset of a rounded hill top: up to 4 voxels in the centre, falling off outwards."""
-    return min(4, int(4 - math.hypot(x - 15.5, y - 15.5) / 4))
-
-
-def _hill(top, fill, offset_fn):
-    """Tile function: a flat `top` surface at WALK sheared upwards by offset_fn, filled with `fill`."""
-    return lambda: shear(flat(top, top=WALK, sz=8), offset_fn, fill=fill)
+def _hill(top, fill):
+    """Tile function: a flat `top` surface at WALK on a `fill` block; the importer smooths it
+    into the hill shape (a straight slope, a corner, or heuvel_top: a rounded top of up to
+    4 voxels in the centre, falling off outwards)."""
+    return lambda: padded(flat(top, top=WALK, sz=8), fill=fill)
 
 
 for _n, _top, _fill in (("gras", GRASS, EARTH), ("zand", SAND, SAND), ("grind", GRAVEL, GRAVEL)):
     register(f"grond/heuvel/heuvel_{_n}_blok", (lambda f, t: lambda: block(f, t))(_fill, _top))
-    for _suffix, _offset in (("helling", STRAIGHT), ("hoek_buiten", CORNER_OUT), ("hoek_binnen", CORNER_IN), ("top", _hill_top)):
-        register(f"grond/heuvel/heuvel_{_n}_{_suffix}", _hill(_top, _fill, _offset))
+    for _suffix, _shape in (("helling", "steil"), ("hoek_buiten", "hoek_buiten"), ("hoek_binnen", "hoek_binnen"), ("top", "heuvel_top")):
+        register(f"grond/heuvel/heuvel_{_n}_{_suffix}", _hill(_top, _fill))
+        smooth(f"grond/heuvel/heuvel_{_n}_{_suffix}", _shape)
 
 
 # ------------------------------------------------------------------ verge and ditch

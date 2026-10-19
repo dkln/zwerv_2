@@ -19,9 +19,9 @@ Paletnummer (zoals MagicaVoxel het toont), kleur, naam en materiaal in Godot.
 | 13 | `#d8d2c3` | natuursteen1 | stone |
 | 14 | `#cec8b8` | natuursteen2 | stone |
 | 15 | `#c4beaf` | natuursteen3 | stone |
-| 16 | `#e8e6de` | stuc1 | opaque |
-| 17 | `#e2e0d8` | stuc2 | opaque |
-| 18 | `#dad8d0` | stuc3 | opaque |
+| 16 | `#e8e6de` | stuc1 | plaster |
+| 17 | `#e2e0d8` | stuc2 | plaster |
+| 18 | `#dad8d0` | stuc3 | plaster |
 | 19 | `#8c9094` | paneel1 | opaque |
 | 20 | `#7f8387` | paneel2 | opaque |
 | 21 | `#999da1` | paneel3 | opaque |
@@ -150,7 +150,7 @@ Paletnummer (zoals MagicaVoxel het toont), kleur, naam en materiaal in Godot.
 | 144 | `#d2aa3c` | goud | metal |
 | 145 | `#ff50b4` | neon_roze | emit |
 | 146 | `#50a0ff` | neon_blauw | emit |
-| 147 | `#dce0e2` | tegel_wit | stone |
+| 147 | `#dce0e2` | tegel_wit | paving |
 | 148 | `#3c508c` | stof1 | opaque |
 | 149 | `#aa3c46` | stof2 | opaque |
 | 150 | `#e6dcc8` | stof3 | opaque |

@@ -1,3 +1,7 @@
 {
-	"id": 318
+	"id": 318,
+	"smooth": {
+		"shape": "hoek_buiten",
+		"lift": 2
+	}
 }

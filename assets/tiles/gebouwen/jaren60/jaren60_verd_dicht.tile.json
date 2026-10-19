@@ -1,9 +1,4 @@
 {
 	"id": 558,
-	"materials": {
-		"1": "stone",
-		"2": "stone",
-		"3": "brick",
-		"4": "brick"
-	}
+	"same_as": "jaren60/jaren60_blok_dicht"
 }

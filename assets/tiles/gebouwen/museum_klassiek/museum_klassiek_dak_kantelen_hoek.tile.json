@@ -1,9 +1,4 @@
 {
 	"id": 813,
-	"materials": {
-		"1": "stone",
-		"2": "stone",
-		"3": "stone",
-		"4": "metal"
-	}
+	"same_as": "herenhuis_1600/herenhuis_1600_dak_kantelen_hoek"
 }

@@ -1,9 +1,4 @@
 {
 	"id": 1209,
-	"materials": {
-		"1": "stone",
-		"2": "stone",
-		"3": "metal",
-		"4": "metal"
-	}
+	"same_as": "loods_staal/loods_staal_verd_wand"
 }

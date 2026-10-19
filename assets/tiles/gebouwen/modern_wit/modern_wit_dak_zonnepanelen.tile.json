@@ -1,10 +1,4 @@
 {
 	"id": 218,
-	"materials": {
-		"1": "gravel",
-		"2": "gravel",
-		"3": "panel",
-		"4": "metal",
-		"5": "metal"
-	}
+	"same_as": "school/school_dak_zonnepanelen"
 }

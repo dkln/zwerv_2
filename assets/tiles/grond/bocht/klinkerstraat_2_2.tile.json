@@ -8,5 +8,17 @@
 		"5": "stone",
 		"6": "stone",
 		"7": "stone"
-	}
+	},
+	"slopes": [
+		"bocht",
+		"bocht_rechts",
+		"brug_bocht",
+		"brug_bocht_rechts",
+		"brug_vlak"
+	],
+	"curve": [
+		2,
+		2,
+		3
+	]
 }
