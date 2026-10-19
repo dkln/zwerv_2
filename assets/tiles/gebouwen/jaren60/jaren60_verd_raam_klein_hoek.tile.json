@@ -5,6 +5,8 @@
 		"2": "stone",
 		"4": "glass",
 		"7": "emit",
+		"8": "brick",
+		"9": "brick",
 		"10": "stone"
 	}
 }

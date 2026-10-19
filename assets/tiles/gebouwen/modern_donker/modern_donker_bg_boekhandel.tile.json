@@ -7,6 +7,7 @@
 		"8": "stone",
 		"9": "glass",
 		"12": "emit",
-		"14": "metal"
+		"14": "metal",
+		"15": "painted"
 	}
 }

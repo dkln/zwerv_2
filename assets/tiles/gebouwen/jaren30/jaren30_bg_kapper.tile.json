@@ -8,6 +8,11 @@
 		"8": "glass",
 		"11": "emit",
 		"12": "emit",
-		"13": "metal"
+		"13": "metal",
+		"14": "painted",
+		"15": "painted",
+		"17": "brick",
+		"18": "brick",
+		"19": "brick"
 	}
 }

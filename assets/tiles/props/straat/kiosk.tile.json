@@ -2,6 +2,7 @@
 	"id": 90,
 	"materials": {
 		"2": "glass",
-		"3": "metal"
+		"3": "metal",
+		"4": "painted"
 	}
 }

@@ -215,9 +215,29 @@ for _i in range(SPAN):
 PYLON = 120   # pylon height (voxels)
 
 
-def tui(i):
-    """Cable-stayed bridge piece. i=0: the pylon tile (cables on both sides);
-    i=1..3: following tiles carrying the cables down to the deck."""
+CABLES = 6           # cables per side of the pylon
+CABLE_ANCHOR_Z = 4   # height where the cables reach the deck (voxels)
+
+
+def _cable_z(k, g):
+    """Height (voxels, float) of cable k at distance g (voxels) from the pylon centre.
+
+    A fan: cable 0 leaves the pylon highest and reaches the deck farthest away, so the
+    cables never cross. Returns None beyond the cable's anchor on the deck."""
+    top = PYLON - 8 - k * 9
+    reach = (CABLES - k) * 18
+    if abs(g) > reach:
+        return None
+    return top - (top - CABLE_ANCHOR_Z) * abs(g) / reach
+
+
+def tui(i, back=False):
+    """Cable-stayed bridge piece, the cables in one plane along the left edge (x=1).
+
+    i=0: the pylon tile, with the cables of both sides. i=1..3: the following deck
+    tiles, which carry the cables down to the deck; placed north of the pylon
+    (local +y points away from it). back=True: the same pieces for the other side,
+    placed south of the pylon with the same rotation (local +y points towards it)."""
     m = V(T, T, PYLON + 4 if i == 0 else 100)
     for y in range(T):
         for x in range(T):
@@ -233,21 +253,24 @@ def tui(i):
                 for x in range(0, 4):
                     m.set(x, y, z, "stuc1")
         m.set(1, 16, PYLON, "signaal_rood")
-    # cables: cable k connects pylon height zk to the deck at distance dk (voxels) from the pylon
-    for k in range(6):
-        zk = PYLON - 8 - k * 9
-        dk = (k + 1) * 18
+    for k in range(CABLES):
         for y in range(T):
-            g = i * T + y - 16   # signed distance from the pylon centre (y=16 of tile 0)
-            # forward cables on every piece; backward cables only on the pylon tile
-            if 0 <= g <= dk or (i == 0 and -dk <= g < 0):
-                z = int(zk - (zk - 4) * abs(g) / dk)
+            # signed distance from the pylon centre (y=16 of tile 0) of this voxel row
+            g = (i * T + 16 - y) if back else (i * T + y - 16)
+            # fill from this row to the next, so steep cables stay continuous
+            za, zb = _cable_z(k, g), _cable_z(k, g + (1 if g >= 0 else -1))
+            if za is None:
+                continue
+            zb = CABLE_ANCHOR_Z if zb is None else zb
+            for z in range(int(min(za, zb)), int(max(za, zb)) + 1):
                 m.set(1, y, z, "metaal3")
     return m
 
 
 for _i in range(4):
     register(f"grond/brug/tuibrug_{_i}", partial(tui, _i))
+for _i in range(1, 4):
+    register(f"grond/brug/tuibrug_{_i}_achter", partial(tui, _i, back=True))
 
 
 # ------------------------------------------------------------------ cobblestones

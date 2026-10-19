@@ -221,6 +221,11 @@ _SURFACE_GROUPS = {
     "asphalt": ("asfalt", "asfalt_reparatie", "fietsasfalt", "busbaan", "bitumen"),
     "stone": ("tegel", "tegel_wit", "ribbel", "band", "goot", "klinker", "kei", "plein", "plein_donker",
               "plein_rood", "natuursteen", "marmer", "donkersteen", "leisteen", "beton", "beton_donker"),
+    "brick": ("baksteen", "baksteen30", "geelsteen", "geelsteen60"),
+    "gravel": ("grind", "grind_roest", "dakgrind"),
+    # painted metal: lamp posts, bollards, road signs
+    "painted": ("amsterdamgroen", "bord_blauw", "bord_geel", "bord_groen", "bord_oranje", "bord_rood",
+                "bord_wit", "bord_zwart"),
 }
 
 

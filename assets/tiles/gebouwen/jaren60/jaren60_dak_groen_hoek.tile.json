@@ -1,3 +1,7 @@
 {
-	"id": 996
+	"id": 996,
+	"materials": {
+		"5": "brick",
+		"6": "brick"
+	}
 }

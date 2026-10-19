@@ -13,12 +13,14 @@ const Caption = preload("res://scripts/caption.gd")
 
 ## Run the tour; off = free camera.
 @export var active := true
+## Only the highlights (tour_data.gd HIGHLIGHTS) instead of every area of the map.
+@export var highlights_only := true
 @export var camera_path := NodePath("../Camera")
-@export var travel_time := 3.0       ## seconds between two stops
-@export var view_time := 7.0         ## seconds per stop
+@export var travel_time := 2.0       ## seconds between two stops
+@export var view_time := 4.0         ## seconds per stop
 @export var zoom_in := 0.9           ## camera slowly zooms to this factor of the view size while viewing
 ## The tour starts at the first stop whose slug contains this (empty = at the beginning).
-@export var start_at := "kanaal"
+@export var start_at := ""
 
 var _cam: Camera3D
 var _stops := []
@@ -37,6 +39,8 @@ func _ready() -> void:
 	_cam.set_process(false)
 	_cam.set_process_unhandled_input(false)
 	_stops = Data.stops(owner if owner else get_parent())
+	if highlights_only:
+		_stops = Data.highlights(_stops)
 	_caption = Caption.new(self, true)
 	_caption.panel.modulate.a = 0.0
 	if _stops.is_empty():

@@ -1,6 +1,9 @@
 {
 	"id": 759,
 	"materials": {
+		"2": "brick",
+		"3": "brick",
+		"4": "brick",
 		"5": "stone",
 		"8": "stone",
 		"9": "stone",
@@ -8,6 +11,8 @@
 		"13": "emit",
 		"14": "emit",
 		"16": "metal",
+		"17": "painted",
+		"18": "painted",
 		"20": "emit"
 	}
 }

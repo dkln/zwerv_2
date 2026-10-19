@@ -82,6 +82,20 @@ const DISTRICT_TEXT := {
 }
 
 
+## Slugs of the highlights, in tour order (see `highlights`).
+const HIGHLIGHTS := ["stad_overzicht", "gracht", "plein", "hoogbouw", "rivier", "snelweg", "winkelstraat",
+	"wijk_kanaal", "water_spiegeling", "water_dobberen", "wijk_hellingen_bochten", "wijk_dorpskern",
+	"wijk_bedrijventerrein", "wijk_tint"]
+
+
+## Only the stops in HIGHLIGHTS, in that order (missing ones are skipped).
+static func highlights(all_stops: Array) -> Array:
+	var by_slug := {}
+	for s in all_stops:
+		by_slug[s["slug"]] = s
+	return HIGHLIGHTS.filter(func(slug): return by_slug.has(slug)).map(func(slug): return by_slug[slug])
+
+
 ## Returns the stops for the scene `root` as a list of
 ## {slug, title, text, x, z, size}: focus x/z and view size in metres.
 ## Order: CITY, then the districts, with WATER inserted right after the

@@ -202,7 +202,7 @@ func _make_scene(node_name: String) -> Node3D:
 	attr.dof_blur_near_enabled = true
 	attr.dof_blur_near_distance = 250.0
 	attr.dof_blur_near_transition = 110.0
-	attr.dof_blur_amount = 0.07
+	attr.dof_blur_amount = 0.1
 	cam.attributes = attr
 	root.add_child(cam)
 	if node_name == "Wereld":
@@ -1818,7 +1818,7 @@ func _river_and_bridges() -> void:
 	G(40, 51, "brug/tuibrug_0", "S")
 	for i in range(1, 4):
 		G(40, 51 - i, "brug/tuibrug_%d" % i, "S")
-		G(40, 51 + i, "brug/brug_dek_weg_rand", "S")
+		G(40, 51 + i, "brug/tuibrug_%d_achter" % i, "S")
 	for z in range(48, 55):
 		G(41, z, "brug/brug_dek_weg_rand", "N")
 	# drawbridge (classic, narrow) at x=20
@@ -3206,8 +3206,7 @@ func _canal_with_bridges() -> void:
 	G(x, z0 + 2, "brug/tuibrug_0", "S")
 	for i in range(1, 4):
 		G(x, z0 + 2 - i, "brug/tuibrug_%d" % i, "S")
-	for i in range(1, 4):
-		G(x, z0 + 2 + i, "brug/brug_dek_weg_rand", "S")
+		G(x, z0 + 2 + i, "brug/tuibrug_%d_achter" % i, "S")
 	x += 2
 	# viaduct on piers (layer 3) over the canal
 	for z in range(z0 - 1, z0 + 6):

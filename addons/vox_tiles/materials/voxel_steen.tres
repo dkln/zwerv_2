@@ -13,3 +13,7 @@ shader_parameter/asfalt = 0.55
 shader_parameter/asfalt_ruwheid = 0.8
 shader_parameter/asfalt_specular = 0.38
 shader_parameter/asfalt_kleurcheck = 0.0
+shader_parameter/relief_soort = 1
+shader_parameter/relief_sterkte = 0.45
+shader_parameter/relief_holte = 0.3
+shader_parameter/relief_staand = 0.4

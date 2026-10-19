@@ -4,6 +4,9 @@
 		"2": "glass",
 		"4": "emit",
 		"8": "metal",
-		"9": "metal"
+		"9": "metal",
+		"10": "brick",
+		"11": "brick",
+		"12": "brick"
 	}
 }

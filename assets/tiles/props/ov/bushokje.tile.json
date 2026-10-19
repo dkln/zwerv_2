@@ -1,6 +1,7 @@
 {
 	"id": 56,
 	"materials": {
-		"1": "glass"
+		"1": "glass",
+		"2": "painted"
 	}
 }

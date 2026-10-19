@@ -2,6 +2,7 @@
 	"id": 281,
 	"materials": {
 		"1": "metal",
+		"2": "painted",
 		"3": "emit"
 	}
 }

@@ -2,6 +2,8 @@
 	"id": 45,
 	"materials": {
 		"1": "stone",
-		"2": "metal"
+		"2": "metal",
+		"3": "painted",
+		"4": "painted"
 	}
 }

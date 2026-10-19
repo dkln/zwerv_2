@@ -1,6 +1,7 @@
 {
 	"id": 57,
 	"materials": {
+		"2": "painted",
 		"3": "emit"
 	}
 }

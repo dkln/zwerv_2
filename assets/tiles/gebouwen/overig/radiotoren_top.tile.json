@@ -2,6 +2,8 @@
 	"id": 865,
 	"materials": {
 		"2": "metal",
+		"3": "painted",
+		"4": "painted",
 		"5": "emit"
 	}
 }

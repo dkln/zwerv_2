@@ -50,6 +50,7 @@ def main():
     ap.add_argument("--only", default=None, metavar="TEXT", help="only tiles whose path contains TEXT")
     ap.add_argument("--list", action="store_true", help="list the tile paths and exit")
     ap.add_argument("--meta", action="store_true", help="only write metadata for existing tiles")
+    ap.add_argument("--palettes", action="store_true", help="write MagicaVoxel palettes (tools/voxgen/paletten)")
     a = ap.parse_args()
 
     names = sorted(TILES)
@@ -61,13 +62,24 @@ def main():
         print(f"{len(names)} tiles")
         return
 
+    if a.palettes:
+        from palettes import write_palettes
+        from handbook import write_handbook
+        for path in write_palettes() + [write_handbook()]:
+            print("  " + os.path.relpath(path))
+        return
+
     if a.meta:
-        count = 0
-        for n in names:
-            path = os.path.join(OUT, n + ".vox")
-            if os.path.exists(path) and write_metadata(path, n):
-                count += 1
-        print(f"metadata for {count} of {len(names)} tiles")
+        # every .vox on disk, generated or made by hand (not the coarse .lod.vox versions)
+        on_disk = []
+        for folder, _, files in os.walk(OUT):
+            for f in files:
+                if f.endswith(".vox") and not f.endswith(".lod.vox"):
+                    on_disk.append(os.path.relpath(os.path.join(folder, f), OUT)[:-4].replace(os.sep, "/"))
+        if a.only:
+            on_disk = [n for n in on_disk if a.only in n]
+        count = sum(1 for n in sorted(on_disk) if write_metadata(os.path.join(OUT, n + ".vox"), n))
+        print(f"metadata for {count} of {len(on_disk)} tiles ({len(set(on_disk) - set(TILES))} not from the generator)")
         return
 
     made = skipped = 0

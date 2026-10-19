@@ -4,6 +4,9 @@
 		"1": "stone",
 		"2": "stone",
 		"3": "stone",
-		"6": "glass"
+		"6": "glass",
+		"9": "brick",
+		"10": "brick",
+		"11": "brick"
 	}
 }

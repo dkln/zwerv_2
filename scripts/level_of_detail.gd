@@ -59,6 +59,8 @@ var _level := -1
 ## Number of layers still being merged.
 var _busy := 0
 var _screen: CanvasLayer
+var _screen_label: Label
+var _progress := {}   # "<layer><suffix>" -> fraction done (0..1) of every merge job
 
 
 ## Creates the LOD copies of each layer and starts merging (asynchronously).
@@ -82,6 +84,9 @@ func _ready() -> void:
 		_pairs.append(pair)
 		if layer_name in merge_layers:
 			_busy += 1
+			for suffix in LEVEL_SUFFIXES:
+				if ResourceLoader.exists(_library_path(gm, suffix)):
+					_progress[layer_name + suffix] = 0.0
 			_merge(_pairs.size() - 1, layer_name, gm)
 	if _busy > 0 and loading_screen:
 		_create_loading_screen()
@@ -118,7 +123,8 @@ func _lod_copy(gm: GridMap, copy_name: String, lib: MeshLibrary) -> GridMap:
 	return copy
 
 
-## Full-screen "Stad laden…" overlay, faded out by _layer_finished.
+## Full-screen "Stad laden…" overlay with a percentage (_set_progress), faded out by
+## _layer_finished.
 func _create_loading_screen() -> void:
 	_screen = CanvasLayer.new()
 	_screen.layer = 100
@@ -127,6 +133,7 @@ func _create_loading_screen() -> void:
 	panel.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_screen.add_child(panel)
 	var label := Label.new()
+	_screen_label = label
 	label.text = "Stad laden…"
 	label.add_theme_font_size_override("font_size", 28)
 	label.add_theme_color_override("font_color", Color(0.86, 0.9, 0.95))
@@ -135,6 +142,20 @@ func _create_loading_screen() -> void:
 	label.grow_vertical = Control.GROW_DIRECTION_BOTH
 	panel.add_child(label)
 	add_child(_screen)
+	_set_progress("", 0.0)
+
+
+## Records the progress of one merge job (key from _progress) and shows the average
+## of all jobs on the loading screen.
+func _set_progress(key: String, fraction: float) -> void:
+	if key != "":
+		_progress[key] = clampf(fraction, 0.0, 1.0)
+	if _screen_label == null or _progress.is_empty():
+		return
+	var done := 0.0
+	for f in _progress.values():
+		done += f
+	_screen_label.text = "Stad laden… %d%%" % floori(100.0 * done / _progress.size())
 
 
 ## Called when one layer is merged; after the last one emits `merge_finished`
@@ -150,6 +171,7 @@ func _layer_finished() -> void:
 		t.tween_property(panel, "modulate:a", 0.0, 0.6)
 		t.tween_callback(_screen.queue_free)
 		_screen = null
+		_screen_label = null
 
 
 ## Replaces the GridMap rendering of layer `index` (_pairs) with merged meshes for every
@@ -172,21 +194,26 @@ func _merge(index: int, layer_name: String, gm: GridMap) -> void:
 			FileAccess.get_modified_time(path) + Bakker.VERSION]
 		var cache := CACHE_DIR.path_join(key + ".scn")
 		var baked: Node3D
+		var job: String = layer_name + suffix
 		if ResourceLoader.exists(cache):
 			ResourceLoader.load_threaded_request(cache)
-			while ResourceLoader.load_threaded_get_status(cache) == ResourceLoader.THREAD_LOAD_IN_PROGRESS:
+			var loaded := []
+			while ResourceLoader.load_threaded_get_status(cache, loaded) == ResourceLoader.THREAD_LOAD_IN_PROGRESS:
+				_set_progress(job, loaded[0])
 				await get_tree().process_frame
 			var ps := ResourceLoader.load_threaded_get(cache) as PackedScene
 			if ps:
 				baked = ps.instantiate()
 		if baked == null:
-			baked = await Bakker.bake(gm, load(path), layer_name + "_merged" + suffix, layer_name in hide_top_layers)
+			baked = await Bakker.bake(gm, load(path), layer_name + "_merged" + suffix, layer_name in hide_top_layers,
+				func(fraction: float): _set_progress(job, fraction))
 			if not is_inside_tree():
 				return
 			_save(baked, cache)
 		baked.visible = false
 		root.add_child(baked)
 		result.append(baked)
+		_set_progress(job, 1.0)
 	if not is_inside_tree():
 		return
 	var old: Array = _pairs[index]
@@ -251,6 +278,6 @@ func _process(_delta: float) -> void:
 	if attr and depth_of_field:
 		# sharp band around the focus point, as fractions of the camera-ground distance
 		attr.dof_blur_far_distance = distance * 1.1
-		attr.dof_blur_far_transition = distance * 0.47
+		attr.dof_blur_far_transition = distance * 0.4
 		attr.dof_blur_near_distance = distance * 0.83
-		attr.dof_blur_near_transition = distance * 0.37
+		attr.dof_blur_near_transition = distance * 0.3

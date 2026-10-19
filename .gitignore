@@ -25,3 +25,6 @@ assets/libraries/*.res
 
 # De samengevoegde meshes (scripts/layer_baker.gd) staan in user://merged/,
 # buiten het project; die hoeven hier niet genegeerd te worden.
+
+# Screenshots van tools/screenshots.gd (lokaal, niet in git)
+docs/screenshots/

@@ -1,6 +1,10 @@
 {
 	"id": 11,
 	"materials": {
+		"2": "gravel",
+		"3": "gravel",
+		"4": "gravel",
+		"5": "gravel",
 		"7": "metal",
 		"8": "metal",
 		"9": "stone",

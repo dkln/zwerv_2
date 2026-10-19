@@ -17,9 +17,16 @@ const MAT_PANEL := 6
 const MAT_ASPHALT := 7
 ## paving, cobbles, natural stone (only via tile metadata)
 const MAT_STONE := 8
+## brickwork: brick bond with mortar joints in the lighting (only via tile metadata)
+const MAT_BRICK := 9
+## gravel: small round pebbles (only via tile metadata)
+const MAT_GRAVEL := 10
+## painted metal: semi-gloss paint with a slight metallic sheen, e.g. lamp posts and
+## road signs (only via tile metadata)
+const MAT_PAINTED := 11
 
 ## Names of the materials, indexed by MAT_*; used in tile metadata and as surface names.
-const MATERIAL_NAMES := ["opaque", "metal", "glass", "emit", "water", "flag", "panel", "asphalt", "stone"]
+const MATERIAL_NAMES := ["opaque", "metal", "glass", "emit", "water", "flag", "panel", "asphalt", "stone", "brick", "gravel", "painted"]
 
 ## Palette indices treated as water (glass material in MagicaVoxel).
 const WATER_START := 225

@@ -87,6 +87,8 @@ func _get_import_order() -> int:
 	return 0
 
 
+## Not threaded: tried, but GDScript import plugins don't run in parallel in Godot
+## 4.7 (the threads serialise and a full reimport became many times slower).
 func _can_import_threaded() -> bool:
 	return false
 

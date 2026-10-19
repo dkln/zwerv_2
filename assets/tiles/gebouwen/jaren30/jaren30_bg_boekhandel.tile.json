@@ -6,6 +6,10 @@
 		"4": "stone",
 		"5": "glass",
 		"8": "emit",
-		"10": "metal"
+		"10": "metal",
+		"11": "painted",
+		"12": "brick",
+		"13": "brick",
+		"14": "brick"
 	}
 }

@@ -1,3 +1,7 @@
 {
-	"id": 228
+	"id": 228,
+	"materials": {
+		"1": "painted",
+		"2": "painted"
+	}
 }

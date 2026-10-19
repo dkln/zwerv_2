@@ -257,6 +257,12 @@ Rook, water, vlaggen en voxelstructuur
 
 Tiles aanpassen in MagicaVoxel
 ------------------------------
+Uitgebreide, visuele handleiding (modelmaten, palet, materialen, metadata, met alle
+kleuren per paletnummer): `docs/handleiding_magicavoxel.html` (bron:
+`docs/MAGICAVOXEL.md`). Sjablonen met het juiste palet en de materialen staan in
+`tools/voxgen/paletten/` (`palet_straat.vox`, `palet_gebouwen.vox`); opnieuw maken met
+`python3 tools/voxgen/generate.py --palettes`.
+
 Alle tiles staan in `assets/tiles/<categorie>/<groep>/<naam>.vox`.
 1. Open een `.vox` in MagicaVoxel, pas aan, sla op (Ctrl+S).
 2. Ga terug naar Godot: de tile wordt automatisch opnieuw geïmporteerd en de
@@ -379,7 +385,7 @@ Hoe het werkt (techniek)
 - `tools/coverage.gd`: telt welke tiles in de voorbeeldkaart in context staan.
 - `tools/screenshots.gd`: maakt isometrische screenshots van alle gebieden en
   buurten met titel en uitleg in beeld, naar `docs/screenshots/` (met
-  `index.json`).
+  `index.json`; lokaal, staat niet in git).
 - `tools/shot.gd` / `tools/shot_scene.gd` / `tools/shot_iso.gd`: maken
   screenshots van tiles of scenes, ook isometrisch (voor controle).
 
@@ -393,9 +399,10 @@ lucht-ambient, SSAO, glow en een lichte kleur/contrast-correctie. Pas
 Rondleiding, prestaties en uiterlijk
 ------------------------------------
 - `Rondleiding` (`scripts/tour.gd`): stops komen uit
-  `scripts/tour_data.gd` (vaste gebieden + alle demowijken). Instelbaar:
-  `travel_time`, `view_time`, `zoom_in`, `start_at` (standaard "kanaal": de
-  rondleiding begint bij het kanaal).
+  `scripts/tour_data.gd` (vaste gebieden + alle demowijken). Standaard alleen de
+  hoogtepunten (`highlights_only`; de lijst staat in `HIGHLIGHTS`). Instelbaar:
+  `travel_time` (2 s), `view_time` (4 s), `zoom_in`, `start_at` (leeg = bij het
+  begin, het stadsoverzicht).
 - `DetailNiveau` (`scripts/level_of_detail.gd`): schakelt bij het uitzoomen naar
   grove tiles (`coarse_from`, standaard 100 m in beeld) en heel grove tiles
   (`very_coarse_from`, 130 m), verbergt Details (vanaf 120 m) en Props (vanaf

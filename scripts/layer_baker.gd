@@ -34,8 +34,9 @@ const BUDGET_USEC := 6000
 ## Bakes the GridMap `gm`, rendered with `lib` (the normal library or one of its LOD
 ## copies with the same item IDs), into a new Node3D called `name` with the GridMap's
 ## transform. hide_tops: top faces may also be dropped when a solid cell sits on top
-## (for layers whose tiles are as tall as the cell). Coroutine: await it.
-static func bake(gm: GridMap, lib: MeshLibrary, name: String, hide_tops: bool) -> Node3D:
+## (for layers whose tiles are as tall as the cell). progress (optional) is called with
+## the fraction done (0..1) whenever the work pauses for a frame. Coroutine: await it.
+static func bake(gm: GridMap, lib: MeshLibrary, name: String, hide_tops: bool, progress := Callable()) -> Node3D:
 	var out := Node3D.new()
 	out.name = name
 	out.transform = gm.transform
@@ -46,9 +47,13 @@ static func bake(gm: GridMap, lib: MeshLibrary, name: String, hide_tops: bool) -
 	var basis_cache := {}  # orthogonal index -> Basis
 	var start := Time.get_ticks_usec()
 	var counter := 0
-	for c: Vector3i in gm.get_used_cells():
+	var cells := gm.get_used_cells()
+	for c: Vector3i in cells:
 		counter += 1
 		if counter % 64 == 0 and Time.get_ticks_usec() - start > BUDGET_USEC:
+			# collecting the cells is most of the work; building the chunks the last 10%
+			if progress.is_valid():
+				progress.call(0.9 * counter / cells.size())
 			await Engine.get_main_loop().process_frame
 			start = Time.get_ticks_usec()
 		var id := gm.get_cell_item(c)
@@ -107,7 +112,9 @@ static func bake(gm: GridMap, lib: MeshLibrary, name: String, hide_tops: bool) -
 				target[1].append_array(rot * gr[1])
 				target[2].append_array(gr[2])
 	# build one mesh per chunk, one surface per material
+	var built := 0
 	for key in chunks:
+		built += 1
 		var chunk: Dictionary = chunks[key]
 		var mesh := ArrayMesh.new()
 		for mat in chunk:
@@ -124,6 +131,8 @@ static func bake(gm: GridMap, lib: MeshLibrary, name: String, hide_tops: bool) -
 		if mesh.get_surface_count() == 0:
 			continue
 		if Time.get_ticks_usec() - start > BUDGET_USEC:
+			if progress.is_valid():
+				progress.call(0.9 + 0.1 * built / chunks.size())
 			await Engine.get_main_loop().process_frame
 			start = Time.get_ticks_usec()
 		var mi := MeshInstance3D.new()

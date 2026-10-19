@@ -25,6 +25,9 @@ const MATERIAL_PATHS := [
 	"res://addons/vox_tiles/materials/voxel_paneel.tres",
 	"res://addons/vox_tiles/materials/voxel_asfalt.tres",
 	"res://addons/vox_tiles/materials/voxel_steen.tres",
+	"res://addons/vox_tiles/materials/voxel_baksteen.tres",
+	"res://addons/vox_tiles/materials/voxel_grind.tres",
+	"res://addons/vox_tiles/materials/voxel_gelakt.tres",
 ]
 
 const WIND_MATERIAL := "res://addons/vox_tiles/materials/voxel_wind.tres"

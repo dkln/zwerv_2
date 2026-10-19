@@ -2,6 +2,8 @@
 	"id": 263,
 	"materials": {
 		"1": "metal",
-		"2": "metal"
+		"2": "metal",
+		"4": "painted",
+		"5": "painted"
 	}
 }
