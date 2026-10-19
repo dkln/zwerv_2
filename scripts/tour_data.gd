@@ -69,6 +69,7 @@ const DISTRICT_TEXT := {
 	"kruispunten": ["Kruispunten en stoephoeken", "Verkeerseilanden, rotonde, middengeleider en alle buiten- en binnenhoeken van stoepen (ook met goot, klinkers en kade)."],
 	"lussen": ["Fiets-, tram- en spoorlussen", "Lussen met bochten, T-splitsingen, kruisingen en eindstukken; spoor met wissel, overweg, perron en grote bochten."],
 	"dijk": ["Dijk met hellingen en heuvels", "Elke helling als oprit naar een dijk, flauwe hellingen in twee delen, en heuvels van gras, zand en grind."],
+	"hellingen_bochten": ["Hellingen en bochten", "Een autotunnel die onder de grond een bocht van 90 graden maakt, met toeritten aan beide kanten en straten over het overdekte deel."],
 	"tunnelpark": ["Tunnelpark", "Autotunnel met toerit, open bak en weg erboven; een verdiepte weg die trapsgewijs dieper gaat; onderdoorgangen en een fietstunnel."],
 	"kanaal": ["Kanaal met bruggen", "Alle brugdekken, bakstenen boogbruggen, ophaalbrug, voetbrug, stalen boogbrug, tuibrug, viaduct op pijlers en een loopbrug."],
 	"natuurpark": ["Natuur- en recreatiepark", "Vijver met alle oever- en waterkanttypes, sloot met duiker, terrastuin met trappen, pleinmozaïek en een buitenzwembad."],

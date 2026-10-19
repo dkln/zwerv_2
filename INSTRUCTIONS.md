@@ -303,8 +303,12 @@ MagicaVoxel niet kent:
 
 Nieuwe tile toevoegen: zet een nieuw `.vox` bestand in de juiste map onder
 `assets/tiles/`. Hij verschijnt vanzelf in het palet van de juiste GridMap.
-Bestaande item-ID's blijven gelijk, dus je kaarten breken niet. Daarom moet je
-`assets/libraries/*.res` ook in git houden (zie `.gitignore`).
+Bestaande item-ID's blijven gelijk, dus je kaarten breken niet: de ID van elke tile
+staat in zijn `.tile.json`. De bibliotheken (`assets/libraries/*.res`) staan daarom
+niet in git; ze worden gemaakt uit de `.vox`- en `.tile.json`-bestanden, door de
+plugin bij het openen van de editor of met
+`Godot --headless --script tools/build_libraries.gd`. Het register
+`assets/libraries/<categorie>_ids.json` (naam -> ID) staat wel in git, als overzicht.
 
 
 Tiles (opnieuw) genereren
@@ -390,45 +394,45 @@ Rondleiding, prestaties en uiterlijk
 ------------------------------------
 - `Rondleiding` (`scripts/tour.gd`): stops komen uit
   `scripts/tour_data.gd` (vaste gebieden + alle demowijken). Instelbaar:
-  `reistijd`, `kijktijd`, `inzoomen`, `begin_bij` (standaard "kanaal": de
+  `travel_time`, `view_time`, `zoom_in`, `start_at` (standaard "kanaal": de
   rondleiding begint bij het kanaal).
 - `DetailNiveau` (`scripts/level_of_detail.gd`): schakelt bij het uitzoomen naar
-  grove tiles (`grof_vanaf`, standaard 100 m in beeld) en heel grove tiles
-  (`heel_grof_vanaf`, 130 m), verbergt Details (vanaf 120 m) en Props (vanaf
+  grove tiles (`coarse_from`, standaard 100 m in beeld) en heel grove tiles
+  (`very_coarse_from`, 130 m), verbergt Details (vanaf 120 m) en Props (vanaf
   300 m) en past de schaduwafstand aan het zoomniveau aan. De grove versies
   maakt de importer zelf: gelijkende kleuren samengevoegd (`lod`) en blokjes
   van 2x2x2 voxels (`lod2`). De grove bibliotheken (`*_lod.res`, `*_lod2.res`)
   worden automatisch gemaakt en staan in `.gitignore`.
 - Ook het volle detailniveau voegt bijna gelijke kleuren samen (import-optie
-  `kleur_samenvoegen`, standaard 14) voor minder driehoeken; de fijne korrel
+  `color_merge`, standaard 14) voor minder driehoeken; de fijne korrel
   komt uit de shader (`voxel_ruis`). Gras en boomkruinen hebben hun detail in de
   kleur van de voxels, niet in uitstekende voxels.
 - Schaduwen: vlakke tiles (lager dan 0,7 m) en kleine details werpen geen
   schaduw; de zon gebruikt 4 schaduwsplits (4096 px).
-- Rendering (`project.godot`): FSR 2 op 77% (met eigen temporele anti-aliasing; MSAA/FXAA uit), debanding,
+- Rendering (`project.godot`): 77% render-resolutie met temporele upscaling en anti-aliasing: MetalFX op macOS, FSR 2 elders (MSAA/FXAA uit), debanding,
   depth prepass uit; GridMaps gebruiken octant-grootte 4 (snelst gemeten).
 - Samenvoegen (`scripts/layer_baker.gd`, aangestuurd door `DetailNiveau`, export
-  `bakken`): bij het starten worden de lagen Gebouwen en Grond samengevoegd tot
+  `merge_layers`): bij het starten worden de lagen Gebouwen en Grond samengevoegd tot
   grote meshes (chunks van 8x8 cellen, per LOD-niveau). Zijden die tegen een
   dichte buurcel liggen en alle onderkanten vallen daarbij weg. De importer
-  groepeert de driehoeken daarvoor per celzijde (import-optie `blok`: 4x3x4 voor
-  gebouwen, 4x1,5x4 voor grond). Tot het samenvoegen klaar is, zie je de gewone
-  GridMaps; het resultaat wordt bewaard in `user://samengevoegd/`, zodat de
+  groepeert de driehoeken daarvoor per celzijde (import-optie `cell_block`: 4x3x4 voor
+  gebouwen, 4x1,5x4 voor grond). Tot het samenvoegen klaar is, staat er een laadscherm
+  (export `loading_screen`) en wacht de rondleiding; het resultaat wordt bewaard in `user://merged/`, zodat de
   volgende start direct klaar is (zolang de kaart en de tiles niet veranderen).
   Je bewerkt gewoon de GridMaps; botsingen blijven daar ook. Tiles met een vlag
   blijven losse meshes (de vlag-shader rekent in lokale coördinaten).
-- `Dagcyclus` (`scripts/day_cycle.gd`): basis voor dag en nacht (`tijd`,
-  `snelheid`). De zon komt schuin van opzij (oost tot zuidoost, gezien vanuit de
+- `Dagcyclus` (`scripts/day_cycle.gd`): basis voor dag en nacht (`time_of_day`,
+  `speed`). De zon komt schuin van opzij (oost tot zuidoost, gezien vanuit de
   isometrische camera), zodat de schaduwen in beeld vallen en de gevels licht
-  houden, en blijft tussen `min_hoogte` (36°) en `max_hoogte` (44°) hoog: geen
+  houden, en blijft tussen `min_elevation` (36°) en `max_elevation` (44°) hoog: geen
   lange schaduwen. Alle licht is realtime.
 - Bomen en planten bewegen in de wind (`materials/voxel_wind.tres`:
   `wind_sterkte`, `wind_snelheid`, `wind_hoogte`); de importer kiest dit
   materiaal automatisch voor `props/bomen`, `props/planten`, hagen, bloembakken
-  en riet (import-optie `wind`). Tiles met wind (of een vlag) worden niet
+  en riet (metadata `"animation": "wind"`, of import-optie `animation`). Tiles met wind (of een vlag) worden niet
   samengevoegd, omdat die shaders in lokale coördinaten rekenen.
 - Scherptediepte (tilt-shift): Camera > Attributes; DetailNiveau schaalt de
-  afstanden mee met de afstand tot de grond (export `scherptediepte`).
+  afstanden mee met de afstand tot de grond (export `depth_of_field`).
 - Lettertype: Rubik (`assets/fonts/Rubik.ttf`, OFL-licentie), ingesteld als
   projectfont.
 - Meten: `Godot --script tools/fps_test.gd -- 20 tour` of

@@ -18,14 +18,10 @@ Thumbs.db
 .vscode/
 .idea/
 
-# Grove LOD-bibliotheken worden automatisch opnieuw gemaakt (zelfde item-ID's als de gewone).
-assets/libraries/*_lod.res
-assets/libraries/*_lod2.res
+# MeshLibraries (alle lagen en LOD-niveaus) worden gemaakt uit assets/tiles/**/*.vox en
+# *.tile.json door de editor-plugin (bij het openen) of tools/build_libraries.gd. De item-ID's
+# staan vast in de .tile.json van elke tile, dus opnieuw opbouwen geeft dezelfde ID's.
+assets/libraries/*.res
 
-# Let op: de overige assets/libraries/*.res NIET negeren. De kaarten verwijzen naar de
-# item-ID's in die bibliotheken; opnieuw opbouwen vanaf nul kan andere ID's geven.
-# Gebruik eventueel Git LFS voor *.res en *.vox:
-#   git lfs track "*.res" "*.vox"
-
-# De samengevoegde meshes (scripts/bakker.gd) staan in user://samengevoegd/,
+# De samengevoegde meshes (scripts/layer_baker.gd) staan in user://merged/,
 # buiten het project; die hoeven hier niet genegeerd te worden.

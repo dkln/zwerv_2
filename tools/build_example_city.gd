@@ -2373,6 +2373,7 @@ func _demo_districts(z0: int) -> int:
 	_loops_and_rail()
 	_dike_with_ramps()
 	_tunnel_park()
+	_slopes_and_curves()
 	_canal_with_bridges()
 	_nature_park()
 	_rest_in_context()
@@ -3802,6 +3803,64 @@ func _tint_demo() -> void:
 					B(x, v, z, "klassiek_geel/klassiek_geel_" + ("bg_raam" if v == 0 else "verd_raam"), sides[0] if sides.size() > 0 else "S")
 			B(x, 3, z, "klassiek_geel/klassiek_geel_dak_plat_midden", "S")
 	_tint_area(Vector3(bx * 4 + 4.0, 0, (o.y + 4) * 4.0), Color(0.7, 0.85, 1.15), Vector2i(2, 4), 1.0, "Tint_blok_inclusief_grond")
+
+
+# ------------------------------------------------------------------ slopes and curves
+
+## 3-lane tunnel cross-section, from the "wand" side to the "wand_rechts" side.
+const TUNNEL_LANES := ["%s_wand%s", "%s%s", "%s_wand_rechts%s"]
+
+
+## District with curves that change height: a tunnel with a bend in it (more to follow).
+func _slopes_and_curves() -> void:
+	_district_name = "hellingen_bochten"
+	var o := _district(24, 24)
+	_tunnel_with_bend(o.x + 15, o.y + 7, o)
+
+
+## Car tunnel on floor -6 that turns 90 degrees underground (tunnel/bocht_<i>_<j>, a 4x4
+## curve whose centre is the south-west corner of tile (hx, hz)). Legs to the south and
+## to the west, each: 3 covered tiles, portal, open trough, 6-step ramp, road to the
+## district edge. Streets cross both covered legs on street level.
+func _tunnel_with_bend(hx: int, hz: int, o: Vector2i) -> void:
+	for i in 4:
+		for j in 4:
+			if i < 3 or j < 3:
+				G(hx + i, hz - j, "tunnel/bocht_%d_%d" % [i, j], 0, -6)
+	# south leg: lane d at x = hx+1+d; leaving the tunnel heading south
+	_tunnel_leg(func(r, d): return Vector2i(hx + 1 + d, hz + r), 0, o.y + 24 - hz)
+	# west leg: lane d at z = hz-1-d; leaving the tunnel heading west
+	_tunnel_leg(func(r, d): return Vector2i(hx - r, hz - 1 - d), 1, hx - o.x + 1)
+	# streets over the covered parts
+	for x in range(hx - 3, o.x + 24):
+		G(x, hz + 2, "weg/weg_vlak", "E")
+	for z in range(o.y, hz + 2):
+		G(hx - 2, z, "weg/weg_vlak", "S")
+
+
+## One leg of a tunnel, counted outwards from the bend: r = 1..3 covered tunnel, then the
+## portal, 2 trough tiles and a ramp of 6 steps up, then flat road until r = length - 1.
+## cell(r, d) gives the tile of lane d at distance r. rot = rotation of the straight
+## tunnel tiles in this leg (as in the curve guide, tools/voxgen/ground4.py). The
+## portal, trough and ramp face into the tunnel: for the south leg (rot 0) that is the
+## opposite way, so they turn 180 degrees and their lanes swap sides.
+func _tunnel_leg(cell: Callable, rot: int, length: int) -> void:
+	var into := rot if rot % 2 == 1 else (rot + 2) % 4
+	for r in range(1, length):
+		for d in 3:
+			var c: Vector2i = cell.call(r, d)
+			var lane: String = TUNNEL_LANES[d if into == rot else 2 - d]
+			if r <= 3:
+				G(c.x, c.y, TUNNEL_LANES[d] % ["tunnel/tunnel_rijstrook", ""], rot, -6)
+			elif r == 4:
+				G(c.x, c.y, lane % ["tunnel/tunnel_rijstrook", "_portaal"], into, -6)
+			elif r <= 6:
+				_trench(c.x, c.y, lane % ["tunnel/tunnelbak_rijstrook", "_d6"], 6, into)
+			elif r <= 12:
+				var depth := 13 - r
+				_trench(c.x, c.y, lane % ["tunnel/tunnel_toerit", "_d%d" % depth], depth, into)
+			else:
+				G(c.x, c.y, "weg/weg_vlak", into)
 
 
 # ------------------------------------------------------------------ rounded curves: streets that turn the corner
