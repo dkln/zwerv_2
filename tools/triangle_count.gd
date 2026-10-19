@@ -4,10 +4,12 @@ extends SceneTree
 ## the importer stores on each tile mesh.
 ## usage: Godot --headless --script tools/triangle_count.gd
 
+const Common = preload("res://tools/tool_common.gd")
 const LIBRARIES := ["grond", "gebouwen", "props", "details"]
 
 
 func _init() -> void:
+	Common.watchdog(self)
 	for cat in LIBRARIES:
 		var lib: MeshLibrary = load("res://assets/libraries/%s.res" % cat)
 		var tot := [0, 0, 0]

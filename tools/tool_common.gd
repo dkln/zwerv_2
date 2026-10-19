@@ -10,6 +10,14 @@ const WORLD := "res://scenes/wereld.tscn"
 const LAYERS := ["Grond", "Gebouwen", "Details", "Props"]
 
 
+## Quits the tool after `seconds`, whatever happens: a script error stops a tool before
+## its quit(), which would leave Godot running forever. Call it first in _init.
+static func watchdog(tree: SceneTree, seconds := 600.0) -> void:
+	tree.create_timer(seconds, true, false, true).timeout.connect(func() -> void:
+		push_error("watchdog: tool still running after %d s, quitting" % seconds)
+		tree.quit(1))
+
+
 ## User argument `i` (after "--") as a string, or `default` if missing.
 static func arg(i: int, default := "") -> String:
 	var a := OS.get_cmdline_user_args()

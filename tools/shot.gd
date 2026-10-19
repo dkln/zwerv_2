@@ -9,6 +9,7 @@ const Builder = preload("res://addons/vox_tiles/library_builder.gd")
 
 
 func _init() -> void:
+	Common.watchdog(self)
 	var dir := Common.arg(0, "res://assets/tiles/grond")
 	var out := Common.arg(1, "/tmp/shot.png")
 	var cols := int(Common.arg_float(2, 14))

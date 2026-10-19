@@ -13,6 +13,9 @@ const Slopes = preload("res://addons/vox_tiles/slopes.gd")
 const TILE_ROOT := "res://assets/tiles"
 const LIB_ROOT := "res://assets/libraries"
 const PREVIEW_SIZE := 96
+## Rendered previews, kept on disk per tile and import time stamp, so a library that is
+## rebuilt (or rebuilt from scratch) gets its previews back without rendering them again.
+const PREVIEW_CACHE := "res://.godot/vox_tiles_previews"
 
 ## collision: "trimesh" (exact shape), "box" (bounding box), "none",
 ## "auto" (buildings: solid blocks get a 4x3x4 m box, hollow/walkable tiles an exact shape)
@@ -110,6 +113,7 @@ static func build_category(cat: String, changed: Dictionary, previews: bool, for
 	var seen := {}
 	var dirty := false
 	var need_preview: Array[int] = []
+	var stamp_of := {}   # item id -> import time stamp of its source (for the preview cache)
 	var sources := {}   # item id -> imported mesh (before the atlas copy)
 	# [item name, .vox path, mesh, own tile?]: every tile, then the slope variants
 	# its import made (they have no metadata of their own; ids from the registry)
@@ -170,13 +174,14 @@ static func build_category(cat: String, changed: Dictionary, previews: bool, for
 		# time stamp of the .import file, which is written on every import
 		var stamp := FileAccess.get_modified_time(path + ".import")
 		mesh.set_meta("source_stamp", stamp)
+		stamp_of[id] = stamp
 		var current := lib.get_item_mesh(id)
 		if force or is_new or changed.has(path) or current == null or current.get_meta("source_stamp", -1) != stamp:
 			lib.set_item_shapes(id, _shapes(mesh, cfg.collision, key))
 			_set_shadow(lib, id, mesh)
 			dirty = true
 			need_preview.append(id)
-		elif previews and lib.get_item_preview(id) == null:
+		elif lib.get_item_preview(id) == null:
 			need_preview.append(id)
 	# alias tiles: an item of their own (name, id) that shares the mesh of their tile
 	var aliases := {}   # alias item id -> item id of the tile it points to
@@ -237,14 +242,24 @@ static func build_category(cat: String, changed: Dictionary, previews: bool, for
 			lib.set_item_shapes(id, _shapes(sources[target_id], cfg.collision, lib.get_item_name(id)))
 			_set_shadow(lib, id, sources[target_id])
 			dirty = true
-	if previews and need_preview.size() > 0 and Engine.is_editor_hint():
+	# previews: from the cache where possible, the rest rendered (editor only) and cached
+	var render: Array[int] = []
+	for id in need_preview:
+		var cached := _cached_preview(cat, lib.get_item_name(id), stamp_of.get(id, 0))
+		if cached:
+			lib.set_item_preview(id, cached)
+			dirty = true
+		else:
+			render.append(id)
+	if previews and render.size() > 0 and Engine.is_editor_hint():
 		var meshes: Array[Mesh] = []
-		for id in need_preview:
+		for id in render:
 			meshes.append(lib.get_item_mesh(id))
 		var tex: Array = EditorInterface.make_mesh_previews(meshes, PREVIEW_SIZE)
-		for i in need_preview.size():
+		for i in render.size():
 			if i < tex.size() and tex[i] != null:
-				lib.set_item_preview(need_preview[i], tex[i])
+				lib.set_item_preview(render[i], tex[i])
+				_cache_preview(cat, lib.get_item_name(render[i]), stamp_of.get(render[i], 0), tex[i])
 		dirty = true
 	for id in aliases:
 		var preview := lib.get_item_preview(aliases[id])
@@ -261,6 +276,47 @@ static func build_category(cat: String, changed: Dictionary, previews: bool, for
 		else:
 			print("Vox Tiles: library '%s' updated (%d items)" % [cat, lib.get_item_list().size()])
 	return dirty
+
+
+## File of the cached preview of item `key` of a category for an import time stamp.
+static func _preview_file(cat: String, key: String, stamp: int) -> String:
+	return PREVIEW_CACHE.path_join(cat).path_join("%s_%d.png" % [key.replace("/", "__"), stamp])
+
+
+## The cached preview of an item, or null.
+static func _cached_preview(cat: String, key: String, stamp: int) -> Texture2D:
+	var path := _preview_file(cat, key, stamp)
+	if not FileAccess.file_exists(path):
+		return null
+	var img := Image.load_from_file(path)
+	if img == null or is_blank(img):
+		return null   # an empty render does not count
+	return ImageTexture.create_from_image(img)
+
+
+## True if a rendered preview shows nothing: transparent, or (nearly) every pixel the
+## colour of the background (a thin pole still covers more than 0.5 % of the pixels).
+static func is_blank(img: Image) -> bool:
+	if img.is_invisible():
+		return true
+	var grey := img.duplicate() as Image
+	grey.convert(Image.FORMAT_L8)
+	var data := grey.get_data()
+	return data.is_empty() or data.count(data[0]) >= data.size() * 0.995
+
+
+## Stores a rendered preview in the cache, replacing those of older imports of the item.
+static func _cache_preview(cat: String, key: String, stamp: int, tex: Texture2D) -> void:
+	var dir := PREVIEW_CACHE.path_join(cat)
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(dir))
+	var prefix := key.replace("/", "__") + "_"
+	for f in DirAccess.get_files_at(dir):
+		var rest := f.trim_prefix(prefix).trim_suffix(".png")
+		if f.begins_with(prefix) and rest.is_valid_int():
+			DirAccess.remove_absolute(ProjectSettings.globalize_path(dir.path_join(f)))
+	var img := tex.get_image()
+	if img:
+		img.save_png(_preview_file(cat, key, stamp))
 
 
 ## The id from the tile metadata, or -1 if there is none or it is already taken.

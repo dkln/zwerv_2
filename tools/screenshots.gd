@@ -10,6 +10,7 @@ const OUT_DIR := "res://docs/screenshots"
 
 
 func _init() -> void:
+	Common.watchdog(self, 1800.0)
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(OUT_DIR))
 	var sc := Common.instantiate(Common.WORLD)
 	get_root().add_child(sc)

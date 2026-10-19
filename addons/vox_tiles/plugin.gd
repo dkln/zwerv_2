@@ -7,6 +7,10 @@ extends EditorPlugin
 ## affected libraries (library_builder.gd). Saving a side file (.tile.json or
 ## .lod.vox, see tile_metadata.gd) triggers a reimport of its tile first.
 ##
+## In the editor the voxel shaders run in a light "editor view" (global shader parameter
+## zwervr_editor, see materials/voxel_editor.gdshaderinc): no costly detail or animation,
+## and lines on the 4 m tile borders. Project > Tools > MENU_EDITOR_VIEW switches it.
+##
 ## It also adds the "Build" dock (build_tools.gd): layer switching, floor height,
 ## hiding other layers and stamps; the 3D view hooks below forward to it.
 
@@ -15,6 +19,8 @@ const TileMetadata = preload("res://addons/vox_tiles/tile_metadata.gd")
 const Importer = preload("res://addons/vox_tiles/vox_import_plugin.gd")
 const BuildTools = preload("res://addons/vox_tiles/build_tools.gd")
 const MENU_REBUILD := "Vox Tiles: rebuild all libraries"
+const MENU_EDITOR_VIEW := "Vox Tiles: editor view (light shaders, tile borders) on/off"
+const EDITOR_VIEW_SETTING := "vox_tiles/editor_view"
 
 var _importer: EditorImportPlugin
 var _build: BuildTools
@@ -28,6 +34,8 @@ func _enter_tree() -> void:
 	_importer = Importer.new()
 	add_import_plugin(_importer)
 	add_tool_menu_item(MENU_REBUILD, _rebuild_all)
+	add_tool_menu_item(MENU_EDITOR_VIEW, _toggle_editor_view)
+	_apply_editor_view()
 	_timer = Timer.new()
 	_timer.one_shot = true
 	_timer.wait_time = 1.0
@@ -54,6 +62,8 @@ func _exit_tree() -> void:
 	_build.dock.queue_free()
 	_build = null
 	remove_tool_menu_item(MENU_REBUILD)
+	remove_tool_menu_item(MENU_EDITOR_VIEW)
+	RenderingServer.global_shader_parameter_set("zwervr_editor", 0.0)
 	remove_import_plugin(_importer)
 	_importer = null
 
@@ -114,6 +124,22 @@ func _tiles_with_newer_side_files() -> PackedStringArray:
 			_meta_handled[vox] = t   # at most once per save, even if the import fails
 			out.append(vox)
 	return out
+
+
+## The editor view is on unless switched off (remembered in the editor settings).
+func _editor_view_on() -> bool:
+	var es := EditorInterface.get_editor_settings()
+	return not es.has_setting(EDITOR_VIEW_SETTING) or bool(es.get_setting(EDITOR_VIEW_SETTING))
+
+
+func _apply_editor_view() -> void:
+	RenderingServer.global_shader_parameter_set("zwervr_editor", 1.0 if _editor_view_on() else 0.0)
+
+
+## Tool menu: switches the editor view on or off.
+func _toggle_editor_view() -> void:
+	EditorInterface.get_editor_settings().set_setting(EDITOR_VIEW_SETTING, not _editor_view_on())
+	_apply_editor_view()
 
 
 ## Tool menu: rebuilds every library from scratch (including previews).

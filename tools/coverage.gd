@@ -8,6 +8,7 @@ const Common = preload("res://tools/tool_common.gd")
 
 
 func _init() -> void:
+	Common.watchdog(self)
 	var sc: Node = load(Common.WORLD).instantiate()
 	var limit: float = sc.get_meta("catalog_start_m", 400.0)
 	var total := 0

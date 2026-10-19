@@ -47,12 +47,19 @@ extends SceneTree
 ## the Wereld root. When a row is complete (_finish_row) it gets 2-lane streets around
 ## and between its districts (shared with the neighbours), city blocks (_filler_block)
 ## fill the space under shallower districts and at the end of the row, and buildings
-## line the streets wherever a district leaves its edge free (_line_streets). There is one district per building style
-## found in the buildings library ("stijl:<style>"), one per roof material ("dak:<kind>"),
-## a set of fixed situations (traffic garden, intersections, tunnels, canal, ...) and a
-## final "rest" district for any tile that is still unused. The "catalog_start_m"
-## metadata is the z in metres just below the demo districts.
+## line the streets wherever a district leaves its edge free (_line_streets). The streets
+## are dressed with every road marking (_dress_streets: stop lines, give-way teeth, zebra
+## crossings, arrows, cycle lanes, one-way streets with parking, a tram street, two
+## signalised intersections), divided avenues with roundabouts join the campus road
+## (_connect_to_town) and every pavement takes the kerb shape of its corner (_auto_kerbs).
+## There is one district per building style found in the buildings library
+## ("stijl:<style>", the second row of buildings along a woonerf), one per roof material
+## ("dak:<kind>"), and fixed situations (sports complex, residential loops, tint street,
+## canal ring, river dike, tunnels, flyovers, nature park, ...). Every tile of the
+## libraries must stand somewhere in the town: the build warns about any that doesn't.
+## The "catalog_start_m" metadata is the z in metres just below the demo districts.
 
+const Common = preload("res://tools/tool_common.gd")
 const LIB := "res://assets/libraries/%s.res"
 const SlopesLib = preload("res://addons/vox_tiles/slopes.gd")
 const VoxLib = preload("res://addons/vox_tiles/vox_parser.gd")
@@ -77,6 +84,7 @@ var _taken := {}    # cells (x,z) holding something other than plain grass or pa
 ## Entry point: builds and saves both scenes, then quits. Prints tiles that are
 ## referenced but missing from the libraries.
 func _init() -> void:
+	Common.watchdog(self)
 	var world := _make_scene("Wereld")
 	_build_town()
 	_own_tints(world)
@@ -1979,6 +1987,77 @@ func _motorway_junction() -> void:
 	Pr(44 * 4 + 2, 70 * 4 + 3, "borden/bord_autosnelweg", "E")
 
 
+## Gallery flat (galerijflat) beside the motorway, x 31..42: a storage plinth and 10
+## floors of flats, two wings with a kink (the east wing one tile further north),
+## galleries on the motorway side, balconies at the back, a stairwell with a lift
+## housing at the west end and at the kink, entrances onto a car park reached from the
+## junction road (x 45..46), allotments behind it.
+const FLAT_FLOORS := 10
+
+
+func _gallery_flat() -> void:
+	var p := "galerijflat/galerijflat_"
+	var cells := []
+	for x in range(31, 37):
+		cells.append(Vector2i(x, 66))
+		cells.append(Vector2i(x, 67))
+	for x in range(37, 43):
+		cells.append(Vector2i(x, 65))
+		cells.append(Vector2i(x, 66))
+	var stairs := [Vector2i(31, 67), Vector2i(37, 66)]   # gallery-side cells with the stairwell
+	var entrances := [Vector2i(33, 67), Vector2i(39, 66), Vector2i(41, 66)]
+	for c in cells:
+		var sides := _open_sides(c, cells)
+		# the main facade: gallery south, balconies north, else the gable end
+		var main: String = "S" if sides.has("S") else ("N" if sides.has("N") else sides[0])
+		var key := _corner_pair(sides, main)
+		var corner: bool = sides.size() == 2 and key != "" and CORNER.has(key) and key[0] == main
+		for y in FLAT_FLOORS + 1:
+			var piece := ""
+			if y == 0:
+				piece = "bg_entree" if c in entrances else "bg_bergingen"
+			elif c in stairs:
+				piece = "verd_trappenhuis"
+			elif main == "S":
+				piece = "verd_galerij"
+			elif main == "N":
+				piece = "verd_balkons"
+			else:
+				piece = "verd_kopgevel"
+			if corner and piece in ["bg_entree", "bg_bergingen", "verd_galerij", "verd_balkons"]:
+				B(c.x, y, c.y, p + piece + "_hoek", CORNER[key])
+			else:
+				B(c.x, y, c.y, p + piece, main)
+	# flat roof (gravel) with lift housings over the stairwells
+	var kit := _style_kit("galerijflat")
+	var kinds := {}
+	for k in kit.flat:
+		kinds[k] = kit.flat[k].filter(func(nm): return nm.begins_with("dak_grind"))
+	_flat_roofs(cells, "galerijflat", FLAT_FLOORS + 1, kinds, {})
+	for c in stairs:
+		B(c.x, FLAT_FLOORS + 1, c.y, p + "dak_liftopbouw", "S")
+	# pavement along the galleries, car park in front, reached from the junction road
+	for x in range(37, 43):
+		G(x, 67, "stoep/stoep_rand", "S")
+	for x in range(31, 45):
+		G(x, 68, "parkeren/parkeerplaats_rijbaan", "E")
+		G(x, 69, "parkeren/parkeervak_haaks" if x % 5 else "parkeren/parkeervak_laadpaal", "N")
+	G(43, 68, "water/duiker", "E")
+	G(43, 69, "natuur/gras")
+	G(44, 69, "natuur/gras")
+	for x in [45, 46]:
+		G(x, 68, "weg/kruising_vlak")
+	for x in [35, 40]:
+		Pr(x * 4.0, 69 * 4 + 0.5, "paaltjes/laadpaal", "N")
+	Pr(32 * 4 + 2, 68 * 4 - 1, "straat/afvalcontainer_ondergronds")
+	Pr(38 * 4 + 2, 67 * 4 + 2, "fietsen/fietsenrek_vol", "S")
+	Pr(42 * 4 + 2, 67 * 4 + 2, "verlichting/lantaarn_modern", "S")
+	Pr(34 * 4 + 2, 68 * 4 - 1, "verlichting/lantaarn_modern", "S")
+	# trees in the heath on the balcony side
+	for x in [38, 41]:
+		Pr(x * 4 + 2, 64 * 4 + 2, "bomen/populier")
+
+
 ## Farm with barns, fields, a ditch with culvert, woods, hills, commercial buildings
 ## and a castle tower (x 31..58, z 55..71).
 func _farm_and_businesses() -> void:
@@ -1991,9 +2070,10 @@ func _farm_and_businesses() -> void:
 	fill_rect(33, 61, 41, 62, "natuur/grind")
 	# farm track to the motorway junction road (x 45..46, see _motorway_junction)
 	fill_rect(33, 63, 47, 63, "natuur/grind")
-	fill_rect(31, 64, 37, 69, "natuur/moestuin")
-	fill_rect(38, 64, 42, 69, "natuur/heide")
-	column(43, 56, 69, "water/sloot")
+	# allotments and heath behind the gallery flat (_gallery_flat)
+	fill_rect(31, 64, 36, 64, "natuur/moestuin")
+	fill_rect(37, 64, 42, 64, "natuur/heide")
+	column(43, 56, 67, "water/sloot")
 	G(43, 63, "water/duiker")
 	fill_rect(44, 56, 50, 62, "natuur/bos")
 	for i in 6:
@@ -2018,7 +2098,7 @@ func _farm_and_businesses() -> void:
 	Pr(53 * 4, 60 * 4 + 2, "trappen/brandtrap", "S")
 	Pr(57 * 4, 56 * 4 + 1, "trappen/trap_staal_spiraal")
 	# castle tower with battlements
-	tower(32, 66, "klassiek_donker", ["blok_dicht", "verd_raam", "verd_dicht", "dak_kantelen_toren"])
+	tower(31, 61, "klassiek_donker", ["blok_dicht", "verd_raam", "verd_dicht", "dak_kantelen_toren"])
 
 
 ## Southeast x 63..95, z 55..71: boulevard with central tram stop, a road with median
@@ -2128,7 +2208,8 @@ func _motorway_and_tunnel() -> void:
 		G(x, 73, "snelweg/snelweg_vluchtstrook", "E")
 		G(x, 74, "weg/weg_vlak", "E")
 		G(x, 75, "snelweg/snelweg_rijstrook_links", "E")
-		G(x, 76, "snelweg/snelweg_middenberm_beton", "E")
+		# grass central reservation in the west, concrete barrier where the junction is
+		G(x, 76, "snelweg/snelweg_middenberm" if x < 30 else "snelweg/snelweg_middenberm_beton", "E")
 		G(x, 77, "snelweg/snelweg_rijstrook_links", "W")
 		G(x, 78, "weg/weg_vlak", "W")
 		G(x, 79, "snelweg/snelweg_vluchtstrook", "W")
@@ -2139,7 +2220,15 @@ func _motorway_and_tunnel() -> void:
 	Pr(30 * 4, 74 * 4 + 2, "borden/snelweg_portaal", "E")
 	Pr(70 * 4, 78 * 4 + 2, "borden/snelweg_portaal", "W")
 	Pr(12 * 4, 72 * 4 + 2, "borden/bord_autosnelweg", "N")
+	# eastbound: the hard shoulder becomes a deceleration lane (block marking) at x 86..92,
+	# the exit leaves in row 80 behind a hatched gore at x 93..95 (towards an exit east of the map)
+	for x in range(86, 93):
+		G(x, 79, "snelweg/snelweg_blokmarkering", "W")
+	for x in range(93, W):
+		G(x, 79, "snelweg/snelweg_puntstuk", "W")
+		G(x, 80, "snelweg/snelweg_aansluiting", "E")
 	_motorway_junction()
+	_gallery_flat()
 	# Cross Street 2 continues to the tunnel: z 55..59 normal, ramp 60..65, open trough 66..71, tunnel 72..79.
 	# Next to the carriageway (x 60,61) runs a cycle path (x 62) in the same trough.
 	for z in range(55, 60):
@@ -2288,6 +2377,10 @@ var _row := []        # districts of the current row: [origin, w, d, infill styl
 var _street_h := {}   # Vector2i -> lane (0 north, 1 south) of the east-west streets
 var _street_v := {}   # Vector2i -> lane (0 west, 1 east) of the north-south streets
 var _city_blocks := 0 # counter for the styles of the in-between city blocks
+var _pavement := {}   # Vector2i -> kerb variant ("", "goot_", "klinker_") of the pavement cells (_auto_kerbs)
+var _kerb_count := 0  # counter for the kerb variant of the next block
+var _special := {}    # street cells that are not ordinary lanes (roundabouts, avenues)
+var _h_rows := []     # z of the north lane of every full-width east-west street
 var _district_name := ""  # name recorded for the next _district call
 var districts := []  # {name, x, z, w, d} per demo district, saved as scene metadata
 var _detail_queue := {}   # group -> Array of names (queue)
@@ -2330,9 +2423,13 @@ func _district(w: int, d: int) -> Vector2i:
 
 ## Pavement ring with grass inside over the block x0..x0+w-1, z0..z0+d-1.
 func _kerb_block(x0: int, z0: int, w: int, d: int) -> void:
+	_kerb_count += 1
+	var variant: String = ["", "goot_", "klinker_"][_kerb_count % 3]
 	for x in range(x0, x0 + w):
 		for z in range(z0, z0 + d):
 			var sides: Array = _sides(x, z, x0, z0, w, d)
+			if sides.size() > 0:
+				_pavement[Vector2i(x, z)] = variant
 			if sides.size() == 0:
 				G(x, z, "natuur/gras")
 			elif sides.size() == 1:
@@ -2353,6 +2450,7 @@ func _finish_row() -> void:
 	var top := _wz
 	var bottom := _wz + _wrow   # first row below the districts
 	_h_street(0, W - 1, top - 2)
+	_h_rows.append(top - 2)
 	for e in _row:
 		var o: Vector2i = e[0]
 		var w: int = e[1]
@@ -2436,14 +2534,351 @@ func _is_pavement(p: Vector2i) -> bool:
 	return id >= 0 and ground.mesh_library.get_item_name(id).begins_with("stoep/")
 
 
-## Streets from the campus road (z 82-83) down to the first street of the demo city
-## (rows z0, z0+1), so the districts are part of the town.
+## Two avenues from the campus road (z 82-83) down to the first street of the demo city
+## (rows z0, z0+1), so the districts are part of the town: a lane each way with a
+## pavement island (x 19..21) or a divider and a grass median (x 57..59) in the middle,
+## pavements on both sides, and a roundabout where they meet the first city street.
 func _connect_to_town(z0: int) -> void:
-	for x in [20, 58]:
-		_v_street(x, 84, z0 + 1)
+	for a in [[19, "island", ""], [57, "divider", "goot_"]]:
+		var x: int = a[0]
 		for z in [82, 83]:
-			G(x, z, "weg/kruising_vlak")
-			G(x + 1, z, "weg/kruising_vlak")
+			for k in 3:
+				G(x + k, z, "weg/kruising_vlak")
+		for z in range(84, z0 - 1):
+			G(x, z, "weg/rijstrook_geen_kant", "N")
+			G(x + 2, z, "weg/rijstrook_geen_kant", "S")
+			_special[Vector2i(x, z)] = true
+			_special[Vector2i(x + 2, z)] = true
+			if z > 84:
+				for side in [x - 1, x + 3]:
+					G(side, z, "stoep/stoep_vol")
+					_pavement[Vector2i(side, z)] = a[2]
+				if z % 3 == 0:
+					Pr(x * 4 - 2.5, z * 4 + 2.0, "verlichting/lantaarn_modern", "E")
+					Pr((x + 3) * 4 + 2.5, z * 4 + 2.0, "verlichting/lantaarn_modern", "W")
+		# the middle: from the campus road to the roundabout
+		for z in range(84, z0 - 1):
+			var c := Vector2i(x + 1, z)
+			_special[c] = true
+			if a[1] == "island":
+				if z == 84:
+					G(c.x, c.y, "weg/weg_vlak")
+				else:
+					G(c.x, c.y, "stoep/stoep_vol")
+					_pavement[c] = a[2]
+					if z % 4 == 2:
+						Pr(c.x * 4 + 2.0, z * 4 + 2.0, "bomen/linde")
+			else:
+				var mid := "weg/middengeleider"
+				var rot := "S"
+				if z == 84:
+					mid = "weg/middengeleider_kop"
+					rot = "N"
+				elif z < 89:
+					mid = "weg/middengeleider"
+				elif z < 92:
+					mid = "weg/middengeleider_breed"
+				elif z == 92:
+					mid = "weg/middenberm_gras_kop"
+					rot = "N"
+				elif z == z0 - 2:
+					mid = "weg/middenberm_gras_kop"
+				else:
+					mid = "weg/middenberm_gras"
+				G(c.x, c.y, mid, rot)
+		_roundabout(x + 1, z0, a[2])
+
+
+## Roundabout of 3 x 3 cells around a round pavement island at (cx, cz): the avenue comes
+## in from the north, the street of rows cz, cz+1 passes east-west.
+func _roundabout(cx: int, cz: int, variant: String) -> void:
+	for dx in range(-1, 2):
+		for dz in range(-1, 2):
+			var c := Vector2i(cx + dx, cz + dz)
+			_special[c] = true
+			if dx == 0 and dz == 0:
+				G(c.x, c.y, "stoep/stoep_vol")
+				_pavement[c] = variant
+			else:
+				G(c.x, c.y, "weg/weg_vlak")
+	Pr(cx * 4 + 2.0, cz * 4 + 2.0, "planten/struik")
+
+
+## Parking bays cut into the pavement on the north side of a city block (beside the
+## eastbound lane of the street north of it): the pavement steps back one cell behind
+## each bay; two bays with a strip of pavement between them where the block is wide.
+func _parking_bays(x0: int, z0: int, w: int, d: int) -> void:
+	if w < 8 or d < 5:
+		return
+	var kinds := ["parkeren/parkeerstrook_langs", "parkeren/parkeerstrook_langs_klinkers", "parkeren/parkeervak_klinkers", "weg/parkeerstrook"]
+	var starts := [x0 + 2] if w < 12 else [x0 + 2, x0 + 6]
+	for i in starts.size():
+		var bx: int = starts[i]
+		var kind: String = kinds[(_kerb_count + i) % kinds.size()]
+		for x in range(bx, bx + 3):
+			G(x, z0, kind, "W" if kind.begins_with("parkeren/parkeerstrook") or kind == "weg/parkeerstrook" else "S")
+			_pavement.erase(Vector2i(x, z0))
+			_taken[Vector2i(x, z0)] = true
+			G(x, z0 + 1, "stoep/stoep_vol")
+			_pavement[Vector2i(x, z0 + 1)] = _pavement.get(Vector2i(x0, z0), "")
+			_taken[Vector2i(x, z0 + 1)] = true
+	if starts.size() == 2:
+		# the pavement between the two bays reaches back to the stepped-back pavement
+		var gap := Vector2i(x0 + 5, z0 + 1)
+		G(gap.x, gap.y, "stoep/stoep_vol")
+		_pavement[gap] = _pavement.get(Vector2i(x0, z0), "")
+		_taken[gap] = true
+
+
+## Driveway from the street south of a city block into its courtyard: a lowered kerb (or
+## a wide entrance / exit construction) in the pavement and a lane through a gap in the
+## buildings to a few parking spaces in the courtyard.
+func _driveway(x0: int, z0: int, w: int, d: int) -> void:
+	if w < 6 or d < 7:
+		return
+	var x := x0 + w / 2
+	var kerb: Vector2i = Vector2i(x, z0 + d - 1)
+	var kind: String = ["stoep/stoep_oprit", "stoep/stoep_goot_oprit", "stoep/stoep_inrit_breed", "weg/uitritconstructie"][_kerb_count % 4]
+	G(kerb.x, kerb.y, kind, "S")
+	_pavement.erase(kerb)
+	_taken[kerb] = true
+	for z in range(z0 + d - 4, z0 + d - 1):
+		G(x, z, "parkeren/parkeerplaats_rijbaan", "S")
+		_taken[Vector2i(x, z)] = true
+	for dx in [-1, 1]:
+		G(x + dx, z0 + d - 4, "parkeren/parkeervak_haaks", "W" if dx < 0 else "E")
+		_taken[Vector2i(x + dx, z0 + d - 4)] = true
+
+
+## True if ground cell c (level 0) carries traffic: a road, tram, parking or motorway tile.
+func _is_road(c: Vector2i) -> bool:
+	var id := ground.get_cell_item(Vector3i(c.x, 0, c.y))
+	if id < 0:
+		return false
+	var nm := ground.mesh_library.get_item_name(id)
+	return nm.begins_with("weg/") or nm.begins_with("tram/") or nm.begins_with("parkeren/") or nm.begins_with("snelweg/")
+
+
+## Pavement shapes (tools/voxgen/ground.py SIDEWALK_SHAPES): sides with road (Front,
+## Right, Back, Left of the tile) and corners cut by road (FR = front-right, ...).
+const KERB_SHAPES := [["vol", [], []], ["rand", ["F"], []], ["hoek_buiten", ["F", "R"], []], ["hoek_binnen", [], ["FR"]],
+	["rand_hoek_binnen", ["F"], ["BR"]], ["dubbel_hoek_binnen", [], ["FR", "FL"]], ["eiland", ["F", "B"], []],
+	["eiland_eind", ["F", "B", "R"], []], ["smal_eind", ["F", "R", "L"], []], ["eiland_rond", ["F", "R", "B", "L"], []]]
+
+
+## Gives every pavement cell of the demo city the kerb shape its neighbours ask for: an
+## edge towards each road, outer corners, inner corners where only a diagonal is road,
+## islands and island ends, in the variant of its block (plain, gutter or clinker).
+func _auto_kerbs() -> void:
+	var dirs := {"S": Vector2i(0, 1), "E": Vector2i(1, 0), "N": Vector2i(0, -1), "W": Vector2i(-1, 0)}
+	for c in _pavement:
+		var id := ground.get_cell_item(Vector3i(c.x, 0, c.y))
+		if id < 0 or not ground.mesh_library.get_item_name(id).begins_with("stoep/"):
+			continue
+		var road := {}
+		for d in dirs:
+			road[d] = _is_road(c + dirs[d])
+		var options := []
+		for shape in KERB_SHAPES:
+			for k in 4:
+				var side := {"F": ORDER[k], "R": ORDER[(k + 1) % 4], "B": ORDER[(k + 2) % 4], "L": ORDER[(k + 3) % 4]}
+				var ok := true
+				for d in dirs:
+					var want := false
+					for e in shape[1]:
+						if side[e] == d:
+							want = true
+					if want != road[d]:
+						ok = false
+				if not ok:
+					continue
+				# diagonal cuts: a road diagonal with pavement on both sides next to it
+				for pair in [["F", "R"], ["R", "B"], ["B", "L"], ["L", "F"]]:
+					var a: String = side[pair[0]]
+					var b: String = side[pair[1]]
+					var cut: bool = not road[a] and not road[b] and _is_road(c + dirs[a] + dirs[b])
+					var key: String = pair[0] + pair[1]
+					var rkey: String = pair[1] + pair[0]
+					var listed: bool = shape[2].has(key) or shape[2].has(rkey)
+					if cut != listed:
+						ok = false
+				if ok:
+					options.append([shape[0], k])
+		if options.is_empty():
+			# no exact shape (unusual cut): match the road sides only
+			for shape in KERB_SHAPES:
+				if not shape[2].is_empty():
+					continue
+				for k in 4:
+					var side := {"F": ORDER[k], "R": ORDER[(k + 1) % 4], "B": ORDER[(k + 2) % 4], "L": ORDER[(k + 3) % 4]}
+					var ok := true
+					for d in dirs:
+						var want := false
+						for e in shape[1]:
+							if side[e] == d:
+								want = true
+						if want != road[d]:
+							ok = false
+					if ok:
+						options.append([shape[0], k])
+		if options.is_empty():
+			continue
+		var pick: Array = options[_r(c.x, c.y, options.size())]
+		var variant: String = _pavement[c]
+		var nm: String = "stoep/stoep_" + variant + pick[0]
+		if not _has(nm, ground):
+			nm = "stoep/stoep_" + pick[0]
+		G(c.x, c.y, nm, pick[1])
+
+
+## Dresses the lanes of the demo city streets: every intersection gets a control on its
+## north-south approaches (stop line with STOP, give-way teeth, zebra crossing with piano
+## stripes) and turn arrows with block markings on its east-west approaches; every
+## street section between two intersections gets a theme (bicycle street, cycle lanes,
+## no overtaking, one-way with parking, old asphalt with a speed table, drains and
+## manholes, other line types); one street carries a tram.
+const STREET_THEMES := ["standaard", "fietsstraat", "fietsstroken", "inhaalverbod", "eenrichting", "oud", "lijnen", "fietsstrook", "klinkers"]
+const ARROWS := ["rijstrook_pijl_rechtdoor", "rijstrook_pijl_links", "rijstrook_pijl_rechts", "rijstrook_pijl_rechtdoor_links", "rijstrook_pijl_rechtdoor_rechts"]
+
+
+func _dress_streets() -> void:
+	var inter := {}
+	for c in _street_h:
+		if _street_v.has(c):
+			inter[c] = true
+	var tram_row: int = _h_rows[mini(2, _h_rows.size() - 1)] if not _h_rows.is_empty() else -1
+	var section := 0
+	# sections: runs of non-intersection cells of a street's first lane
+	for horizontal in [true, false]:
+		var lanes: Dictionary = _street_h if horizontal else _street_v
+		var cells := []
+		for c in lanes:
+			if lanes[c] == 0 and not inter.has(c) and not _special.has(c):
+				cells.append(c)
+		if horizontal:
+			cells.sort_custom(func(a, b): return a.y < b.y or (a.y == b.y and a.x < b.x))
+		else:
+			cells.sort_custom(func(a, b): return a.x < b.x or (a.x == b.x and a.y < b.y))
+		var run := []
+		for i in cells.size() + 1:
+			var c: Vector2i = cells[i] if i < cells.size() else Vector2i(-9999, -9999)
+			var prev: Vector2i = run[-1] if not run.is_empty() else Vector2i(-9999, -9999)
+			var step := Vector2i(1, 0) if horizontal else Vector2i(0, 1)
+			if not run.is_empty() and c != prev + step:
+				var theme: String = "tram" if horizontal and run[0].y == tram_row else STREET_THEMES[section % STREET_THEMES.size()]
+				_dress_section(run, horizontal, theme, inter, section)
+				section += 1
+				run = []
+			if i < cells.size():
+				run.append(c)
+	# the tram crosses the intersections of its street
+	if tram_row >= 0:
+		for c in inter:
+			if c.y == tram_row or c.y == tram_row + 1:
+				G(c.x, c.y, "tram/tram_recht", "E")
+	# two busy intersections get traffic lights (all light types; green and amber north-south)
+	var candidates := []
+	for c in inter:
+		if c.y == tram_row or c.y == tram_row + 1:
+			continue
+		if not (inter.has(c + Vector2i(1, 0)) and inter.has(c + Vector2i(0, 1)) and inter.has(c + Vector2i(1, 1))):
+			continue
+		var ok := true
+		for i in [-4, -3, -2, -1, 2, 3, 4, 5]:
+			for cell in [c + Vector2i(0, i), c + Vector2i(1, i), c + Vector2i(i, 0), c + Vector2i(i, 1)]:
+				if inter.has(cell) or _special.has(cell) or not (_street_h.has(cell) or _street_v.has(cell)):
+					ok = false
+		if ok:
+			candidates.append(c)
+	candidates.sort_custom(func(a, b): return a.y < b.y or (a.y == b.y and a.x < b.x))
+	if candidates.size() >= 2:
+		var c1: Vector2i = candidates[candidates.size() / 3]
+		var c2: Vector2i = candidates[candidates.size() * 2 / 3]
+		_intersection_with_lights(c1.x, c1.y, "groen", "rood", "rijden", "stop", "groen", "rood")
+		_intersection_with_lights(c2.x, c2.y, "oranje", "rood", "attentie", "stop", "oranje", "rood")
+
+
+## Lane tiles of one street section (cells of its first lane, west to east or north to
+## south; the second lane lies one cell south or east).
+func _dress_section(run: Array, horizontal: bool, theme: String, inter: Dictionary, section: int) -> void:
+	var n := run.size()
+	var other := Vector2i(0, 1) if horizontal else Vector2i(1, 0)
+	# lane 0: westbound (rotation E) or southbound (N); lane 1: eastbound (W) or northbound (S)
+	var rot0 := "E" if horizontal else "N"
+	var rot1 := "W" if horizontal else "S"
+	for i in n:
+		var c0: Vector2i = run[i]
+		var c1: Vector2i = c0 + other
+		var t0 := ""
+		var t1 := ""
+		var mid := i == n / 2
+		match theme:
+			"fietsstraat":
+				t0 = "weg/fietsstraat"
+				t1 = "weg/fietsstraat"
+			"fietsstroken":
+				t0 = "weg/rijstrook_fietsstrook"
+				t1 = "weg/rijstrook_fietsstrook"
+			"fietsstrook":
+				t0 = "weg/fietsstrook"
+				t1 = "weg/fietsstrook"
+			"inhaalverbod":
+				t0 = "weg/rijstrook_dubbel_kant" if i % 4 else "weg/rijstrook_dubbel_geen"
+				t1 = "weg/rijstrook_dubbel_kant"
+			"eenrichting":
+				t0 = "weg/parkeervak_gehandicapt" if mid else "weg/parkeerstrook"
+				t1 = "weg/straat_eenrichting" if i % 4 == 1 else "weg/weg_vlak"
+			"oud":
+				t0 = "weg/drempel_plateau" if mid else "weg/weg_vlak_oud"
+				t1 = "weg/drempel_plateau" if mid else "weg/weg_vlak_oud"
+			"lijnen":
+				t0 = "weg/rijstrook_onderbroken_onderbroken" if i % 2 else "weg/rijstrook_streep_geen"
+				t1 = "weg/rijstrook_geen_kant_onderbroken"
+			"klinkers":
+				t0 = "weg/straat_klinkers_middengoot" if mid else "weg/straat_klinkers"
+				t1 = "weg/kruis_markering" if mid else "weg/straat_klinkers"
+			"tram":
+				var v := section % 3
+				t0 = ["tram/tram_rijstrook_onderbroken_kant", "tram/tram_rijstrook_dubbel_kant", "tram/tram_rijstrook_streep_kant"][v]
+				t1 = ["tram/tram_rijstrook_geen_kant", "tram/tram_rijstrook_geen_geen", "tram/tram_rijstrook_onderbroken_geen"][v]
+			_:
+				if mid:
+					t0 = "weg/weg_putdeksel"
+					t1 = "weg/weg_kolk"
+		if t0 != "":
+			G(c0.x, c0.y, t0, rot0)
+		if t1 != "":
+			G(c1.x, c1.y, t1, rot1)
+	if theme in ["tram", "eenrichting", "fietsstraat"]:
+		return
+	# approaches: lane 0 drives towards +x/+z... (west/south): its last cell in driving
+	# direction is run[0] - step for westbound, run[-1] for southbound; lane 1 the other way
+	var step := Vector2i(1, 0) if horizontal else Vector2i(0, 1)
+	var ends := []
+	if horizontal:
+		ends = [[run[0], rot0, run[0] - step, run[0] + step], [run[-1] + other, rot1, run[-1] + other + step, run[-1] + other - step]]
+	else:
+		ends = [[run[-1], rot0, run[-1] + step, run[-1] - step], [run[0] + other, rot1, run[0] + other - step, run[0] + other + step]]
+	for e in ends:
+		var cell: Vector2i = e[0]
+		if not inter.has(e[2]) or n < 2:
+			continue
+		var before: Vector2i = e[3]
+		var kind := _r(e[2].x, e[2].y, 4)
+		if horizontal:
+			G(cell.x, cell.y, "weg/" + ARROWS[(section + (0 if e[1] == rot0 else 2)) % ARROWS.size()], e[1])
+			if n >= 3:
+				G(before.x, before.y, "weg/rijstrook_blok_kant" if e[1] == rot0 else "weg/rijstrook_blok_geen", e[1])
+		elif kind == 0:
+			G(cell.x, cell.y, "weg/rijstrook_stopstreep", e[1])
+			if n >= 3:
+				G(before.x, before.y, "weg/rijstrook_stop_tekst", e[1])
+		elif kind == 1:
+			G(cell.x, cell.y, "weg/rijstrook_haaientanden", e[1])
+		elif kind == 2:
+			G(cell.x, cell.y, "weg/zebrapad", e[1])
+			if n >= 3:
+				G(before.x, before.y, "weg/pianostrepen", e[1])
 
 
 # ------------------------------------------------------------------ city blocks and buildings along the streets
@@ -2486,6 +2921,8 @@ func _filler_block(x0: int, z0: int, w: int, d: int) -> void:
 		_filler_block(x0, z0 + half + 2, w, d - half - 2)
 		return
 	_kerb_block(x0, z0, w, d)
+	_parking_bays(x0, z0, w, d)
+	_driveway(x0, z0, w, d)
 	_line_streets(x0, z0, w, d, _infill_style(""))
 
 
@@ -2684,9 +3121,6 @@ func _demo_districts(z0: int) -> int:
 		_style_neighbourhood(st)
 	_roofs_district()
 	_halls_and_misc()
-	_traffic_garden()
-	_intersections()
-	_traffic_lights()
 	_industrial_estate()
 	_tint_demo()
 	_curves()
@@ -2698,12 +3132,18 @@ func _demo_districts(z0: int) -> int:
 	_flyovers()
 	_canal_with_bridges()
 	_nature_park()
-	_rest_in_context()
 	_finish_row()
 	_h_street(0, W - 1, _wz - 2)
-	_connect_to_town(z0)
 	_paint_streets()
+	_dress_streets()
+	_connect_to_town(z0)
+	_auto_kerbs()
 	_green_up(z0, _wz)
+	# every tile must be in the town somewhere: report the ones that are not
+	for gm in [ground, buildings, details, props]:
+		var unused := _unused_list(gm)
+		if not unused.is_empty():
+			push_warning("NOT IN THE TOWN (%s): %s" % [gm.name, unused])
 	return _wz
 
 
@@ -2854,6 +3294,13 @@ func _style_neighbourhood(style: String) -> void:
 	fill_rect(cx + 1, zt, cx + nA, zt + 1, "natuur/gras_kort")
 	for x in range(cx + 1, cx + 1 + nA):
 		_prop(x * 4 + 2.0, (zt + 2) * 4 - 0.5, "green")
+	# a residential street (woonerf, clinkers) right through the district: the second
+	# row of buildings stands along it, joined to the streets west and east
+	for x in range(o.x, o.x + w):
+		G(x, zt + 2, "weg/straat_klinkers", "E")
+		_pavement.erase(Vector2i(x, zt + 2))
+		_taken[Vector2i(x, zt + 2)] = true
+	Pr((o.x + 1) * 4.0 + 1.0, (zt + 2) * 4.0 - 0.5, "borden/bord_woonerf", "E")
 	# --- second row: courtyard, gable roofs, row, tops, tower, specials
 	var rx := cx + 1
 	var rz := cz + dA + 4
@@ -2881,7 +3328,7 @@ func _style_neighbourhood(style: String) -> void:
 				B(c.x, yr, c.y, p + _next(sloped, counter, "slope"), sides[0])
 		G(rx + 2, rz + 2, "natuur/gras_bloemen")
 		_prop((rx + 2) * 4 + 2.0, (rz + 2) * 4 + 2.0, "green")
-		rx += 6
+		rx += 5
 	if not gable.is_empty() or not gable_hip.is_empty():
 		# L shape (1 deep) with gable roofs, hipped ends and an L corner
 		var lc := [Vector2i(rx, rz + 2), Vector2i(rx + 1, rz + 2), Vector2i(rx + 2, rz + 2), Vector2i(rx + 2, rz + 1), Vector2i(rx + 2, rz)]
@@ -2902,7 +3349,7 @@ func _style_neighbourhood(style: String) -> void:
 			B(rx, 1, zr, p + zs, "N")
 			B(rx + 1, 1, zr, p + extra[0], "S")
 			B(rx + 2, 1, zr, p + zs, "S")
-		rx += 4
+		rx += 3
 	if not gable_t.is_empty():
 		var tc := [Vector2i(rx, rz + 1), Vector2i(rx + 1, rz + 1), Vector2i(rx + 2, rz + 1), Vector2i(rx + 1, rz)]
 		facades.call(tc, 1)
@@ -2911,12 +3358,12 @@ func _style_neighbourhood(style: String) -> void:
 		B(rx, 1, rz + 1, p + zs2, "N")
 		B(rx + 2, 1, rz + 1, p + zs2, "S")
 		B(rx + 1, 1, rz, p + zs2, "E")
-		rx += 4
+		rx += 3
 	if has_sloped and inner_corners.is_empty():
 		var sc := []
 		var bw := maxi(2, ceili(sloped.size() / 2.0) + 2)
-		for x in range(cx + 1, cx + 1 + bw):
-			for z in [cz + d - 9, cz + d - 8]:
+		for x in range(rx, rx + bw):
+			for z in [rz, rz + 1]:
 				sc.append(Vector2i(x, z))
 		facades.call(sc, 1)
 		var si := 0
@@ -2927,6 +3374,7 @@ func _style_neighbourhood(style: String) -> void:
 			else:
 				B(c.x, 1, c.y, p + sloped[si % sloped.size()], sides[0] if sides.size() == 1 else "N")
 				si += 1
+		rx += bw
 	# small row (1 deep) + detached building: end / opposite / single
 	var kc := [Vector2i(rx, rz), Vector2i(rx + 1, rz), Vector2i(rx + 2, rz)]
 	var ky := maxi(1, mini(floors, 2))
@@ -2942,7 +3390,7 @@ func _style_neighbourhood(style: String) -> void:
 	facades.call([Vector2i(rx, rz + 2)], 1)
 	if has_flat:
 		_flat_roofs([Vector2i(rx, rz + 2)], style, 1, flat_kinds, counter)
-	rx += 4
+	rx += 3
 	# narrow buildings, each with a different top (canal gable, cornice gable, pediment, ...)
 	for i in tops.size():
 		var x: int = rx + i
@@ -2955,7 +3403,7 @@ func _style_neighbourhood(style: String) -> void:
 		elif has_flat:
 			B(x, yt, rz + 1, p + flat_kinds["rand"][0] if not flat_kinds["rand"].is_empty() else p + flat_kinds["midden"][0], "S")
 	if not tops.is_empty():
-		rx += tops.size() + 1
+		rx += tops.size()
 	# tower(s)
 	if not tower.is_empty():
 		var order := ["toren_portaal", "toren_raam", "toren_galmgat", "toren_klok", "toren_spits_onder", "toren_spits_boven"]
@@ -2971,7 +3419,7 @@ func _style_neighbourhood(style: String) -> void:
 			tower(rx + 1, rz + 1, style, ["blok_dicht", "toren_raam" if tower.has("toren_raam") else "blok_dicht", "toren_pinakels"], "N")
 		if tower.has("toren_beton"):
 			tower(rx + 1, rz + 3, style, ["toren_beton", "toren_beton", "toren_beton_klok" if tower.has("toren_beton_klok") else "toren_beton"], "N")
-		rx += 3
+		rx += 2
 	# special roofs on their own small buildings
 	for k in special:
 		if k.ends_with("3x3"):
@@ -2981,18 +3429,22 @@ func _style_neighbourhood(style: String) -> void:
 					dc.append(Vector2i(x, z))
 			facades.call(dc, 1)
 			B(rx + 1, 1, rz + 1, p + k, "S")
-			rx += 4
+			rx += 3
 		elif k == "luchtboog":
 			facades.call([Vector2i(rx, rz + 1), Vector2i(rx + 1, rz + 1)], 2)
 			B(rx, 0, rz, p + k, "N")
 			B(rx + 1, 0, rz, p + k, "N")
-			rx += 3
+			rx += 2
 		else:
 			facades.call([Vector2i(rx, rz)], 1)
 			B(rx, 1, rz, p + k, "N")
-			rx += 2
-	# --- detail building: a blank building on which facade and roof parts are placed
-	_detail_building(cx + 1, cz + d - 6, style)
+			rx += 1
+	# --- detail building at the end of the row: a blank building on which facade and
+	# roof parts are placed
+	if rx + 4 <= o.x + w - 1:
+		_detail_building(rx, rz, style, "N")
+	else:
+		_detail_building(cx + 1, cz + d - 6, style)
 	# street furniture along the north edge
 	for x in range(o.x + 1, o.x + w - 1, 2):
 		_prop(x * 4 + 2.0, o.y * 4 + 0.75, "street")
@@ -3025,7 +3477,7 @@ func _take_new_detail(group: String) -> String:
 
 ## Blank 4x2 building at tile (x0, z0) (2 storeys + flat roof) on which unused doors,
 ## awnings, windows, facade parts, texts, a balcony and roof details are placed.
-func _detail_building(x0: int, z0: int, style: String) -> void:
+func _detail_building(x0: int, z0: int, style: String, front := "S") -> void:
 	var base_tile := style + "/" + style + "_blok_dicht"
 	if not _has(base_tile):
 		base_tile = "klassiek_rood/klassiek_rood_blok_dicht"
@@ -3035,27 +3487,30 @@ func _detail_building(x0: int, z0: int, style: String) -> void:
 			B(x, 1, z, base_tile, "S")
 			B(x, 2, z, "modern_wit/modern_wit_dak_plat_" + ("hoek" if (x == x0 or x == x0 + 3) else "rand"),
 				("WS" if x == x0 else "SE") if (x == x0 or x == x0 + 3) else "S")
-	var fz := (z0 + 2) * 4.0  # south facade
+	# the facade with the parts faces `front` (the street), the back gets the second text
+	var fz := z0 * 4.0 if front == "N" else (z0 + 2) * 4.0
+	var back := "S" if front == "N" else "N"
+	var bz := (z0 + 2) * 4.0 if front == "N" else z0 * 4.0
 	for i in 4:
 		var mx := (x0 + i) * 4 + 2.0
 		var door := _take_new_detail("deuren")
 		if door != "":
-			D(mx, fz, 0.0, door, "S")
+			D(mx, fz, 0.0, door, front)
 		var above := _take_new_detail("luifels") if i % 2 == 0 else _take_new_detail("zonwering")
 		if above != "":
-			D(mx, fz, 2.5, above, "S")
+			D(mx, fz, 2.5, above, front)
 		var window := _take_new_detail("ramen")
 		if window != "":
-			D(mx, fz, 3.5, window, "S")
+			D(mx, fz, 3.5, window, front)
 		var g := _take_new_detail("gevel")
 		if g != "":
-			D((x0 + i) * 4 + 0.5, fz, 1.0, g, "S")
+			D((x0 + i) * 4 + 0.5, fz, 1.0, g, front)
 	var text := _take_new_detail("tekst")
 	if text != "":
-		D((x0 + 2) * 4.0, fz, 5.0, text, "S")
+		D((x0 + 2) * 4.0, fz, 5.0, text, front)
 	var text2 := _take_new_detail("tekst")
 	if text2 != "":
-		D((x0 + 2) * 4.0, z0 * 4.0, 5.0, text2, "N")
+		D((x0 + 2) * 4.0, bz, 5.0, text2, back)
 	var balcony := _take_new_detail("balkons")
 	if balcony != "":
 		D(x0 * 4.0, (z0 + 1) * 4.0, 3.0, balcony, "W")
@@ -3182,13 +3637,18 @@ func _l_building(x: int, z: int, wall: String, p: String, slope: String, row_maj
 
 # ------------------------------------------------------------------ halls, canopies, pillars, parking garage, radio tower
 
-## District with the three hollow halls (incl. open walls), a glass canopy, all pillars,
-## a parking garage with all parts and a radio tower.
+## Sports complex: the three hollow halls (glass, swimming pool, sports, incl. open walls)
+## on one paved forecourt with a glass entrance canopy and a colonnade of all pillars, a
+## parking garage with all parts and a radio mast.
 func _halls_and_misc() -> void:
 	_district_name = "hallen"
 	var o := _district(30, 14)
 	var x0 := o.x + 2
 	var z0 := o.y + 2
+	# sports complex: one paved forecourt round the halls, the canopy and the colonnade
+	fill_rect(o.x + 1, o.y + 1, o.x + 28, o.y + 12, "plein/plein_tegels")
+	for i in 6:
+		Pr((x0 + 1 + i * 4) * 4.0, (z0 + 5) * 4.0 + 2.0, "bomen/plataan" if i % 2 else "verlichting/lantaarn_modern")
 	# three hollow halls side by side (glass, pool, sports) with roof variants
 	var hs := ["hal_glas", "hal_zwembad", "hal_sport"]
 	for i in 3:
@@ -3223,47 +3683,6 @@ func _halls_and_misc() -> void:
 
 
 # ------------------------------------------------------------------ traffic garden: continuous streets with all markings
-
-## Traffic garden: parallel two-lane streets (pavement, lane, lane, pavement) running
-## north-south, each lane tile of the road groups on its own 2-cell stretch.
-func _traffic_garden() -> void:
-	_district_name = "verkeerstuin"
-	var tiles := []
-	for group in ["weg/", "tram/", "fietspad/", "parkeren/", "snelweg/"]:
-		for nm in _names(ground, group):
-			var k: String = nm.split("/")[1]
-			if k.contains("bocht") or k.ends_with("_t") or k.contains("3x3") or k.contains("eind") or k == "tram_kruising" \
-					or k == "fietspad_kruising" or k.contains("perron") or k.contains("middengeleider_kop"):
-				continue
-			tiles.append(nm)
-	var pavements := []
-	for nm in _names(ground, "stoep/"):
-		var k: String = nm.split("/")[1]
-		if k in ["stoep_rand", "stoep_goot_rand", "stoep_goot_kolk", "stoep_oprit", "stoep_goot_oprit", "stoep_ribbel",
-				"stoep_boomrooster", "stoep_klinker_rand", "stoep_inrit_breed", "stoep_vol", "stoep_klinker_vol"]:
-			pavements.append(nm)
-	var per_street := 18
-	var streets := ceili(tiles.size() / float(per_street))
-	var o := _district(streets * 6 + 1, per_street * 2 + 2)
-	for s in streets:
-		var x: int = o.x + 1 + s * 6
-		for i in per_street:
-			var idx: int = s * per_street + i
-			if idx >= tiles.size():
-				break
-			var nm: String = tiles[idx]
-			var st: String = pavements[idx % pavements.size()]
-			for r in 2:
-				var z: int = o.y + 1 + i * 2 + r
-				G(x, z, st, "E")
-				G(x + 1, z, nm, "N")
-				G(x + 2, z, nm, "S")
-				G(x + 3, z, st, "W")
-			if i % 3 == 0:
-				_prop((x - 0.0) * 4 + 3.0, (o.y + 1 + i * 2) * 4 + 4.0, "street")
-				_prop((x + 4) * 4 + 1.0, (o.y + 1 + i * 2) * 4 + 4.0, "street")
-		fill_rect(x + 4, o.y + 1, x + 4, o.y + per_street * 2, "natuur/gras")
-
 
 # ------------------------------------------------------------------ cycle loop, tram loop and rail yard
 
@@ -3352,50 +3771,122 @@ func _loops_and_rail() -> void:
 
 # ------------------------------------------------------------------ dike with all ramps as driveways
 
-## Dike with every ramp tile as a driveway onto a raised block (level 1), each with
-## the matching flat tile on top, followed by grass, sand and gravel hills.
+## River dike: a gentle north slope, a dike road on the crown (level 1) and a steep south
+## slope down to the floodplain with sand, gravel and grass hills. Roads, a cycle path and
+## a little square climb the gentle side on gentle ramps; a street, a one-way cycle path,
+## a tram, a railway and a motorway link cross the steep side on steep ramps; four
+## viaducts (road, tram, cycle path, motorway link) pass over the dike on bridge ramps;
+## a raised square (terp) juts out of the crown with outer and inner slope corners.
+## Everything continues to the city streets north and south of the district.
+const FLAT_OF := {"stoep_rand": "stoep/stoep_rand", "stoep_goot_rand": "stoep/stoep_goot_rand", "stoep_vol": "stoep/stoep_vol",
+	"stoep_hoek_buiten": "stoep/stoep_hoek_buiten", "rijstrook_geen_kant": "weg/rijstrook_geen_kant",
+	"rijstrook_onderbroken_kant": "weg/rijstrook_onderbroken_kant", "rijstrook_streep_kant": "weg/rijstrook_streep_kant",
+	"rijstrook_onderbroken_geen": "weg/rijstrook_onderbroken_geen", "weg_vlak": "weg/weg_vlak", "straat_klinkers": "weg/straat_klinkers",
+	"plein_tegels": "plein/plein_tegels", "fietspad_recht": "fietspad/fietspad_recht", "fietspad_eenrichting": "fietspad/fietspad_eenrichting",
+	"tram_recht": "tram/tram_recht", "trein_recht": "spoor/trein_recht", "snelweg_rijstrook": "snelweg/snelweg_rijstrook",
+	"snelweg_vluchtstrook": "snelweg/snelweg_vluchtstrook", "snelweg_aansluiting": "snelweg/snelweg_aansluiting"}
+
+
 func _dike_with_ramps() -> void:
 	_district_name = "dijk"
-	var ramps := _names(ground, "helling/")
-	# one ramp per column, rows of 90 ramps, each row 7 tiles deep
-	var o := _district(mini(ramps.size() + 4, 92), 7 * ceili((ramps.size() + 4) / 90.0) + 1)
-	var x := o.x + 1
-	var z := o.y + 1
-	for nm in ramps:
-		if x > o.x + 89:
-			x = o.x + 1
-			z += 7
-		var k: String = nm.split("/")[1]
-		# the flat tile a ramp leads to has the same name without the ramp prefix/suffix
-		var source: String = k.trim_prefix("helling_brug_").trim_prefix("helling_").trim_prefix("flauw_")
-		source = source.trim_suffix("_rand").trim_suffix("_a").trim_suffix("_b")
-		var flat_tile: String = _find_ground(source)
-		if flat_tile == "" or k.contains("hoek"):
-			flat_tile = "natuur/gras"
-		# dike: ground block with the flat tile on top
-		G(x, z, "terrein/grond_blok")
-		G(x, z, flat_tile, "S", 1)
-		# gentle ramps ("flauw_") come in two halves _a and _b; lay both in sequence
-		if k.begins_with("flauw_") and k.ends_with("_a"):
-			G(x, z + 1, nm.replace("_a", "_b") if _has(nm.replace("_a", "_b"), ground) else flat_tile)
-			G(x, z + 2, nm)
-			G(x, z + 3, flat_tile)
-		elif k.begins_with("flauw_") and k.ends_with("_b"):
-			G(x, z + 1, nm)
-			G(x, z + 2, nm.replace("_b", "_a") if _has(nm.replace("_b", "_a"), ground) else flat_tile)
-			G(x, z + 3, flat_tile)
+	var o := _district(60, 13)
+	var r := func(i: int) -> int: return o.y + i   # row i of the district
+	var x0 := o.x + 1
+	var x1 := o.x + 58
+	# the dike: gentle north slope (rows 4, 5), crown road (6, 7, level 1), steep south slope (8)
+	for x in range(x0, x1 + 1):
+		G(x, r.call(4), "helling/flauw_gras_a", "N")
+		G(x, r.call(5), "helling/flauw_gras_b", "N")
+		for z in [r.call(6), r.call(7)]:
+			G(x, z, "terrein/grond_blok")
+		G(x, r.call(6), "weg/rijstrook_onderbroken_kant", "E", 1)
+		G(x, r.call(7), "weg/rijstrook_geen_kant", "W", 1)
+		G(x, r.call(8), "helling/helling_gras", "S")
+		for z in range(o.y + 4, o.y + 9):
+			_taken[Vector2i(x, z)] = true
+		if x % 6 == 0:
+			Pr(x * 4 + 2.0, r.call(6) * 4 + 0.5, "verlichting/lantaarn_modern", "S", 1.0)
+	# a route across one side of the dike: flat tiles from the city street, then the ramp
+	var route := func(x: int, part: String, north: bool) -> void:
+		var flat: String = FLAT_OF[part]
+		var rows: Array = [0, 1, 2, 3] if north else [9, 10, 11, 12]
+		for i in rows:
+			var c := Vector2i(x, r.call(i))
+			G(c.x, c.y, flat, "N" if north else "S")
+			_pavement.erase(c)
+			_taken[c] = true
+		if north:
+			G(x, r.call(4), "helling/flauw_%s_a" % part, "N")
+			G(x, r.call(5), "helling/flauw_%s_b" % part, "N")
 		else:
-			G(x, z + 1, nm, "S")
-			G(x, z + 2, flat_tile)
-			G(x, z + 3, flat_tile)
-		x += 1
-	# hills of grass, sand and gravel
-	var hx := o.x + 1
-	var hz := z + 4
+			G(x, r.call(8), "helling/helling_" + part, "S")
+	# gentle side: a street with pavements, a clinker street with a cycle path, a road with a square
+	var north_routes := [[o.x + 2, ["stoep_rand", "rijstrook_geen_kant", "rijstrook_onderbroken_kant", "stoep_goot_rand"]],
+		[o.x + 18, ["fietspad_recht", "straat_klinkers", "stoep_vol"]], [o.x + 28, ["weg_vlak", "plein_tegels"]]]
+	for nr in north_routes:
+		for k in nr[1].size():
+			route.call(nr[0] + k, nr[1][k], true)
+	# steep side: a street, a one-way cycle path, a square, a tram, a railway, a motorway link
+	var south_routes := [[o.x + 2, ["stoep_rand", "rijstrook_streep_kant", "rijstrook_onderbroken_geen", "rijstrook_geen_kant", "rijstrook_onderbroken_kant", "stoep_goot_rand"]],
+		[o.x + 11, ["fietspad_eenrichting", "stoep_hoek_buiten"]], [o.x + 14, ["plein_tegels"]], [o.x + 16, ["tram_recht"]],
+		[o.x + 18, ["trein_recht"]], [o.x + 20, ["snelweg_vluchtstrook", "snelweg_rijstrook", "snelweg_aansluiting"]]]
+	for sr in south_routes:
+		for k in sr[1].size():
+			route.call(sr[0] + k, sr[1][k], false)
+	# the tram and the train cross the crown on their own track
+	for c in [[o.x + 16, "tram/tram_recht"], [o.x + 18, "spoor/trein_recht"]]:
+		for z in [r.call(6), r.call(7)]:
+			G(c[0], z, c[1], "S", 1)
+	# viaducts over the dike: bridge ramps up (rows 1..3), deck on level 3 (rows 4..8), down (9..11)
+	var viaducts := [[o.x + 8, ["rijstrook_geen_kant", "rijstrook_onderbroken_kant"], ["brug/brug_dek_rijstrook_kant_rand", "brug/brug_dek_rijstrook_onderbroken"]],
+		[o.x + 24, ["tram_recht", "tram_recht"], ["brug/brug_dek_tram_rand", "brug/brug_dek_tram_rand"]],
+		[o.x + 40, ["stoep_vol", "fietspad_recht"], ["brug/brug_dek_stoep_rand", "brug/brug_dek_fietspad_rand"]],
+		[o.x + 54, ["snelweg_aansluiting", "snelweg_aansluiting"], ["brug/brug_dek_weg_rand", "brug/brug_dek_weg_rand"]]]
+	for v in viaducts:
+		for k in 2:
+			var x: int = v[0] + k
+			var part: String = v[1][k]
+			# parapets on the outer edge: east going up from the north, west coming down south
+			var up := "helling/helling_brug_%s%s" % [part, "_rand" if k == 1 else ""]
+			var down := "helling/helling_brug_%s%s" % [part, "_rand" if k == 0 else ""]
+			for i in 3:
+				G(x, r.call(1 + i), up, "N", i)
+				G(x, r.call(11 - i), down, "S", i)
+			for z in range(r.call(4), r.call(9)):
+				G(x, z, v[2][k], "S" if k == 0 else "N", 3)
+			for i in [0, 12]:
+				var c := Vector2i(x, r.call(i))
+				G(c.x, c.y, FLAT_OF[part], "N" if i == 0 else "S")
+				_pavement.erase(c)
+			for z in range(o.y, o.y + 13):
+				_taken[Vector2i(x, z)] = true
+	# terp: a raised square on the crown, steep slopes with outer and inner corners
+	var tx := o.x + 12
+	for x in range(tx, tx + 3):
+		for z in [r.call(4), r.call(5)]:
+			G(x, z, "terrein/grond_blok")
+			G(x, z, "plein/plein_tegels", "S", 1)
+		G(x, r.call(3), "helling/helling_gras", "N")
+		_taken[Vector2i(x, r.call(3))] = true
+	G(tx - 1, r.call(4), "helling/helling_gras", "W")
+	G(tx + 3, r.call(4), "helling/helling_gras", "E")
+	G(tx - 1, r.call(3), "helling/helling_gras_hoek_buiten", "W")
+	G(tx + 3, r.call(3), "helling/helling_gras_hoek_buiten", "N")
+	G(tx - 1, r.call(5), "helling/helling_gras_hoek_binnen", "W")
+	G(tx + 3, r.call(5), "helling/helling_gras_hoek_binnen", "N")
+	for c in [Vector2i(tx - 1, r.call(3)), Vector2i(tx + 3, r.call(3))]:
+		_taken[c] = true
+	Pr((tx + 1) * 4 + 2.0, r.call(4) * 4 + 2.0, "straat/bank_hout", "N", 1.0)
+	Pr((tx + 1) * 4 + 2.0, r.call(5) * 4 + 2.0, "bomen/linde", "S", 1.0)
+	# floodplain hills: grass, sand and gravel, each with a spur (inner corner)
+	var hx := o.x + 27
 	for mat in ["gras", "zand", "grind"]:
-		_hill(hx, hz, mat)
-		G(hx + 3, hz + 1, "heuvel/heuvel_" + mat + "_hoek_binnen", "S")
-		hx += 5
+		_hill(hx, r.call(9), mat)
+		G(hx + 3, r.call(10), "heuvel/heuvel_" + mat + "_hoek_binnen", "S")
+		for x in range(hx, hx + 4):
+			for z in range(r.call(9), r.call(12)):
+				_taken[Vector2i(x, z)] = true
+		hx += 5 if mat == "gras" else 12
 
 
 # ------------------------------------------------------------------ tunnel park: sunken roads and tunnels
@@ -3478,90 +3969,162 @@ func _tunnel_park() -> void:
 
 # ------------------------------------------------------------------ canal with all bridges
 
-## Canal on level -2 with quays, crossed by every bridge type: all bridge decks, brick
-## arch bridges, drawbridge, footbridge, steel arch, cable-stayed bridge, viaduct on
-## piers and a footbridge with pier.
+## Canal ring (grachtengordel) on level -2: canal houses on both quays facing a quay
+## street, every bridge type spread along the canal linking the two quays, a few side
+## streets through the rows of houses to the city streets, a viaduct carrying a through
+## road over houses and canal (bridge ramps up to level 3), quay walls round the ends of
+## the canal (inner quay corners) and a landing jutting into the water (outer corners).
 func _canal_with_bridges() -> void:
 	_district_name = "kanaal"
-	var o := _district(90, 13)
-	var z0 := o.y + 3
-	# canal z0..z0+4 on layer -2, quays alongside
-	for x in range(o.x + 1, o.x + 89):
-		for z in range(z0, z0 + 5):
-			_trench(x, z, "water/water_gracht", 2)
-		for z in [z0 - 1, z0 + 5]:
-			G(x, z, "water/kademuur_alg", "S", -2)
-			G(x, z, "water/kademuur", "S", -1)
-			G(x, z, "stoep/stoep_kade" if x % 4 else "stoep/stoep_kade_klinker", "S" if z == z0 - 1 else "N")
-		for z in [z0 - 2, z0 + 6]:
-			G(x, z, "weg/weg_vlak", "E")
-	var x := o.x + 3
-	# bridge decks (1 tile wide, 5 long)
+	var o := _district(90, 19)
+	var x0 := o.x + 1
+	var x1 := o.x + 88          # last column inside the kerb
+	var zq := o.y + 4           # north quay street
+	var zw := o.y + 6           # first water row (5 rows)
+	var zs := o.y + 12          # south quay street
+	var houses_n := [o.y + 1, o.y + 2]
+	var houses_s := [o.y + 14, o.y + 15]
+	# canal with quay walls; the ends of the canal are walled too
+	for x in range(x0, x1 + 1):
+		var end := x == x0 or x == x1
+		for z in range(zw, zw + 5):
+			if end:
+				_quay(x, z, "stoep/stoep_kade", "E" if x == x0 else "W")
+			else:
+				_trench(x, z, "water/water_gracht", 2)
+		for z in [zw - 1, zw + 5]:
+			var kind := "stoep/stoep_kade" if x % 4 else "stoep/stoep_kade_klinker"
+			var rot := "S" if z == zw - 1 else "N"
+			if end:
+				# inner quay corner: the water only lies diagonally
+				kind = "stoep/stoep_kade_hoek_binnen"
+				rot = {Vector2i(0, 0): "S", Vector2i(0, 1): "E", Vector2i(1, 0): "W", Vector2i(1, 1): "N"}[Vector2i(0 if x == x0 else 1, 0 if z == zw - 1 else 1)]
+			_quay(x, z, kind, rot)
+		# quay streets and pavements in front of the houses
+		G(x, zq, "weg/straat_klinkers", "E")
+		G(x, zs, "weg/straat_klinkers", "E")
+		for z in [zq - 1, zs + 1]:
+			G(x, z, "stoep/stoep_vol")
+			_pavement[Vector2i(x, z)] = "klinker_"
+	# a landing jutting into the canal from the south quay (outer quay corners)
+	var lx := o.x + 44
+	for k in 2:
+		_quay(lx + k, zw + 4, "stoep/stoep_kade_hoek_buiten", "N" if k == 0 else "E")
+		G(lx + k, zw + 5, "stoep/stoep_vol")
+	G(lx + 2, zw + 5, "waterkant/kadetrap", "N", -2)
+	# side streets through the rows of houses to the city streets north and south
+	var side := [o.x + 12, o.x + 34, o.x + 58, o.x + 80]
+	for sx in side:
+		for z in range(o.y, zq):
+			G(sx, z, "weg/straat_klinkers", "S")
+			_pavement.erase(Vector2i(sx, z))
+			_taken[Vector2i(sx, z)] = true
+		for z in range(zs + 1, o.y + 19):
+			G(sx, z, "weg/straat_klinkers", "S")
+			_pavement.erase(Vector2i(sx, z))
+			_taken[Vector2i(sx, z)] = true
+	# bridges, each linking the two quay streets, spread along the canal
+	var bridges := []   # [width, callable(x)]
 	for nm in _names(ground, "brug/brug_dek_"):
 		var k: String = nm.split("/")[1]
-		for z in range(z0, z0 + 5):
-			G(x, z, nm)
-		# decks with a parapet on one side get a mirrored twin next to them
-		if k.ends_with("_rand") or k.contains("_rand_"):
-			for z in range(z0, z0 + 5):
-				G(x + 1, z, nm, "N")
-			x += 1
-		x += 2
-	# brick arch bridges (at water level)
-	for i in 3:
-		var nm: String = ["brug/brug_boog_gracht_rand", "brug/brug_boog_gracht_midden", "brug/brug_boog_gracht_rand"][i]
-		for z in range(z0, z0 + 5):
-			G(x + i, z, nm, ["S", "S", "N"][i], -2)
-	x += 4
-	for z in range(z0, z0 + 5):
-		G(x, z, "brug/brug_boog_gracht_beide", "S", -2)
-	x += 2
-	# drawbridge, modern footbridge, steel arch, cable-stayed bridge
-	for i in 5:
-		G(x, z0 + i, "brug/ophaalbrug_portaal" if i in [1, 3] else "brug/ophaalbrug_dek", "N" if i == 1 else "S")
-	_prop((x + 1) * 4 + 1.0, (z0 - 1) * 4 + 2.0, "water")
-	x += 2
-	for i in 5:
-		G(x, z0 + i, "brug/voetbrug_modern", "S")
-	x += 2
-	for i in 5:
-		G(x, z0 + 4 - i, "brug/staalboog_%d" % (i + 1), "S")
-		G(x + 2, z0 + 4 - i, "brug/staalboog_rand_%d" % (i + 1), "S")
-		G(x + 3, z0 + i, "brug/staalboog_rand_%d" % (i + 1), "N")
-	x += 5
-	G(x, z0 + 2, "brug/tuibrug_0", "S")
-	for i in range(1, 4):
-		G(x, z0 + 2 - i, "brug/tuibrug_%d" % i, "S")
-		G(x, z0 + 2 + i, "brug/tuibrug_%d_achter" % i, "S")
-	x += 2
-	# viaduct on piers (layer 3) over the canal
-	for z in range(z0 - 1, z0 + 6):
-		G(x, z, "brug/brug_dek_weg_beide", "S", 3)
-	G(x, z0 - 2, "brug/brug_landhoofd", "S", 2)
-	for z in [z0 + 1, z0 + 3]:
-		_pier(x, z, "brug/brug_pijler_water", -2, 2)
-	for z in [z0, z0 + 2, z0 + 4]:
-		G(x, z, "brug/brug_ligger", "S", 2)
-	G(x + 1, z0 - 1, "brug/brug_pijler_stoep", "S")
-	G(x + 1, z0 + 5, "brug/brug_pijler_gras", "S")
-	x += 3
-	# footbridge over the canal with stairs
-	for z in range(z0 - 1, z0 + 6):
-		G(x, z, "brug/loopbrug_overdekt" if z < z0 + 2 else "brug/loopbrug_open", "S", 3)
-	G(x, z0 + 2, "brug/loopbrug_pijler", "S", -2)
-	for y in range(-1, 3):
-		G(x, z0 + 2, "brug/loopbrug_pijler", "S", y)
-	x += 2
-	# quay stairs and boats
-	G(x, z0 + 5, "waterkant/kadetrap", "N", -2)
-	for i in range(0, 80, 9):
-		_prop((o.x + 4 + i) * 4 + 0.0, (z0 + 2) * 4 + 2.0, "water", -2.0)
+		var twin: bool = k.ends_with("_rand") or k.contains("_rand_")
+		bridges.append([2 if twin else 1, func(bx: int) -> void:
+			for z in range(zw, zw + 5):
+				G(bx, z, nm)
+				if twin:
+					G(bx + 1, z, nm, "N")])
+	bridges.append([3, func(bx: int) -> void:
+		for i in 3:
+			for z in range(zw, zw + 5):
+				G(bx + i, z, ["brug/brug_boog_gracht_rand", "brug/brug_boog_gracht_midden", "brug/brug_boog_gracht_rand"][i], ["S", "S", "N"][i], -2)])
+	bridges.append([1, func(bx: int) -> void:
+		for z in range(zw, zw + 5):
+			G(bx, z, "brug/brug_boog_gracht_beide", "S", -2)])
+	bridges.append([1, func(bx: int) -> void:
+		for i in 5:
+			G(bx, zw + i, "brug/ophaalbrug_portaal" if i in [1, 3] else "brug/ophaalbrug_dek", "N" if i == 1 else "S")])
+	bridges.append([1, func(bx: int) -> void:
+		for i in 5:
+			G(bx, zw + i, "brug/voetbrug_modern", "S")])
+	bridges.append([4, func(bx: int) -> void:
+		for i in 5:
+			G(bx, zw + 4 - i, "brug/staalboog_%d" % (i + 1), "S")
+			G(bx + 2, zw + 4 - i, "brug/staalboog_rand_%d" % (i + 1), "S")
+			G(bx + 3, zw + i, "brug/staalboog_rand_%d" % (i + 1), "N")])
+	bridges.append([1, func(bx: int) -> void:
+		G(bx, zw + 2, "brug/tuibrug_0", "S")
+		for i in range(1, 4):
+			G(bx, zw + 2 - i, "brug/tuibrug_%d" % i, "S")
+			G(bx, zw + 2 + i, "brug/tuibrug_%d_achter" % i, "S")])
+	var total := 0
+	for b in bridges:
+		total += b[0]
+	var free_cols := []
+	for x in range(x0 + 2, x1 - 1):
+		if not (x in side) and absi(x - lx) > 2 and x != o.x + 70:
+			free_cols.append(x)
+	var gap := maxi(1, (free_cols.size() - total) / bridges.size())
+	var at := 0
+	for b in bridges:
+		at += gap / 2
+		while at < free_cols.size() - b[0] and free_cols[at + b[0] - 1] - free_cols[at] != b[0] - 1:
+			at += 1
+		if at >= free_cols.size() - b[0]:
+			push_warning("canal too short for every bridge")
+			break
+		b[1].call(free_cols[at])
+		at += b[0] + gap - gap / 2
+	# viaduct: a through road at level 3 over the houses, quays and canal
+	var vx := o.x + 70
+	for z in range(o.y, o.y + 19):
+		var c := Vector2i(vx, z)
+		_pavement.erase(c)
+		_taken[c] = true
+		if z < o.y + 3:
+			G(vx, z, "helling/helling_brug_weg_vlak", "N", z - o.y)
+		elif z > o.y + 15:
+			G(vx, z, "helling/helling_brug_weg_vlak", "S", o.y + 18 - z)
+		else:
+			G(vx, z, "brug/brug_dek_weg_beide", "S", 3)
+			if z >= zw and z < zw + 5 and (z - zw) % 2 == 1:
+				_pier(vx, z, "brug/brug_pijler_water", -2, 2)
+			elif z == zw - 3 or z == zs + 3:
+				# abutment where the ramp reaches the deck, on a pier
+				_pier(vx, z, "brug/brug_pijler_stoep" if z == zw - 3 else "brug/brug_pijler_gras", 0, 1)
+				G(vx, z, "brug/brug_landhoofd", "S", 2)
+	G(vx, zw - 1, "brug/brug_ligger", "S", 2)
+	G(vx, zw + 5, "brug/brug_ligger", "S", 2)
+	# canal houses on both quays: narrow fronts with gable and cornice tops, gardens behind
+	var tops := ["gevel_klok", "gevel_hals", "top_lijstgevel", "top_lijstgevel_fronton"]
+	for rows in [[houses_n, "S"], [houses_s, "N"]]:
+		var front: int = rows[0][1] if rows[1] == "S" else rows[0][0]
+		var back: int = rows[0][0] if rows[1] == "S" else rows[0][1]
+		for x in range(x0, x1 + 1):
+			if x in side or x == vx:
+				continue
+			var p := "herenhuis_1600/herenhuis_1600_"
+			for y in 3:
+				B(x, y, front, p + ("bg_deur" if y == 0 and x % 2 == 0 else ("bg_raam" if y == 0 else "verd_raam")), rows[1])
+				B(x, y, back, p + ("bg_raam" if y == 0 else "verd_raam"), "N" if rows[1] == "S" else "S")
+			B(x, 3, front, p + tops[x % tops.size()], rows[1])
+			B(x, 3, back, p + "dak_plat_midden", "S")
+	# boats along the quays
+	for i in range(0, 84, 7):
+		_prop((x0 + 3 + i) * 4 + 0.0, (zw + 1 + (i / 7) % 3) * 4 + 2.0, "water", -2.0)
+
+
+## A quay cell: pavement on top of a quay wall reaching down to the canal floor.
+func _quay(x: int, z: int, tile_name: String, rot) -> void:
+	G(x, z, "water/kademuur_alg", "S", -2)
+	G(x, z, "water/kademuur", "S", -1)
+	G(x, z, tile_name, rot)
 
 
 # ------------------------------------------------------------------ nature and recreation park
 
 ## Nature park: pond with all bank types and wooden footbridges, a ditch with culvert,
-## terraced garden with stairs, a mosaic of all square and nature tiles and an outdoor pool.
+## terraced garden with stairs, paths, a small wood, a planted bed, a boules court and an
+## outdoor pool.
 func _nature_park() -> void:
 	_district_name = "natuurpark"
 	var o := _district(48, 16)
@@ -3606,14 +4169,30 @@ func _nature_park() -> void:
 	G(tx + 1, tz + 1, "terrein/trap_1m_breed", "S")
 	G(tx + 2, tz + 1, "terrein/trap_1m_fietsgoot", "S")
 	G(tx + 3, tz + 1, "helling/helling_dijk_beton", "S")
-	# square mosaic with all square and nature tiles
-	var paving := _names(ground, "plein/") + _names(ground, "natuur/")
-	var mx := o.x + 22
-	var mz := o.y + 2
-	for i in paving.size():
-		G(mx + (i % 12), mz + int(i / 12), paving[i])
-	for i in 6:
-		_prop((mx + i * 2) * 4 + 2.0, (mz + 3) * 4 + 2.0, "green")
+	# gravel path from the pond to the outdoor pool, bending south; a sand path along the
+	# south of the pond; a small wood with its edge along the path; a freshly planted
+	# bed of bare earth with young trees and a gravel boules court with benches
+	for x in range(o.x + 21, o.x + 29):
+		G(x, o.y + 3, "natuur/pad_grind", "E")
+	G(o.x + 29, o.y + 3, "natuur/pad_grind_bocht", "W")
+	for z in range(o.y + 4, o.y + 8):
+		G(o.x + 29, z, "natuur/pad_grind", "S")
+	for x in range(o.x + 1, o.x + 12):
+		G(x, o.y + 9, "natuur/zandpad", "E")
+	for x in range(o.x + 31, o.x + 46):
+		for z in range(o.y + 1, o.y + 4):
+			G(x, z, "natuur/bos")
+		G(x, o.y + 4, "natuur/bosrand", "S")
+		if x % 3 == 0:
+			Pr(x * 4 + 2.0, (o.y + 2) * 4 + 2.0, ["bomen/eik", "bomen/den", "bomen/berk"][(x / 3) % 3])
+	for x in range(o.x + 22, o.x + 25):
+		for z in [o.y + 5, o.y + 6]:
+			G(x, z, "natuur/aarde")
+			Pr(x * 4 + 2.0, z * 4 + 2.0, "bomen/jonge_boom")
+	for x in range(o.x + 25, o.x + 28):
+		for z in [o.y + 5, o.y + 6]:
+			G(x, z, "plein/plein_grind")
+	Pr((o.x + 26) * 4 + 2.0, (o.y + 7) * 4 + 0.5, "straat/bank_hout", "N")
 	# outdoor pool with all pool tiles
 	var zx := o.x + 22
 	var zz := o.y + 8
@@ -3625,75 +4204,7 @@ func _nature_park() -> void:
 		_prop((zx + 1 + i * 1.5) * 4, (zz + 5) * 4 + 1.0, "water", 0.0)
 
 
-# ------------------------------------------------------------------ safety net: whatever isn't placed anywhere yet, in a small situation
-
-## Safety net: places every library item that is not used anywhere yet in a grid of
-## slots, so that each tile appears at least once.
-func _rest_in_context() -> void:
-	_district_name = "rest"
-	var rest_g := _unused_list(ground)
-	var rest_b := _unused_list(buildings)
-	var rest_d := _unused_list(details)
-	var rest_p := _unused_list(props)
-	var n := rest_g.size() + rest_b.size() + rest_d.size() + rest_p.size()
-	print("not yet in a district: ground %d, buildings %d, details %d, props %d" % [rest_g.size(), rest_b.size(), rest_d.size(), rest_p.size()])
-	print("  ", rest_g, rest_b, rest_d)
-	if n == 0:
-		return
-	var o := _district(60, 4 + ceili(n / 14.0) * 4)
-	# one slot of 4x4 cells per tile, 14 per row; layers in the order ground, buildings, details, props
-	var items := []
-	for nm in rest_g:
-		items.append(["Grond", nm])
-	for nm in rest_b:
-		items.append(["Gebouwen", nm])
-	for nm in rest_d:
-		items.append(["Details", nm])
-	for nm in rest_p:
-		items.append(["Props", nm])
-	var x := o.x + 2
-	var z := o.y + 2
-	for item in items:
-		var nm: String = item[1]
-		match item[0]:
-			"Grond":
-				var k: String = nm.split("/")[0]
-				if k == "stoep":
-					# pavement pieces get a bit of road around them
-					for c in [[x - 1, z], [x + 1, z], [x, z - 1], [x, z + 1]]:
-						G(c[0], c[1], "weg/weg_vlak")
-					G(x, z, nm)
-				elif k == "tunnel":
-					# sunk to the depth in the name (..._d<depth>), default 6
-					var dd := 6
-					var i: int = nm.find("_d")
-					if i >= 0 and nm.substr(i + 2).is_valid_int():
-						dd = int(nm.substr(i + 2))
-					_trench(x, z, nm, dd)
-				else:
-					G(x, z, nm)
-			"Gebouwen":
-				var st: String = nm.split("/")[0]
-				if _short(st, nm).begins_with("bg_"):
-					B(x, 0, z, nm, "S")
-				else:
-					# anything above the ground floor stands on a closed block
-					var base_tile: String = st + "/" + st + "_blok_dicht"
-					if not _has(base_tile):
-						base_tile = "klassiek_rood/klassiek_rood_blok_dicht"
-					B(x, 0, z, base_tile, "S")
-					B(x, 1, z, nm, "S")
-			"Details":
-				B(x, 0, z, "klassiek_rood/klassiek_rood_blok_dicht", "S")
-				B(x, 1, z, "klassiek_rood/klassiek_rood_blok_dicht", "S")
-				D(x * 4 + 2.0, (z + 1) * 4.0, 3.0, nm, "S")
-			"Props":
-				Pr(x * 4 + 2.0, z * 4 + 2.0, nm, "S")
-		x += 4
-		if x > o.x + 56:
-			x = o.x + 2
-			z += 4
-
+# ------------------------------------------------------------------ check: every tile in the town
 
 ## Sorted names of the library items of gm that are not placed in gm yet.
 func _unused_list(gm: GridMap) -> Array:
@@ -3708,76 +4219,7 @@ func _unused_list(gm: GridMap) -> Array:
 	return result
 
 
-## First ground tile whose name ends with "/" + ending, or "".
-func _find_ground(ending: String) -> String:
-	for id in ground.mesh_library.get_item_list():
-		var nm := ground.mesh_library.get_item_name(id)
-		if nm.ends_with("/" + ending):
-			return nm
-	return ""
-
-
 # ------------------------------------------------------------------ intersections: traffic islands, roundabout and pavement corners
-
-## Intersections district: traffic islands with end caps, central reservations, round
-## islands (roundabout) and all pavement corner variants.
-func _intersections() -> void:
-	_district_name = "kruispunten"
-	var o := _district(44, 14)
-	fill_rect(o.x + 1, o.y + 1, o.x + 42, o.y + 12, "weg/weg_vlak")
-	# wide road with central islands (plain, with gutter, clinker) and end caps
-	var z := o.y + 3
-	var x := o.x + 2
-	for variant in ["", "goot_"]:
-		G(x, z, "stoep/stoep_" + variant + "eiland_eind", "W")
-		G(x + 1, z, "stoep/stoep_" + variant + "eiland", "E")
-		G(x + 2, z, "stoep/stoep_" + variant + "eiland", "E")
-		G(x + 3, z, "stoep/stoep_" + variant + "eiland_eind", "E")
-		_prop((x + 1) * 4 + 2.0, z * 4 + 2.0, "street")
-		x += 5
-	G(x, z, "weg/middengeleider_kop", "S")
-	G(x, z + 1, "weg/middengeleider", "S")
-	G(x, z + 2, "weg/middengeleider", "S")
-	x += 2
-	# roundabout with round central island
-	G(x + 1, z + 1, "stoep/stoep_eiland_rond")
-	G(x + 4, z + 1, "stoep/stoep_goot_eiland_rond")
-	_prop((x + 1) * 4 + 2.0, (z + 1) * 4 + 2.0, "green")
-	x += 7
-	# narrow protruding pavements (end of a pavement strip)
-	G(x, z, "stoep/stoep_smal_eind", "N")
-	G(x, z + 1, "stoep/stoep_eiland", "E")
-	G(x + 2, z, "stoep/stoep_goot_smal_eind", "N")
-	G(x + 2, z + 1, "stoep/stoep_goot_eiland", "E")
-	# street corners: outer corners, inner corners and the variants with gutter/clinker/quay
-	var hz := o.y + 8
-	var hx := o.x + 2
-	for variant in ["", "goot_", "klinker_", "kade_"]:
-		var pre: String = "stoep/stoep_" + variant
-		# an L-shaped pavement along a bend in the road: outer corner, edges and inner corner
-		G(hx, hz, pre + "hoek_buiten" if _has(pre + "hoek_buiten", ground) else "stoep/stoep_hoek_buiten", "SE")
-		G(hx + 1, hz, pre + "rand" if _has(pre + "rand", ground) else "stoep/stoep_rand", "S")
-		G(hx, hz + 1, pre + "rand" if _has(pre + "rand", ground) else "stoep/stoep_rand", "E")
-		G(hx + 1, hz + 1, pre + "hoek_binnen" if _has(pre + "hoek_binnen", ground) else "stoep/stoep_hoek_binnen", "NW")
-		G(hx + 1, hz + 2, "stoep/stoep_vol")
-		G(hx + 2, hz + 1, "stoep/stoep_vol")
-		G(hx + 2, hz + 2, "stoep/stoep_vol")
-		hx += 5
-	G(hx, hz, "stoep/stoep_rand_hoek_binnen", "S")
-	G(hx + 1, hz, "stoep/stoep_rand", "S")
-	G(hx - 1, hz, "stoep/stoep_rand", "S")
-	G(hx, hz + 1, "stoep/stoep_vol")
-	G(hx + 1, hz + 1, "stoep/stoep_vol")
-	hx += 4
-	G(hx, hz, "stoep/stoep_goot_rand_hoek_binnen", "S")
-	G(hx + 1, hz, "stoep/stoep_goot_rand", "S")
-	G(hx, hz + 1, "stoep/stoep_vol")
-	hx += 4
-	G(hx, hz + 1, "stoep/stoep_dubbel_hoek_binnen", "S")
-	G(hx, hz + 2, "stoep/stoep_vol")
-	G(hx + 2, hz + 1, "stoep/stoep_goot_dubbel_hoek_binnen", "S")
-	G(hx + 2, hz + 2, "stoep/stoep_vol")
-
 
 # ------------------------------------------------------------------ shopping street (pedestrian zone) near the campus
 
@@ -3958,17 +4400,6 @@ func _light_corner(pos: Vector2, bike: Vector2, ov: Vector2, rot: String, phase:
 	Pr(pos.x + bike.x + ov.x, pos.y + bike.y + ov.y, L + "voetganger_" + ped_phase, ped_rot)
 
 
-## District with two intersections showing all traffic-light types in different states.
-func _traffic_lights() -> void:
-	_district_name = "verkeerslichten"
-	var o := _district(36, 14)
-	fill_rect(o.x + 1, o.y + 1, o.x + 34, o.y + 12, "natuur/gras_kort")
-	# intersection 1: north-south green, east-west red
-	_intersection_with_lights(o.x + 7, o.y + 6, "groen", "rood", "rijden", "stop", "groen", "rood")
-	# intersection 2: north-south amber, east-west red
-	_intersection_with_lights(o.x + 25, o.y + 6, "oranje", "rood", "attentie", "stop", "oranje", "rood")
-
-
 # ------------------------------------------------------------------ industrial estate: sheds, warehouse, factory
 
 ## Industrial building at tile (x0, z0), w x d tiles, `floors` storeys, ground floor
@@ -4079,55 +4510,71 @@ func _tint_area(pos: Vector3, color: Color, area_size: Vector2i, brightness := 1
 	tint_map.add_child(tv, true)
 
 
-## Tint demo: rows of identical buildings with different tints, and one large tint
-## area over a whole block including the ground.
+## Tint demo: a residential street with three terraces of identical houses, each house
+## with its own tint (warm, cool, greenish, lighter, darker, ochre, pink), facing a
+## street through the district; gardens behind; on the corner a block whose tint
+## also covers the ground in front of it.
 func _tint_demo() -> void:
 	_district_name = "tint"
 	var o := _district(30, 18)
-	fill_rect(o.x + 1, o.y + 1, o.x + 28, o.y + 16, "plein/plein_tegels")
 	var tints := [
 		["origineel", Color(1, 1, 1), 1.0], ["warm", Color(1.0, 0.8, 0.62), 1.0], ["koel", Color(0.75, 0.86, 1.1), 1.0],
 		["groenig", Color(0.82, 1.0, 0.78), 1.0], ["lichter", Color(1, 1, 1), 1.35], ["donkerder", Color(1, 1, 1), 0.65],
 		["oker", Color(1.1, 0.95, 0.6), 1.0], ["rozig", Color(1.1, 0.82, 0.86), 1.0],
 	]
-	# row 1: identical classic buildings, each with a different tint
-	var row := [["klassiek_rood", o.y + 2], ["modern_wit", o.y + 7], ["jaren30", o.y + 12]]
-	for r in row:
+	# the street (z 7, 8) right through the district, joining the streets west and east
+	var zs := o.y + 7
+	for x in range(o.x, o.x + 30):
+		G(x, zs, "weg/rijstrook_onderbroken_kant", "E")
+		G(x, zs + 1, "weg/rijstrook_geen_kant", "W")
+		for z in [zs, zs + 1]:
+			_pavement.erase(Vector2i(x, z))
+			_taken[Vector2i(x, z)] = true
+	for x in range(o.x + 1, o.x + 29):
+		for z in [zs - 1, zs + 2]:
+			G(x, z, "stoep/stoep_vol")
+			_pavement[Vector2i(x, z)] = ""
+			_taken[Vector2i(x, z)] = true
+		if x % 3 == 0:
+			Pr(x * 4 + 2.0, (zs - 1) * 4 + 1.0, "bomen/linde")
+			Pr(x * 4 + 2.0, (zs + 3) * 4 - 1.0, "verlichting/lantaarn_modern", "N")
+	# terraces: [style, front row, facing]; houses one cell wide, two deep
+	var rows := [["klassiek_rood", zs - 3, "S"], ["modern_wit", zs + 3, "N"], ["jaren30", zs + 7, "N"]]
+	for r in rows:
 		var style: String = r[0]
-		var z: int = r[1]
+		var front: int = r[1]
+		var facing: String = r[2]
+		var back := front - 1 if facing == "S" else front + 1
 		var p := style + "/" + style + "_"
 		for i in tints.size():
-			var x := o.x + 2 + i * 3
-			# 1 wide, 2 deep: front cell facing north, back cell facing south
-			for zz in [z, z + 1]:
-				var facing := "N" if zz == z else "S"
-				var gf: String = (("bg_deur" if zz == z else "bg_raam") if _has(p + "bg_deur") else _first(p, ["bg_raam", "bg_portiek"]))
-				B(x, 0, zz, p + gf, facing)
-				B(x, 1, zz, p + _first(p, ["verd_raam", "verd_balkon"]), facing)
-			if _has(p + "dak_schuin"):
-				B(x, 2, z, p + "dak_schuin", "N")
-				B(x, 2, z + 1, p + "dak_schuin", "S")
-			else:
-				var flat := p + ("dak_plat_tegenover" if _has(p + "dak_plat_tegenover") else "dak_plat_rand")
-				B(x, 2, z, flat, "E")
-				B(x, 2, z + 1, flat, "E")
+			var x := o.x + 2 + i
+			for zz in [front, back]:
+				var face := facing if zz == front else ("N" if facing == "S" else "S")
+				var gf: String = (("bg_deur" if zz == front else "bg_raam") if _has(p + "bg_deur") else _first(p, ["bg_raam", "bg_portiek"]))
+				B(x, 0, zz, p + gf, face)
+				B(x, 1, zz, p + _first(p, ["verd_raam", "verd_balkon"]), face)
+				if _has(p + "dak_schuin"):
+					B(x, 2, zz, p + "dak_schuin", face)
+				else:
+					B(x, 2, zz, p + ("dak_plat_rand" if _has(p + "dak_plat_rand") else "dak_plat_midden"), face)
 			var t: Array = tints[i]
 			if t[0] != "origineel":
-				_tint_area(Vector3(x * 4 + 2.0, 0, (z + 1) * 4.0), t[1], Vector2i(1, 2), t[2], "Tint_" + style + "_" + t[0])
-			Pr(x * 4 + 2.0, (z + 2) * 4 + 1.0, "bomen/linde" if i % 2 else "planten/plantenbak_beton")
-	# one large tint area over a whole block, including the ground underneath
-	var bx := o.x + 26
+				_tint_area(Vector3(x * 4 + 2.0, 0, (mini(front, back) + 1) * 4.0), t[1], Vector2i(1, 2), t[2], "Tint_" + style + "_" + t[0])
+			# back garden
+			var garden := back - 1 if facing == "S" else back + 1
+			G(x, garden, "natuur/gras_kort")
+			_taken[Vector2i(x, garden)] = true
+	# corner block with a tint over the block and the ground in front of it
+	var bx := o.x + 12
+	var bz := zs - 4
+	var cells := []
 	for x in range(bx, bx + 2):
-		for z in range(o.y + 2, o.y + 6):
-			var sides := _sides(x, z, bx, o.y + 2, 2, 4)
-			for v in range(3):
-				var key := _corner_pair(sides, "W")
-				if key != "" and sides.size() >= 2:
-					B(x, v, z, "klassiek_geel/klassiek_geel_" + ("bg_raam_hoek" if v == 0 else "verd_raam_hoek"), CORNER[key])
-				else:
-					B(x, v, z, "klassiek_geel/klassiek_geel_" + ("bg_raam" if v == 0 else "verd_raam"), sides[0] if sides.size() > 0 else "S")
-			B(x, 3, z, "klassiek_geel/klassiek_geel_dak_plat_midden", "S")
-	_tint_area(Vector3(bx * 4 + 4.0, 0, (o.y + 4) * 4.0), Color(0.7, 0.85, 1.15), Vector2i(2, 4), 1.0, "Tint_blok_inclusief_grond")
+		for z in range(bz, bz + 3):
+			cells.append(Vector2i(x, z))
+	var kit := _style_kit("klassiek_geel")
+	_facades(cells, "klassiek_geel", 3, ["bg_raam"], ["verd_raam"], ["bg_raam_hoek"], ["verd_raam_hoek"], {})
+	_roof(cells, "klassiek_geel", 3, kit, {})
+	_tint_area(Vector3(bx * 4 + 4.0, 0, (bz + 2) * 4.0), Color(0.7, 0.85, 1.15), Vector2i(2, 4), 1.0, "Tint_blok_inclusief_grond")
 
 
 # ------------------------------------------------------------------ slopes and curves
@@ -4178,26 +4625,32 @@ func _flyovers() -> void:
 ## A turning loop of `profile` with its west edge at x0, top row z0, legs down to row z1
 ## (inclusive). Curve A (rotation 0) comes from the south and turns west, curve B
 ## (rotation 1, west of A) turns south again; kind "dijk": A rises, B descends, on an
-## embankment one floor up (fill blocks below); "brug": the same as bridge decks (piers
+## embankment two floors up (fill blocks below); "brug": the same as bridge decks (piers
 ## below); "vlak": flat curved bridge decks on floor 2. Ramps in the legs lead up.
 func _curve_loop(x0: int, z0: int, z1: int, profile: String, kind: String) -> void:
 	var parts: Array = PROFILES[profile]
 	var w := parts.size()
 	var n := 1 + w
 	var a := Vector2i(x0 + n, z0 + n - 1)
-	var lift: int = {"dijk": 1, "brug": 1, "vlak": 2}[kind]
+	var lift: int = {"dijk": 2, "brug": 1, "vlak": 2, "plat": 0}[kind]
 	for half in 2:
 		var origin := a + Vector2i(-half, 0)
 		var right := half == 1
 		for i in n:
 			for j in n:
 				var c: Vector2i = origin + _rotate_offset(Vector2i(i, -j), half)
-				var f: int = lift if kind == "vlak" else _rising_floor(profile, i, j, right) + lift
+				var f: int = lift if kind in ["vlak", "plat"] else _rising_floor(profile, i, j, right) + lift
 				var cell := "%s%s_%d_%d" % [profile, "_rechts" if right else "", i, j]
-				var nm := "brug/bocht_%s_%d_%d" % [profile, i, j] if kind == "vlak" else "helling_bocht/" + ("brug_" if kind == "brug" else "") + cell
+				var nm := "helling_bocht/" + ("brug_" if kind == "brug" else "") + cell
+				if kind == "vlak":
+					nm = "brug/bocht_%s_%d_%d" % [profile, i, j]
+				elif kind == "plat":
+					nm = "bocht/%s_%d_%d" % [profile, i, j]
 				if not _has(nm, ground):
 					continue
 				G(c.x, c.y, nm, half, f)
+				if kind == "plat":
+					continue
 				if kind == "dijk":
 					if f > 0:
 						G(c.x, c.y, "helling_bocht/ophoging_gras_%dx%d_%d_%d" % [n, n, i, j], half, 0)
@@ -4209,7 +4662,7 @@ func _curve_loop(x0: int, z0: int, z1: int, profile: String, kind: String) -> vo
 					else:
 						_pier(c.x, c.y, "brug/brug_pijler_gras", 0, f - 1)
 	# legs: lane d of A's start at x a.x+1+d, of B's end at x a.x-2-d, heading south
-	var ramp: Array = RAMP_PARTS[profile]
+	var ramp: Array = RAMP_PARTS.get(profile, [])
 	for r in range(1, z1 - a.y + 1):
 		for d in w:
 			for leg in 2:
@@ -4338,27 +4791,21 @@ func curve(hx: int, hz: int, profile: String, k := 0, straight := 3) -> void:
 			G(hx + o2.x, hz + o2.y, part[0], (int(part[1]) + 3 + k) % 4)
 
 
-## District with rounded curves for every street profile in PROFILES.
+## District with a residential loop street for every street profile in PROFILES: two
+## rounded curves back to back (a U), whose legs join the street south of the district;
+## a small playground inside each loop.
 func _curves() -> void:
 	_district_name = "bochten"
-	var o := _district(92, 34)
-	fill_rect(o.x + 1, o.y + 1, o.x + 90, o.y + 32, "natuur/gras")
-	var x := o.x + 5
-	var z := o.y + 12
-	for profile in ["straat", "klinkerstraat", "weg", "tramweg", "fietspad"]:
+	var o := _district(92, 12)
+	var x := o.x + 1
+	for profile in ["straat", "klinkerstraat", "weg", "tramweg", "fietspad", "hoofdweg", "laan"]:
 		var n: int = 1 + PROFILES[profile].size()
-		curve(x, z, profile, 0)
-		x += n + 7
-	# wide profiles on a second row, one also rotated the other way
-	x = o.x + 6
-	z = o.y + 26
-	for profile in ["hoofdweg", "laan"]:
-		var n: int = 1 + PROFILES[profile].size()
-		curve(x + 3, z, profile, 0)
-		x += n + 8
-	curve(x + 16, o.y + 18, "weg", 2)
-	for i in 30:
-		Pr((o.x + 2 + i * 3) * 4.0, (o.y + 1) * 4.0 + 1.0, ["bomen/linde", "verlichting/lantaarn_modern", "planten/struik"][i % 3])
+		if x + 2 * n > o.x + 91:
+			break
+		_curve_loop(x, o.y + 11 - n - 2, o.y + 11, profile, "plat")
+		# playground in the middle of the loop
+		Pr((x + n - 1) * 4.0 + 2.0, (o.y + 11) * 4.0 - 4.0, "speeltuin/" + ["schommel", "glijbaan", "wipwap", "zandbak"][profile.length() % 4])
+		x += 2 * n + 1
 
 
 # ------------------------------------------------------------------ village centre with cobblestones

@@ -87,7 +87,7 @@ is ingezet.
 | 73..95, 55..71 | Viaduct over een weg met middenberm, luxe appartementen met penthouse en daktuin/dakzwembad, kantoor met grind-/bitumen-/groendak en koelinstallaties, rijtjes met groendak, busstation, sporthal |
 | z 72..79 | Snelweg (vluchtstroken, middenberm, portalen met blauwe borden, lantaarns) met auto- en fietstunnel eronder en een aansluiting met af- en toerit (x 34..58) |
 | z 80..98 | Campus: universiteit, hogeschool, twee kantoortorens met kolonnade en een loopbrug ertussen; ernaast (x 62..95, z 86..97) een autovrije winkelstraat met alle winkel- en horecatypes, terrassen, bomen, fontein en paaltjes bij de ingangen |
-| vanaf z 99 | Demowijken als stadsblokken aan een doorlopend stratennet (ook: kruisingen met verkeerslichten in alle standen en een bedrijventerrein met loodsen, magazijn, fabriek met rokende schoorsteen): een buurt per gebouwstijl (bouwblok met alle gevels, winkels en hoekpanden, hofje met kappen om de hoek, zadeldak-L en -T, rijtje smalle panden met elk een andere gevel/top, torens, een "detailpand" met aangebrachte ramen/deuren/luifels/zonwering/teksten/dakonderdelen), een dakenwijk met alle dakpansoorten, hallen en parkeergarage, een verkeerstuin met alle markeringen in doorlopende straten, kruispunten met eilanden/rotonde/stoephoeken, fiets-, tram- en spoorlussen, een dijk met alle hellingen en heuvels, een tunnelpark, een kanaal met alle bruggen, keerlussen met stijgende bochten (dijk en brug), viaductbochten en een natuur- en recreatiepark |
+| vanaf z 99 | Demowijken als stadsblokken aan een doorlopend stratennet (ook: kruisingen met verkeerslichten in alle standen en een bedrijventerrein met loodsen, magazijn, fabriek met rokende schoorsteen): een buurt per gebouwstijl (bouwblok met alle gevels, winkels en hoekpanden, hofje met kappen om de hoek, zadeldak-L en -T, rijtje smalle panden met elk een andere gevel/top, torens, een "detailpand" met aangebrachte ramen/deuren/luifels/zonwering/teksten/dakonderdelen), een dakenwijk met alle dakpansoorten, een sportcomplex met hallen en parkeergarage, woonlussen met alle bochtprofielen, een straat met getinte rijtjeshuizen, fiets-, tram- en spoorlussen, een rivierdijk met op- en afritten en viaducten, een tunnelpark, een grachtengordel met alle bruggen, keerlussen met stijgende bochten (dijk en brug), viaductbochten en een natuur- en recreatiepark. Alle markeringen, stoepvormen, rotondes en verkeerslichten zitten in het stratennet zelf. Elke tile staat ergens logisch in de stad; de build meldt tiles die nergens staan |
 
 Elke tile staat ergens in de kaart in een realistische situatie; de wijken
 worden automatisch opgebouwd uit de bibliotheken, dus nieuwe tiles komen er bij
@@ -222,7 +222,7 @@ In elke kaart zit een node `TintKaart` (script `scripts/tint_map.gd`):
   en `size` (in cellen). De tint werkt live in de editor.
   Wit = geen verandering; helderheid > 1 is lichter, < 1 donkerder.
 Dit werkt via globale shader-parameters (Project > Project Settings >
-Shader Globals: `zwervr_tint_kaart`, `zwervr_tint_gebied`, `zwervr_variatie`).
+Shader Globals: `zwervr_tint_map`, `zwervr_tint_area`, `zwervr_variation`).
 
 
 Rook, water, vlaggen en voxelstructuur
@@ -232,35 +232,35 @@ Rook, water, vlaggen en voxelstructuur
   kleine schoorsteen-details. Werkt live in de editor; vink `rescan`
   aan nadat je schoorstenen hebt toegevoegd. `wind` bepaalt de richting.
 - Voxelstructuur: `materials/voxel.gdshader` tekent (optioneel) lichte randen en kleine
-  helderheidsverschillen per voxel (`voxel_ruis`; randjes via `voxel_rand`, standaard uit), zodat grote
+  helderheidsverschillen per voxel (`voxel_noise`; randjes via `voxel_edge`, standaard uit), zodat grote
   vlakken minder vlak ogen.
 - Water golft met golven uit vier richtingen (niet rechtlijnig) en heeft lichte,
   bewegende vlekken en glinsteringen (`materials/voxel_water.tres`:
-  `golf_hoogte`, `golf_snelheid`, `golf_lengte`, `vlekken`, `glinstering`). De
+  `wave_height`, `wave_speed`, `wave_length`, `patches`, `glitter`). De
   importer maakt het wateroppervlak daarvoor per voxel fijnmazig.
 - Spiegeling in water, zonder raytracing: de shader volgt de gespiegelde
   kijkstraal in 12 stappen over het scherm (diepte- en schermbuffer) en toont
   wat hij raakt (bruggen, bomen, gevels); anders spiegelt de lucht (kleuren uit
-  de dagcyclus). Instelbaar in `materials/voxel_water.tres`: `spiegeling`,
-  `lucht_spiegeling`, `stap`, `stappen`, `dikte`, `rimpeling`. De SSR van Godot
+  de dagcyclus). Instelbaar in `materials/voxel_water.tres`: `reflection`,
+  `sky_reflection`, `step_size`, `steps`, `thickness`, `ripple`. De SSR van Godot
   gaf hier geen zichtbare spiegeling en staat uit.
 - Drijvende objecten (boten, boeien, waterlelies; metadata `"animation": "float"`,
   zie hieronder) deinen mee: `materials/voxel_drijf.tres` volgt dezelfde golf als
-  het water, deint extra (`deinen`) en laat het object rollen en stampen (`rollen`).
+  het water, deint extra (`heave`) en laat het object rollen en stampen (`roll`).
   Grond-tiles met waterplanten gebruiken `voxel_drijf_plant.tres`: alleen wat
   boven het water ligt dobbert, elk stukje op zijn eigen plek.
-  Houd `golf_hoogte`, `golf_snelheid` en `golf_lengte` gelijk aan die van het
+  Houd `wave_height`, `wave_speed` en `wave_length` gelijk aan die van het
   water. Zulke tiles worden niet samengevoegd.
 - Zonnepanelen hebben een eigen glanzend materiaal (`materials/voxel_paneel.tres`,
   een gewoon StandardMaterial3D). In MagicaVoxel: metaal met ruwheid onder 0,15.
 - Glas heeft een goedkope, nagebootste spiegeling (lucht, horizon, straat en
-  lichte strepen; `spiegeling`, `opacity`).
+  lichte strepen; `reflection`, `opacity`).
 - Lampen, verkeerslichten en verlichte ramen (emit-materiaal, energie 6) geven
   's nachts een zachte gloed via de glow van de Environment (drempel 1,6).
-  Overdag branden ze op 25% (shader global `zwervr_nacht`, gezet door de
+  Overdag branden ze op 25% (shader global `zwervr_night`, gezet door de
   dagcyclus), zodat verlichte ramen overdag geen witte vlekken zijn.
-- Vlaggen wapperen via `materials/voxel_vlag.tres` (`snelheid`, `sterkte`,
-  `golflengte`). Hoe verder van de mast, hoe meer beweging.
+- Vlaggen wapperen via `materials/voxel_vlag.tres` (`speed`, `strength`,
+  `wavelength`). Hoe verder van de mast, hoe meer beweging.
 - In MagicaVoxel: paletkleuren 225-232 worden water, 233-248 worden
   wapperend vlagdoek. De generator zet die kleuren automatisch op die plekken.
 
@@ -393,11 +393,20 @@ Generator-bestanden (`tools/voxgen/`):
 Na het genereren (vanuit de projectmap):
 
     # 1. alle tiles importeren
-    /Applications/Godot.app/Contents/MacOS/Godot --headless --import
-    # 2. bibliotheken bijwerken (zonder previews; de editor maakt die bij openen)
-    /Applications/Godot.app/Contents/MacOS/Godot --headless --script tools/build_libraries.gd [-- force]
+    tools/godot.sh --headless --import
+    # 2. bibliotheken bijwerken (zonder previews)
+    tools/godot.sh --headless --script tools/build_libraries.gd [-- force]
+    # 2b. palet-previews renderen (met venster, ~1,5 min voor alles; daarna hoeft de
+    #     editor bij het openen geen "Creating mesh previews" meer te doen)
+    tools/godot.sh --script tools/build_previews.gd [-- all]
     # 3. voorbeeldkaart opnieuw bouwen (overschrijft scenes/wereld.tscn!)
-    /Applications/Godot.app/Contents/MacOS/Godot --headless --script tools/build_example_city.gd
+    tools/godot.sh --headless --script tools/build_example_city.gd
+
+Previews worden bewaard in `.godot/vox_tiles_previews/` (per tile en importtijd); een
+bibliotheek die opnieuw gebouwd wordt, krijgt ze daar direct uit terug.
+`tools/godot.sh` start Godot met een tijdslimiet (`GODOT_TIMEOUT`, standaard 600 s)
+en zonder invoer, zodat een run nooit blijft hangen; de tools in `tools/` stoppen
+bovendien zelf na een script-fout (`Common.watchdog`).
 
 In de editor staat ook: Project > Tools > "Vox Tiles: bibliotheken volledig
 herbouwen" (maakt collision en alle previews opnieuw; handig als een preview
@@ -453,7 +462,7 @@ Rondleiding, prestaties en uiterlijk
   worden automatisch gemaakt en staan in `.gitignore`.
 - Ook het volle detailniveau voegt bijna gelijke kleuren samen (import-optie
   `color_merge`, standaard 14) voor minder driehoeken; de fijne korrel
-  komt uit de shader (`voxel_ruis`). Gras en boomkruinen hebben hun detail in de
+  komt uit de shader (`voxel_noise`). Gras en boomkruinen hebben hun detail in de
   kleur van de voxels, niet in uitstekende voxels.
 - Schaduwen: vlakke tiles (lager dan 0,7 m) en kleine details werpen geen
   schaduw; de zon gebruikt 4 schaduwsplits (4096 px).
@@ -475,7 +484,7 @@ Rondleiding, prestaties en uiterlijk
   houden, en blijft tussen `min_elevation` (36°) en `max_elevation` (44°) hoog: geen
   lange schaduwen. Alle licht is realtime.
 - Bomen en planten bewegen in de wind (`materials/voxel_wind.tres`:
-  `wind_sterkte`, `wind_snelheid`, `wind_hoogte`); de importer kiest dit
+  `wind_strength`, `wind_speed`, `wind_height`); de importer kiest dit
   materiaal automatisch voor `props/bomen`, `props/planten`, hagen, bloembakken
   en riet (metadata `"animation": "wind"`, of import-optie `animation`). Tiles met wind (of een vlag) worden niet
   samengevoegd, omdat die shaders in lokale coördinaten rekenen.

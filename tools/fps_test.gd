@@ -19,6 +19,7 @@ var _duration := 20.0
 
 
 func _init() -> void:
+	Common.watchdog(self, Common.arg_float(0, 20.0) + 300.0)
 	_duration = Common.arg_float(0, 20.0)
 	var mode := Common.arg(1, "tour")
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)

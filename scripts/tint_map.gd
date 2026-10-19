@@ -7,9 +7,9 @@ extends Node3D
 ## buildings or ground: everything inside an area gets that tint (works live in the
 ## editor). The areas are rasterised into a small texture with one pixel per 4x4 m cell,
 ## which the voxel shader samples via global shader parameters:
-## `zwervr_tint_kaart` (RGB = tint * 0.5, A = strength; grey/transparent = no tint),
-## `zwervr_tint_gebied` (x, z, width, depth of the covered area in metres) and
-## `zwervr_variatie` ("variation": gives each cell a slightly different colour).
+## `zwervr_tint_map` (RGB = tint * 0.5, A = strength; grey/transparent = no tint),
+## `zwervr_tint_area` (x, z, width, depth of the covered area in metres) and
+## `zwervr_variation` ("variation": gives each cell a slightly different colour).
 
 ## Size of one map cell in metres (one texture pixel).
 const CELL := 4.0
@@ -74,6 +74,6 @@ func _bake() -> void:
 		_tex = ImageTexture.create_from_image(img)
 	else:
 		_tex.update(img)
-	RenderingServer.global_shader_parameter_set("zwervr_tint_kaart", _tex)
-	RenderingServer.global_shader_parameter_set("zwervr_tint_gebied", Vector4(area_start.x, area_start.y, w * CELL, h * CELL))
-	RenderingServer.global_shader_parameter_set("zwervr_variatie", variation)
+	RenderingServer.global_shader_parameter_set("zwervr_tint_map", _tex)
+	RenderingServer.global_shader_parameter_set("zwervr_tint_area", Vector4(area_start.x, area_start.y, w * CELL, h * CELL))
+	RenderingServer.global_shader_parameter_set("zwervr_variation", variation)

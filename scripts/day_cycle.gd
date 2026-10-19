@@ -2,8 +2,8 @@ extends Node
 ## Day and night cycle (the "Dagcyclus" node of the world scene): rotates and colours
 ## the sun, dims the fill light and the ambient light, colours the procedural sky and
 ## sets the global shader parameters the voxel shaders read:
-## `zwervr_nacht` (0 = day, 1 = night; brightens emissive voxels) and
-## `zwervr_lucht_boven` / `zwervr_lucht_horizon` (sky colours reflected by glass).
+## `zwervr_night` (0 = day, 1 = night; brightens emissive voxels) and
+## `zwervr_sky_top` / `zwervr_sky_horizon` (sky colours reflected by glass).
 ##
 ## The shadow-casting sun stays between `min_elevation` and `max_elevation` degrees
 ## above the horizon, so shadows never become extremely long; the time of day mainly
@@ -61,7 +61,7 @@ func _apply() -> void:
 	_sun.light_color = Color(1.0, 0.93 - warm * 0.25, 0.82 - warm * 0.45)
 	_sun.light_energy = 1.55 * light
 	_sun.shadow_enabled = light > 0.05
-	RenderingServer.global_shader_parameter_set("zwervr_nacht", 1.0 - light)
+	RenderingServer.global_shader_parameter_set("zwervr_night", 1.0 - light)
 	if _fill:
 		# at night the fill light becomes a faint blue moonlight
 		_fill.light_energy = lerpf(0.12, 0.22, light)
@@ -76,5 +76,5 @@ func _apply() -> void:
 		_sky.ground_horizon_color = _sky.sky_horizon_color
 		_sky.ground_bottom_color = _sky.sky_horizon_color.lerp(_sky.sky_top_color, 0.5)
 		# glass reflects the same sky (voxel_glass.gdshader)
-		RenderingServer.global_shader_parameter_set("zwervr_lucht_boven", _sky.sky_top_color.lightened(0.1))
-		RenderingServer.global_shader_parameter_set("zwervr_lucht_horizon", _sky.sky_horizon_color)
+		RenderingServer.global_shader_parameter_set("zwervr_sky_top", _sky.sky_top_color.lightened(0.1))
+		RenderingServer.global_shader_parameter_set("zwervr_sky_horizon", _sky.sky_horizon_color)

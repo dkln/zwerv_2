@@ -70,27 +70,31 @@ scaling_3d/scale=0.77
 
 [shader_globals]
 
-zwervr_tint_kaart={
+zwervr_editor={
+"type": "float",
+"value": 0.0
+}
+zwervr_tint_map={
 "type": "sampler2D",
 "value": ""
 }
-zwervr_tint_gebied={
+zwervr_tint_area={
 "type": "vec4",
 "value": Vector4(0, 0, 0, 0)
 }
-zwervr_variatie={
+zwervr_variation={
 "type": "float",
 "value": 0.0
 }
-zwervr_nacht={
+zwervr_night={
 "type": "float",
 "value": 0.0
 }
-zwervr_lucht_boven={
+zwervr_sky_top={
 "type": "color",
 "value": Color(0.42, 0.6, 0.86, 1)
 }
-zwervr_lucht_horizon={
+zwervr_sky_horizon={
 "type": "color",
 "value": Color(0.78, 0.85, 0.92, 1)
 }

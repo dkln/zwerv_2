@@ -8,6 +8,7 @@ const Common = preload("res://tools/tool_common.gd")
 
 
 func _init() -> void:
+	Common.watchdog(self)
 	var sc := Common.instantiate(Common.arg(0))
 	var out := Common.arg(1)
 	get_root().add_child(sc)

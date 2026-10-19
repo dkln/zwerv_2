@@ -9,5 +9,5 @@ shader_parameter/metallic = 0.0
 shader_parameter/emission_energy = 0.0
 shader_parameter/specular = 0.3
 shader_parameter/roughness = 0.92
-shader_parameter/scheuren = 0.5
-shader_parameter/putjes = 0.4
+shader_parameter/cracks = 0.5
+shader_parameter/pits = 0.4
