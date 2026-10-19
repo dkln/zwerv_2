@@ -1,0 +1,68 @@
+extends RefCounted
+## Shared helpers for the command-line tools in tools/ (SceneTree scripts started with
+## `Godot --script tools/<tool>.gd -- <args>`): argument parsing, loading a scene with a
+## still camera, waiting frames and saving screenshots.
+
+const Iso = preload("res://scripts/iso_camera.gd")
+## The example map.
+const WORLD := "res://scenes/wereld.tscn"
+## The GridMap layers of the world scene (node names under the root).
+const LAYERS := ["Grond", "Gebouwen", "Details", "Props"]
+
+
+## User argument `i` (after "--") as a string, or `default` if missing.
+static func arg(i: int, default := "") -> String:
+	var a := OS.get_cmdline_user_args()
+	return a[i] if a.size() > i else default
+
+
+## User argument `i` as a float, or `default` if missing.
+static func arg_float(i: int, default := 0.0) -> float:
+	return float(arg(i)) if arg_count() > i else default
+
+
+## Number of user arguments (after "--").
+static func arg_count() -> int:
+	return OS.get_cmdline_user_args().size()
+
+
+## Instantiates the scene at `path` without adding it to the tree. still_camera: the
+## camera ("Camera") loses its free-camera script and the tour ("Rondleiding", if any)
+## is turned off, so the tool positions the camera itself.
+static func instantiate(path: String, still_camera := true) -> Node:
+	var sc: Node = load(path).instantiate()
+	if still_camera:
+		(sc.get_node("Camera") as Camera3D).set_script(null)
+		if sc.has_node("Rondleiding"):
+			sc.get_node("Rondleiding").set("active", false)
+	return sc
+
+
+## Places the (still) camera of scene `sc` in the iso view around `focus` (world metres)
+## with `view_size` metres in view (see scripts/iso_camera.gd).
+static func place_iso(sc: Node, focus: Vector3, view_size: float) -> void:
+	Iso.place(sc.get_node("Camera"), focus, view_size)
+
+
+## Waits until the DetailNiveau node of the (added) scene `sc` has finished merging and
+## its loading screen has faded out (0.6 s fade). Returns at once without DetailNiveau.
+static func wait_for_merge(sc: Node) -> void:
+	var dn := sc.get_node_or_null("DetailNiveau")
+	if dn == null or not dn.has_method("is_merging"):
+		return
+	if not dn.is_merging():
+		return
+	await dn.merge_finished
+	await sc.get_tree().create_timer(0.7).timeout
+
+
+## Waits `frames` rendered frames (lets shaders compile and LOD/shadows settle). Await it.
+static func wait_frames(tree: SceneTree, frames: int) -> void:
+	for i in frames:
+		await tree.process_frame
+
+
+## Saves the current image of the root viewport as PNG (res://, user:// or OS path).
+static func save_screenshot(tree: SceneTree, path: String) -> void:
+	tree.get_root().get_texture().get_image().save_png(ProjectSettings.globalize_path(path))
+

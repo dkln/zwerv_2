@@ -1,0 +1,9 @@
+{
+	"id": 3,
+	"materials": {
+		"1": "stone",
+		"2": "stone",
+		"3": "glass",
+		"4": "metal"
+	}
+}

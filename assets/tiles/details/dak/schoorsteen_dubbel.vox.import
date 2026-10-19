@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=3
+importer_version=4
 type="ArrayMesh"
 uid="uid://ch8775tsxm8ao"
 path="res://.godot/imported/schoorsteen_dubbel.vox-790c9616faa862829722d967f93fd812.mesh"
@@ -15,8 +15,8 @@ dest_files=["res://.godot/imported/schoorsteen_dubbel.vox-790c9616faa862829722d9
 
 voxel_size=0.125
 ambient_occlusion=true
-kleur_samenvoegen=14
-lod_kleur_tolerantie=24
-lod2_verkleining=2
-wind=false
-blok=Vector3(0, 0, 0)
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+animation=0
+cell_block=Vector3(0, 0, 0)

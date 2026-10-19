@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=3
+importer_version=4
 type="ArrayMesh"
 uid="uid://cfs5lab20qc0r"
 path="res://.godot/imported/parkeervak_haaks_eind.vox-e4b5eda79ea5ca6cf1eacf3e8e9033f1.mesh"
@@ -15,8 +15,8 @@ dest_files=["res://.godot/imported/parkeervak_haaks_eind.vox-e4b5eda79ea5ca6cf1e
 
 voxel_size=0.125
 ambient_occlusion=true
-kleur_samenvoegen=14
-lod_kleur_tolerantie=24
-lod2_verkleining=2
-wind=false
-blok=Vector3(4, 1.5, 4)
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+animation=0
+cell_block=Vector3(4, 1.5, 4)

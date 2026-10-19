@@ -1,20 +1,36 @@
-"""Gedeeld palet voor alle tiles.
+"""Shared colour palette and material tags for all tiles.
 
-Alle tiles gebruiken hetzelfde palet, zodat je in MagicaVoxel overal dezelfde
-kleuren terugvindt. Materiaaltypes (worden in MagicaVoxel als MATL opgeslagen
-en door de Godot-importer gelezen):
-  metal -> metaalachtig, glass -> doorzichtig glas, emit -> lichtgevend,
-  water -> water (gereserveerd: palet-index 225..232).
+All tiles draw from one global palette, so the same colours (by name) show up in
+every tile in MagicaVoxel. Each entry is ``(name, (r, g, b))`` or
+``(name, (r, g, b), material)``. Colour names are data: tile code refers to them
+via ``P["name"]`` and they must not be renamed.
+
+Exports (used by vox.py and the tile modules):
+  P           colour name -> global colour id (1-based, unbounded)
+  PALETTE     global id -> (r, g, b)
+  MATERIALS   global id -> material tag
+  ORDER       all global ids in palette order
+  WATER_START / FLAG_START  fixed per-file palette slots for water / flag colours
+
+Material tags:
+  metal  -> metallic             glass -> transparent glass
+  emit   -> light emitting       paneel -> glossy metal (solar panels)
+  water  -> water (per-file palette slots WATER_START..FLAG_START-1, i.e. 225..232)
+  flag   -> waving flag cloth (per-file slots from FLAG_START = 233)
+  asphalt / stone -> Godot-only surface materials, assigned by name group below
+The MagicaVoxel tags are written as MATL chunks by vox.write_vox; all tags end up
+in the tile metadata via vox.write_metadata, which the Godot importer reads.
 """
+import re
 
 _ENTRIES = [
-    # --- wegdek
+    # --- road surface
     ("asfalt1", (58, 58, 62)), ("asfalt2", (66, 66, 70)), ("asfalt3", (74, 73, 77)),
     ("asfalt4", (50, 50, 54)), ("asfalt_reparatie", (42, 42, 46)),
     ("markering", (232, 232, 226)), ("markering2", (214, 214, 208)), ("markering_geel", (232, 190, 40)),
     ("fietsasfalt1", (150, 62, 52)), ("fietsasfalt2", (140, 56, 48)), ("fietsasfalt3", (160, 70, 58)),
     ("busbaan1", (120, 44, 44)), ("busbaan2", (110, 40, 40)),
-    # --- stoep / bestrating
+    # --- sidewalk / paving
     ("tegel1", (142, 140, 134)), ("tegel2", (132, 130, 125)), ("tegel3", (150, 148, 142)),
     ("tegel4", (124, 122, 117)), ("tegel_voeg", (100, 98, 94)),
     ("ribbel", (196, 196, 188)),
@@ -26,7 +42,7 @@ _ENTRIES = [
     ("kei4", (88, 80, 72)), ("kei_voeg", (60, 58, 54)),
     ("plein1", (168, 158, 140)), ("plein2", (156, 146, 130)), ("plein3", (178, 170, 152)),
     ("plein_donker", (110, 104, 96)), ("plein_rood", (150, 104, 84)),
-    # --- natuur
+    # --- nature
     ("gras1", (86, 136, 52)), ("gras2", (98, 150, 58)), ("gras3", (76, 124, 46)),
     ("gras4", (110, 160, 66)), ("gras5", (70, 112, 44)), ("gras_droog", (140, 150, 80)),
     ("bloem_wit", (240, 240, 232)), ("bloem_geel", (240, 210, 60)), ("bloem_paars", (150, 90, 190)),
@@ -36,11 +52,11 @@ _ENTRIES = [
     ("modder", (70, 60, 46)), ("waterbodem", (52, 58, 48)), ("waterbodem2", (44, 50, 42)),
     ("alg1", (70, 90, 50)), ("alg2", (56, 74, 42)),
     ("riet1", (150, 150, 80)), ("riet2", (120, 130, 60)), ("riet_pluim", (130, 100, 70)),
-    # --- spoor
+    # --- rail
     ("grind1", (132, 128, 120)), ("grind2", (112, 108, 102)), ("grind3", (150, 146, 138)), ("grind_roest", (120, 100, 84)),
     ("biels_beton", (170, 168, 160)), ("biels_hout", (92, 70, 52)),
     ("rail", (120, 118, 116), "metal"), ("rail_glim", (176, 176, 178), "metal"), ("railgroef", (36, 36, 38)),
-    # --- gevels
+    # --- facades
     ("baksteen1", (150, 64, 48)), ("baksteen2", (136, 58, 44)), ("baksteen3", (162, 74, 54)),
     ("baksteen4", (124, 52, 40)), ("baksteen5", (170, 86, 64)), ("voeg", (176, 170, 160)),
     ("donkersteen1", (84, 46, 40)), ("donkersteen2", (72, 40, 36)), ("donkersteen3", (96, 54, 46)),
@@ -58,7 +74,7 @@ _ENTRIES = [
     ("interieur1", (40, 36, 34)), ("interieur2", (56, 48, 42)), ("interieur3", (30, 30, 34)),
     ("gordijn1", (200, 190, 170)), ("gordijn2", (150, 60, 50)), ("gordijn3", (80, 90, 120)),
     ("licht_warm", (255, 210, 140), "emit"), ("licht_wit", (240, 244, 255), "emit"),
-    # --- daken
+    # --- roofs
     ("pan_rood1", (160, 62, 40)), ("pan_rood2", (146, 54, 36)), ("pan_rood3", (172, 72, 48)),
     ("pan_zwart1", (44, 44, 48)), ("pan_zwart2", (54, 54, 60)), ("pan_zwart3", (36, 36, 40)),
     ("leisteen1", (70, 76, 86)), ("leisteen2", (60, 66, 76)),
@@ -66,18 +82,18 @@ _ENTRIES = [
     ("bitumen1", (46, 46, 48)), ("bitumen2", (56, 56, 58)),
     ("zink1", (150, 156, 160), "metal"), ("zink2", (130, 136, 140), "metal"),
     ("zonnepaneel", (30, 40, 70), "paneel"),
-    # --- deuren / details
+    # --- doors / details
     ("deur_groen", (28, 72, 50)), ("deur_rood", (130, 30, 30)), ("deur_blauw", (30, 50, 100)),
     ("deur_zwart", (24, 24, 26)), ("deur_wit", (230, 230, 226)),
     ("messing", (200, 170, 80), "metal"),
-    # --- metaal / straatmeubilair
+    # --- metal / street furniture
     ("metaal1", (140, 142, 146), "metal"), ("metaal2", (110, 112, 116), "metal"), ("metaal3", (170, 172, 176), "metal"),
     ("metaal_donker", (60, 62, 66), "metal"), ("rvs", (196, 198, 200), "metal"), ("gegalvaniseerd", (160, 166, 168), "metal"),
     ("rooster", (40, 40, 42), "metal"),
     ("amsterdamgroen", (34, 58, 44)), ("paal_bruin", (100, 46, 32)),
     ("hout_bank1", (176, 124, 74)), ("hout_bank2", (160, 110, 64)), ("hout_bank3", (190, 138, 86)),
     ("rubber", (28, 28, 30)), ("oranje", (240, 110, 20)),
-    # --- bomen / planten
+    # --- trees / plants
     ("schors1", (86, 66, 50)), ("schors2", (72, 56, 42)), ("schors3", (100, 78, 58)),
     ("berkenschors", (226, 222, 212)), ("berkenschors_zwart", (50, 48, 46)), ("plataanschors", (170, 160, 120)),
     ("blad1", (64, 118, 44)), ("blad2", (76, 134, 50)), ("blad3", (52, 100, 38)),
@@ -87,22 +103,22 @@ _ENTRIES = [
     ("bloesem1", (240, 190, 210)), ("bloesem2", (250, 220, 230)),
     ("haag1", (46, 96, 40)), ("haag2", (38, 84, 34)),
     ("terracotta1", (176, 96, 62)), ("terracotta2", (156, 82, 52)),
-    # --- borden
+    # --- signs
     ("bord_rood", (200, 30, 36)), ("bord_rood2", (170, 24, 30)), ("bord_blauw", (20, 70, 160)), ("bord_blauw2", (16, 56, 130)),
     ("bord_wit", (245, 245, 245)), ("bord_zwart", (20, 20, 22)), ("bord_geel", (250, 200, 30)), ("bord_oranje", (240, 120, 20)),
     ("bord_groen", (20, 110, 60)), ("bord_groen2", (14, 90, 50)),
-    # --- verlichting
+    # --- lighting
     ("lamp_wit", (255, 250, 235), "emit"), ("lamp_warm", (255, 200, 120), "emit"),
     ("stoplicht_rood", (255, 40, 30), "emit"), ("stoplicht_oranje", (255, 160, 20), "emit"), ("stoplicht_groen", (40, 255, 120), "emit"),
     ("stoplicht_rood_uit", (70, 20, 18)), ("stoplicht_oranje_uit", (80, 56, 14)), ("stoplicht_groen_uit", (16, 60, 30)),
     ("reclame1", (240, 240, 220), "emit"), ("reclame2", (120, 190, 240), "emit"), ("reclame3", (250, 120, 90), "emit"),
     ("matrix", (220, 40, 30), "emit"),
-    # --- textiel / luifels / voertuigen
+    # --- textiles / awnings / vehicles
     ("luifel_rood", (180, 40, 40)), ("luifel_groen", (40, 110, 70)), ("luifel_blauw", (40, 70, 140)),
     ("luifel_geel", (230, 180, 50)), ("luifel_wit", (236, 232, 220)), ("luifel_oranje", (220, 110, 40)),
     ("fiets_rood", (150, 30, 30)), ("fiets_blauw", (40, 60, 120)), ("fiets_zwart", (30, 30, 32)),
     ("boot_wit", (236, 236, 232)), ("boot_blauw", (40, 70, 120)), ("boot_rood", (150, 40, 30)), ("boot_groen", (40, 90, 60)),
-    # --- uitbreiding: jaren 30 / 60 / 80 / 2000, kerken, schuren, horeca
+    # --- extension: 1930s / 60s / 80s / 2000s styles, churches, sheds, hospitality
     ("baksteen30_1", (112, 52, 42)), ("baksteen30_2", (98, 46, 38)), ("baksteen30_3", (126, 62, 48)),
     ("geelsteen60_1", (196, 180, 140)), ("geelsteen60_2", (184, 168, 128)), ("beton60", (176, 172, 160)),
     ("paneel_blauw", (60, 110, 170)), ("paneel_geel", (230, 190, 60)), ("paneel_rood", (190, 70, 50)), ("paneel_groen", (80, 140, 100)),
@@ -122,64 +138,98 @@ _ENTRIES = [
     ("brons", (120, 92, 58), "metal"), ("brons_patina", (86, 128, 108), "metal"), ("marmer", (232, 230, 224)),
 ]
 
-_VLAG = [
+# Flag cloth colours: material "flag", stored from FLAG_START in every .vox (max 16).
+_FLAG = [
     ("vlag_rood", (200, 30, 40)), ("vlag_wit", (245, 245, 245)), ("vlag_blauw", (30, 70, 160)), ("vlag_oranje", (240, 120, 20)),
     ("vlag_geel", (250, 205, 30)), ("vlag_groen", (30, 140, 70)), ("vlag_paars", (130, 60, 170)), ("vlag_zwart", (25, 25, 28)),
     ("vlag_lichtblauw", (110, 200, 240)), ("vlag_roze", (240, 160, 190)), ("vlag_donkerblauw", (20, 40, 110)), ("vlag_bruin", (110, 70, 40)),
 ]
-FLAG_START = 233
+FLAG_START = 233  # first per-file palette slot for flag colours
 
+# Water colours: material "water", stored from WATER_START in every .vox (max 8).
 _WATER = [
     ("water1", (40, 96, 118)), ("water2", (34, 86, 108)), ("water3", (48, 106, 126)), ("water_gracht", (44, 80, 70)),
     ("water_zwembad", (70, 170, 205)),
 ]
-WATER_START = 225  # in elk .vox bestand staan de waterkleuren vanaf deze index
+WATER_START = 225  # first per-file palette slot for water colours (normal colours use 1..224)
 
-# Kleurvariatie binnen groepen (asfalt1..4, gras1..5, baksteen1..5, ...): elke
-# variant wordt naar het groepsgemiddelde getrokken. 1.0 = origineel, 0 = één kleur.
-VARIATIE = 0.65
-# groepen waarvan de nummers bewust heel andere kleuren zijn
-_VASTE_GROEPEN = {"gordijn", "stof", "reclame", "sedum", "glas",
-                  # bestrating: het patroon zit juist in de kleurverschillen
+# Colour variation within numbered groups (asfalt1..4, gras1..5, baksteen1..5, ...):
+# every member is pulled towards the group average. 1.0 = original colours,
+# 0.0 = all members become the average colour.
+VARIATION = 0.65
+# Groups that are left untouched: their numbered members are deliberately different
+# colours, or (paving) the pattern relies on the contrast between them.
+_FIXED_GROUPS = {"gordijn", "stof", "reclame", "sedum", "glas",
+                  # paving: the pattern is in the colour differences
                   "tegel", "klinker", "kei", "plein", "band", "goot", "grind",
                   "asfalt", "fietsasfalt", "busbaan"}
 
 
-def _demp_variatie(entries):
-    import re
-    groepen = {}
+def _damp_variation(entries):
+    """Return a copy of ``entries`` with numbered colour groups damped by VARIATION.
+
+    A group is every entry named ``<base><n>`` or ``<base>_<n>`` with the same base
+    (e.g. "baksteen1".."baksteen5", "baksteen30_1".."baksteen30_3"). For groups with
+    at least two members whose base is not in _FIXED_GROUPS, each channel becomes
+    ``round(avg + (c - avg) * VARIATION)``. Names, order and material tags are kept.
+    """
+    groups = {}
     for i, e in enumerate(entries):
         m = re.match(r"^(.*?)_?(\d+)$", e[0])
-        if m and m.group(1) not in _VASTE_GROEPEN:
-            groepen.setdefault(m.group(1), []).append(i)
-    uit = list(entries)
-    for leden in groepen.values():
-        if len(leden) < 2:
+        if m and m.group(1) not in _FIXED_GROUPS:
+            groups.setdefault(m.group(1), []).append(i)
+    out = list(entries)
+    for members in groups.values():
+        if len(members) < 2:
             continue
-        gem = [sum(entries[i][1][k] for i in leden) / len(leden) for k in range(3)]
-        for i in leden:
+        avg = [sum(entries[i][1][k] for i in members) / len(members) for k in range(3)]
+        for i in members:
             e = entries[i]
-            kleur = tuple(int(round(gem[k] + (e[1][k] - gem[k]) * VARIATIE)) for k in range(3))
-            uit[i] = (e[0], kleur) + tuple(e[2:])
-    return uit
+            color = tuple(int(round(avg[k] + (e[1][k] - avg[k]) * VARIATION)) for k in range(3))
+            out[i] = (e[0], color) + tuple(e[2:])
+    return out
 
 
-_ENTRIES = _demp_variatie(_ENTRIES)
+_ENTRIES = _damp_variation(_ENTRIES)
 
-# Globale kleur-id's (onbeperkt aantal). Bij het schrijven krijgt elk .vox
-# bestand een eigen palet met de gebruikte kleuren (max 224 + 8 water).
+# Global colour ids (unlimited count): normal entries first, then water, then flags,
+# numbered from 1. On write every .vox file gets its own 255-colour palette holding
+# the colours it uses (max 224 normal + 8 water + 16 flag), see vox.write_vox.
 PALETTE = {}
 MATERIALS = {}
 P = {}
 ORDER = []
 
-for i, e in enumerate(_ENTRIES + _WATER + _VLAG, start=1):
-    PALETTE[i] = e[1]
-    P[e[0]] = i
-    ORDER.append(i)
-    if len(e) > 2:
-        MATERIALS[i] = e[2]
-    if e in _WATER:
-        MATERIALS[i] = "water"
-    if e in _VLAG:
-        MATERIALS[i] = "flag"
+for _entries, _forced in ((_ENTRIES, None), (_WATER, "water"), (_FLAG, "flag")):
+    for e in _entries:
+        _gid = len(ORDER) + 1
+        PALETTE[_gid] = e[1]
+        P[e[0]] = _gid
+        ORDER.append(_gid)
+        if len(e) > 2:
+            MATERIALS[_gid] = e[2]
+        if _forced:
+            MATERIALS[_gid] = _forced
+
+
+# Surface materials that only exist in Godot (MagicaVoxel shows them as diffuse).
+# They end up in the tile metadata (<tile>.tile.json, see vox.write_metadata).
+# A colour belongs to a group when its name without the trailing number (and optional
+# "_") is listed, e.g. "asfalt3" -> "asfalt", "beton_donker" stays "beton_donker".
+# Colours that already have a material tag keep it.
+_SURFACE_GROUPS = {
+    "asphalt": ("asfalt", "asfalt_reparatie", "fietsasfalt", "busbaan", "bitumen"),
+    "stone": ("tegel", "tegel_wit", "ribbel", "band", "goot", "klinker", "kei", "plein", "plein_donker",
+              "plein_rood", "natuursteen", "marmer", "donkersteen", "leisteen", "beton", "beton_donker"),
+}
+
+
+def _surface_group(name):
+    """Colour name without its trailing number: "klinker2" -> "klinker"."""
+    return re.sub(r"_?\d+$", "", name)
+
+
+for _name, _gid in P.items():
+    for _mat, _groups in _SURFACE_GROUPS.items():
+        if _gid not in MATERIALS and _surface_group(_name) in _groups:
+            MATERIALS[_gid] = _mat

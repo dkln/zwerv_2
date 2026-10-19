@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=3
+importer_version=4
 type="ArrayMesh"
 uid="uid://dahvt47a37g7p"
 path="res://.godot/imported/helling_gras_hoek_binnen.vox-8c731e271bf468787d57a8c407e9e93c.mesh"
@@ -15,8 +15,8 @@ dest_files=["res://.godot/imported/helling_gras_hoek_binnen.vox-8c731e271bf46878
 
 voxel_size=0.125
 ambient_occlusion=true
-kleur_samenvoegen=14
-lod_kleur_tolerantie=24
-lod2_verkleining=2
-wind=false
-blok=Vector3(4, 1.5, 4)
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+animation=0
+cell_block=Vector3(4, 1.5, 4)

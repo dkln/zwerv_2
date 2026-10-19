@@ -1,0 +1,13 @@
+{
+	"id": 464,
+	"materials": {
+		"4": "stone",
+		"7": "stone",
+		"8": "stone",
+		"10": "glass",
+		"13": "emit",
+		"14": "emit",
+		"15": "metal",
+		"18": "emit"
+	}
+}

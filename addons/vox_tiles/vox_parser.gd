@@ -1,6 +1,9 @@
 @tool
 extends RefCounted
-## Leest een MagicaVoxel .vox bestand (eerste model + palet + materialen).
+## Reads a MagicaVoxel .vox file: the first model, the palette and a material per
+## palette index. Materials come from the MATL chunks MagicaVoxel writes (diffuse,
+## metal, glass, emit) plus two reserved palette ranges (water, flag); the tile
+## metadata can override them afterwards (tile_metadata.gd).
 
 const MAT_OPAQUE := 0
 const MAT_METAL := 1
@@ -8,31 +11,45 @@ const MAT_GLASS := 2
 const MAT_EMIT := 3
 const MAT_WATER := 4
 const MAT_FLAG := 5
-## glanzend metaal (MagicaVoxel: metal met _rough < 0.15), bijv. zonnepanelen
-const MAT_PANEEL := 6
+## shiny metal (MagicaVoxel: metal with _rough < 0.15), e.g. solar panels
+const MAT_PANEL := 6
+## road surface: grain, wear patches and a slight sheen (only via tile metadata)
+const MAT_ASPHALT := 7
+## paving, cobbles, natural stone (only via tile metadata)
+const MAT_STONE := 8
 
-## Palet-indices die als water worden behandeld (glas-materiaal in MagicaVoxel).
+## Names of the materials, indexed by MAT_*; used in tile metadata and as surface names.
+const MATERIAL_NAMES := ["opaque", "metal", "glass", "emit", "water", "flag", "panel", "asphalt", "stone"]
+
+## Palette indices treated as water (glass material in MagicaVoxel).
 const WATER_START := 225
 const WATER_END := 232
-## Palet-indices die als wapperende vlag worden behandeld.
+## Palette indices treated as a waving flag.
 const FLAG_START := 233
 const FLAG_END := 248
 
 var size := Vector3i.ZERO
-var voxels := PackedByteArray()   # x, y, z, kleurindex (4 bytes per voxel)
-var palette := PackedColorArray()  # index 0..255 (0 = leeg)
-var materials := PackedByteArray() # materiaal per kleurindex
+var voxels := PackedByteArray()   # x, y, z, colour index (4 bytes per voxel)
+var palette := PackedColorArray()  # index 0..255 (0 = empty)
+var materials := PackedByteArray() # material per colour index
 
 
+## True for materials you can't see through (everything except glass and water).
+## Opaque voxels hide neighbouring faces and count as closed for merging.
+static func is_opaque(material: int) -> bool:
+	return material != MAT_GLASS and material != MAT_WATER
+
+
+## Parses a .vox file; returns null (and reports an error) if it can't be read.
 static func load_file(path: String) -> RefCounted:
 	var f := FileAccess.open(path, FileAccess.READ)
 	if f == null:
-		push_error("vox: kan %s niet openen" % path)
+		push_error("vox: cannot open %s" % path)
 		return null
 	if f.get_buffer(4).get_string_from_ascii() != "VOX ":
-		push_error("vox: %s is geen MagicaVoxel bestand" % path)
+		push_error("vox: %s is not a MagicaVoxel file" % path)
 		return null
-	f.get_32() # versie
+	f.get_32() # version
 	var out = load("res://addons/vox_tiles/vox_parser.gd").new()
 	out.palette.resize(256)
 	out.materials.resize(256)
@@ -49,7 +66,7 @@ static func load_file(path: String) -> RefCounted:
 		var start := f.get_position()
 		match id:
 			"MAIN":
-				continue # kinderen volgen direct
+				continue # children follow directly
 			"SIZE":
 				if not got_size:
 					out.size = Vector3i(f.get_32(), f.get_32(), f.get_32())
@@ -81,16 +98,17 @@ static func load_file(path: String) -> RefCounted:
 		elif t == "_emit":
 			m = MAT_EMIT
 		elif t == "_metal":
-			m = MAT_PANEEL if float(matl_rough.get(i, 1.0)) < 0.15 else MAT_METAL
+			m = MAT_PANEL if float(matl_rough.get(i, 1.0)) < 0.15 else MAT_METAL
 		if i >= FLAG_START and i <= FLAG_END:
 			m = MAT_FLAG
 		out.materials[i] = m
 	if not got_size:
-		push_error("vox: %s bevat geen model" % path)
+		push_error("vox: %s contains no model" % path)
 		return null
 	return out
 
 
+## Reads a MagicaVoxel DICT: a count followed by length-prefixed key/value strings.
 static func _read_dict(f: FileAccess) -> Dictionary:
 	var d := {}
 	var n := f.get_32()

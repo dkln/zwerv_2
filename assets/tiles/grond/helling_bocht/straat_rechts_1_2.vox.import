@@ -1,0 +1,22 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=4
+type="ArrayMesh"
+uid="uid://dja0v5ltbpnyr"
+path="res://.godot/imported/straat_rechts_1_2.vox-0d01e3e44dd5b10c94d168d4ab81ff52.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/grond/helling_bocht/straat_rechts_1_2.vox"
+dest_files=["res://.godot/imported/straat_rechts_1_2.vox-0d01e3e44dd5b10c94d168d4ab81ff52.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+animation=0
+cell_block=Vector3(4, 1.5, 4)

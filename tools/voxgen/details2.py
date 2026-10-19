@@ -1,16 +1,27 @@
-"""Uitbreiding details: koelinstallaties, zonnepanelen, zonwering, gevelteksten, vlaggen."""
+"""More facade and roof details (``details/...`` tiles), extending details.py.
+
+Registers roof installations (cooling units, air handlers, vents), solar panels and a
+solar water heater, a loose dormer, sun shading (awnings, roller shutters, screens),
+facade lettering (``facade_text``, also used by extras6), flags on wall poles for every
+flag in props2.FLAGS, entrance steps for classic houses and garage door variants.
+
+Facade parts are drawn on details.att() canvases with y = wd(m, d) (d = 0 against the
+wall, front = y=0 side); roof parts use a plain V canvas. Sizes are in voxels of 12.5 cm,
+z is up.
+"""
 import math
 
 from common import register, tile, text_pixels
-from palette import P
-from vox import V, mix, pick, h
-from details import att, wd
+from vox import V
+from details import att, att_box, wd, pole_flag, stripe, striped_cloth
+from props2 import FLAGS
 
 
-# ------------------------------------------------------------------ dak: installaties en zonnepanelen
+# ------------------------------------------------------------------ roof: installations and solar panels
 
 @tile("details/dak/koelinstallatie")
-def koelinstallatie():
+def cooling_unit():
+    """Rooftop cooling unit with six fans on top and a grille on the front."""
     m = V(24, 16, 10)
     m.box(0, 0, 0, 24, 16, 1, "metaal2")
     m.box(1, 1, 1, 23, 15, 7, "metaal1")
@@ -19,20 +30,18 @@ def koelinstallatie():
             m.cyl(cx, cy, 2.6, 7, 8, "metaal_donker")
             m.set(cx, cy, 8, "metaal3")
             m.set(cx - 1, cy, 7, "rooster")
-    for x in range(1, 23):
-        if x % 2 == 0:
-            for z in range(2, 6):
-                m.set(x, 0, z, "rooster")
+    for x in range(2, 23, 2):
+        m.box(x, 0, 2, x + 1, 1, 6, "rooster")
     return m
 
 
 @tile("details/dak/luchtbehandeling")
-def luchtbehandeling():
+def air_handler():
+    """Air-handling unit box with a vertical exhaust duct on the right side."""
     m = V(32, 12, 12)
     m.box(0, 2, 0, 28, 12, 9, "metaal1")
     m.box(0, 2, 9, 28, 12, 10, "metaal2")
-    for z in range(2, 7):
-        m.set(29, 7, z, "metaal3")
+    m.box(29, 7, 2, 30, 8, 7, "metaal3")
     m.cyl(30, 7, 2, 0, 11, "metaal3")
     for x in range(2, 26, 6):
         m.box(x, 1, 2, x + 4, 2, 7, "rooster")
@@ -40,10 +49,10 @@ def luchtbehandeling():
 
 
 @tile("details/dak/airco_buitenunit")
-def airco_buitenunit():
+def ac_outdoor_unit():
+    """Air-conditioning outdoor unit with a round fan grille on the front."""
     m = V(8, 6, 7)
     m.box(0, 1, 0, 8, 5, 6, "stuc1")
-    m.cyl(4, 1, 2.2, 1, 5, "metaal_donker") if False else None
     for x in range(1, 7):
         for z in range(1, 5):
             if math.hypot(x + 0.5 - 4, z + 0.5 - 3) < 2.4:
@@ -52,7 +61,8 @@ def airco_buitenunit():
 
 
 @tile("details/dak/ventilatiekap")
-def ventilatiekap():
+def vent_cap():
+    """Round zinc ventilation pipe with a mushroom cap."""
     m = V(6, 6, 8)
     m.cyl(3, 3, 1.4, 0, 6, "zink1")
     m.cyl(3, 3, 2.6, 6, 7, "zink2")
@@ -61,22 +71,22 @@ def ventilatiekap():
 
 
 @tile("details/dak/zonnepanelen_schuin_rij")
-def zonnepanelen_schuin():
+def solar_panels_pitched():
+    """Row of solar panels tilted towards the front on three A-frame supports."""
     m = V(32, 12, 8)
     for y in range(10):
         z = 1 + y // 2
         for x in range(32):
             m.set(x, y + 1, z, "metaal3" if x % 8 == 0 else "zonnepaneel")
     for x in (1, 15, 30):
-        for y in range(1, 11):
-            m.set(x, y, 0, "metaal2")
-        for z in range(0, 6):
-            m.set(x, 10, z, "metaal2")
+        m.box(x, 1, 0, x + 1, 11, 1, "metaal2")
+        m.box(x, 10, 0, x + 1, 11, 6, "metaal2")
     return m
 
 
 @tile("details/dak/zonnepanelen_groot")
-def zonnepanelen_groot():
+def solar_panels_large():
+    """Flat 32x32 solar panel field for a full flat roof."""
     m = V(32, 32, 3)
     for y in range(32):
         for x in range(32):
@@ -87,7 +97,8 @@ def zonnepanelen_groot():
 
 
 @tile("details/dak/zonnepanelen_klein")
-def zonnepanelen_klein():
+def solar_panels_small():
+    """Small flat solar panel field (two panels)."""
     m = V(16, 12, 3)
     for y in range(12):
         for x in range(16):
@@ -96,81 +107,72 @@ def zonnepanelen_klein():
 
 
 @tile("details/dak/zonneboiler")
-def zonneboiler():
+def solar_water_heater():
+    """Solar water heater: tilted collector with a stainless storage tank behind it."""
     m = V(16, 12, 10)
     for y in range(10):
         z = 1 + y // 2
         for x in range(1, 15):
             m.set(x, y, z, "metaal3" if x in (1, 14) else ("glas_helder" if x % 2 else "metaal_donker"))
-    for x in range(1, 15):
-        m.cyl(x, 10, 1.4, 6, 9, "rvs") if False else None
-        for z in (7, 8):
-            m.set(x, 10, z, "rvs")
-            m.set(x, 11, z, "rvs")
+    m.box(1, 10, 7, 15, 12, 9, "rvs")
     return m
 
 
 @tile("details/dak/dakkapel_los")
-def dakkapel_los():
+def dormer_single():
+    """Free-standing dormer box with a zinc roof slab and a two-pane window on the front."""
     m = V(16, 12, 12)
     m.box(0, 0, 0, 16, 12, 10, "kozijn_wit")
     m.box(-1, -1, 10, 17, 13, 11, "zink1")
     m.box(2, 0, 2, 14, 1, 9, "glas1")
-    for z in range(2, 9):
-        m.set(8, 0, z, "kozijn_wit")
+    m.box(8, 0, 2, 9, 1, 9, "kozijn_wit")
     return m
 
 
-# ------------------------------------------------------------------ zonwering
+# ------------------------------------------------------------------ sun shading
 
-def zonwering(cols, width=24, depth=8, uitval=False):
-    m = att(width, depth, 14 if uitval else 8)
+def sun_shading(cols, width=24, depth=8, drop_arm=False):
+    """Fabric sun shade against the wall, striped with ``cols`` in 3-voxel bands.
+
+    drop_arm=False: folding-arm awning, nearly horizontal cloth with a valance (8 high).
+    drop_arm=True: drop-arm awning, cloth sloping 1:1 down to the front with side arms (14 high).
+    """
+    m = att(width, depth, 14 if drop_arm else 8)
     hgt = m.sz
-    if uitval:
-        # uitvalscherm: doek schuin naar beneden-voren, armen vanaf de zijkant
+    if drop_arm:
         for d in range(depth):
             z = hgt - 1 - d
             for x in range(width):
-                m.set(x, wd(m, d), z, cols[(x // 3) % len(cols)])
+                m.set(x, wd(m, d), z, stripe(cols, x))
         for x in (0, width - 1):
             for d in range(depth):
                 m.set(x, wd(m, d), hgt - 2 - d, "metaal3")
     else:
-        # knikarmscherm: vrijwel horizontaal doek met valletje
-        for d in range(depth):
-            z = hgt - 1 - d // 3
-            for x in range(width):
-                m.set(x, wd(m, d), z, cols[(x // 3) % len(cols)])
-        zl = hgt - 1 - (depth - 1) // 3
-        for x in range(width):
-            m.set(x, wd(m, depth - 1), zl - 1, cols[(x // 3) % len(cols)])
-            if x % 2 == 0:
-                m.set(x, wd(m, depth - 1), zl - 2, cols[(x // 3) % len(cols)])
-    for x in range(width):
-        m.set(x, wd(m, 0), hgt - 1, "metaal3")
+        striped_cloth(m, cols, width, depth, hgt, 3)
+    att_box(m, 0, width, 0, 1, hgt - 1, hgt, "metaal3")  # wall rail
     return m
 
 
-register("details/zonwering/knikarmscherm_streep", lambda: zonwering(["luifel_geel", "luifel_wit"]))
-register("details/zonwering/knikarmscherm_groen", lambda: zonwering(["luifel_groen"]))
-register("details/zonwering/knikarmscherm_antraciet", lambda: zonwering(["antraciet2"]))
-register("details/zonwering/uitvalscherm_oranje", lambda: zonwering(["luifel_oranje", "luifel_oranje", "luifel_wit"], 12, 6, True))
-register("details/zonwering/uitvalscherm_blauw", lambda: zonwering(["luifel_blauw", "luifel_wit"], 12, 6, True))
+register("details/zonwering/knikarmscherm_streep", lambda: sun_shading(["luifel_geel", "luifel_wit"]))
+register("details/zonwering/knikarmscherm_groen", lambda: sun_shading(["luifel_groen"]))
+register("details/zonwering/knikarmscherm_antraciet", lambda: sun_shading(["antraciet2"]))
+register("details/zonwering/uitvalscherm_oranje", lambda: sun_shading(["luifel_oranje", "luifel_oranje", "luifel_wit"], 12, 6, True))
+register("details/zonwering/uitvalscherm_blauw", lambda: sun_shading(["luifel_blauw", "luifel_wit"], 12, 6, True))
 
 
 @tile("details/zonwering/rolluik")
-def rolluik():
+def roller_shutter():
+    """Metal roller shutter (window size) with its housing on top."""
     m = att(12, 1, 18)
     for z in range(18):
-        for x in range(12):
-            m.set(x, wd(m, 0), z, "metaal1" if z % 2 else "metaal2")
-    for x in range(12):
-        m.set(x, wd(m, 0), 17, "antraciet1")
+        c = "antraciet1" if z == 17 else ("metaal1" if z % 2 else "metaal2")
+        att_box(m, 0, 12, 0, 1, z, z + 1, c)
     return m
 
 
 @tile("details/zonwering/screen")
 def screen():
+    """Fabric window screen with dark side rails and housing."""
     m = att(12, 1, 18)
     for z in range(18):
         for x in range(12):
@@ -179,7 +181,8 @@ def screen():
 
 
 @tile("details/zonwering/markies")
-def markies():
+def roll_awning():
+    """Dutch 'markies': quarter-round striped awning, deepest at the top."""
     m = att(12, 4, 10)
     for d in range(4):
         r = 4 - d
@@ -189,58 +192,55 @@ def markies():
     return m
 
 
-# ------------------------------------------------------------------ gevel met tekst
+# ------------------------------------------------------------------ facade lettering
 
-WOORDEN = ["HOTEL", "THEATER", "BIOSCOOP", "STATION", "BAKKERIJ", "APOTHEEK", "ZWERVR", "MUSEUM", "SCHOOL",
-           "RAADHUIS", "BIBLIOTHEEK", "ZWEMBAD", "SPORTHAL", "POLITIE", "MARKT", "CAFE", "HAVEN", "KERK"]
+WORDS = ["HOTEL", "THEATER", "BIOSCOOP", "STATION", "BAKKERIJ", "APOTHEEK", "ZWERVR", "MUSEUM", "SCHOOL",
+         "RAADHUIS", "BIBLIOTHEEK", "ZWEMBAD", "SPORTHAL", "POLITIE", "MARKT", "CAFE", "HAVEN", "KERK"]
 
 
-def gevel_tekst(word, scale=2, letter="goud", plate=None, licht=False):
+def facade_text(word, scale=2, letter="goud", plate=None, lit=False):
+    """Facade lettering for ``word`` in the common 3x5 pixel font.
+
+    scale: voxels per font pixel. letter: letter colour (``lamp_warm`` when lit=True).
+    plate: optional backing plate colour on the wall layer; letters sit one layer in front
+    of it. The canvas has a 2-voxel margin and an even width (so it centres on the grid).
+    """
     px, (tw, th) = text_pixels(word)
     w = tw * scale + 4
     w += w % 2
     hgt = 5 * scale + 4
     m = att(w, 2, hgt)
     if plate:
-        for z in range(hgt):
-            for x in range(w):
-                m.set(x, wd(m, 0), z, plate)
-    for (c, r) in px:
-        for sx in range(scale):
-            for sz in range(scale):
-                m.set(2 + c * scale + sx, wd(m, 1), 2 + (4 - r) * scale + sz, "lamp_warm" if licht else letter)
+        att_box(m, 0, w, 0, 1, 0, hgt, plate)
+    c = "lamp_warm" if lit else letter
+    for (col, row) in px:
+        # font row 0 is the top line
+        att_box(m, 2 + col * scale, 2 + (col + 1) * scale, 1, 2, 2 + (4 - row) * scale, 2 + (5 - row) * scale, c)
     return m
 
 
-for _w in WOORDEN:
-    register(f"details/tekst/tekst_{_w.lower()}", (lambda w: lambda: gevel_tekst(w))(_w))
+for _w in WORDS:
+    register(f"details/tekst/tekst_{_w.lower()}", lambda w=_w: facade_text(w))
 for _w in ("HOTEL", "THEATER", "BIOSCOOP", "CAFE", "ZWERVR"):
-    register(f"details/tekst/lichtreclame_{_w.lower()}", (lambda w: lambda: gevel_tekst(w, 2, plate="bord_zwart", licht=True))(_w))
+    register(f"details/tekst/lichtreclame_{_w.lower()}", lambda w=_w: facade_text(w, 2, plate="bord_zwart", lit=True))
 for _w in ("BAKKER", "SLAGER", "KAAS", "BLOEMEN", "FIETSEN", "KAPPER"):
-    register(f"details/tekst/bord_{_w.lower()}", (lambda w: lambda: gevel_tekst(w, 1, "bord_wit", "deur_groen"))(_w))
+    register(f"details/tekst/bord_{_w.lower()}", lambda w=_w: facade_text(w, 1, "bord_wit", "deur_groen"))
 
 
-# ------------------------------------------------------------------ vlaggen aan de gevel
+# ------------------------------------------------------------------ flags on the facade
 
-def gevelvlag(kleuren):
-    m = att(2, 16, 24)
-    for d in range(16):
-        z = d // 2 + 4
-        m.set(0, wd(m, d), z, "metaal3")
-    for d in range(5, 16):
-        top = (d // 2 + 4) - 1
-        for i, c in enumerate(kleuren):
-            m.set(1, wd(m, d), top - i, c)
-    return m
+def facade_flag(colors):
+    """Flag on a slanted wall pole; ``colors`` are the stripes from top to bottom."""
+    return pole_flag(colors)
 
 
-from props2 import FLAGS
 for _k, _c in FLAGS.items():
-    register(f"details/gevel/vlag_{_k}", (lambda c: lambda: gevelvlag(c))(_c))
+    register(f"details/gevel/vlag_{_k}", lambda c=_c: facade_flag(c))
 
 
 @tile("details/gevel/vlag_regenboog_hangend")
-def vlag_regenboog_hangend():
+def flag_rainbow_hanging():
+    """Rainbow banner hanging flat against the wall from a rod, stripes vertical."""
     m = att(12, 2, 20)
     cols = ["vlag_rood", "vlag_oranje", "vlag_geel", "vlag_groen", "vlag_blauw", "vlag_paars"]
     for x in range(12):
@@ -250,37 +250,49 @@ def vlag_regenboog_hangend():
     return m
 
 
-# ------------------------------------------------------------------ opstap-trappetjes voor klassieke huizen
+# ------------------------------------------------------------------ entrance steps for classic houses
 
-def opstap(treden, breedte=12, leuning=False, bordes=False):
-    diepte = treden * 2 + (4 if bordes else 0)
-    m = att(breedte + (4 if bordes else 0), diepte, treden + 8)
+def entry_steps(steps, width=12, handrail=False, landing=False):
+    """Stone entrance steps: ``steps`` treads 2 voxels deep, each 1 voxel high.
+
+    landing=True adds a 4-deep landing against the wall and widens the canvas by 4.
+    handrail=True adds railings on both sides, 6 voxels above the treads.
+    """
+    lead = 4 if landing else 0
+    depth = steps * 2 + lead
+    m = att(width + lead, depth, steps + 8)
     w = m.sx
-    for d in range(diepte):
-        hoogte = treden if d < (4 if bordes else 0) else treden - (d - (4 if bordes else 0)) // 2
+
+    def height(d):
+        return steps if d < lead else steps - (d - lead) // 2
+
+    for d in range(depth):
+        hd = height(d)
         for x in range(w):
-            for z in range(hoogte):
-                m.set(x, wd(m, d), z, "natuursteen1" if z == hoogte - 1 else "natuursteen2")
-    if leuning:
+            for z in range(hd):
+                m.set(x, wd(m, d), z, "natuursteen1" if z == hd - 1 else "natuursteen2")
+    if handrail:
         for x in (0, w - 1):
-            for d in range(diepte):
-                hoogte = treden if d < (4 if bordes else 0) else treden - (d - (4 if bordes else 0)) // 2
-                m.set(x, wd(m, d), hoogte + 6, "metaal_donker")
+            for d in range(depth):
+                hd = height(d)
+                m.set(x, wd(m, d), hd + 6, "metaal_donker")
                 if d % 3 == 0:
-                    for z in range(hoogte, hoogte + 6):
+                    for z in range(hd, hd + 6):
                         m.set(x, wd(m, d), z, "metaal_donker")
     return m
 
 
-register("details/deuren/opstap_2_treden", lambda: opstap(2))
-register("details/deuren/opstap_3_treden", lambda: opstap(3))
-register("details/deuren/opstap_4_treden_leuning", lambda: opstap(4, leuning=True))
-register("details/deuren/bordes_klassiek", lambda: opstap(4, 12, True, True))
+register("details/deuren/opstap_2_treden", lambda: entry_steps(2))
+register("details/deuren/opstap_3_treden", lambda: entry_steps(3))
+register("details/deuren/opstap_4_treden_leuning", lambda: entry_steps(4, handrail=True))
+register("details/deuren/bordes_klassiek", lambda: entry_steps(4, 12, True, True))
 
 
-# ------------------------------------------------------------------ garagedeuren
+# ------------------------------------------------------------------ garage doors
 
-def garagedeur(kind, width=24):
+def garage_door(kind, width=24):
+    """Garage door of ``kind``: kanteldeur (wooden up-and-over), sectionaal (sectional with
+    windows), roldeur (roller door) or anything else = classic green double door."""
     m = att(width, 1, 17)
     for z in range(17):
         for x in range(width):
@@ -303,4 +315,4 @@ def garagedeur(kind, width=24):
 
 
 for _k in ("kanteldeur", "sectionaal", "roldeur", "dubbel_klassiek"):
-    register(f"details/deuren/garagedeur_{_k}", (lambda k: lambda: garagedeur(k))(_k))
+    register(f"details/deuren/garagedeur_{_k}", lambda k=_k: garage_door(k))

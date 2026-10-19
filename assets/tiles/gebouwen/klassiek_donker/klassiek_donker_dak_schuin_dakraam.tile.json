@@ -1,0 +1,11 @@
+{
+	"id": 50,
+	"materials": {
+		"1": "stone",
+		"2": "stone",
+		"3": "stone",
+		"5": "glass",
+		"9": "metal",
+		"10": "metal"
+	}
+}

@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=3
+importer_version=4
 type="ArrayMesh"
 uid="uid://b8btveqlwjvj0"
 path="res://.godot/imported/heftruck.vox-f11af241235824b1645946a80d6848ba.mesh"
@@ -15,8 +15,8 @@ dest_files=["res://.godot/imported/heftruck.vox-f11af241235824b1645946a80d6848ba
 
 voxel_size=0.125
 ambient_occlusion=true
-kleur_samenvoegen=14
-lod_kleur_tolerantie=24
-lod2_verkleining=2
-wind=false
-blok=Vector3(0, 0, 0)
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+animation=0
+cell_block=Vector3(0, 0, 0)

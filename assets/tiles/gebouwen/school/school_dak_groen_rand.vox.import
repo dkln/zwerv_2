@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=3
+importer_version=4
 type="ArrayMesh"
 uid="uid://dodq0a841f8n3"
 path="res://.godot/imported/school_dak_groen_rand.vox-2ab56e3468101fb7ee93d4a838c77b45.mesh"
@@ -15,8 +15,8 @@ dest_files=["res://.godot/imported/school_dak_groen_rand.vox-2ab56e3468101fb7ee9
 
 voxel_size=0.125
 ambient_occlusion=true
-kleur_samenvoegen=14
-lod_kleur_tolerantie=24
-lod2_verkleining=2
-wind=false
-blok=Vector3(4, 3, 4)
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+animation=0
+cell_block=Vector3(4, 3, 4)

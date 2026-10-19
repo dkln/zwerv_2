@@ -1,0 +1,10 @@
+{
+	"id": 121,
+	"animation": "float",
+	"materials": {
+		"7": "stone",
+		"8": "stone",
+		"9": "glass",
+		"10": "panel"
+	}
+}

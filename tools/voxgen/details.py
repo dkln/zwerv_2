@@ -1,52 +1,95 @@
-"""Gevel-details: losse onderdelen die je tegen een gevel of op een dak plaatst.
+"""Facade details: loose parts placed against a facade or on a roof (``details/...`` tiles).
 
-Draaipunt = midden van het model; voor gevel-onderdelen ligt de muur precies op
-dat midden (het onderdeel steekt naar voren uit, de achterste helft is leeg).
-Zo kun je ze in de Details-GridMap (raster 0.5 m) direct tegen een gevel zetten
-en rond het muurvlak draaien.
+Registers awnings, windows, doors, balconies, roof parts (chimneys, solar panels, dishes)
+and small facade items (lamps, signs, flags, ivy, gutters, ...). generate.py writes each
+registered function's model to ``<OUT>/details/<group>/<name>.vox``.
+
+Pivot = centre of the model. For facade parts the wall lies exactly on that centre: the
+part sticks out to the front (y=0 side) and the rear half of the canvas stays empty, so
+in the Details GridMap (0.5 m grid) a part can be put straight against a facade and
+rotated around the wall plane. Draw such parts on ``att(width, depth, height)`` with
+``y = wd(m, d)``, where d = 0 is the layer against the wall and d grows towards the
+front. Sizes are in voxels of 12.5 cm; z is up.
+
+Shared helpers used by other modules: ``att``, ``wd`` (details2, extras4, extras5) and
+``pole_flag`` / ``striped_cloth`` (details2).
 """
 from common import register, tile
-from palette import P
-from vox import V, mix, pick, h
+from vox import V, pick, h
 
 
 def att(width, depth, height):
-    """Leeg canvas voor een gevel-onderdeel; teken met y = wd(d) (d=0 tegen de muur)."""
+    """Empty canvas for a facade part ``depth`` voxels deep; draw with y = wd(m, d)."""
     return V(width, depth * 2, height)
 
 
 def wd(m, d):
+    """Canvas y for depth layer ``d`` of an att() canvas (d = 0 touches the wall)."""
     return m.sy // 2 - 1 - d
 
 
-def luifel(cols, width=32, depth=8, hgt=8):
-    m = att(width, depth, hgt)
+def att_box(m, x0, x1, d0, d1, z0, z1, c):
+    """Fill x in [x0, x1), depth layers d in [d0, d1), z in [z0, z1) of an att() canvas."""
+    m.box(x0, wd(m, d1 - 1), z0, x1, wd(m, d0) + 1, z1, c)
+
+
+def stripe(cols, x):
+    """Colour of column ``x`` for cloth striped in bands of 3 voxels."""
+    return cols[(x // 3) % len(cols)]
+
+
+def striped_cloth(m, cols, width, depth, hgt, drop):
+    """Striped cloth sloping down by 1 voxel per ``drop`` depth layers, plus a valance.
+
+    The cloth starts at z = hgt - 1 against the wall; the valance hangs 2 voxels below the
+    front edge (the lowest voxel only on even x, giving a scalloped edge).
+    """
     for d in range(depth):
-        z = hgt - 1 - d // 2
+        z = hgt - 1 - d // drop
         for x in range(width):
-            m.set(x, wd(m, d), z, cols[(x // 3) % len(cols)])
-    zl = hgt - 1 - (depth - 1) // 2
+            m.set(x, wd(m, d), z, stripe(cols, x))
+    zl = hgt - 1 - (depth - 1) // drop
     for x in range(width):
-        m.set(x, wd(m, depth - 1), zl - 1, cols[(x // 3) % len(cols)])
+        m.set(x, wd(m, depth - 1), zl - 1, stripe(cols, x))
         if x % 2 == 0:
-            m.set(x, wd(m, depth - 1), zl - 2, cols[(x // 3) % len(cols)])
+            m.set(x, wd(m, depth - 1), zl - 2, stripe(cols, x))
+
+
+def pole_flag(colors):
+    """Flag on a slanted pole sticking out of the wall; ``colors`` are the stripes top to bottom."""
+    m = att(2, 16, 24)
+    for d in range(16):
+        m.set(0, wd(m, d), d // 2 + 4, "metaal3")
+    for d in range(5, 16):
+        top = (d // 2 + 4) - 1
+        for i, c in enumerate(colors):
+            m.set(1, wd(m, d), top - i, c)
+    return m
+
+
+# ------------------------------------------------------------------ awnings
+
+def awning(cols, width=32, depth=8, hgt=8):
+    """Shop awning: striped cloth (see striped_cloth) with dark side arms and a wall rail."""
+    m = att(width, depth, hgt)
+    striped_cloth(m, cols, width, depth, hgt, 2)
     for x in (0, width - 1):
         for d in range(depth):
             m.set(x, wd(m, d), hgt - 2 - d // 2, "metaal_donker")
-    for x in range(width):
-        m.set(x, wd(m, 0), hgt - 1, "metaal_donker")
+    att_box(m, 0, width, 0, 1, hgt - 1, hgt, "metaal_donker")
     return m
 
 
 for _n, _c in {"rood": ["luifel_rood", "luifel_wit"], "groen": ["luifel_groen", "luifel_wit"],
                "blauw": ["luifel_blauw", "luifel_wit"], "geel": ["luifel_geel", "luifel_oranje"],
                "effen_rood": ["luifel_rood"], "effen_groen": ["luifel_groen"]}.items():
-    register(f"details/luifels/luifel_{_n}", (lambda c: lambda: luifel(c))(_c))
-    register(f"details/luifels/luifel_{_n}_smal", (lambda c: lambda: luifel(c, 16, 6, 6))(_c))
+    register(f"details/luifels/luifel_{_n}", lambda c=_c: awning(c))
+    register(f"details/luifels/luifel_{_n}_smal", lambda c=_c: awning(c, 16, 6, 6))
 
 
 @tile("details/luifels/luifel_glas")
-def luifel_glas():
+def canopy_glass():
+    """Flat glass canopy in a metal frame with two diagonal braces."""
     m = att(32, 8, 4)
     for d in range(8):
         for x in range(32):
@@ -58,44 +101,46 @@ def luifel_glas():
 
 
 @tile("details/luifels/luifel_kantoor")
-def luifel_kantoor():
+def canopy_office():
+    """Solid metal office canopy with downlights underneath."""
     m = att(32, 8, 4)
-    for d in range(8):
-        for x in range(32):
-            m.set(x, wd(m, d), 2, "metaal3")
-            m.set(x, wd(m, d), 3, "metaal3")
+    att_box(m, 0, 32, 0, 8, 2, 4, "metaal3")
     for x in range(4, 30, 6):
         m.set(x, wd(m, 4), 1, "lamp_wit")
     return m
 
 
-def window(width, hgt, frame, roedes=True, sill="natuursteen1", glass="glas1"):
+# ------------------------------------------------------------------ windows
+
+def window(width, hgt, frame, muntins=True, sill="natuursteen1", glass="glas1"):
+    """Framed window of ``width`` x ``hgt`` (frame included) with optional cross muntins and sill.
+
+    The canvas adds a 1-voxel border; the sill (z = 0) spans the full width, 3 layers deep.
+    """
     m = att(width + 2, 3, hgt + 2)
     for z in range(1, hgt + 1):
         for x in range(1, width + 1):
             edge = x in (1, width) or z in (1, hgt)
-            r = roedes and (x == (width + 1) // 2 + (0 if width % 2 else 0) or z == hgt // 2 + 1)
-            m.set(x, wd(m, 0), z, frame if (edge or r) else glass)
+            muntin = muntins and (x == (width + 1) // 2 or z == hgt // 2 + 1)
+            m.set(x, wd(m, 0), z, frame if (edge or muntin) else glass)
             if edge:
                 m.set(x, wd(m, 1), z, frame)
     if sill:
-        for x in range(0, width + 2):
-            m.set(x, wd(m, 0), 0, sill)
-            m.set(x, wd(m, 1), 0, sill)
-            m.set(x, wd(m, 2), 0, sill)
+        att_box(m, 0, width + 2, 0, 3, 0, 1, sill)
     return m
 
 
 register("details/ramen/raam_klassiek", lambda: window(10, 16, "kozijn_wit"))
 register("details/ramen/raam_klassiek_groen", lambda: window(10, 16, "kozijn_groen"))
 register("details/ramen/raam_klassiek_klein", lambda: window(6, 8, "kozijn_wit"))
-register("details/ramen/raam_modern", lambda: window(14, 16, "antraciet1", roedes=False, sill="zink1", glass="glas2"))
-register("details/ramen/raam_modern_breed", lambda: window(26, 14, "antraciet1", roedes=False, sill="zink1", glass="glas2"))
-register("details/ramen/raam_modern_staand", lambda: window(6, 20, "antraciet1", roedes=False, sill=None, glass="glas2"))
+register("details/ramen/raam_modern", lambda: window(14, 16, "antraciet1", muntins=False, sill="zink1", glass="glas2"))
+register("details/ramen/raam_modern_breed", lambda: window(26, 14, "antraciet1", muntins=False, sill="zink1", glass="glas2"))
+register("details/ramen/raam_modern_staand", lambda: window(6, 20, "antraciet1", muntins=False, sill=None, glass="glas2"))
 
 
 @tile("details/ramen/raam_rond")
-def raam_rond():
+def window_round():
+    """Round window (oculus) with a cross and a stone surround."""
     m = att(10, 2, 10)
     for z in range(10):
         for x in range(10):
@@ -109,26 +154,25 @@ def raam_rond():
 
 
 @tile("details/ramen/vensterbank")
-def vensterbank():
+def window_sill():
+    """Stone window sill with a darker drip edge underneath."""
     m = att(12, 3, 2)
-    for x in range(12):
-        for d in range(3):
-            m.set(x, wd(m, d), 1, "natuursteen1")
-        m.set(x, wd(m, 0), 0, "natuursteen2")
+    att_box(m, 0, 12, 0, 3, 1, 2, "natuursteen1")
+    att_box(m, 0, 12, 0, 1, 0, 1, "natuursteen2")
     return m
 
 
 @tile("details/ramen/vensterbank_modern")
-def vensterbank_modern():
+def window_sill_modern():
+    """Thin zinc window sill."""
     m = att(16, 2, 1)
-    for x in range(16):
-        for d in range(2):
-            m.set(x, wd(m, d), 0, "zink1")
+    att_box(m, 0, 16, 0, 2, 0, 1, "zink1")
     return m
 
 
 @tile("details/ramen/luiken")
-def luiken():
+def shutters():
+    """Pair of green shutters (4 voxels wide each) on either side of a 10-voxel gap."""
     m = att(18, 1, 16)
     for x in list(range(0, 4)) + list(range(14, 18)):
         for z in range(16):
@@ -139,7 +183,8 @@ def luiken():
 
 
 @tile("details/ramen/bloembak")
-def bloembak():
+def flower_box():
+    """Terracotta window box with leaves and randomly scattered flowers."""
     m = att(12, 3, 5)
     for x in range(12):
         for d in range(3):
@@ -153,7 +198,13 @@ def bloembak():
     return m
 
 
-def deur(color, width=8, hgt=19, glass=False, frame="kozijn_wit", transom=True):
+# ------------------------------------------------------------------ doors
+
+def door_detail(color, width=8, hgt=19, glass=False, frame="kozijn_wit", transom=True):
+    """Front door of ``width`` x ``hgt`` in a frame, optional glass pane and transom window.
+
+    Brass handle and letter slot are placed on the front layer (d = 1).
+    """
     m = att(width + 2, 2, hgt + 1)
     for z in range(hgt + 1):
         for x in range(width + 2):
@@ -171,17 +222,18 @@ def deur(color, width=8, hgt=19, glass=False, frame="kozijn_wit", transom=True):
     return m
 
 
-register("details/deuren/deur_klassiek_groen", lambda: deur("deur_groen"))
-register("details/deuren/deur_klassiek_rood", lambda: deur("deur_rood"))
-register("details/deuren/deur_klassiek_zwart", lambda: deur("deur_zwart"))
-register("details/deuren/deur_klassiek_blauw", lambda: deur("deur_blauw"))
-register("details/deuren/deur_modern_hout", lambda: deur("hout1", 8, 18, True, "antraciet1", False))
-register("details/deuren/deur_modern_antraciet", lambda: deur("antraciet2", 8, 18, True, "antraciet1", False))
-register("details/deuren/deur_dubbel", lambda: deur("deur_groen", 14, 20, True))
+register("details/deuren/deur_klassiek_groen", lambda: door_detail("deur_groen"))
+register("details/deuren/deur_klassiek_rood", lambda: door_detail("deur_rood"))
+register("details/deuren/deur_klassiek_zwart", lambda: door_detail("deur_zwart"))
+register("details/deuren/deur_klassiek_blauw", lambda: door_detail("deur_blauw"))
+register("details/deuren/deur_modern_hout", lambda: door_detail("hout1", 8, 18, True, "antraciet1", False))
+register("details/deuren/deur_modern_antraciet", lambda: door_detail("antraciet2", 8, 18, True, "antraciet1", False))
+register("details/deuren/deur_dubbel", lambda: door_detail("deur_groen", 14, 20, True))
 
 
 @tile("details/deuren/schuifdeur_glas")
-def schuifdeur():
+def sliding_door():
+    """Two-leaf glass sliding door in a metal frame."""
     m = att(18, 2, 18)
     for z in range(18):
         for x in range(18):
@@ -193,7 +245,8 @@ def schuifdeur():
 
 
 @tile("details/deuren/garagedeur")
-def garagedeur():
+def garage_door():
+    """Ribbed metal garage door."""
     m = att(24, 1, 16)
     for z in range(16):
         for x in range(24):
@@ -203,17 +256,21 @@ def garagedeur():
 
 
 @tile("details/deuren/stoeptrap")
-def stoeptrap():
+def stoop_stairs():
+    """Two-step stone stoop, 4 layers deep (top step against the wall)."""
     m = att(12, 4, 3)
     for d in range(4):
         for x in range(12):
-            for z in range(3 - d // 2 if d < 4 else 1):
+            for z in range(3 - d // 2):
                 m.set(x, wd(m, d), z, "natuursteen1" if z == 2 - d // 2 else "natuursteen2")
     return m
 
 
+# ------------------------------------------------------------------ balconies
+
 @tile("details/balkons/balkon_klassiek")
-def balkon_klassiek():
+def balcony_classic():
+    """Stone balcony slab with a wrought-iron railing on the front and sides."""
     m = att(24, 4, 10)
     for d in range(4):
         for x in range(24):
@@ -236,7 +293,8 @@ def balkon_klassiek():
 
 
 @tile("details/balkons/balkon_frans")
-def balkon_frans():
+def balcony_french():
+    """French balcony: flat railing directly against the window."""
     m = att(12, 1, 8)
     for x in range(12):
         m.set(x, wd(m, 0), 7, "metaal_donker")
@@ -248,26 +306,23 @@ def balkon_frans():
 
 
 @tile("details/balkons/balkon_modern")
-def balkon_modern():
+def balcony_modern_detail():
+    """Concrete balcony slab with a glass balustrade (front and sides) and metal handrail."""
     m = att(28, 8, 10)
-    for d in range(8):
-        for x in range(28):
-            m.set(x, wd(m, d), 0, "beton1")
-            m.set(x, wd(m, d), 1, "beton2")
-    for x in range(28):
-        for z in range(2, 9):
-            m.set(x, wd(m, 7), z, "glas_helder")
-        m.set(x, wd(m, 7), 9, "metaal3")
+    att_box(m, 0, 28, 0, 8, 0, 1, "beton1")
+    att_box(m, 0, 28, 0, 8, 1, 2, "beton2")
+    # front pane, then side panes (they share the corner voxels, same colours)
+    att_box(m, 0, 28, 7, 8, 2, 9, "glas_helder")
+    att_box(m, 0, 28, 7, 8, 9, 10, "metaal3")
     for x in (0, 27):
-        for d in range(8):
-            for z in range(2, 9):
-                m.set(x, wd(m, d), z, "glas_helder")
-            m.set(x, wd(m, d), 9, "metaal3")
+        att_box(m, x, x + 1, 0, 8, 2, 9, "glas_helder")
+        att_box(m, x, x + 1, 0, 8, 9, 10, "metaal3")
     return m
 
 
 @tile("details/balkons/balkon_hout")
-def balkon_hout():
+def balcony_wood():
+    """Wooden balcony: plank floor, front railing with balusters every 3 voxels, side rails."""
     m = att(24, 6, 9)
     for d in range(6):
         for x in range(24):
@@ -283,41 +338,39 @@ def balkon_hout():
     return m
 
 
+# ------------------------------------------------------------------ roof parts (free-standing, no att canvas)
+
+def _chimney_stack(m, z_cap, seed):
+    """Brick shaft (1-voxel margin on all sides) up to ``z_cap`` with a full-width stone cap on top."""
+    for z in range(z_cap):
+        for y in range(1, m.sy - 1):
+            for x in range(1, m.sx - 1):
+                m.set(x, y, z, pick(["baksteen2", "baksteen4", "donkersteen1"], (x + y) // 2, z, 0, seed))
+    m.box(0, 0, z_cap, m.sx, m.sy, z_cap + 1, "natuursteen2")
+
+
 @tile("details/dak/schoorsteen")
-def schoorsteen():
+def chimney():
+    """Single brick chimney with a stone cap and a metal flue."""
     m = V(6, 6, 16)
-    for z in range(14):
-        for y in range(1, 5):
-            for x in range(1, 5):
-                m.set(x, y, z, pick(["baksteen2", "baksteen4", "donkersteen1"], (x + y) // 2, z, 0, 5))
-    for y in range(6):
-        for x in range(6):
-            m.set(x, y, 14, "natuursteen2")
-    m.set(2, 2, 15, "metaal_donker")
-    m.set(3, 3, 15, "metaal_donker")
-    m.set(2, 3, 15, "metaal_donker")
-    m.set(3, 2, 15, "metaal_donker")
+    _chimney_stack(m, 14, 5)
+    m.box(2, 2, 15, 4, 4, 16, "metaal_donker")
     return m
 
 
 @tile("details/dak/schoorsteen_dubbel")
-def schoorsteen_dubbel():
+def chimney_double():
+    """Wide brick chimney with two terracotta chimney pots."""
     m = V(10, 6, 18)
-    for z in range(16):
-        for y in range(1, 5):
-            for x in range(1, 9):
-                m.set(x, y, z, pick(["baksteen2", "baksteen4", "donkersteen1"], (x + y) // 2, z, 0, 6))
-    for y in range(6):
-        for x in range(10):
-            m.set(x, y, 16, "natuursteen2")
+    _chimney_stack(m, 16, 6)
     for x in (3, 6):
-        m.set(x, 2, 17, "terracotta1")
-        m.set(x, 3, 17, "terracotta1")
+        m.box(x, 2, 17, x + 1, 4, 18, "terracotta1")
     return m
 
 
 @tile("details/dak/zonnepanelen")
-def zonnepanelen():
+def solar_panels():
+    """Tilted solar panel array (rises towards the back) on two rows of legs."""
     m = V(32, 16, 6)
     for y in range(16):
         z = 1 + y // 4
@@ -330,7 +383,8 @@ def zonnepanelen():
 
 
 @tile("details/dak/dakraam")
-def dakraam():
+def skylight():
+    """Flat roof window: dark frame with glass."""
     m = V(10, 12, 2)
     for y in range(12):
         for x in range(10):
@@ -341,7 +395,8 @@ def dakraam():
 
 
 @tile("details/dak/schotel")
-def schotel():
+def satellite_dish():
+    """Satellite dish on a wall arm (att canvas); the dish faces the front."""
     m = att(8, 6, 8)
     for z in range(8):
         for x in range(8):
@@ -355,23 +410,22 @@ def schotel():
 
 
 @tile("details/dak/antenne")
-def antenne():
+def antenna():
+    """Old-fashioned TV antenna: mast with three cross bars."""
     m = V(8, 8, 20)
-    for z in range(20):
-        m.set(4, 4, z, "metaal2")
+    m.box(4, 4, 0, 5, 5, 20, "metaal2")
     for z in (12, 15, 18):
-        for x in range(1, 8):
-            m.set(x, 4, z, "metaal2")
+        m.box(1, 4, z, 8, 5, z + 1, "metaal2")
     return m
 
 
+# ------------------------------------------------------------------ small facade items
+
 @tile("details/gevel/airco")
-def airco():
+def air_con():
+    """Wall-mounted air-conditioning unit with a round fan grille on the front."""
     m = att(8, 4, 6)
-    for d in range(4):
-        for x in range(8):
-            for z in range(6):
-                m.set(x, wd(m, d), z, "stuc1")
+    att_box(m, 0, 8, 0, 4, 0, 6, "stuc1")
     for x in range(1, 7):
         for z in range(1, 5):
             dd = ((x + 0.5 - 4) ** 2 + (z + 0.5 - 3) ** 2) ** 0.5
@@ -381,7 +435,8 @@ def airco():
 
 
 @tile("details/gevel/regenpijp")
-def regenpijp():
+def downpipe():
+    """One-storey zinc downpipe with brackets every 8 voxels."""
     m = att(2, 2, 24)
     for z in range(24):
         m.set(0, wd(m, 1), z, "zink2")
@@ -393,19 +448,22 @@ def regenpijp():
 
 
 @tile("details/gevel/buitenlamp")
-def buitenlamp():
+def outdoor_lamp():
+    """Classic lantern on a short wall bracket."""
     m = att(4, 3, 6)
     m.set(1, wd(m, 0), 3, "metaal_donker")
     m.set(2, wd(m, 0), 3, "metaal_donker")
     for z in range(1, 5):
+        c = "lamp_warm" if 1 < z < 4 else "metaal_donker"
         for x in (1, 2):
-            m.set(x, wd(m, 1), z, "lamp_warm" if 1 < z < 4 else "metaal_donker")
-            m.set(x, wd(m, 2), z, "lamp_warm" if 1 < z < 4 else "metaal_donker")
+            m.set(x, wd(m, 1), z, c)
+            m.set(x, wd(m, 2), z, c)
     return m
 
 
 @tile("details/gevel/buitenlamp_modern")
-def buitenlamp_modern():
+def outdoor_lamp_modern():
+    """Flat modern wall light shining downwards."""
     m = att(4, 2, 4)
     for x in range(4):
         for z in range(4):
@@ -416,37 +474,31 @@ def buitenlamp_modern():
 
 
 @tile("details/gevel/uithangbord")
-def uithangbord():
+def hanging_sign():
+    """Shop sign hanging from an arm perpendicular to the wall."""
     m = att(2, 10, 12)
-    for d in range(10):
-        m.set(0, wd(m, d), 11, "metaal_donker")
-        m.set(1, wd(m, d), 11, "metaal_donker")
+    att_box(m, 0, 2, 0, 10, 11, 12, "metaal_donker")
     for d in range(2, 10):
         for z in range(2, 10):
             edge = d in (2, 9) or z in (2, 9)
             c = "messing" if edge else ("bord_rood" if (d + z) % 5 else "bord_wit")
             m.set(0, wd(m, d), z, c)
             m.set(1, wd(m, d), z, c)
+    # chains between arm and sign
     m.set(0, wd(m, 3), 10, "metaal_donker")
     m.set(0, wd(m, 8), 10, "metaal_donker")
     return m
 
 
 @tile("details/gevel/vlag")
-def vlag():
-    m = att(2, 16, 24)
-    for d in range(16):
-        z = d // 2 + 4
-        m.set(0, wd(m, d), z, "metaal3")
-    for d in range(5, 16):
-        top = (d // 2 + 4) - 1
-        for i, c in enumerate(["vlag_rood", "vlag_rood", "vlag_wit", "vlag_wit", "vlag_blauw", "vlag_blauw"]):
-            m.set(1, wd(m, d), top - i, c)
-    return m
+def flag():
+    """Dutch flag on a slanted wall pole."""
+    return pole_flag(["vlag_rood", "vlag_rood", "vlag_wit", "vlag_wit", "vlag_blauw", "vlag_blauw"])
 
 
 @tile("details/gevel/klimop")
-def klimop():
+def ivy():
+    """Ivy patch, densest at the bottom centre and thinning out upwards and sideways."""
     m = att(16, 2, 24)
     for z in range(24):
         for x in range(16):
@@ -460,30 +512,26 @@ def klimop():
 
 
 @tile("details/gevel/muuranker")
-def muuranker():
+def wall_anchor():
+    """Cross-shaped iron wall anchor."""
     m = att(4, 1, 6)
-    for z in range(6):
-        m.set(2, wd(m, 0), z, "metaal_donker")
-    for x in range(4):
-        m.set(x, wd(m, 0), 3, "metaal_donker")
+    att_box(m, 2, 3, 0, 1, 0, 6, "metaal_donker")
+    att_box(m, 0, 4, 0, 1, 3, 4, "metaal_donker")
     return m
 
 
 @tile("details/gevel/hijsbalk")
-def hijsbalk():
+def hoist_beam():
+    """Canal-house hoist beam with a hook at the front end."""
     m = att(2, 8, 6)
-    for d in range(8):
-        m.set(0, wd(m, d), 4, "hout_donker2")
-        m.set(1, wd(m, d), 4, "hout_donker2")
-        m.set(0, wd(m, d), 5, "hout_donker2")
-        m.set(1, wd(m, d), 5, "hout_donker2")
-    for z in range(1, 4):
-        m.set(0, wd(m, 7), z, "metaal_donker")
+    att_box(m, 0, 2, 0, 8, 4, 6, "hout_donker2")
+    att_box(m, 0, 1, 7, 8, 1, 4, "metaal_donker")
     return m
 
 
 @tile("details/gevel/brievenbus_muur")
-def brievenbus_muur():
+def mailbox_wall():
+    """Red wall-mounted letter box with a black slot."""
     m = att(4, 2, 6)
     for z in range(6):
         for x in range(4):
@@ -495,7 +543,8 @@ def brievenbus_muur():
 
 
 @tile("details/gevel/huisnummer")
-def huisnummer():
+def house_number():
+    """Blue enamel house-number plate with a white border."""
     m = att(6, 1, 4)
     for z in range(4):
         for x in range(6):
@@ -506,7 +555,8 @@ def huisnummer():
 
 
 @tile("details/gevel/reclamebord")
-def reclamebord():
+def billboard():
+    """Wide flat advertising board in a dark frame, four 7-voxel colour panels."""
     m = att(28, 1, 6)
     for z in range(6):
         for x in range(28):
@@ -516,17 +566,17 @@ def reclamebord():
 
 
 @tile("details/gevel/dakgoot")
-def dakgoot():
+def roof_gutter():
+    """Zinc roof gutter along a full tile width."""
     m = att(32, 2, 2)
-    for x in range(32):
-        m.set(x, wd(m, 1), 0, "zink1")
-        m.set(x, wd(m, 1), 1, "zink1")
-        m.set(x, wd(m, 0), 0, "zink1")
+    att_box(m, 0, 32, 1, 2, 0, 2, "zink1")
+    att_box(m, 0, 32, 0, 1, 0, 1, "zink1")
     return m
 
 
 @tile("details/gevel/kroonlijst")
-def kroonlijst():
+def cornice():
+    """White wooden cornice along a full tile width, with dentils underneath."""
     m = att(32, 3, 4)
     for x in range(32):
         for d in range(3):

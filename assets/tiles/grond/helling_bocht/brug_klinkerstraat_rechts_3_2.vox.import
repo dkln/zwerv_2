@@ -1,0 +1,22 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=4
+type="ArrayMesh"
+uid="uid://c3xyt8em44o6x"
+path="res://.godot/imported/brug_klinkerstraat_rechts_3_2.vox-fe60875601a5d15674475872454a5269.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/grond/helling_bocht/brug_klinkerstraat_rechts_3_2.vox"
+dest_files=["res://.godot/imported/brug_klinkerstraat_rechts_3_2.vox-fe60875601a5d15674475872454a5269.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+animation=0
+cell_block=Vector3(4, 1.5, 4)

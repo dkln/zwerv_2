@@ -1,11 +1,18 @@
 extends SceneTree
-func _init():
-	var P = load("res://addons/vox_tiles/vox_parser.gd")
-	var M = load("res://addons/vox_tiles/vox_mesher.gd")
+## Times parsing and meshing of one .vox tile (import performance check).
+## usage: Godot --headless --script tools/bench_import.gd
+
+const Parser = preload("res://addons/vox_tiles/vox_parser.gd")
+const Mesher = preload("res://addons/vox_tiles/vox_mesher.gd")
+const TILE := "res://assets/tiles/grond/weg/weg_vlak.vox"
+
+
+func _init() -> void:
 	var t := Time.get_ticks_msec()
-	var vox = P.load_file("res://assets/tiles/grond/weg/weg_vlak.vox")
+	var vox = Parser.load_file(TILE)
 	print("parse ", Time.get_ticks_msec() - t, "ms size ", vox.size)
 	t = Time.get_ticks_msec()
-	var mesh = M.build(vox, 0.125, true)
+	# 0.125 m voxels, with ambient occlusion
+	var mesh = Mesher.build(vox, 0.125, true)
 	print("mesh ", Time.get_ticks_msec() - t, "ms surfaces ", mesh.get_surface_count())
 	quit()

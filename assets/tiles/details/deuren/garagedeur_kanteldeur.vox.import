@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=3
+importer_version=4
 type="ArrayMesh"
 uid="uid://c6e3rxs5qx8nb"
 path="res://.godot/imported/garagedeur_kanteldeur.vox-e1fc8d8db45d2be563af83333d7a738c.mesh"
@@ -15,8 +15,8 @@ dest_files=["res://.godot/imported/garagedeur_kanteldeur.vox-e1fc8d8db45d2be563a
 
 voxel_size=0.125
 ambient_occlusion=true
-kleur_samenvoegen=14
-lod_kleur_tolerantie=24
-lod2_verkleining=2
-wind=false
-blok=Vector3(0, 0, 0)
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+animation=0
+cell_block=Vector3(0, 0, 0)

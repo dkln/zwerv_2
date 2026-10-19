@@ -1,9 +1,13 @@
 extends SceneTree
-## Bouwt de MeshLibraries zonder editor (zonder previews; die maakt de editor-plugin).
-## gebruik: Godot --headless --script tools/build_libraries.gd [-- force]
-func _init():
-	var B = load("res://addons/vox_tiles/library_builder.gd")
+## Builds the MeshLibraries (and their LOD copies) without the editor, so without
+## previews; the editor plugin makes those. "force" rebuilds even unchanged categories.
+## usage: Godot --headless --script tools/build_libraries.gd [-- force]
+
+const Builder = preload("res://addons/vox_tiles/library_builder.gd")
+
+
+func _init() -> void:
 	var force := "force" in OS.get_cmdline_user_args()
-	for cat in B.CATEGORIES:
-		B.build_category(cat, {}, false, force)
+	for cat in Builder.CATEGORIES:
+		Builder.build_category(cat, {}, false, force)
 	quit()

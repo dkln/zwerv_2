@@ -1,0 +1,22 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=4
+type="ArrayMesh"
+uid="uid://csxkchd1cuwlc"
+path="res://.godot/imported/bocht_straat_2_3.vox-48a4029b719482adf09d9a4a26c0187a.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/grond/brug/bocht_straat_2_3.vox"
+dest_files=["res://.godot/imported/bocht_straat_2_3.vox-48a4029b719482adf09d9a4a26c0187a.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+animation=0
+cell_block=Vector3(4, 1.5, 4)

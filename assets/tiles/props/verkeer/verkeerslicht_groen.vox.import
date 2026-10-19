@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=3
+importer_version=4
 type="ArrayMesh"
 uid="uid://cnhe43dcdmeth"
 path="res://.godot/imported/verkeerslicht_groen.vox-3326e6b27ffde74a17783f77c0e38b96.mesh"
@@ -15,8 +15,8 @@ dest_files=["res://.godot/imported/verkeerslicht_groen.vox-3326e6b27ffde74a17783
 
 voxel_size=0.125
 ambient_occlusion=true
-kleur_samenvoegen=14
-lod_kleur_tolerantie=24
-lod2_verkleining=2
-wind=false
-blok=Vector3(0, 0, 0)
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+animation=0
+cell_block=Vector3(0, 0, 0)

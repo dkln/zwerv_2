@@ -11,6 +11,12 @@ uniform float tintbaar = 1.0;
 uniform float voxel_rand : hint_range(0.0, 0.5) = 0.0;
 uniform float voxel_ruis : hint_range(0.0, 0.3) = 0.035;
 uniform float voxel_grootte = 0.125;
+// asfalt: donkergrijze bovenvlakken krijgen korrel, slijtplekken en een lichte glans
+uniform float asfalt : hint_range(0.0, 1.0) = 0.0;
+uniform float asfalt_ruwheid : hint_range(0.0, 1.0) = 0.68;
+uniform float asfalt_specular : hint_range(0.0, 1.0) = 0.45;
+// 1 = alleen kleuren die op asfalt lijken (donker neutraal grijs), 0 = de hele surface
+uniform float asfalt_kleurcheck : hint_range(0.0, 1.0) = 1.0;
 
 // Globale tint-instellingen (zie Project > Shader Globals en de TintKaart-node).
 global uniform sampler2D zwervr_tint_kaart : filter_nearest, repeat_disable;
@@ -29,6 +35,29 @@ float hash(vec2 p) {
 
 float hash3(vec3 p) {
 	return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453);
+}
+
+// hash zonder sin: blijft ook op fijne schaal en grote coördinaten willekeurig
+float hash_f(vec2 p) {
+	vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+	p3 += dot(p3, p3.yzx + 33.33);
+	return fract((p3.x + p3.y) * p3.z);
+}
+
+float ruis(vec2 p) {
+	vec2 i = floor(p);
+	vec2 f = fract(p);
+	vec2 u = f * f * (3.0 - 2.0 * f);
+	return mix(mix(hash_f(i), hash_f(i + vec2(1.0, 0.0)), u.x),
+		mix(hash_f(i + vec2(0.0, 1.0)), hash_f(i + vec2(1.0, 1.0)), u.x), u.y);
+}
+
+// 1 voor asfaltkleuren (donker, neutraal tot iets blauwig grijs; ook met ingebakken AO)
+float is_asfalt(vec3 k) {
+	float mx = max(k.r, max(k.g, k.b));
+	float mn = min(k.r, min(k.g, k.b));
+	return step(mx - mn, 0.1 * mx + 0.002) * step(k.r, k.b + 0.001)
+		* smoothstep(0.006, 0.012, mx) * (1.0 - smoothstep(0.08, 0.095, mx));
 }
 
 void vertex() {
@@ -64,9 +93,36 @@ void fragment() {
 			}
 		}
 	}
+	float ruw = roughness;
+	float spec = specular;
+	float a = asfalt > 0.0 ? asfalt * mix(1.0, is_asfalt(COLOR.rgb), asfalt_kleurcheck) * smoothstep(0.85, 0.95, wnorm.y) : 0.0;
+	if (a > 0.0) {
+		vec2 p = vpos.xz;
+		// slijtplekken van een paar meter: iets donkerder en gladder (bandensporen, olie)
+		float slijt = ruis(p * 0.35) * 0.65 + ruis(p * 1.1 + 7.1) * 0.35;
+		c *= 1.0 + (slijt - 0.5) * 0.22 * a;
+		ruw = mix(ruw, asfalt_ruwheid + (slijt - 0.5) * 0.16, a);
+		spec = mix(spec, asfalt_specular, a);
+		// steenkorrel van ~2 cm; vervaagt als een korrel kleiner wordt dan een pixel
+		// (anders flikkert het van ver), de ruwheid houdt dan het gemiddelde
+		float zicht = a * (1.0 - smoothstep(0.35, 1.0, length(fwidth(p)) / 0.02));
+		if (zicht > 0.0) {
+			vec2 q = p * 50.0;
+			float k = hash_f(floor(q));
+			float steen = step(0.92, hash_f(floor(q * 0.5) + 3.7));
+			c *= 1.0 + ((k - 0.5) * 0.18 + steen * 0.22) * zicht;
+			ruw -= (steen * 0.25 + (k - 0.5) * 0.1) * zicht;
+			// kleine bobbels: de zon glinstert op de korrels
+			float e = 0.5;
+			float hx = ruis(q + vec2(e, 0.0)) - ruis(q - vec2(e, 0.0));
+			float hz = ruis(q + vec2(0.0, e)) - ruis(q - vec2(0.0, e));
+			vec3 n = normalize(vec3(-hx * 0.35 * zicht, 1.0, -hz * 0.35 * zicht));
+			NORMAL = normalize((VIEW_MATRIX * vec4(n, 0.0)).xyz);
+		}
+	}
 	ALBEDO = c;
-	ROUGHNESS = roughness;
+	ROUGHNESS = clamp(ruw, 0.0, 1.0);
 	METALLIC = metallic;
-	SPECULAR = specular;
+	SPECULAR = spec;
 	EMISSION = COLOR.rgb * emission_energy * mix(0.25, 1.0, zwervr_nacht);
 }

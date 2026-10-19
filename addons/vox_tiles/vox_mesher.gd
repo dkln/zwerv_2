@@ -1,13 +1,20 @@
 @tool
 extends RefCounted
-## Zet een geparsed .vox model om naar een ArrayMesh met greedy meshing,
-## vertex-kleuren en ingebakken ambient occlusion.
+## Turns a parsed .vox model into an ArrayMesh with greedy meshing,
+## vertex colours and baked ambient occlusion.
 ##
-## Assen: MagicaVoxel (x, y, z-omhoog) -> Godot (x, z, -y).
-## Oorsprong: midden van het model in x/z, onderkant in y.
+## Per axis and direction, every slice of voxels gets a mask of visible faces
+## (keyed by colour group + the AO of the 4 corners); equal neighbours in the
+## mask are merged into rectangles (greedy meshing), which become two triangles.
+## There is one surface per material (Parser.MAT_*), with the triangles sorted
+## into the 7 GROUPS so scripts/layer_baker.gd can drop hidden cell sides.
+##
+## Axes: MagicaVoxel (x, y, z-up) -> Godot (x, z, -y).
+## Origin: centre of the model in x/z, bottom in y.
 
 const Parser = preload("res://addons/vox_tiles/vox_parser.gd")
 
+## indexed by Parser.MAT_*
 const MATERIAL_PATHS := [
 	"res://addons/vox_tiles/materials/voxel_opaque.tres",
 	"res://addons/vox_tiles/materials/voxel_metal.tres",
@@ -16,32 +23,36 @@ const MATERIAL_PATHS := [
 	"res://addons/vox_tiles/materials/voxel_water.tres",
 	"res://addons/vox_tiles/materials/voxel_vlag.tres",
 	"res://addons/vox_tiles/materials/voxel_paneel.tres",
+	"res://addons/vox_tiles/materials/voxel_asfalt.tres",
+	"res://addons/vox_tiles/materials/voxel_steen.tres",
 ]
 
-const WIND_MATERIAAL := "res://addons/vox_tiles/materials/voxel_wind.tres"
-const DRIJF_MATERIAAL := "res://addons/vox_tiles/materials/voxel_drijf.tres"
+const WIND_MATERIAL := "res://addons/vox_tiles/materials/voxel_wind.tres"
+const FLOAT_MATERIAL := "res://addons/vox_tiles/materials/voxel_drijf.tres"
+## floating ground tiles (water with plants): only what lies above the water bobs
+const FLOAT_PLANT_MATERIAL := "res://addons/vox_tiles/materials/voxel_drijf_plant.tres"
 
 const AO_CURVE := [0.34, 0.56, 0.79, 1.0]
 
-## groepen van driehoeken: de 6 zijden van de cel (+x, -x, boven, onder, +z, -z) en de rest
-const GROEPEN := 7
-const BOVEN := 2
-const ONDER := 3
+## triangle groups: the 6 sides of the cell (+x, -x, top, bottom, +z, -z) and the rest
+const GROUPS := 7
+const TOP := 2
+const BOTTOM := 3
 const REST := 6
-const RICHTINGEN := [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0), Vector3i(0, -1, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1)]
+const DIRECTIONS := [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0), Vector3i(0, -1, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1)]
 
 
-## kleur_tolerantie > 0: kleuren die minder dan zoveel (0..255 per kanaal) verschillen
-## worden samengevoegd tot grotere vlakken (voor de grove LOD-versie).
-## blok: afmeting van de gridcel (bijv. 4x3x4). De driehoeken worden dan per zijde
-## van die cel gegroepeerd (meta "vlakken" en "dicht"), zodat het samenvoegen
-## (scripts/bakker.gd) vlakken tegen een buurblok kan weglaten.
-## drijven: het model deint mee met het water (boten, boeien, waterlelies).
-static func build(vox, voxel_size: float, use_ao: bool, kleur_tolerantie := 0, wind := false, blok := Vector3.ZERO, drijven := false) -> ArrayMesh:
+## color_tolerance > 0: colours that differ less than this (0..255 per channel)
+## are merged into larger faces (for the coarse LOD version).
+## animation: "" (none), "wind" (sways in the wind) or "float" (bobs on the water).
+## block: size of the grid cell (e.g. 4x3x4). Triangles are then grouped per side
+## of that cell (meta "face_ranges" and "solid_faces"), so merging
+## (scripts/layer_baker.gd) can drop faces that lie against a neighbouring block.
+static func build(vox, voxel_size: float, use_ao: bool, color_tolerance := 0, animation := "", block := Vector3.ZERO) -> ArrayMesh:
 	var sx: int = vox.size.x
 	var sy: int = vox.size.y
 	var sz: int = vox.size.z
-	# volume met 1 voxel rand zodat we nooit buiten de array lezen
+	# volume with a 1 voxel border so we never read outside the array
 	var SX := sx + 2
 	var SY := sy + 2
 	var SZ := sz + 2
@@ -56,57 +67,57 @@ static func build(vox, voxel_size: float, use_ao: bool, kleur_tolerantie := 0, w
 			vol[(x + 1) + (y + 1) * SX + (z + 1) * SX * SY] = vx[i + 3]
 
 	var mats: PackedByteArray = vox.materials
-	# opaque lookup per kleurindex
+	# opaque lookup per colour index
 	var opaque := PackedByteArray()
 	opaque.resize(256)
 	for c in range(1, 256):
-		opaque[c] = 1 if (mats[c] != Parser.MAT_GLASS and mats[c] != Parser.MAT_WATER) else 0
+		opaque[c] = 1 if Parser.is_opaque(mats[c]) else 0
 
 	var lin := PackedColorArray()
 	lin.resize(256)
 	for c in 256:
 		lin[c] = vox.palette[c].srgb_to_linear()
-	# kleurgroepen: elke kleur verwijst naar een representant; die krijgt de gemiddelde kleur
-	var groep := PackedByteArray()
-	groep.resize(256)
+	# colour groups: every colour points to a representative, which gets the average colour
+	var group := PackedByteArray()
+	group.resize(256)
 	for c in 256:
-		groep[c] = c
-	if kleur_tolerantie > 0:
-		var gebruikt := {}
+		group[c] = c
+	if color_tolerance > 0:
+		var used := {}
 		for i in range(3, vx.size(), 4):
-			gebruikt[vx[i]] = true
+			used[vx[i]] = true
 		var reps := []
-		var som := {}
-		var tol := kleur_tolerantie / 255.0
-		for c in gebruikt.keys():
+		var sums := {}
+		var tol := color_tolerance / 255.0
+		for c in used.keys():
 			var col: Color = vox.palette[c]
-			var gevonden := -1
+			var found := -1
 			for r in reps:
 				var rc: Color = vox.palette[r]
 				if mats[r] == mats[c] and absf(rc.r - col.r) <= tol and absf(rc.g - col.g) <= tol and absf(rc.b - col.b) <= tol:
-					gevonden = r
+					found = r
 					break
-			if gevonden < 0:
+			if found < 0:
 				reps.append(c)
-				gevonden = c
-				som[c] = [Color(0, 0, 0), 0]
-			groep[c] = gevonden
-			som[gevonden][0] += col
-			som[gevonden][1] += 1
+				found = c
+				sums[c] = [Color(0, 0, 0), 0]
+			group[c] = found
+			sums[found][0] += col
+			sums[found][1] += 1
 		for r in reps:
-			var gem: Color = som[r][0] / float(som[r][1])
-			lin[r] = Color(gem.r, gem.g, gem.b).srgb_to_linear()
+			var avg: Color = sums[r][0] / float(sums[r][1])
+			lin[r] = Color(avg.r, avg.g, avg.b).srgb_to_linear()
 
 	var dims := [sx, sy, sz]
 	var strides := [1, SX, SX * SY]
 	var surf := []
 	for m in MATERIAL_PATHS.size():
-		var groepen := []
-		for g in GROEPEN:
-			groepen.append({"v": [], "n": [], "c": []})
-		surf.append(groepen)
-	var bedekt := PackedFloat32Array()
-	bedekt.resize(GROEPEN)
+		var groups := []
+		for g in GROUPS:
+			groups.append({"v": [], "n": [], "c": []})
+		surf.append(groups)
+	var covered := PackedFloat32Array()
+	covered.resize(GROUPS)
 
 	var center := Vector3(sx * 0.5, sy * 0.5, 0.0)
 	var base0 := 1 + SX + SX * SY
@@ -134,13 +145,13 @@ static func build(vox, voxel_size: float, use_ao: bool, kleur_tolerantie := 0, w
 						var c: int = vol[idx]
 						if c == 0:
 							continue
-						var cg: int = groep[c]
+						var cg: int = group[c]
 						var nidx: int = idx + sgn * sa
 						var n: int = vol[nidx]
 						var vis := false
 						if n == 0:
 							vis = true
-							# water-zijkanten aan de rand van het model niet tekenen
+							# don't draw water sides at the edge of the model
 							if mats[c] == Parser.MAT_WATER and a != 2:
 								var na: int = i + sgn
 								if na < 0 or na >= da:
@@ -153,7 +164,7 @@ static func build(vox, voxel_size: float, use_ao: bool, kleur_tolerantie := 0, w
 							continue
 						var key := cg
 						if use_ao and mats[c] != Parser.MAT_EMIT and mats[c] != Parser.MAT_FLAG and opaque[c] == 1:
-							# 4 hoeken: (u-,v-), (u+,v-), (u+,v+), (u-,v+)
+							# 4 corners: (u-,v-), (u+,v-), (u+,v+), (u-,v+)
 							var b := nidx
 							var um: int = opaque[vol[b - su]]
 							var up: int = opaque[vol[b + su]]
@@ -170,7 +181,7 @@ static func build(vox, voxel_size: float, use_ao: bool, kleur_tolerantie := 0, w
 						any = true
 				if not any:
 					continue
-				# greedy samenvoegen
+				# greedy merge
 				for jv in dv:
 					var ju := 0
 					while ju < du:
@@ -179,12 +190,12 @@ static func build(vox, voxel_size: float, use_ao: bool, kleur_tolerantie := 0, w
 							ju += 1
 							continue
 						var w := 1
-						# water niet samenvoegen: een fijn raster laat de golf-shader het oppervlak vervormen
-						var los: bool = mats[key & 0xFF] == Parser.MAT_WATER
-						while not los and ju + w < du and mask[ju + w + jv * du] == key:
+						# don't merge water: a fine grid lets the wave shader deform the surface
+						var single: bool = mats[key & 0xFF] == Parser.MAT_WATER
+						while not single and ju + w < du and mask[ju + w + jv * du] == key:
 							w += 1
 						var hgt := 1
-						var done := los
+						var done := single
 						while jv + hgt < dv and not done:
 							for k in w:
 								if mask[ju + k + (jv + hgt) * du] != key:
@@ -195,65 +206,65 @@ static func build(vox, voxel_size: float, use_ao: bool, kleur_tolerantie := 0, w
 						for yy in hgt:
 							for k in w:
 								mask[ju + k + (jv + yy) * du] = 0
-						_emit_quad(surf, key, a, u, v, sgn, i, ju, jv, w, hgt, lin, mats, center, voxel_size, normal_vox, blok, bedekt)
+						_emit_quad(surf, key, a, u, v, sgn, i, ju, jv, w, hgt, lin, mats, center, voxel_size, normal_vox, block, covered)
 						ju += w
 
 	var mesh := ArrayMesh.new()
-	var vlakken := []
+	var face_ranges := []
 	for m in MATERIAL_PATHS.size():
 		var s := {"v": [], "n": [], "c": []}
-		var grens := PackedInt32Array([0])
-		for g in GROEPEN:
+		var bounds := PackedInt32Array([0])
+		for g in GROUPS:
 			var d: Dictionary = surf[m][g]
 			s.v.append_array(d.v)
 			s.n.append_array(d.n)
 			s.c.append_array(d.c)
-			grens.append(s.v.size())
+			bounds.append(s.v.size())
 		if s.v.size() == 0:
 			continue
-		vlakken.append(grens)
+		face_ranges.append(bounds)
 		var arrays := []
 		arrays.resize(Mesh.ARRAY_MAX)
 		arrays[Mesh.ARRAY_VERTEX] = PackedVector3Array(s.v)
 		arrays[Mesh.ARRAY_NORMAL] = PackedVector3Array(s.n)
 		arrays[Mesh.ARRAY_COLOR] = PackedColorArray(s.c)
 		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-		var pad: String = MATERIAL_PATHS[m]
-		if drijven and m != Parser.MAT_WATER and m != Parser.MAT_GLASS and m != Parser.MAT_EMIT:
-			pad = DRIJF_MATERIAAL
-		elif wind and m == Parser.MAT_OPAQUE:
-			pad = WIND_MATERIAAL
-		var mat = load(pad)
+		var path: String = MATERIAL_PATHS[m]
+		if animation == "float" and Parser.is_opaque(m) and m != Parser.MAT_EMIT:
+			path = FLOAT_MATERIAL if block == Vector3.ZERO else FLOAT_PLANT_MATERIAL
+		elif animation == "wind" and m == Parser.MAT_OPAQUE:
+			path = WIND_MATERIAL
+		var mat = load(path)
 		mesh.surface_set_material(mesh.get_surface_count() - 1, mat)
-		mesh.surface_set_name(mesh.get_surface_count() - 1, ["opaque", "metal", "glass", "emit", "water", "vlag", "paneel"][m])
-	if blok != Vector3.ZERO:
-		# zijden die helemaal dicht zijn (ondoorzichtig) verbergen de zijde van de buurcel
-		var dicht := 0
+		mesh.surface_set_name(mesh.get_surface_count() - 1, Parser.MATERIAL_NAMES[m])
+	if block != Vector3.ZERO:
+		# sides that are completely closed (opaque) hide the side of the neighbouring cell
+		var solid := 0
 		for g in 6:
-			var opp: float = blok.x * blok.z if g == ONDER or g == BOVEN else (blok.z * blok.y if g < 2 else blok.x * blok.y)
-			if bedekt[g] >= opp - 0.001:
-				dicht |= 1 << g
-		mesh.set_meta("vlakken", vlakken)
-		mesh.set_meta("dicht", dicht)
+			var area: float = block.x * block.z if g == BOTTOM or g == TOP else (block.z * block.y if g < 2 else block.x * block.y)
+			if covered[g] >= area - 0.001:
+				solid |= 1 << g
+		mesh.set_meta("face_ranges", face_ranges)
+		mesh.set_meta("solid_faces", solid)
 	return mesh
 
 
-## Maakt een grovere versie van het model: elk blok van f x f x f voxels wordt één voxel
-## (meest voorkomende kleur van de gevulde voxels; leeg als alles leeg is).
-static func verklein(vox, f: int):
-	var uit = Parser.new()
-	uit.palette = vox.palette
-	uit.materials = vox.materials
+## Makes a coarser version of the model: every block of f x f x f voxels becomes one voxel
+## (most common colour of the filled voxels; empty if all are empty).
+static func downscale(vox, f: int):
+	var out = Parser.new()
+	out.palette = vox.palette
+	out.materials = vox.materials
 	var sx: int = vox.size.x
 	var sy: int = vox.size.y
 	var sz: int = vox.size.z
 	var nx := ceili(sx / float(f))
 	var ny := ceili(sy / float(f))
 	var nz := ceili(sz / float(f))
-	uit.size = Vector3i(nx, ny, nz)
-	# alleen de bovenste laag van elk blok telt mee: wat je van boven ziet
-	# (asfalt, gras) wint van de grondlaag eronder
-	var tel := {}
+	out.size = Vector3i(nx, ny, nz)
+	# only the top layer of each block counts: what you see from above
+	# (asphalt, grass) wins over the ground layer below
+	var counts := {}
 	var top := {}
 	var vx: PackedByteArray = vox.voxels
 	for i in range(0, vx.size(), 4):
@@ -261,48 +272,50 @@ static func verklein(vox, f: int):
 		var z: int = vx[i + 2]
 		if z > top.get(k, -1):
 			top[k] = z
-			tel[k] = {}
+			counts[k] = {}
 		elif z < top[k]:
 			continue
-		var d: Dictionary = tel[k]
+		var d: Dictionary = counts[k]
 		d[vx[i + 3]] = d.get(vx[i + 3], 0) + 1
 	var uv := PackedByteArray()
-	for k in tel:
-		var d: Dictionary = tel[k]
-		var beste := 0
+	for k in counts:
+		var d: Dictionary = counts[k]
+		var best := 0
 		var n := -1
 		for c in d:
 			if d[c] > n:
 				n = d[c]
-				beste = c
+				best = c
 		uv.append(k.x)
 		uv.append(k.y)
 		uv.append(k.z)
-		uv.append(beste)
-	uit.voxels = uv
-	return uit
+		uv.append(best)
+	out.voxels = uv
+	return out
 
 
+## Ambient occlusion level (0 = darkest, 3 = none) of a face corner from its two
+## side neighbours and the diagonal neighbour (1 = opaque voxel there).
 static func _ao(s1: int, s2: int, c: int) -> int:
 	if s1 == 1 and s2 == 1:
 		return 0
 	return 3 - (s1 + s2 + c)
 
 
-## Op welke zijde van de cel ligt dit vlak (helemaal binnen de rechthoek van die zijde)?
-static func _celzijde(pts: Array, n: Vector3, blok: Vector3) -> int:
-	var half := Vector3(blok.x * 0.5, blok.y, blok.z * 0.5)
+## Which side of the cell does this face lie on (entirely within that side's rectangle)?
+static func _cell_side(pts: Array, n: Vector3, block: Vector3) -> int:
+	var half := Vector3(block.x * 0.5, block.y, block.z * 0.5)
 	var lo := Vector3(-half.x, 0.0, -half.z)
 	var g := -1
 	for k in 6:
-		if n.is_equal_approx(Vector3(RICHTINGEN[k])):
+		if n.is_equal_approx(Vector3(DIRECTIONS[k])):
 			g = k
 	if g < 0:
 		return REST
 	var p0: Vector3 = pts[0]
-	var vlak: float = [half.x, lo.x, half.y, lo.y, half.z, lo.z][g]
+	var plane_pos: float = [half.x, lo.x, half.y, lo.y, half.z, lo.z][g]
 	var as_: int = [0, 0, 1, 1, 2, 2][g]
-	if absf(p0[as_] - vlak) > 0.001:
+	if absf(p0[as_] - plane_pos) > 0.001:
 		return REST
 	for p in pts:
 		for k in 3:
@@ -311,13 +324,18 @@ static func _celzijde(pts: Array, n: Vector3, blok: Vector3) -> int:
 	return g
 
 
+## MagicaVoxel voxel coordinates -> Godot metres, centred in x/z, bottom at y = 0.
 static func _to_godot(p: Vector3, center: Vector3, vs: float) -> Vector3:
 	return Vector3(p.x - center.x, p.z, -(p.y - center.y)) * vs
 
 
+## Adds one merged rectangle (w x hgt voxels on slice i along axis a) as two
+## triangles to the surface of its material, in the group of the cell side it
+## lies on. key = colour index | AO of the 4 corners (2 bits each, from bit 8).
+## Also adds the area of opaque faces to covered[side] for the "solid_faces" meta.
 static func _emit_quad(surf: Array, key: int, a: int, u: int, v: int, sgn: int, i: int,
 		ju: int, jv: int, w: int, hgt: int, lin: PackedColorArray, mats: PackedByteArray,
-		center: Vector3, vs: float, normal_vox: Vector3, blok := Vector3.ZERO, bedekt := PackedFloat32Array()) -> void:
+		center: Vector3, vs: float, normal_vox: Vector3, block := Vector3.ZERO, covered := PackedFloat32Array()) -> void:
 	var c := key & 0xFF
 	var ao := [(key >> 8) & 3, (key >> 10) & 3, (key >> 12) & 3, (key >> 14) & 3]
 	var plane := float(i + (1 if sgn > 0 else 0))
@@ -340,18 +358,18 @@ static func _emit_quad(surf: Array, key: int, a: int, u: int, v: int, sgn: int, 
 		tris = [[0, 1, 3], [1, 2, 3]]
 	else:
 		tris = [[0, 1, 2], [0, 2, 3]]
-	var groep := REST
-	if blok != Vector3.ZERO:
-		groep = _celzijde(pts, n, blok)
-		if groep != REST and mats[c] != Parser.MAT_GLASS and mats[c] != Parser.MAT_WATER:
-			bedekt[groep] += w * hgt * vs * vs
-	var s: Dictionary = surf[mats[c]][groep]
+	var side := REST
+	if block != Vector3.ZERO:
+		side = _cell_side(pts, n, block)
+		if side != REST and Parser.is_opaque(mats[c]):
+			covered[side] += w * hgt * vs * vs
+	var s: Dictionary = surf[mats[c]][side]
 	for t in tris:
 		var p0: Vector3 = pts[t[0]]
 		var p1: Vector3 = pts[t[1]]
 		var p2: Vector3 = pts[t[2]]
 		var order := [t[0], t[1], t[2]]
-		# Godot gebruikt clockwise front faces: kruisproduct moet van de normaal af wijzen
+		# Godot uses clockwise front faces: the cross product must point away from the normal
 		if (p1 - p0).cross(p2 - p0).dot(n) > 0.0:
 			order = [t[0], t[2], t[1]]
 		for k in order:

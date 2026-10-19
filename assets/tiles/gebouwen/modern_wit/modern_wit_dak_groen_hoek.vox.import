@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=3
+importer_version=4
 type="ArrayMesh"
 uid="uid://cg1nq7prn0eb5"
 path="res://.godot/imported/modern_wit_dak_groen_hoek.vox-4450103f1dd3d5521c693cb67cba43c1.mesh"
@@ -15,8 +15,8 @@ dest_files=["res://.godot/imported/modern_wit_dak_groen_hoek.vox-4450103f1dd3d55
 
 voxel_size=0.125
 ambient_occlusion=true
-kleur_samenvoegen=14
-lod_kleur_tolerantie=24
-lod2_verkleining=2
-wind=false
-blok=Vector3(4, 3, 4)
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+animation=0
+cell_block=Vector3(4, 3, 4)

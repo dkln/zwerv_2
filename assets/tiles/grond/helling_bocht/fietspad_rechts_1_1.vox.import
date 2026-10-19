@@ -1,0 +1,22 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=4
+type="ArrayMesh"
+uid="uid://dm0qp6xs7ujk3"
+path="res://.godot/imported/fietspad_rechts_1_1.vox-0b7e3add82a7b0f0327182f44c8cb8be.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/grond/helling_bocht/fietspad_rechts_1_1.vox"
+dest_files=["res://.godot/imported/fietspad_rechts_1_1.vox-0b7e3add82a7b0f0327182f44c8cb8be.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+animation=0
+cell_block=Vector3(4, 1.5, 4)

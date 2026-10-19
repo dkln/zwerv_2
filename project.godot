@@ -65,6 +65,7 @@ camera/depth_of_field/depth_of_field_bokeh_quality=0
 environment/ssao/quality=1
 anti_aliasing/quality/use_debanding=true
 scaling_3d/mode=2
+scaling_3d/mode.macos=4
 scaling_3d/scale=0.77
 
 [shader_globals]

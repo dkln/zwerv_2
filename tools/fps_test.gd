@@ -1,69 +1,88 @@
 extends SceneTree
-## Meet de framerate van de voorbeeldkaart.
-## gebruik: Godot --script tools/fps_test.gd -- <seconden> <zoom|rondleiding> [focus_x focus_z]
+## Measures the frame rate of the example map (vsync off, 1920x1080), after an 8 s
+## warm-up, and prints the average FPS, the 1% low and draw calls/primitives.
+## usage: Godot --script tools/fps_test.gd -- <seconds> <zoom|tour> [focus_x focus_z] [flags]
+## "tour" = run the automatic tour; a number = fixed iso view size (metres in
+## view) with the free camera, optionally around focus_x/focus_z (world metres).
+## flags (letters, combine freely): s = no shadows and no day cycle, o4/o8 = GridMap
+## octant size, p = no Props, g = no Gebouwen, e = no SSAO/SSIL/glow, w = no SSR,
+## 2 = two shadow splits, 1 = orthogonal shadows, d = no DetailNiveau (no LOD/merging).
+
+const Common = preload("res://tools/tool_common.gd")
+## Seconds at the start that are not measured (shader compilation, LOD copies).
+const WARM_UP := 8.0
+
 var _t := 0.0
 var _frames := 0
-var _metingen := []
-var _duur := 20.0
+var _samples := []
+var _duration := 20.0
 
-func _init():
-	var a := OS.get_cmdline_user_args()
-	_duur = float(a[0]) if a.size() > 0 else 20.0
-	var modus: String = a[1] if a.size() > 1 else "rondleiding"
+
+func _init() -> void:
+	_duration = Common.arg_float(0, 20.0)
+	var mode := Common.arg(1, "tour")
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
 	Engine.max_fps = 0
 	get_root().size = Vector2i(1920, 1080)
-	var sc: Node = load("res://scenes/wereld.tscn").instantiate()
-	if modus != "rondleiding":
-		sc.get_node("Rondleiding").set("actief", false)
+	var sc := Common.instantiate(Common.WORLD, false)
+	if mode != "tour":
+		sc.get_node("Rondleiding").set("active", false)
 		var cam: Camera3D = sc.get_node("Camera")
-		cam.set("iso_grootte", float(modus))
-		if a.size() > 3:
-			var focus := Vector3(float(a[2]), 0, float(a[3]))
-			cam.position = focus + Vector3(1, 1, 1).normalized() * 300.0
-	var vlaggen: String = a[4] if a.size() > 4 else ""
-	if "s" in vlaggen:
+		cam.set("iso_size", float(mode))
+		if Common.arg_count() > 3:
+			# free_camera.gd re-centres on the ground point it looks at in _ready
+			var focus := Vector3(Common.arg_float(2), 0, Common.arg_float(3))
+			cam.position = focus + Common.Iso.DIRECTION * 300.0
+	_apply_flags(sc, Common.arg(4))
+	get_root().add_child(sc)
+
+
+## Applies the benchmark flags (see the header) to the not yet added scene `sc`.
+func _apply_flags(sc: Node, flags: String) -> void:
+	if "s" in flags:
 		sc.get_node("Zon").shadow_enabled = false
 		if sc.has_node("Dagcyclus"):
 			sc.get_node("Dagcyclus").queue_free()
 	for o in [4, 8]:
-		if ("o%d" % o) in vlaggen:
-			for n in ["Grond", "Gebouwen", "Props", "Details"]:
+		if ("o%d" % o) in flags:
+			for n in Common.LAYERS:
 				sc.get_node(n).cell_octant_size = o
-	if "p" in vlaggen:
+	if "p" in flags:
 		sc.get_node("Props").queue_free()
-	if "g" in vlaggen:
+	if "g" in flags:
 		sc.get_node("Gebouwen").queue_free()
-	if "e" in vlaggen:
+	if "e" in flags:
 		var env: Environment = sc.get_node("Omgeving").environment
 		env.ssao_enabled = false
 		env.ssil_enabled = false
 		env.glow_enabled = false
-	if "w" in vlaggen:
+	if "w" in flags:
 		sc.get_node("Omgeving").environment.ssr_enabled = false
-	if "2" in vlaggen:
+	if "2" in flags:
 		sc.get_node("Zon").directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
-	if "1" in vlaggen:
+	if "1" in flags:
 		sc.get_node("Zon").directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
-	if "d" in vlaggen:
+	if "d" in flags:
 		sc.get_node("DetailNiveau").queue_free()
-	get_root().add_child(sc)
 
+
+## Collects frame times after the warm-up and prints the result after `_duration` seconds.
 func _process(delta: float) -> bool:
 	if _frames == 0 and _t == 0.0 and delta > 1.0:
-		return false   # eerste frame na het laden/samenvoegen telt niet mee
+		return false   # first frame after loading/merging does not count
 	_t += delta
-	if _t < 8.0:
-		return false   # opwarmen: shaders compileren, LOD-kopieën maken
+	if _t < WARM_UP:
+		return false   # warm-up: compile shaders, create LOD copies
 	_frames += 1
-	_metingen.append(delta)
-	if _t > _duur + 8.0:
-		_metingen.sort()
-		var gem := 0.0
-		for d in _metingen: gem += d
-		gem /= _metingen.size()
-		var p99: float = _metingen[int(_metingen.size() * 0.99)]
-		print("FPS gemiddeld %.1f, 1%%-laag %.1f  | draw calls %d, primitieven %d" % [1.0 / gem, 1.0 / p99,
+	_samples.append(delta)
+	if _t > _duration + WARM_UP:
+		_samples.sort()
+		var avg := 0.0
+		for d in _samples:
+			avg += d
+		avg /= _samples.size()
+		var p99: float = _samples[int(_samples.size() * 0.99)]
+		print("FPS average %.1f, 1%% low %.1f  | draw calls %d, primitives %d" % [1.0 / avg, 1.0 / p99,
 			RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME),
 			RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_PRIMITIVES_IN_FRAME)])
 		quit()

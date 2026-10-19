@@ -1,20 +1,21 @@
 extends SceneTree
-## Isometrische screenshot van een scene.
-## gebruik: Godot --script tools/shot_iso.gd -- <scene> <uit.png> focus_x focus_z grootte
-func _init():
-	var a := OS.get_cmdline_user_args()
-	var sc: Node = load(a[0]).instantiate()
-	var cam: Camera3D = sc.get_node("Camera")
-	cam.set_script(null)
-	if sc.has_node("Rondleiding"):
-		sc.get_node("Rondleiding").set("actief", false)
+## Isometric screenshot of a scene (tour off, free-camera script removed), taken once
+## DetailNiveau has finished merging.
+## usage: Godot --script tools/shot_iso.gd -- <scene> <out.png> focus_x focus_z view_size
+## focus in world metres; view_size = metres in view (see scripts/iso_camera.gd).
+
+const Common = preload("res://tools/tool_common.gd")
+
+
+func _init() -> void:
+	var sc := Common.instantiate(Common.arg(0))
+	var out := Common.arg(1)
 	get_root().add_child(sc)
 	get_root().size = Vector2i(1920, 1080)
 	await process_frame
-	var focus := Vector3(float(a[2]), 0, float(a[3]))
-	preload("res://scripts/iso_camera.gd").plaats(cam, focus, float(a[4]))
-	for i in 15:
-		await process_frame
-	get_root().get_texture().get_image().save_png(a[1])
-	print("saved ", a[1])
+	await Common.wait_for_merge(sc)
+	Common.place_iso(sc, Vector3(Common.arg_float(2), 0, Common.arg_float(3)), Common.arg_float(4))
+	await Common.wait_frames(self, 15)
+	Common.save_screenshot(self, out)
+	print("saved ", out)
 	quit()

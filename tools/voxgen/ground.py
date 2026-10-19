@@ -1,70 +1,94 @@
-"""Grond-tiles: wegen, stoepen, pleinen, natuur, water, spoor, tram, bruggen, hellingen.
+"""Ground tiles: roads, sidewalks, squares, nature, water, rail, tram, bridges and ramps.
 
-Alle grond-tiles zijn 32x32 voxels (4x4 m). Het wegdek ligt op z=2, stoep/gras op z=3.
-Een grond-verdieping in Godot is 1 m (8 voxels) hoog, zodat hellingen precies
-1 verdieping stijgen en je tiles kunt stapelen (bruggen, dijken, grachten).
+Part of the voxgen pipeline: every function decorated with @tile(path) or passed to
+register(path, fn) (from common.py) returns a V model; generate.py writes it as
+<OUT>/<path>.vox plus <path>.tile.json. This module also exports the shared ground
+building blocks (surface colour functions, column/flat/paint helpers, rail and ramp
+helpers) used by ground2, ground3, extras4 and extras5.
+
+All ground tiles are 32x32 voxels (T, 4 m at 12.5 cm per voxel). Coordinates: x = left->right,
+y = front->back (front = y=0), z = up. The road surface top is z=2 (ROAD), sidewalk/grass top
+is z=3 (WALK). One ground storey in Godot is 1 m (8 voxels, FLOOR) high, so ramps rise exactly
+one storey and tiles can be stacked (bridges, dikes, canals).
 """
 import math
+from functools import partial
 
 from common import T, ROAD, WALK, FLOOR, tile, register, PICTO, text_pixels
 from palette import P
 from vox import V, mix, blocky, pick, h, col
 
-ASFALT = mix("asfalt1", "asfalt2", "asfalt3", "asfalt4", weights=[4, 4, 2, 1], seed=1)
-ASFALT_OUD = mix("asfalt1", "asfalt2", "asfalt3", "asfalt4", "asfalt_reparatie", weights=[3, 3, 2, 2, 1], seed=2)
-FIETS = mix("fietsasfalt1", "fietsasfalt2", "fietsasfalt3", weights=[4, 3, 2], seed=3)
+# Surface colour functions (callables (x, y, z) -> palette index).
+ASPHALT = mix("asfalt1", "asfalt2", "asfalt3", "asfalt4", weights=[4, 4, 2, 1], seed=1)
+ASPHALT_OLD = mix("asfalt1", "asfalt2", "asfalt3", "asfalt4", "asfalt_reparatie", weights=[3, 3, 2, 2, 1], seed=2)
+BIKE_ASPHALT = mix("fietsasfalt1", "fietsasfalt2", "fietsasfalt3", weights=[4, 3, 2], seed=3)
 BUS = mix("busbaan1", "busbaan2", seed=4)
 MARK = mix("markering", "markering", "markering2", seed=5)
-TEGEL = blocky(["tegel1", "tegel2", "tegel3", "tegel4"], size=3, seed=6)
-BAND = mix("band1", "band2", seed=7)
-GOOT = mix("goot1", "goot2", seed=8)
-GRAS = mix("gras1", "gras2", "gras3", "gras4", "gras5", weights=[4, 4, 3, 2, 2], seed=9)
-AARDE = mix("aarde1", "aarde2", "aarde3", "aarde_donker", weights=[3, 3, 2, 1], seed=10)
-ZAND = mix("zand1", "zand2", seed=11)
-GRIND = mix("grind1", "grind2", "grind3", "grind_roest", weights=[4, 3, 3, 1], seed=12)
-BETON = mix("beton1", "beton2", "beton3", weights=[3, 2, 1], seed=13)
-BETON_D = mix("beton2", "beton_donker", seed=14)
-BAKSTEEN = None  # zie gebouwen; hier een eenvoudige variant
-NATUURSTEEN = blocky(["natuursteen1", "natuursteen2", "natuursteen3"], size=4, seed=15)
+PAVING = blocky(["tegel1", "tegel2", "tegel3", "tegel4"], size=3, seed=6)
+CURB = mix("band1", "band2", seed=7)
+GUTTER = mix("goot1", "goot2", seed=8)
+GRASS = mix("gras1", "gras2", "gras3", "gras4", "gras5", weights=[4, 4, 3, 2, 2], seed=9)
+EARTH = mix("aarde1", "aarde2", "aarde3", "aarde_donker", weights=[3, 3, 2, 1], seed=10)
+SAND = mix("zand1", "zand2", seed=11)
+GRAVEL = mix("grind1", "grind2", "grind3", "grind_roest", weights=[4, 3, 3, 1], seed=12)
+CONCRETE = mix("beton1", "beton2", "beton3", weights=[3, 2, 1], seed=13)
+CONCRETE_DARK = mix("beton2", "beton_donker", seed=14)
+NATURAL_STONE = blocky(["natuursteen1", "natuursteen2", "natuursteen3"], size=4, seed=15)
 
 
-def baksteen_fn(x, y, z, seed=20, names=("baksteen1", "baksteen2", "baksteen3", "baksteen4", "baksteen5")):
+def brick_fn(x, y, z, seed=20, names=("baksteen1", "baksteen2", "baksteen3", "baksteen4", "baksteen5")):
+    """Brick colour function: 2-voxel bricks, rows offset by one voxel on alternating z."""
     u = x + y + (z % 2)
     return pick(list(names), u // 2, z, 0, seed, weights=[4, 4, 3, 2, 1])
 
 
-def klinker_fn(x, y, z):
-    # halfsteensverband, stenen van 2x1 voxels dwars op de rijrichting
+def _brick(seed):
+    """brick_fn bound to a specific seed, usable as a colour function."""
+    return lambda a, b, c: brick_fn(a, b, c, seed)
+
+
+def paver_fn(x, y, z):
+    """Clinker colour function: stretcher bond, 2x1-voxel bricks across the driving direction."""
     bid = ((x + (y % 2)) // 2, y)
     return pick(["klinker1", "klinker2", "klinker3", "klinker4", "klinker5"], bid[0], bid[1], 0, 21, [4, 4, 3, 2, 1])
 
 
 def dist(x, y, cx, cy):
+    """Distance from the centre of voxel (x, y) to point (cx, cy)."""
     return math.hypot(x + 0.5 - cx, y + 0.5 - cy)
 
 
-# ------------------------------------------------------------- basis
+# ------------------------------------------------------------- basics
 
 def new(sz=12):
+    """Empty T x T ground model, sz voxels high."""
     return V(T, T, sz)
 
 
 def column(m, x, y, top, c, sub="aarde2"):
+    """Fill column (x, y) from z=0 to top-1: colour c on the top voxel, sub below it."""
     fc = col(c)
     fs = col(sub)
     for z in range(top):
         m.set(x, y, z, fc(x, y, z) if z == top - 1 else fs(x, y, z))
 
 
-def flat(c=ASFALT, top=ROAD, sub="aarde2", sz=12):
-    m = new(sz)
-    for y in range(T):
-        for x in range(T):
+def fill_columns(m, top, c, sub="aarde2", size=T):
+    """column() for every (x, y) in a size x size square starting at the origin."""
+    for y in range(size):
+        for x in range(size):
             column(m, x, y, top, c, sub)
+
+
+def flat(c=ASPHALT, top=ROAD, sub="aarde2", sz=12):
+    """Flat tile with surface c at height top (default: road level)."""
+    m = new(sz)
+    fill_columns(m, top, c, sub)
     return m
 
 
 def paint(m, x, y, c):
+    """Recolour the topmost voxel of column (x, y); ignores out-of-range and empty columns."""
     if not (0 <= x < m.sx and 0 <= y < m.sy):
         return
     t = m.top(x, y)
@@ -73,19 +97,31 @@ def paint(m, x, y, c):
 
 
 def line_y(m, x, y0=0, y1=T, c=MARK, dash=None):
+    """Paint a line along y at column x. dash = (on, period, phase) in voxels."""
     for y in range(y0, y1):
         if dash is None or (y + dash[2]) % dash[1] < dash[0]:
             paint(m, x, y, c)
 
 
 def line_x(m, y, x0=0, x1=T, c=MARK, dash=None):
+    """Paint a line along x at row y. dash = (on, period, phase) in voxels."""
     for x in range(x0, x1):
         if dash is None or (x + dash[2]) % dash[1] < dash[0]:
             paint(m, x, y, c)
 
 
+def _lines_y(m, xs, dash=None):
+    """line_y() for each column in xs."""
+    for x in xs:
+        line_y(m, x, dash=dash)
+
+
 def paint_bitmap(m, rows, x0, y0, c=MARK, scale=1, rot=0):
-    """Schilder een bitmap op het wegdek. rij 0 = verst weg (hoogste y)."""
+    """Paint a bitmap ('#' = set) on the surface with its lower-left at (x0, y0).
+
+    Row 0 is the farthest away (highest y). rot=0 reads along +x; rot=1 rotates 90 degrees
+    so the text reads along y. Other rot values paint nothing.
+    """
     hgt = len(rows)
     wid = len(rows[0])
     for r, line in enumerate(rows):
@@ -98,17 +134,24 @@ def paint_bitmap(m, rows, x0, y0, c=MARK, scale=1, rot=0):
                     ly = (hgt - 1 - r) * scale + sy
                     if rot == 0:
                         paint(m, x0 + lx, y0 + ly, c)
-                    elif rot == 1:  # 90 graden: leesrichting langs y
+                    elif rot == 1:
                         paint(m, x0 + ly, y0 + (wid * scale - 1 - lx), c)
 
 
-DASH = (10, 16, 0)
-DASH_SNEL = (12, 32, 0)
-BLOK = (8, 16, 4)
+DASH = (10, 16, 0)           # standard dashed line
+DASH_HIGHWAY = (12, 32, 0)   # highway lane divider
+BLOCK_DASH = (8, 16, 4)      # block marking (exit / weaving lanes)
 
-# ------------------------------------------------------------- wegen
+# ------------------------------------------------------------- roads
 
-def rijstrook(left="geen", right="geen", surface=ASFALT):
+def lane(left="geen", right="geen", surface=ASPHALT):
+    """Single traffic lane running along y, with markings on the left (x=0) and right (x=30/31).
+
+    left:  "geen" (none), "onderbroken" (dashed), "streep" (solid), "dubbel" (double),
+           "blok" (block marking).
+    right: "geen", "kant" (edge line at x=30), "streep" (solid at x=31),
+           "onderbroken" (dashed at x=31), "kant_onderbroken" (short dashes at x=30).
+    """
     m = flat(surface)
     if left == "onderbroken":
         line_y(m, 0, dash=DASH)
@@ -118,8 +161,8 @@ def rijstrook(left="geen", right="geen", surface=ASFALT):
         line_y(m, 0)
         line_y(m, 2)
     elif left == "blok":
-        line_y(m, 0, dash=BLOK)
-        line_y(m, 1, dash=BLOK)
+        line_y(m, 0, dash=BLOCK_DASH)
+        line_y(m, 1, dash=BLOCK_DASH)
     if right == "kant":
         line_y(m, 30)
     elif right == "streep":
@@ -131,32 +174,34 @@ def rijstrook(left="geen", right="geen", surface=ASFALT):
     return m
 
 
-RIJSTROKEN = [
+LANES = [
     ("geen", "geen"), ("geen", "kant"), ("geen", "kant_onderbroken"),
     ("onderbroken", "kant"), ("onderbroken", "geen"), ("onderbroken", "onderbroken"),
     ("streep", "kant"), ("streep", "geen"), ("dubbel", "kant"), ("dubbel", "geen"),
     ("blok", "kant"), ("blok", "geen"),
 ]
-for _l, _r in RIJSTROKEN:
-    register(f"grond/weg/rijstrook_{_l}_{_r}", (lambda l, r: lambda: rijstrook(l, r))(_l, _r))
+for _l, _r in LANES:
+    register(f"grond/weg/rijstrook_{_l}_{_r}", partial(lane, _l, _r))
 
 
 @tile("grond/weg/weg_vlak")
-def weg_vlak():
+def road_plain():
+    """Plain asphalt road tile without markings."""
     return flat()
 
 
 @tile("grond/weg/weg_vlak_oud")
-def weg_vlak_oud():
-    m = flat(ASFALT_OUD)
-    # scheuren
+def road_plain_old():
+    """Worn asphalt with a few random cracks and an old repair patch."""
+    m = flat(ASPHALT_OLD)
+    # cracks: random walks of 10 steps
     for i in range(3):
         x, y = int(h(i, 1, 0, 30) * 28) + 2, int(h(i, 2, 0, 30) * 28) + 2
         for s in range(10):
             paint(m, x, y, P["asfalt_reparatie"])
             x += 1 if h(i, s, 1, 31) > 0.5 else 0
             y += 1 if h(i, s, 2, 31) > 0.3 else -1
-    # oude reparatie-plek
+    # old repair patch
     for y in range(18, 26):
         for x in range(4, 13):
             paint(m, x, y, P["asfalt_reparatie"] if h(x, y, 0, 32) > 0.1 else P["asfalt4"])
@@ -164,7 +209,8 @@ def weg_vlak_oud():
 
 
 @tile("grond/weg/weg_putdeksel")
-def weg_putdeksel():
+def road_manhole():
+    """Road with a round manhole cover in the centre."""
     m = flat()
     for y in range(T):
         for x in range(T):
@@ -175,8 +221,9 @@ def weg_putdeksel():
 
 
 @tile("grond/weg/weg_kolk")
-def weg_kolk():
-    m = rijstrook("geen", "geen")
+def road_drain():
+    """Road with a gully grate along the right edge."""
+    m = lane("geen", "geen")
     for y in range(12, 20):
         for x in range(28, 32):
             paint(m, x, y, P["rooster"] if (y % 2 == 0 or x in (28, 31)) else P["asfalt4"])
@@ -184,7 +231,11 @@ def weg_kolk():
 
 
 def arrow(m, kind, cx=16, y0=4):
-    shaft_top = y0 + 16
+    """Paint a lane arrow pointing towards +y, shaft at column cx starting at y0.
+
+    kind: "rechtdoor" (straight), "links" (left), "rechts" (right),
+          "rechtdoor_links", "rechtdoor_rechts" (straight + turn).
+    """
     if kind in ("rechtdoor", "rechtdoor_links", "rechtdoor_rechts"):
         for y in range(y0, y0 + 20):
             paint(m, cx, y, MARK)
@@ -204,25 +255,29 @@ def arrow(m, kind, cx=16, y0=4):
                 paint(m, tip - side * (3 - r), y, MARK)
 
 
+def _arrow_lane(kind):
+    m = lane("streep", "kant")
+    arrow(m, kind)
+    return m
+
+
 for _k in ("rechtdoor", "links", "rechts", "rechtdoor_links", "rechtdoor_rechts"):
-    def _f(k=_k):
-        m = rijstrook("streep", "kant")
-        arrow(m, k)
-        return m
-    register(f"grond/weg/rijstrook_pijl_{_k}", _f)
+    register(f"grond/weg/rijstrook_pijl_{_k}", partial(_arrow_lane, _k))
 
 
 @tile("grond/weg/rijstrook_stopstreep")
-def stopstreep():
-    m = rijstrook("streep", "kant")
+def stop_line():
+    """Lane with a 3-voxel stop line across the far end."""
+    m = lane("streep", "kant")
     for y in range(27, 30):
         line_x(m, y, 0, 31)
     return m
 
 
 @tile("grond/weg/rijstrook_haaientanden")
-def haaientanden():
-    m = rijstrook("streep", "kant")
+def shark_teeth():
+    """Lane with give-way triangles ("shark teeth") at the far end, pointing towards the front."""
+    m = lane("streep", "kant")
     for i in range(5):
         x0 = 2 + i * 6
         for r in range(5):
@@ -232,7 +287,8 @@ def haaientanden():
 
 
 @tile("grond/weg/zebrapad")
-def zebrapad():
+def zebra_crossing():
+    """Zebra crossing; stripes 4 voxels wide, running along y."""
     m = flat()
     for y in range(3, 29):
         for x in range(T):
@@ -242,11 +298,12 @@ def zebrapad():
 
 
 @tile("grond/weg/fietsoversteek")
-def fietsoversteek():
+def bike_crossing():
+    """Bicycle crossing: red bike asphalt band with block markings along both edges."""
     m = flat()
     for y in range(4, 28):
         for x in range(T):
-            paint(m, x, y, FIETS)
+            paint(m, x, y, BIKE_ASPHALT)
     for x in range(T):
         if (x // 3) % 2 == 0:
             for y in (4, 5, 26, 27):
@@ -255,13 +312,13 @@ def fietsoversteek():
 
 
 @tile("grond/weg/verkeersdrempel")
-def drempel():
+def speed_bump():
+    """Clinker speed bump across the road: one voxel high for y=10..21, with striped ramps."""
     m = flat(sz=12)
     for y in range(8, 24):
         lift = 1 if 10 <= y < 22 else 0
         for x in range(T):
-            t = ROAD + lift
-            column(m, x, y, t, klinker_fn)
+            column(m, x, y, ROAD + lift, paver_fn)
     for x in range(T):
         if (x // 4) % 2 == 0:
             for y in (8, 9, 22, 23):
@@ -270,9 +327,10 @@ def drempel():
 
 
 @tile("grond/weg/rijstrook_bus")
-def rijstrook_bus():
-    m = rijstrook("streep", "kant", BUS)
-    px, (w, hh) = text_pixels("BUS")
+def lane_bus():
+    """Bus lane with "BUS" painted at double scale."""
+    m = lane("streep", "kant", BUS)
+    px, _size = text_pixels("BUS")
     for (c, r) in px:
         for sy in range(2):
             for sx in range(2):
@@ -281,11 +339,12 @@ def rijstrook_bus():
 
 
 @tile("grond/weg/rijstrook_fietsstrook")
-def rijstrook_fietsstrook():
-    m = rijstrook("onderbroken", "geen")
+def lane_bike_lane():
+    """Lane with an advisory bike lane on the right (x=20..31) and a bicycle pictogram."""
+    m = lane("onderbroken", "geen")
     for y in range(T):
         for x in range(20, T):
-            paint(m, x, y, FIETS)
+            paint(m, x, y, BIKE_ASPHALT)
         if y % 8 < 4:
             paint(m, 19, y, MARK)
     paint_bitmap(m, PICTO["fiets"], 21, 12, MARK)
@@ -293,7 +352,8 @@ def rijstrook_fietsstrook():
 
 
 @tile("grond/weg/parkeerstrook")
-def parkeerstrook():
+def parking_lane():
+    """Parking lane: dashed line at x=0 and a bay line along the front edge."""
     m = flat()
     line_y(m, 0, dash=(4, 8, 0))
     for x in range(1, T):
@@ -302,8 +362,9 @@ def parkeerstrook():
 
 
 @tile("grond/weg/parkeervak_gehandicapt")
-def parkeervak_blauw():
-    m = parkeerstrook()
+def parking_bay_disabled():
+    """Parking bay with a blue square and a white "P" (disabled parking)."""
+    m = parking_lane()
     for y in range(6, 26):
         for x in range(6, 26):
             paint(m, x, y, P["bord_blauw"])
@@ -312,23 +373,25 @@ def parkeervak_blauw():
 
 
 @tile("grond/weg/straat_klinkers")
-def straat_klinkers():
-    return flat(klinker_fn)
+def street_pavers():
+    """Clinker-paved street at road level."""
+    return flat(paver_fn)
 
 
 @tile("grond/weg/straat_klinkers_middengoot")
-def straat_klinkers_goot():
-    m = flat(klinker_fn)
+def street_pavers_gutter():
+    """Clinker street with a central gutter (x=14..17); the inner two columns dip one voxel."""
+    m = flat(paver_fn)
     for y in range(T):
         for x in range(14, 18):
-            column(m, x, y, ROAD, GOOT)
-        m.clear(14, y, ROAD - 1, 18, y + 1, ROAD)
-        for x in range(14, 18):
-            column(m, x, y, ROAD - (1 if x in (15, 16) else 0), GOOT)
+            top = ROAD - 1 if x in (15, 16) else ROAD
+            m.clear(x, y, top, x + 1, y + 1, ROAD)
+            column(m, x, y, top, GUTTER)
     return m
 
 
-def keien_tile(top=ROAD):
+def cobble_tile(top=ROAD):
+    """Cobblestone surface with recessed joints; 3x3-voxel stones, rows offset by 2 voxels."""
     m = new()
     for y in range(T):
         for x in range(T):
@@ -346,56 +409,55 @@ def keien_tile(top=ROAD):
 
 
 @tile("grond/weg/straat_keien")
-def straat_keien():
-    return keien_tile()
+def street_cobbles():
+    """Cobblestone street at road level."""
+    return cobble_tile()
 
 
-# ------------------------------------------------------------- snelweg
+# ------------------------------------------------------------- highway
 
 @tile("grond/snelweg/snelweg_rijstrook")
-def snelweg_rijstrook():
+def highway_lane():
+    """Highway lane with a wide dashed divider on the left."""
     m = flat()
-    for x in (0, 1):
-        line_y(m, x, dash=DASH_SNEL)
+    _lines_y(m, (0, 1), dash=DASH_HIGHWAY)
     return m
 
 
 @tile("grond/snelweg/snelweg_rijstrook_links")
-def snelweg_rijstrook_links():
+def highway_lane_left():
+    """Leftmost highway lane: solid edge line left, dashed divider right."""
     m = flat()
-    for x in (0, 1):
-        line_y(m, x)
-    for x in (30, 31):
-        line_y(m, x, dash=DASH_SNEL)
+    _lines_y(m, (0, 1))
+    _lines_y(m, (30, 31), dash=DASH_HIGHWAY)
     return m
 
 
 @tile("grond/snelweg/snelweg_vluchtstrook")
-def snelweg_vluchtstrook():
+def highway_hard_shoulder():
+    """Hard shoulder: solid line on the left plus a rumble strip at x=3."""
     m = flat()
-    for x in (0, 1):
-        line_y(m, x)
-    for y in range(T):  # ribbels
+    _lines_y(m, (0, 1))
+    for y in range(T):  # rumble strip
         if y % 2 == 0:
             paint(m, 3, y, P["asfalt4"])
     return m
 
 
 @tile("grond/snelweg/snelweg_blokmarkering")
-def snelweg_blok():
+def highway_block():
+    """Highway lane with a wide block marking on the left."""
     m = flat()
-    for x in (0, 1, 2):
-        line_y(m, x, dash=BLOK)
+    _lines_y(m, (0, 1, 2), dash=BLOCK_DASH)
     return m
 
 
 @tile("grond/snelweg/snelweg_puntstuk")
-def snelweg_puntstuk():
+def highway_gore():
+    """Gore area between diverging lanes: solid lines both sides, diagonal hatching between."""
     m = flat()
-    for x in (0, 1):
-        line_y(m, x)
-    for x in (30, 31):
-        line_y(m, x)
+    _lines_y(m, (0, 1))
+    _lines_y(m, (30, 31))
     for y in range(T):
         for x in range(2, 30):
             if (x + y) % 8 < 2:
@@ -403,25 +465,31 @@ def snelweg_puntstuk():
     return m
 
 
-def vangrail(m, x, base, y0=0, y1=T):
+def guardrail(m, x, base, y0=0, y1=T):
+    """Crash barrier along y: posts at column x every 16 voxels, rail beside it at z=base+3..4.
+
+    The rail sits one column towards the centre (x-1, or x+1 when x=0).
+    """
+    rail_x = x - 1 if x > 0 else x + 1
     for y in range(y0, y1):
         if y % 16 == 4:
             for z in range(base, base + 5):
                 m.set(x, y, z, "metaal2")
-        m.set(x - 1 if x > 0 else x + 1, y, base + 3, "gegalvaniseerd")
-        m.set(x - 1 if x > 0 else x + 1, y, base + 4, "gegalvaniseerd")
+        m.set(rail_x, y, base + 3, "gegalvaniseerd")
+        m.set(rail_x, y, base + 4, "gegalvaniseerd")
 
 
 @tile("grond/snelweg/snelweg_berm_vangrail")
-def snelweg_berm():
+def highway_verge():
+    """Highway verge: asphalt strip (x<6), grass with a guardrail and hectometre posts."""
     m = new(12)
     for y in range(T):
         for x in range(T):
             if x < 6:
-                column(m, x, y, ROAD, ASFALT)
+                column(m, x, y, ROAD, ASPHALT)
             else:
-                column(m, x, y, WALK, GRAS)
-    vangrail(m, 7, WALK)
+                column(m, x, y, WALK, GRASS)
+    guardrail(m, 7, WALK)
     for y in range(T):
         if y % 16 == 10:
             for z in range(WALK, WALK + 7):
@@ -431,40 +499,40 @@ def snelweg_berm():
 
 
 @tile("grond/snelweg/snelweg_middenberm")
-def snelweg_middenberm():
+def highway_median():
+    """Grass central reservation with guardrails facing both carriageways."""
     m = new(12)
     for y in range(T):
         for x in range(T):
             if x < 4 or x >= 28:
-                column(m, x, y, ROAD, ASFALT)
+                column(m, x, y, ROAD, ASPHALT)
             else:
-                column(m, x, y, WALK, GRAS)
-    vangrail(m, 6, WALK)
-    vangrail(m, 25, WALK)
-    m2 = m
-    for y in range(T):
-        m2.set(24, y, WALK + 3, "gegalvaniseerd")
-        m2.set(24, y, WALK + 4, "gegalvaniseerd")
-        m2.clear(26, y, WALK + 3, 27, y + 1, WALK + 5)
+                column(m, x, y, WALK, GRASS)
+    guardrail(m, 6, WALK)
+    guardrail(m, 25, WALK)
     return m
 
 
 @tile("grond/snelweg/snelweg_middenberm_beton")
-def snelweg_middenberm_beton():
+def highway_median_concrete():
+    """Asphalt with a 6-voxel concrete median barrier (x=13..18) with chamfered edges."""
     m = new(14)
+    fill_columns(m, ROAD, ASPHALT)
     for y in range(T):
-        for x in range(T):
-            column(m, x, y, ROAD, ASFALT)
         for x in range(13, 19):
             for z in range(ROAD, ROAD + 7 - (1 if x in (13, 18) else 0)):
-                m.set(x, y, z, BETON)
+                m.set(x, y, z, CONCRETE)
     return m
 
 
-# ------------------------------------------------------------- stoepen
+# ------------------------------------------------------------- sidewalks
 
 def edge_dist(px, py, edges, R=6.0):
-    """Afstand tot de dichtstbijzijnde wegrand, met afgeronde buitenhoeken."""
+    """Distance from point (px, py) to the nearest road edge, with rounded outer corners.
+
+    edges: string of face letters v/r/a/l (front/right/back/left) that border the road.
+    R is the outer corner radius in voxels. Returns 99 when there are no edges.
+    """
     ds = []
     if "v" in edges:
         ds.append(py)
@@ -490,7 +558,16 @@ def edge_dist(px, py, edges, R=6.0):
     return e
 
 
-def stoep(edges="", points=(), goot=False, surface=TEGEL, kade=False, sz=12):
+def sidewalk(edges="", points=(), gutter=False, surface=PAVING, quay=False, sz=12):
+    """Sidewalk tile at WALK height with a curb towards the road.
+
+    edges:   face letters (v/r/a/l) bordering road; see edge_dist.
+    points:  extra (x, y) points (in voxels) around which the road cuts in with a quarter
+             circle; used for inner corners.
+    gutter:  put a 3-voxel gutter at road level in front of the curb.
+    surface: colour function of the walking surface.
+    quay:    natural-stone quay edge (with brick underneath) instead of a curb.
+    """
     m = new(sz)
     for y in range(T):
         for x in range(T):
@@ -498,27 +575,28 @@ def stoep(edges="", points=(), goot=False, surface=TEGEL, kade=False, sz=12):
             e = edge_dist(px, py, edges)
             for (cx, cy) in points:
                 e = min(e, math.hypot(px - cx, py - cy))
-            if kade:
+            if quay:
                 if e < 0:
-                    column(m, x, y, ROAD, ASFALT)
+                    column(m, x, y, ROAD, ASPHALT)
                 elif e < 3:
-                    column(m, x, y, WALK, NATUURSTEEN, baksteen_fn if e < 1 else "aarde2")
+                    column(m, x, y, WALK, NATURAL_STONE, brick_fn if e < 1 else "aarde2")
                 else:
                     column(m, x, y, WALK, surface)
                 continue
-            curb0 = 3 if goot else 0
+            curb0 = 3 if gutter else 0
             if e < 0:
-                column(m, x, y, ROAD, ASFALT)
+                column(m, x, y, ROAD, ASPHALT)
             elif e < curb0:
-                column(m, x, y, ROAD, GOOT)
+                column(m, x, y, ROAD, GUTTER)
             elif e < curb0 + 1:
-                column(m, x, y, WALK, BAND, BAND)
+                column(m, x, y, WALK, CURB, CURB)
             else:
                 column(m, x, y, WALK, surface)
     return m
 
 
-STOEP_VORMEN = {
+# shape name -> (edges, points) for sidewalk()
+SIDEWALK_SHAPES = {
     "vol": ("", ()),
     "rand": ("v", ()),
     "hoek_buiten": ("vr", ()),
@@ -531,18 +609,19 @@ STOEP_VORMEN = {
     "smal_eind": ("vrl", ()),
 }
 
-for _name, (_e, _p) in STOEP_VORMEN.items():
-    register(f"grond/stoep/stoep_{_name}", (lambda e, p: lambda: stoep(e, p))(_e, _p))
+for _name, (_e, _p) in SIDEWALK_SHAPES.items():
+    register(f"grond/stoep/stoep_{_name}", partial(sidewalk, _e, _p))
     if _name != "vol":
-        register(f"grond/stoep/stoep_goot_{_name}", (lambda e, p: lambda: stoep(e, p, goot=True))(_e, _p))
+        register(f"grond/stoep/stoep_goot_{_name}", partial(sidewalk, _e, _p, gutter=True))
 for _name in ("vol", "rand", "hoek_buiten", "hoek_binnen"):
-    _e, _p = STOEP_VORMEN[_name]
-    register(f"grond/stoep/stoep_klinker_{_name}", (lambda e, p: lambda: stoep(e, p, surface=klinker_fn))(_e, _p))
+    _e, _p = SIDEWALK_SHAPES[_name]
+    register(f"grond/stoep/stoep_klinker_{_name}", partial(sidewalk, _e, _p, surface=paver_fn))
 
 
 @tile("grond/stoep/stoep_goot_kolk")
-def stoep_goot_kolk():
-    m = stoep("v", goot=True)
+def sidewalk_gutter_drain():
+    """Sidewalk with gutter and a drain grate in the gutter."""
+    m = sidewalk("v", gutter=True)
     for y in range(0, 3):
         for x in range(12, 20):
             paint(m, x, y, P["rooster"] if (x % 2 == 0 or y == 0) else P["goot2"])
@@ -550,27 +629,30 @@ def stoep_goot_kolk():
 
 
 @tile("grond/stoep/stoep_oprit")
-def stoep_oprit():
-    m = stoep("v")
+def sidewalk_driveway():
+    """Sidewalk with a lowered curb (driveway) for x=4..27."""
+    m = sidewalk("v")
     for x in range(4, 28):
         m.clear(x, 0, ROAD, x + 1, 1, WALK)
-        column(m, x, 0, ROAD, BAND, BAND)
-        paint(m, x, 1, BAND)
+        column(m, x, 0, ROAD, CURB, CURB)
+        paint(m, x, 1, CURB)
     return m
 
 
 @tile("grond/stoep/stoep_goot_oprit")
-def stoep_goot_oprit():
-    m = stoep("v", goot=True)
+def sidewalk_gutter_driveway():
+    """Sidewalk with gutter and a lowered curb (driveway) for x=4..27."""
+    m = sidewalk("v", gutter=True)
     for x in range(4, 28):
         m.clear(x, 3, ROAD, x + 1, 4, WALK)
-        column(m, x, 3, ROAD, BAND, BAND)
+        column(m, x, 3, ROAD, CURB, CURB)
     return m
 
 
 @tile("grond/stoep/stoep_ribbel")
-def stoep_ribbel():
-    m = stoep("v")
+def sidewalk_tactile():
+    """Sidewalk with a tactile paving strip near the curb."""
+    m = sidewalk("v")
     for y in range(1, 8):
         for x in range(8, 24):
             paint(m, x, y, P["ribbel"] if x % 2 == 0 else P["tegel3"])
@@ -578,8 +660,9 @@ def stoep_ribbel():
 
 
 @tile("grond/stoep/stoep_boomrooster")
-def stoep_boomrooster():
-    m = stoep("")
+def sidewalk_tree_grate():
+    """Sidewalk with a 12x12 tree grate; open earth pit in the middle."""
+    m = sidewalk("")
     for y in range(10, 22):
         for x in range(10, 22):
             edge = x in (10, 21) or y in (10, 21)
@@ -587,41 +670,47 @@ def stoep_boomrooster():
                 paint(m, x, y, P["metaal_donker"])
             elif dist(x, y, 16, 16) < 3:
                 m.clear(x, y, WALK - 1, x + 1, y + 1, WALK)
-                column(m, x, y, WALK - 1, AARDE)
+                column(m, x, y, WALK - 1, EARTH)
             else:
                 paint(m, x, y, P["rooster"] if (x + y) % 2 == 0 else P["metaal_donker"])
     return m
 
 
 @tile("grond/stoep/stoep_kade")
-def stoep_kade():
-    return stoep("v", kade=True)
+def sidewalk_quay():
+    """Quay sidewalk with natural-stone edge at the front."""
+    return sidewalk("v", quay=True)
 
 
 @tile("grond/stoep/stoep_kade_hoek_buiten")
-def stoep_kade_hoek():
-    return stoep("vr", kade=True)
+def sidewalk_quay_corner():
+    """Quay sidewalk, outer corner (front and right)."""
+    return sidewalk("vr", quay=True)
 
 
 @tile("grond/stoep/stoep_kade_hoek_binnen")
-def stoep_kade_hoek_binnen():
-    return stoep("", ((T, 0),), kade=True)
+def sidewalk_quay_corner_inner():
+    """Quay sidewalk, inner corner (front-right)."""
+    return sidewalk("", ((T, 0),), quay=True)
 
 
 @tile("grond/stoep/stoep_kade_klinker")
-def stoep_kade_klinker():
-    return stoep("v", kade=True, surface=klinker_fn)
+def sidewalk_quay_pavers():
+    """Quay sidewalk with clinker surface."""
+    return sidewalk("v", quay=True, surface=paver_fn)
 
 
-# ------------------------------------------------------------- pleinen
+# ------------------------------------------------------------- squares
 
 @tile("grond/plein/plein_tegels")
-def plein_tegels():
+def square_tiles():
+    """Square paved with 4x4 tiles at WALK height."""
     return flat(blocky(["plein1", "plein2", "plein3"], size=4, seed=40), top=WALK)
 
 
 @tile("grond/plein/plein_natuursteen")
-def plein_natuursteen():
+def square_natural_stone():
+    """Square paved with 8x4 natural-stone slabs in stretcher bond."""
     def f(x, y, z):
         row = y // 4
         bx = (x + (row % 2) * 4) // 8
@@ -630,7 +719,8 @@ def plein_natuursteen():
 
 
 @tile("grond/plein/plein_klinkers")
-def plein_klinkers():
+def square_pavers():
+    """Square paved with clinkers in a basket-weave pattern."""
     def f(x, y, z):
         if ((x // 2 + y // 2) % 2) == 0:
             bid = (x // 2, y)
@@ -641,30 +731,36 @@ def plein_klinkers():
 
 
 @tile("grond/plein/plein_dambord")
-def plein_dambord():
+def square_checkerboard():
+    """Square with an 8x8 checkerboard of light and dark slabs."""
     def f(x, y, z):
         return P["plein3"] if ((x // 8) + (y // 8)) % 2 == 0 else P["plein_donker"]
     return flat(f, top=WALK)
 
 
 @tile("grond/plein/plein_patroon")
-def plein_patroon():
+def square_pattern():
+    """Square with concentric square rings and a red centre disc."""
+    rings = [P["plein1"], P["plein_donker"], P["plein3"], P["plein_rood"], P["plein2"], P["plein_donker"]]
+
     def f(x, y, z):
         d = max(abs(x + 0.5 - 16), abs(y + 0.5 - 16))
         ring = int(d) // 3
         if dist(x, y, 16, 16) < 4:
             return P["plein_rood"]
-        return [P["plein1"], P["plein_donker"], P["plein3"], P["plein_rood"], P["plein2"], P["plein_donker"]][ring % 6]
+        return rings[ring % 6]
     return flat(f, top=WALK)
 
 
 @tile("grond/plein/plein_grind")
-def plein_grind():
-    return flat(GRIND, top=WALK)
+def square_gravel():
+    """Gravel square at WALK height."""
+    return flat(GRAVEL, top=WALK)
 
 
 @tile("grond/plein/plein_vlonder")
-def plein_vlonder():
+def square_decking():
+    """Wooden decking: 4-voxel boards along y with dark gaps."""
     def f(x, y, z):
         if x % 4 == 3:
             return P["hout_donker2"]
@@ -672,10 +768,13 @@ def plein_vlonder():
     return flat(f, top=WALK, sub="hout_donker1")
 
 
-# ------------------------------------------------------------- natuur
+# ------------------------------------------------------------- nature
 
-def gras_tile(flowers=0.0, tufts=0.06, tall=False, base=GRAS, seed=50):
-    """Grastile; variatie en bloemen zitten in de kleur van het oppervlak (niets steekt uit)."""
+def grass_tile(flowers=0.0, tufts=0.06, tall=False, base=GRASS, seed=50):
+    """Grass tile (8 voxels high, top at WALK); variation and flowers are only surface colour.
+
+    flowers / tufts are per-voxel probabilities; tall doubles the tuft probability.
+    """
     m = flat(base, top=WALK, sz=8)
     for y in range(T):
         for x in range(T):
@@ -688,28 +787,33 @@ def gras_tile(flowers=0.0, tufts=0.06, tall=False, base=GRAS, seed=50):
 
 
 @tile("grond/natuur/gras")
-def gras():
-    return gras_tile()
+def grass():
+    """Default grass tile."""
+    return grass_tile()
 
 
 @tile("grond/natuur/gras_bloemen")
-def gras_bloemen():
-    return gras_tile(flowers=0.06)
+def grass_flowers():
+    """Grass with flowers."""
+    return grass_tile(flowers=0.06)
 
 
 @tile("grond/natuur/gras_hoog")
-def gras_hoog():
-    return gras_tile(tufts=0.3, tall=True)
+def grass_tall():
+    """Long grass (more tufts)."""
+    return grass_tile(tufts=0.3, tall=True)
 
 
 @tile("grond/natuur/gras_kort")
-def gras_kort():
-    return gras_tile(tufts=0.0, base=mix("gras2", "gras4", "gras1", seed=51))
+def grass_short():
+    """Short mown grass without tufts."""
+    return grass_tile(tufts=0.0, base=mix("gras2", "gras4", "gras1", seed=51))
 
 
 @tile("grond/natuur/zand")
-def zand():
-    m = flat(ZAND, top=WALK, sz=8)
+def sand():
+    """Sand with scattered pebbles on top."""
+    m = flat(SAND, top=WALK, sz=8)
     for y in range(T):
         for x in range(T):
             if h(x, y, 0, 52) < 0.03:
@@ -718,13 +822,15 @@ def zand():
 
 
 @tile("grond/natuur/aarde")
-def aarde():
-    return flat(AARDE, top=WALK, sz=8)
+def earth():
+    """Bare earth."""
+    return flat(EARTH, top=WALK, sz=8)
 
 
 @tile("grond/natuur/moestuin")
-def moestuin():
-    m = flat(AARDE, top=WALK, sz=8)
+def vegetable_garden():
+    """Vegetable garden: raised rows along x every 6 voxels with plants every 3 voxels."""
+    m = flat(EARTH, top=WALK, sz=8)
     for y in range(T):
         for x in range(T):
             if y % 6 in (1, 2):
@@ -737,48 +843,56 @@ def moestuin():
 
 
 @tile("grond/natuur/bloemperk_tulpen")
-def tulpen():
-    m = flat(AARDE, top=WALK, sz=8)
-    kleuren = ["bloem_rood", "bloem_geel", "bloem_roze", "bloem_paars", "bloem_wit", "bloem_oranje"]
+def tulips():
+    """Tulip bed: a plant every 2 voxels, colour changes every 5 rows."""
+    m = flat(EARTH, top=WALK, sz=8)
+    colors = ["bloem_rood", "bloem_geel", "bloem_roze", "bloem_paars", "bloem_wit", "bloem_oranje"]
     for y in range(T):
         for x in range(T):
             if x % 2 == 0 and y % 2 == 0:
                 m.set(x, y, WALK, "blad2")
                 m.set(x, y, WALK + 1, "blad4")
-                m.set(x, y, WALK + 2, kleuren[(y // 5) % len(kleuren)])
+                m.set(x, y, WALK + 2, colors[(y // 5) % len(colors)])
     return m
 
 
+def _path_column(m, x, y, c):
+    """Replace column (x, y) of a grass tile with path surface c at WALK height."""
+    m.clear(x, y, WALK, x + 1, y + 1, 8)
+    column(m, x, y, WALK, c)
+
+
 @tile("grond/natuur/pad_zand")
-def pad_zand():
-    m = gras_tile(tufts=0.05)
+def path_sand():
+    """Sand path along y through grass, with slightly irregular edges."""
+    m = grass_tile(tufts=0.05)
+    surface = mix("zand1", "zand2", "grind3", seed=55)
     for y in range(T):
         w0 = 11 + int(h(0, y // 3, 0, 54) * 2)
         w1 = 21 - int(h(1, y // 3, 0, 54) * 2)
         for x in range(w0, w1):
-            m.clear(x, y, WALK, x + 1, y + 1, 8)
-            column(m, x, y, WALK, mix("zand1", "zand2", "grind3", seed=55))
+            _path_column(m, x, y, surface)
     return m
 
 
 @tile("grond/natuur/pad_grind_bocht")
-def pad_bocht():
-    m = gras_tile(tufts=0.05)
+def path_curve():
+    """Gravel path curving from the front edge to the right edge (centre at front-right)."""
+    m = grass_tile(tufts=0.05)
     for y in range(T):
         for x in range(T):
             if abs(dist(x, y, 32, 0) - 16) < 4.5:
-                m.clear(x, y, WALK, x + 1, y + 1, 8)
-                column(m, x, y, WALK, GRIND)
+                _path_column(m, x, y, GRAVEL)
     return m
 
 
 @tile("grond/natuur/pad_grind")
-def pad_grind():
-    m = gras_tile(tufts=0.05)
+def path_gravel():
+    """Straight gravel path along y (x=11..20) through grass."""
+    m = grass_tile(tufts=0.05)
     for y in range(T):
         for x in range(11, 21):
-            m.clear(x, y, WALK, x + 1, y + 1, 8)
-            column(m, x, y, WALK, GRIND)
+            _path_column(m, x, y, GRAVEL)
     return m
 
 
@@ -788,27 +902,33 @@ WATER = mix("water1", "water2", "water3", seed=60)
 
 
 def water_tile(water=WATER):
+    """Water tile: bed at z=0, water surface at z=1 (8 voxels high model)."""
     m = new(8)
+    bed = mix("waterbodem", "waterbodem2", "modder", seed=61)
     for y in range(T):
         for x in range(T):
-            m.set(x, y, 0, mix("waterbodem", "waterbodem2", "modder", seed=61))
+            m.set(x, y, 0, bed)
             m.set(x, y, 1, water)
     return m
 
 
 @tile("grond/water/water")
 def water():
+    """Open water."""
     return water_tile()
 
 
 @tile("grond/water/water_gracht")
-def water_gracht():
+def water_canal():
+    """Canal water (darker green tint)."""
     return water_tile(mix("water_gracht", "water2", seed=62, weights=[3, 1]))
 
 
-def oever(dfun):
-    """dfun(px, py) -> afstand landinwaarts vanaf de waterlijn (<0 = water)."""
+def shore(dfun):
+    """Natural shoreline tile. dfun(px, py) -> distance inland from the waterline (<0 = water)."""
     m = new(8)
+    mud = mix("modder", "zand2", seed=63)
+    bank = mix("aarde1", "gras5", "gras3", seed=64)
     for y in range(T):
         for x in range(T):
             d = dfun(x + 0.5, y + 0.5)
@@ -816,22 +936,23 @@ def oever(dfun):
                 m.set(x, y, 0, "waterbodem")
                 m.set(x, y, 1, WATER)
             elif d < 2:
-                column(m, x, y, ROAD, mix("modder", "zand2", seed=63))
+                column(m, x, y, ROAD, mud)
             elif d < 4:
-                column(m, x, y, WALK, mix("aarde1", "gras5", "gras3", seed=64), AARDE)
+                column(m, x, y, WALK, bank, EARTH)
             else:
-                column(m, x, y, WALK, GRAS)
+                column(m, x, y, WALK, GRASS)
                 if h(x, y, 0, 65) < 0.05:
                     m.set(x, y, WALK, "gras4")
     return m
 
 
 @tile("grond/water/water_oever")
-def water_oever():
-    return oever(lambda px, py: py - 14)
+def water_shore():
+    """Straight shore: water at the front, land at the back."""
+    return shore(lambda px, py: py - 14)
 
 
-def _oever_buiten(px, py):
+def _bank_outer(px, py):
     d = min(py - 14, 18 - px)
     if px > 12 and py < 20:
         d = min(d, 6 - math.hypot(px - 12, py - 20))
@@ -839,19 +960,20 @@ def _oever_buiten(px, py):
 
 
 @tile("grond/water/water_oever_hoek_buiten")
-def water_oever_hoek_buiten():
-    # land in de hoek achter-links; water voor en rechts
-    return oever(_oever_buiten)
+def water_shore_corner_outer():
+    """Shore outer corner: land in the back-left corner, water at the front and right."""
+    return shore(_bank_outer)
 
 
 @tile("grond/water/water_oever_hoek_binnen")
-def water_oever_hoek_binnen():
-    # water alleen in de hoek voor-rechts
-    return oever(lambda px, py: math.hypot(px - 32, py) - 14)
+def water_shore_corner_inner():
+    """Shore inner corner: water only in the front-right corner."""
+    return shore(lambda px, py: math.hypot(px - 32, py) - 14)
 
 
 @tile("grond/water/water_riet")
-def water_riet():
+def water_reeds():
+    """Water with reeds, denser towards the back (y > 20)."""
     m = water_tile()
     for y in range(T):
         for x in range(T):
@@ -865,7 +987,8 @@ def water_riet():
 
 
 @tile("grond/water/water_lelies")
-def water_lelies():
+def water_lilies():
+    """Water with 7 water-lily pads, every other one with a white flower."""
     m = water_tile()
     for i in range(7):
         cx, cy = 3 + h(i, 0, 0, 67) * 26, 3 + h(i, 1, 0, 67) * 26
@@ -879,121 +1002,137 @@ def water_lelies():
     return m
 
 
-def kademuur(alg=False):
+def quay_wall(algae=False):
+    """Solid brick block, one ground storey high; algae=True adds algae at the bottom 3 layers."""
     m = V(T, T, FLOOR)
+    alg = mix("alg1", "alg2", seed=69)
+    brick = _brick(70)
     for z in range(FLOOR):
         for y in range(T):
             for x in range(T):
-                if alg and z < 3 and h(x, y, z, 68) < 0.7 - z * 0.2:
-                    m.set(x, y, z, mix("alg1", "alg2", seed=69))
+                if algae and z < 3 and h(x, y, z, 68) < 0.7 - z * 0.2:
+                    m.set(x, y, z, alg)
                 else:
-                    m.set(x, y, z, lambda a, b, c: baksteen_fn(a, b, c, 70))
+                    m.set(x, y, z, brick)
     return m
 
 
 @tile("grond/water/kademuur")
-def kademuur_blok():
-    return kademuur()
+def quay_wall_block():
+    """Brick quay wall block."""
+    return quay_wall()
 
 
 @tile("grond/water/kademuur_alg")
-def kademuur_alg():
-    return kademuur(True)
+def quay_wall_algae():
+    """Brick quay wall block with algae near the waterline."""
+    return quay_wall(True)
 
 
 @tile("grond/water/kademuur_water")
-def kademuur_water():
-    """Water met een kademuur aan de achterkant (handig als je geen blok wilt stapelen)."""
+def quay_wall_water():
+    """Water with a quay wall at the back (useful when you don't want to stack a block)."""
     m = water_tile()
+    brick = _brick(71)
     for z in range(0, FLOOR):
         for y in range(28, T):
             for x in range(T):
-                m.set(x, y, z, lambda a, b, c: baksteen_fn(a, b, c, 71))
+                m.set(x, y, z, brick)
     return m
 
 
-# ------------------------------------------------------------- terrein
+# ------------------------------------------------------------- terrain
 
 @tile("grond/terrein/grond_blok")
-def grond_blok():
+def ground_block():
+    """Solid earth block, one ground storey high, grass on top."""
     m = V(T, T, FLOOR)
     for z in range(FLOOR):
         for y in range(T):
             for x in range(T):
                 if z == FLOOR - 1:
-                    m.set(x, y, z, GRAS)
+                    m.set(x, y, z, GRASS)
                 elif z == FLOOR - 2 and h(x, y, z, 72) < 0.4:
                     m.set(x, y, z, "gras5")
                 elif h(x, y, z, 73) < 0.04:
                     m.set(x, y, z, "grind2")
                 else:
-                    m.set(x, y, z, AARDE)
+                    m.set(x, y, z, EARTH)
     return m
 
 
 @tile("grond/terrein/grond_blok_beton")
-def grond_blok_beton():
+def ground_block_concrete():
+    """Solid concrete block, one ground storey high, with diagonal seams."""
     m = V(T, T, FLOOR)
     for z in range(FLOOR):
         for y in range(T):
             for x in range(T):
                 seam = (x + y) % 16 == 0 or z == 0
-                m.set(x, y, z, "beton_donker" if seam else BETON)
+                m.set(x, y, z, "beton_donker" if seam else CONCRETE)
     return m
 
 
 @tile("grond/terrein/grond_blok_baksteen")
-def grond_blok_baksteen():
+def ground_block_brick():
+    """Solid brick block, one ground storey high, natural-stone top layer."""
     m = V(T, T, FLOOR)
+    brick = _brick(74)
     for z in range(FLOOR):
         for y in range(T):
             for x in range(T):
-                m.set(x, y, z, NATUURSTEEN if z == FLOOR - 1 else (lambda a, b, c: baksteen_fn(a, b, c, 74)))
+                m.set(x, y, z, NATURAL_STONE if z == FLOOR - 1 else brick)
     return m
 
 
-# ------------------------------------------------------------- fietspaden
+# ------------------------------------------------------------- bike paths
 
-def fietspad_surface(m, region):
+def bike_path_surface(m, region):
+    """Bike asphalt where region(px, py) is true (voxel centres), grass elsewhere."""
     for y in range(T):
         for x in range(T):
             if region(x + 0.5, y + 0.5):
-                column(m, x, y, ROAD, FIETS)
+                column(m, x, y, ROAD, BIKE_ASPHALT)
             else:
-                column(m, x, y, WALK, GRAS)
+                column(m, x, y, WALK, GRASS)
 
 
 @tile("grond/fietspad/fietspad_recht")
-def fietspad_recht():
-    return flat(FIETS)
+def bike_path_straight():
+    """Full-width bike path (red asphalt)."""
+    return flat(BIKE_ASPHALT)
 
 
 @tile("grond/fietspad/fietspad_eenrichting")
-def fietspad_eenrichting():
-    m = flat(FIETS)
+def bike_path_one_way():
+    """One-way bike path with an arrow pointing to the back."""
+    m = flat(BIKE_ASPHALT)
     paint_bitmap(m, PICTO["pijl_op"], 14, 20, MARK)
     return m
 
 
 @tile("grond/fietspad/fietspad_symbool")
-def fietspad_symbool():
-    m = flat(FIETS)
+def bike_path_symbol():
+    """Bike path with two bicycle pictograms."""
+    m = flat(BIKE_ASPHALT)
     paint_bitmap(m, PICTO["fiets"], 3, 10, MARK)
     paint_bitmap(m, PICTO["fiets"], 18, 10, MARK)
     return m
 
 
 @tile("grond/fietspad/fietspad_bocht")
-def fietspad_bocht():
+def bike_path_curve():
+    """Bike path quarter-disc around the front-right corner, grass outside."""
     m = new()
-    fietspad_surface(m, lambda px, py: math.hypot(px - 32, py) <= 32)
+    bike_path_surface(m, lambda px, py: math.hypot(px - 32, py) <= 32)
     return m
 
 
 @tile("grond/fietspad/fietspad_t")
-def fietspad_t():
-    m = flat(FIETS)
-    # haaientanden op de zijtak (wie van rechts komt, verleent voorrang)
+def bike_path_t():
+    """Bike path T-junction."""
+    m = flat(BIKE_ASPHALT)
+    # shark teeth on the side branch (traffic coming from the right gives way)
     for k in range(5):
         y0 = 3 + k * 6
         for r in range(4):
@@ -1003,50 +1142,72 @@ def fietspad_t():
 
 
 @tile("grond/fietspad/fietspad_kruising")
-def fietspad_kruising():
-    return flat(FIETS)
+def bike_path_crossing():
+    """Bike path crossing (plain full-width bike asphalt)."""
+    return bike_path_straight()
 
 
 @tile("grond/fietspad/fietspad_eind")
-def fietspad_eind():
+def bike_path_end():
+    """Bike path ending in a semicircle; open towards the front."""
     m = new()
-    fietspad_surface(m, lambda px, py: py < 16 or math.hypot(px - 16, py - 16) < 16)
+    bike_path_surface(m, lambda px, py: py < 16 or math.hypot(px - 16, py - 16) < 16)
     return m
 
 
 @tile("grond/fietspad/fietspad_naast_weg")
-def fietspad_naast_weg():
-    """Vrijliggend fietspad (3 m) met grasstrook aan de rechterkant."""
+def bike_path_beside_road():
+    """Separate bike path (3 m) with a curb and grass strip on the right."""
     m = new()
-    fietspad_surface(m, lambda px, py: px < 24)
+    bike_path_surface(m, lambda px, py: px < 24)
     for y in range(T):
-        column(m, 24, y, WALK, BAND, BAND)
+        column(m, 24, y, WALK, CURB, CURB)
     return m
 
 
-# ------------------------------------------------------------- spoor (trein)
+# ------------------------------------------------------------- railway (train)
 
-RAIL_X = (10, 21)
+RAIL_X = (10, 21)  # x of the two rails on a straight track (gauge 11 voxels)
+
+
+def _ballast(m, x, y, base, full):
+    """Ballast column: 4 voxels (earth + gravel) on the bed, 3 gravel voxels on the shoulder."""
+    if full:
+        for z in range(base, base + 4):
+            m.set(x, y, z, GRAVEL if z >= base + 1 else "aarde2")
+    else:
+        for z in range(base, base + 3):
+            m.set(x, y, z, GRAVEL)
+
+
+def _rail(m, x, y, base):
+    """Rail voxel pair: rail body at base+3, shiny head at base+4."""
+    m.set(x, y, base + 4, "rail_glim")
+    m.set(x, y, base + 3, "rail")
 
 
 def track_straight(m, base=0, along="y"):
-    """Ballastbed + bielzen + rails op een vlakke tile. base = z offset."""
+    """Ballast bed + concrete sleepers + rails along y on a flat tile. base = z offset.
+
+    along is accepted for compatibility but ignored (track always runs along y).
+    """
     for y in range(T):
         for x in range(T):
             if 4 <= x <= 27:
-                for z in range(base, base + 4):
-                    m.set(x, y, z, GRIND if z >= base + 1 else "aarde2")
+                _ballast(m, x, y, base, True)
                 if 5 <= x <= 26 and y % 4 in (0, 1):
                     m.set(x, y, base + 3, "biels_beton")
             elif x in (3, 28):
-                for z in range(base, base + 3):
-                    m.set(x, y, z, GRIND)
+                _ballast(m, x, y, base, False)
         for x in RAIL_X:
-            m.set(x, y, base + 4, "rail_glim")
-            m.set(x, y, base + 3, "rail")
+            _rail(m, x, y, base)
 
 
 def track_arc(m, cx, cy, rc, size, base=0, ballast_r=12):
+    """Curved track: centreline radius rc around (cx, cy) on a size x size model.
+
+    ballast_r is the half-width of the ballast bed; sleepers every 4 voxels of arc length.
+    """
     for y in range(size):
         for x in range(size):
             d = dist(x, y, cx, cy)
@@ -1054,26 +1215,23 @@ def track_arc(m, cx, cy, rc, size, base=0, ballast_r=12):
             ang = math.atan2(y + 0.5 - cy, cx - x - 0.5)
             s = rc * abs(ang)
             if dd <= ballast_r:
-                for z in range(base, base + 4):
-                    m.set(x, y, z, GRIND if z >= base + 1 else "aarde2")
+                _ballast(m, x, y, base, True)
                 if dd <= 10.5 and (s % 4) < 2:
                     m.set(x, y, base + 3, "biels_beton")
             elif dd <= ballast_r + 1:
-                for z in range(base, base + 3):
-                    m.set(x, y, z, GRIND)
+                _ballast(m, x, y, base, False)
             if abs(dd - 5.5) < 0.55:
-                m.set(x, y, base + 4, "rail_glim")
-                m.set(x, y, base + 3, "rail")
+                _rail(m, x, y, base)
 
 
 def grass_floor(m, size, top=WALK):
-    for y in range(size):
-        for x in range(size):
-            column(m, x, y, top, GRAS)
+    """Fill a size x size area of m with grass columns up to top."""
+    fill_columns(m, top, GRASS, size=size)
 
 
 @tile("grond/spoor/trein_recht")
-def trein_recht():
+def train_straight():
+    """Straight railway track along y on grass."""
     m = new()
     grass_floor(m, T)
     track_straight(m)
@@ -1081,7 +1239,8 @@ def trein_recht():
 
 
 @tile("grond/spoor/trein_bocht")
-def trein_bocht():
+def train_curve():
+    """Railway curve (radius 16) around the front-right corner."""
     m = new()
     grass_floor(m, T)
     track_arc(m, 32, 0, 16, T)
@@ -1089,7 +1248,8 @@ def trein_bocht():
 
 
 @tile("grond/spoor/trein_bocht_groot_3x3")
-def trein_bocht_groot():
+def train_curve_large():
+    """Large railway curve spanning 3x3 tiles (radius 80)."""
     S = T * 3
     m = V(S, S, 12)
     grass_floor(m, S)
@@ -1098,8 +1258,8 @@ def trein_bocht_groot():
 
 
 @tile("grond/spoor/trein_overweg")
-def trein_overweg():
-    """Spoor loopt langs x (links-rechts), weg loopt van voor naar achter."""
+def train_level_crossing():
+    """Level crossing: the track runs along x (left-right), the road from front to back."""
     m = new()
     for y in range(T):
         for x in range(T):
@@ -1107,24 +1267,23 @@ def trein_overweg():
             top = ROAD + min(3, e // 2)
             if 4 <= y <= 27:
                 top = 5
-            column(m, x, y, top, ASFALT)
+            column(m, x, y, top, ASPHALT)
     for x in range(T):
         for y in RAIL_X:
             m.set(x, y, 4, "rail_glim")
             m.set(x, y + (1 if y == 10 else -1), 4, "railgroef")
-        for y in range(11, 21):
-            if 11 < y < 20:
-                m.set(x, y, 4, "rubber")
-    for y in range(T):
-        if 4 <= y <= 27:
-            m.set(0, y, 4, "markering")
-            m.set(31, y, 4, "markering")
+        for y in range(12, 20):
+            m.set(x, y, 4, "rubber")
+    for y in range(4, 28):
+        m.set(0, y, 4, "markering")
+        m.set(31, y, 4, "markering")
     return m
 
 
 @tile("grond/spoor/trein_stootblok")
-def trein_stootblok():
-    m = trein_recht()
+def train_buffer_stop():
+    """Straight track ending in a buffer stop at the back."""
+    m = train_straight()
     for x in range(6, 26):
         for z in range(5, 10):
             m.set(x, 22, z, "bord_rood" if (x // 3) % 2 == 0 else "bord_wit")
@@ -1139,15 +1298,22 @@ def trein_stootblok():
     return m
 
 
-def perron(edge="v"):
+PLATFORM_TOP = 11  # platform surface height in voxels
+
+
+def _platform_base():
+    """Paved platform slab up to PLATFORM_TOP (14 voxels high model)."""
     m = V(T, T, 14)
-    top = 11
-    for y in range(T):
-        for x in range(T):
-            column(m, x, y, top, TEGEL, BETON_D)
+    fill_columns(m, PLATFORM_TOP, PAVING, CONCRETE_DARK)
+    return m
+
+
+def platform():
+    """Platform edge tile: track side at the front, with yellow line and tactile strip."""
+    m = _platform_base()
     for x in range(T):
         for y in range(0, 2):
-            paint(m, x, y, BETON)
+            paint(m, x, y, CONCRETE)
         paint(m, x, 3, P["markering_geel"])
         for y in range(5, 7):
             paint(m, x, y, P["ribbel"] if x % 2 == 0 else P["tegel3"])
@@ -1155,38 +1321,41 @@ def perron(edge="v"):
 
 
 @tile("grond/spoor/perron")
-def perron_tile():
-    return perron()
+def platform_tile():
+    """Railway platform edge."""
+    return platform()
 
 
 @tile("grond/spoor/perron_midden")
-def perron_midden():
-    m = V(T, T, 14)
-    for y in range(T):
-        for x in range(T):
-            column(m, x, y, 11, TEGEL, BETON_D)
-    return m
+def platform_middle():
+    """Railway platform middle section (plain paving)."""
+    return _platform_base()
 
 
 @tile("grond/spoor/perron_trap")
-def perron_trap():
-    m = perron_midden()
+def platform_stairs():
+    """Platform with a staircase going down towards the back (x=10..21)."""
+    m = platform_middle()
     for y in range(6, 28):
         step = (y - 6) // 2
-        top = 11 - step if step < 11 else 0
+        top = PLATFORM_TOP - step if step < PLATFORM_TOP else 0
         for x in range(10, 22):
-            m.clear(x, y, max(top, 0), x + 1, y + 1, 11)
+            m.clear(x, y, max(top, 0), x + 1, y + 1, PLATFORM_TOP)
             if top > 0:
-                m.set(x, y, top - 1, BETON)
+                m.set(x, y, top - 1, CONCRETE)
     return m
 
 
 # ------------------------------------------------------------- tram
 
 def tram_rails_straight(m, top=ROAD, along_x=False):
+    """Paint grooved tram rails (rail head + groove) on the surface, along y or along x.
+
+    top is accepted for compatibility but ignored (paint() follows the surface).
+    """
     for i in range(T):
         for r in RAIL_X:
-            g = r + 1 if r == RAIL_X[0] else r - 1
+            g = r + 1 if r == RAIL_X[0] else r - 1  # groove on the inner side
             if along_x:
                 paint(m, i, r, P["rail_glim"])
                 paint(m, i, g, P["railgroef"])
@@ -1196,6 +1365,7 @@ def tram_rails_straight(m, top=ROAD, along_x=False):
 
 
 def tram_rails_arc(m, cx, cy, rc, size):
+    """Paint curved grooved tram rails, centreline radius rc around (cx, cy)."""
     for y in range(size):
         for x in range(size):
             d = dist(x, y, cx, cy)
@@ -1206,14 +1376,16 @@ def tram_rails_arc(m, cx, cy, rc, size):
 
 
 @tile("grond/tram/tram_recht")
-def tram_recht():
+def tram_straight():
+    """Straight tram track in asphalt."""
     m = flat()
     tram_rails_straight(m)
     return m
 
 
 @tile("grond/tram/tram_bocht")
-def tram_bocht():
+def tram_curve():
+    """Tram curve (radius 16) around the front-right corner."""
     m = flat()
     tram_rails_arc(m, 32, 0, 16, T)
     return m
@@ -1221,6 +1393,7 @@ def tram_bocht():
 
 @tile("grond/tram/tram_t")
 def tram_t():
+    """Tram junction: straight track plus a branch curving to the right."""
     m = flat()
     tram_rails_straight(m)
     tram_rails_arc(m, 32, 0, 16, T)
@@ -1228,7 +1401,8 @@ def tram_t():
 
 
 @tile("grond/tram/tram_kruising")
-def tram_kruising():
+def tram_crossing():
+    """Tram crossing (straight tracks along x and y)."""
     m = flat()
     tram_rails_straight(m)
     tram_rails_straight(m, along_x=True)
@@ -1236,26 +1410,27 @@ def tram_kruising():
 
 
 @tile("grond/tram/tram_bocht_groot_3x3")
-def tram_bocht_groot():
+def tram_curve_large():
+    """Large tram curve spanning 3x3 tiles (radius 80)."""
     S = T * 3
     m = V(S, S, 8)
-    for y in range(S):
-        for x in range(S):
-            column(m, x, y, ROAD, ASFALT)
+    fill_columns(m, ROAD, ASPHALT, size=S)
     tram_rails_arc(m, S, 0, 80, S)
     return m
 
 
 @tile("grond/tram/tram_klinker_recht")
-def tram_klinker_recht():
-    m = flat(klinker_fn)
+def tram_pavers_straight():
+    """Straight tram track in a clinker street."""
+    m = flat(paver_fn)
     tram_rails_straight(m)
     return m
 
 
 @tile("grond/tram/tram_gras_recht")
-def tram_gras_recht():
-    m = gras_tile(tufts=0.02)
+def tram_grass_straight():
+    """Straight tram track on a grass bed."""
+    m = grass_tile(tufts=0.02)
     for y in range(T):
         for r in RAIL_X:
             m.set(r, y, WALK, "rail_glim")
@@ -1264,8 +1439,9 @@ def tram_gras_recht():
 
 
 @tile("grond/tram/tram_gras_bocht")
-def tram_gras_bocht():
-    m = gras_tile(tufts=0.02)
+def tram_grass_curve():
+    """Tram curve on a grass bed."""
+    m = grass_tile(tufts=0.02)
     for y in range(T):
         for x in range(T):
             d = dist(x, y, 32, 0)
@@ -1275,23 +1451,23 @@ def tram_gras_bocht():
 
 
 @tile("grond/tram/tram_halte_perron")
-def tram_halte():
+def tram_stop():
+    """Raised tram stop platform (top z=5) with curb at the front, line and tactile strip."""
     m = V(T, T, 10)
-    for y in range(T):
-        for x in range(T):
-            column(m, x, y, 5, TEGEL, BETON_D)
+    fill_columns(m, 5, PAVING, CONCRETE_DARK)
     for x in range(T):
-        column(m, x, 0, 5, BAND, BAND)
+        column(m, x, 0, 5, CURB, CURB)
         paint(m, x, 2, P["markering"])
         for y in range(4, 7):
             paint(m, x, y, P["ribbel"] if x % 2 == 0 else P["tegel3"])
     return m
 
 
-# ------------------------------------------------------------- trappen (1 m)
+# ------------------------------------------------------------- stairs (1 m)
 
 @tile("grond/terrein/trap_1m")
-def trap_1m():
+def stairs_1m():
+    """Stairs rising one ground storey (8 voxels) from front to back, with side walls and railing."""
     m = V(T, T, FLOOR + 8)
     for y in range(T):
         if y < 8:
@@ -1301,18 +1477,19 @@ def trap_1m():
         else:
             top = WALK + FLOOR
         for x in range(T):
-            column(m, x, y, top, BETON if 8 <= y < 24 else TEGEL, BETON_D)
+            column(m, x, y, top, CONCRETE if 8 <= y < 24 else PAVING, CONCRETE_DARK)
             if 8 <= y < 24 and (y - 8) % 2 == 0:
-                paint(m, x, y, P["beton3"])
+                paint(m, x, y, P["beton3"])  # step nosing
+    # side walls with railing posts every 8 voxels
     for y in range(T):
         for x in (0, 31):
             t = m.top(x, y)
             for z in range(t, t + 3):
-                m.set(x, y, z, BETON_D)
+                m.set(x, y, z, CONCRETE_DARK)
             if y % 8 == 4:
                 for z in range(t + 3, t + 7):
                     m.set(x, y, z, "rvs")
-    # leuning
+    # handrail
     for y in range(T):
         for x in (0, 31):
             zt = (WALK + 3 + 6) if y < 8 else (WALK + FLOOR + 3 + 6 if y >= 24 else WALK + 4 + (y - 8) // 2 + 6)
@@ -1320,131 +1497,145 @@ def trap_1m():
     return m
 
 
-# ------------------------------------------------------------- bruggen
+# ------------------------------------------------------------- bridges
+
+def _parapet(m, x, y, base, wall_xs):
+    """Bridge parapet slice at row y: concrete wall in columns wall_xs from base up to
+    base+WALK+4, then a metal railing at column x (post every 8 voxels, top rail)."""
+    for wx in wall_xs:
+        for z in range(base, base + WALK + 4):
+            m.set(wx, y, z, CONCRETE)
+    if y % 8 == 2:
+        for z in range(base + WALK + 4, base + WALK + 8):
+            m.set(x, y, z, "metaal2")
+    m.set(x, y, base + WALK + 8, "metaal3")
+
 
 def deck_from(flat_tile, rails="links"):
-    """Maak een brugdek: onderkant beton, randen met borstwering."""
+    """Turn a flat tile into a bridge deck: concrete underside, parapets on the edges.
+
+    rails: "links" (parapet on the left, x=0..1), "beide" (both sides) or "geen" (none).
+    """
     m = V(T, T, 12)
     for y in range(T):
         for x in range(T):
-            t = flat_tile.top(x, y)
             for z in range(flat_tile.sz):
                 c = flat_tile.get(x, y, z)
                 if c:
                     m.set(x, y, z, c)
-            m.set(x, y, 0, BETON_D)
+            m.set(x, y, 0, CONCRETE_DARK)
     sides = {"links": (0,), "beide": (0, 31), "geen": ()}[rails]
     for x0 in sides:
         xs = (0, 1) if x0 == 0 else (30, 31)
         for y in range(T):
-            for x in xs:
-                for z in range(0, WALK + 4):
-                    m.set(x, y, z, BETON)
-            if y % 8 == 2:
-                for z in range(WALK + 4, WALK + 8):
-                    m.set(xs[0] if x0 == 0 else xs[1], y, z, "metaal2")
-            m.set(xs[0] if x0 == 0 else xs[1], y, WALK + 8, "metaal3")
+            _parapet(m, x0, y, 0, xs)
     return m
 
 
-register("grond/brug/brug_dek_weg_rand", lambda: deck_from(rijstrook("geen", "geen")))
-register("grond/brug/brug_dek_weg_beide", lambda: deck_from(rijstrook("geen", "geen"), "beide"))
-register("grond/brug/brug_dek_weg_midden", lambda: deck_from(rijstrook("geen", "geen"), "geen"))
-register("grond/brug/brug_dek_rijstrook_kant_rand", lambda: deck_from(_deck_lane()))
-register("grond/brug/brug_dek_rijstrook_onderbroken", lambda: deck_from(rijstrook("onderbroken", "geen"), "geen"))
-register("grond/brug/brug_dek_fietspad_rand", lambda: deck_from(fietspad_recht()))
-register("grond/brug/brug_dek_fietspad_beide", lambda: deck_from(fietspad_recht(), "beide"))
-register("grond/brug/brug_dek_stoep_rand", lambda: deck_from(stoep("")))
-register("grond/brug/brug_dek_tram_rand", lambda: deck_from(tram_recht()))
-register("grond/brug/brug_dek_klinker_beide", lambda: deck_from(straat_klinkers(), "beide"))
-
-
 def _deck_lane():
-    m = rijstrook("geen", "geen")
+    """Lane with an extra line at x=3 (edge line next to the parapet)."""
+    m = lane("geen", "geen")
     line_y(m, 3)
     return m
 
 
-@tile("grond/brug/brug_dek_trein_rand")
-def brug_dek_trein():
+def _train_deck_base():
+    """Concrete slab at road level with railway track on top, for train bridge decks."""
     base = new()
-    for y in range(T):
-        for x in range(T):
-            column(base, x, y, ROAD, BETON)
+    fill_columns(base, ROAD, CONCRETE)
     track_straight(base, base=1)
-    return deck_from(base, "links")
+    return base
 
 
-@tile("grond/brug/brug_dek_trein_beide")
-def brug_dek_trein_beide():
-    base = new()
-    for y in range(T):
-        for x in range(T):
-            column(base, x, y, ROAD, BETON)
-    track_straight(base, base=1)
-    return deck_from(base, "beide")
+def _deck(src, rails="links"):
+    return deck_from(src(), rails)
+
+
+# tile name suffix -> (source tile function, parapet sides)
+BRIDGE_DECKS = {
+    "weg_rand": (partial(lane, "geen", "geen"), "links"),
+    "weg_beide": (partial(lane, "geen", "geen"), "beide"),
+    "weg_midden": (partial(lane, "geen", "geen"), "geen"),
+    "rijstrook_kant_rand": (_deck_lane, "links"),
+    "rijstrook_onderbroken": (partial(lane, "onderbroken", "geen"), "geen"),
+    "fietspad_rand": (bike_path_straight, "links"),
+    "fietspad_beide": (bike_path_straight, "beide"),
+    "stoep_rand": (partial(sidewalk, ""), "links"),
+    "tram_rand": (tram_straight, "links"),
+    "klinker_beide": (street_pavers, "beide"),
+    "trein_rand": (_train_deck_base, "links"),
+    "trein_beide": (_train_deck_base, "beide"),
+}
+for _n, (_src, _rails) in BRIDGE_DECKS.items():
+    register(f"grond/brug/brug_dek_{_n}", partial(_deck, _src, _rails))
 
 
 @tile("grond/brug/brug_ligger")
-def brug_ligger():
+def bridge_girder():
+    """Bridge girder storey: two concrete beams (x=3..9, 22..28) with a thin slab on top."""
     m = V(T, T, FLOOR)
     for y in range(T):
         for x in range(T):
             if 3 <= x <= 9 or 22 <= x <= 28:
                 for z in range(3, FLOOR):
-                    m.set(x, y, z, BETON)
+                    m.set(x, y, z, CONCRETE)
             else:
-                m.set(x, y, FLOOR - 1, BETON_D)
+                m.set(x, y, FLOOR - 1, CONCRETE_DARK)
     return m
 
 
-def pijler(m, z0, z1):
+def pier(m, z0, z1):
+    """Round concrete pier (radius ~5) in the tile centre from z0 to z1."""
     for z in range(z0, z1):
         for y in range(T):
             for x in range(T):
                 if dist(x, y, 16, 16) < 5.2:
-                    m.set(x, y, z, BETON if (x + z) % 7 else "beton_donker")
+                    m.set(x, y, z, CONCRETE if (x + z) % 7 else "beton_donker")
 
 
 @tile("grond/brug/brug_pijler")
-def brug_pijler():
+def bridge_pier():
+    """Bridge pier, one ground storey."""
     m = V(T, T, FLOOR)
-    pijler(m, 0, FLOOR)
+    pier(m, 0, FLOOR)
     return m
 
 
 @tile("grond/brug/brug_pijler_kop")
-def brug_pijler_kop():
+def bridge_pier_head():
+    """Bridge pier with a widening pier cap along x."""
     m = V(T, T, FLOOR)
-    pijler(m, 0, FLOOR)
+    pier(m, 0, FLOOR)
     for z in range(3, FLOOR):
         for y in range(10, 22):
             w = 2 + (z - 3) * 2
             for x in range(max(0, 10 - w), min(T, 22 + w)):
-                m.set(x, y, z, BETON)
+                m.set(x, y, z, CONCRETE)
     return m
 
 
 @tile("grond/brug/brug_pijler_gras")
-def brug_pijler_gras():
-    m = gras_tile()
-    pijler(m, WALK, FLOOR)
+def bridge_pier_grass():
+    """Bridge pier standing on grass."""
+    m = grass_tile()
+    pier(m, WALK, FLOOR)
     return m
 
 
 @tile("grond/brug/brug_pijler_stoep")
-def brug_pijler_stoep():
-    m = stoep("")
-    m2 = V(T, T, FLOOR)
-    m2.paste(m, 0, 0, 0)
-    pijler(m2, WALK, FLOOR)
-    return m2
+def bridge_pier_sidewalk():
+    """Bridge pier standing on a sidewalk."""
+    m = V(T, T, FLOOR)
+    m.paste(sidewalk(""), 0, 0, 0)
+    pier(m, WALK, FLOOR)
+    return m
 
 
 @tile("grond/brug/brug_pijler_water")
-def brug_pijler_water():
+def bridge_pier_water():
+    """Bridge pier standing in water, with algae around its foot."""
     m = water_tile()
-    pijler(m, 0, FLOOR)
+    pier(m, 0, FLOOR)
     for y in range(T):
         for x in range(T):
             if dist(x, y, 16, 16) < 6.5:
@@ -1453,19 +1644,24 @@ def brug_pijler_water():
     return m
 
 
-def boogbrug(rails):
-    """Bakstenen boogbrug over een gracht. Plaats op het niveau van het water
-    (2 grond-verdiepingen onder de straat); het wegdek komt dan op straatniveau."""
+def arch_bridge(rails):
+    """Brick arch bridge over a canal; the arch spans along y.
+
+    Place it at water level (2 ground storeys below the street); the deck then ends up at
+    street level. rails: "rand" (parapet left), "beide" (both sides) or "midden" (none).
+    """
     H = FLOOR * 2 + ROAD
     m = V(T, T, H + 8)
+    brick = _brick(75)
     for z in range(H):
         for y in range(T):
             for x in range(T):
+                # elliptical arch: semi-axes 13 (y) and 12 (z), centre at y=16, z=1
                 ez = (y + 0.5 - 16) ** 2 / (13.0 ** 2) + (z + 0.5 - 1) ** 2 / (12.0 ** 2)
                 inside = ez < 1.0 and z >= 1
                 ring = 1.0 <= ez < 1.25 and z >= 1
                 if z >= H - 2:
-                    m.set(x, y, z, klinker_fn)
+                    m.set(x, y, z, paver_fn)
                 elif inside:
                     if z == 1:
                         m.set(x, y, z, WATER)
@@ -1473,50 +1669,56 @@ def boogbrug(rails):
                 elif z == 0:
                     m.set(x, y, z, "waterbodem")
                 elif ring:
-                    m.set(x, y, z, NATUURSTEEN if (x in (0, 31)) else "donkersteen2")
+                    m.set(x, y, z, NATURAL_STONE if (x in (0, 31)) else "donkersteen2")
                 else:
-                    m.set(x, y, z, lambda a, b, c: baksteen_fn(a, b, c, 75))
-            # water onder de boog
-        for y in range(T):
-            pass
+                    m.set(x, y, z, brick)
+    # water under the arch wherever z=1 is still empty
     for y in range(T):
         for x in range(T):
             if m.get(x, y, 1) == 0:
                 m.set(x, y, 1, WATER)
     sides = {"rand": (0,), "beide": (0, 31), "midden": ()}[rails]
+    wall = _brick(76)
     for xs in sides:
         cols = (0, 1) if xs == 0 else (30, 31)
         for y in range(T):
             for x in cols:
                 for z in range(H - 2, H + 6):
-                    m.set(x, y, z, lambda a, b, c: baksteen_fn(a, b, c, 76))
-                m.set(x, y, H + 6, NATUURSTEEN)
+                    m.set(x, y, z, wall)
+                m.set(x, y, H + 6, NATURAL_STONE)
     return m
 
 
-register("grond/brug/brug_boog_gracht_beide", lambda: boogbrug("beide"))
-register("grond/brug/brug_boog_gracht_rand", lambda: boogbrug("rand"))
-register("grond/brug/brug_boog_gracht_midden", lambda: boogbrug("midden"))
+for _rails in ("beide", "rand", "midden"):
+    register(f"grond/brug/brug_boog_gracht_{_rails}", partial(arch_bridge, _rails))
 
 
 @tile("grond/brug/brug_landhoofd")
-def brug_landhoofd():
+def bridge_abutment():
+    """Bridge abutment: solid concrete storey with seams on the front face."""
     m = V(T, T, FLOOR)
     for z in range(FLOOR):
         for y in range(T):
             for x in range(T):
-                m.set(x, y, z, BETON if not (y == 0 and z % 4 == 0) else "beton_donker")
+                m.set(x, y, z, CONCRETE if not (y == 0 and z % 4 == 0) else "beton_donker")
     return m
 
 
-# ------------------------------------------------------------- hellingen
+# ------------------------------------------------------------- ramps
 
-def shear(flat_tile, offset_fn, fill=AARDE, thin=False, rails=None):
+def shear(flat_tile, offset_fn, fill=EARTH, thin=False, rails=None):
+    """Shear a flat tile into a ramp: column (x, y) is raised by offset_fn(x, y) voxels.
+
+    The output is FLOOR + 1 voxels taller than the input.
+    fill:  colour for the solid embankment below the raised surface (falsy = hollow).
+    thin:  bridge ramp: drop the lower layers of the source and put a 2-voxel concrete
+           slab directly under the surface instead of fill.
+    rails: x columns that get a parapet (concrete wall + metal railing), following the slope.
+    """
     out = V(flat_tile.sx, flat_tile.sy, flat_tile.sz + FLOOR + 1)
     for y in range(flat_tile.sy):
         for x in range(flat_tile.sx):
             o = offset_fn(x, y)
-            col_top = flat_tile.top(x, y)
             for z in range(flat_tile.sz):
                 c = flat_tile.get(x, y, z)
                 if not c:
@@ -1525,56 +1727,57 @@ def shear(flat_tile, offset_fn, fill=AARDE, thin=False, rails=None):
                     continue
                 out.set(x, y, z + o, c)
             if thin:
-                out.set(x, y, o, BETON_D)
+                out.set(x, y, o, CONCRETE_DARK)
                 if o > 0:
-                    out.set(x, y, o - 1, BETON_D)
+                    out.set(x, y, o - 1, CONCRETE_DARK)
             elif fill:
                 for z in range(o):
                     out.set(x, y, z, fill)
     if rails:
         for xs in rails:
             for y in range(T):
-                o = offset_fn(xs, y)
-                for z in range(o, o + WALK + 4):
-                    out.set(xs, y, z, BETON)
-                if y % 8 == 2:
-                    for z in range(o + WALK + 4, o + WALK + 8):
-                        out.set(xs, y, z, "metaal2")
-                out.set(xs, y, o + WALK + 8, "metaal3")
+                _parapet(out, xs, y, offset_fn(xs, y), (xs,))
     return out
 
 
-STRAIGHT = lambda x, y: y // 4
-CORNER_OUT = lambda x, y: min(x, y) // 4
-CORNER_IN = lambda x, y: max(x, y) // 4
+# Ramp offset functions (x, y) -> z offset; rise one ground storey (8 voxels) over 32 voxels.
+STRAIGHT = lambda x, y: y // 4                # rises towards the back
+CORNER_OUT = lambda x, y: min(x, y) // 4      # outer corner: high only at back-right
+CORNER_IN = lambda x, y: max(x, y) // 4       # inner corner: low only at front-left
 
-HELLING_BRON = {
-    "weg_vlak": weg_vlak,
-    "rijstrook_onderbroken_kant": lambda: rijstrook("onderbroken", "kant"),
-    "rijstrook_geen_kant": lambda: rijstrook("geen", "kant"),
-    "rijstrook_streep_kant": lambda: rijstrook("streep", "kant"),
-    "rijstrook_onderbroken_geen": lambda: rijstrook("onderbroken", "geen"),
-    "snelweg_rijstrook": snelweg_rijstrook,
-    "snelweg_vluchtstrook": snelweg_vluchtstrook,
-    "fietspad_recht": fietspad_recht,
-    "stoep_vol": lambda: stoep(""),
-    "stoep_rand": lambda: stoep("v"),
-    "stoep_goot_rand": lambda: stoep("v", goot=True),
-    "straat_klinkers": straat_klinkers,
-    "plein_tegels": plein_tegels,
-    "gras": gras,
-    "trein_recht": trein_recht,
-    "tram_recht": tram_recht,
+# ramp name suffix -> source flat tile function
+RAMP_SOURCES = {
+    "weg_vlak": road_plain,
+    "rijstrook_onderbroken_kant": partial(lane, "onderbroken", "kant"),
+    "rijstrook_geen_kant": partial(lane, "geen", "kant"),
+    "rijstrook_streep_kant": partial(lane, "streep", "kant"),
+    "rijstrook_onderbroken_geen": partial(lane, "onderbroken", "geen"),
+    "snelweg_rijstrook": highway_lane,
+    "snelweg_vluchtstrook": highway_hard_shoulder,
+    "fietspad_recht": bike_path_straight,
+    "stoep_vol": partial(sidewalk, ""),
+    "stoep_rand": partial(sidewalk, "v"),
+    "stoep_goot_rand": partial(sidewalk, "v", gutter=True),
+    "straat_klinkers": street_pavers,
+    "plein_tegels": square_tiles,
+    "gras": grass,
+    "trein_recht": train_straight,
+    "tram_recht": tram_straight,
 }
 
-for _n, _f in HELLING_BRON.items():
-    register(f"grond/helling/helling_{_n}", (lambda f: lambda: shear(f(), STRAIGHT))(_f))
+
+def _ramp(src, offset_fn=STRAIGHT, **kw):
+    return shear(src(), offset_fn, **kw)
+
+
+for _n, _f in RAMP_SOURCES.items():
+    register(f"grond/helling/helling_{_n}", partial(_ramp, _f))
 
 for _n in ("weg_vlak", "rijstrook_onderbroken_kant", "rijstrook_geen_kant", "fietspad_recht", "stoep_vol", "trein_recht", "tram_recht"):
-    _f = HELLING_BRON[_n]
-    register(f"grond/helling/helling_brug_{_n}_rand", (lambda f: lambda: shear(f(), STRAIGHT, thin=True, rails=(0,)))(_f))
-    register(f"grond/helling/helling_brug_{_n}", (lambda f: lambda: shear(f(), STRAIGHT, thin=True))(_f))
+    _f = RAMP_SOURCES[_n]
+    register(f"grond/helling/helling_brug_{_n}_rand", partial(_ramp, _f, thin=True, rails=(0,)))
+    register(f"grond/helling/helling_brug_{_n}", partial(_ramp, _f, thin=True))
 
-register("grond/helling/helling_gras_hoek_buiten", lambda: shear(gras(), CORNER_OUT))
-register("grond/helling/helling_gras_hoek_binnen", lambda: shear(gras(), CORNER_IN))
-register("grond/helling/helling_dijk_beton", lambda: shear(flat(BETON, top=WALK), STRAIGHT, fill=BETON_D))
+register("grond/helling/helling_gras_hoek_buiten", partial(_ramp, grass, CORNER_OUT))
+register("grond/helling/helling_gras_hoek_binnen", partial(_ramp, grass, CORNER_IN))
+register("grond/helling/helling_dijk_beton", partial(_ramp, partial(flat, CONCRETE, top=WALK), fill=CONCRETE_DARK))

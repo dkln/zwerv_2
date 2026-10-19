@@ -1,27 +1,28 @@
 [gd_scene format=3]
 
-[ext_resource type="MeshLibrary" path="res://assets/libraries/grond.res" id="1_a6fkl"]
-[ext_resource type="MeshLibrary" path="res://assets/libraries/gebouwen.res" id="2_5464r"]
-[ext_resource type="MeshLibrary" path="res://assets/libraries/details.res" id="3_oliop"]
-[ext_resource type="MeshLibrary" path="res://assets/libraries/props.res" id="4_ycelv"]
-[ext_resource type="Script" path="res://scripts/vrije_camera.gd" id="5_pfr04"]
-[ext_resource type="Script" path="res://scripts/detail_niveau.gd" id="6_3i5g6"]
-[ext_resource type="Script" path="res://scripts/dagcyclus.gd" id="7_a0g6y"]
-[ext_resource type="Script" path="res://scripts/rook.gd" id="8_tn8xy"]
-[ext_resource type="Script" path="res://scripts/tint_kaart.gd" id="9_215vn"]
+[ext_resource type="Script" path="res://scripts/effects/motion_blur.gd" id="1_5464r"]
+[ext_resource type="MeshLibrary" path="res://assets/libraries/grond.res" id="2_oliop"]
+[ext_resource type="MeshLibrary" path="res://assets/libraries/gebouwen.res" id="3_ycelv"]
+[ext_resource type="MeshLibrary" path="res://assets/libraries/details.res" id="4_pfr04"]
+[ext_resource type="MeshLibrary" path="res://assets/libraries/props.res" id="5_3i5g6"]
+[ext_resource type="Script" path="res://scripts/free_camera.gd" id="6_a0g6y"]
+[ext_resource type="Script" path="res://scripts/level_of_detail.gd" id="7_tn8xy"]
+[ext_resource type="Script" path="res://scripts/day_cycle.gd" id="8_215vn"]
+[ext_resource type="Script" path="res://scripts/smoke.gd" id="9_4xgs5"]
+[ext_resource type="Script" path="res://scripts/tint_map.gd" id="10_i30fu"]
 
-[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_4xgs5"]
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_18h1e"]
 sky_top_color = Color(0.3, 0.5, 0.85, 1)
 sky_horizon_color = Color(0.7, 0.8, 0.92, 1)
 ground_bottom_color = Color(0.55, 0.66, 0.82, 1)
 ground_horizon_color = Color(0.7, 0.8, 0.92, 1)
 
-[sub_resource type="Sky" id="Sky_i30fu"]
-sky_material = SubResource("ProceduralSkyMaterial_4xgs5")
+[sub_resource type="Sky" id="Sky_eb4nf"]
+sky_material = SubResource("ProceduralSkyMaterial_18h1e")
 
-[sub_resource type="Environment" id="Environment_18h1e"]
+[sub_resource type="Environment" id="Environment_0uy6c"]
 background_mode = 2
-sky = SubResource("Sky_i30fu")
+sky = SubResource("Sky_eb4nf")
 ambient_light_source = 3
 ambient_light_sky_contribution = 0.9
 ambient_light_energy = 0.8
@@ -38,19 +39,27 @@ ssao_light_affect = 0.15
 ssil_radius = 6.0
 ssil_intensity = 0.9
 glow_enabled = true
-glow_levels/2 = 1.0
-glow_levels/3 = 1.0
-glow_levels/4 = 0.6
-glow_levels/5 = 0.4
-glow_intensity = 0.8
-glow_hdr_threshold = 1.6
+glow_intensity = 0.5
+glow_hdr_threshold = 1.2
 fog_light_color = Color(0.7, 0.78, 0.88, 1)
 fog_density = 0.0005
 adjustment_enabled = true
 adjustment_contrast = 1.1
 adjustment_saturation = 1.12
 
-[sub_resource type="CameraAttributesPractical" id="CameraAttributesPractical_eb4nf"]
+[sub_resource type="CompositorEffect" id="CompositorEffect_s10jy"]
+resource_local_to_scene = false
+resource_name = ""
+enabled = true
+effect_callback_type = 4
+needs_motion_vectors = true
+needs_normal_roughness = false
+script = ExtResource("1_5464r")
+
+[sub_resource type="Compositor" id="Compositor_o8xcd"]
+compositor_effects = Array[CompositorEffect]([SubResource("CompositorEffect_s10jy")])
+
+[sub_resource type="CameraAttributesPractical" id="CameraAttributesPractical_ryovf"]
 dof_blur_far_enabled = true
 dof_blur_far_distance = 330.0
 dof_blur_far_transition = 140.0
@@ -59,75 +68,75 @@ dof_blur_near_distance = 250.0
 dof_blur_near_transition = 110.0
 dof_blur_amount = 0.07
 
-[node name="NieuweKaart" type="Node3D" unique_id=1358056748]
+[node name="NieuweKaart" type="Node3D" unique_id=919154874]
 
-[node name="Omgeving" type="WorldEnvironment" parent="." unique_id=1432301856]
-environment = SubResource("Environment_18h1e")
+[node name="Omgeving" type="WorldEnvironment" parent="." unique_id=1255568801]
+environment = SubResource("Environment_0uy6c")
+compositor = SubResource("Compositor_o8xcd")
 
-[node name="Zon" type="DirectionalLight3D" parent="." unique_id=1040728120]
+[node name="Zon" type="DirectionalLight3D" parent="." unique_id=578150972]
 transform = Transform3D(0.8910065, -0.4008498, 0.21313564, 0, 0.4694716, 0.88294756, -0.4539905, -0.78671205, 0.41830227, 0, 0, 0)
 light_color = Color(1, 0.93, 0.82, 1)
 light_energy = 1.55
 shadow_enabled = true
-shadow_opacity = 0.82
 shadow_bias = 0.03
 shadow_normal_bias = 1.2
+shadow_opacity = 0.82
 shadow_blur = 0.4
-directional_shadow_mode = 2
 directional_shadow_max_distance = 500.0
 
-[node name="Vullicht" type="DirectionalLight3D" parent="." unique_id=932217210]
+[node name="Vullicht" type="DirectionalLight3D" parent="." unique_id=138557765]
 transform = Transform3D(-0.9396926, 0.19617471, -0.2801665, 0, 0.81915206, 0.57357645, 0.34202015, 0.53898555, -0.76975113, 0, 0, 0)
 light_color = Color(0.62, 0.74, 1, 1)
 light_energy = 0.22
 
-[node name="Grond" type="GridMap" parent="." unique_id=964904255]
-mesh_library = ExtResource("1_a6fkl")
+[node name="Grond" type="GridMap" parent="." unique_id=1186039679]
+mesh_library = ExtResource("2_oliop")
 cell_size = Vector3(4, 1, 4)
 cell_octant_size = 4
 cell_center_y = false
 
-[node name="Gebouwen" type="GridMap" parent="." unique_id=1599683395]
+[node name="Gebouwen" type="GridMap" parent="." unique_id=1433541570]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.375, 0)
-mesh_library = ExtResource("2_5464r")
+mesh_library = ExtResource("3_ycelv")
 cell_size = Vector3(4, 3, 4)
 cell_octant_size = 4
 cell_center_y = false
 
-[node name="Details" type="GridMap" parent="." unique_id=909750769]
+[node name="Details" type="GridMap" parent="." unique_id=1614375355]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.375, 0)
-mesh_library = ExtResource("3_oliop")
+mesh_library = ExtResource("4_pfr04")
 cell_size = Vector3(0.5, 0.5, 0.5)
 cell_octant_size = 4
 cell_center_x = false
 cell_center_y = false
 cell_center_z = false
 
-[node name="Props" type="GridMap" parent="." unique_id=558952923]
+[node name="Props" type="GridMap" parent="." unique_id=1170145387]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.25, 0)
-mesh_library = ExtResource("4_ycelv")
+mesh_library = ExtResource("5_3i5g6")
 cell_size = Vector3(0.5, 0.5, 0.5)
 cell_octant_size = 4
 cell_center_x = false
 cell_center_y = false
 cell_center_z = false
 
-[node name="Camera" type="Camera3D" parent="." unique_id=1169246964]
-transform = Transform3D(0.70711, -0.40824, 0.57735, 0.0, 0.8165, 0.57734, -0.70711, -0.40824, 0.57735, 301.2021, 229.20202, 289.2021)
-attributes = SubResource("CameraAttributesPractical_eb4nf")
+[node name="Camera" type="Camera3D" parent="." unique_id=873281950]
+transform = Transform3D(0.70710677, -0.40824434, 0.577353, 0, 0.8165005, 0.5773447, -0.70710677, -0.40824434, 0.577353, 301.20203, 229.20203, 289.20203)
+attributes = SubResource("CameraAttributesPractical_ryovf")
 fov = 20.0
 near = 2.0
 far = 6000.0
-script = ExtResource("5_pfr04")
+script = ExtResource("6_a0g6y")
 
-[node name="DetailNiveau" type="Node" parent="." unique_id=775207796]
-script = ExtResource("6_3i5g6")
+[node name="DetailNiveau" type="Node" parent="." unique_id=311976383]
+script = ExtResource("7_tn8xy")
 
-[node name="Dagcyclus" type="Node" parent="." unique_id=1885174690]
-script = ExtResource("7_a0g6y")
+[node name="Dagcyclus" type="Node" parent="." unique_id=2074098244]
+script = ExtResource("8_215vn")
 
-[node name="Rook" type="Node3D" parent="." unique_id=1057459445]
-script = ExtResource("8_tn8xy")
+[node name="Rook" type="Node3D" parent="." unique_id=1713463935]
+script = ExtResource("9_4xgs5")
 
-[node name="TintKaart" type="Node3D" parent="." unique_id=1676475811]
-script = ExtResource("9_215vn")
+[node name="TintKaart" type="Node3D" parent="." unique_id=238244237]
+script = ExtResource("10_i30fu")

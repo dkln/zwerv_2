@@ -19,21 +19,50 @@ Snel starten
 3. Selecteer een GridMap-node (Grond / Gebouwen / Details / Props); onderin
    verschijnt het tile-palet. Zoek op naam, klik een tile, en klik in de 3D-view.
 4. Druk op F5/F6: een automatische rondleiding vliegt isometrisch langs alle
-   situaties, met titel en uitleg in beeld (node `Rondleiding`; zet `actief`
+   situaties, met titel en uitleg in beeld (node `Rondleiding`; zet `active`
    uit om zelf rond te kijken). Daarnaast: De camera staat standaard in
    isometrische stand: een perspectiefcamera met een smalle kijkhoek (20°),
    45 graden gedraaid en ~35 graden naar beneden (`scripts/iso_camera.gd`).
    Een echte perspectiefcamera, omdat Godot schaduwsplits en SSR alleen daarmee
-   goed berekent; zoomen = de afstand veranderen. Zet `isometrisch`
+   goed berekent; zoomen = de afstand veranderen. Zet `isometric`
    op de Camera-node uit voor een vrije perspectief-camera (rechtermuisknop =
    kijken, WASD = bewegen, Q/E = omlaag/omhoog, Shift = sneller).
-   `iso_grootte` bepaalt hoeveel meter van de kaart in beeld is.
+   `iso_size` bepaalt hoeveel meter van de kaart in beeld is.
 
 GridMap-bediening in de editor (Godot 4):
 - klik = plaatsen, rechtsklik = verwijderen
 - A / S / D = tile draaien om de X / Y / Z-as (S draait om de verticale as)
 - Q / E (of het menu "GridMap > Verdieping") = een laag omlaag/omhoog
 - Ctrl+klik-slepen = selecteren; daarna dupliceren/verplaatsen/verwijderen
+
+
+Bouwpaneel ("Build", rechtsboven in de editor)
+----------------------------------------------
+- Laag: één knop per GridMap (Grond, Gebouwen, Details, Props). Klik = die laag
+  bewerken; het tile-palet van Godot verschijnt onderin.
+- Verdieping: `-`/`+` (of Q/E in de 3D-view) en de hoogte van die verdieping in
+  meters. Grond-verdiepingen zijn 1 m, gebouw-verdiepingen 3 m.
+- "Hide other layers": verbergt de andere lagen zolang je bewerkt. Bij opslaan of
+  starten worden ze eerst weer zichtbaar gemaakt, dus dit komt nooit in de scene.
+- Godot zelf: met "Edit X/Z Axis" teken je op een staand vlak (pijlers, muren over
+  meerdere verdiepingen); fill en duplicate werken ook over meerdere verdiepingen.
+- Stempels (op de Grond-laag): kies een stempel en de instellingen, klik "Draw
+  stamp" en klik in de 3D-view een begin- en een eindcel op straatniveau. Een
+  stempel is één stap in Ctrl+Z. Rechtsklik/Esc annuleert.
+  - Canal / river: water op laag -2 over de gekozen breedte, kademuren op -2 en -1
+    en kades (naar het water gericht) op straatniveau; straatniveau boven het water
+    wordt leeggemaakt.
+  - Bridge (street level): brugdekken op straatniveau (breedte 2 = gespiegeld dek,
+    voor dekken met een leuning aan één kant).
+  - Viaduct on pillars: dek op de gekozen laag, pijlers om de zoveel tiles (in het
+    water op de bodem, op land op gras/stoep; niet op wegen of spoor, daar komt een
+    ligger) en liggers ertussen. Einden: landhoofden voorbij beide einden, of
+    opritten (`helling_brug_*`) die per tile 1 m stijgen van straatniveau tot het
+    dek, zodat een weg over een andere weg gaat (lijn minstens 2 x hoogte + 1).
+  - Car tunnel (3 lanes): toerit omlaag, open bak, portaal en tunnel op laag -6,
+    aan het eind gespiegeld; minstens 19 tiles lang.
+  De lijn volgt de langste as; breedte loopt naar links gezien in de tekenrichting
+  (de blauwe voorvertoning laat zien waar alles komt).
 
 
 De voorbeeldkaart (`scenes/wereld.tscn`)
@@ -62,11 +91,11 @@ is ingezet.
 
 Elke tile staat ergens in de kaart in een realistische situatie; de wijken
 worden automatisch opgebouwd uit de bibliotheken, dus nieuwe tiles komen er bij
-het opnieuw bouwen vanzelf bij (`_demowijken()` in `tools/bouw_voorbeeldstad.gd`).
+het opnieuw bouwen vanzelf bij (`_demowijken()` in `tools/build_example_city.gd`).
 
 Controleren of echt alle tiles in de kaart staan:
 
-    /Applications/Godot.app/Contents/MacOS/Godot --headless --script tools/dekking.gd
+    /Applications/Godot.app/Contents/MacOS/Godot --headless --script tools/coverage.gd
 
 
 De vier lagen
@@ -176,11 +205,11 @@ dichte gebouwblokken een doos van 4x3x4 m; props een omhullende doos.
 
 Kleur en tint aanpassen (zonder de .vox te wijzigen)
 ----------------------------------------------------
-In elke kaart zit een node `TintKaart` (script `scripts/tint_kaart.gd`):
-- `variatie`: geeft elke 4x4 m cel automatisch een net iets andere kleur.
-- Voeg een kind-node toe met script `scripts/tint_vlak.gd` (TintVlak), schuif
-  hem over een gebouw of stuk grond en kies `kleur`, `helderheid`, `sterkte`
-  en `grootte` (in cellen). De tint werkt live in de editor.
+In elke kaart zit een node `TintKaart` (script `scripts/tint_map.gd`):
+- `variation`: geeft elke 4x4 m cel automatisch een net iets andere kleur.
+- Voeg een kind-node toe met script `scripts/tint_area.gd` (TintArea), schuif
+  hem over een gebouw of stuk grond en kies `color`, `brightness`, `strength`
+  en `size` (in cellen). De tint werkt live in de editor.
   Wit = geen verandering; helderheid > 1 is lichter, < 1 donkerder.
 Dit werkt via globale shader-parameters (Project > Project Settings >
 Shader Globals: `zwervr_tint_kaart`, `zwervr_tint_gebied`, `zwervr_variatie`).
@@ -188,9 +217,9 @@ Shader Globals: `zwervr_tint_kaart`, `zwervr_tint_gebied`, `zwervr_variatie`).
 
 Rook, water, vlaggen en voxelstructuur
 --------------------------------------
-- Rook: de node `Rook` (script `scripts/rook.gd`) zet automatisch rookpluimen
+- Rook: de node `Rook` (script `scripts/smoke.gd`) zet automatisch rookpluimen
   op alle fabrieksschoorstenen (`overig/fabrieksschoorsteen_top`) en op de
-  kleine schoorsteen-details. Werkt live in de editor; vink "opnieuw zoeken"
+  kleine schoorsteen-details. Werkt live in de editor; vink `rescan`
   aan nadat je schoorstenen hebt toegevoegd. `wind` bepaalt de richting.
 - Voxelstructuur: `materials/voxel.gdshader` tekent (optioneel) lichte randen en kleine
   helderheidsverschillen per voxel (`voxel_ruis`; randjes via `voxel_rand`, standaard uit), zodat grote
@@ -205,9 +234,11 @@ Rook, water, vlaggen en voxelstructuur
   de dagcyclus). Instelbaar in `materials/voxel_water.tres`: `spiegeling`,
   `lucht_spiegeling`, `stap`, `stappen`, `dikte`, `rimpeling`. De SSR van Godot
   gaf hier geen zichtbare spiegeling en staat uit.
-- Drijvende objecten (sloep, roeiboot, reddingsboei, woonboot, waterlelies;
-  import-optie `drijven`) deinen mee: `materials/voxel_drijf.tres` volgt dezelfde
-  golf als het water en laat het object licht rollen en stampen (`rollen`).
+- Drijvende objecten (boten, boeien, waterlelies; metadata `"animation": "float"`,
+  zie hieronder) deinen mee: `materials/voxel_drijf.tres` volgt dezelfde golf als
+  het water, deint extra (`deinen`) en laat het object rollen en stampen (`rollen`).
+  Grond-tiles met waterplanten gebruiken `voxel_drijf_plant.tres`: alleen wat
+  boven het water ligt dobbert, elk stukje op zijn eigen plek.
   Houd `golf_hoogte`, `golf_snelheid` en `golf_lengte` gelijk aan die van het
   water. Zulke tiles worden niet samengevoegd.
 - Zonnepanelen hebben een eigen glanzend materiaal (`materials/voxel_paneel.tres`,
@@ -238,8 +269,37 @@ Belangrijk bij het bewerken:
 - De voorkant is de kant met de laagste Y in MagicaVoxel.
 - Materialen komen uit MagicaVoxel: metaal (`_metal`), glas (`_glass`) en
   licht (`_emit`) worden in Godot metaal, doorzichtig glas en lichtgevend.
+  De tile-metadata (zie hieronder) gaat daar boven.
 - Elk bestand heeft een eigen palet (max 224 gewone kleuren + water + vlag).
 - Eén model per bestand (het eerste model wordt gebruikt).
+
+Tile-metadata (`<naam>.tile.json`)
+----------------------------------
+Naast elke `.vox` kan een `<naam>.tile.json` staan met instellingen die
+MagicaVoxel niet kent:
+
+    {
+        "animation": "float",
+        "materials": {"225": "water", "3": "glass", "#3a3a3e": "asphalt"}
+    }
+
+- `animation`: `none`, `wind` (bomen, planten) of `float` (dobbert op het water).
+  Laat je hem weg, dan raadt de importer het aan de bestandsnaam.
+- `materials`: per palet-index (zoals MagicaVoxel hem toont) of `#rrggbb`-kleur
+  een materiaal: `opaque`, `metal`, `panel` (glanzend, zonnepanelen), `glass`,
+  `emit` (licht), `water`, `flag` (wapperend), `asphalt` (korrel, slijtplekken,
+  lichte glans) of `stone` (bestrating, natuursteen). Kleuren die er niet in
+  staan houden het materiaal uit MagicaVoxel.
+- Sla je het bestand op terwijl de editor open is, dan wordt de tile opnieuw
+  geïmporteerd. Zonder editor: verwijder `.godot/imported/<naam>.vox-*` en draai
+  `Godot --headless --import`.
+- De generator schrijft deze bestanden zelf voor gegenereerde tiles (water,
+  vlaggen, glas, metaal, licht, asfalt, steen en dobberen/wind). Alleen de
+  metadata opnieuw schrijven, zonder `.vox` te wijzigen:
+  `python3 tools/voxgen/generate.py --meta`. Die leest het palet uit de `.vox`
+  zelf, dus het klopt ook na je eigen aanpassingen in MagicaVoxel.
+- In het Import-paneel van Godot kun je `animation` per tile overschrijven.
+
 
 Nieuwe tile toevoegen: zet een nieuw `.vox` bestand in de juiste map onder
 `assets/tiles/`. Hij verschijnt vanzelf in het palet van de juiste GridMap.
@@ -263,7 +323,7 @@ de generator.
 
 Generator-bestanden (`tools/voxgen/`):
 - `palette.py`   kleurenpalet + materiaaltypes (metal/glass/emit/water/flag);
-  `VARIATIE` (standaard 0,65) dempt de kleurverschillen binnen groepen als
+  `VARIATION` (standaard 0,65) dempt de kleurverschillen binnen groepen als
   asfalt1..4, gras1..5 en baksteen1..5 (bestrating zoals tegels en klinkers niet)
 - `vox.py`       voxelmodel, tekenfuncties, .vox schrijver (palet per bestand)
 - `common.py`    maten, registry, pixelfont en pictogrammen
@@ -286,7 +346,7 @@ Na het genereren (vanuit de projectmap):
     # 2. bibliotheken bijwerken (zonder previews; de editor maakt die bij openen)
     /Applications/Godot.app/Contents/MacOS/Godot --headless --script tools/build_libraries.gd [-- force]
     # 3. voorbeeldkaart opnieuw bouwen (overschrijft scenes/wereld.tscn!)
-    /Applications/Godot.app/Contents/MacOS/Godot --headless --script tools/bouw_voorbeeldstad.gd
+    /Applications/Godot.app/Contents/MacOS/Godot --headless --script tools/build_example_city.gd
 
 In de editor staat ook: Project > Tools > "Vox Tiles: bibliotheken volledig
 herbouwen" (maakt collision en alle previews opnieuw; handig als een preview
@@ -305,21 +365,21 @@ Hoe het werkt (techniek)
   met previews en collision. Item-ID's blijven stabiel op naam.
 - `addons/vox_tiles/plugin.gd`: houdt de bibliotheken automatisch bij als er
   tiles bijkomen, verdwijnen of opnieuw geïmporteerd worden.
-- `scripts/vrije_camera.gd`: vliegcamera; `scripts/tint_kaart.gd` en
-  `scripts/tint_vlak.gd`: tint-systeem.
-- `tools/bouw_voorbeeldstad.gd`: bouwt de voorbeeldkaart via code. Handige
+- `scripts/free_camera.gd`: vliegcamera; `scripts/tint_map.gd` en
+  `scripts/tint_area.gd`: tint-systeem.
+- `tools/build_example_city.gd`: bouwt de voorbeeldkaart via code. Handige
   helpers om zelf kaarten te scripten: `G/B/D/Pr` (één tile per laag),
   `blok()` (rechthoekig gebouw met automatisch de juiste hoek-, gevel- en
   dakstukken), `ring()` (gesloten bouwblok met kappen om de hoek), `toren()`,
   `profiel_x/z()` (straatprofiel), `vlak()`.
-- `tools/dekking.gd`: telt welke tiles in de voorbeeldkaart in context staan.
+- `tools/coverage.gd`: telt welke tiles in de voorbeeldkaart in context staan.
 - `tools/screenshots.gd`: maakt isometrische screenshots van alle gebieden en
   buurten met titel en uitleg in beeld, naar `docs/screenshots/` (met
   `index.json`).
 - `tools/shot.gd` / `tools/shot_scene.gd` / `tools/shot_iso.gd`: maken
   screenshots van tiles of scenes, ook isometrisch (voor controle).
 
-Belichting (in `tools/bouw_voorbeeldstad.gd`, functie `_maak_scene`): een zon
+Belichting (in `tools/build_example_city.gd`, functie `_maak_scene`): een zon
 uit het zuid-zuidoosten met schaduwen (in de isometrische stand krijgen zowel
 de zuid- als de oostgevels licht), een zacht blauwig vullicht zonder schaduw,
 lucht-ambient, SSAO, glow en een lichte kleur/contrast-correctie. Pas
@@ -328,11 +388,11 @@ lucht-ambient, SSAO, glow en een lichte kleur/contrast-correctie. Pas
 
 Rondleiding, prestaties en uiterlijk
 ------------------------------------
-- `Rondleiding` (`scripts/rondleiding.gd`): stops komen uit
-  `scripts/rondleiding_data.gd` (vaste gebieden + alle demowijken). Instelbaar:
+- `Rondleiding` (`scripts/tour.gd`): stops komen uit
+  `scripts/tour_data.gd` (vaste gebieden + alle demowijken). Instelbaar:
   `reistijd`, `kijktijd`, `inzoomen`, `begin_bij` (standaard "kanaal": de
   rondleiding begint bij het kanaal).
-- `DetailNiveau` (`scripts/detail_niveau.gd`): schakelt bij het uitzoomen naar
+- `DetailNiveau` (`scripts/level_of_detail.gd`): schakelt bij het uitzoomen naar
   grove tiles (`grof_vanaf`, standaard 100 m in beeld) en heel grove tiles
   (`heel_grof_vanaf`, 130 m), verbergt Details (vanaf 120 m) en Props (vanaf
   300 m) en past de schaduwafstand aan het zoomniveau aan. De grove versies
@@ -347,7 +407,7 @@ Rondleiding, prestaties en uiterlijk
   schaduw; de zon gebruikt 4 schaduwsplits (4096 px).
 - Rendering (`project.godot`): FSR 2 op 77% (met eigen temporele anti-aliasing; MSAA/FXAA uit), debanding,
   depth prepass uit; GridMaps gebruiken octant-grootte 4 (snelst gemeten).
-- Samenvoegen (`scripts/bakker.gd`, aangestuurd door `DetailNiveau`, export
+- Samenvoegen (`scripts/layer_baker.gd`, aangestuurd door `DetailNiveau`, export
   `bakken`): bij het starten worden de lagen Gebouwen en Grond samengevoegd tot
   grote meshes (chunks van 8x8 cellen, per LOD-niveau). Zijden die tegen een
   dichte buurcel liggen en alle onderkanten vallen daarbij weg. De importer
@@ -357,7 +417,7 @@ Rondleiding, prestaties en uiterlijk
   volgende start direct klaar is (zolang de kaart en de tiles niet veranderen).
   Je bewerkt gewoon de GridMaps; botsingen blijven daar ook. Tiles met een vlag
   blijven losse meshes (de vlag-shader rekent in lokale coördinaten).
-- `Dagcyclus` (`scripts/dagcyclus.gd`): basis voor dag en nacht (`tijd`,
+- `Dagcyclus` (`scripts/day_cycle.gd`): basis voor dag en nacht (`tijd`,
   `snelheid`). De zon komt schuin van opzij (oost tot zuidoost, gezien vanuit de
   isometrische camera), zodat de schaduwen in beeld vallen en de gevels licht
   houden, en blijft tussen `min_hoogte` (36°) en `max_hoogte` (44°) hoog: geen
@@ -371,9 +431,9 @@ Rondleiding, prestaties en uiterlijk
   afstanden mee met de afstand tot de grond (export `scherptediepte`).
 - Lettertype: Rubik (`assets/fonts/Rubik.ttf`, OFL-licentie), ingesteld als
   projectfont.
-- Meten: `Godot --script tools/fps_test.gd -- 20 rondleiding` of
+- Meten: `Godot --script tools/fps_test.gd -- 20 tour` of
   `-- 10 140` (vaste zoom 140 m). Sluit de Godot-editor tijdens het meten, anders
-  delen ze de GPU. `tools/driehoeken.gd` toont het aantal driehoeken per tile en
+  delen ze de GPU. `tools/triangle_count.gd` toont het aantal driehoeken per tile en
   LOD-niveau.
 
 Afgeronde bochten
@@ -382,5 +442,5 @@ In `grond/bocht/` staan bochten voor hele straatprofielen (straat,
 klinkerstraat, weg, hoofdweg, tramweg, laan, fietspad). Elke bocht bestaat uit
 (n x n) tiles: `<profiel>_<i>_<j>`, met n = 1 + aantal delen van het profiel.
 De weg komt van het zuiden en buigt af naar het westen; leg cel (i, j) op
-(x + i, z - j) en draai alles samen. In `tools/bouw_voorbeeldstad.gd` doet
+(x + i, z - j) en draai alles samen. In `tools/build_example_city.gd` doet
 `bocht(x, z, profiel, draaiing)` dit inclusief de rechte stukken.

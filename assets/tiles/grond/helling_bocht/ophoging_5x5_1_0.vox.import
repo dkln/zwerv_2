@@ -1,0 +1,22 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=4
+type="ArrayMesh"
+uid="uid://ic8orwxfscy7"
+path="res://.godot/imported/ophoging_5x5_1_0.vox-f7ef82dd07bf52c4a712601c497c5364.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/grond/helling_bocht/ophoging_5x5_1_0.vox"
+dest_files=["res://.godot/imported/ophoging_5x5_1_0.vox-f7ef82dd07bf52c4a712601c497c5364.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+animation=0
+cell_block=Vector3(4, 1.5, 4)

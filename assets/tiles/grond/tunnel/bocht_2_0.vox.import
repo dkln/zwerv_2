@@ -1,0 +1,22 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=4
+type="ArrayMesh"
+uid="uid://di0rsk5yhn31t"
+path="res://.godot/imported/bocht_2_0.vox-80632c141ffed5562bc0af8928593a3d.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/grond/tunnel/bocht_2_0.vox"
+dest_files=["res://.godot/imported/bocht_2_0.vox-80632c141ffed5562bc0af8928593a3d.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+animation=0
+cell_block=Vector3(4, 1.5, 4)

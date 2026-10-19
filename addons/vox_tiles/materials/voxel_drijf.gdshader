@@ -17,6 +17,11 @@ uniform float golf_hoogte = 0.04;
 uniform float golf_snelheid = 0.7;
 uniform float golf_lengte = 6.0;
 uniform float rollen = 0.035;           // radialen: rollen en stampen van het object
+uniform float deinen = 0.0;             // meter: extra op en neer van het hele object
+// waterplanten: elk stukje deint op zijn eigen plek (niet als één geheel) en alles
+// onder `vanaf_hoogte` (lokale y, de bodem en het water van de tile) blijft liggen
+uniform float per_plek = 0.0;
+uniform float vanaf_hoogte = -100.0;
 
 // Globale tint-instellingen (zie Project > Shader Globals en de TintKaart-node).
 global uniform sampler2D zwervr_tint_kaart : filter_nearest, repeat_disable;
@@ -49,13 +54,17 @@ void vertex() {
 	float t = TIME * golf_snelheid;
 	vec3 oorsprong = MODEL_MATRIX[3].xyz;
 	vec3 w = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	float mee = step(vanaf_hoogte, VERTEX.y);
 	// op en neer met het water op deze plek
-	VERTEX.y += golf(w.xz, t) * golf_hoogte;
+	float dy = golf(w.xz, t) * golf_hoogte;
 	// langzaam rollen en stampen rond het midden van het object
-	float fase = oorsprong.x * 0.31 + oorsprong.z * 0.17;
+	vec2 plek = mix(oorsprong.xz, floor(w.xz), per_plek);
+	float fase = plek.x * 0.31 + plek.y * 0.17;
 	float rx = sin(TIME * 0.9 + fase) * rollen;
 	float rz = sin(TIME * 0.7 + fase * 1.7) * rollen * 0.7;
-	VERTEX.y += VERTEX.x * rz + VERTEX.z * rx;
+	dy += sin(TIME * 1.1 + fase * 2.3) * deinen;
+	dy += VERTEX.x * rz + VERTEX.z * rx;
+	VERTEX.y += dy * mee;
 	// iets naar binnen schuiven, zodat randvoxels in de goede cel vallen
 	wpos = (MODEL_MATRIX * vec4(VERTEX - NORMAL * 0.01, 1.0)).xyz;
 	vpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;

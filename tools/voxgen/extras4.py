@@ -1,31 +1,49 @@
-"""Uitbreiding 4: bedrijfspand, industrieel hekwerk, brugwachtershuisjes, stalen trappen, draaideur,
-grind/zand en heuvels, berm en sloot, middenberm-lantaarns, afzetbollen, verkeerszuilen, loopbruggen."""
+"""Extras, part 4: business-unit building style, industrial fencing, bridge-keeper houses,
+steel stairs, revolving door, gravel/sand paths and hill pieces, road verge and ditches,
+median streetlight, bollards, traffic bollards, elevated footbridges and a 1.80 m scale figure.
+
+Tiles register through @tile(path) / register(path, fn) (common.py) and are written by
+generate.py. Coordinates: x = left->right, y = front->back (front = y=0), z = up;
+1 voxel = 12.5 cm. Ground tiles are T x T (32x32) with road top ROAD and sidewalk/grass top
+WALK; buildings use the Bld/make_block machinery of buildings.py (48x48 canvas, 32x32 block).
+The biz_* facade functions' names feed the building RNG seed (LEGACY_SEED_NAMES); do not
+rename them.
+"""
 import math
 
 from common import T, ROAD, WALK, FLOOR, register, tile
 from palette import P
-from vox import V, mix, pick, h
-from ground import (column, flat, new, gras_tile, shear, paint, line_y, ASFALT, GRAS, AARDE, ZAND, GRIND, BETON,
-                    BETON_D, WATER, MARK, CORNER_IN, CORNER_OUT, STRAIGHT, baksteen_fn)
-from buildings import Bld, STYLES, S, O, W, HGT, make_block, flat_roof, pitched, brick
+from vox import V, mix, h
+from ground import (column, flat, new, grass_tile, shear, line_y, ASPHALT, GRASS, EARTH, SAND, GRAVEL,
+                    CONCRETE_DARK, WATER, CORNER_IN, CORNER_OUT, STRAIGHT, brick_fn)
+from buildings import STYLES, S, pitched
 from buildings2 import reg_style, flat_roofs
 from details import att, wd
-from props import pole
 
-# ------------------------------------------------------------------ bedrijfspand
-
-def golf(x, y, z):
-    u = x + y
-    return P["golfplaat1"] if u % 3 else P["golfplaat2"]
+# ------------------------------------------------------------------ business unit (bedrijfspand)
 
 
-STYLES["bedrijfspand"] = dict(fam="bedrijf", wall=golf, kozijn="antraciet1", deuren=["metaal1"], plint="beton2",
-                              sier="antraciet1", dak=("golfplaat1", "golfplaat2"), dakvloer=("golfplaat1", "golfplaat2"),
-                              glas="glas2", winkel="antraciet1", cap="antraciet1")
+def corrugated(x, y, z):
+    """Wall colour function: corrugated sheet with a dark groove every third voxel."""
+    return P["golfplaat1"] if (x + y) % 3 else P["golfplaat2"]
 
 
-def bp_roldeur(b, face):
+STYLES["bedrijfspand"] = dict(family="bedrijf", wall=corrugated, frame="antraciet1", doors=["metaal1"], plinth="beton2",
+                              trim="antraciet1", roof=("golfplaat1", "golfplaat2"), roof_deck=("golfplaat1", "golfplaat2"),
+                              glass="glas2", shop="antraciet1", cap="antraciet1")
+
+
+# Facade functions f(b, face): b is a buildings.Bld, face one of v/r/a/l (front/right/back/left);
+# u runs along the facade (0..S-1), z up, d = depth (positive into the wall, negative outwards).
+
+def biz_blank(b, face):
+    """Closed facade: only a concrete plinth (3 voxels high)."""
     b.rect(face, 0, S, 0, 3, 0, 1, "beton2")
+
+
+def biz_roller_door(b, face):
+    """Ground floor with a large ribbed roller door and yellow/black guard posts."""
+    biz_blank(b, face)
     b.rect(face, 4, 28, 0, 20, 0, 2, 0)
     for z in range(0, 20):
         for u in range(4, 28):
@@ -35,40 +53,40 @@ def bp_roldeur(b, face):
             b.put(face, u, z, -1, "bord_geel" if z % 2 else "bord_zwart")
 
 
-def bp_kantoor(b, face):
-    b.rect(face, 0, S, 0, 3, 0, 1, "beton2")
+def biz_office(b, face):
+    """Ground floor office: ribbon window, recessed glass entrance and a canopy above it."""
+    biz_blank(b, face)
     b.window(face, 2, 6, 28, 10, sill=False, lintel=False)
-    b.door(face, 13, 6, 0, 17, transom=False, glass_panel=True) if False else None
     b.rect(face, 12, 20, 0, 17, 0, 3, 0)
     b.rect(face, 12, 20, 0, 17, 1, 2, "glas_helder")
     b.rect(face, 10, 22, 17, 18, -5, 0, "antraciet1")
 
 
-def bp_dicht(b, face):
-    b.rect(face, 0, S, 0, 3, 0, 1, "beton2")
-
-
-def bp_lichtstraat(b, face):
-    b.rect(face, 0, S, 0, 3, 0, 1, "beton2")
+def biz_rooflight(b, face):
+    """Upper floor with a full-width ribbon window high in the wall."""
+    biz_blank(b, face)
     b.window(face, 0, 16, 32, 4, sill=False, lintel=False)
 
 
-def bp_logo(b, face):
-    bp_dicht(b, face)
+def biz_logo(b, face):
+    """Closed upper floor with a blue company sign."""
+    biz_blank(b, face)
     b.sign(face, 2, 30, 14, 21, "bord_blauw", "ZWERVR", "bord_wit")
 
 
-reg_style("bedrijfspand", {"bg_roldeur": bp_roldeur, "bg_kantoor": bp_kantoor, "bg_dicht": bp_dicht,
-                           "verd_lichtstraat": bp_lichtstraat, "verd_dicht": bp_dicht, "verd_logo": bp_logo},
+reg_style("bedrijfspand", {"bg_roldeur": biz_roller_door, "bg_kantoor": biz_office, "bg_dicht": biz_blank,
+                           "verd_lichtstraat": biz_rooflight, "verd_dicht": biz_blank, "verd_logo": biz_logo},
           [("bg_roldeur_hoek", "bg_roldeur", "bg_dicht"), ("bg_kantoor_hoek", "bg_kantoor", "bg_dicht"),
            ("verd_lichtstraat_hoek", "verd_lichtstraat", "verd_lichtstraat")],
+          # shed roof: sawtooth with a 16-voxel period along y
           dict(flat_roofs("bedrijfspand"), dak_sheddak=pitched("bedrijfspand", "shed", lambda px, py: (py % 16) * 1.0)))
 
 
-# ------------------------------------------------------------------ industrieel hekwerk
+# ------------------------------------------------------------------ industrial fencing
 
 @tile("props/hekken/hek_industrie")
-def hek_industrie():
+def fence_industrial():
+    """Galvanised mesh fence with a sparse barbed-wire top."""
     m = V(24, 2, 22)
     for x in range(24):
         for z in range(0, 18):
@@ -85,7 +103,8 @@ def hek_industrie():
 
 
 @tile("props/hekken/schuifpoort_industrie")
-def schuifpoort():
+def sliding_gate():
+    """6 m sliding gate with diagonal bracing, hazard-striped bottom rail and a warning light."""
     m = V(48, 6, 22)
     for x in range(1, 47):
         for z in range(2, 18):
@@ -102,7 +121,8 @@ def schuifpoort():
 
 
 @tile("props/hekken/slagboom")
-def slagboom():
+def barrier_arm():
+    """Boom barrier: white post with a red/white striped arm reaching to the right."""
     m = V(72, 6, 10)
     m.box(32, 1, 0, 36, 5, 8, "bord_wit")
     for x in range(36, 70):
@@ -111,16 +131,18 @@ def slagboom():
     return m
 
 
-# ------------------------------------------------------------------ brugwachtershuisjes
+# ------------------------------------------------------------------ bridge-keeper houses
 
 @tile("props/water/brugwachtershuisje_klassiek")
-def brugwachter_klassiek():
+def bridge_house_classic():
+    """Classic brick bridge-keeper house with a window at the front, door on the right
+    and a slate pyramid roof with a gold finial."""
     m = V(16, 16, 26)
     for z in range(0, 14):
         for y in range(2, 14):
             for x in range(2, 14):
                 if x in (2, 13) or y in (2, 13):
-                    m.set(x, y, z, baksteen_fn(x, y, z, 700))
+                    m.set(x, y, z, brick_fn(x, y, z, 700))
     for x in range(4, 12):
         for z in range(6, 11):
             m.set(x, 2, z, "glas1" if x not in (4, 11, 8) and z not in (6, 10) else "kozijn_wit")
@@ -138,7 +160,8 @@ def brugwachter_klassiek():
 
 
 @tile("props/water/brugwachtershuisje_modern")
-def brugwachter_modern():
+def bridge_house_modern():
+    """Modern bridge-keeper house: dark base, all-round glass control room and a flat roof."""
     m = V(16, 16, 22)
     m.box(1, 1, 0, 15, 15, 8, "antraciet1")
     for z in range(8, 18):
@@ -152,10 +175,12 @@ def brugwachter_modern():
     return m
 
 
-# ------------------------------------------------------------------ stalen trappen en draaideur
+# ------------------------------------------------------------------ steel stairs and revolving door
 
 @tile("props/trappen/trap_staal_spiraal")
-def trap_spiraal():
+def stairs_spiral():
+    """Steel spiral staircase: one step per voxel of height, a full turn every 12 steps,
+    with a handrail 6 voxels above the outer edge."""
     m = V(16, 16, 26)
     m.cyl(8, 8, 1, 0, 26, "metaal2")
     for z in range(0, 24):
@@ -168,7 +193,8 @@ def trap_spiraal():
 
 
 @tile("props/trappen/brandtrap")
-def brandtrap():
+def fire_escape():
+    """Straight steel fire-escape stair rising towards the back, with side rails and a top landing."""
     m = V(16, 32, 26)
     for i in range(12):
         z, y = i * 2, 2 + i * 2
@@ -187,70 +213,82 @@ def brandtrap():
 
 
 @tile("details/deuren/draaideur")
-def draaideur():
+def revolving_door():
+    """Revolving door facade attachment (details.att canvas): half-round glass drum
+    sticking out of the wall, four glass wings and a metal top."""
     m = att(20, 6, 20)
-    c = (10, wd(m, 3))
+    cy = wd(m, 3)
     for z in range(0, 20):
+        c = "glas_helder" if z < 18 else "metaal3"
         for y in range(m.sy):
             for x in range(20):
-                d = math.hypot(x + 0.5 - 10, y + 0.5 - c[1])
-                if 8.4 < d < 9.4 and y <= c[1]:
-                    m.set(x, y, z, "glas_helder" if z < 18 else "metaal3")
+                d = math.hypot(x + 0.5 - 10, y + 0.5 - cy)
+                if 8.4 < d < 9.4 and y <= cy:
+                    m.set(x, y, z, c)
         for k in range(4):
             a = k * math.pi / 2 + 0.4
             for r in range(0, 8):
-                m.set(10 + math.cos(a) * r, c[1] + math.sin(a) * r, z, "glas_helder" if z < 18 else "metaal3")
-    m.cyl(10, c[1], 9, 18, 20, "metaal3")
+                m.set(10 + math.cos(a) * r, cy + math.sin(a) * r, z, c)
+    m.cyl(10, cy, 9, 18, 20, "metaal3")
     return m
 
 
-# ------------------------------------------------------------------ grind/zand en heuvels
+# ------------------------------------------------------------------ gravel/sand and hills
 
-register("grond/natuur/grind", lambda: flat(GRIND, top=WALK, sz=8))
-register("grond/natuur/grindpad", lambda: _pad(GRIND))
-register("grond/natuur/zandpad", lambda: _pad(ZAND))
-
-
-def _pad(mat):
-    m = gras_tile(tufts=0.05)
+def _path(mat):
+    """Grass tile with a 12-voxel wide path of `mat` running front to back (x = 10..21)."""
+    m = grass_tile(tufts=0.05)
     for y in range(T):
         for x in range(10, 22):
-            m.clear(x, y, WALK, x + 1, y + 1, 8)
+            m.clear(x, y, WALK, x + 1, y + 1, 8)   # remove grass tufts above the path
             column(m, x, y, WALK, mat)
     return m
 
 
-def blok(mat, top):
+register("grond/natuur/grind", lambda: flat(GRAVEL, top=WALK, sz=8))
+register("grond/natuur/grindpad", lambda: _path(GRAVEL))
+register("grond/natuur/zandpad", lambda: _path(SAND))
+
+
+def block(mat, top):
+    """Solid T x T x FLOOR ground block of `mat` with a `top` surface layer (stackable hill core)."""
     m = V(T, T, FLOOR)
-    for z in range(FLOOR):
-        for y in range(T):
-            for x in range(T):
-                m.set(x, y, z, top if z == FLOOR - 1 else mat)
+    m.box(0, 0, 0, T, T, FLOOR - 1, mat)
+    m.box(0, 0, FLOOR - 1, T, T, FLOOR, top)
     return m
 
 
-for _n, _top, _fill in (("gras", GRAS, AARDE), ("zand", ZAND, ZAND), ("grind", GRIND, GRIND)):
-    _flat = (lambda t: lambda: flat(t, top=WALK, sz=8))(_top)
-    register(f"grond/heuvel/heuvel_{_n}_blok", (lambda f, t: lambda: blok(f, t))(_fill, _top))
-    register(f"grond/heuvel/heuvel_{_n}_helling", (lambda fl, f: lambda: shear(fl(), STRAIGHT, fill=f))(_flat, _fill))
-    register(f"grond/heuvel/heuvel_{_n}_hoek_buiten", (lambda fl, f: lambda: shear(fl(), CORNER_OUT, fill=f))(_flat, _fill))
-    register(f"grond/heuvel/heuvel_{_n}_hoek_binnen", (lambda fl, f: lambda: shear(fl(), CORNER_IN, fill=f))(_flat, _fill))
-    register(f"grond/heuvel/heuvel_{_n}_top", (lambda fl, f: lambda: shear(fl(), lambda x, y: min(4, int(4 - math.hypot(x - 15.5, y - 15.5) / 4)), fill=f))(_flat, _fill))
+def _hill_top(x, y):
+    """Shear offset of a rounded hill top: up to 4 voxels in the centre, falling off outwards."""
+    return min(4, int(4 - math.hypot(x - 15.5, y - 15.5) / 4))
 
 
-# ------------------------------------------------------------------ berm en sloot
+def _hill(top, fill, offset_fn):
+    """Tile function: a flat `top` surface at WALK sheared upwards by offset_fn, filled with `fill`."""
+    return lambda: shear(flat(top, top=WALK, sz=8), offset_fn, fill=fill)
+
+
+for _n, _top, _fill in (("gras", GRASS, EARTH), ("zand", SAND, SAND), ("grind", GRAVEL, GRAVEL)):
+    register(f"grond/heuvel/heuvel_{_n}_blok", (lambda f, t: lambda: block(f, t))(_fill, _top))
+    for _suffix, _offset in (("helling", STRAIGHT), ("hoek_buiten", CORNER_OUT), ("hoek_binnen", CORNER_IN), ("top", _hill_top)):
+        register(f"grond/heuvel/heuvel_{_n}_{_suffix}", _hill(_top, _fill, _offset))
+
+
+# ------------------------------------------------------------------ verge and ditch
 
 @tile("grond/weg/berm")
-def berm():
+def verge():
+    """Rural road edge: asphalt (x < 10) with dashed edge line, gravel strip and a grass verge
+    with white/red reflector posts every 16 voxels."""
     m = new()
     for y in range(T):
         for x in range(T):
             if x < 10:
-                column(m, x, y, ROAD, ASFALT)
+                column(m, x, y, ROAD, ASPHALT)
             elif x < 13:
-                column(m, x, y, ROAD, GRIND)
+                column(m, x, y, ROAD, GRAVEL)
             else:
-                column(m, x, y, WALK, GRAS)
+                column(m, x, y, WALK, GRASS)
                 if h(x, y, 0, 701) < 0.1:
                     m.set(x, y, WALK, "gras_droog")
     line_y(m, 8, dash=(4, 8, 0))
@@ -262,19 +300,27 @@ def berm():
     return m
 
 
-@tile("grond/water/sloot")
-def sloot():
+def _ditch(dist, seed):
+    """Ditch tile: water (z=1, mud below) where dist(x, y) < 6, muddy banks at ROAD height
+    up to 9, grass beyond."""
     m = new(8)
     for y in range(T):
         for x in range(T):
-            d = abs(x + 0.5 - 16)
+            d = dist(x, y)
             if d < 6:
                 m.set(x, y, 0, "modder")
                 m.set(x, y, 1, WATER)
             elif d < 9:
-                column(m, x, y, ROAD, mix("gras5", "aarde1", seed=702))
+                column(m, x, y, ROAD, mix("gras5", "aarde1", seed=seed))
             else:
-                column(m, x, y, WALK, GRAS)
+                column(m, x, y, WALK, GRASS)
+    return m
+
+
+@tile("grond/water/sloot")
+def ditch():
+    """Straight ditch running front to back through the middle, with reeds along the banks."""
+    m = _ditch(lambda x, y: abs(x + 0.5 - 16), 702)
     for y in range(T):
         for x in (10, 21):
             if h(x, y, 0, 703) < 0.4:
@@ -284,39 +330,30 @@ def sloot():
 
 
 @tile("grond/water/sloot_bocht")
-def sloot_bocht():
-    m = new(8)
-    for y in range(T):
-        for x in range(T):
-            d = abs(math.hypot(x + 0.5 - 32, y + 0.5) - 16)
-            if d < 6:
-                m.set(x, y, 0, "modder")
-                m.set(x, y, 1, WATER)
-            elif d < 9:
-                column(m, x, y, ROAD, mix("gras5", "aarde1", seed=704))
-            else:
-                column(m, x, y, WALK, GRAS)
-    return m
+def ditch_curve():
+    """Quarter-circle ditch (radius 16 around the front-right corner), connecting front and right."""
+    return _ditch(lambda x, y: abs(math.hypot(x + 0.5 - 32, y + 0.5) - 16), 704)
 
 
 @tile("grond/water/duiker")
-def duiker():
-    """Sloot onder een weg door (dam met duiker)."""
+def culvert():
+    """Ditch passing under a road (dam with culvert): asphalt dam with concrete pipe ends at front and back."""
     m = new(8)
     for y in range(T):
         for x in range(T):
-            column(m, x, y, ROAD, ASFALT, "aarde2")
+            column(m, x, y, ROAD, ASPHALT, "aarde2")
     for y in (0, 31):
         for x in range(10, 22):
             for z in range(0, 2):
-                m.set(x, y, z, BETON_D)
+                m.set(x, y, z, CONCRETE_DARK)
     return m
 
 
-# ------------------------------------------------------------------ middenberm-lantaarns, bollen, verkeerszuil
+# ------------------------------------------------------------------ median streetlight, bollards, traffic bollard
 
 @tile("props/verlichting/lantaarn_middenberm")
-def lantaarn_middenberm():
+def streetlight_median():
+    """10 m median streetlight: central 2x2 mast with two arms of 34 voxels, lamps at the ends."""
     m = V(80, 4, 84)
     for z in range(0, 80):
         for x in (39, 40):
@@ -324,44 +361,48 @@ def lantaarn_middenberm():
             m.set(x, 2, z, "gegalvaniseerd")
     for side in (-1, 1):
         for i in range(0, 34):
-            x = 40 + side * i if side > 0 else 39 - i
+            x = 40 + i if side > 0 else 39 - i
             z = 80 + min(2, i // 6)
             m.set(x, 1, z, "gegalvaniseerd")
             m.set(x, 2, z, "gegalvaniseerd")
         for i in range(27, 35):
-            x = 40 + side * i if side > 0 else 39 - i
+            x = 40 + i if side > 0 else 39 - i
             m.set(x, 1, 81, "lamp_wit")
             m.set(x, 2, 81, "lamp_wit")
     return m
 
 
 @tile("props/verkeer/afzetbol_beton")
-def afzetbol():
+def bollard_ball():
+    """Concrete barrier ball."""
     m = V(6, 6, 6)
     m.ellipsoid(3, 3, 2.8, 2.8, 2.8, 2.8, mix("beton1", "beton3", seed=705))
     return m
 
 
 @tile("props/verkeer/afzetbol_rood_wit")
-def afzetbol_rw():
+def bollard_ball_rw():
+    """Barrier ball, white with a red band."""
     m = V(6, 6, 6)
     m.ellipsoid(3, 3, 2.8, 2.8, 2.8, 2.8, lambda x, y, z: P["bord_rood"] if z in (2, 3) else P["bord_wit"])
     return m
 
 
 @tile("props/verkeer/verkeerszuil")
-def verkeerszuil():
+def traffic_bollard():
+    """Illuminated traffic bollard (keep-left island marker) with a blue arrow on the front."""
     m = V(6, 6, 12)
     for z in range(12):
         m.cyl(3, 3, 2.4 - z * 0.05, z, z + 1, "lamp_wit" if 2 < z < 10 else "bord_wit")
-    for (c, r) in [(2, 8), (3, 7), (1, 7), (2, 6), (2, 5), (2, 4)]:
-        m.set(c + 0, 0, r, "bord_blauw")
+    for (x, z) in [(2, 8), (3, 7), (1, 7), (2, 6), (2, 5), (2, 4)]:
+        m.set(x, 0, z, "bord_blauw")
     return m
 
 
 @tile("props/verkeer/verkeerszuil_geel")
-def verkeerszuil_geel():
-    m = verkeerszuil()
+def traffic_bollard_yellow():
+    """Traffic bollard variant with amber light instead of white."""
+    m = traffic_bollard()
     for z in range(3, 10):
         for y in range(6):
             for x in range(6):
@@ -370,23 +411,25 @@ def verkeerszuil_geel():
     return m
 
 
-# ------------------------------------------------------------------ loopbruggen (op hoogte, over wegen)
+# ------------------------------------------------------------------ footbridges (elevated, over roads)
 
-def loopbrug(dicht):
+def walkway(closed):
+    """Footbridge deck tile (20 wide, x = 6..25, running front to back): tiled deck on a steel
+    plate with glass balustrades; `closed` adds a full-height glass tube with roof and lights."""
     m = V(T, T, 32)
     for y in range(T):
         for x in range(6, 26):
             m.set(x, y, 0, "metaal2")
             m.set(x, y, 1, mix("tegel1", "tegel3", seed=706))
         for x in (6, 25):
-            if dicht:
+            if closed:
                 for z in range(2, 22):
                     m.set(x, y, z, "glas_helder" if y % 8 else "metaal3")
             else:
                 for z in range(2, 9):
                     m.set(x, y, z, "glas_helder")
                 m.set(x, y, 9, "rvs")
-        if dicht:
+        if closed:
             for x in range(6, 26):
                 m.set(x, y, 22, "metaal3" if (y % 8 == 0 or x in (6, 25)) else "glas_helder")
             if y % 8 == 4:
@@ -394,19 +437,21 @@ def loopbrug(dicht):
     return m
 
 
-register("grond/brug/loopbrug_overdekt", lambda: loopbrug(True))
-register("grond/brug/loopbrug_open", lambda: loopbrug(False))
+register("grond/brug/loopbrug_overdekt", lambda: walkway(True))
+register("grond/brug/loopbrug_open", lambda: walkway(False))
 
 
 @tile("grond/brug/loopbrug_trap")
-def loopbrug_trap():
-    """Trap die 1 grond-laag stijgt (stapelbaar naar een loopbrug)."""
+def walkway_stairs():
+    """Stair rising one ground layer (FLOOR) from front to back; stackable up to a footbridge."""
     m = V(T, T, FLOOR + 10)
     for y in range(T):
         top = 2 + y // 4
         for x in range(8, 24):
             m.set(x, y, top - 1, "metaal1")
-            m.set(x, y, top - 2, "metaal2") if top > 2 else None
+            if top > 2:
+                m.set(x, y, top - 2, "metaal2")
+        # handrails with a post every 6 voxels
         for x in (8, 23):
             m.set(x, y, top + 7, "rvs")
             if y % 6 == 0:
@@ -419,29 +464,30 @@ def loopbrug_trap():
 
 
 @tile("grond/brug/loopbrug_pijler")
-def loopbrug_pijler():
+def walkway_pier():
+    """Footbridge pier: 4x4 steel column one ground layer high, stackable."""
     m = V(T, T, FLOOR)
-    for z in range(FLOOR):
-        m.box(14, 14, z, 18, 18, z + 1, "metaal2")
+    m.box(14, 14, 0, 18, 18, FLOOR, "metaal2")
     return m
 
 
 @tile("props/overig/persoon_1m80")
-def persoon():
-    """Schaalmodel: persoon van 1,80 m (14-15 voxels) om maten te controleren."""
+def person():
+    """Scale model: a 1.80 m person (15 voxels) for checking dimensions."""
     m = V(6, 4, 15)
+    # legs and shoes
     for z in range(0, 7):
         for x in (1, 4):
             m.set(x, 2, z, "stof1")
-            m.set(x + (1 if x == 1 else -1) * 0, 1, z, "stof1") if False else None
-    for z in range(0, 1):
-        for x in (1, 4):
-            m.set(x, 1, z, "bord_zwart")
+    for x in (1, 4):
+        m.set(x, 1, 0, "bord_zwart")
+    # torso with arms
     for z in range(7, 12):
         for x in range(1, 5):
             m.set(x, 2, z, "stof2")
         m.set(0, 2, z, "gordijn1" if z < 9 else "stof2")
         m.set(5, 2, z, "gordijn1" if z < 9 else "stof2")
+    # head and hair
     for z in range(12, 15):
         for x in range(2, 4):
             m.set(x, 2, z, "gordijn1" if z < 14 else "hout_donker2")
