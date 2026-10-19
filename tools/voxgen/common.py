@@ -15,7 +15,7 @@ CURVES = {}  # curve cell tile path -> (i, j, parts) for the curve slope shapes
 SMOOTH = {}  # tile path -> {"shape", "lift", "keep_x"}: tile is a padded block the importer smooths
 
 # slope shapes, in the order they are written to the metadata
-SLOPE_SHAPES = ("steil", "flauw_a", "flauw_b", "hoek_buiten", "hoek_binnen", "brug", "brug_rand",
+SLOPE_SHAPES = ("steil", "flauw_a", "flauw_b", "hoek_buiten", "hoek_binnen", "brug", "brug_rand", "brug_rand_rechts",
                 "bocht", "bocht_rechts", "brug_bocht", "brug_bocht_rechts", "brug_vlak")
 
 T = 32          # ground tile width in voxels (4 m at 0.125 m/voxel)
@@ -33,7 +33,8 @@ def register(path, fn):
 def slopes(path, *shapes, curve=None):
     """Let the importer also make the given slope shapes of flat tile ``path``; they become
     tiles grond/helling/helling_<name> (steil), flauw_<name>_a / _b,
-    helling_<name>_hoek_buiten / _binnen and helling_brug_<name> / helling_brug_<name>_rand.
+    helling_<name>_hoek_buiten / _binnen and helling_brug_<name> / helling_brug_<name>_rand
+    / helling_brug_<name>_rand_rechts (parapet on the left / right).
     The curve shapes of a flat curve cell need ``curve=(i, j, parts)``: they become
     grond/helling_bocht/<profile>[_rechts]_<i>_<j>, helling_bocht/brug_<profile>[_rechts]_<i>_<j>
     and brug/bocht_<profile>_<i>_<j>. Written to the metadata as "slopes" and "curve"."""

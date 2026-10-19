@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=5
+type="ArrayMesh"
+uid="uid://c1ophbbgv0t0l"
+path="res://.godot/imported/afrit_3_3.vox-10e72c481ecf8fbc1d092c51d9a58513.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/grond/snelweg/afrit_3_3.vox"
+dest_files=["res://.godot/imported/afrit_3_3.vox-10e72c481ecf8fbc1d092c51d9a58513.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(4, 1.5, 4)

@@ -1706,76 +1706,21 @@ def bridge_abutment():
 
 # ------------------------------------------------------------- ramps
 
-def shear(flat_tile, offset_fn, fill=EARTH, thin=False, rails=None):
-    """Shear a flat tile into a ramp: column (x, y) is raised by offset_fn(x, y) voxels.
-    The plain ramps of existing flat tiles are made by the importer instead (``slopes``
-    below, addons/vox_tiles/slopes.gd does the same shear with fill=EARTH).
-
-    The output is FLOOR + 1 voxels taller than the input.
-    fill:  colour for the solid embankment below the raised surface (falsy = hollow).
-    thin:  bridge ramp: drop the lower layers of the source and put a 2-voxel concrete
-           slab directly under the surface instead of fill.
-    rails: x columns that get a parapet (concrete wall + metal railing), following the slope.
-    """
-    out = V(flat_tile.sx, flat_tile.sy, flat_tile.sz + FLOOR + 1)
-    for y in range(flat_tile.sy):
-        for x in range(flat_tile.sx):
-            o = offset_fn(x, y)
-            for z in range(flat_tile.sz):
-                c = flat_tile.get(x, y, z)
-                if not c:
-                    continue
-                if thin and z < ROAD - 2:
-                    continue
-                out.set(x, y, z + o, c)
-            if thin:
-                out.set(x, y, o, CONCRETE_DARK)
-                if o > 0:
-                    out.set(x, y, o - 1, CONCRETE_DARK)
-            elif fill:
-                for z in range(o):
-                    out.set(x, y, z, fill)
-    if rails:
-        for xs in rails:
-            for y in range(T):
-                _parapet(out, xs, y, offset_fn(xs, y), (xs,))
-    return out
-
-
 def padded(flat_tile, lift=2, fill=EARTH):
     """A flat tile raised by `lift` voxels on a `fill` block: the importer moves it onto a
-    smooth slope (common.smooth, addons/vox_tiles/slopes.gd) instead of 1-voxel steps."""
-    return shear(flat_tile, lambda x, y: lift, fill=fill)
-
-
-# Ramp offset functions (x, y) -> z offset; rise one ground storey (8 voxels) over 32 voxels.
-STRAIGHT = lambda x, y: y // 4                # rises towards the back
-CORNER_OUT = lambda x, y: min(x, y) // 4      # outer corner: high only at back-right
-CORNER_IN = lambda x, y: max(x, y) // 4       # inner corner: low only at front-left
-
-# ramp name suffix -> source flat tile function
-RAMP_SOURCES = {
-    "weg_vlak": road_plain,
-    "rijstrook_onderbroken_kant": partial(lane, "onderbroken", "kant"),
-    "rijstrook_geen_kant": partial(lane, "geen", "kant"),
-    "rijstrook_streep_kant": partial(lane, "streep", "kant"),
-    "rijstrook_onderbroken_geen": partial(lane, "onderbroken", "geen"),
-    "snelweg_rijstrook": highway_lane,
-    "snelweg_vluchtstrook": highway_hard_shoulder,
-    "fietspad_recht": bike_path_straight,
-    "stoep_vol": partial(sidewalk, ""),
-    "stoep_rand": partial(sidewalk, "v"),
-    "stoep_goot_rand": partial(sidewalk, "v", gutter=True),
-    "straat_klinkers": street_pavers,
-    "plein_tegels": square_tiles,
-    "gras": grass,
-    "trein_recht": train_straight,
-    "tram_recht": tram_straight,
-}
-
-
-def _ramp(src, offset_fn=STRAIGHT, **kw):
-    return shear(src(), offset_fn, **kw)
+    smooth slope (common.smooth, addons/vox_tiles/slopes.gd) instead of 1-voxel steps.
+    The plain ramps of existing flat tiles are made by the importer from the flat tile
+    itself (``slopes`` below)."""
+    out = V(flat_tile.sx, flat_tile.sy, flat_tile.sz + lift)
+    for y in range(flat_tile.sy):
+        for x in range(flat_tile.sx):
+            for z in range(flat_tile.sz):
+                c = flat_tile.get(x, y, z)
+                if c:
+                    out.set(x, y, z + lift, c)
+            for z in range(lift):
+                out.set(x, y, z, fill)
+    return out
 
 
 # steep ramps (1 m per tile) grond/helling/helling_<name>, made by the importer
@@ -1786,10 +1731,13 @@ for _p in ("weg/weg_vlak", "weg/rijstrook_onderbroken_kant", "weg/rijstrook_geen
     slopes("grond/" + _p, "steil")
 
 # bridge ramps grond/helling/helling_brug_<name> (thin deck) and helling_brug_<name>_rand
-# (parapet on the left), made by the importer like shear(thin=True, rails=(0,))
+# (parapet on the left), made by the importer (addons/vox_tiles/slopes.gd)
 for _p in ("weg/weg_vlak", "weg/rijstrook_onderbroken_kant", "weg/rijstrook_geen_kant", "fietspad/fietspad_recht",
            "stoep/stoep_vol", "spoor/trein_recht", "tram/tram_recht"):
     slopes("grond/" + _p, "brug", "brug_rand")
+# both edges of the ramps of the curved bridges, and klinker streets on bridges
+slopes("grond/stoep/stoep_vol", "brug_rand_rechts")
+slopes("grond/weg/straat_klinkers", "brug")
 
 slopes("grond/natuur/gras", "hoek_buiten", "hoek_binnen")
 register("grond/helling/helling_dijk_beton", lambda: padded(flat(CONCRETE, top=WALK), fill=CONCRETE_DARK))

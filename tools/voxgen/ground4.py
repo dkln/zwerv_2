@@ -82,17 +82,15 @@ outer 3; tunnel tiles 1).
 import math
 from functools import partial
 
-from common import T, WALK, FLOOR, register, slopes
-from palette import P
+from common import T, FLOOR, register, slopes
 from vox import V
-from ground import EARTH, CONCRETE, CONCRETE_DARK, grass_tile
+from ground import EARTH, grass_tile
 from ground2 import tunnel
 from ground3 import CURVE_PROFILES, CURVE_RADIUS, curve_polar, _curve_source, _profile
 
 QUARTER = math.pi / 2
 RISING_PROFILES = ("straat", "klinkerstraat", "weg", "fietspad")   # profiles that get height variants
 PIER_R = 5.2          # radius of brug_pijler (ground.pier)
-EARTH_SUB = P["aarde2"]   # sub-surface colour of the flat source tiles (turned into concrete on decks)
 
 
 def curve_size(w):
@@ -161,77 +159,20 @@ def curve_floors(profile, right=False):
     return {c: cell_floor(c[0], c[1], w, hf) for c in used_cells(w)}
 
 
-def _parapet_column(m, x, y, base, rail, s_edge):
-    """Parapet slice on a curved edge (cf. ground._parapet): concrete wall base..base+WALK+4;
-    on the outermost column (`rail`) a metal post every 8 voxels of edge arc length and the top rail."""
-    for z in range(base, base + WALK + 4):
-        m.set(x, y, z, CONCRETE)
-    if rail:
-        if int(s_edge) % 8 == 2:
-            for z in range(base + WALK + 4, base + WALK + 8):
-                m.set(x, y, z, "metaal2")
-        m.set(x, y, base + WALK + 8, "metaal3")
-
-
-def _pier_stub(m, x, y, top):
-    """Pier column (same look as ground.pier) at (x, y) from z=0 up to (excluding) top."""
-    for z in range(top):
-        m.set(x, y, z, CONCRETE if (x + z) % 7 else "beton_donker")
-
-
-def curve_cell(src, w, i, j, height=None, deck=False, ground_fill=None):
-    """Build cell (i, j) of a curve that maps the wide profile model `src` onto the ring.
-
-    height: function angle -> surface offset in voxels above floor 0 (None = flat). The
-            cell is meant for floor cell_floor(); offsets are taken relative to it.
-    deck:   thin bridge deck: no fill, the sub-surface earth of the source becomes
-            concrete, a concrete underside (like ground.shear(thin=True)), parapets on
-            both curved edges and a pier stub under the cell centre (pier_cell).
-            Otherwise the space below a raised surface is filled with earth.
-    ground_fill: tile whose columns fill the rest of the cell (off the ring); only used when
-            the cell is on floor 0, so the cell has no holes next to the curve.
-    """
-    cols = ring_columns(i, j, w)
-    hfun = height or (lambda a: 0)
-    base = min(hfun(a) for (_, _, _, a, _) in cols) // FLOOR * FLOOR
-    local = {(x, y): hfun(a) - base for (x, y, _, a, _) in cols}
-    m = V(T, T, min(256, max(local.values()) + src.sz))
+def curve_cell(src, w, i, j):
+    """Build cell (i, j) of a flat curve that maps the wide profile model `src` onto the
+    ring (the tunnel curve; the rising curves and curved bridge decks are made by the
+    importer from the flat curve cells, see the registration below)."""
+    m = V(T, T, src.sz)
     rmid = CURVE_RADIUS * T + w * T / 2.0
-    last = w * T - 1
-    for (x, y, u, a, r) in cols:
-        o = local[(x, y)]
+    for (x, y, u, a, r) in ring_columns(i, j, w):
         by = int(a * rmid) % T
         for z in range(src.sz):
             c = src.get(u, by, z)
             if c:
-                m.set(x, y, z + o, CONCRETE_DARK if deck and c == EARTH_SUB else c)
-        if deck:
-            m.set(x, y, o, CONCRETE_DARK)
-            if o > 0:
-                m.set(x, y, o - 1, CONCRETE_DARK)
-            if u in (0, 1, last - 1, last):
-                _parapet_column(m, x, y, o, u in (0, last), a * r)
-        elif height:
-            for z in range(o):
-                m.set(x, y, z, EARTH)
-    if deck and pier_cell(i, j, w):
-        for (x, y, _, _, _) in cols:
-            if math.hypot(x + 0.5 - T / 2, y + 0.5 - T / 2) < PIER_R:
-                o = local[(x, y)]
-                _pier_stub(m, x, y, o - 1 if o > 0 else 0)
-    if ground_fill is not None and base == 0:
-        ring = set(local)
-        for y in range(T):
-            for x in range(T):
-                if (x, y) not in ring:
-                    for z in range(min(ground_fill.sz, m.sz)):
-                        c = ground_fill.get(x, y, z)
-                        if c:
-                            m.set(x, y, z, c)
+                m.set(x, y, z, c)
     return m
 
-
-# ------------------------------------------------------------------ tile builders
 
 def fill_block(w, i, j, grass=False):
     """One floor of solid earth with the footprint of the profile ring in cell (i, j);

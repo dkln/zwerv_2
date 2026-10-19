@@ -85,13 +85,21 @@ is ingezet.
 | 59..63, 55..79 | Tunnelbak voor auto en fiets die onder de snelweg door gaat |
 | 63..72, 55..71 | Brede boulevard: 2 rijstroken, stoep met halte, 2 trambanen, stoep met halte, 2 rijstroken |
 | 73..95, 55..71 | Viaduct over een weg met middenberm, luxe appartementen met penthouse en daktuin/dakzwembad, kantoor met grind-/bitumen-/groendak en koelinstallaties, rijtjes met groendak, busstation, sporthal |
-| z 72..79 | Snelweg (vluchtstroken, middenberm, portalen met blauwe borden, lantaarns) met auto- en fietstunnel eronder |
+| z 72..79 | Snelweg (vluchtstroken, middenberm, portalen met blauwe borden, lantaarns) met auto- en fietstunnel eronder en een aansluiting met af- en toerit (x 34..58) |
 | z 80..98 | Campus: universiteit, hogeschool, twee kantoortorens met kolonnade en een loopbrug ertussen; ernaast (x 62..95, z 86..97) een autovrije winkelstraat met alle winkel- en horecatypes, terrassen, bomen, fontein en paaltjes bij de ingangen |
-| vanaf z 100 | Demowijken (ook: kruisingen met verkeerslichten in alle standen en een bedrijventerrein met loodsen, magazijn, fabriek met rokende schoorsteen): een buurt per gebouwstijl (bouwblok met alle gevels, winkels en hoekpanden, hofje met kappen om de hoek, zadeldak-L en -T, rijtje smalle panden met elk een andere gevel/top, torens, een "detailpand" met aangebrachte ramen/deuren/luifels/zonwering/teksten/dakonderdelen), een dakenwijk met alle dakpansoorten, hallen en parkeergarage, een verkeerstuin met alle markeringen in doorlopende straten, kruispunten met eilanden/rotonde/stoephoeken, fiets-, tram- en spoorlussen, een dijk met alle hellingen en heuvels, een tunnelpark, een kanaal met alle bruggen en een natuur- en recreatiepark |
+| vanaf z 99 | Demowijken als stadsblokken aan een doorlopend stratennet (ook: kruisingen met verkeerslichten in alle standen en een bedrijventerrein met loodsen, magazijn, fabriek met rokende schoorsteen): een buurt per gebouwstijl (bouwblok met alle gevels, winkels en hoekpanden, hofje met kappen om de hoek, zadeldak-L en -T, rijtje smalle panden met elk een andere gevel/top, torens, een "detailpand" met aangebrachte ramen/deuren/luifels/zonwering/teksten/dakonderdelen), een dakenwijk met alle dakpansoorten, hallen en parkeergarage, een verkeerstuin met alle markeringen in doorlopende straten, kruispunten met eilanden/rotonde/stoephoeken, fiets-, tram- en spoorlussen, een dijk met alle hellingen en heuvels, een tunnelpark, een kanaal met alle bruggen, keerlussen met stijgende bochten (dijk en brug), viaductbochten en een natuur- en recreatiepark |
 
 Elke tile staat ergens in de kaart in een realistische situatie; de wijken
 worden automatisch opgebouwd uit de bibliotheken, dus nieuwe tiles komen er bij
-het opnieuw bouwen vanzelf bij (`_demowijken()` in `tools/build_example_city.gd`).
+het opnieuw bouwen vanzelf bij (`_demo_districts()` in `tools/build_example_city.gd`).
+De demowijken vormen samen met de oude stad één stad: ze liggen als bouwblokken
+aan een stratennet (2 rijstroken, kruispunten, lantaarns en bomen) dat via twee
+straten op de campusweg aansluit; waar een wijk ruimte laat staan gebouwen langs de
+straat in de stijl van de wijk, en lege plekken worden gewone stadsblokken. Rond de
+hele kaart ligt een strook polder. De snelweg heeft een aansluiting met af- en
+toerit (`snelweg/afrit_*`, `toerit_*`, x 34..58), en de wijken "keerlussen" en
+"viaductbochten" tonen de stijgende bochten als dijk- en bruglussen en de vlakke
+bochtbruggen op pijlers.
 
 Controleren of echt alle tiles in de kaart staan:
 

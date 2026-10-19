@@ -679,6 +679,26 @@ def highway_gantry():
     return m
 
 
+@tile("props/borden/bord_afrit")
+def sign_exit():
+    """Exit sign at the gore (beslispunt): blue board "AFRIT" with an arrow pointing up and to
+    the right (away from the motorway), on two poles."""
+    m = V(36, 4, 34)
+    pole(m, 3, 2, 0, 34, "metaal3")
+    pole(m, 32, 2, 0, 34, "metaal3")
+    _framed_panel(m, 1, 34, 18, 33, 1, "bord_wit", "bord_blauw", back="metaal1")
+    px, (tw, _) = text_pixels("AFRIT")
+    _stamp(m, px, 4, 0, 30, "bord_wit")
+    # diagonal arrow: shaft from bottom left to top right, head at the top right
+    for k in range(8):
+        m.set(24 + k, 0, 20 + k, "bord_wit")
+        m.set(25 + k, 0, 20 + k, "bord_wit")
+    for k in range(4):
+        m.set(32 - k, 0, 28, "bord_wit")
+        m.set(32, 0, 28 - k, "bord_wit")
+    return m
+
+
 @tile("props/borden/hectometerpaal")
 def hectometre_post():
     """Green hectometre marker post."""

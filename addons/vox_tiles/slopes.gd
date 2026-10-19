@@ -22,9 +22,9 @@ const Mesher = preload("res://addons/vox_tiles/vox_mesher.gd")
 ## Straight shapes, rising towards the back: steil: 1 m (one ground layer) over the
 ## tile; flauw_a / flauw_b: lower and upper half of a 1 m rise over two tiles;
 ## hoek_buiten / hoek_binnen: corners of a steep embankment (high only at the back
-## right / low only at the front left); brug / brug_rand: steep bridge ramp (thin
-## deck on a concrete slab), brug_rand with a parapet on the left.
-const SHAPES := ["steil", "flauw_a", "flauw_b", "hoek_buiten", "hoek_binnen", "brug", "brug_rand"]
+## right / low only at the front left); brug / brug_rand / brug_rand_rechts: steep bridge
+## ramp (thin deck on a concrete slab), with a parapet on the left / right.
+const SHAPES := ["steil", "flauw_a", "flauw_b", "hoek_buiten", "hoek_binnen", "brug", "brug_rand", "brug_rand_rechts"]
 ## Curve shapes (need "curve"), see tools/voxgen/ground4.py: bocht / bocht_rechts:
 ## embankment rising along the curve (climbing you turn left / right); brug_bocht /
 ## brug_bocht_rechts: the same as a thin bridge deck with parapets and a pier stub;
@@ -81,6 +81,8 @@ static func item_name(key: String, shape: String) -> String:
 			return "helling/helling_brug_" + base
 		"brug_rand":
 			return "helling/helling_brug_%s_rand" % base
+		"brug_rand_rechts":
+			return "helling/helling_brug_%s_rand_rechts" % base
 		"hoek_buiten", "hoek_binnen":
 			return "helling/helling_%s_%s" % [base, shape]
 	# curve cell "<profile>_<i>_<j>"
@@ -245,11 +247,12 @@ static func build(vox, p: Dictionary):
 			else:
 				for z in lift:
 					g.mix(x, y, z, EARTH)
-	if p.shape == "brug_rand":
+	if p.shape.begins_with("brug_rand"):
+		var rx: int = 0 if p.shape == "brug_rand" else vox.size.x - 1
 		for y in vox.size.y:
 			for z in range(lift, lift + WALK + 4):
-				g.mix(0, y, z, CONCRETE)
-			_railing(g, 0, y, lift, y % 8 == 2)
+				g.mix(rx, y, z, CONCRETE)
+			_railing(g, rx, y, lift, y % 8 == 2)
 	return g.to_vox()
 
 
