@@ -90,6 +90,7 @@ func _init() -> void:
 	_own_tints(world)
 	world.set_meta("catalog_start_m", catalog_start)
 	world.set_meta("districts", districts)
+	world.set_meta("places", places)
 	_save(world, "res://scenes/wereld.tscn")
 	var empty := _make_scene("NieuweKaart")
 	_own_tints(empty)
@@ -2383,6 +2384,7 @@ var _special := {}    # street cells that are not ordinary lanes (roundabouts, a
 var _h_rows := []     # z of the north lane of every full-width east-west street
 var _district_name := ""  # name recorded for the next _district call
 var districts := []  # {name, x, z, w, d} per demo district, saved as scene metadata
+var places := {}     # slug -> Vector2 (metres) of spots found while building, saved as scene metadata (tour stops)
 var _detail_queue := {}   # group -> Array of names (queue)
 var _prop_lists := {"street": [], "green": [], "water": []}  # kind -> prop names, filled from the library
 var _prop_counter := {}  # kind -> round-robin index into _prop_lists
@@ -2796,6 +2798,9 @@ func _dress_streets() -> void:
 		var c2: Vector2i = candidates[candidates.size() * 2 / 3]
 		_intersection_with_lights(c1.x, c1.y, "groen", "rood", "rijden", "stop", "groen", "rood")
 		_intersection_with_lights(c2.x, c2.y, "oranje", "rood", "attentie", "stop", "oranje", "rood")
+		# the 2 x 2 crossing cells start at c: its centre lies on the far corner of c
+		places["verkeerslichten"] = Vector2(c1 + Vector2i.ONE) * 4.0
+		places["verkeerslichten_2"] = Vector2(c2 + Vector2i.ONE) * 4.0
 
 
 ## Lane tiles of one street section (cells of its first lane, west to east or north to

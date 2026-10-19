@@ -42,6 +42,13 @@ func _process(delta: float) -> void:
 	_apply()
 
 
+## Sets the clock to `hour` (any value, wrapped to 0..24) and applies it at once; the
+## tour (tour.gd) tweens this to run through the day.
+func set_time(hour: float) -> void:
+	time_of_day = fposmod(hour, 24.0)
+	_apply()
+
+
 ## Applies `time_of_day` to the sun, fill light, environment, sky and shader globals.
 func _apply() -> void:
 	if _sun == null:

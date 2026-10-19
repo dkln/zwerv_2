@@ -67,13 +67,13 @@ dof_blur_near_enabled = true
 dof_blur_near_distance = 250.0
 dof_blur_near_transition = 110.0
 
-[node name="NieuweKaart" type="Node3D" unique_id=870897989]
+[node name="NieuweKaart" type="Node3D" unique_id=1016867630]
 
-[node name="Omgeving" type="WorldEnvironment" parent="." unique_id=739733759]
+[node name="Omgeving" type="WorldEnvironment" parent="." unique_id=1917220812]
 environment = SubResource("Environment_0uy6c")
 compositor = SubResource("Compositor_o8xcd")
 
-[node name="Zon" type="DirectionalLight3D" parent="." unique_id=1978009683]
+[node name="Zon" type="DirectionalLight3D" parent="." unique_id=1044798887]
 transform = Transform3D(0.8910065, -0.4008498, 0.21313564, 0, 0.4694716, 0.88294756, -0.4539905, -0.78671205, 0.41830227, 0, 0, 0)
 light_color = Color(1, 0.93, 0.82, 1)
 light_energy = 1.55
@@ -84,25 +84,25 @@ shadow_opacity = 0.82
 shadow_blur = 0.4
 directional_shadow_max_distance = 500.0
 
-[node name="Vullicht" type="DirectionalLight3D" parent="." unique_id=1887365486]
+[node name="Vullicht" type="DirectionalLight3D" parent="." unique_id=453097760]
 transform = Transform3D(-0.9396926, 0.19617471, -0.2801665, 0, 0.81915206, 0.57357645, 0.34202015, 0.53898555, -0.76975113, 0, 0, 0)
 light_color = Color(0.62, 0.74, 1, 1)
 light_energy = 0.22
 
-[node name="Grond" type="GridMap" parent="." unique_id=1059154699]
+[node name="Grond" type="GridMap" parent="." unique_id=62828767]
 mesh_library = ExtResource("2_oliop")
 cell_size = Vector3(4, 1, 4)
 cell_octant_size = 4
 cell_center_y = false
 
-[node name="Gebouwen" type="GridMap" parent="." unique_id=964762084]
+[node name="Gebouwen" type="GridMap" parent="." unique_id=1364903286]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.375, 0)
 mesh_library = ExtResource("3_ycelv")
 cell_size = Vector3(4, 3, 4)
 cell_octant_size = 4
 cell_center_y = false
 
-[node name="Details" type="GridMap" parent="." unique_id=335019320]
+[node name="Details" type="GridMap" parent="." unique_id=1198974424]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.375, 0)
 mesh_library = ExtResource("4_pfr04")
 cell_size = Vector3(0.5, 0.5, 0.5)
@@ -111,7 +111,7 @@ cell_center_x = false
 cell_center_y = false
 cell_center_z = false
 
-[node name="Props" type="GridMap" parent="." unique_id=544241953]
+[node name="Props" type="GridMap" parent="." unique_id=958912990]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.25, 0)
 mesh_library = ExtResource("5_3i5g6")
 cell_size = Vector3(0.5, 0.5, 0.5)
@@ -120,7 +120,7 @@ cell_center_x = false
 cell_center_y = false
 cell_center_z = false
 
-[node name="Camera" type="Camera3D" parent="." unique_id=1410180225]
+[node name="Camera" type="Camera3D" parent="." unique_id=1099063748]
 transform = Transform3D(0.70710677, -0.40824434, 0.577353, 0, 0.8165005, 0.5773447, -0.70710677, -0.40824434, 0.577353, 301.20203, 229.20203, 289.20203)
 attributes = SubResource("CameraAttributesPractical_ryovf")
 fov = 20.0
@@ -128,14 +128,14 @@ near = 2.0
 far = 6000.0
 script = ExtResource("6_a0g6y")
 
-[node name="DetailNiveau" type="Node" parent="." unique_id=1398468927]
+[node name="DetailNiveau" type="Node" parent="." unique_id=1740005935]
 script = ExtResource("7_tn8xy")
 
-[node name="Dagcyclus" type="Node" parent="." unique_id=1406508898]
+[node name="Dagcyclus" type="Node" parent="." unique_id=533889610]
 script = ExtResource("8_215vn")
 
-[node name="Rook" type="Node3D" parent="." unique_id=1445298988]
+[node name="Rook" type="Node3D" parent="." unique_id=1304010990]
 script = ExtResource("9_4xgs5")
 
-[node name="TintKaart" type="Node3D" parent="." unique_id=1034699754]
+[node name="TintKaart" type="Node3D" parent="." unique_id=1221069116]
 script = ExtResource("10_i30fu")

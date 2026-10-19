@@ -448,11 +448,14 @@ lucht-ambient, SSAO, glow en een lichte kleur/contrast-correctie. Pas
 
 Rondleiding, prestaties en uiterlijk
 ------------------------------------
-- `Rondleiding` (`scripts/tour.gd`): stops komen uit
-  `scripts/tour_data.gd` (vaste gebieden + alle demowijken). Standaard alleen de
-  hoogtepunten (`highlights_only`; de lijst staat in `HIGHLIGHTS`). Instelbaar:
-  `travel_time` (2 s), `view_time` (4 s), `zoom_in`, `start_at` (leeg = bij het
-  begin, het stadsoverzicht).
+- `Rondleiding` (`scripts/tour.gd`): opent in het stadshart, zoomt langzaam in en
+  laat de `Dagcyclus` ochtend, middag, avond, nacht, ochtend en weer middag worden
+  (`INTRO` en `DAY` in `scripts/tour_data.gd`; `day_intro`, `day_hold` 2,5 s,
+  `day_change` 3 s). Daarna gaat hij alle gebieden langs: de vaste gebieden
+  (`CITY`), de demowijken met plekken die de build zelf vond (`PLACE_TEXT`, bv. de
+  kruisingen met verkeerslichten) en de waterbeelden, en begint dan opnieuw.
+  `highlights_only` toont alleen `HIGHLIGHTS`. Instelbaar: `travel_time` (2 s),
+  `view_time` (4 s), `zoom_in`, `start_at` (leeg = met de opening beginnen).
 - `DetailNiveau` (`scripts/level_of_detail.gd`): schakelt bij het uitzoomen naar
   grove tiles (`coarse_from`, standaard 100 m in beeld) en heel grove tiles
   (`very_coarse_from`, 130 m), verbergt Details (vanaf 120 m) en Props (vanaf

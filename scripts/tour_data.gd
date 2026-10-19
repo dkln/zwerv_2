@@ -10,6 +10,20 @@ extends RefCounted
 ## Size of one map cell in metres (district metadata is in cells).
 const CELL := 4.0
 
+## Opening of the tour: the heart of the old town, seen while the day goes by.
+## [title, text, focus x, focus z, view size at the start, view size at the end].
+const INTRO := ["Het stadshart", "Gracht, grachtenpanden, bouwblokken en het plein in de oude stad.", 72, 60, 130, 80]
+## The times of day of the opening, in order: [hour, name, text]. Hours keep counting
+## past 24 so the clock always runs forward (31 = 7:00 the next morning).
+const DAY := [
+	[7.0, "Ochtend", "De zon komt op in het oosten: warm, laag licht over de daken en het water."],
+	[13.0, "Middag", "De zon staat hoog: volle kleuren, korte schaduwen en de lucht spiegelt in het glas."],
+	[17.6, "Avond", "Laag oranje zonlicht en een gloeiende horizon; ramen en lantaarns gaan aan."],
+	[23.0, "Nacht", "Lantaarns, ramen en etalages gloeien; blauw maanlicht en geen schaduwen."],
+	[31.0, "Ochtend", "Een nieuwe dag: de nachtverlichting dooft en de zon komt weer op."],
+	[37.0, "Middag", "Weer volop daglicht. Nu langs alle gebieden van de stad."],
+]
+
 ## Fixed stops in the city, in tour order.
 const CITY := [
 	["stad_overzicht", "De stad in één beeld", "Oude stad, nieuwe wijken, rivier, snelweg en campus. Alles is opgebouwd uit losse tiles van 4x4 m.", 192, 160, 420],
@@ -36,16 +50,19 @@ const CITY := [
 	["boulevard", "Boulevard met vrije trambaan", "Twee rijstroken, stoep met halte, twee trambanen, stoep met halte, twee rijstroken.", 270, 252, 55],
 	["viaduct", "Viaduct en luxe appartementen", "Een weg op een viaduct over een weg met middenberm; luxe appartementen met penthouse, dakzwembad en groendak.", 320, 250, 70],
 	["snelweg", "Snelweg", "Vluchtstroken, middenberm met vangrails, lantaarns, portalen met blauwe bewegwijzering, met een tunnel eronder.", 180, 304, 80],
+	["aansluiting", "Snelwegaansluiting", "Een afrit met uitvoegstrook en puntstuk met botsabsorber, een T-kruising met de lokale weg en een toerit met invoegstrook terug de snelweg op.", 205, 284, 70],
+	["galerijflat", "Galerijflat langs de snelweg", "Tien woonlagen op een plint met bergingen, twee vleugels met een knik, galerijen aan de snelwegkant, balkons aan de achterkant, trappenhuizen met liftopbouw en volkstuintjes erachter.", 148, 262, 70],
 	["campus", "Campus", "Universiteit met binnenplaats en dakruiter, hogeschool met gekleurde lamellen.", 130, 356, 100],
 	["torens", "Kantoortorens met loopbrug", "Twee torens met kolonnade aan de voorkant, verbonden door een loopbrug op 36 m hoogte.", 204, 352, 70],
 	["winkelstraat", "Winkelstraat (wandelgebied)", "Autovrije straat met alle winkel- en horecatypes, terrassen, bomen, fontein en paaltjes bij de ingangen.", 312, 366, 60],
+	["toegangslanen", "Lanen met rotondes", "Twee lanen verbinden de campusweg met de nieuwe wijken: de ene met een stoepeiland, de andere met een middengeleider en grasberm. Waar ze de eerste straat raken ligt een rotonde.", 158, 380, 180],
 ]
 
-## Close-ups of the water; in the tour right after the canal district.
+## Close-ups of the water; in the tour right after the park.
 const WATER := [
 	["water_spiegeling", "Water: spiegeling", "Bomen, lantaarns, boten en kademuren spiegelen in de gracht. De shader volgt de gespiegelde kijkstraal over het scherm (geen raytracing); raakt hij niets, dan spiegelt de lucht.", 37, 37, 20],
 	["water_golven", "Water: golven en glinstering", "Golven uit vier richtingen laten het oppervlak onregelmatig deinen; lichte vlekken drijven mee en kleine glinsteringen flonkeren. Het riet beweegt in de wind.", 12, 96, 20],
-	["water_dobberen", "Water: dobberen", "Boten deinen op dezelfde golven als het water en rollen en stampen langzaam; waterlelies dobberen elk op hun eigen plek. Dat doet een vertex-shader (voxel_drijf); de tiles zelf staan gewoon stil in de GridMap.", 28, 1905, 24],
+	["water_dobberen", "Water: dobberen", "Boten deinen op dezelfde golven als het water en rollen en stampen langzaam; waterlelies in de vijvers dobberen elk op hun eigen plek. Dat doet een vertex-shader (voxel_drijf); de tiles zelf staan gewoon stil in de GridMap.", 120, 206, 40],
 	["water_brug", "Water: brug en steigers", "De houten boogbrug en de steigers spiegelen in de vijver; de golven vervormen de spiegeling.", 96, 276, 18],
 ]
 
@@ -64,21 +81,25 @@ const STYLE_NAMES := {
 
 ## [title, text] per district name; districts not listed use their name as title.
 const DISTRICT_TEXT := {
-	"hallen": ["Hallen, overkapping en parkeergarage", "Holle hallen (glas, zwembad, sport), glazen overkapping, pilaren, parkeergarage met helling en inrit, radiotoren."],
-	"verkeerstuin": ["Verkeerstuin", "Doorlopende straten waarin elke weg-, tram-, fiets-, parkeer- en snelwegmarkering een stuk straat vormt, met wisselende stoepen."],
-	"kruispunten": ["Kruispunten en stoephoeken", "Verkeerseilanden, rotonde, middengeleider en alle buiten- en binnenhoeken van stoepen (ook met goot, klinkers en kade)."],
-	"lussen": ["Fiets-, tram- en spoorlussen", "Lussen met bochten, T-splitsingen, kruisingen en eindstukken; spoor met wissel, overweg, perron en grote bochten."],
-	"dijk": ["Dijk met hellingen en heuvels", "Elke helling als oprit naar een dijk, flauwe hellingen in twee delen, en heuvels van gras, zand en grind."],
-	"hellingen_bochten": ["Hellingen en bochten", "Een autotunnel die onder de grond een bocht van 90 graden maakt, met toeritten aan beide kanten en straten over het overdekte deel."],
-	"tunnelpark": ["Tunnelpark", "Autotunnel met toerit, open bak en weg erboven; een verdiepte weg die trapsgewijs dieper gaat; onderdoorgangen en een fietstunnel."],
-	"kanaal": ["Kanaal met bruggen", "Alle brugdekken, bakstenen boogbruggen, ophaalbrug, voetbrug, stalen boogbrug, tuibrug, viaduct op pijlers en een loopbrug."],
-	"natuurpark": ["Natuur- en recreatiepark", "Vijver met alle oever- en waterkanttypes, sloot met duiker, terrastuin met trappen, pleinmozaïek en een buitenzwembad."],
-	"rest": ["Overige tiles", "Tiles die (nog) nergens anders een plek hadden."],
-	"verkeerslichten": ["Verkeerslichten in alle standen", "Twee kruisingen met lichten voor auto, fiets, voetganger, bus/tram (OV-sein) en masten: links noord-zuid groen en oost-west rood, rechts noord-zuid oranje."],
-	"bochten": ["Afgeronde bochten", "Elke straatsoort maakt een vloeiende bocht: straat, klinkerstraat, weg, tramweg, fietspad, hoofdweg met fietspaden en een laan met middenberm. Markeringen, rails en stoepranden lopen mee."],
-	"dorpskern": ["Dorpskern met kinderkopjes", "Brink met keienplein, keienstraten met keienstoepen en een middengoot, en een keienpad naar de kerk."],
-	"tint": ["Tint-shader", "Dezelfde panden met elk een eigen tint via TintVlak-nodes: origineel, warm, koel, groenig, lichter, donkerder, oker en rozig. Rechts kleurt één groot vlak een heel blok inclusief de grond."],
-	"bedrijventerrein": ["Bedrijventerrein", "Grote stalen loods met laaddocks, loods met stenen plint en tondak, magazijn, fabriek met sheddak en schoorsteen, kleinere units, containers, silo's en hekwerk."],
+	"hallen": ["Sportcomplex", "Drie holle hallen (glas, zwembad en sport) aan één voorplein met een glazen entreeoverkapping, een zuilengalerij met alle pilaren, een parkeergarage met helling en inrit, en een radiomast."],
+	"bedrijventerrein": ["Bedrijventerrein", "Grote stalen loods met laaddocks, loods met stenen plint en tondak, magazijn, fabriek met sheddak en schoorsteen, kleinere units, een erf vol containers en silo's, een personeelsparkeerplaats en hekwerk."],
+	"tint": ["Woonstraat met tint-shader", "Drie rijtjes identieke huizen aan een straat, elk huis met een eigen tint via TintVlak-nodes: warm, koel, groenig, lichter, donkerder, oker en rozig. Op de hoek kleurt één vlak een heel blok inclusief de grond ervoor."],
+	"bochten": ["Woonlussen", "Voor elk straatprofiel een woonlus van twee afgeronde bochten die aansluit op de straat eronder, met een speeltuintje in elke lus. Markeringen, rails en stoepranden lopen mee door de bocht."],
+	"dorpskern": ["Dorpskern met kinderkopjes", "Brink met keienplein, keienstraten met keienstoepen en een middengoot, een kerktoren en dorpshuisjes."],
+	"lussen": ["Fietslus, tramlus en emplacement", "Een fietslus, een tramlus met haltes en een grote bocht, en een spoorwegemplacement met wissel, overwegen, perron, stootjuk en een grote spoorbocht."],
+	"dijk": ["Rivierdijk", "Een dijkweg op de kruin; straten, een fietspad en een pleintje gaan flauw omhoog, straat, tram, spoor en een snelwegverbinding steil. Vier viaducten gaan over de dijk, een terp steekt uit en in de uiterwaard liggen heuvels van gras, zand en grind."],
+	"tunnelpark": ["Verdiepte wegen", "Een autotunnel met toerit, open bak, portaal en een weg erboven; een weg die trapsgewijs dieper gaat; een onderdoorgang met stoepen en een fietstunnel."],
+	"hellingen_bochten": ["Tunnel met bocht", "Een driestrooks autotunnel die onder de grond een bocht van 90 graden maakt, met toeritten aan beide kanten en straten over het overdekte deel."],
+	"keerlussen": ["Keerlussen op dijk en brug", "Per straatprofiel een keerlus die stijgt en weer daalt: eerst op een dijklichaam, daarna als brug op pijlers. De poten komen uit op de straat eronder."],
+	"viaductbochten": ["Viaductbochten", "Vlakke, gebogen bruggen op pijlers voor straat, klinkerstraat, fietspad en weg, bereikbaar via rechte hellingen."],
+	"kanaal": ["Grachtengordel", "Een gracht met grachtenpanden op beide kades, elk brugtype van kade naar kade, zijstraten naar de stad, een steiger in het water en een viaduct dat over panden en gracht heen loopt."],
+	"natuurpark": ["Natuur- en recreatiepark", "Vijver met alle oevers en houten voetbruggen, sloot met duiker, terrastuin met trappen, paden, een bosje, een plantvak, een jeu-de-boulesbaan en een buitenzwembad."],
+}
+
+## Spots the build found itself (the "places" metadata, in metres): slug -> [title, text, view size].
+const PLACE_TEXT := {
+	"verkeerslichten": ["Stratennet met verkeerslichten", "Tweestrooksstraten met stopstrepen, haaientanden, zebra's, pijlen, fietsstroken, fietsstraten en eenrichtingsverkeer. Op deze kruising staan lichten voor auto, fiets, voetganger en OV: noord-zuid groen, oost-west rood.", 55],
+	"verkeerslichten_2": ["Kruising op oranje", "Een tweede kruising met verkeerslichten, nu met noord-zuid op oranje en het OV-sein op attentie.", 45],
 }
 
 
@@ -98,8 +119,8 @@ static func highlights(all_stops: Array) -> Array:
 
 ## Returns the stops for the scene `root` as a list of
 ## {slug, title, text, x, z, size}: focus x/z and view size in metres.
-## Order: CITY, then the districts, with WATER inserted right after the
-## "wijk_kanaal" district (or at the front if there is no canal).
+## Order: CITY, then the districts with the PLACE_TEXT spots between them (by z), with
+## WATER inserted right after the "park" stop (or at the front if there is no park).
 static func stops(root: Node) -> Array:
 	var list := []
 	for s in CITY:
@@ -111,7 +132,7 @@ static func stops(root: Node) -> Array:
 		if district_name.begins_with("stijl:"):
 			var st := district_name.trim_prefix("stijl:")
 			title = "Buurt: " + STYLE_NAMES.get(st, st)
-			text = "Alle onderdelen van deze stijl toegepast: begane grond en winkels, verdiepingen, hoekpanden, daken, toppen en torens, plus een pand met aangebrachte gevel- en dakdetails."
+			text = "Een buurtje in deze stijl aan een woonerf: begane grond en winkels, verdiepingen, hoekpanden, daken, toppen en torens, plus een pand met gevel- en dakdetails."
 		elif district_name.begins_with("dak:"):
 			var kind := district_name.trim_prefix("dak:").replace("_", " ")
 			title = "Daken: " + kind
@@ -124,10 +145,20 @@ static func stops(root: Node) -> Array:
 		list.append({"slug": "wijk_" + district_name.replace(":", "_"), "title": title, "text": text,
 			"x": (d["x"] + d["w"] / 2.0) * CELL, "z": (d["z"] + d["d"] / 2.0) * CELL,
 			"size": maxf(d["w"], d["d"]) * CELL * 0.62 + 12.0})
-	# water close-ups right after the canal (or at the front if there is no canal)
+	# spots found by the build, between the districts around them (by z)
+	var places: Dictionary = root.get_meta("places", {})
+	for slug in PLACE_TEXT:
+		if places.has(slug):
+			var pt: Array = PLACE_TEXT[slug]
+			var at: Vector2 = places[slug]
+			var k := CITY.size()
+			while k < list.size() and list[k]["z"] <= at.y:
+				k += 1
+			list.insert(k, {"slug": slug, "title": pt[0], "text": pt[1], "x": at.x, "z": at.y, "size": float(pt[2])})
+	# water close-ups right after the park (or at the front if there is no park)
 	var after := 0
 	for k in list.size():
-		if list[k]["slug"] == "wijk_kanaal":
+		if list[k]["slug"] == "park":
 			after = k + 1
 	for s in WATER:
 		list.insert(after, _row_to_stop(s))
