@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/vensterbank.vox-0636861a8a2071ca010e076e017a5
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

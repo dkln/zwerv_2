@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/vlag_nl.vox-33bb0cc6024470b0a97dc72f38300710.
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

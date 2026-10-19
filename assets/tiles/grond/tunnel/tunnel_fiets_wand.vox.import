@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/tunnel_fiets_wand.vox-8a7b2c94c0269a03b0569a6
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

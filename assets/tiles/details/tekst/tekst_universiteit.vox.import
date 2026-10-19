@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/tekst_universiteit.vox-629793a695dd5ce49e0247
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

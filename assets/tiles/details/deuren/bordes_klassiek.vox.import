@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/bordes_klassiek.vox-e1ebae85c2cae2cd297231b80
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

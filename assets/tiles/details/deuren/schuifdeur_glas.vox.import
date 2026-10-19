@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/schuifdeur_glas.vox-e40cdd16a5819bce342e163db
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

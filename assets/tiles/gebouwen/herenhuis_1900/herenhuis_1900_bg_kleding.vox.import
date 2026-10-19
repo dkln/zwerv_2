@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/herenhuis_1900_bg_kleding.vox-831aff3a8c1b8db
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

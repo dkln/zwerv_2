@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/stoep_hoek_buiten.vox-39cf0395aa949a3b85da5a6
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

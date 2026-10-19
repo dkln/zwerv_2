@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/brug_straat_0_1.vox-79c30db301f62674d2b578744
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

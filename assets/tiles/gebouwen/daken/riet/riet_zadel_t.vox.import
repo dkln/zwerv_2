@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/riet_zadel_t.vox-fcd586d68586b41fb30dcd30285a
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

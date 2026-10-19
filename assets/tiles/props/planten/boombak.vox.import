@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/boombak.vox-c5087f7b6b820cd510c24cf8fdc8dc37.
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

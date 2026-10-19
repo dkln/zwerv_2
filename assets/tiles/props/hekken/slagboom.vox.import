@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/slagboom.vox-9fa8d2a0de3dfeb13bfba8f5197e085e
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/brug_klinkerstraat_1_0.vox-c9ba0bf25b318187b1
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

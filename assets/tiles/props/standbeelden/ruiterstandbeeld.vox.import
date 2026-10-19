@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/ruiterstandbeeld.vox-0fab90c3472daec931a7495d
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

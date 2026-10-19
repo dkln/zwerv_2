@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/fietspad_2_2.vox-e29d14d646e0e2ba83528194dd61
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

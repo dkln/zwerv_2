@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/rijstrook_bus_leeg.vox-ad1e283ed2a4046d4cd42f
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

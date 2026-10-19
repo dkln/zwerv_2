@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/ophoging_gras_4x4_1_3.vox-6517550abea2e71d49a
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

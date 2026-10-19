@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/hek_ijzer_poort.vox-af2deab35d367f0846b9977ba
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

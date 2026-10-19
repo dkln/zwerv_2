@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/balkon_modern.vox-a82913b399c953b8ce4d902cfce
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

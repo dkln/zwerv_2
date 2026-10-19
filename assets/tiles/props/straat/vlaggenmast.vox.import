@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/vlaggenmast.vox-222bda9863d461aef55547e7cedf8
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

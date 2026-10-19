@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/pianostrepen.vox-16e9510d9199e1db405838a59a58
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

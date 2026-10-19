@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/zand.vox-fcc83d52a6e08e36a21002af6b3d4da7.mes
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

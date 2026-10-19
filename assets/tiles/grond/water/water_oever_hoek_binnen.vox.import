@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/water_oever_hoek_binnen.vox-f2a97cc3a5e30a707
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

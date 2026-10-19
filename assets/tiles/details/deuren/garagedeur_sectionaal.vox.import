@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/garagedeur_sectionaal.vox-f11d60e884d1d990516
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

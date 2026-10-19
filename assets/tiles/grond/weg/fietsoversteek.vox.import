@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/fietsoversteek.vox-bf3c1b6a4ed75a6f86cc3586ce
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

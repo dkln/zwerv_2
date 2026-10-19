@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/tekst_haven.vox-89020b2b04a065730d3a42033d99d
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

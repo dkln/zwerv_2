@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/brug_weg_3_1.vox-5ec9769882feeb57c45c06df1c15
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

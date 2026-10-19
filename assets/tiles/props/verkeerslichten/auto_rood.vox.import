@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/auto_rood.vox-088f529f66ddf72926396a3d6c39478
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

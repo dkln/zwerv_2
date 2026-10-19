@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/tram_rijstrook_geen_geen.vox-48c52199f15faba5
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

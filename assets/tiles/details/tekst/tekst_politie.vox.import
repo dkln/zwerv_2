@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/tekst_politie.vox-fec14df00227569b42565a00a72
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

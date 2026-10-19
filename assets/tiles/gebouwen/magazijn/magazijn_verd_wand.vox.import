@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/magazijn_verd_wand.vox-5ec37f37679e8483d8ffec
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

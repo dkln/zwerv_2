@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/spoorboom.vox-f2f1e7baee47dff0d4651797a58ca1e
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

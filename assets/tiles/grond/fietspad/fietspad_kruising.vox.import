@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/fietspad_kruising.vox-c5fcd53801a7283514ac943
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/laan_5_2.vox-247e6af178501bbf9057dc0c2d68eb86
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

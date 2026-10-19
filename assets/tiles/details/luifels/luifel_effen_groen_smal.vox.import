@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/luifel_effen_groen_smal.vox-60004e2ab11f8884b
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

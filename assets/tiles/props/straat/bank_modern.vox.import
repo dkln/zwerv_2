@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/bank_modern.vox-066801db93ba2ca3c6152b761394b
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

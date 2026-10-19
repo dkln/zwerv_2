@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/brug_fietspad_0_2.vox-cfc2d82669d2769d9e7d864
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

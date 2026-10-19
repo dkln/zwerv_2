@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/ov_rijden.vox-7b3280bbff7a761f5f5437dbe2b2e64
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

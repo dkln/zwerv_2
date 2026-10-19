@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/bord_max_30.vox-4d330064f7df3ffecd5357b75ff8b
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

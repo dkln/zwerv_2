@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/trein_bocht.vox-9d671a081f82d9846e3ebb8a0d06b
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

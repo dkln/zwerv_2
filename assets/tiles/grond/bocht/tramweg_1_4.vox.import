@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/tramweg_1_4.vox-1670225369e599a243c2df1b8f514
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

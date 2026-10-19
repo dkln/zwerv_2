@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/klassiek_donker_bg_raam.vox-f2b1b14ba47b09742
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

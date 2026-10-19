@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/vlag_zwervr.vox-75610fcc40e574a8de1cb4a9cd5ce
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

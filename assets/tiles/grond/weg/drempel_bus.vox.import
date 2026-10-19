@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/drempel_bus.vox-39d0aa5ce55975bd3274232b1eba0
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

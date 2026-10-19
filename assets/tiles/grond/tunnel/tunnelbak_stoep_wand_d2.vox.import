@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/tunnelbak_stoep_wand_d2.vox-503f7f5dbb4a6aa49
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

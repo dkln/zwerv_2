@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/loopbrug_open.vox-bc8f8bf492d433a3e0c303bb9cb
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

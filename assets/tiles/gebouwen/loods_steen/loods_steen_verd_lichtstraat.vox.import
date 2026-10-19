@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/loods_steen_verd_lichtstraat.vox-1d0314f0d1d3
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

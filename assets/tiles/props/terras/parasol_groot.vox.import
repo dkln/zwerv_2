@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/parasol_groot.vox-52b32b97b96858b527d77be304c
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/magazijn_bg_kantoor.vox-3bda8e12d76dd4d2c00ba
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

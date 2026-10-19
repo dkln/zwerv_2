@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/bord_rotonde.vox-e9cc1e36170a6e8e4a185c176933
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

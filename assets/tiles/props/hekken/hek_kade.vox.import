@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/hek_kade.vox-92d22bb7f13afc4973d73931a813540a
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

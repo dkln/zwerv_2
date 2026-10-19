@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/fiets_blauw.vox-76d2f46c8818112c94c2ef4d085be
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

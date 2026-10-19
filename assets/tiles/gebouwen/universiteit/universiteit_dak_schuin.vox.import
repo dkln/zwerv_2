@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/universiteit_dak_schuin.vox-79b5a00ed3d0192ef
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

@@ -19,8 +19,9 @@ const DEFAULTS := {
 	"voxel_size": 0.125,
 	"ambient_occlusion": true,
 	# merge colours that differ less than this (0..255) into larger faces (fewer
-	# triangles); the shader adds the per-voxel variation back on top
-	"color_merge": 14,
+	# triangles). 0: keep every colour, the per-voxel variation drawn in the .vox
+	# is the texture (the coarse LOD versions still merge, see lod_color_tolerance)
+	"color_merge": 0,
 	# colour merging of the "lod" version
 	"lod_color_tolerance": 24,
 	# the "lod2" version merges blocks of n x n x n voxels
@@ -76,7 +77,7 @@ func _get_option_visibility(path: String, option_name: StringName, options: Dict
 
 
 func _get_format_version() -> int:
-	return 4
+	return 5
 
 
 func _get_priority() -> float:

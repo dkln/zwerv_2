@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/roeiboot.vox-6a582ab59f0a876230852c6eed07919b
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

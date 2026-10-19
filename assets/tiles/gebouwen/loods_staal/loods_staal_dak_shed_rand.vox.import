@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/loods_staal_dak_shed_rand.vox-6696d4f9e11a8b4
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

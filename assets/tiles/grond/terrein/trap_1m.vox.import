@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/trap_1m.vox-5cafa26144ed3bf3bfe6dced0a5f62c2.
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

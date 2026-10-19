@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/school_dak_bitumen_rand.vox-4bdb0cc0bcae911b6
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

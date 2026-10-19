@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/tram_klinker_recht.vox-a01367bd9d55c7759451cd
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

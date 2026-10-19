@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/bocht_1_0.vox-42093c25f370d5f0a692f6ecc9efc8c
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

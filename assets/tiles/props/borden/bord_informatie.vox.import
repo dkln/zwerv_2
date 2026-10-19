@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/bord_informatie.vox-7e2ed520492309a02482d06a1
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

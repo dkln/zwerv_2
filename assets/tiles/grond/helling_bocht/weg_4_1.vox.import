@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/weg_4_1.vox-bf9db4b125442976f25f20297b2e1cf0.
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

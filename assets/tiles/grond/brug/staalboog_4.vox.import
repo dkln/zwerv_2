@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/staalboog_4.vox-d334791eb931a4025dfb0c906070e
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

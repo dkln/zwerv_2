@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/bolder.vox-da107be4f87bd01d31997bfc4da7c6c6.m
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

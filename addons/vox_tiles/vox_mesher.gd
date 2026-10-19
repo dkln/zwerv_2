@@ -117,7 +117,7 @@ static func build(vox, voxel_size: float, use_ao: bool, color_tolerance := 0, an
 	for m in MATERIAL_PATHS.size():
 		var groups := []
 		for g in GROUPS:
-			groups.append({"v": [], "n": [], "c": []})
+			groups.append({"v": [], "n": [], "c": [], "u": []})
 		surf.append(groups)
 	var covered := PackedFloat32Array()
 	covered.resize(GROUPS)
@@ -215,13 +215,14 @@ static func build(vox, voxel_size: float, use_ao: bool, color_tolerance := 0, an
 	var mesh := ArrayMesh.new()
 	var face_ranges := []
 	for m in MATERIAL_PATHS.size():
-		var s := {"v": [], "n": [], "c": []}
+		var s := {"v": [], "n": [], "c": [], "u": []}
 		var bounds := PackedInt32Array([0])
 		for g in GROUPS:
 			var d: Dictionary = surf[m][g]
 			s.v.append_array(d.v)
 			s.n.append_array(d.n)
 			s.c.append_array(d.c)
+			s.u.append_array(d.u)
 			bounds.append(s.v.size())
 		if s.v.size() == 0:
 			continue
@@ -231,6 +232,7 @@ static func build(vox, voxel_size: float, use_ao: bool, color_tolerance := 0, an
 		arrays[Mesh.ARRAY_VERTEX] = PackedVector3Array(s.v)
 		arrays[Mesh.ARRAY_NORMAL] = PackedVector3Array(s.n)
 		arrays[Mesh.ARRAY_COLOR] = PackedColorArray(s.c)
+		arrays[Mesh.ARRAY_TEX_UV] = PackedVector2Array(s.u)
 		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 		var path: String = MATERIAL_PATHS[m]
 		if animation == "float" and Parser.is_opaque(m) and m != Parser.MAT_EMIT:
@@ -327,6 +329,17 @@ static func _cell_side(pts: Array, n: Vector3, block: Vector3) -> int:
 	return g
 
 
+## UV of a face corner: tile-local voxel coordinates in the plane of the face, in
+## MagicaVoxel axes, so shaders can follow patterns the generator draws per voxel.
+## Upward/downward faces get (x, y); side faces get (x + y, z), the same "along the
+## wall" coordinate the generator's brick bond uses on both wall orientations. The
+## coordinate across the face is that of the voxel itself (slice i), not of the face plane.
+static func _face_uv(p: Vector3, a: int, i: int) -> Vector2:
+	var q := p
+	q[a] = float(i)
+	return Vector2(q.x, q.y) if a == 2 else Vector2(q.x + q.y, q.z)
+
+
 ## MagicaVoxel voxel coordinates -> Godot metres, centred in x/z, bottom at y = 0.
 static func _to_godot(p: Vector3, center: Vector3, vs: float) -> Vector3:
 	return Vector3(p.x - center.x, p.z, -(p.y - center.y)) * vs
@@ -344,12 +357,14 @@ static func _emit_quad(surf: Array, key: int, a: int, u: int, v: int, sgn: int, 
 	var plane := float(i + (1 if sgn > 0 else 0))
 	var corners := [Vector2(ju, jv), Vector2(ju + w, jv), Vector2(ju + w, jv + hgt), Vector2(ju, jv + hgt)]
 	var pts := []
+	var uvs := []
 	for k in 4:
 		var p := Vector3.ZERO
 		p[a] = plane
 		p[u] = corners[k].x
 		p[v] = corners[k].y
 		pts.append(_to_godot(p, center, vs))
+		uvs.append(_face_uv(p, a, i))
 	var n := Vector3(normal_vox.x, normal_vox.z, -normal_vox.y)
 	var base: Color = lin[c]
 	var cols := []
@@ -379,3 +394,4 @@ static func _emit_quad(surf: Array, key: int, a: int, u: int, v: int, sgn: int, 
 			s.v.append(pts[k])
 			s.n.append(n)
 			s.c.append(cols[k])
+			s.u.append(uvs[k])

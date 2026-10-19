@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/school_verd_raam.vox-2a2bc67bb9e9434bf6171fd9
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

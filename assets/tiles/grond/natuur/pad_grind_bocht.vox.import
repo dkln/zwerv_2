@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/pad_grind_bocht.vox-4a6b3b6cf300012afc09e70cd
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

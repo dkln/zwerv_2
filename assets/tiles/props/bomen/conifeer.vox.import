@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/conifeer.vox-1a268e680782a055886af403de48bb0e
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

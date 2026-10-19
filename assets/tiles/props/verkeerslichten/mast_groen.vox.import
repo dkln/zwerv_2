@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/mast_groen.vox-e8830d5d098c0590b46c671d2b1b10
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

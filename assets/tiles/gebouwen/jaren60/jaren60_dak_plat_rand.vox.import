@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/jaren60_dak_plat_rand.vox-9b24ab492997e149c1a
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/bocht_weg_3_0.vox-def0500d5befc95e9ffad3bf603
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

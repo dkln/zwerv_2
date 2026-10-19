@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/heuvel_gras_helling.vox-450f78ce9609a9532043b
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

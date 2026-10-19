@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/stoep_hoek_binnen.vox-7e3d60b5a8adcc29c47e2eb
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

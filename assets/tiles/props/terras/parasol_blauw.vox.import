@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/parasol_blauw.vox-c05f44a54a88e5e2149fcdc154a
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

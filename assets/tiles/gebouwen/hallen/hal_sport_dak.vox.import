@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/hal_sport_dak.vox-347e3917cf7ca29ff76f6dbe315
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/straat_3_2.vox-2c1e56ba33e8298d88f741eec181c4
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

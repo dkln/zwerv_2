@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/galerijflat_bg_entree.vox-a9c9519e0b0d5dd4e20
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

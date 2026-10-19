@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/overheid_verd_balkon.vox-a531c29399202df48f2e
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

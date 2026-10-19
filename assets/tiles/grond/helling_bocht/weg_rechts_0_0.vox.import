@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/weg_rechts_0_0.vox-7892a4ec25f3c9a77cde83a557
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

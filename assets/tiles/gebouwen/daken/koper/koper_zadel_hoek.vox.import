@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/koper_zadel_hoek.vox-8e6b855fc1e4b8d07ec8fbf0
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

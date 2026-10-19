@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/steiger_trap.vox-37a5f79f4a373e6fa913287f168c
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

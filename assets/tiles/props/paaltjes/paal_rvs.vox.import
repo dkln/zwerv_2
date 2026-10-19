@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/paal_rvs.vox-f5a4605f3ce7fffb0f6bbc1473b6c32a
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

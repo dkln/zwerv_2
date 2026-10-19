@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/trambaan_vrij.vox-7b8a4d2935ce2aa97c75b3eeb83
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

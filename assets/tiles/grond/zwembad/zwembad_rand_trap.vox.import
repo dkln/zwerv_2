@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/zwembad_rand_trap.vox-7087a37928ae5c338ea75f7
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

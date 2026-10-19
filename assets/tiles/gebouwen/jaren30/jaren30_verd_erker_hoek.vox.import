@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/jaren30_verd_erker_hoek.vox-e73e8ebf0be0437dd
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/opstap_2_treden.vox-ae4ee4e6ee7f61a3459c52920
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

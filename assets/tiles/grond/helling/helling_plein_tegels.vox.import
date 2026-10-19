@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/helling_plein_tegels.vox-b0e2bce3b173b57c2fd6
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

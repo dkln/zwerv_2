@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/zebrapad.vox-57bd1a5c8be66b2ca5bc7bde998229e2
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

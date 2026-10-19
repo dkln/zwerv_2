@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/bord_busbaan_rond.vox-4721148465e9b579b6a67e9
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

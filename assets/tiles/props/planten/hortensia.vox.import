@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/hortensia.vox-f0bd72ffc48ecb6698d9d312d9b4a0f
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

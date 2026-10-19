@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/stoeptrap.vox-3771d9aa2970569fb5b348f5b85ea87
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

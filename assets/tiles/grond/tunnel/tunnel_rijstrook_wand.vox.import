@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/tunnel_rijstrook_wand.vox-2a97409b0e68c222c07
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

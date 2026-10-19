@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/hal_zwembad_dak.vox-4180bb0fd0d32593d7e14eb4f
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

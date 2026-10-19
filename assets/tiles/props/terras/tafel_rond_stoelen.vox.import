@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/tafel_rond_stoelen.vox-5d0c5b22c76638e20f8698
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

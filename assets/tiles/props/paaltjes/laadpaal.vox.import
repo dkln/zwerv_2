@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/laadpaal.vox-7d03324f9efa2d2c7fa8861bc9086c80
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

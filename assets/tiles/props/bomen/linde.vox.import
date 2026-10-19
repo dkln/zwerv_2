@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/linde.vox-2968c58700b28535cc5c3b7d77c22af0.me
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

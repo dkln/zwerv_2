@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/bistrostoel.vox-f183b80fa1b3845b481b3b1f88333
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

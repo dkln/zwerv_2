@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/hoofdweg_2_0.vox-e608d380160d99426184736630f3
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/tram_gras_bocht.vox-735c3da9e6cf8adfde9664ca3
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

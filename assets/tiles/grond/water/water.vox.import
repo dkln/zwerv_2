@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/water.vox-1b944cb1a392460eba069c5ffe7bc80b.me
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

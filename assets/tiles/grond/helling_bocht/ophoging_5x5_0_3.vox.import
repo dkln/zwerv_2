@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/ophoging_5x5_0_3.vox-a17f43e5907bc1acf4bedd5c
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

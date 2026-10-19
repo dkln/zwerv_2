@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/flauw_gras_a.vox-c6cad7967cd988c30148bb43c2a1
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

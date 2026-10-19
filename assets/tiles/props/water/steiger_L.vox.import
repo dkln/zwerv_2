@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/steiger_L.vox-e984a2d6d349ef7e3e1d769e7d9a684
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

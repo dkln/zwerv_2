@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/golfplaat_lessenaar.vox-8681a9071e91d7df9e72c
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

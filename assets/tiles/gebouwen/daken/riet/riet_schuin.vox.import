@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/riet_schuin.vox-172213951b12d2f888f970ba65da7
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

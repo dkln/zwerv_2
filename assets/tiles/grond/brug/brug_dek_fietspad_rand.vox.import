@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/brug_dek_fietspad_rand.vox-5fa1c026a52076060e
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

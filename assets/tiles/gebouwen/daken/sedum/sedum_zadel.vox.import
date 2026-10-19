@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/sedum_zadel.vox-5189c0bb2c53a431711100b2f7916
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

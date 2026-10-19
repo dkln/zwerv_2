@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/wipwap.vox-5101ba3bac917bd19cd2d9147871e386.m
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

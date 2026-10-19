@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/bocht_straat_2_1.vox-e058235e6bbd2dc82ff3ee1e
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

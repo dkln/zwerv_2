@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/klassiek_rood_bg_kleding.vox-9ae5d2c3de6f58b3
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0

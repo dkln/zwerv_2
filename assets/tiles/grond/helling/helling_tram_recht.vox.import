@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/helling_tram_recht.vox-9193950a2fb4f72edbb4b5
 
 voxel_size=0.125
 ambient_occlusion=true
-color_merge=14
+color_merge=0
 lod_color_tolerance=24
 lod2_downscale=2
 animation=0
