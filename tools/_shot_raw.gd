@@ -19,7 +19,7 @@ func _init() -> void:
 	cam.projection = Camera3D.PROJECTION_ORTHOGONAL
 	cam.far = 4000
 	root.add_child(cam)
-	get_root().size = Vector2i(1500, 1000)
+	Common.render_size(self, Vector2i(1500, 1000))
 	await process_frame
 	var args := OS.get_cmdline_user_args()
 	if OS.get_environment("EDITOR_VIEW") == "1":

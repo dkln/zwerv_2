@@ -2,6 +2,7 @@ shader_type spatial;
 render_mode blend_mix, cull_back, depth_draw_always, specular_schlick_ggx;
 
 #include "res://addons/vox_tiles/materials/voxel_colour.gdshaderinc"
+#include "res://addons/vox_tiles/materials/voxel_editor.gdshaderinc"
 
 
 // Glass with a faked reflection (cheap, no screen buffer): the reflected view direction
@@ -32,11 +33,11 @@ void fragment() {
 	float streak = smoothstep(0.82, 1.0, sin((wpos.x + wpos.z) * 0.9 + wpos.y * 1.4 + r.x * 3.0) * 0.5 + 0.5);
 	surroundings += streak * 0.12;
 	float fres = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 3.0);
-	float s = clamp(reflection + fres * 0.4, 0.0, 1.0);
+	float s = editor_view() ? 0.0 : clamp(reflection + fres * 0.4, 0.0, 1.0);   // editor: no reflection
 	ALBEDO = voxel_albedo(UV, COLOR) * 0.7 * (1.0 - s);
 	EMISSION = surroundings * s;
-	ROUGHNESS = 0.04;
+	ROUGHNESS = editor_view() ? 1.0 : 0.04;
 	METALLIC = 0.0;
-	SPECULAR = 0.6;
+	SPECULAR = editor_view() ? 0.0 : 0.6;
 	ALPHA = clamp(opacity + s * 0.35 + fres * 0.3, 0.0, 0.95);
 }

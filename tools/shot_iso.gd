@@ -12,7 +12,7 @@ func _init() -> void:
 	var sc := Common.instantiate(Common.arg(0))
 	var out := Common.arg(1)
 	get_root().add_child(sc)
-	get_root().size = Vector2i(1920, 1080)
+	Common.render_size(self, Vector2i(1920, 1080))
 	await process_frame
 	await Common.wait_for_merge(sc)
 	Common.place_iso(sc, Vector3(Common.arg_float(2), 0, Common.arg_float(3)), Common.arg_float(4))

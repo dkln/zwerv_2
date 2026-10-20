@@ -68,6 +68,7 @@ dof_blur_near_distance = 250.0
 dof_blur_near_transition = 110.0
 
 [node name="NieuweKaart" type="Node3D" unique_id=1016867630]
+metadata/vox_tiles = true
 
 [node name="Omgeving" type="WorldEnvironment" parent="." unique_id=1917220812]
 environment = SubResource("Environment_0uy6c")

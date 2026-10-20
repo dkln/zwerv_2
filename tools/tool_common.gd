@@ -70,6 +70,27 @@ static func wait_frames(tree: SceneTree, frames: int) -> void:
 		await tree.process_frame
 
 
+## Renders the root viewport at `size` pixels, but in a small window (a quarter of the
+## size) in the bottom-right corner of the screen that does not take the focus, so a
+## tool does not take over the screen. Screenshots keep the full `size`. Godot sets up
+## the window from the project settings after _init, so this is applied on the first
+## frame (wait a frame or more before taking a screenshot).
+static func render_size(tree: SceneTree, size: Vector2i) -> void:
+	tree.process_frame.connect(func() -> void:
+		var root := tree.get_root()
+		root.content_scale_mode = Window.CONTENT_SCALE_MODE_VIEWPORT
+		root.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_KEEP
+		root.content_scale_size = size
+		if DisplayServer.get_name() == "headless":
+			root.size = size
+			return
+		root.mode = Window.MODE_WINDOWED
+		root.unfocusable = true
+		root.size = size / 4
+		var screen := DisplayServer.screen_get_usable_rect(DisplayServer.window_get_current_screen())
+		root.position = screen.end - root.size - Vector2i(20, 20), CONNECT_ONE_SHOT)
+
+
 ## Saves the current image of the root viewport as PNG (res://, user:// or OS path).
 static func save_screenshot(tree: SceneTree, path: String) -> void:
 	tree.get_root().get_texture().get_image().save_png(ProjectSettings.globalize_path(path))

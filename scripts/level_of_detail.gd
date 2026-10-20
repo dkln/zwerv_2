@@ -35,9 +35,9 @@ signal merge_finished
 ## Layers in which tiles are as tall as the cell (top face may go under a neighbouring block).
 @export var hide_top_layers: Array[String] = ["Gebouwen"]
 ## From this zoom size (metres in view, see scripts/iso_camera.gd) coarse tiles are used.
-@export var coarse_from := 100.0
+@export var coarse_from := 160.0
 ## From this zoom size the very coarse tiles (25 cm blocks).
-@export var very_coarse_from := 130.0
+@export var very_coarse_from := 220.0
 ## From this zoom size (metres in view) the Details layer is hidden.
 @export var details_until := 120.0
 ## From this zoom size (metres in view) the Props layer is hidden.

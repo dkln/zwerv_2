@@ -40,7 +40,7 @@ func _init() -> void:
 	await process_frame
 	cam.look_at_from_position(Vector3(cx, ext * 0.75, cz + ext * 0.65), Vector3(cx, 0, cz))
 	cam.fov = 50
-	get_root().size = Vector2i(1800, 1200)
+	Common.render_size(self, Vector2i(1800, 1200))
 	await Common.wait_frames(self, 8)
 	Common.save_screenshot(self, out)
 	print("saved ", out, " (", files.size(), " tiles)")

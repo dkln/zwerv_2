@@ -2,6 +2,11 @@
 extends RefCounted
 ## Editor tools behind the "Build" dock (build_dock.gd), owned by plugin.gd.
 ##
+## Only in a Vox Tiles scene: the dock's checkbox marks the edited scene as one
+## (metadata on the scene root, one undo step; see editor_view.gd), which also
+## switches on the fast editor view and the outlines of the tiles of the selected
+## layer (outline.gd).
+##
 ## Layers: the GridMaps directly under the edited scene root. Choosing one
 ## selects it, so Godot's own GridMap editor (palette, floors, paint tools)
 ## edits that layer. The floor shown in the dock is read from the GridMap
@@ -17,15 +22,23 @@ extends RefCounted
 
 const BuildDock = preload("res://addons/vox_tiles/build_dock.gd")
 const Stamps = preload("res://addons/vox_tiles/stamps.gd")
+const EditorView = preload("res://addons/vox_tiles/editor_view.gd")
+const Outline = preload("res://addons/vox_tiles/outline.gd")
 
 ## layer that stamps are applied to
 const STAMP_LAYER := "Grond"
 const PREVIEW_FILL := Color(0.3, 0.7, 1.0, 0.25)
 const PREVIEW_LINE := Color(0.3, 0.7, 1.0, 0.9)
 
+## The edited scene was marked or unmarked as a Vox Tiles scene.
+signal marked_changed
+
 var dock: BuildDock
 var _plugin: EditorPlugin
 var _active: GridMap
+var _outline: Outline
+## The editor view (set by plugin.gd); the dock's view switch changes its game_view.
+var view: EditorView
 var _solo := false
 var _hidden: Array[GridMap] = []
 var _floor_spin: SpinBox
@@ -37,7 +50,10 @@ var _camera: Camera3D
 
 func _init(plugin: EditorPlugin) -> void:
 	_plugin = plugin
+	_outline = Outline.new(plugin)
 	dock = BuildDock.new()
+	dock.marked_toggled.connect(_set_marked)
+	dock.game_view_toggled.connect(_set_game_view)
 	dock.layer_chosen.connect(_choose_layer)
 	dock.floor_step.connect(_step_floor)
 	dock.solo_toggled.connect(func(on): _solo = on; _update_solo())
@@ -47,6 +63,7 @@ func _init(plugin: EditorPlugin) -> void:
 
 ## Disconnects and shows hidden layers again; called when the plugin unloads.
 func cleanup() -> void:
+	_outline.cleanup()
 	_show_hidden()
 	var sel := EditorInterface.get_selection()
 	if sel.selection_changed.is_connected(refresh):
@@ -57,6 +74,16 @@ func cleanup() -> void:
 
 ## Updates the dock after the selection or the edited scene changed.
 func refresh(_arg = null) -> void:
+	var root := EditorInterface.get_edited_scene_root()
+	var marked := EditorView.is_marked(root)
+	dock.set_marked(marked, root != null)
+	if not marked:
+		if _stamping:
+			_set_stamping(false)
+		_show_hidden()
+		_active = null
+		_outline.set_target(null)
+		return
 	var selected := EditorInterface.get_selection().get_selected_nodes()
 	if selected.size() == 1 and selected[0] is GridMap and selected[0] in _layers():
 		_active = selected[0]
@@ -65,6 +92,8 @@ func refresh(_arg = null) -> void:
 		_hidden.clear()
 	var names := _layers().map(func(gm): return String(gm.name))
 	dock.set_layers(names, String(_active.name) if _active else "")
+	_outline.set_target(_active if view == null or not view.game_view else null)
+	dock.set_game_view(view != null and view.game_view)
 	var grond := _grond()
 	dock.set_library(grond.mesh_library if grond else null)
 	_update_floor_text()
@@ -73,7 +102,7 @@ func refresh(_arg = null) -> void:
 
 ## True while drawing a stamp: then this plugin takes the 3D view input.
 func handles(object: Object) -> bool:
-	return _stamping and object is Node
+	return _stamping and object is Node and EditorView.is_marked(EditorInterface.get_edited_scene_root())
 
 
 ## Shows the hidden layers before saving/running; hides them again right after.
@@ -84,6 +113,33 @@ func apply_changes() -> void:
 
 
 # ------------------------------------------------------------------ layers
+
+## Dock view switch: Editor (fast, outlines) or Game (as in the game).
+func _set_game_view(on: bool) -> void:
+	if view:
+		view.game_view = on
+		view.refresh()
+	refresh()
+
+
+## Marks (or unmarks) the edited scene as a Vox Tiles scene, as one undo step.
+func _set_marked(on: bool) -> void:
+	var root := EditorInterface.get_edited_scene_root()
+	if root == null:
+		return
+	var ur := _plugin.get_undo_redo()
+	ur.create_action("Vox Tiles scene: on" if on else "Vox Tiles scene: off", UndoRedo.MERGE_DISABLE, root)
+	if on:
+		ur.add_do_method(root, "set_meta", EditorView.SCENE_META, true)
+		ur.add_undo_method(root, "remove_meta", EditorView.SCENE_META)
+	else:
+		ur.add_do_method(root, "remove_meta", EditorView.SCENE_META)
+		ur.add_undo_method(root, "set_meta", EditorView.SCENE_META, true)
+	ur.add_do_method(self, "refresh")
+	ur.add_undo_method(self, "refresh")
+	ur.commit_action()
+	marked_changed.emit()
+
 
 func _layers() -> Array:
 	var root := EditorInterface.get_edited_scene_root()

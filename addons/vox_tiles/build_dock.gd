@@ -3,15 +3,23 @@ extends VBoxContainer
 ## The "Build" dock (plugin.gd): pick the GridMap layer to edit with one click,
 ## see the floor you are drawing on in metres, hide the other layers while
 ## editing, and choose a stamp (stamps.gd) with its parameters.
+## The tools only show in a Vox Tiles scene; the checkbox at the top marks the edited
+## scene as one (see editor_view.gd).
 ## It only shows state and emits signals; plugin.gd does the work.
 
 const Stamps = preload("res://addons/vox_tiles/stamps.gd")
 
+signal marked_toggled(on: bool)
+signal game_view_toggled(on: bool)
 signal layer_chosen(layer_name: String)
 signal floor_step(delta: int)
 signal solo_toggled(on: bool)
 signal stamping_toggled(on: bool)
 
+var _marked: CheckBox
+var _tools: VBoxContainer       # everything below the checkbox
+var _view_editor: Button
+var _view_game: Button
 var _layer_box: HBoxContainer
 var _floor_label: Label
 var _solo: CheckBox
@@ -25,9 +33,32 @@ var _library: MeshLibrary
 
 func _init() -> void:
 	name = "Build"
-	add_child(_heading("Layer"))
+	_marked = CheckBox.new()
+	_marked.text = "Vox Tiles scene"
+	_marked.tooltip_text = "Use the Vox Tiles plugin in this scene: build tools and a fast editor view\n(no shadows, reflections, effects or animation, lines on the tile borders).\nSaved in the scene; the game itself is not affected."
+	_marked.toggled.connect(func(on): marked_toggled.emit(on))
+	add_child(_marked)
+	_tools = VBoxContainer.new()
+	add_child(_tools)
+	var view_row := HBoxContainer.new()
+	var view_label := Label.new()
+	view_label.text = "View"
+	view_row.add_child(view_label)
+	var group := ButtonGroup.new()
+	_view_editor = _button("Editor", func(): game_view_toggled.emit(false))
+	_view_editor.tooltip_text = "Fast: no shadows, reflections, effects or animation; outlines of the\ntiles of the selected layer; orthogonal camera."
+	_view_game = _button("Game", func(): game_view_toggled.emit(true))
+	_view_game.tooltip_text = "As in the game: shadows, sun, reflections, effects and animation.\n(LOD and merging only run in the game itself.)"
+	for b in [_view_editor, _view_game]:
+		b.toggle_mode = true
+		b.button_group = group
+		b.size_flags_horizontal = SIZE_EXPAND_FILL
+		view_row.add_child(b)
+	_view_editor.button_pressed = true
+	_tools.add_child(view_row)
+	_tools.add_child(_heading("Layer"))
 	_layer_box = HBoxContainer.new()
-	add_child(_layer_box)
+	_tools.add_child(_layer_box)
 	var floor_row := HBoxContainer.new()
 	floor_row.add_child(_button("-", func(): floor_step.emit(-1)))
 	_floor_label = Label.new()
@@ -35,30 +66,30 @@ func _init() -> void:
 	_floor_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	floor_row.add_child(_floor_label)
 	floor_row.add_child(_button("+", func(): floor_step.emit(1)))
-	add_child(floor_row)
+	_tools.add_child(floor_row)
 	_solo = CheckBox.new()
 	_solo.text = "Hide other layers"
 	_solo.toggled.connect(func(on): solo_toggled.emit(on))
-	add_child(_solo)
+	_tools.add_child(_solo)
 
-	add_child(_heading("Stamps"))
+	_tools.add_child(_heading("Stamps"))
 	_stamp_choice = OptionButton.new()
 	for stamp in Stamps.STAMPS:
 		_stamp_choice.add_item(Stamps.STAMPS[stamp].label)
 		_stamp_choice.set_item_metadata(_stamp_choice.item_count - 1, stamp)
 	_stamp_choice.item_selected.connect(func(_i): _build_params())
-	add_child(_stamp_choice)
+	_tools.add_child(_stamp_choice)
 	_params_grid = GridContainer.new()
 	_params_grid.columns = 2
-	add_child(_params_grid)
+	_tools.add_child(_params_grid)
 	_stamp_button = Button.new()
 	_stamp_button.text = "Draw stamp"
 	_stamp_button.toggle_mode = true
 	_stamp_button.toggled.connect(func(on): stamping_toggled.emit(on))
-	add_child(_stamp_button)
+	_tools.add_child(_stamp_button)
 	_status = Label.new()
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	add_child(_status)
+	_tools.add_child(_status)
 	_build_params()
 	set_layers([], "")
 	set_floor_text("")
@@ -75,6 +106,19 @@ func set_layers(layer_names: Array, active: String) -> void:
 		_layer_box.add_child(b)
 	if layer_names.is_empty():
 		_layer_box.add_child(_hint("No GridMap layers in this scene"))
+
+
+## Marked: the edited scene is a Vox Tiles scene (tools shown). has_scene: false
+## without an open scene (checkbox disabled).
+func set_marked(marked: bool, has_scene: bool) -> void:
+	_marked.set_pressed_no_signal(marked)
+	_marked.disabled = not has_scene
+	_tools.visible = marked
+
+
+func set_game_view(on: bool) -> void:
+	(_view_game if on else _view_editor).set_pressed_no_signal(true)
+	(_view_editor if on else _view_game).set_pressed_no_signal(false)
 
 
 func set_floor_text(text: String) -> void:

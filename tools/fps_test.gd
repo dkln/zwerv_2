@@ -24,7 +24,7 @@ func _init() -> void:
 	var mode := Common.arg(1, "tour")
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
 	Engine.max_fps = 0
-	get_root().size = Vector2i(1920, 1080)
+	Common.render_size(self, Vector2i(1920, 1080))
 	var sc := Common.instantiate(Common.WORLD, false)
 	if mode != "tour":
 		sc.get_node("Rondleiding").set("active", false)

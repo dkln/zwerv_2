@@ -29,6 +29,22 @@ Snel starten
    kijken, WASD = bewegen, Q/E = omlaag/omhoog, Shift = sneller).
    `iso_size` bepaalt hoeveel meter van de kaart in beeld is.
 
+Vox Tiles-scene en editor-weergave: bovenaan het Build-paneel staat het vinkje
+"Vox Tiles scene". Het markeert de geopende scene als scene die met de tiles gebouwd
+wordt (opgeslagen als metadata op de root-node, één stap in Ctrl+Z). De voorbeeldkaart
+en de lege kaart zijn al gemarkeerd. In een gemarkeerde scene zijn de bouwtools
+beschikbaar en kies je met "View" hoe de 3D-view eruitziet:
+- Editor (standaard): snel, voor een hoge framerate tijdens het bouwen. Geen
+  schaduwen, reflecties, SSAO/SSIL/glow/mist, motion blur, rook of animatie; lijnen op
+  de 4 m tile-randen; een lichtblauw kader om elke tile van de geselecteerde laag
+  (Grond, Gebouwen, Details of Props); orthografische camera.
+- Game: zoals in het spel, met schaduwen, zon, reflecties, effecten en animatie, en
+  een perspectiefcamera. LOD en het samenvoegen van lagen (DetailNiveau) draaien alleen
+  in het spel zelf (F5/F6), in geen van beide weergaven.
+Het spel gebruikt de editor-weergave nooit. Schaduwen staan in de Editor-weergave uit,
+maar worden vóór opslaan en starten weer aangezet, dus de scene blijft zoals hij was.
+De plugin zelf staat aan in de projectinstellingen; je hoeft niets te activeren.
+
 GridMap-bediening in de editor (Godot 4):
 - klik = plaatsen, rechtsklik = verwijderen
 - A / S / D = tile draaien om de X / Y / Z-as (S draait om de verticale as)
@@ -38,6 +54,9 @@ GridMap-bediening in de editor (Godot 4):
 
 Bouwpaneel ("Build", rechtsboven in de editor)
 ----------------------------------------------
+- Vox Tiles scene: vinkje bovenaan; alleen in een gemarkeerde scene verschijnen de
+  tools hieronder (zie hierboven).
+- View: Editor (snel, kaders, orthografisch) of Game (zoals in het spel).
 - Laag: één knop per GridMap (Grond, Gebouwen, Details, Props). Klik = die laag
   bewerken; het tile-palet van Godot verschijnt onderin.
 - Verdieping: `-`/`+` (of Q/E in de 3D-view) en de hoogte van die verdieping in
@@ -457,8 +476,8 @@ Rondleiding, prestaties en uiterlijk
   `highlights_only` toont alleen `HIGHLIGHTS`. Instelbaar: `travel_time` (2 s),
   `view_time` (4 s), `zoom_in`, `start_at` (leeg = met de opening beginnen).
 - `DetailNiveau` (`scripts/level_of_detail.gd`): schakelt bij het uitzoomen naar
-  grove tiles (`coarse_from`, standaard 100 m in beeld) en heel grove tiles
-  (`very_coarse_from`, 130 m), verbergt Details (vanaf 120 m) en Props (vanaf
+  grove tiles (`coarse_from`, standaard 160 m in beeld) en heel grove tiles
+  (`very_coarse_from`, 220 m), verbergt Details (vanaf 120 m) en Props (vanaf
   300 m) en past de schaduwafstand aan het zoomniveau aan. De grove versies
   maakt de importer zelf: gelijkende kleuren samengevoegd (`lod`) en blokjes
   van 2x2x2 voxels (`lod2`). De grove bibliotheken (`*_lod.res`, `*_lod2.res`)

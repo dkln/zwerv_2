@@ -14,7 +14,7 @@ func _init() -> void:
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(OUT_DIR))
 	var sc := Common.instantiate(Common.WORLD)
 	get_root().add_child(sc)
-	get_root().size = Vector2i(1600, 900)
+	Common.render_size(self, Vector2i(1600, 900))
 	var caption := Caption.new(get_root())
 	await process_frame
 	await Common.wait_for_merge(sc)

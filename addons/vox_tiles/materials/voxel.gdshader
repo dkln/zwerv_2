@@ -290,8 +290,8 @@ void fragment() {
 		c *= 1.0 - 0.6 * tile_border(vpos, wnorm);
 	}
 	ALBEDO = c;
-	ROUGHNESS = clamp(rough, 0.0, 1.0);
-	METALLIC = metallic;
-	SPECULAR = spec;
+	ROUGHNESS = light ? 1.0 : clamp(rough, 0.0, 1.0);   // editor: matte, no reflections
+	METALLIC = light ? 0.0 : metallic;
+	SPECULAR = light ? 0.0 : spec;
 	EMISSION = base * emission_energy * mix(0.25, 1.0, zwervr_night);
 }

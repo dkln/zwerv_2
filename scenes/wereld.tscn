@@ -70,6 +70,7 @@ dof_blur_near_distance = 250.0
 dof_blur_near_transition = 110.0
 
 [node name="Wereld" type="Node3D" unique_id=579942881]
+metadata/vox_tiles = true
 metadata/catalog_start_m = 2096.0
 metadata/districts = [{
 "d": 19,

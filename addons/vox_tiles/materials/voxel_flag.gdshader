@@ -28,6 +28,6 @@ void vertex() {
 
 void fragment() {
 	ALBEDO = voxel_albedo(UV, COLOR);
-	ROUGHNESS = 0.85;
-	SPECULAR = 0.2;
+	ROUGHNESS = editor_view() ? 1.0 : 0.85;
+	SPECULAR = editor_view() ? 0.0 : 0.2;
 }

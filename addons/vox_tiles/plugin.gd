@@ -7,23 +7,23 @@ extends EditorPlugin
 ## affected libraries (library_builder.gd). Saving a side file (.tile.json or
 ## .lod.vox, see tile_metadata.gd) triggers a reimport of its tile first.
 ##
-## In the editor the voxel shaders run in a light "editor view" (global shader parameter
-## zwervr_editor, see materials/voxel_editor.gdshaderinc): no costly detail or animation,
-## and lines on the 4 m tile borders. Project > Tools > MENU_EDITOR_VIEW switches it.
-##
-## It also adds the "Build" dock (build_tools.gd): layer switching, floor height,
-## hiding other layers and stamps; the 3D view hooks below forward to it.
+## Scenes built with the tiles are marked as a "Vox Tiles scene" (checkbox at the top of
+## the Build dock, saved as metadata on the scene root). In such a scene the 3D views
+## run in a light "editor view" (editor_view.gd) for a high frame rate: light voxel
+## shaders with lines on the 4 m tile borders, no shadows, reflections, SSAO/SSIL/glow/
+## fog, motion blur or smoke; and the build tools below are available. The game itself
+## (F5/F6 and exports) never uses the editor view.
 
 const Builder = preload("res://addons/vox_tiles/library_builder.gd")
 const TileMetadata = preload("res://addons/vox_tiles/tile_metadata.gd")
 const Importer = preload("res://addons/vox_tiles/vox_import_plugin.gd")
 const BuildTools = preload("res://addons/vox_tiles/build_tools.gd")
+const EditorView = preload("res://addons/vox_tiles/editor_view.gd")
 const MENU_REBUILD := "Vox Tiles: rebuild all libraries"
-const MENU_EDITOR_VIEW := "Vox Tiles: editor view (light shaders, tile borders) on/off"
-const EDITOR_VIEW_SETTING := "vox_tiles/editor_view"
 
 var _importer: EditorImportPlugin
 var _build: BuildTools
+var _view: EditorView
 var _timer: Timer
 var _pending := {}
 var _busy := false
@@ -34,8 +34,8 @@ func _enter_tree() -> void:
 	_importer = Importer.new()
 	add_import_plugin(_importer)
 	add_tool_menu_item(MENU_REBUILD, _rebuild_all)
-	add_tool_menu_item(MENU_EDITOR_VIEW, _toggle_editor_view)
-	_apply_editor_view()
+	_view = EditorView.new()
+	scene_changed.connect(_view.refresh)
 	_timer = Timer.new()
 	_timer.one_shot = true
 	_timer.wait_time = 1.0
@@ -46,8 +46,10 @@ func _enter_tree() -> void:
 	fs.filesystem_changed.connect(_schedule)
 	_schedule()
 	_build = BuildTools.new(self)
+	_build.view = _view
 	add_control_to_dock(DOCK_SLOT_RIGHT_UL, _build.dock)
 	scene_changed.connect(_build.refresh)
+	_build.marked_changed.connect(_view.refresh)
 	_build.refresh()
 
 
@@ -62,8 +64,9 @@ func _exit_tree() -> void:
 	_build.dock.queue_free()
 	_build = null
 	remove_tool_menu_item(MENU_REBUILD)
-	remove_tool_menu_item(MENU_EDITOR_VIEW)
-	RenderingServer.global_shader_parameter_set("zwervr_editor", 0.0)
+	if _view:
+		_view.cleanup()
+		_view = null
 	remove_import_plugin(_importer)
 	_importer = null
 
@@ -126,22 +129,6 @@ func _tiles_with_newer_side_files() -> PackedStringArray:
 	return out
 
 
-## The editor view is on unless switched off (remembered in the editor settings).
-func _editor_view_on() -> bool:
-	var es := EditorInterface.get_editor_settings()
-	return not es.has_setting(EDITOR_VIEW_SETTING) or bool(es.get_setting(EDITOR_VIEW_SETTING))
-
-
-func _apply_editor_view() -> void:
-	RenderingServer.global_shader_parameter_set("zwervr_editor", 1.0 if _editor_view_on() else 0.0)
-
-
-## Tool menu: switches the editor view on or off.
-func _toggle_editor_view() -> void:
-	EditorInterface.get_editor_settings().set_setting(EDITOR_VIEW_SETTING, not _editor_view_on())
-	_apply_editor_view()
-
-
 ## Tool menu: rebuilds every library from scratch (including previews).
 func _rebuild_all() -> void:
 	if _busy:
@@ -169,3 +156,5 @@ func _forward_3d_draw_over_viewport(overlay: Control) -> void:
 func _apply_changes() -> void:
 	if _build:
 		_build.apply_changes()
+	if _view:
+		_view.restore_for_save()

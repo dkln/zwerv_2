@@ -272,8 +272,10 @@ func _own_tints(root: Node3D) -> void:
 		tv.owner = root
 
 
-## Packs root into a PackedScene, saves it to scene_path and frees the tree.
+## Packs root into a PackedScene, saves it to scene_path and frees the tree. The scene
+## is marked as a Vox Tiles scene (fast editor view and build tools, see the plugin).
 func _save(root: Node3D, scene_path: String) -> void:
+	root.set_meta("vox_tiles", true)
 	var ps := PackedScene.new()
 	ps.pack(root)
 	var err := ResourceSaver.save(ps, scene_path)

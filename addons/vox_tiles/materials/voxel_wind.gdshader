@@ -84,8 +84,8 @@ void fragment() {
 		c *= 1.0 - 0.6 * tile_border(vpos, wnorm);
 	}
 	ALBEDO = c;
-	ROUGHNESS = roughness;
-	METALLIC = metallic;
-	SPECULAR = specular;
+	ROUGHNESS = editor_view() ? 1.0 : roughness;   // editor: matte, no reflections
+	METALLIC = editor_view() ? 0.0 : metallic;
+	SPECULAR = editor_view() ? 0.0 : specular;
 	EMISSION = voxel_albedo(UV, COLOR) * emission_energy;
 }

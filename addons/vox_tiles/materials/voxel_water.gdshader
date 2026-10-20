@@ -92,7 +92,7 @@ void fragment() {
 	r.y = abs(r.y);
 	vec3 colour = mix(zwervr_sky_horizon.rgb, zwervr_sky_top.rgb, smoothstep(0.0, 0.7, r.y));
 	float hit = 0.0;
-	if (is_top > 0.5) {
+	if (is_top > 0.5 && !editor_view()) {   // editor: no reflection
 		for (int i = 1; i <= steps; i++) {
 			vec3 q = wpos + r * (float(i) * step_size);
 			vec2 uv = to_screen(q, VIEW_MATRIX, PROJECTION_MATRIX);
@@ -110,9 +110,9 @@ void fragment() {
 		}
 	}
 	float fres = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 2.0);
-	float s = clamp(mix(sky_reflection, reflection, hit) + fres * 0.05, 0.0, 1.0) * is_top;
+	float s = editor_view() ? 0.0 : clamp(mix(sky_reflection, reflection, hit) + fres * 0.05, 0.0, 1.0) * is_top;
 	ALBEDO = base * (1.0 - s);
-	EMISSION = colour * s + vec3(gl * glitter * 0.6) * is_top;
-	ROUGHNESS = 0.35;
-	SPECULAR = 0.15;
+	EMISSION = colour * s + vec3(editor_view() ? 0.0 : gl * glitter * 0.6) * is_top;   // editor: no glitter
+	ROUGHNESS = editor_view() ? 1.0 : 0.35;
+	SPECULAR = editor_view() ? 0.0 : 0.15;
 }
