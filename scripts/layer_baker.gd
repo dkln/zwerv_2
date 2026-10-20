@@ -9,6 +9,9 @@ extends RefCounted
 ## surface's triangles per cell face (mesh meta "face_ranges" and "solid_faces", see
 ## vox_mesher.gd). Tiles whose shaders work in mesh-local coordinates (flag, wind,
 ## floating) cannot be merged and are added as separate MeshInstance3Ds.
+## On the lowest row of cells, the low triangles of shadow-casting tiles (water, banks,
+## floors: lower than LOW_SHADOW above the tile's bottom) go into chunks without shadow;
+## a ditch or quay then only casts the shadow of its reeds or wall.
 ##
 ## The work is spread over frames (BUDGET_USEC per frame), so `bake` must be awaited.
 
@@ -26,8 +29,11 @@ const LOCAL_MATERIALS := [
 
 ## Chunk size in cells (along x and z).
 const CHUNK := 8
+## Triangles lower than this (metres above the bottom of their tile, on the lowest row of
+## cells) cast no shadow; the same height as SHADOW_MIN_HEIGHT in library_builder.gd.
+const LOW_SHADOW := 0.7
 ## Bump when the output changes (invalidates the cache in user://merged).
-const VERSION := 6
+const VERSION := 7
 ## Compute time per frame in microseconds; the rest continues in following frames.
 const BUDGET_USEC := 6000
 
@@ -50,6 +56,9 @@ static func bake(gm: GridMap, lib: MeshLibrary, name: String, hide_tops: bool, p
 	var start := Time.get_ticks_usec()
 	var counter := 0
 	var cells := gm.get_used_cells()
+	var ground_row := 0x7fffffff
+	for c: Vector3i in cells:
+		ground_row = mini(ground_row, c.y)
 	for c: Vector3i in cells:
 		counter += 1
 		if counter % 64 == 0 and Time.get_ticks_usec() - start > BUDGET_USEC:
@@ -98,26 +107,15 @@ static func bake(gm: GridMap, lib: MeshLibrary, name: String, hide_tops: bool, p
 			shadow[id] = lib.get_item_mesh_cast_shadow(id) if lib.has_method("get_item_mesh_cast_shadow") else 1
 		# chunks are split by shadow setting too, as cast_shadow is per MeshInstance3D
 		var key := Vector3i(floori(c.x / float(CHUNK)), floori(c.z / float(CHUNK)), shadow[id])
-		var chunk: Dictionary = chunks.get(key, {})
-		chunks[key] = chunk
+		# the low triangles (part.low) of a shadow caster on the ground row cast none
+		var low_key := Vector3i(key.x, key.y, 0) if c.y == ground_row else key
 		var rot := Transform3D(xf.basis, Vector3.ZERO)   # for normals
 		for part in parts:
-			var mat: Material = part.mat
-			var target: Array = chunk.get(mat, [])
-			if target.is_empty():
-				target = [PackedVector3Array(), PackedVector3Array(), PackedColorArray(), PackedVector2Array(), PackedVector2Array()]
-				chunk[mat] = target
 			for g in Mesher.GROUPS:
 				if (hidden >> g) & 1:
 					continue
-				var gr: Array = part.groups[g]
-				if gr[0].is_empty():
-					continue
-				target[0].append_array(xf * gr[0])
-				target[1].append_array(rot * gr[1])
-				target[2].append_array(gr[2])
-				target[3].append_array(gr[3])   # atlas UVs
-				target[4].append_array(gr[4])   # tile-local voxel coordinates (relief) stay valid in the chunk
+				_append(chunks, key, part.mat, part.groups[g], xf, rot)
+				_append(chunks, low_key, part.mat, part.low[g], xf, rot)
 	# build one mesh per chunk, one surface per material
 	var built := 0
 	for key in chunks:
@@ -158,6 +156,24 @@ static func bake(gm: GridMap, lib: MeshLibrary, name: String, hide_tops: bool, p
 	return out
 
 
+## Appends the face group `gr` ([v, n, c, uv, uv2], mesh space) to the surface of `mat`
+## in chunk `key`, transformed by `xf` (normals by `rot`).
+static func _append(chunks: Dictionary, key: Vector3i, mat: Material, gr: Array, xf: Transform3D, rot: Transform3D) -> void:
+	if gr[0].is_empty():
+		return
+	var chunk: Dictionary = chunks.get(key, {})
+	chunks[key] = chunk
+	var target: Array = chunk.get(mat, [])
+	if target.is_empty():
+		target = [PackedVector3Array(), PackedVector3Array(), PackedColorArray(), PackedVector2Array(), PackedVector2Array()]
+		chunk[mat] = target
+	target[0].append_array(xf * gr[0])
+	target[1].append_array(rot * gr[1])
+	target[2].append_array(gr[2])
+	target[3].append_array(gr[3])   # atlas UVs
+	target[4].append_array(gr[4])   # tile-local voxel coordinates (relief) stay valid in the chunk
+
+
 ## Cached Basis for a GridMap orthogonal orientation index.
 static func _basis(gm: GridMap, orientation: int, cache: Dictionary) -> Basis:
 	if not cache.has(orientation):
@@ -166,7 +182,8 @@ static func _basis(gm: GridMap, orientation: int, cache: Dictionary) -> Basis:
 
 
 ## Splits each surface of `mesh` into its Mesher.GROUPS face groups:
-## [{mat, groups: [[vertices, normals, colours, uvs, uv2s] per group]}]. Returns an empty array
+## [{mat, groups: [[vertices, normals, colours, uvs, uv2s] per group], low: the same for the
+## triangles lower than LOW_SHADOW above the mesh's bottom}]. Returns an empty array
 ## if the mesh must stay separate (local-coordinate shader, indexed or uncoloured surface).
 ## Without "face_ranges" meta all triangles go into the last group (never hidden).
 static func _split(mesh: ArrayMesh) -> Array:
@@ -192,9 +209,20 @@ static func _split(mesh: ArrayMesh) -> Array:
 			bounds = face_ranges[s]
 		else:
 			bounds = PackedInt32Array([0, 0, 0, 0, 0, 0, 0, v.size()])
+		var limit := mesh.get_aabb().position.y + LOW_SHADOW
 		var groups := []
+		var low := []
 		for g in Mesher.GROUPS:
-			groups.append([v.slice(bounds[g], bounds[g + 1]), n.slice(bounds[g], bounds[g + 1]),
-				k.slice(bounds[g], bounds[g + 1]), uv.slice(bounds[g], bounds[g + 1]), uv2.slice(bounds[g], bounds[g + 1])])
-		parts.append({"mat": mat, "groups": groups})
+			var hi_part := [PackedVector3Array(), PackedVector3Array(), PackedColorArray(), PackedVector2Array(), PackedVector2Array()]
+			var lo_part := [PackedVector3Array(), PackedVector3Array(), PackedColorArray(), PackedVector2Array(), PackedVector2Array()]
+			for t in range(bounds[g], bounds[g + 1], 3):
+				var dest: Array = lo_part if maxf(v[t].y, maxf(v[t + 1].y, v[t + 2].y)) < limit else hi_part
+				dest[0].append_array(v.slice(t, t + 3))
+				dest[1].append_array(n.slice(t, t + 3))
+				dest[2].append_array(k.slice(t, t + 3))
+				dest[3].append_array(uv.slice(t, t + 3))
+				dest[4].append_array(uv2.slice(t, t + 3))
+			groups.append(hi_part)
+			low.append(lo_part)
+		parts.append({"mat": mat, "groups": groups, "low": low})
 	return parts

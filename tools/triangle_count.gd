@@ -1,7 +1,8 @@
 extends SceneTree
 ## Counts triangles per tile at each LOD level (fine / coarse / very coarse) and shows
-## the four heaviest tiles per library. Coarse meshes come from the "lod"/"lod2" meta
-## the importer stores on each tile mesh.
+## the four heaviest tiles per library. Coarse meshes come from the LOD libraries
+## (<library>_lod.res, <library>_lod2.res) that library_builder.gd writes next to the
+## normal one, with the same item IDs.
 ## usage: Godot --headless --script tools/triangle_count.gd
 
 const Common = preload("res://tools/tool_common.gd")
@@ -12,13 +13,15 @@ func _init() -> void:
 	Common.watchdog(self)
 	for cat in LIBRARIES:
 		var lib: MeshLibrary = load("res://assets/libraries/%s.res" % cat)
+		var coarse := _library("res://assets/libraries/%s_lod.res" % cat)
+		var very_coarse := _library("res://assets/libraries/%s_lod2.res" % cat)
 		var tot := [0, 0, 0]
 		var list := []   # [fine, name, coarse, very coarse]
 		for id in lib.get_item_list():
 			var m := lib.get_item_mesh(id)
 			var t0 := _tris(m)
-			var t1 := _tris(m.get_meta("lod", null))
-			var t2 := _tris(m.get_meta("lod2", null))
+			var t1 := _tris(coarse.get_item_mesh(id)) if coarse else 0
+			var t2 := _tris(very_coarse.get_item_mesh(id)) if very_coarse else 0
 			tot[0] += t0; tot[1] += t1; tot[2] += t2
 			list.append([t0, lib.get_item_name(id), t1, t2])
 		list.sort()
@@ -28,6 +31,11 @@ func _init() -> void:
 		for i in 4:
 			print("    ", list[i][1], ": ", list[i][0], " / ", list[i][2], " / ", list[i][3])
 	quit()
+
+
+## The MeshLibrary at `path`, or null if it doesn't exist (not built yet).
+func _library(path: String) -> MeshLibrary:
+	return load(path) if ResourceLoader.exists(path) else null
 
 
 ## Number of triangles of a (non-indexed) mesh; 0 for null.

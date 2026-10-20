@@ -282,8 +282,16 @@ static func build(vox, voxel_size: float, use_ao: bool, color_tolerance := 0, an
 	return mesh
 
 
+## downscale(): weight of a voxel that sticks up out of a sparse layer (a flower above the
+## soil), against 1 for the soil between them; seen at an angle its sides show too.
+const STICKING_UP_WEIGHT := 4
+## 4 x 4 ordered-dither matrix (0..15), row by row.
+const BAYER := [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5]
+
+
 ## Makes a coarser version of the model: every block of f x f x f voxels becomes one voxel
-## (most common colour of the filled voxels; empty if all are empty).
+## (most common colour of its top layer, or of what is seen from above when that layer is
+## sparse; empty if all are empty).
 static func downscale(vox, f: int):
 	var out = Parser.new()
 	out.palette = vox.palette
@@ -299,8 +307,12 @@ static func downscale(vox, f: int):
 	# (asphalt, grass) wins over the ground layer below
 	var counts := {}
 	var top := {}
+	var column := {}   # Vector2i(x, y) -> [z, colour] of the topmost voxel of each voxel column
 	var vx: PackedByteArray = vox.voxels
 	for i in range(0, vx.size(), 4):
+		var xy := Vector2i(vx[i], vx[i + 1])
+		if vx[i + 2] > column.get(xy, [-1])[0]:
+			column[xy] = [vx[i + 2], vx[i + 3]]
 		var k := Vector3i(vx[i] / f, vx[i + 1] / f, vx[i + 2] / f)
 		var z: int = vx[i + 2]
 		if z > top.get(k, -1):
@@ -310,6 +322,31 @@ static func downscale(vox, f: int):
 			continue
 		var d: Dictionary = counts[k]
 		d[vx[i + 3]] = d.get(vx[i + 3], 0) + 1
+	# a sparse top layer (flowers or tufts with soil between them): the top block of its
+	# block column takes what is seen from above in every voxel column, the voxels that
+	# stick up into the block weigh more (STICKING_UP_WEIGHT); the colour is
+	# then spread over the blocks by share with an ordered dither, so a bed with one
+	# flower per block still shows its flowers between the soil
+	var highest := {}   # Vector2i(block x, block y) -> z of the top block
+	for k in counts:
+		highest[Vector2i(k.x, k.y)] = maxi(highest.get(Vector2i(k.x, k.y), -1), k.z)
+	var dither := {}    # blocks whose colour comes from above
+	for k in counts:
+		if highest[Vector2i(k.x, k.y)] != k.z:
+			continue
+		var filled := 0
+		for c in counts[k]:
+			filled += counts[k][c]
+		if filled * 2 > f * f:
+			continue
+		var seen := {}
+		for y in range(k.y * f, k.y * f + f):
+			for x in range(k.x * f, k.x * f + f):
+				var col: Array = column.get(Vector2i(x, y), [])
+				if not col.is_empty():
+					seen[col[1]] = seen.get(col[1], 0) + (STICKING_UP_WEIGHT if col[0] >= k.z * f else 1)
+		counts[k] = seen
+		dither[k] = true
 	var uv := PackedByteArray()
 	for k in counts:
 		var d: Dictionary = counts[k]
@@ -319,12 +356,45 @@ static func downscale(vox, f: int):
 			if d[c] > n:
 				n = d[c]
 				best = c
+		if dither.has(k):
+			var colours := d.keys()
+			colours.sort()
+			var total := 0
+			for c in colours:
+				total += d[c]
+			var threshold: float = (BAYER[(k.y % 4) * 4 + k.x % 4] + 0.5) / 16.0 * total
+			var sum := 0
+			for c in colours:
+				sum += d[c]
+				if sum > threshold:
+					best = c
+					break
 		uv.append(k.x)
 		uv.append(k.y)
 		uv.append(k.z)
 		uv.append(best)
 	out.voxels = uv
 	return out
+
+
+## Multiplies the UV2 (voxel coordinates, _face_uv) of every surface of `mesh` by
+## `factor`: a coarse version built from bigger voxels then keeps the voxel grid of the
+## full model, so the relief shaders draw stones of the same size at every LOD level.
+static func scale_uv2(mesh: ArrayMesh, factor: float) -> void:
+	var surfaces := []
+	for s in mesh.get_surface_count():
+		var arrays := mesh.surface_get_arrays(s)
+		if arrays[Mesh.ARRAY_TEX_UV2] != null:
+			var uv2: PackedVector2Array = arrays[Mesh.ARRAY_TEX_UV2]
+			for i in uv2.size():
+				uv2[i] *= factor
+			arrays[Mesh.ARRAY_TEX_UV2] = uv2
+		surfaces.append([arrays, mesh.surface_get_material(s), mesh.surface_get_name(s)])
+	mesh.clear_surfaces()
+	for e in surfaces:
+		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, e[0])
+		mesh.surface_set_material(mesh.get_surface_count() - 1, e[1])
+		mesh.surface_set_name(mesh.get_surface_count() - 1, e[2])
 
 
 ## Material of a greedy-mesh key: textured keys store material + 1, others a colour.

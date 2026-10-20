@@ -27,7 +27,8 @@ const DEFAULTS := {
 	"color_merge": 14,
 	# colour merging of the "lod" version
 	"lod_color_tolerance": 24,
-	# the "lod2" version merges blocks of n x n x n voxels
+	# the "lod2" version merges blocks of n x n x n voxels (1 = the "lod" version, for
+	# tiles whose look depends on single voxels, like the tulip beds)
 	"lod2_downscale": 2,
 	# colours in a texture per tile instead of the vertex colours, so faces merge by
 	# shape (far fewer triangles); library_builder.gd packs the textures into an atlas
@@ -181,7 +182,10 @@ func _add_lods(mesh: ArrayMesh, vox, source_file: String, meta: Dictionary, opti
 		if lod_vox == null:
 			return ERR_PARSE_ERROR
 		var lod_vs := vs * float(vox.size.x) / float(maxi(lod_vox.size.x, 1))
-		mesh.set_meta("lod2", _coarse(mesh, "lod", lod_vox, lod_vs, _option(options, "color_merge"), animation, block, textured))
+		var coarse := _coarse(mesh, "lod", lod_vox, lod_vs, _option(options, "color_merge"), animation, block, textured)
+		if not is_equal_approx(lod_vs, vs):
+			Mesher.scale_uv2(coarse, lod_vs / vs)
+		mesh.set_meta("lod2", coarse)
 		return OK
 	# lod: similar colours merged, no AO
 	var tol: int = _option(options, "lod_color_tolerance")
@@ -190,7 +194,9 @@ func _add_lods(mesh: ArrayMesh, vox, source_file: String, meta: Dictionary, opti
 	# lod2: blocks of f x f x f voxels merged into one
 	var f: int = _option(options, "lod2_downscale")
 	if f > 1:
-		_coarse(mesh, "lod2", Mesher.downscale(vox, f), vs * f, LOD2_COLOR_TOLERANCE, animation, block, textured)
+		Mesher.scale_uv2(_coarse(mesh, "lod2", Mesher.downscale(vox, f), vs * f, LOD2_COLOR_TOLERANCE, animation, block, textured), f)
+	elif mesh.has_meta("lod"):
+		mesh.set_meta("lod2", mesh.get_meta("lod"))
 	return OK
 
 
@@ -200,7 +206,7 @@ func _smooth_all(mesh: ArrayMesh, plan: Dictionary, options: Dictionary, block: 
 	Slopes.smooth(mesh, plan, vs, block)
 	if mesh.has_meta("lod"):
 		Slopes.smooth(mesh.get_meta("lod"), plan, vs, block)
-	if mesh.has_meta("lod2"):
+	if mesh.has_meta("lod2") and mesh.get_meta("lod2") != mesh.get_meta("lod", null):
 		Slopes.smooth(mesh.get_meta("lod2"), plan, vs, block, _option(options, "lod2_downscale"))
 
 

@@ -44,19 +44,21 @@ func _init() -> void:
 
 
 ## Applies the benchmark flags (see the header) to the not yet added scene `sc`.
+## Nodes are removed at once (not queue_free): a queued node still gets added and runs
+## a frame, so the day cycle would switch the shadows back on and DetailNiveau would
+## set up a freed layer.
 func _apply_flags(sc: Node, flags: String) -> void:
 	if "s" in flags:
 		sc.get_node("Zon").shadow_enabled = false
-		if sc.has_node("Dagcyclus"):
-			sc.get_node("Dagcyclus").queue_free()
+		_remove(sc, "Dagcyclus")
 	for o in [4, 8]:
 		if ("o%d" % o) in flags:
 			for n in Common.LAYERS:
 				sc.get_node(n).cell_octant_size = o
 	if "p" in flags:
-		sc.get_node("Props").queue_free()
+		_remove(sc, "Props")
 	if "g" in flags:
-		sc.get_node("Gebouwen").queue_free()
+		_remove(sc, "Gebouwen")
 	if "e" in flags:
 		var env: Environment = sc.get_node("Omgeving").environment
 		env.ssao_enabled = false
@@ -69,7 +71,15 @@ func _apply_flags(sc: Node, flags: String) -> void:
 	if "1" in flags:
 		sc.get_node("Zon").directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
 	if "d" in flags:
-		sc.get_node("DetailNiveau").queue_free()
+		_remove(sc, "DetailNiveau")
+
+
+## Frees the child `node_name` of `sc` immediately, if it is there.
+func _remove(sc: Node, node_name: String) -> void:
+	var n := sc.get_node_or_null(node_name)
+	if n:
+		sc.remove_child(n)
+		n.free()
 
 
 ## Collects frame times after the warm-up and prints the result after `_duration` seconds.

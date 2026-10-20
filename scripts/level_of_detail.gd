@@ -11,8 +11,10 @@ extends Node
 ##   Baking takes long, so results are cached as scenes in user://merged, keyed on the
 ##   scene, map part ("part" metadata of the layer), layer, cell data, transform, library modification time and Bakker.VERSION.
 ##   While merging, an optional loading screen is shown; `merge_finished` fires when done.
-## - Distance culling: the Details and Props layers are hidden when zoomed out.
-## - Shadow distance and depth of field (tilt-shift) follow the camera distance.
+## - Distance culling: the Details and Props layers (and their LOD copies) are hidden
+##   when zoomed out.
+## - Shadow distance and depth of field (tilt-shift) follow the camera distance; far out
+##   the depth of field fades out and is switched off (it costs ~10% framerate).
 ##
 ## You just edit the normal GridMaps; all copies are created automatically. When the
 ## layers are replaced (the tour loads one map part at a time, scripts/world_parts.gd),
@@ -30,16 +32,16 @@ signal merge_finished
 @export var camera_path := NodePath("../Camera")
 @export var sun_path := NodePath("../Zon")
 ## GridMap layers (node names under the scene root) that get LOD copies.
-@export var layers: Array[String] = ["Grond", "Gebouwen"]
+@export var layers: Array[String] = ["Grond", "Gebouwen", "Props"]
 ## These layers are merged at startup into large meshes without hidden
 ## faces (scripts/layer_baker.gd); the GridMap itself stays for collisions and editing.
 @export var merge_layers: Array[String] = ["Gebouwen", "Grond"]
 ## Layers in which tiles are as tall as the cell (top face may go under a neighbouring block).
 @export var hide_top_layers: Array[String] = ["Gebouwen"]
 ## From this zoom size (metres in view, see scripts/iso_camera.gd) coarse tiles are used.
-@export var coarse_from := 160.0
+@export var coarse_from := 100.0
 ## From this zoom size the very coarse tiles (25 cm blocks).
-@export var very_coarse_from := 220.0
+@export var very_coarse_from := 130.0
 ## From this zoom size (metres in view) the Details layer is hidden.
 @export var details_until := 120.0
 ## From this zoom size (metres in view) the Props layer is hidden.
@@ -48,6 +50,9 @@ signal merge_finished
 @export var shadow_factor := 1.0
 ## Depth of field (tilt-shift) scales with the distance to the ground.
 @export var depth_of_field := true
+## From this zoom size (metres in view) the depth of field is off; it fades out over the
+## last 20% before it.
+@export var depth_of_field_until := 200.0
 ## Show a loading screen while merging is in progress.
 @export var loading_screen := true
 ## Text of the loading screen (the tour names the map part being loaded).
@@ -58,8 +63,12 @@ var _sun: DirectionalLight3D
 ## Per layer the nodes per LOD level: [normal, coarse, very coarse]; null = level missing.
 ## Before merging these are GridMaps, after merging the baked Node3Ds.
 var _pairs := []
+## Layer name per entry of _pairs.
+var _names: Array[String] = []
 ## LOD level currently shown (-1 = reapply on the next frame).
 var _level := -1
+## Layer name -> hidden by distance culling, as last applied.
+var _culled := {}
 ## Number of layers still being merged.
 var _busy := 0
 var _screen: CanvasLayer
@@ -67,6 +76,8 @@ var _screen_label: Label
 var _progress := {}   # "<layer><suffix>" -> fraction done (0..1) of every merge job
 ## Counts setup()/clear(); a merge that finds it changed belongs to layers that are gone.
 var _generation := 0
+## Blur amount of the camera attributes as set in the scene (faded by the zoom).
+var _dof_amount := 0.0
 
 
 func _ready() -> void:
@@ -74,6 +85,8 @@ func _ready() -> void:
 		return
 	_cam = get_node_or_null(camera_path)
 	_sun = get_node_or_null(sun_path)
+	if _cam and _cam.attributes is CameraAttributesPractical:
+		_dof_amount = (_cam.attributes as CameraAttributesPractical).dof_blur_amount
 	setup()
 
 
@@ -93,6 +106,7 @@ func setup() -> void:
 				continue
 			pair.append(_lod_copy(gm, layer_name + suffix, load(path)))
 		_pairs.append(pair)
+		_names.append(layer_name)
 		if layer_name in merge_layers:
 			_busy += 1
 			for suffix in LEVEL_SUFFIXES:
@@ -113,6 +127,7 @@ func clear() -> void:
 				if p[i] != null and is_instance_valid(p[i]):
 					p[i].queue_free()
 	_pairs.clear()
+	_names.clear()
 	_progress.clear()
 	_level = -1
 	if _screen:
@@ -308,29 +323,41 @@ func _process(_delta: float) -> void:
 		level = 2
 	elif zoom > coarse_from:
 		level = 1
-	if level != _level:
+	var culled := {"Details": zoom >= details_until, "Props": zoom >= props_until}
+	if level != _level or culled != _culled:
 		_level = level
-		for p in _pairs:
+		_culled = culled
+		var root := get_parent()
+		for k in _pairs.size():
+			var p: Array = _pairs[k]
+			var shown: bool = not culled.get(_names[k], false)
 			# fall back to a finer level if this one does not exist
 			var choice := level
 			while choice > 0 and p[choice] == null:
 				choice -= 1
 			for i in p.size():
 				if p[i] != null:
-					p[i].visible = i == choice
-	var root := get_parent()
-	var details := root.get_node_or_null("Details")
-	if details:
-		details.visible = zoom < details_until
-	var props := root.get_node_or_null("Props")
-	if props:
-		props.visible = zoom < props_until
+					p[i].visible = shown and i == choice
+		# culled layers without LOD copies are toggled directly
+		for layer_name in culled:
+			if not layer_name in _names:
+				var gm := root.get_node_or_null(layer_name) as Node3D
+				if gm:
+					gm.visible = not culled[layer_name]
 	if _sun:
 		_sun.directional_shadow_max_distance = distance + zoom * shadow_factor
 	var attr := _cam.attributes as CameraAttributesPractical
 	if attr and depth_of_field:
+		var fade := 1.0 - smoothstep(depth_of_field_until * 0.8, depth_of_field_until, zoom)
+		attr.dof_blur_amount = _dof_amount * fade
+		attr.dof_blur_far_enabled = fade > 0.0
+		attr.dof_blur_near_enabled = fade > 0.0
 		# sharp band around the focus point, as fractions of the camera-ground distance
 		attr.dof_blur_far_distance = distance * 1.1
 		attr.dof_blur_far_transition = distance * 0.4
 		attr.dof_blur_near_distance = distance * 0.83
 		attr.dof_blur_near_transition = distance * 0.3
+	elif attr:
+		# someone else (the tour's low flights) sets the distances: undo the fade
+		attr.dof_blur_amount = _dof_amount
+		attr.dof_blur_far_enabled = true

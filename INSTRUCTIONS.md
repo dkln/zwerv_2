@@ -531,18 +531,29 @@ Rondleiding, prestaties en uiterlijk
   `OVERVIEW_TIME`; alles sneller met `speed`. Verder: `highlights_only`, `start_at`,
   `part` (0 = alle delen na elkaar, n = alleen deel n).
 - `DetailNiveau` (`scripts/level_of_detail.gd`): schakelt bij het uitzoomen naar
-  grove tiles (`coarse_from`, standaard 160 m in beeld) en heel grove tiles
-  (`very_coarse_from`, 220 m), verbergt Details (vanaf 120 m) en Props (vanaf
-  300 m) en past de schaduwafstand aan het zoomniveau aan. De grove versies
+  grove tiles (`coarse_from`, standaard 100 m in beeld: daar is een voxel al kleiner
+  dan een pixel) en heel grove tiles (`very_coarse_from`, 130 m), voor Grond,
+  Gebouwen en Props (bomen: een plataan 9.500 / 5.800 / 1.500 driehoeken), verbergt
+  Details (vanaf 120 m) en Props (vanaf 300 m), past de schaduwafstand aan het
+  zoomniveau aan en laat de scherptediepte uitfaden tot `depth_of_field_until`
+  (200 m; daarboven uit, scheelt ~10% framerate). De grove versies
   maakt de importer zelf: gelijkende kleuren samengevoegd (`lod`) en blokjes
-  van 2x2x2 voxels (`lod2`). De grove bibliotheken (`*_lod.res`, `*_lod2.res`)
+  van 2x2x2 voxels (`lod2`). Een blok krijgt de kleur van zijn bovenste laag; is
+  die laag dun (bloemen of plukjes met aarde ertussen), dan telt wat je van boven
+  ziet en wisselen bloemen en aarde elkaar af in een dambord. UV2 van `lod2` blijft
+  in voxels van het volle model, zodat stenen en tegels in de shader even groot
+  blijven. De grove bibliotheken (`*_lod.res`, `*_lod2.res`)
   worden automatisch gemaakt en staan in `.gitignore`.
 - Ook het volle detailniveau voegt bijna gelijke kleuren samen (import-optie
   `color_merge`, standaard 14) voor minder driehoeken; de fijne korrel
   komt uit de shader (`voxel_noise`). Gras en boomkruinen hebben hun detail in de
   kleur van de voxels, niet in uitstekende voxels.
 - Schaduwen: vlakke tiles (lager dan 0,7 m) en kleine details werpen geen
-  schaduw; de zon gebruikt 4 schaduwsplits (4096 px).
+  schaduw; de zon gebruikt 4 schaduwsplits (4096 px). Bij het samenvoegen werpen
+  ook de lage driehoeken (minder dan 0,7 m boven de onderkant van hun tile, op de
+  onderste rij cellen) van schaduwwerpende tiles geen schaduw: een sloot of kade
+  werpt alleen nog de schaduw van zijn riet of muur. De schaduwpass tekent de
+  geometrie opnieuw en is de grootste kostenpost na de geometrie zelf.
 - Rendering (`project.godot`): render-resolutie 85% met temporele upscaling (vrijwel niet te zien naast 100%, ~13% sneller; bij 77% werd het van ver korrelig en kartelig) en anti-aliasing: MetalFX op macOS, FSR 2 elders (MSAA/FXAA uit), debanding,
   depth prepass uit; GridMaps gebruiken octant-grootte 4 (snelst gemeten).
 - Samenvoegen (`scripts/layer_baker.gd`, aangestuurd door `DetailNiveau`, export
@@ -628,7 +639,8 @@ Rondleiding, prestaties en uiterlijk
 - Lettertype: Rubik (`assets/fonts/Rubik.ttf`, OFL-licentie), ingesteld als
   projectfont.
 - Meten: `Godot --script tools/fps_test.gd -- 20 tour` of
-  `-- 10 140` (vaste zoom 140 m). Sluit de Godot-editor tijdens het meten, anders
+  `-- 10 140` (vaste zoom 140 m), of een vast beeld met vlaggen:
+  `-- 10 140 72 60 s` (drukke wijk rond x 72, z 60, zonder schaduw). Sluit de Godot-editor tijdens het meten, anders
   delen ze de GPU. `tools/triangle_count.gd` toont het aantal driehoeken per tile en
   LOD-niveau.
 
