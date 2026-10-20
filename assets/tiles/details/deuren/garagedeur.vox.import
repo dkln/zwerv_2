@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://b8mvikp2oxmnv"
 path="res://.godot/imported/garagedeur.vox-9933bf797df137d7157afb87be1e1827.mesh"

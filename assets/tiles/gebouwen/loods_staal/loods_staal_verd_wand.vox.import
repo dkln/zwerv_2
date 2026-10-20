@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://c57u73q7mr4ds"
 path="res://.godot/imported/loods_staal_verd_wand.vox-346d20bec23c00100da8eceb9065193b.mesh"

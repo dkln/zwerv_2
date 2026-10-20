@@ -610,7 +610,7 @@ def playground_sand():
 @tile("grond/natuur/bos")
 def woods():
     """Forest floor: tall grass mixed with earth and leaves, scattered fallen leaves."""
-    m = grass_tile(tufts=0.25, tall=True, base=mix("gras5", "gras3", "aarde2", "blad5", seed=307))
+    m = grass_tile(base=mix("gras5", "gras3", "aarde2", "blad5", seed=307))
     for y in range(T):
         for x in range(T):
             r = h(x, y, 0, 308)
@@ -624,7 +624,7 @@ def woods():
 @tile("grond/natuur/bosrand")
 def forest_edge():
     """Grass blending into forest floor towards the back (+y)."""
-    m = grass_tile(tufts=0.15, tall=True)
+    m = grass_tile()
     for y in range(16, T):
         for x in range(T):
             if h(x, y, 0, 309) < 0.3 + (y - 16) * 0.03:
@@ -635,7 +635,7 @@ def forest_edge():
 @tile("grond/natuur/heide")
 def heath():
     """Heathland: dry grass with patches of purple heather."""
-    m = grass_tile(tufts=0.0, base=mix("gras_droog", "gras5", "bloem_paars", seed=311, weights=[3, 2, 2]))
+    m = grass_tile(base=mix("gras_droog", "gras5", "bloem_paars", seed=311, weights=[3, 2, 2]))
     for y in range(T):
         for x in range(T):
             if h(x, y, 0, 312) < 0.25:

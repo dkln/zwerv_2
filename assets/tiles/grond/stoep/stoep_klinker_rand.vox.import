@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://c86vt7ri3vw8j"
 path="res://.godot/imported/stoep_klinker_rand.vox-630a26b9faeb65f3f497158efb7a2c65.mesh"

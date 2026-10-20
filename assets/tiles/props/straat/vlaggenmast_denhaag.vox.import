@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://7guawy10woc2"
 path="res://.godot/imported/vlaggenmast_denhaag.vox-a04e2792bcc02f6d851d8574e11c6687.mesh"

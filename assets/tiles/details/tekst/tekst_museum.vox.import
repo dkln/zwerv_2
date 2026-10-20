@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://bvjho8j75ahsx"
 path="res://.godot/imported/tekst_museum.vox-d5db147d9a1dfd25af8b8209c91a15f8.mesh"

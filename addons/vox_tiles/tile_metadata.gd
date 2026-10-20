@@ -11,7 +11,8 @@ extends RefCounted
 ##       }
 ##
 ##   id: pins the MeshLibrary item id (library_builder.gd); left out = assigned automatically.
-##   animation: "none", "wind" (trees, plants) or "float" (bobs on the water);
+##   animation: "none", "wind" (trees, plants), "flowers" (flower beds, flowers: sway
+##              just above the ground) or "float" (bobs on the water);
 ##     left out = guessed from the file name (vox_import_plugin.gd).
 ##   materials: palette index (as shown in MagicaVoxel) or "#rrggbb" colour -> one of
 ##     Parser.MATERIAL_NAMES. Colours not listed keep the material set in MagicaVoxel.
@@ -35,7 +36,7 @@ extends RefCounted
 
 const Parser = preload("res://addons/vox_tiles/vox_parser.gd")
 
-const ANIMATIONS := ["none", "wind", "float"]
+const ANIMATIONS := ["none", "wind", "flowers", "float"]
 
 
 ## `huis.vox` -> `huis.tile.json`

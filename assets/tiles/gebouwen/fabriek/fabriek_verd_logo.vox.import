@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://cyk38dutw0dvx"
 path="res://.godot/imported/fabriek_verd_logo.vox-c6f2d033bbc746efff126fdbd90be82e.mesh"

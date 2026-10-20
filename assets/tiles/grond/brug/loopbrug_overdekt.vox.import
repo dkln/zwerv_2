@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://b7ty3ojai1lfq"
 path="res://.godot/imported/loopbrug_overdekt.vox-d18f0c58fe79f7debee0539006223ed6.mesh"

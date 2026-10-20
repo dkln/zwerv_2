@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://bdpfmfkqlf4lt"
 path="res://.godot/imported/dakkapel_los.vox-652f78183b2e6d3200e206b4502d97c3.mesh"

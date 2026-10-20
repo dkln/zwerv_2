@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://d3vl7x70daqyw"
 path="res://.godot/imported/zonnepanelen_klein.vox-14289aa024e25fa9f6a775e008561ef2.mesh"

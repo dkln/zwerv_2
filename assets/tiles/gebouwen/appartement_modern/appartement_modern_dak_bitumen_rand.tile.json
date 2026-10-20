@@ -2,9 +2,7 @@
 	"id": 234,
 	"materials": {
 		"1": "plaster",
-		"2": "plaster",
-		"4": "asphalt",
-		"5": "asphalt",
-		"6": "metal"
+		"3": "asphalt",
+		"4": "metal"
 	}
 }

@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://dw5tdcpc1qyah"
 path="res://.godot/imported/luxe_appartement_dak_plat_rand.vox-ef2b08791a9058ce35ced0422d07432d.mesh"

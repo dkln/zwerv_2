@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://dq14mhbw0jm0y"
 path="res://.godot/imported/bord_fiets_verboden.vox-a541f1659f16868ae3cc6530927f465c.mesh"

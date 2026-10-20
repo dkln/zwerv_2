@@ -4,9 +4,11 @@ extends RefCounted
 ## still camera, waiting frames and saving screenshots.
 
 const Iso = preload("res://scripts/iso_camera.gd")
-## The example map.
-const WORLD := "res://scenes/wereld.tscn"
-## The GridMap layers of the world scene (node names under the root).
+const WorldParts = preload("res://scripts/world_parts.gd")
+## The tour scene of the example map; the map itself is stored in parts
+## (scenes/wereld/, scripts/world_parts.gd), see load_part_at and WorldParts.merge_all.
+const WORLD := "res://scenes/rondleiding.tscn"
+## The GridMap layers of the map (node names under the root).
 const LAYERS := ["Grond", "Gebouwen", "Details", "Props"]
 
 
@@ -44,6 +46,14 @@ static func instantiate(path: String, still_camera := true) -> Node:
 		if sc.has_node("Rondleiding"):
 			sc.get_node("Rondleiding").set("active", false)
 	return sc
+
+
+## Loads the map part holding world position z (metres) into the scene `sc` (before
+## or after adding it to the tree), for scenes whose map is stored in parts; does
+## nothing for other scenes. Await wait_for_merge after adding the scene.
+static func load_part_at(sc: Node, z: float) -> void:
+	if WorldParts.part_count(sc) > 0:
+		WorldParts.show_part(sc, WorldParts.part_at(sc, z))
 
 
 ## Places the (still) camera of scene `sc` in the iso view around `focus` (world metres)

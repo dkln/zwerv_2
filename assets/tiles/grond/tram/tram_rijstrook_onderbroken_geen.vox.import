@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://dea16bf6q48c3"
 path="res://.godot/imported/tram_rijstrook_onderbroken_geen.vox-5f566c8a8cdfb04d5195568ebffd92e9.mesh"

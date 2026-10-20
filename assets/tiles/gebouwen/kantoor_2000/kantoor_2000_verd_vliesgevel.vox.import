@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://cbwy1rnl6x2or"
 path="res://.godot/imported/kantoor_2000_verd_vliesgevel.vox-f199407ab463f5c6ca44f0868e9d099d.mesh"

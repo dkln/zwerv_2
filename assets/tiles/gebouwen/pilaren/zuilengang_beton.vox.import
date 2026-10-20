@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://de36fk3c1vd32"
 path="res://.godot/imported/zuilengang_beton.vox-351f7db8323eedf810bdf6163141c84e.mesh"

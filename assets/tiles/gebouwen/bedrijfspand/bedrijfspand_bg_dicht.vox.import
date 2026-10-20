@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://dfw4031ruv8l3"
 path="res://.godot/imported/bedrijfspand_bg_dicht.vox-a86606be8ac38a026d00cdc145b4492c.mesh"

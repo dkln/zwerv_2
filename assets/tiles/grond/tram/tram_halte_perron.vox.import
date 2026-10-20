@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://bgjrksw0f42go"
 path="res://.godot/imported/tram_halte_perron.vox-7ecdb3ba69995b65a71d9d986ad3b95f.mesh"

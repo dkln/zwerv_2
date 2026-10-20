@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://d01dvaigmeole"
 path="res://.godot/imported/leisteen_piramide.vox-c7c24b0f9a57e3e71472061189401d1d.mesh"

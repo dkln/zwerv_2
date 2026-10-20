@@ -1,11 +1,13 @@
 extends SceneTree
-## Builds scenes/wereld.tscn: a small Dutch town showcasing all tiles,
-## and scenes/nieuwe_kaart.tscn: an empty map with the same setup.
+## Builds the example map: a small Dutch town showcasing all tiles, saved in parts
+## (scenes/wereld/deel_*.tscn) with the tour scene scenes/rondleiding.tscn that shows
+## them one by one (scripts/world_parts.gd), and scenes/nieuwe_kaart.tscn: an empty map
+## with the same setup.
 ## usage: Godot --headless --script tools/build_example_city.gd
 ##
 ## HOW IT WORKS
 ## Both scenes get the same root setup (_make_scene): environment, sun and fill light,
-## camera, helper nodes (DetailNiveau, Dagcyclus, Rook, TintKaart) and four GridMaps,
+## camera, helper nodes (DetailNiveau, Dagcyclus, Rook, TintKaart, GrondKaart, Grassprieten) and four GridMaps,
 ## one per tile library. The town is then written cell by cell into those GridMaps and
 ## the scene is packed and saved. Placement is fully deterministic (no RNG; variation
 ## comes from the hash _r and round-robin counters), so the output is reproducible.
@@ -63,6 +65,9 @@ const Common = preload("res://tools/tool_common.gd")
 const LIB := "res://assets/libraries/%s.res"
 const SlopesLib = preload("res://addons/vox_tiles/slopes.gd")
 const VoxLib = preload("res://addons/vox_tiles/vox_parser.gd")
+const WorldParts = preload("res://scripts/world_parts.gd")
+## the example map is saved in this many parts (scenes/wereld/, see scripts/world_parts.gd)
+const WORLD_PARTS := 10
 ## direction the front of a tile faces -> quarter turns
 const DIR := {"S": 0, "E": 1, "N": 2, "W": 3}
 ## (front, right) -> rotation, for corner pieces with something on the front and right side
@@ -91,7 +96,8 @@ func _init() -> void:
 	world.set_meta("catalog_start_m", catalog_start)
 	world.set_meta("districts", districts)
 	world.set_meta("places", places)
-	_save(world, "res://scenes/wereld.tscn")
+	WorldParts.save_split(world, Common.WORLD, WORLD_PARTS)
+	world.free()
 	var empty := _make_scene("NieuweKaart")
 	_own_tints(empty)
 	_save(empty, "res://scenes/nieuwe_kaart.tscn")
@@ -244,6 +250,14 @@ func _make_scene(node_name: String) -> Node3D:
 	tk.name = "TintKaart"
 	tk.set_script(load("res://scripts/tint_map.gd"))
 	root.add_child(tk)
+	var gk := Node.new()
+	gk.name = "GrondKaart"
+	gk.set_script(load("res://scripts/ground_map.gd"))
+	root.add_child(gk)
+	var gb := Node3D.new()
+	gb.name = "Grassprieten"
+	gb.set_script(load("res://scripts/grass_blades.gd"))
+	root.add_child(gb)
 	tint_map = tk
 	if node_name == "Wereld":
 		# example: give two buildings in the city block a different tint
@@ -617,7 +631,7 @@ func _canal_houses() -> void:
 			B(3, v, z, p + ("verd_raam" if v > 0 else "bg_raam"), "W")
 		B(3, n, z, p + ("dak_zadel_schoorsteen" if z % 3 == 0 else "dak_zadel"), "S")
 		# small back gardens
-		G(2, z, "natuur/gras_bloemen" if z % 2 else "natuur/gras")
+		G(2, z, "natuur/gras")
 		G(1, z, "natuur/moestuin" if z % 3 == 0 else "natuur/gras")
 		G(0, z, "plein/plein_vlonder" if z % 4 == 0 else "natuur/gras")
 		Pr(2 * 4 + 0.5, z * 4 + 2, "hekken/schutting_hout", "E")
@@ -719,7 +733,7 @@ func _city_block() -> void:
 			elif x == 21:
 				t = "natuur/pad_grind"
 			elif (x + z) % 5 == 0:
-				t = "natuur/gras_bloemen"
+				t = "natuur/gras"
 			G(x, z, t)
 	G(21, z1 - 2, "natuur/pad_grind")
 	Pr(19 * 4 + 2, 6 * 4 + 2, "bomen/bloesemboom")
@@ -921,7 +935,7 @@ func _railway() -> void:
 			if z >= 12 and z <= 17:
 				continue
 			if not occupied.has(Vector2i(x, z)):
-				G(x, z, "natuur/gras_hoog")
+				G(x, z, "natuur/gras")
 	# overhead line
 	for z in range(0, OLD_H, 3):
 		var wy := 0.5
@@ -956,7 +970,7 @@ func _park() -> void:
 		for z in range(18, OLD_H):
 			var t := "natuur/gras"
 			if (x + z) % 6 == 0:
-				t = "natuur/gras_bloemen"
+				t = "natuur/gras"
 			G(x, z, t)
 	# pond x 1..4, z 20..25
 	for x in [2, 3]:
@@ -1406,7 +1420,9 @@ func _expansion() -> void:
 
 
 ## Polder around the whole town (POLDER tiles wide), so it doesn't end in the void:
-## meadows in parcels between ditches, now and then a pollard willow by a ditch.
+## meadows of tall grass in parcels between ditches, now and then a pollard willow by a
+## ditch, and a
+## bulb field (tulips) west of the park.
 const POLDER := 10
 
 
@@ -1417,14 +1433,17 @@ func _polder(z_end: int) -> void:
 				continue
 			var px := posmod(x, 9)
 			var pz := posmod(z, 12)
-			if px == 0:
+			if x >= -8 and x < 0 and z >= 13 and z <= 23:
+				# bulb field west of the park: long parallel rows of tulips
+				G(x, z, "natuur/bloemperk_tulpen", "E")
+			elif px == 0:
 				G(x, z, "water/sloot")
 				if pz == 6 and _r(x, z, 3) == 0:
 					Pr(x * 4 + 3.5, z * 4 + 2.0, "bomen/treurwilg")
 			elif pz == 0:
 				G(x, z, "water/sloot", "E")
 			else:
-				G(x, z, "natuur/gras_hoog" if _r(x / 9, z / 12, 4) == 0 else "natuur/gras")
+				G(x, z, "natuur/gras_hoog")   # meadows: tall grass (the town keeps short grass)
 
 
 ## Church Street (z 0, pavement z 1, x 36..95) and Cross Street 2 (x 60-61, pavements
@@ -1710,7 +1729,7 @@ func _mansions() -> void:
 	for x in [49, 51, 53]:
 		D(x * 4 + 2.0, 18 * 4.0, 0.0, "deuren/bordes_klassiek", "N")
 	for x in range(49, 59):
-		fill_rect(x, 20, x, 27, "natuur/gras" if x % 2 else "natuur/gras_bloemen")
+		fill_rect(x, 20, x, 27, "natuur/gras")
 		Pr(x * 4 + 2, 27 * 4 + 3.5, "muurtjes/tuinmuur_hoog_poort" if x % 3 == 0 else "muurtjes/tuinmuur_hoog", "S")
 		Pr(x * 4 + 0.5, 23 * 4 + 2, "hekken/haag", "E")
 	Pr(50 * 4 + 2, 24 * 4, "bomen/kastanje")
@@ -1727,7 +1746,7 @@ func _small_churches() -> void:
 	block(51, 33, 5, 1, k, 2, {"front": "S", "gf": ["bg_spitsraam"], "gf_side": "bg_spitsraam", "gf_corner": "bg_spitsraam_hoek",
 		"upper": ["verd_dicht"], "upper_corner": "verd_spitsraam_hoek", "roof": "gable"})
 	tower(50, 33, k, ["toren_portaal", "toren_raam", "toren_klok", "toren_spits_onder", "toren_spits_boven"], "W")
-	fill_rect(49, 32, 56, 34, "natuur/gras_kort")
+	fill_rect(49, 32, 56, 34, "natuur/gras")
 	G(49, 33, "natuur/grindpad")
 	# modern (reformed) church x 53..57, z 36..38 with a detached bell tower
 	block(53, 36, 5, 3, "kerk_modern", 2, {"front": "N", "gf": ["bg_entree", "bg_dicht"], "gf_side": "bg_dicht",
@@ -1912,7 +1931,7 @@ func _district_1960s() -> void:
 		"upper": ["verd_raam", "verd_balkon"], "roof": "sloped", "roof_extra": ["dak_schuin_dakkapel"]})
 	fill_rect(0, 58, 0, 62, "natuur/gras")
 	for x in range(1, 13):
-		G(x, 60, "natuur/gras" if x % 2 else "natuur/gras_bloemen")
+		G(x, 60, "natuur/gras")
 		Pr(x * 4 + 0.5, 60 * 4 + 2, "hekken/schutting_hout", "E")
 	# garage doors and details
 	D(3 * 4 + 2.0, 63 * 4.0, 0.0, "deuren/garagedeur_kanteldeur", "S")
@@ -2065,7 +2084,7 @@ func _gallery_flat() -> void:
 ## and a castle tower (x 31..58, z 55..71).
 func _farm_and_businesses() -> void:
 	# farm with barns x 32..44, hills and ditches
-	fill_rect(31, 55, 58, 71, "natuur/gras_hoog")
+	fill_rect(31, 55, 58, 71, "natuur/gras")
 	block(33, 58, 4, 2, "schuur_zwart", 1, {"front": "S", "gf": ["bg_deur_groot", "bg_raam"], "gf_side": "bg_raam",
 		"gf_corner": "bg_raam_hoek", "upper": ["verd_hooideur"], "roof": "sloped"})
 	block(39, 58, 3, 2, "schuur_rood", 2, {"front": "S", "gf": ["bg_deur_groot", "bg_raam"], "gf_side": "bg_raam",
@@ -2336,7 +2355,7 @@ func _campus() -> void:
 		"upper": ["verd_raam"], "upper_corner": "verd_raam_hoek", "roof": "sloped"})
 	block(17, 89, 2, 6, "universiteit", 2, {"front": "W", "gf": ["bg_raam_boog"], "gf_side": "bg_raam_boog", "gf_corner": "bg_raam_boog_hoek",
 		"upper": ["verd_raam"], "upper_corner": "verd_raam_hoek", "roof": "sloped"})
-	fill_rect(7, 89, 15, 95, "natuur/gras_kort")
+	fill_rect(7, 89, 15, 95, "natuur/gras")
 	column(11, 89, 95, "natuur/grindpad")
 	row(7, 15, 92, "natuur/grindpad", "E")
 	Pr(11 * 4 + 2, 92 * 4 + 2, "standbeelden/standbeeld_persoon", "N")
@@ -2980,7 +2999,7 @@ func _line_streets(x0: int, z0: int, w: int, d: int, style: String) -> void:
 		for dir in DIR_OFFSET.values():
 			var q: Vector2i = c + dir
 			if inner.has_point(q) and not band.has(q) and not _taken.has(q):
-				G(q.x, q.y, "natuur/gras_kort")
+				G(q.x, q.y, "natuur/gras")
 
 
 ## The tiles of a building style sorted by role (names without the style prefix): ground
@@ -3298,7 +3317,7 @@ func _style_neighbourhood(style: String) -> void:
 				B(c.x, roof_y, c.y, p + _next(sloped, counter, "slope"), sides[0])
 	# gardens behind block A
 	var zt := cz + 1 + dA
-	fill_rect(cx + 1, zt, cx + nA, zt + 1, "natuur/gras_kort")
+	fill_rect(cx + 1, zt, cx + nA, zt + 1, "natuur/gras")
 	for x in range(cx + 1, cx + 1 + nA):
 		_prop(x * 4 + 2.0, (zt + 2) * 4 - 0.5, "green")
 	# a residential street (woonerf, clinkers) right through the district: the second
@@ -3333,7 +3352,7 @@ func _style_neighbourhood(style: String) -> void:
 				B(c.x, yr, c.y, p + _next(outer_corners, counter, "outer"), CORNER[_corner_pair(sides, "")])
 			else:
 				B(c.x, yr, c.y, p + _next(sloped, counter, "slope"), sides[0])
-		G(rx + 2, rz + 2, "natuur/gras_bloemen")
+		G(rx + 2, rz + 2, "natuur/gras")
 		_prop((rx + 2) * 4 + 2.0, (rz + 2) * 4 + 2.0, "green")
 		rx += 5
 	if not gable.is_empty() or not gable_hip.is_empty():
@@ -3725,7 +3744,7 @@ func _loop(x0: int, z0: int, curve: String, straight_list: Array, t: String, cro
 	G(x0 + 1, z0 + 2, straight_list[0], "E")
 	G(x0 + 3, z0 + 2, straight_list[0], "E")
 	for c in [[x0 + 1, z0 + 1], [x0 + 3, z0 + 1], [x0 + 1, z0 + 3], [x0 + 3, z0 + 3]]:
-		G(c[0], c[1], "natuur/gras_bloemen")
+		G(c[0], c[1], "natuur/gras")
 
 
 ## District with a cycle loop, tram loop (with stops and large 3x3 curve) and a rail
@@ -3971,7 +3990,7 @@ func _tunnel_park() -> void:
 		G(x + 1, z0 + r, "tunnel/tunnel_fiets_wand_rechts", "S", -6)
 	for xx in range(x - 1, x + 3):
 		for zz in range(z0 + 7, z0 + 11):
-			G(xx, zz, "natuur/gras_kort")
+			G(xx, zz, "natuur/gras")
 
 
 # ------------------------------------------------------------------ canal with all bridges
@@ -4171,7 +4190,7 @@ func _nature_park() -> void:
 	var tz := o.y + 2
 	for x in range(tx, tx + 4):
 		G(x, tz, ["terrein/grond_blok", "terrein/grond_blok_beton", "terrein/grond_blok_baksteen", "terrein/grond_blok"][x - tx])
-		G(x, tz, "natuur/gras_bloemen", "S", 1)
+		G(x, tz, "natuur/gras", "S", 1)
 	G(tx, tz + 1, "terrein/trap_1m", "S")
 	G(tx + 1, tz + 1, "terrein/trap_1m_breed", "S")
 	G(tx + 2, tz + 1, "terrein/trap_1m_fietsgoot", "S")
@@ -4569,7 +4588,7 @@ func _tint_demo() -> void:
 				_tint_area(Vector3(x * 4 + 2.0, 0, (mini(front, back) + 1) * 4.0), t[1], Vector2i(1, 2), t[2], "Tint_" + style + "_" + t[0])
 			# back garden
 			var garden := back - 1 if facing == "S" else back + 1
-			G(x, garden, "natuur/gras_kort")
+			G(x, garden, "natuur/gras")
 			_taken[Vector2i(x, garden)] = true
 	# corner block with a tint over the block and the ground in front of it
 	var bx := o.x + 12

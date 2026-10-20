@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://dq8is4km8dpbi"
 path="res://.godot/imported/balkon_modern.vox-a82913b399c953b8ce4d902cfce8cad8.mesh"

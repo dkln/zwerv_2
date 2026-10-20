@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://cwgdx514ykyqy"
 path="res://.godot/imported/klassiek_donker_bg_winkel_luifel.vox-d05d10abdcd3c9554bd5831e35f84e1a.mesh"

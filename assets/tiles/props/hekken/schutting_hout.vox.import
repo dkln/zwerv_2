@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://d2raoldirpwuv"
 path="res://.godot/imported/schutting_hout.vox-af1577eb59d8531f6f70076473f52424.mesh"

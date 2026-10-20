@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://c8hvkkgq0tvk6"
 path="res://.godot/imported/brug_dek_weg_beide.vox-c10f468369d717a4a17c575fffe45199.mesh"

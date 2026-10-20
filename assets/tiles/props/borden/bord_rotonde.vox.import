@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://dqfi56bne7rd8"
 path="res://.godot/imported/bord_rotonde.vox-e9cc1e36170a6e8e4a185c176933a7a8.mesh"

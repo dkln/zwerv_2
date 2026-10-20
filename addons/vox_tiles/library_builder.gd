@@ -8,6 +8,10 @@ extends RefCounted
 
 const TileMetadata = preload("res://addons/vox_tiles/tile_metadata.gd")
 const Atlas = preload("res://addons/vox_tiles/atlas.gd")
+## Categories whose window tiles get a faked room behind the glass (_set_interior).
+const INTERIOR_CATEGORIES := ["gebouwen", "details"]
+## Tiles with at least this share of glass (of their surface) stay see-through.
+const INTERIOR_MAX_GLASS := 0.3
 const Slopes = preload("res://addons/vox_tiles/slopes.gd")
 
 const TILE_ROOT := "res://assets/tiles"
@@ -228,6 +232,7 @@ static func build_category(cat: String, changed: Dictionary, previews: bool, for
 		for id in sources:
 			stamps[id] = sources[id].get_meta("source_stamp")
 		var main := Atlas.build(sources)
+		_set_interior(main.meshes, cat)
 		for id in sources:
 			var m: Mesh = main.meshes[id]
 			m.set_meta("source_stamp", stamps[id])
@@ -385,6 +390,7 @@ static func _build_lod(cat: String, lib: MeshLibrary, level: String, sources: Di
 		var m: Mesh = sources[id]
 		coarse[id] = m.get_meta(level) if m.has_meta(level) else m
 	var packed := Atlas.build(coarse)
+	_set_interior(packed.meshes, cat)
 	var lod := MeshLibrary.new()
 	for id in lib.get_item_list():
 		lod.create_item(id)
@@ -395,6 +401,48 @@ static func _build_lod(cat: String, lib: MeshLibrary, level: String, sources: Di
 			_set_shadow(lod, id, sources[src])
 	DirAccess.make_dir_recursive_absolute(LIB_ROOT)
 	ResourceSaver.save(lod, lod_path(cat, level))
+
+
+## Windows: in these categories, tiles of which less than INTERIOR_MAX_GLASS of the
+## surface is glass get a copy of their glass material with `interior` on
+## (voxel_glass.gdshader: opaque, with a faked room behind it), so you don't look into the
+## hollow building; tiles that are mostly glass (halls, canopies) stay see-through.
+static func _set_interior(meshes: Dictionary, cat: String) -> void:
+	if not cat in INTERIOR_CATEGORIES:
+		return
+	var variants := {}   # glass material -> its interior copy
+	for key in meshes:
+		var m: ArrayMesh = meshes[key]
+		if m == null:
+			continue
+		var glass := 0.0
+		var total := 0.0
+		for s in m.get_surface_count():
+			var area := _area(m, s)
+			total += area
+			if m.surface_get_name(s) == "glass":
+				glass += area
+		if glass <= 0.0 or glass >= total * INTERIOR_MAX_GLASS:
+			continue
+		for s in m.get_surface_count():
+			var mat := m.surface_get_material(s) as ShaderMaterial
+			if m.surface_get_name(s) != "glass" or mat == null:
+				continue
+			if not variants.has(mat):
+				var copy := mat.duplicate() as ShaderMaterial
+				copy.set_meta("base_path", mat.get_meta("base_path", mat.resource_path))
+				copy.set_shader_parameter("interior", 1.0)
+				variants[mat] = copy
+			m.surface_set_material(s, variants[mat])
+
+
+## Surface area of surface `s` of `mesh` (non-indexed triangles).
+static func _area(mesh: ArrayMesh, s: int) -> float:
+	var v: PackedVector3Array = mesh.surface_get_arrays(s)[Mesh.ARRAY_VERTEX]
+	var a := 0.0
+	for i in range(0, v.size() - 2, 3):
+		a += (v[i + 1] - v[i]).cross(v[i + 2] - v[i]).length() * 0.5
+	return a
 
 
 static func _shapes(mesh: Mesh, mode: String, key := "") -> Array:

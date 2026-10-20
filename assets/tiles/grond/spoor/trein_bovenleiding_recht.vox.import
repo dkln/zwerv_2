@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://ctdolf32usekb"
 path="res://.godot/imported/trein_bovenleiding_recht.vox-37d13f154f20b9d6fc815d871b83ae1c.mesh"

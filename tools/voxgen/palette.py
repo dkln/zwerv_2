@@ -190,7 +190,51 @@ def _damp_variation(entries):
     return out
 
 
+_RAW_ENTRIES = list(_ENTRIES)
 _ENTRIES = _damp_variation(_ENTRIES)
+
+# Flat surfaces: the members of these numbered groups (gras1..gras5, asfalt1..4, ...)
+# all get the group's average colour and share one colour id, so a surface is one flat
+# colour; the voxel shaders add the detail (grain, stones, bond, grass, relief) on top
+# (addons/vox_tiles/materials/voxel.gdshader). Groups not listed keep their variation:
+# their members are deliberately different (foliage, curtains, signs, glass, wood, ...).
+# A member is "<base><n>" or "<base>_<n>" with n = 1..9 (so "beton60" is not in "beton").
+FLAT_GROUPS = {
+    # ground
+    "asfalt", "fietsasfalt", "busbaan", "bitumen", "tegel", "band", "goot", "klinker", "kei",
+    "plein", "gras", "aarde", "zand", "grind", "alg",
+    # walls and roofs
+    "baksteen", "baksteen30", "geelsteen", "geelsteen60", "natuursteen", "donkersteen", "beton",
+    "stuc", "leisteen", "dakgrind", "pan_rood", "pan_oranje", "pan_antraciet", "pan_zwart",
+    "terracotta", "zink", "antraciet", "bruin80",
+}
+
+
+def _flat_groups(entries):
+    """Return (entries with every FLAT_GROUPS member set to its group's average colour of
+    the raw colours, {member name: name of the group's first member})."""
+    groups = {}
+    for i, e in enumerate(entries):
+        m = re.match(r"^(.*?)_?([1-9])$", e[0])
+        if m and m.group(1) in FLAT_GROUPS:
+            groups.setdefault(m.group(1), []).append(i)
+    out = list(entries)
+    alias = {}
+    for members in groups.values():
+        if len(members) < 2:
+            continue
+        avg = [sum(_RAW_ENTRIES[i][1][k] for i in members) / len(members) for k in range(3)]
+        color = tuple(int(round(c)) for c in avg)
+        for i in members:
+            e = entries[i]
+            out[i] = (e[0], color) + tuple(e[2:])
+            alias[e[0]] = entries[members[0]][0]
+    return out, alias
+
+
+_ENTRIES, FLAT_ALIAS = _flat_groups(_ENTRIES)
+# single colours that are plain grass too (dry grass specks read as noise)
+FLAT_ALIAS["gras_droog"] = "gras1"
 
 # Global colour ids (unlimited count): normal entries first, then water, then flags,
 # numbered from 1. On write every .vox file gets its own 255-colour palette holding
@@ -202,6 +246,9 @@ ORDER = []
 
 for _entries, _forced in ((_ENTRIES, None), (_WATER, "water"), (_FLAG, "flag")):
     for e in _entries:
+        if e[0] in FLAT_ALIAS and FLAT_ALIAS[e[0]] != e[0]:
+            P[e[0]] = P[FLAT_ALIAS[e[0]]]   # flat group: one colour id for all members
+            continue
         _gid = len(ORDER) + 1
         PALETTE[_gid] = e[1]
         P[e[0]] = _gid

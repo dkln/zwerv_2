@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://dums3rwigq88o"
 path="res://.godot/imported/modern_wit_bg_garage.vox-233f75c83266e6f800e757251522a1d7.mesh"

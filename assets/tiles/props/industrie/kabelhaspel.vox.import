@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://oljsmpmsmgbo"
 path="res://.godot/imported/kabelhaspel.vox-6fa9b8c7e55e96f42b6672c6b315474c.mesh"

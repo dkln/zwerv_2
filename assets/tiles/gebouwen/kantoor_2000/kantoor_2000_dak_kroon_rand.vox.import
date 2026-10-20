@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://d0d1yr0lu617w"
 path="res://.godot/imported/kantoor_2000_dak_kroon_rand.vox-2a6aa432d060f0c5c1dc7cd6c3c4e819.mesh"

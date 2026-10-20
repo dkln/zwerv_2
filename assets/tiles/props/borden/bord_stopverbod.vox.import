@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://ipcx37ysrdcl"
 path="res://.godot/imported/bord_stopverbod.vox-e7ecf5305e2c780825a5425b12e552f3.mesh"

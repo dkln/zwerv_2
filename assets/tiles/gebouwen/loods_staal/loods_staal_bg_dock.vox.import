@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://cntd72g8gygep"
 path="res://.godot/imported/loods_staal_bg_dock.vox-21ddaf4a5be3c9fd8a468866a1658cff.mesh"

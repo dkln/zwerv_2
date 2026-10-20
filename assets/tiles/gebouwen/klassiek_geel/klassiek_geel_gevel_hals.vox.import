@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://d3f6yijbafpl0"
 path="res://.godot/imported/klassiek_geel_gevel_hals.vox-677acee5958403fc9f270f228cb7ea04.mesh"

@@ -28,9 +28,10 @@ PAVING = blocky(["tegel1", "tegel2", "tegel3", "tegel4"], size=3, seed=6)
 CURB = mix("band1", "band2", seed=7)
 GUTTER = mix("goot1", "goot2", seed=8)
 GRASS = mix("gras1", "gras2", "gras3", "gras4", "gras5", weights=[4, 4, 3, 2, 2], seed=9)
-EARTH = mix("aarde1", "aarde2", "aarde3", "aarde_donker", weights=[3, 3, 2, 1], seed=10)
+# earth and gravel are flat colours: the voxel shader adds the grain (palette.py FLAT_GROUPS)
+EARTH = "aarde1"
 SAND = mix("zand1", "zand2", seed=11)
-GRAVEL = mix("grind1", "grind2", "grind3", "grind_roest", weights=[4, 3, 3, 1], seed=12)
+GRAVEL = "grind1"
 CONCRETE = mix("beton1", "beton2", "beton3", weights=[3, 2, 1], seed=13)
 CONCRETE_DARK = mix("beton2", "beton_donker", seed=14)
 NATURAL_STONE = blocky(["natuursteen1", "natuursteen2", "natuursteen3"], size=4, seed=15)
@@ -770,44 +771,23 @@ def square_decking():
 
 # ------------------------------------------------------------- nature
 
-def grass_tile(flowers=0.0, tufts=0.06, tall=False, base=GRASS, seed=50):
-    """Grass tile (8 voxels high, top at WALK); variation and flowers are only surface colour.
-
-    flowers / tufts are per-voxel probabilities; tall doubles the tuft probability.
-    """
-    m = flat(base, top=WALK, sz=8)
-    for y in range(T):
-        for x in range(T):
-            r = h(x, y, 0, seed)
-            if r < flowers:
-                m.set(x, y, WALK - 1, pick(["bloem_wit", "bloem_geel", "bloem_paars", "bloem_rood", "bloem_roze"], x, y, 1, seed))
-            elif r < flowers + tufts * (2 if tall else 1):
-                m.set(x, y, WALK - 1, pick(["gras2", "gras4", "gras_droog"], x, y, 2, seed))
-    return m
+def grass_tile(base=GRASS):
+    """Grass tile (8 voxels high, top at WALK) in one flat colour: the voxel shader draws
+    the grass texture (zwervr_grass)."""
+    return flat(base, top=WALK, sz=8)
 
 
 @tile("grond/natuur/gras")
 def grass():
-    """Default grass tile."""
+    """Default grass tile: short grass (scripts/grass_blades.gd grows short blades on it)."""
     return grass_tile()
-
-
-@tile("grond/natuur/gras_bloemen")
-def grass_flowers():
-    """Grass with flowers."""
-    return grass_tile(flowers=0.06)
 
 
 @tile("grond/natuur/gras_hoog")
 def grass_tall():
-    """Long grass (more tufts)."""
-    return grass_tile(tufts=0.3, tall=True)
-
-
-@tile("grond/natuur/gras_kort")
-def grass_short():
-    """Short mown grass without tufts."""
-    return grass_tile(tufts=0.0, base=mix("gras2", "gras4", "gras1", seed=51))
+    """Tall grass: the same tile as gras, but the grass blades grow tall on it
+    (scripts/grass_blades.gd, by tile name)."""
+    return grass_tile()
 
 
 @tile("grond/natuur/zand")
@@ -865,7 +845,7 @@ def _path_column(m, x, y, c):
 @tile("grond/natuur/pad_zand")
 def path_sand():
     """Sand path along y through grass, with slightly irregular edges."""
-    m = grass_tile(tufts=0.05)
+    m = grass_tile()
     surface = mix("zand1", "zand2", "grind3", seed=55)
     for y in range(T):
         w0 = 11 + int(h(0, y // 3, 0, 54) * 2)
@@ -878,7 +858,7 @@ def path_sand():
 @tile("grond/natuur/pad_grind_bocht")
 def path_curve():
     """Gravel path curving from the front edge to the right edge (centre at front-right)."""
-    m = grass_tile(tufts=0.05)
+    m = grass_tile()
     for y in range(T):
         for x in range(T):
             if abs(dist(x, y, 32, 0) - 16) < 4.5:
@@ -889,7 +869,7 @@ def path_curve():
 @tile("grond/natuur/pad_grind")
 def path_gravel():
     """Straight gravel path along y (x=11..20) through grass."""
-    m = grass_tile(tufts=0.05)
+    m = grass_tile()
     for y in range(T):
         for x in range(11, 21):
             _path_column(m, x, y, GRAVEL)
@@ -1430,7 +1410,7 @@ def tram_pavers_straight():
 @tile("grond/tram/tram_gras_recht")
 def tram_grass_straight():
     """Straight tram track on a grass bed."""
-    m = grass_tile(tufts=0.02)
+    m = grass_tile()
     for y in range(T):
         for r in RAIL_X:
             m.set(r, y, WALK, "rail_glim")
@@ -1441,7 +1421,7 @@ def tram_grass_straight():
 @tile("grond/tram/tram_gras_bocht")
 def tram_grass_curve():
     """Tram curve on a grass bed."""
-    m = grass_tile(tufts=0.02)
+    m = grass_tile()
     for y in range(T):
         for x in range(T):
             d = dist(x, y, 32, 0)

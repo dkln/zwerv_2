@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://bqqa4jryk0jam"
 path="res://.godot/imported/airco_buitenunit.vox-1c28e4b012f1403b7c9503e0363c08cb.mesh"

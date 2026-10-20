@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://b080rh8mf4aen"
 path="res://.godot/imported/muurtje_baksteen_hoog.vox-179c79d648bb6915747618f3b68439bc.mesh"

@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://dceyjwta61cgq"
 path="res://.godot/imported/kerk_steen_bg_spitsraam_hoek.vox-641f5ab43ca7a0987843cda095b9c96c.mesh"

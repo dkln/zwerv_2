@@ -7,20 +7,22 @@ Je bouwt kaarten met vier GridMap-lagen (grond, gebouwen, details, props). Elke
 tile is een los `.vox` bestand dat je in MagicaVoxel kunt openen en aanpassen.
 Na opslaan importeert Godot hem automatisch opnieuw.
 
-Er zijn ongeveer 2000 tiles. Ze staan allemaal in context in de voorbeeldkaart
-`scenes/wereld.tscn`.
+Er zijn ongeveer 2000 tiles. Ze staan allemaal in context in de voorbeeldkaart,
+opgeknipt in 10 delen in `scenes/wereld/`.
 
 
 Snel starten
 ------------
 1. Open de map in Godot 4.7 (`project.godot`). De eerste keer importeert Godot
    alle tiles en maakt de plugin de palet-previews (dat duurt even).
-2. Open `scenes/wereld.tscn` (voorbeeldkaart) of `scenes/nieuwe_kaart.tscn` (leeg).
+2. Open een deel van de voorbeeldkaart (`scenes/wereld/deel_01.tscn` t/m `deel_10.tscn`)
+   of `scenes/nieuwe_kaart.tscn` (leeg).
 3. Selecteer een GridMap-node (Grond / Gebouwen / Details / Props); onderin
    verschijnt het tile-palet. Zoek op naam, klik een tile, en klik in de 3D-view.
-4. Druk op F5/F6: een automatische rondleiding vliegt isometrisch langs alle
-   situaties, met titel en uitleg in beeld (node `Rondleiding`; zet `active`
-   uit om zelf rond te kijken). Daarnaast: De camera staat standaard in
+4. Druk op F5 (start `scenes/rondleiding.tscn`): een automatische rondleiding laadt de
+   delen van de kaart een voor een en vliegt per deel isometrisch langs alle situaties,
+   met titel en uitleg in beeld (node `Rondleiding`; zet `active` uit om zelf rond te
+   kijken in deel `part`). Daarnaast: De camera staat standaard in
    isometrische stand: een perspectiefcamera met een smalle kijkhoek (20°),
    45 graden gedraaid en ~35 graden naar beneden (`scripts/iso_camera.gd`).
    Een echte perspectiefcamera, omdat Godot schaduwsplits en SSR alleen daarmee
@@ -84,8 +86,40 @@ Bouwpaneel ("Build", rechtsboven in de editor)
   (de blauwe voorvertoning laat zien waar alles komt).
 
 
-De voorbeeldkaart (`scenes/wereld.tscn`)
-----------------------------------------
+De voorbeeldkaart (`scenes/wereld/`)
+------------------------------------
+De kaart is opgeknipt in 10 delen, zodat de editor snel blijft en het spel nooit de
+hele kaart tegelijk hoeft te laden: `scenes/wereld/deel_01.tscn`
+t/m `deel_10.tscn`, elk een strook van de kaart van noord naar zuid (tile-rijen z, de
+polder aan de randen hoort bij het eerste en laatste deel):
+
+| Deel | Rijen z | Deel | Rijen z |
+|---|---|---|---|
+| 01 | ..51 | 06 | 245..298 |
+| 02 | 52..99 | 07 | 299..353 |
+| 03 | 100..150 | 08 | 354..409 |
+| 04 | 151..203 | 09 | 410..464 |
+| 05 | 204..244 | 10 | 465.. |
+
+Elk deel is een eigen Vox Tiles-scene met de vier lagen (Grond, Gebouwen, Details,
+Props) op hun echte plek in de wereld: open een deel om erin te bouwen. In de editor
+toont de plugin een deel met de omgeving, zon, vullicht, TintKaart (met alle tintvlakken)
+en rook van `scenes/rondleiding.tscn` (`addons/vox_tiles/scene_preview.gd`, metadata
+`preview_scene` op het deel), zodat licht, effecten en tinten kloppen; die nodes worden
+niet in het deel opgeslagen, je past ze aan in `rondleiding.tscn`. Er is geen
+scene meer met de hele kaart. `scenes/rondleiding.tscn` heeft alleen omgeving, licht,
+camera en de hulpnodes (Rondleiding, DetailNiveau, Dagcyclus, Rook, TintKaart) en de
+metadata van de hele kaart (wijken, plekken, `part_rows`: de rijen van elk deel). De
+rondleiding laadt steeds één deel (`scripts/world_parts.gd`, `show_part`): de lagen
+van dat deel komen direct onder de root, DetailNiveau voegt ze samen (achter een
+laadscherm "Deel n van 10 laden…") en Rook zoekt de schoorstenen. Na de laatste stop
+in het deel wordt het weggegooid en komt het volgende. De tools laden het deel waar ze
+kijken; `tools/coverage.gd` laadt alle delen tegelijk (`merge_all`). De rij-grenzen kiest de build zelf (ongeveer evenveel cellen
+per deel, op een rij met zo min mogelijk gebouwen, zodat er geen gebouw doormidden gaat);
+ze staan ook als metadata `rows` op de root van elk deel. Een stop hoort bij het deel
+waar zijn middelpunt ligt; wat net over de grens ligt, is in dat beeld leeg. Het aantal
+delen staat in `WORLD_PARTS` in `tools/build_example_city.gd`.
+
 De kaart is 96 x 80 tiles stad, met daaronder een campus en de demowijken.
 Gebruik hem als naslag: zoek een tile in het palet en kijk hoe hij in de kaart
 is ingezet.
@@ -272,8 +306,8 @@ Rook, water, vlaggen en voxelstructuur
   water. Zulke tiles worden niet samengevoegd.
 - Zonnepanelen hebben een eigen glanzend materiaal (`materials/voxel_paneel.tres`,
   een gewoon StandardMaterial3D). In MagicaVoxel: metaal met ruwheid onder 0,15.
-- Glas heeft een goedkope, nagebootste spiegeling (lucht, horizon, straat en
-  lichte strepen; `reflection`, `opacity`).
+- Glas is ondoorzichtig met een goedkope, nagebootste spiegeling (lucht, horizon,
+  straat en lichte strepen; `reflection`), zie verderop.
 - Lampen, verkeerslichten en verlichte ramen (emit-materiaal, energie 6) geven
   's nachts een zachte gloed via de glow van de Environment (drempel 1,6).
   Overdag branden ze op 25% (shader global `zwervr_night`, gezet door de
@@ -418,7 +452,7 @@ Na het genereren (vanuit de projectmap):
     # 2b. palet-previews renderen (met venster, ~1,5 min voor alles; daarna hoeft de
     #     editor bij het openen geen "Creating mesh previews" meer te doen)
     tools/godot.sh --script tools/build_previews.gd [-- all]
-    # 3. voorbeeldkaart opnieuw bouwen (overschrijft scenes/wereld.tscn!)
+    # 3. voorbeeldkaart opnieuw bouwen (overschrijft scenes/rondleiding.tscn en scenes/wereld/!)
     tools/godot.sh --headless --script tools/build_example_city.gd
 
 Previews worden bewaard in `.godot/vox_tiles_previews/` (per tile en importtijd); een
@@ -451,6 +485,8 @@ Hoe het werkt (techniek)
   `blok()` (rechthoekig gebouw met automatisch de juiste hoek-, gevel- en
   dakstukken), `ring()` (gesloten bouwblok met kappen om de hoek), `toren()`,
   `profiel_x/z()` (straatprofiel), `vlak()`.
+- `scripts/world_parts.gd`: knipt de voorbeeldkaart bij het opslaan op in delen
+  (`scenes/wereld/`) en laadt een deel (of alle delen) in de rondleidingsscene.
 - `tools/coverage.gd`: telt welke tiles in de voorbeeldkaart in context staan.
 - `tools/screenshots.gd`: maakt isometrische screenshots van alle gebieden en
   buurten met titel en uitleg in beeld, naar `docs/screenshots/` (met
@@ -467,14 +503,33 @@ lucht-ambient, SSAO, glow en een lichte kleur/contrast-correctie. Pas
 
 Rondleiding, prestaties en uiterlijk
 ------------------------------------
-- `Rondleiding` (`scripts/tour.gd`): opent in het stadshart, zoomt langzaam in en
-  laat de `Dagcyclus` ochtend, middag, avond, nacht, ochtend en weer middag worden
-  (`INTRO` en `DAY` in `scripts/tour_data.gd`; `day_intro`, `day_hold` 2,5 s,
-  `day_change` 3 s). Daarna gaat hij alle gebieden langs: de vaste gebieden
-  (`CITY`), de demowijken met plekken die de build zelf vond (`PLACE_TEXT`, bv. de
-  kruisingen met verkeerslichten) en de waterbeelden, en begint dan opnieuw.
-  `highlights_only` toont alleen `HIGHLIGHTS`. Instelbaar: `travel_time` (2 s),
-  `view_time` (4 s), `zoom_in`, `start_at` (leeg = met de opening beginnen).
+- Shader-showcase: direct na de opening laat de rondleiding zien hoe de shaders werken
+  (`SHADERS` in `scripts/tour_data.gd`): baksteen, asfalt, plaveisel, gras en grind,
+  golvende grond en de grond van ver. Elke stop duurt twee keer zo lang: eerst staat
+  het effect uit, halverwege gaat het aan (titel "· uit" / "· aan"); de rondleiding
+  zet daarvoor de shader-globals van die stop op 0 en terug op hun projectwaarde.
+- Shader-globals (Project > Shader Globals, 0 = uit, 1 = normaal): `zwervr_relief`
+  (alle reliëf, scheurtjes, putjes, asfaltkorrel en grindschaduw), `zwervr_grass`,
+  `zwervr_undulation` (de grond wordt belicht alsof hij zacht golft: een trage
+  hoogtekaart van brede glooiingen van ~18 en 40 m kantelt alleen de normaal, heel licht; sterk op gras, zwakker op plaveisel, nauwelijks op asfalt) en
+  `zwervr_far_noise`. Bakstenen zijn in de shader 6 x 2 voxels (`brick_scale` = 2 in
+  `voxel.gdshader`), klinkers en natuursteen 3 x 1,5 voxels in halfsteensverband
+  (`block_size`), stoeptegels 4 x 4 voxels (`tile_size`); kiezels ~12 cm. Asfalt heeft geen scheurtjes maar het patroon van
+  echt asfalt: steentjes van ~4 cm in donkere bitumen (Voronoi), elk een eigen
+  grijstint met een bolle bovenkant waarop de zon glinstert, plus zachte slijtplekken;
+  dichtbij worden de voxelblokjes van 12,5 cm eerst verzacht (gemiddeld met de
+  buur-texels), zodat het patroon de structuur draagt en niet het voxelraster.
+- `Rondleiding` (`scripts/tour.gd`): een doorlopend bewegende demo van ongeveer 6
+  minuten, die nergens stilstaat. Eerst de shader-showcase (`SHADERS` in
+  `scripts/tour_data.gd`, elk effect eerst uit en dan aan), daarna een vlucht langs alle
+  gebieden en woonwijken: de iso-camera glijdt van gebied naar gebied en zoomt daarbij
+  in en uit (van ver en dichtbij), met lage vluchten door de gracht, de Hoofdstraat, de
+  Zuidweg, de snelweg en de winkelstraat ertussen (`FLIGHTS`). Elke shot heeft een
+  camerapad; aan het begin van een shot vloeit de camera in `BLEND` (1,6 s) over vanuit
+  waar hij was. Intussen loopt de dag van de ochtend tot in de nacht (`day_start`,
+  `day_hours`). Duur per shot: `SHADER_TIME`, `CITY_TIME`, `DISTRICT_TIME`,
+  `OVERVIEW_TIME`; alles sneller met `speed`. Verder: `highlights_only`, `start_at`,
+  `part` (0 = alle delen na elkaar, n = alleen deel n).
 - `DetailNiveau` (`scripts/level_of_detail.gd`): schakelt bij het uitzoomen naar
   grove tiles (`coarse_from`, standaard 160 m in beeld) en heel grove tiles
   (`very_coarse_from`, 220 m), verbergt Details (vanaf 120 m) en Props (vanaf
@@ -488,7 +543,7 @@ Rondleiding, prestaties en uiterlijk
   kleur van de voxels, niet in uitstekende voxels.
 - Schaduwen: vlakke tiles (lager dan 0,7 m) en kleine details werpen geen
   schaduw; de zon gebruikt 4 schaduwsplits (4096 px).
-- Rendering (`project.godot`): 77% render-resolutie met temporele upscaling en anti-aliasing: MetalFX op macOS, FSR 2 elders (MSAA/FXAA uit), debanding,
+- Rendering (`project.godot`): render-resolutie 85% met temporele upscaling (vrijwel niet te zien naast 100%, ~13% sneller; bij 77% werd het van ver korrelig en kartelig) en anti-aliasing: MetalFX op macOS, FSR 2 elders (MSAA/FXAA uit), debanding,
   depth prepass uit; GridMaps gebruiken octant-grootte 4 (snelst gemeten).
 - Samenvoegen (`scripts/layer_baker.gd`, aangestuurd door `DetailNiveau`, export
   `merge_layers`): bij het starten worden de lagen Gebouwen en Grond samengevoegd tot
@@ -496,8 +551,9 @@ Rondleiding, prestaties en uiterlijk
   dichte buurcel liggen en alle onderkanten vallen daarbij weg. De importer
   groepeert de driehoeken daarvoor per celzijde (import-optie `cell_block`: 4x3x4 voor
   gebouwen, 4x1,5x4 voor grond). Tot het samenvoegen klaar is, staat er een laadscherm
-  (export `loading_screen`) en wacht de rondleiding; het resultaat wordt bewaard in `user://merged/`, zodat de
-  volgende start direct klaar is (zolang de kaart en de tiles niet veranderen).
+  (export `loading_screen`) en wacht de rondleiding; het resultaat wordt per kaartdeel
+  bewaard in `user://merged/`, zodat de volgende keer direct klaar is (zolang dat deel
+  en de tiles niet veranderen).
   Je bewerkt gewoon de GridMaps; botsingen blijven daar ook. Tiles met een vlag
   blijven losse meshes (de vlag-shader rekent in lokale coördinaten).
 - `Dagcyclus` (`scripts/day_cycle.gd`): basis voor dag en nacht (`time_of_day`,
@@ -505,11 +561,68 @@ Rondleiding, prestaties en uiterlijk
   isometrische camera), zodat de schaduwen in beeld vallen en de gevels licht
   houden, en blijft tussen `min_elevation` (36°) en `max_elevation` (44°) hoog: geen
   lange schaduwen. Alle licht is realtime.
+- Ruis van ver (`voxel.gdshader`, sterkte in de shader-global `zwervr_far_noise`,
+  Project > Shader Globals, 0 = uit): zodra je zo ver bent uitgezoomd dat een voxel
+  kleiner wordt dan een pixel, krijgt de grond (bovenvlakken op straathoogte, lager dan
+  2,5 m) een rustige ruis in wereldcoördinaten: vlekken van ~12, 4 en 1 m in helderheid,
+  en bij gras en aarde ook in tint. Alles komt uit de shader; de tiles en LOD-modellen
+  zelf veranderen niet. Dichtbij, op daken en op asfalt doet hij niets.
+- Gras en grind (`voxel.gdshader`, sterkte gras in de shader-global `zwervr_grass`,
+  0 = uit): geen echt reliëf, alleen kleur die het gevoel van reliëf geeft, dus goedkoop
+  en zonder flikkeren. Gras wordt aan zijn kleur herkend (duidelijk groen, bovenvlakken):
+  een korrel van 60 en 20 cm (geen vlekken van ver), en dichtbij lange, dunne grassprieten. Grind
+  krijgt per kiezel een lichte en een schaduwkant en vlekken van ~15 cm.
+- Echte grassprieten (node `Grassprieten`, `scripts/grass_blades.gd`, shader
+  `materials/grass_blade.gdshader`): ingezoomd (minder dan `show_from` = 45 m in beeld)
+  groeien hoekige sprieten in voxelstijl uit het gras (drie vierkante blokjes van 3 x 3 cm
+  op elkaar, getrapt in de buigrichting, elk een eigen tint, alleen in kwartslagen gedraaid) rond het punt waar de camera
+  naar kijkt, met een MultiMesh per stuk van 8 x 8 m. Ze buigen met dezelfde wind en
+  windvlagen als de grasshader, staan in plukken (dicht, dun, kaal) en groeien alleen
+  op het grasdeel van een tile (`GrondKaart` houdt per grastile een masker bij), dus
+  niet op paden, oevers onder water of waterlelies. Instelbaar: `density` (220 sprieten
+  per m², vol en dicht), `blade_height`, `blade_width` (3 cm, dun), `show_from`/
+  `full_from`. Kost op 2560 x 1440 ongeveer 20% framerate zolang ze in beeld zijn; een
+  lagere `density` is de snelste winst.
+- Randen tussen grondtiles (`zwervr_ground_edges`, 0 = uit): waar een grondtile een
+  andere soort grond raakt (gras, weg, fietspad, stoep, grind, klinkers, ...), tekent de
+  shader een rand die leest als een klein hoogteverschil, zonder echte geometrie. De
+  `GrondKaart` (`scripts/ground_map.gd`, globals `zwervr_ground_types` en
+  `zwervr_ground_area`) kent elke 4 x 4 m-cel een soort toe (hoofdmateriaal plus
+  kleurgroep, dus rood fietspadasfalt is iets anders dan grijs wegasfalt) en een
+  nep-hoogte (`RANK`: weg laagst, fietspad, klinkers, grind en aarde, gras, stoep
+  hoogst); hij wordt opnieuw gemaakt bij elk deel en in de editor elke 2 s. De hogere
+  kant krijgt een afgeronde, lichtere rand (de normaal kantelt ook, dus de zon maakt
+  hem licht of donker), de lagere een contactschaduw, en ertussen ligt een donkere voeg.
+- Ramen (`voxel_glass.gdshader`, `interior`): gebouwtiles zijn hol, dus door het glas
+  zag je de witte binnenkant van andere gevels (kozijnen, dakkapellen). Tiles waarvan
+  minder dan 30% van het oppervlak glas is (ramen, deuren, etalages) krijgen daarom
+  ondoorzichtig glas met een nep-kamer erachter: donker, per raam een andere tint, iets
+  lichter naar het plafond, 's nachts brandt in ongeveer een derde het licht. Dat zet
+  `library_builder.gd` (`_set_interior`) bij het bouwen; glazen hallen, overkappingen,
+  het penthouse en moderne glazen ramen/deuren krijgen getinte diepte (zie hieronder).
+- Vlakke tiles: grond, muren en daken hebben in de tiles één vlakke kleur per soort
+  (`FLAT_GROUPS` in `tools/voxgen/palette.py`: alle leden van bv. gras1..gras5 krijgen
+  de gemiddelde kleur en één kleur-id). Het detail komt uit de shaders: korrel, steentjes,
+  verband, gras, reliëf en per steen een eigen tint. Groepen met bewust verschillende
+  kleuren (bladeren, gordijnen, reclame, glas, hout, metaal, ...) houden hun variatie.
+- Glas is ondoorzichtig en lijkt alleen op glas (`voxel_glass.gdshader`): een
+  nep-weerspiegeling van lucht, horizon en stad (sterker onder een schuine hoek), bij
+  ramen een nep-kamer erachter, bij grote glasvlakken een gedempte, getinte diepte.
 - Bomen en planten bewegen in de wind (`materials/voxel_wind.tres`:
   `wind_strength`, `wind_speed`, `wind_height`); de importer kiest dit
   materiaal automatisch voor `props/bomen`, `props/planten`, hagen, bloembakken
   en riet (metadata `"animation": "wind"`, of import-optie `animation`). Tiles met wind (of een vlag) worden niet
   samengevoegd, omdat die shaders in lokale coördinaten rekenen.
+- Bloemperken in de grond (tulpen) wiegen sneller en over een kortere hoogte
+  (`materials/voxel_wind_bloem.tres`, animatie `"flowers"`): alles boven `wind_base`
+  (het grondoppervlak van de tile) buigt mee, vol op `wind_height` (0,4 m) erboven.
+  In de polder naast het park ligt een bollenveld (rondleidingsstop "bollenveld").
+- Gras: `natuur/gras` (kort, in de stad) en `natuur/gras_hoog` (hoog, in de polder) zijn
+  dezelfde egale tile; ze verschillen alleen in de lengte van de grassprieten
+  (`SHORT_GRASS`/`TALL_GRASS` in `scripts/ground_map.gd`). Ook `gras_droog` is in het palet gewoon gras.
+  Dichtbij tekent de shader lange, dunne grassprieten van ~30 cm die in de windrichting overhellen
+  en elk een beetje wiegen, en op elke afstand trekken windvlagen als lichtere stroken
+  langzaam over het gras (de sprieten buigen daar verder door).
 - Scherptediepte (tilt-shift): Camera > Attributes; DetailNiveau schaalt de
   afstanden mee met de afstand tot de grond (export `depth_of_field`).
 - Lettertype: Rubik (`assets/fonts/Rubik.ttf`, OFL-licentie), ingesteld als

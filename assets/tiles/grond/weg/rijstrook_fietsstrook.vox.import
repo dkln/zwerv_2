@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://b7umilje7rxpc"
 path="res://.godot/imported/rijstrook_fietsstrook.vox-9f26c37b1400cf015cdef17b39656ce9.mesh"

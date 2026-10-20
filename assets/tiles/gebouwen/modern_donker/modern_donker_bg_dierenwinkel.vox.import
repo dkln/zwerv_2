@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://0ii3mx37ld4r"
 path="res://.godot/imported/modern_donker_bg_dierenwinkel.vox-93c822bb84ca4fc13a860981b10f4047.mesh"

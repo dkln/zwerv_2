@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://bw54uiiwvyiss"
 path="res://.godot/imported/pingpongtafel.vox-30aa6870e2e4a22b5e66d404fcc8e1c1.mesh"

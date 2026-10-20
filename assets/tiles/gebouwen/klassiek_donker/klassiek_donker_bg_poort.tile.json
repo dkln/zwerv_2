@@ -2,15 +2,10 @@
 	"id": 38,
 	"materials": {
 		"1": "cobble",
-		"2": "cobble",
-		"3": "cobble",
+		"2": "stone",
+		"3": "stone",
 		"4": "stone",
 		"5": "stone",
-		"6": "stone",
-		"7": "stone",
-		"8": "stone",
-		"9": "stone",
-		"10": "stone",
-		"11": "metal"
+		"6": "metal"
 	}
 }

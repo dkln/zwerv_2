@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://r70qo4vobswk"
 path="res://.godot/imported/parkeergarage_dak_hoek.vox-e4bc0fa0a7162153fc84ce4f479076ff.mesh"

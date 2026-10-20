@@ -3,10 +3,8 @@
 	"materials": {
 		"1": "brick",
 		"2": "brick",
-		"3": "brick",
-		"4": "gravel",
-		"5": "gravel",
-		"6": "metal",
-		"7": "stone"
+		"3": "gravel",
+		"4": "metal",
+		"5": "stone"
 	}
 }

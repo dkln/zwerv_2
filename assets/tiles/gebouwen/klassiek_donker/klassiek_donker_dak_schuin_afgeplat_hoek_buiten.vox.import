@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://5yfminvoxrg6"
 path="res://.godot/imported/klassiek_donker_dak_schuin_afgeplat_hoek_buiten.vox-c8d4501ea6e674f0db599d4efc2ef38e.mesh"

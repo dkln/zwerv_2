@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://bsh5fljegbwsc"
 path="res://.godot/imported/kerk_modern_toren_beton_klok.vox-4c7997c0a6735273ed497287338ebe8b.mesh"

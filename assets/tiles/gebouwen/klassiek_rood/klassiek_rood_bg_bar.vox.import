@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://cd0ggkna4pld1"
 path="res://.godot/imported/klassiek_rood_bg_bar.vox-5cf7362c6150578d4d1b44fa932a3e64.mesh"

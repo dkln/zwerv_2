@@ -1,9 +1,9 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
-uid="uid://dma3iyrmb04vx"
+uid="uid://bm10rnwntt63b"
 path="res://.godot/imported/gras_hoog.vox-abbfcdb02c51f0a3e319641a80c6b31a.mesh"
 
 [deps]

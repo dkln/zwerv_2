@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://bdi7kupou04xs"
 path="res://.godot/imported/tram_rijstrook_streep_kant.vox-5e52dc53b4cc0d557f3b13b2abc7de31.mesh"

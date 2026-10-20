@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://d25npal4xnhkp"
 path="res://.godot/imported/herenhuis_1900_dak_zadel_schild.vox-10270a0ee16e65c690db9d66af8e82cb.mesh"

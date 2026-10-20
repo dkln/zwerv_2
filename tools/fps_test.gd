@@ -3,7 +3,9 @@ extends SceneTree
 ## warm-up, and prints the average FPS, the 1% low and draw calls/primitives.
 ## usage: Godot --script tools/fps_test.gd -- <seconds> <zoom|tour> [focus_x focus_z] [flags]
 ## "tour" = run the automatic tour; a number = fixed iso view size (metres in
-## view) with the free camera, optionally around focus_x/focus_z (world metres).
+## view) with the free camera, optionally around focus_x/focus_z (world metres), in the
+## map part around the focus (default: the first part, where the tour opens; the tour
+## then loads the other parts itself).
 ## flags (letters, combine freely): s = no shadows and no day cycle, o4/o8 = GridMap
 ## octant size, p = no Props, g = no Gebouwen, e = no SSAO/SSIL/glow, w = no SSR,
 ## 2 = two shadow splits, 1 = orthogonal shadows, d = no DetailNiveau (no LOD/merging).
@@ -34,6 +36,9 @@ func _init() -> void:
 			# free_camera.gd re-centres on the ground point it looks at in _ready
 			var focus := Vector3(Common.arg_float(2), 0, Common.arg_float(3))
 			cam.position = focus + Common.Iso.DIRECTION * 300.0
+			Common.load_part_at(sc, focus.z)
+	if not sc.has_node("Grond"):
+		Common.load_part_at(sc, 0.0)   # the first part (also where the tour opens)
 	_apply_flags(sc, Common.arg(4))
 	get_root().add_child(sc)
 

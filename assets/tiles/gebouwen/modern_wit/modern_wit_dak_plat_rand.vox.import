@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://d2fjo4cqvsmdj"
 path="res://.godot/imported/modern_wit_dak_plat_rand.vox-8c43ead4f65f94a59f38f4e6b0ceb7bf.mesh"

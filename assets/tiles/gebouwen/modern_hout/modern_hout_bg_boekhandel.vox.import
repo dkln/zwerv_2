@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://drn8e85mlhkn2"
 path="res://.godot/imported/modern_hout_bg_boekhandel.vox-d244fec2f70456064e013207daccd2a7.mesh"

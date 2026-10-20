@@ -1,10 +1,7 @@
 {
 	"id": 324,
 	"materials": {
-		"2": "gravel",
-		"3": "gravel",
-		"4": "gravel",
-		"5": "gravel"
+		"2": "gravel"
 	},
 	"smooth": {
 		"shape": "heuvel_top",

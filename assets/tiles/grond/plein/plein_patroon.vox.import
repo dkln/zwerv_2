@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://disns5hgua7dw"
 path="res://.godot/imported/plein_patroon.vox-61b01d7c1748437cf9a6cb8ad7889042.mesh"

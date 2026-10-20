@@ -2,10 +2,9 @@
 	"id": 644,
 	"materials": {
 		"1": "plaster",
+		"5": "stone",
 		"6": "stone",
-		"7": "stone",
-		"8": "stone",
-		"10": "emit",
-		"11": "glass"
+		"8": "emit",
+		"9": "glass"
 	}
 }

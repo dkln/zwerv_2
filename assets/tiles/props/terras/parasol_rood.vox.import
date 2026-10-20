@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://2wj3uid40lkh"
 path="res://.godot/imported/parasol_rood.vox-802b187d67bfd11671fd2fe7745f666a.mesh"

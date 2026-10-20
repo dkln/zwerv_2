@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://cj8tg21u864t"
 path="res://.godot/imported/ligstoel.vox-cab58cdcf9c6269845c3449c390093d3.mesh"

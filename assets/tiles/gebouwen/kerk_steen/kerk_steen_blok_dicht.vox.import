@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://6ixuwb20lfhw"
 path="res://.godot/imported/kerk_steen_blok_dicht.vox-d0a4291ccc4d8b7da0ffd5f928ff8474.mesh"

@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://b1u2ou6so4vsi"
 path="res://.godot/imported/middengeleider.vox-31e99a89d23354e50f97043a35ba5e6d.mesh"

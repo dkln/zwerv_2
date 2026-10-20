@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://q2ietfdsjskk"
 path="res://.godot/imported/ophoging_4x4_0_0.vox-404c8d17a469237fc06cade9cc27ec14.mesh"

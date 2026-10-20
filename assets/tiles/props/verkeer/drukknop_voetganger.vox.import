@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://438l1oesmr0w"
 path="res://.godot/imported/drukknop_voetganger.vox-bdea8483ca23e13ca647b9d5d6bc2e6b.mesh"

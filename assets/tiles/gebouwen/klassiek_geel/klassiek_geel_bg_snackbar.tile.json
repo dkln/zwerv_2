@@ -2,17 +2,15 @@
 	"id": 1036,
 	"materials": {
 		"3": "brick",
-		"4": "brick",
-		"5": "brick",
+		"4": "stone",
 		"6": "stone",
-		"8": "stone",
-		"9": "stone",
-		"10": "glass",
-		"13": "emit",
-		"14": "emit",
-		"16": "metal",
-		"17": "painted",
-		"18": "painted",
-		"19": "painted"
+		"7": "stone",
+		"8": "glass",
+		"11": "emit",
+		"12": "emit",
+		"14": "metal",
+		"15": "painted",
+		"16": "painted",
+		"17": "painted"
 	}
 }

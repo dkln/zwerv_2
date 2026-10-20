@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://clsapxdmh5dyn"
 path="res://.godot/imported/bord_vrachtauto_verboden.vox-4cea134154f504410da7cf4ac6b097f2.mesh"

@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://c6g7psmm8vxcq"
 path="res://.godot/imported/pilaar_baksteen.vox-e5f12c69f17ea37d1705044b9131e438.mesh"

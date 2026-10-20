@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://duqvsrugghark"
 path="res://.godot/imported/fietstunnel_toerit_wand_d3.vox-d2d876fd17ed6e51d85a20a35ea3f61a.mesh"

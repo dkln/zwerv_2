@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://cnsgrgkvx4jao"
 path="res://.godot/imported/muurtje_natuursteen.vox-9927de86c2b1a25fc5d60163c965aa0c.mesh"

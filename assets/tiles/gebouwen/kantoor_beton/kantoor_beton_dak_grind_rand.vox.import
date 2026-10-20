@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://boqhhpk5gfp08"
 path="res://.godot/imported/kantoor_beton_dak_grind_rand.vox-ac513ad59efc26315c03df4fce192ca4.mesh"

@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://c4msisr416dhv"
 path="res://.godot/imported/tekst_raadhuis.vox-e423a0bc7b885c989f325bb2745cd76d.mesh"

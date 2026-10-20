@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://bb7aiyt720sah"
 path="res://.godot/imported/modern_donker_bg_ijssalon.vox-c70cde081b558b19c346b1b4137a7313.mesh"

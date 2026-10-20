@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://c4173l87vf1i2"
 path="res://.godot/imported/klassiek_geel_bg_drogist.vox-128b4dd53ef3196efcc1c45a03b1fa00.mesh"

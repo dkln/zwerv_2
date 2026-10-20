@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://cbujk2s3raday"
 path="res://.godot/imported/fabriek_dak_lichtstraten.vox-8f260f261eface3c86a9bc16b614924a.mesh"

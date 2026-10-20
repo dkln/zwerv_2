@@ -18,7 +18,8 @@ uniform float voxel_size = 0.125;
 // wind: the higher up in the model, the more it moves (the foot stands still)
 uniform float wind_strength = 0.06;     // metres of sway at the top
 uniform float wind_speed = 1.1;
-uniform float wind_height = 8.0;        // height (m) at which the full sway is reached
+uniform float wind_height = 8.0;        // height (m) above wind_base at which the full sway is reached
+uniform float wind_base = 0.0;          // height (m, tile-local) below which nothing sways (the ground of a flower bed)
 
 // Global tint settings (see Project > Shader Globals and the TintKaart node).
 global uniform sampler2D zwervr_tint_map : filter_nearest, repeat_disable;
@@ -40,7 +41,7 @@ float hash3(vec3 p) {
 void vertex() {
 	vec3 origin = MODEL_MATRIX[3].xyz;
 	float phase = origin.x * 0.37 + origin.z * 0.23;
-	float f = clamp(VERTEX.y / wind_height, 0.0, 1.0);
+	float f = clamp((VERTEX.y - wind_base) / wind_height, 0.0, 1.0);
 	f *= f;
 	float t = TIME * wind_speed + phase;
 	vec3 local = VERTEX;

@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://bjfufgopusbau"
 path="res://.godot/imported/deur_modern_antraciet.vox-bfc03ca3494318a98b79fc9d4ac9d04c.mesh"

@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://0xqbhrb1yns2"
 path="res://.godot/imported/rijstrook_stop_tekst.vox-d4d454446b193435787265b7f597bc6e.mesh"

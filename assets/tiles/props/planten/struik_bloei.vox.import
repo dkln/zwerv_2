@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://o52e5i4o7fyb"
 path="res://.godot/imported/struik_bloei.vox-2106675db0eafa45337cee6067626df1.mesh"

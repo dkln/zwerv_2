@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://cvtq5qnhnnm6y"
 path="res://.godot/imported/luxe_appartement_bg_glas_hoek.vox-7e596a79e6b48a22f91779ddc15ac624.mesh"

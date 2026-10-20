@@ -2,10 +2,9 @@
 	"id": 312,
 	"materials": {
 		"1": "paving",
-		"2": "paving",
-		"3": "glass",
+		"2": "glass",
+		"3": "metal",
 		"4": "metal",
-		"5": "metal",
-		"6": "emit"
+		"5": "emit"
 	}
 }

@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://dmirrwyucpn47"
 path="res://.godot/imported/kerk_steen_dak_kantelen_rand.vox-bc67a61c3c59423e56d5f5abb337b4af.mesh"

@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://b7as3xlva7yfa"
 path="res://.godot/imported/deur_klassiek_groen.vox-b5aa8c03378a34e71822159c3cf2fb16.mesh"

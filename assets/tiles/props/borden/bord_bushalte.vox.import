@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://bswh4y1h2n7im"
 path="res://.godot/imported/bord_bushalte.vox-e0c082804f94e5381a00ed15d0531579.mesh"

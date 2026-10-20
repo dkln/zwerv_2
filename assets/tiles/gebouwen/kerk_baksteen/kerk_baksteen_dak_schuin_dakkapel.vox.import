@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://brgjnpyes65am"
 path="res://.godot/imported/kerk_baksteen_dak_schuin_dakkapel.vox-c919fc03b94411c9ee7dcb9296f0d1a7.mesh"

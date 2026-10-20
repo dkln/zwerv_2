@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://dq4xyrd0qs7nm"
 path="res://.godot/imported/kantoor_glas_verd_raam_klein.vox-b85f9b2145ef30f63d6e625e98b28331.mesh"

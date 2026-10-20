@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://dx1j8er6fhnu5"
 path="res://.godot/imported/tuibrug_3_achter.vox-08dd522bf3c9c7ae5e817cee521b4b38.mesh"

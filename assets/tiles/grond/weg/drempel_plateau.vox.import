@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://b425whi6kmofi"
 path="res://.godot/imported/drempel_plateau.vox-e7f71dca46198c1b6cfe4398495ab028.mesh"

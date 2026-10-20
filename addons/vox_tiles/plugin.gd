@@ -12,18 +12,21 @@ extends EditorPlugin
 ## run in a light "editor view" (editor_view.gd) for a high frame rate: light voxel
 ## shaders with lines on the 4 m tile borders, no shadows, reflections, SSAO/SSIL/glow/
 ## fog, motion blur or smoke; and the build tools below are available. The game itself
-## (F5/F6 and exports) never uses the editor view.
+## (F5/F6 and exports) never uses the editor view. A part of a map stored in parts gets
+## the environment, lights, tint map and smoke of its tour scene (scene_preview.gd).
 
 const Builder = preload("res://addons/vox_tiles/library_builder.gd")
 const TileMetadata = preload("res://addons/vox_tiles/tile_metadata.gd")
 const Importer = preload("res://addons/vox_tiles/vox_import_plugin.gd")
 const BuildTools = preload("res://addons/vox_tiles/build_tools.gd")
 const EditorView = preload("res://addons/vox_tiles/editor_view.gd")
+const ScenePreview = preload("res://addons/vox_tiles/scene_preview.gd")
 const MENU_REBUILD := "Vox Tiles: rebuild all libraries"
 
 var _importer: EditorImportPlugin
 var _build: BuildTools
 var _view: EditorView
+var _preview: ScenePreview
 var _timer: Timer
 var _pending := {}
 var _busy := false
@@ -34,6 +37,9 @@ func _enter_tree() -> void:
 	_importer = Importer.new()
 	add_import_plugin(_importer)
 	add_tool_menu_item(MENU_REBUILD, _rebuild_all)
+	_preview = ScenePreview.new()
+	scene_changed.connect(_preview.refresh)
+	_preview.refresh()
 	_view = EditorView.new()
 	scene_changed.connect(_view.refresh)
 	_timer = Timer.new()
@@ -67,6 +73,9 @@ func _exit_tree() -> void:
 	if _view:
 		_view.cleanup()
 		_view = null
+	if _preview:
+		_preview.cleanup()
+		_preview = null
 	remove_import_plugin(_importer)
 	_importer = null
 

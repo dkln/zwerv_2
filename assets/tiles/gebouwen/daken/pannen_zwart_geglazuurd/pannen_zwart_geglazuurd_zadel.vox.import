@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://qf5rwvatexfb"
 path="res://.godot/imported/pannen_zwart_geglazuurd_zadel.vox-e84d2a195afb347512be5d4adc6f355a.mesh"

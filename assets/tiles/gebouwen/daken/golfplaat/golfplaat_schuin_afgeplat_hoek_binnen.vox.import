@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://61sae46ca2dp"
 path="res://.godot/imported/golfplaat_schuin_afgeplat_hoek_binnen.vox-e307c34855636c8482b76b293a5c6395.mesh"

@@ -2,10 +2,7 @@
 	"id": 333,
 	"materials": {
 		"1": "asphalt",
-		"2": "asphalt",
-		"3": "asphalt",
-		"4": "asphalt",
-		"6": "stone",
-		"7": "stone"
+		"3": "stone",
+		"4": "stone"
 	}
 }

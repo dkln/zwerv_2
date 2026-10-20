@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://bxbjccp5kk75l"
 path="res://.godot/imported/pannen_antraciet_lessenaar.vox-720d8b49361d4b3a59d97c1ead3e4bdd.mesh"

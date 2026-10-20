@@ -346,13 +346,16 @@ _FLOAT_PREFIXES = ("sloep", "roeiboot", "reddingsboei", "woonboot", "water_lelie
 def tile_animation(name):
     """Animation for a tile path such as 'props/water/sloep' (same rules the importer used to guess).
 
-    "float" for boats/buoys/water lilies (by base name prefix), "wind" for trees,
+    "float" for boats/buoys/water lilies (by base name prefix), "flowers" for flower beds
+    in the ground (sway just above the ground), "wind" for trees,
     plants, hedges, planters and reed (except reed roofs under /daken/), else None.
     """
     base = os.path.basename(name)
     if base.startswith(_FLOAT_PREFIXES):
         return "float"
     path = "/" + name
+    if "bloemperk" in base:
+        return "flowers"
     if ("/bomen/" in path or "/planten/" in path or "/haag" in path or "bloembak" in path
             or "riet" in path and "/daken/" not in path):
         return "wind"

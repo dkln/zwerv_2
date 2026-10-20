@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://cwxty010t6h62"
 path="res://.godot/imported/modern_donker_bg_bar.vox-24322383b4638a2d8d03296b0e54c803.mesh"

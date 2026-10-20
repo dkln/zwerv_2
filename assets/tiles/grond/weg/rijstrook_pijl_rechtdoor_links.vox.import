@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://123vuto75mma"
 path="res://.godot/imported/rijstrook_pijl_rechtdoor_links.vox-67d9aed3efea63c2064ee3e850dd1af3.mesh"

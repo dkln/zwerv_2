@@ -3,7 +3,6 @@
 	"materials": {
 		"4": "glass",
 		"6": "emit",
-		"7": "metal",
-		"8": "metal"
+		"7": "metal"
 	}
 }

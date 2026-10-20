@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://bmsyxbuuhcweo"
 path="res://.godot/imported/heuvel_gras_top.vox-4c846a6aa2e4ed444ebbe7ee92f0304f.mesh"

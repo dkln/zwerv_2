@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://jhgumf16epco"
 path="res://.godot/imported/hectometerpaal.vox-a66c2d9334946a27db4ecc1d1e993e89.mesh"

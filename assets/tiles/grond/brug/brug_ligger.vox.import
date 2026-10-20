@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://ba8bfqlrf7ck1"
 path="res://.godot/imported/brug_ligger.vox-a827b61aa122c946d7d26d773e6c7625.mesh"

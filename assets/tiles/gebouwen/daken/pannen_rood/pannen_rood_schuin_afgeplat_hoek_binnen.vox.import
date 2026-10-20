@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://dd0gh2nouufa3"
 path="res://.godot/imported/pannen_rood_schuin_afgeplat_hoek_binnen.vox-8f81468ffaa3d46b619f8ac334b01d5d.mesh"

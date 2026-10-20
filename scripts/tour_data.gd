@@ -10,18 +10,35 @@ extends RefCounted
 ## Size of one map cell in metres (district metadata is in cells).
 const CELL := 4.0
 
-## Opening of the tour: the heart of the old town, seen while the day goes by.
-## [title, text, focus x, focus z, view size at the start, view size at the end].
-const INTRO := ["Het stadshart", "Gracht, grachtenpanden, bouwblokken en het plein in de oude stad.", 72, 60, 130, 80]
-## The times of day of the opening, in order: [hour, name, text]. Hours keep counting
-## past 24 so the clock always runs forward (31 = 7:00 the next morning).
-const DAY := [
-	[7.0, "Ochtend", "De zon komt op in het oosten: warm, laag licht over de daken en het water."],
-	[13.0, "Middag", "De zon staat hoog: volle kleuren, korte schaduwen en de lucht spiegelt in het glas."],
-	[17.6, "Avond", "Laag oranje zonlicht en een gloeiende horizon; ramen en lantaarns gaan aan."],
-	[23.0, "Nacht", "Lantaarns, ramen en etalages gloeien; blauw maanlicht en geen schaduwen."],
-	[31.0, "Ochtend", "Een nieuwe dag: de nachtverlichting dooft en de zon komt weer op."],
-	[37.0, "Middag", "Weer volop daglicht. Nu langs alle gebieden van de stad."],
+## Low flights through the town (tour.gd shots of kind "fly"), in metres:
+## [slug, title, text, from x, y, z, to x, y, z, seconds, after the stop with this slug].
+## The camera flies from `from` to `to` looking along the way, a little downwards.
+const FLIGHTS := [
+	["vlucht_gracht", "Over de gracht", "Laag over het water, tussen de grachtenpanden en onder de lantaarns door, onder de boogbrug door.", 36, 4.5, -8, 36, 4.5, 112, 9.0, "stad_overzicht"],
+	["vlucht_hoofdstraat", "Door de Hoofdstraat", "Over de Hoofdstraat door de oude stad: stoepen, fietspaden, winkels en het plein.", -4, 5, 58, 140, 5, 58, 8.0, "plein"],
+	["vlucht_zuidweg", "Over de Zuidweg", "Langs de busstrook, de fietspaden en de middenberm met lantaarns.", 0, 6, 180, 380, 6, 180, 9.0, "zwemmen"],
+	["vlucht_snelweg", "Over de snelweg", "Laag boven de snelweg: vluchtstroken, vangrails en de portalen met de blauwe borden.", 380, 7, 312, 0, 7, 312, 10.0, "aansluiting"],
+	["vlucht_winkelstraat", "Door de winkelstraat", "Door de autovrije winkelstraat, langs de etalages, terrassen en de fontein.", 252, 5, 368.5, 380, 5, 368.5, 8.0, "winkelstraat"],
+]
+## Seconds per shot of each kind (tour.gd): shader stops (half off, half on), stops in
+## the city, demo districts, and the overview shots.
+const SHADER_TIME := 8.0
+const CITY_TIME := 3.5
+const DISTRICT_TIME := 2.4
+const OVERVIEW_TIME := 5.0
+
+## The first stops of the tour: how the shaders suggest depth and detail. Rows as
+## CITY plus the shader globals (Project > Shader Globals) the tour switches off and on
+## again halfway through the stop, so the difference shows (tour.gd); "node:<name>"
+## switches a node of the tour scene with an "enabled" property instead.
+const SHADERS := [
+	["shader_baksteen", "Shader: baksteen", "Geen extra geometrie: de shader legt reliëf in de belichting. Elke baksteen in het metselverband krijgt afgeronde randen en een donkere voeg, met hier en daar een putje of een haarscheurtje; ook de stoep en het fietspad ervoor hebben hun eigen reliëf.", 100, 44, 18, ["zwervr_relief"]],
+	["shader_asfalt", "Shader: asfalt", "Asfalt krijgt het patroon van echt asfalt: steentjes van ~4 cm in donkere bitumen, elk met een eigen grijstint en een bolle bovenkant waarop de zon glinstert, en zachte slijtplekken van een paar meter. Het patroon dooft uit zodra een steentje kleiner wordt dan een pixel, zodat het van ver niet flikkert.", 60, 62, 12, ["zwervr_relief"]],
+	["shader_plein", "Shader: tegels, natuursteen en klinkers", "Elk plaveisel zijn eigen reliëf: tegels van 3 x 3 voxels, blokken natuursteen, klinkers in verband. De voegen worden breder en lichter zodra ze smaller dan een pixel worden.", 74, 82, 14, ["zwervr_relief"]],
+	["shader_gras", "Shader: gras van dichtbij", "Het gras is in de tile één egale kleur. De shader legt er een zachte korrel over, en ingezoomd groeien er echte sprieten uit: hoekige blokjes in voxelstijl, in plukken, die met de wind meebuigen.", 14, 104, 7, ["zwervr_grass", "node:Grassprieten"]],
+	["shader_gras_hoogte", "Kort en hoog gras", "Twee grassoorten, dezelfde tile: in het park kort gemaaid gras, in de polder hoog gras met lange sprieten die verder doorbuigen in de wind.", 0, 112, 16, ["node:Grassprieten"]],
+	["shader_golving", "Shader: golvende grond", "Een veld van dezelfde tiles is plat, maar de shader belicht het alsof het zacht golft: een trage hoogtekaart van brede glooiingen kantelt alleen de normaal heel licht, zodat de zon de ene kant net wat lichter maakt dan de andere.", 40, 110, 70, ["zwervr_undulation"]],
+	["shader_veraf", "Shader: van ver", "Van ver zijn de voxels kleiner dan een pixel. Dan legt de shader rustige vlekken over de grond, zodat de polder en de grasvelden niet één egale kleur worden.", 260, 60, 260, ["zwervr_far_noise", "zwervr_grass", "zwervr_undulation"]],
 ]
 
 ## Fixed stops in the city, in tour order.
@@ -31,6 +48,7 @@ const CITY := [
 	["bouwblok", "Gesloten bouwblok", "Schuine kappen die om de hoek lopen: hoekkepers op de buitenhoeken, kilkepers op de binnenhoeken, dakkapellen, dakterrassen en een poort naar de binnentuin.", 86, 28, 55],
 	["plein", "Plein met terrassen", "Klinkers en natuursteen, fontein, kiosk, ruiterstandbeeld, terrassen met parasols, bankjes en klassieke lantaarns.", 86, 88, 45],
 	["park", "Park met vijver", "Vijver met oevers en hoeken, riet en lelies, paden, tulpenbedden, verschillende bomen en een steiger.", 12, 96, 45],
+	["bollenveld", "Bollenveld", "Een tulpenveld in de polder naast het park. De tulpen wiegen in de wind: een vertex-shader laat alles boven de grond van het bed meebuigen, sneller en over een kortere hoogte dan bij bomen.", -16, 74, 40],
 	["spoor", "Spoorviaduct en station", "Hellingen naar een viaduct op pijlers, brugdekken met ballast, bovenleiding, perron met abri en een overweg.", 136, 70, 80],
 	["kathedraal", "Kathedraal en school", "Kathedraal met torens, klokken, roosvenster, steunberen en luchtbogen; school met speelplaats.", 186, 26, 70],
 	["musea", "Musea en raadhuis", "Klassiek museum met koepel en zuilen, raadhuis met klokkentoren, kantelen en vlaggen, modern museum met overstek.", 316, 30, 80],
@@ -119,11 +137,11 @@ static func highlights(all_stops: Array) -> Array:
 
 ## Returns the stops for the scene `root` as a list of
 ## {slug, title, text, x, z, size}: focus x/z and view size in metres.
-## Order: CITY, then the districts with the PLACE_TEXT spots between them (by z), with
+## Order: SHADERS, CITY, then the districts with the PLACE_TEXT spots between them (by z), with
 ## WATER inserted right after the "park" stop (or at the front if there is no park).
 static func stops(root: Node) -> Array:
 	var list := []
-	for s in CITY:
+	for s in SHADERS + CITY:
 		list.append(_row_to_stop(s))
 	for d in root.get_meta("districts", []):
 		var district_name: String = d["name"]
@@ -166,6 +184,44 @@ static func stops(root: Node) -> Array:
 	return list
 
 
-## Converts a CITY/WATER row into a stop dictionary.
+## The tour as one continuous list of camera shots (tour.gd), from stops() plus the
+## FLIGHTS. Every shot: {slug, title, text, kind, seconds, ...}; kind "iso": the iso
+## camera glides from focus `a` with `size_a` metres in view to `b` with `size_b`
+## (a slow push in and a drift); kind "fly": a low flight from `from` to `to`. Shader
+## stops keep their "toggle" (their globals go off, then on halfway); "x"/"z" is where
+## the shot lies (for the map parts).
+static func shots(root: Node) -> Array:
+	var flights := {}
+	for f in FLIGHTS:
+		flights[f[10]] = flights.get(f[10], []) + [f]
+	var list := []
+	for st in stops(root):
+		var focus := Vector3(st["x"], 0, st["z"])
+		var size: float = st["size"]
+		var drift := Vector3(-1, 0, 1).normalized() * size * 0.06
+		var shot := {"slug": st["slug"], "title": st["title"], "text": st["text"], "kind": "iso",
+			"x": st["x"], "z": st["z"]}
+		if st.has("toggle"):
+			shot.merge({"toggle": st["toggle"], "seconds": SHADER_TIME, "a": focus, "b": focus,
+				"size_a": size, "size_b": size * 0.85})
+		elif str(st["slug"]).begins_with("wijk_"):
+			shot.merge({"seconds": DISTRICT_TIME, "a": focus - drift, "b": focus + drift,
+				"size_a": size * 1.05, "size_b": size * 0.9})
+		else:
+			shot.merge({"seconds": OVERVIEW_TIME if size > 300.0 else CITY_TIME, "a": focus - drift,
+				"b": focus + drift, "size_a": size * 1.15, "size_b": size * 0.85})
+		list.append(shot)
+		for f in flights.get(st["slug"], []):
+			var from := Vector3(f[3], f[4], f[5])
+			var to := Vector3(f[6], f[7], f[8])
+			list.append({"slug": f[0], "title": f[1], "text": f[2], "kind": "fly", "from": from,
+				"to": to, "seconds": float(f[9]), "x": (from.x + to.x) * 0.5, "z": (from.z + to.z) * 0.5})
+	return list
+
+
+## Converts a SHADERS/CITY/WATER row into a stop dictionary ("toggle": shader globals).
 static func _row_to_stop(s: Array) -> Dictionary:
-	return {"slug": s[0], "title": s[1], "text": s[2], "x": float(s[3]), "z": float(s[4]), "size": float(s[5])}
+	var stop := {"slug": s[0], "title": s[1], "text": s[2], "x": float(s[3]), "z": float(s[4]), "size": float(s[5])}
+	if s.size() > 6:
+		stop["toggle"] = s[6]
+	return stop

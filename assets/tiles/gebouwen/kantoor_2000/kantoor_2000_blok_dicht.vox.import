@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://bb432o2ngrpdv"
 path="res://.godot/imported/kantoor_2000_blok_dicht.vox-0c5a5a0cfe5d9446cabf84449e6ab390.mesh"

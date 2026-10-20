@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://dwp5ycg8riy17"
 path="res://.godot/imported/universiteit_dak_plat_eind.vox-8e4f7186c41052e14e9df8c2e9395ef7.mesh"

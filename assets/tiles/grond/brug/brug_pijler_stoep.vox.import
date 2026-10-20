@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://c6y8bypgt12g"
 path="res://.godot/imported/brug_pijler_stoep.vox-4769307337f910b2f70f77b15864919d.mesh"

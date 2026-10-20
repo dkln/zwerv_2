@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://dvdeitbwcvqqb"
 path="res://.godot/imported/zink_schuin_schoorsteen.vox-959b59d22cb96a3381f699905c6ccb6f.mesh"

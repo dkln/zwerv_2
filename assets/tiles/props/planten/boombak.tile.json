@@ -2,7 +2,6 @@
 	"id": 68,
 	"animation": "wind",
 	"materials": {
-		"2": "stone",
-		"3": "stone"
+		"2": "stone"
 	}
 }

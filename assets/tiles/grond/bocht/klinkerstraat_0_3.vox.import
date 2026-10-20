@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://u22c1lsf0dhq"
 path="res://.godot/imported/klinkerstraat_0_3.vox-f67f5ece17190ab675f2bc14a3417187.mesh"

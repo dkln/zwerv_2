@@ -2,12 +2,7 @@
 	"id": 109,
 	"materials": {
 		"1": "paving",
-		"2": "paving",
-		"3": "paving",
-		"4": "paving",
-		"5": "stone",
-		"6": "stone",
-		"7": "stone",
-		"8": "stone"
+		"2": "stone",
+		"3": "stone"
 	}
 }

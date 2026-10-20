@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://dqkp0jk5ap62v"
 path="res://.godot/imported/herfstboom.vox-46ce7c1d9592e82257c8961809c055dd.mesh"

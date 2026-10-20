@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://bihkstk3wotpx"
 path="res://.godot/imported/overheid_dak_schuin.vox-543c844d1a47988a50179919fc4a28d2.mesh"

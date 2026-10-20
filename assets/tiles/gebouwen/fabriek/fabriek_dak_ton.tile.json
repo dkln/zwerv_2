@@ -2,11 +2,9 @@
 	"id": 1193,
 	"materials": {
 		"1": "brick",
-		"2": "brick",
-		"3": "stone",
-		"4": "stone",
-		"5": "glass",
-		"6": "metal",
-		"7": "metal"
+		"2": "stone",
+		"3": "glass",
+		"4": "metal",
+		"5": "metal"
 	}
 }

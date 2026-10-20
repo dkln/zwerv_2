@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://b8t4bx3ky28jf"
 path="res://.godot/imported/klassiek_donker_dak_plat_kroonlijst_rand.vox-ef8a247faedac31a493dc54203e6a50e.mesh"

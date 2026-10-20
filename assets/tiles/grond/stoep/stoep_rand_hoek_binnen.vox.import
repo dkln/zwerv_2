@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://do1552amhg4g"
 path="res://.godot/imported/stoep_rand_hoek_binnen.vox-2da2402155a7e0c58c24c39d4982a814.mesh"

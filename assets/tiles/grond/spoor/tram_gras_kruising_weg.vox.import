@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://da7n5pj2egdhk"
 path="res://.godot/imported/tram_gras_kruising_weg.vox-90996b0dec5a9e35fde99534677c3ce4.mesh"

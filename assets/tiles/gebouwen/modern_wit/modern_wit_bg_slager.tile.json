@@ -2,17 +2,15 @@
 	"id": 1112,
 	"materials": {
 		"2": "plaster",
-		"3": "plaster",
-		"4": "plaster",
-		"9": "stone",
-		"10": "stone",
-		"11": "glass",
-		"14": "emit",
-		"15": "emit",
-		"16": "metal",
-		"17": "metal",
-		"18": "painted",
-		"19": "painted",
-		"20": "painted"
+		"6": "stone",
+		"7": "stone",
+		"8": "glass",
+		"11": "emit",
+		"12": "emit",
+		"13": "metal",
+		"14": "metal",
+		"15": "painted",
+		"16": "painted",
+		"17": "painted"
 	}
 }

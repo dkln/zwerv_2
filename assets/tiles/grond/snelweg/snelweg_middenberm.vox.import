@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://bqfuf5ay1ffv6"
 path="res://.godot/imported/snelweg_middenberm.vox-9721cfb0599b31e2a7f71163c4a71c5a.mesh"

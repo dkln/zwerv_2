@@ -19,6 +19,7 @@ const Parser = preload("res://addons/vox_tiles/vox_parser.gd")
 const LOCAL_MATERIALS := [
 	Mesher.MATERIAL_PATHS[Parser.MAT_FLAG],
 	Mesher.WIND_MATERIAL,
+	Mesher.FLOWER_MATERIAL,
 	Mesher.FLOAT_MATERIAL,
 	Mesher.FLOAT_PLANT_MATERIAL,
 ]
@@ -36,6 +37,7 @@ const BUDGET_USEC := 6000
 ## transform. hide_tops: top faces may also be dropped when a solid cell sits on top
 ## (for layers whose tiles are as tall as the cell). progress (optional) is called with
 ## the fraction done (0..1) whenever the work pauses for a frame. Coroutine: await it.
+## Returns null if `gm` is freed before it is done.
 static func bake(gm: GridMap, lib: MeshLibrary, name: String, hide_tops: bool, progress := Callable()) -> Node3D:
 	var out := Node3D.new()
 	out.name = name
@@ -55,6 +57,9 @@ static func bake(gm: GridMap, lib: MeshLibrary, name: String, hide_tops: bool, p
 			if progress.is_valid():
 				progress.call(0.9 * counter / cells.size())
 			await Engine.get_main_loop().process_frame
+			if not is_instance_valid(gm):
+				out.free()   # the layer was freed meanwhile (another map part loaded)
+				return null
 			start = Time.get_ticks_usec()
 		var id := gm.get_cell_item(c)
 		var mesh := lib.get_item_mesh(id) as ArrayMesh

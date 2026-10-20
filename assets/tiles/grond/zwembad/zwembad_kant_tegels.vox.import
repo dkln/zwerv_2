@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://jlvepthctmlm"
 path="res://.godot/imported/zwembad_kant_tegels.vox-e07f82d6be4b20c87ceeaae3c3fde8b0.mesh"

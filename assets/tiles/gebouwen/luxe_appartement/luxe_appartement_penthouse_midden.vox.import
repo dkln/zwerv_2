@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://ym7dyve1ps84"
 path="res://.godot/imported/luxe_appartement_penthouse_midden.vox-414301e04fec2143f36d2a79ea7b039d.mesh"

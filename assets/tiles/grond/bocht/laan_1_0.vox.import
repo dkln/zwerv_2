@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://177xto87nh8t"
 path="res://.godot/imported/laan_1_0.vox-8074515cbe1e9f4a2bbafac765539eb6.mesh"

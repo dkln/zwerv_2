@@ -5,15 +5,12 @@
 		"2": "stone",
 		"3": "stone",
 		"4": "stone",
-		"5": "stone",
-		"7": "glass",
-		"12": "metal",
-		"13": "emit",
-		"14": "brick",
-		"15": "brick",
-		"16": "brick",
-		"17": "glass",
-		"18": "glass",
-		"19": "glass"
+		"6": "glass",
+		"11": "metal",
+		"12": "emit",
+		"13": "brick",
+		"14": "glass",
+		"15": "glass",
+		"16": "glass"
 	}
 }

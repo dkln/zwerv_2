@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://b7h3pvqyh78km"
 path="res://.godot/imported/herenhuis_1900_bg_ijssalon.vox-3412f9630d5f340ab3bea4c046623abe.mesh"

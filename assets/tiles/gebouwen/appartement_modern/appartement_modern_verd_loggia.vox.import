@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://dcngbtdq2478w"
 path="res://.godot/imported/appartement_modern_verd_loggia.vox-5910c709f840ff21c2649664e60025fe.mesh"

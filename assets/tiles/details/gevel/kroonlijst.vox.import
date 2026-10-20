@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://c0gaesfdm6fou"
 path="res://.godot/imported/kroonlijst.vox-6c1cd41cc1377a043b52c54b46edf8b2.mesh"

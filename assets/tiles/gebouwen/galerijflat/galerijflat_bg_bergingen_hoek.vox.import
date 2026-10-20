@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://gtsjtltjoe1a"
 path="res://.godot/imported/galerijflat_bg_bergingen_hoek.vox-aa7e73f5f9572f9cc90dba5a51501b3f.mesh"

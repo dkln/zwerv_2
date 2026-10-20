@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://n84qpdoh7aw5"
 path="res://.godot/imported/middenberm_klinkers.vox-805bbf1c1007ca4c696b9b0c3eb2f747.mesh"

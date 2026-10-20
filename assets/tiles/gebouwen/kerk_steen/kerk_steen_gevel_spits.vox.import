@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://du3unpg3uwy5s"
 path="res://.godot/imported/kerk_steen_gevel_spits.vox-c1b7a764fb0c11d99f0caa4860fb9906.mesh"

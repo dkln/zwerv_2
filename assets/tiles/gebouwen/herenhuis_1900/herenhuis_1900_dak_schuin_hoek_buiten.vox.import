@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://ceu0dwomtnqic"
 path="res://.godot/imported/herenhuis_1900_dak_schuin_hoek_buiten.vox-cb76b0afbd0931dcec8c093d70b53e3e.mesh"

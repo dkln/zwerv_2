@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://wjvmhk2faiie"
 path="res://.godot/imported/stoep_eiland.vox-5e8c53dc766420bbeeaf466d294d3eda.mesh"

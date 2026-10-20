@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://bt7qsb01phe6k"
 path="res://.godot/imported/schuur_zwart_bg_raam.vox-dfca0c4afe74c603b114aed2f4214a41.mesh"

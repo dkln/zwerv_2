@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://dgr7ce36icule"
 path="res://.godot/imported/overkapping_glas_kolom.vox-9162c63b54a7be7fe7077c03781fa3bb.mesh"

@@ -16,7 +16,7 @@ const Mesher = preload("res://addons/vox_tiles/vox_mesher.gd")
 const TileMetadata = preload("res://addons/vox_tiles/tile_metadata.gd")
 const Slopes = preload("res://addons/vox_tiles/slopes.gd")
 
-enum AnimationMode { AUTO, NONE, WIND, FLOAT }
+enum AnimationMode { AUTO, NONE, WIND, FLOAT, FLOWERS }
 
 ## Default import options; "cell_block" is added per folder (default_block).
 const DEFAULTS := {
@@ -71,7 +71,7 @@ func _get_import_options(path: String, preset_index: int) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	for option in DEFAULTS:
 		out.append({"name": option, "default_value": DEFAULTS[option]})
-	out[-1].merge({"property_hint": PROPERTY_HINT_ENUM, "hint_string": "Auto,None,Wind,Float"})
+	out[-1].merge({"property_hint": PROPERTY_HINT_ENUM, "hint_string": "Auto,None,Wind,Float,Flowers"})
 	# size of the grid cell: triangles are grouped per cell side so hidden sides
 	# against neighbouring blocks are dropped when merging (0 = don't)
 	out.append({"name": "cell_block", "default_value": default_block(path)})
@@ -82,8 +82,11 @@ func _get_option_visibility(path: String, option_name: StringName, options: Dict
 	return true
 
 
+## Raise it whenever the mesh format changes (vertex colours, UVs, metadata), so Godot
+## reimports every tile instead of keeping meshes the shaders no longer understand.
+## 6: textured tiles keep the face's average colour in the vertex rgb (AO in alpha).
 func _get_format_version() -> int:
-	return 5
+	return 6
 
 
 func _get_priority() -> float:
@@ -109,7 +112,7 @@ static func default_block(path: String) -> Vector3:
 	return Vector3.ZERO
 
 
-## Animation of a tile ("", "wind" or "float"): from its metadata, otherwise
+## Animation of a tile ("", "wind", "flowers" or "float"): from its metadata, otherwise
 ## guessed from the file name (for tiles without metadata, e.g. made by hand).
 static func resolve_animation(path: String, meta: Dictionary) -> String:
 	var from_meta = meta.get("animation")
@@ -119,6 +122,8 @@ static func resolve_animation(path: String, meta: Dictionary) -> String:
 	for prefix in ["sloep", "roeiboot", "reddingsboei", "woonboot", "water_lelies"]:
 		if file.begins_with(prefix):
 			return "float"
+	if path.get_file().begins_with("bloemperk"):
+		return "flowers"
 	if path.contains("/bomen/") or path.contains("/planten/") or path.contains("/haag") \
 			or path.contains("bloembak") or path.contains("riet") and not path.contains("/daken/"):
 		return "wind"
@@ -222,6 +227,8 @@ func _animation(options: Dictionary, path: String, meta: Dictionary) -> String:
 			return "wind"
 		AnimationMode.FLOAT:
 			return "float"
+		AnimationMode.FLOWERS:
+			return "flowers"
 		AnimationMode.NONE:
 			return ""
 	return resolve_animation(path, meta)

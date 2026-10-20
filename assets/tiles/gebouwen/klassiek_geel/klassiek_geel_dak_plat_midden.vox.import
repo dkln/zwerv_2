@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://c46kcai8wm5o2"
 path="res://.godot/imported/klassiek_geel_dak_plat_midden.vox-dabf849d354e52cccbd4903f410a2ef0.mesh"

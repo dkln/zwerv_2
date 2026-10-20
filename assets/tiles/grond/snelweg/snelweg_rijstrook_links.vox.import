@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://bml7yn4m5b300"
 path="res://.godot/imported/snelweg_rijstrook_links.vox-a1c3da97b92d6904a166dec6abab6382.mesh"

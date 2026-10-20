@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://b48c0ibbyonqd"
 path="res://.godot/imported/museum_klassiek_bg_raam_boog_hoek.vox-979e8281b19b031e847364a4ad32ee1c.mesh"

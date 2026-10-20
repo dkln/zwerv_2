@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://ctue26tadyiwe"
 path="res://.godot/imported/zwembadtrap.vox-b2e4dc93391323563d6208f84252afc4.mesh"

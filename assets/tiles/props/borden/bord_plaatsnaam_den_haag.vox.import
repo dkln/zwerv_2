@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://ccqiyi3aisvj2"
 path="res://.godot/imported/bord_plaatsnaam_den_haag.vox-9cd5e3020369b6704ed9d8dada2d51fa.mesh"

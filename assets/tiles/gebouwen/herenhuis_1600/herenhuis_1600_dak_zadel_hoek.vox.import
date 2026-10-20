@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://ctx7ciodnufsy"
 path="res://.godot/imported/herenhuis_1600_dak_zadel_hoek.vox-ed984c932c3ffe733b4fbac4ba7d20ce.mesh"

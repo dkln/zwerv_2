@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://b2dbdkgiqrju6"
 path="res://.godot/imported/herenhuis_1600_verd_balkon.vox-bb8fd9ea5570bb2370cb58354a255f84.mesh"

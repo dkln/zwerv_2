@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://bp6nohhnqp6hr"
 path="res://.godot/imported/snelweg_aansluiting.vox-76a3cc2f947081edd7c4efce7664923f.mesh"

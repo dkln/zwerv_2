@@ -2,10 +2,6 @@
 	"id": 628,
 	"materials": {
 		"1": "stone",
-		"2": "stone",
-		"3": "cobble",
-		"4": "cobble",
-		"5": "cobble",
-		"6": "cobble"
+		"2": "cobble"
 	}
 }

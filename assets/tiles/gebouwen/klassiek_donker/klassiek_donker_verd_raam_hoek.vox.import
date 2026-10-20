@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://cc73lvdlpav0t"
 path="res://.godot/imported/klassiek_donker_verd_raam_hoek.vox-5f0a4458ea6584af06b1162d88ca28d0.mesh"

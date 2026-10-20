@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://bgckt56plqq5q"
 path="res://.godot/imported/plein_dambord.vox-1fade5e747231cd9262ef2b6c4470d55.mesh"

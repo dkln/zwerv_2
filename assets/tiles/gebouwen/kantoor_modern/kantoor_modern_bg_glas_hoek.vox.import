@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://d1atfegbqccq0"
 path="res://.godot/imported/kantoor_modern_bg_glas_hoek.vox-06c6c676d2b2e181921583c151e2796c.mesh"

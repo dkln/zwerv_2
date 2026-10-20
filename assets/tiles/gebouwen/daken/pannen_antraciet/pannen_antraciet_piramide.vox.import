@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://cc8sn14dlt3li"
 path="res://.godot/imported/pannen_antraciet_piramide.vox-5153c4b2d67d4d64d43a3ab222ad04c8.mesh"

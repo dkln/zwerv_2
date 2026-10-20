@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://b41difv3wvief"
 path="res://.godot/imported/hal_sport_wand_dak.vox-7c6d42b9e341f82538a2f721d66a7571.mesh"

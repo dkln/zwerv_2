@@ -3,10 +3,8 @@
 	"materials": {
 		"1": "brick",
 		"2": "brick",
-		"3": "brick",
-		"4": "asphalt",
-		"5": "asphalt",
-		"6": "metal",
-		"7": "stone"
+		"3": "asphalt",
+		"4": "metal",
+		"5": "stone"
 	}
 }

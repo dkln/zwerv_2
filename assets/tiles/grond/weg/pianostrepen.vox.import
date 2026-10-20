@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://dt8aua14r8kh6"
 path="res://.godot/imported/pianostrepen.vox-16e9510d9199e1db405838a59a58f8b3.mesh"

@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://djysw8v8cs632"
 path="res://.godot/imported/heuvel_gras_hoek_buiten.vox-0479b761b55083c764d7f2b2cc298d84.mesh"

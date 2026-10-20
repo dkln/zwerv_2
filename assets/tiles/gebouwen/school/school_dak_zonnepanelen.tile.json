@@ -2,9 +2,8 @@
 	"id": 901,
 	"materials": {
 		"1": "gravel",
-		"2": "gravel",
-		"3": "panel",
-		"4": "metal",
-		"5": "metal"
+		"2": "panel",
+		"3": "metal",
+		"4": "metal"
 	}
 }

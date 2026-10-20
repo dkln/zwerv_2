@@ -34,6 +34,9 @@ const MATERIAL_PATHS := [
 ]
 
 const WIND_MATERIAL := "res://addons/vox_tiles/materials/voxel_wind.tres"
+## flower beds in the ground (tulips): sway quickly over a few decimetres, from just
+## above the ground tile's surface (wind_base)
+const FLOWER_MATERIAL := "res://addons/vox_tiles/materials/voxel_wind_bloem.tres"
 const FLOAT_MATERIAL := "res://addons/vox_tiles/materials/voxel_drijf.tres"
 ## floating ground tiles (water with plants): only what lies above the water bobs
 const FLOAT_PLANT_MATERIAL := "res://addons/vox_tiles/materials/voxel_drijf_plant.tres"
@@ -50,7 +53,8 @@ const DIRECTIONS := [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0), V
 
 ## color_tolerance > 0: colours that differ less than this (0..255 per channel)
 ## are merged into larger faces (for the coarse LOD version).
-## animation: "" (none), "wind" (sways in the wind) or "float" (bobs on the water).
+## animation: "" (none), "wind" (sways in the wind), "flowers" (flowers and tulips: sway
+## quickly over a few decimetres above the ground) or "float" (bobs on the water).
 ## block: size of the grid cell (e.g. 4x3x4). Triangles are then grouped per side
 ## of that cell (meta "face_ranges" and "solid_faces"), so merging
 ## (scripts/layer_baker.gd) can drop faces that lie against a neighbouring block.
@@ -261,6 +265,8 @@ static func build(vox, voxel_size: float, use_ao: bool, color_tolerance := 0, an
 			path = FLOAT_MATERIAL if block == Vector3.ZERO else FLOAT_PLANT_MATERIAL
 		elif animation == "wind" and m == Parser.MAT_OPAQUE:
 			path = WIND_MATERIAL
+		elif animation == "flowers" and m == Parser.MAT_OPAQUE:
+			path = FLOWER_MATERIAL
 		var mat = load(path)
 		mesh.surface_set_material(mesh.get_surface_count() - 1, mat)
 		mesh.surface_set_name(mesh.get_surface_count() - 1, Parser.MATERIAL_NAMES[m])

@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://c3u4vhf4idf5n"
 path="res://.godot/imported/luifel_blauw_smal.vox-c78d6001b0838382b8efe7c60b40e51e.mesh"

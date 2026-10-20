@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://11vi8go7u5b7"
 path="res://.godot/imported/klassiek_donker_bg_dierenwinkel.vox-8e8a8b3c5c8a41e3c2fc36fc43849722.mesh"

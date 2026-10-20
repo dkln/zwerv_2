@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://dp36oewefmib3"
 path="res://.godot/imported/middenberm_gras_kop.vox-27f78b114a95475d3dab15657dc9d6df.mesh"

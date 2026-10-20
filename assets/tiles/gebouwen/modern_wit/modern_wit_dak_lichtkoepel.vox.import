@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://bbprg7xvbatgg"
 path="res://.godot/imported/modern_wit_dak_lichtkoepel.vox-3982c406640dfbbd3554b141433bda8d.mesh"

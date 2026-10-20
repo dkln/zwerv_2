@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://u8jvb2fhabt8"
 path="res://.godot/imported/bank_beton.vox-4677579d32871be1d5e648d5a526ab15.mesh"

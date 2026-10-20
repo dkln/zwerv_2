@@ -3,9 +3,7 @@
 	"materials": {
 		"1": "asphalt",
 		"3": "stone",
-		"4": "stone",
-		"5": "stone",
-		"6": "metal",
-		"7": "emit"
+		"4": "metal",
+		"5": "emit"
 	}
 }

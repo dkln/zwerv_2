@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://c3dhs871r2ob5"
 path="res://.godot/imported/pannen_zwart_geglazuurd_schuin_hoek_buiten.vox-35a7cbad3667f1a3607c766cc5417b0c.mesh"

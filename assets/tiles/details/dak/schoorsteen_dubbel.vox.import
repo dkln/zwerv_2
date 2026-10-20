@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://ch8775tsxm8ao"
 path="res://.godot/imported/schoorsteen_dubbel.vox-790c9616faa862829722d967f93fd812.mesh"

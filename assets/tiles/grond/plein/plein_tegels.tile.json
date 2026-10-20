@@ -1,9 +1,7 @@
 {
 	"id": 79,
 	"materials": {
-		"1": "stone",
-		"2": "stone",
-		"3": "stone"
+		"1": "stone"
 	},
 	"slopes": [
 		"steil",

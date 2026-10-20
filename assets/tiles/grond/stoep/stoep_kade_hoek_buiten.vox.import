@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://bbv1021o6bwg7"
 path="res://.godot/imported/stoep_kade_hoek_buiten.vox-515ae9bd125366f7ab2547b76a316e91.mesh"

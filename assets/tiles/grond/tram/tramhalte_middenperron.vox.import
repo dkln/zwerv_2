@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://cvbsst3dt3im0"
 path="res://.godot/imported/tramhalte_middenperron.vox-c0c2118bc22f923eff92e8d2ed6127ac.mesh"

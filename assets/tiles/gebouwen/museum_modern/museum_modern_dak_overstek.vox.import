@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://daqtqit2bd6gp"
 path="res://.godot/imported/museum_modern_dak_overstek.vox-93b4c3882a27c2c1ca12d84969a99d29.mesh"

@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://bgb41o4lvrx3c"
 path="res://.godot/imported/tramhalte_paal.vox-abc45f542b03ad2874538336a67a58ba.mesh"

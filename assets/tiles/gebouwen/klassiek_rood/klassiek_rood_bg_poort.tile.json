@@ -2,17 +2,10 @@
 	"id": 116,
 	"materials": {
 		"1": "cobble",
-		"2": "cobble",
-		"3": "cobble",
-		"4": "brick",
-		"5": "brick",
-		"6": "brick",
-		"7": "brick",
-		"8": "brick",
-		"9": "stone",
-		"10": "stone",
-		"11": "stone",
-		"12": "stone",
-		"13": "metal"
+		"2": "brick",
+		"3": "stone",
+		"4": "stone",
+		"5": "stone",
+		"6": "metal"
 	}
 }

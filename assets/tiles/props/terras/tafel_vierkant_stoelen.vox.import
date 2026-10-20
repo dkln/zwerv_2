@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://dugifa2ywnvcc"
 path="res://.godot/imported/tafel_vierkant_stoelen.vox-85268390e66749aa87fbf4966eee9fd9.mesh"

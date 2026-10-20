@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://unmve35hyg4f"
 path="res://.godot/imported/voetbrug_hout_vlak.vox-2a42493fac8fe81dc38ef694c9fc4486.mesh"

@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://dv3p2ncxyk04i"
 path="res://.godot/imported/herenhuis_1900_bg_kleding.vox-831aff3a8c1b8db88afb9cdc9f8d4d5e.mesh"

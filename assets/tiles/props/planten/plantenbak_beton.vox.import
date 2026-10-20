@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://b16nlctavd87"
 path="res://.godot/imported/plantenbak_beton.vox-3953e25d4d0bb2b8f5cbb8469bd15395.mesh"

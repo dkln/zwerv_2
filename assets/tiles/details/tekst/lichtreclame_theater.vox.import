@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://cfvmyjvlyop07"
 path="res://.godot/imported/lichtreclame_theater.vox-87f2cf4477db12ecd7059f19a9498b8c.mesh"

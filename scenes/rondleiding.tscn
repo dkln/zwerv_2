@@ -1,0 +1,624 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/effects/motion_blur.gd" id="1_b3b78"]
+[ext_resource type="Script" path="res://scripts/free_camera.gd" id="2_1nqqr"]
+[ext_resource type="Script" path="res://scripts/tour.gd" id="3_wf8fv"]
+[ext_resource type="Script" path="res://scripts/level_of_detail.gd" id="4_hyn8p"]
+[ext_resource type="Script" path="res://scripts/day_cycle.gd" id="5_78noo"]
+[ext_resource type="Script" path="res://scripts/smoke.gd" id="6_a0nf5"]
+[ext_resource type="Script" path="res://scripts/tint_map.gd" id="7_1o2sj"]
+[ext_resource type="Script" path="res://scripts/tint_area.gd" id="8_0hr2e"]
+[ext_resource type="Script" path="res://scripts/ground_map.gd" id="9_kgtso"]
+[ext_resource type="Script" path="res://scripts/grass_blades.gd" id="10_6itek"]
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_uiq1o"]
+sky_top_color = Color(0.3, 0.5, 0.85, 1)
+sky_horizon_color = Color(0.7, 0.8, 0.92, 1)
+ground_bottom_color = Color(0.55, 0.66, 0.82, 1)
+ground_horizon_color = Color(0.7, 0.8, 0.92, 1)
+
+[sub_resource type="Sky" id="Sky_lg4yt"]
+sky_material = SubResource("ProceduralSkyMaterial_uiq1o")
+
+[sub_resource type="Environment" id="Environment_w68a6"]
+background_mode = 2
+sky = SubResource("Sky_lg4yt")
+ambient_light_source = 3
+ambient_light_sky_contribution = 0.9
+ambient_light_energy = 0.8
+reflected_light_source = 2
+tonemap_mode = 4
+tonemap_exposure = 1.05
+tonemap_white = 6.0
+ssao_enabled = true
+ssao_radius = 1.6
+ssao_intensity = 2.2
+ssao_power = 1.6
+ssao_detail = 0.8
+ssao_light_affect = 0.15
+ssil_radius = 6.0
+ssil_intensity = 0.9
+glow_enabled = true
+glow_intensity = 0.5
+glow_hdr_threshold = 1.2
+fog_light_color = Color(0.7, 0.78, 0.88, 1)
+fog_density = 0.0005
+adjustment_enabled = true
+adjustment_contrast = 1.1
+adjustment_saturation = 1.12
+
+[sub_resource type="CompositorEffect" id="CompositorEffect_3goa0"]
+resource_local_to_scene = false
+resource_name = ""
+enabled = true
+effect_callback_type = 4
+needs_motion_vectors = true
+needs_normal_roughness = false
+script = ExtResource("1_b3b78")
+
+[sub_resource type="Compositor" id="Compositor_afrkk"]
+compositor_effects = Array[CompositorEffect]([SubResource("CompositorEffect_3goa0")])
+
+[sub_resource type="CameraAttributesPractical" id="CameraAttributesPractical_j1uxt"]
+dof_blur_far_enabled = true
+dof_blur_far_distance = 330.0
+dof_blur_far_transition = 140.0
+dof_blur_near_enabled = true
+dof_blur_near_distance = 250.0
+dof_blur_near_transition = 110.0
+
+[node name="Wereld" type="Node3D" unique_id=797283690]
+metadata/catalog_start_m = 2096.0
+metadata/districts = [{
+"d": 19,
+"name": "stijl:appartement_modern",
+"w": 13,
+"x": 2,
+"z": 101
+}, {
+"d": 18,
+"name": "stijl:bedrijfspand",
+"w": 13,
+"x": 17,
+"z": 101
+}, {
+"d": 19,
+"name": "stijl:fabriek",
+"w": 13,
+"x": 32,
+"z": 101
+}, {
+"d": 19,
+"name": "stijl:galerijflat",
+"w": 13,
+"x": 47,
+"z": 101
+}, {
+"d": 18,
+"name": "stijl:herenhuis_1600",
+"w": 24,
+"x": 62,
+"z": 101
+}, {
+"d": 18,
+"name": "stijl:herenhuis_1900",
+"w": 21,
+"x": 2,
+"z": 122
+}, {
+"d": 18,
+"name": "stijl:hogeschool",
+"w": 13,
+"x": 25,
+"z": 122
+}, {
+"d": 18,
+"name": "stijl:jaren30",
+"w": 20,
+"x": 40,
+"z": 122
+}, {
+"d": 19,
+"name": "stijl:jaren60",
+"w": 20,
+"x": 62,
+"z": 122
+}, {
+"d": 19,
+"name": "stijl:kantoor_2000",
+"w": 13,
+"x": 2,
+"z": 143
+}, {
+"d": 19,
+"name": "stijl:kantoor_80",
+"w": 13,
+"x": 17,
+"z": 143
+}, {
+"d": 19,
+"name": "stijl:kantoor_beton",
+"w": 13,
+"x": 32,
+"z": 143
+}, {
+"d": 19,
+"name": "stijl:kantoor_glas",
+"w": 13,
+"x": 47,
+"z": 143
+}, {
+"d": 19,
+"name": "stijl:kantoor_modern",
+"w": 13,
+"x": 62,
+"z": 143
+}, {
+"d": 18,
+"name": "stijl:kerk_baksteen",
+"w": 26,
+"x": 2,
+"z": 164
+}, {
+"d": 21,
+"name": "stijl:kerk_modern",
+"w": 13,
+"x": 30,
+"z": 164
+}, {
+"d": 18,
+"name": "stijl:kerk_steen",
+"w": 26,
+"x": 45,
+"z": 164
+}, {
+"d": 18,
+"name": "stijl:klassiek_donker",
+"w": 28,
+"x": 2,
+"z": 187
+}, {
+"d": 18,
+"name": "stijl:klassiek_geel",
+"w": 28,
+"x": 32,
+"z": 187
+}, {
+"d": 18,
+"name": "stijl:klassiek_rood",
+"w": 28,
+"x": 62,
+"z": 187
+}, {
+"d": 19,
+"name": "stijl:loods_staal",
+"w": 13,
+"x": 2,
+"z": 207
+}, {
+"d": 19,
+"name": "stijl:loods_steen",
+"w": 13,
+"x": 17,
+"z": 207
+}, {
+"d": 18,
+"name": "stijl:luxe_appartement",
+"w": 13,
+"x": 32,
+"z": 207
+}, {
+"d": 19,
+"name": "stijl:magazijn",
+"w": 13,
+"x": 47,
+"z": 207
+}, {
+"d": 18,
+"name": "stijl:modern_donker",
+"w": 19,
+"x": 62,
+"z": 207
+}, {
+"d": 18,
+"name": "stijl:modern_hout",
+"w": 19,
+"x": 2,
+"z": 228
+}, {
+"d": 18,
+"name": "stijl:modern_wit",
+"w": 19,
+"x": 23,
+"z": 228
+}, {
+"d": 18,
+"name": "stijl:museum_klassiek",
+"w": 15,
+"x": 44,
+"z": 228
+}, {
+"d": 18,
+"name": "stijl:museum_modern",
+"w": 13,
+"x": 61,
+"z": 228
+}, {
+"d": 18,
+"name": "stijl:overheid",
+"w": 25,
+"x": 2,
+"z": 248
+}, {
+"d": 19,
+"name": "stijl:school",
+"w": 13,
+"x": 29,
+"z": 248
+}, {
+"d": 17,
+"name": "stijl:schuur_rood",
+"w": 20,
+"x": 44,
+"z": 248
+}, {
+"d": 17,
+"name": "stijl:schuur_zwart",
+"w": 20,
+"x": 66,
+"z": 248
+}, {
+"d": 18,
+"name": "stijl:universiteit",
+"w": 22,
+"x": 2,
+"z": 269
+}, {
+"d": 10,
+"name": "dak:golfplaat",
+"w": 22,
+"x": 26,
+"z": 269
+}, {
+"d": 10,
+"name": "dak:koper",
+"w": 22,
+"x": 50,
+"z": 269
+}, {
+"d": 10,
+"name": "dak:leisteen",
+"w": 22,
+"x": 2,
+"z": 289
+}, {
+"d": 10,
+"name": "dak:pannen_antraciet",
+"w": 22,
+"x": 26,
+"z": 289
+}, {
+"d": 10,
+"name": "dak:pannen_oranje",
+"w": 22,
+"x": 50,
+"z": 289
+}, {
+"d": 10,
+"name": "dak:pannen_rood",
+"w": 22,
+"x": 2,
+"z": 301
+}, {
+"d": 10,
+"name": "dak:pannen_zwart_geglazuurd",
+"w": 22,
+"x": 26,
+"z": 301
+}, {
+"d": 10,
+"name": "dak:riet",
+"w": 22,
+"x": 50,
+"z": 301
+}, {
+"d": 10,
+"name": "dak:sedum",
+"w": 22,
+"x": 2,
+"z": 313
+}, {
+"d": 10,
+"name": "dak:zink",
+"w": 22,
+"x": 26,
+"z": 313
+}, {
+"d": 14,
+"name": "hallen",
+"w": 30,
+"x": 50,
+"z": 313
+}, {
+"d": 26,
+"name": "bedrijventerrein",
+"w": 62,
+"x": 2,
+"z": 329
+}, {
+"d": 18,
+"name": "tint",
+"w": 30,
+"x": 2,
+"z": 357
+}, {
+"d": 12,
+"name": "bochten",
+"w": 92,
+"x": 2,
+"z": 377
+}, {
+"d": 20,
+"name": "dorpskern",
+"w": 30,
+"x": 2,
+"z": 391
+}, {
+"d": 12,
+"name": "lussen",
+"w": 40,
+"x": 34,
+"z": 391
+}, {
+"d": 13,
+"name": "dijk",
+"w": 60,
+"x": 2,
+"z": 413
+}, {
+"d": 26,
+"name": "tunnelpark",
+"w": 40,
+"x": 2,
+"z": 428
+}, {
+"d": 24,
+"name": "hellingen_bochten",
+"w": 24,
+"x": 44,
+"z": 428
+}, {
+"d": 10,
+"name": "keerlussen",
+"w": 78,
+"x": 2,
+"z": 456
+}, {
+"d": 11,
+"name": "viaductbochten",
+"w": 40,
+"x": 2,
+"z": 468
+}, {
+"d": 19,
+"name": "kanaal",
+"w": 90,
+"x": 2,
+"z": 481
+}, {
+"d": 16,
+"name": "natuurpark",
+"w": 48,
+"x": 2,
+"z": 502
+}]
+metadata/places = {
+"verkeerslichten": Vector2(100, 1152),
+"verkeerslichten_2": Vector2(292, 1200)
+}
+metadata/part_rows = [Vector2i(-10, 52), Vector2i(52, 100), Vector2i(100, 151), Vector2i(151, 204), Vector2i(204, 245), Vector2i(245, 299), Vector2i(299, 354), Vector2i(354, 410), Vector2i(410, 465), Vector2i(465, 530)]
+
+[node name="Omgeving" type="WorldEnvironment" parent="." unique_id=1215861644]
+environment = SubResource("Environment_w68a6")
+compositor = SubResource("Compositor_afrkk")
+
+[node name="Zon" type="DirectionalLight3D" parent="." unique_id=1475307932]
+transform = Transform3D(0.8910065, -0.4008498, 0.21313564, 0, 0.4694716, 0.88294756, -0.4539905, -0.78671205, 0.41830227, 0, 0, 0)
+light_color = Color(1, 0.93, 0.82, 1)
+light_energy = 1.55
+shadow_enabled = true
+shadow_bias = 0.03
+shadow_normal_bias = 1.2
+shadow_opacity = 0.82
+shadow_blur = 0.4
+directional_shadow_max_distance = 500.0
+
+[node name="Vullicht" type="DirectionalLight3D" parent="." unique_id=342236557]
+transform = Transform3D(-0.9396926, 0.19617471, -0.2801665, 0, 0.81915206, 0.57357645, 0.34202015, 0.53898555, -0.76975113, 0, 0, 0)
+light_color = Color(0.62, 0.74, 1, 1)
+light_energy = 0.22
+
+[node name="Camera" type="Camera3D" parent="." unique_id=1848146873]
+transform = Transform3D(0.70710677, -0.40824434, 0.577353, 0, 0.8165005, 0.5773447, -0.70710677, -0.40824434, 0.577353, 301.20203, 229.20203, 289.20203)
+attributes = SubResource("CameraAttributesPractical_j1uxt")
+fov = 20.0
+near = 2.0
+far = 6000.0
+script = ExtResource("2_1nqqr")
+
+[node name="Rondleiding" type="Node" parent="." unique_id=2054560889]
+script = ExtResource("3_wf8fv")
+
+[node name="DetailNiveau" type="Node" parent="." unique_id=991734195]
+script = ExtResource("4_hyn8p")
+
+[node name="Dagcyclus" type="Node" parent="." unique_id=683042651]
+script = ExtResource("5_78noo")
+
+[node name="Rook" type="Node3D" parent="." unique_id=1832979349]
+script = ExtResource("6_a0nf5")
+
+[node name="TintKaart" type="Node3D" parent="." unique_id=664581517]
+script = ExtResource("7_1o2sj")
+area_cells = Vector2i(96, 524)
+
+[node name="TintVlak" type="Node3D" parent="TintKaart" unique_id=46820072]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 74, 0, 46)
+script = ExtResource("8_0hr2e")
+color = Color(1, 0.8, 0.65, 1)
+size = Vector2i(2, 1)
+
+[node name="@Node3D@2" type="Node3D" parent="TintKaart" unique_id=220864610]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 98, 0, 10)
+script = ExtResource("8_0hr2e")
+color = Color(0.8, 0.85, 1, 1)
+
+[node name="@Node3D@3" type="Node3D" parent="TintKaart" unique_id=1684413413]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 150, 0, 126)
+script = ExtResource("8_0hr2e")
+color = Color(1.1, 1, 0.8, 1)
+size = Vector2i(3, 2)
+
+[node name="Tint_klassiek_rood_warm" type="Node3D" parent="TintKaart" unique_id=1495677498]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 22, 0, 1444)
+script = ExtResource("8_0hr2e")
+color = Color(1, 0.8, 0.62, 1)
+size = Vector2i(1, 2)
+
+[node name="Tint_klassiek_rood_koel" type="Node3D" parent="TintKaart" unique_id=1167073614]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 26, 0, 1444)
+script = ExtResource("8_0hr2e")
+color = Color(0.75, 0.86, 1.1, 1)
+size = Vector2i(1, 2)
+
+[node name="Tint_klassiek_rood_groenig" type="Node3D" parent="TintKaart" unique_id=264776000]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 0, 1444)
+script = ExtResource("8_0hr2e")
+color = Color(0.82, 1, 0.78, 1)
+size = Vector2i(1, 2)
+
+[node name="Tint_klassiek_rood_lichter" type="Node3D" parent="TintKaart" unique_id=1823843185]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 34, 0, 1444)
+script = ExtResource("8_0hr2e")
+color = Color(1, 1, 1, 1)
+brightness = 1.35
+size = Vector2i(1, 2)
+
+[node name="Tint_klassiek_rood_donkerder" type="Node3D" parent="TintKaart" unique_id=1162977634]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 38, 0, 1444)
+script = ExtResource("8_0hr2e")
+color = Color(1, 1, 1, 1)
+brightness = 0.65
+size = Vector2i(1, 2)
+
+[node name="Tint_klassiek_rood_oker" type="Node3D" parent="TintKaart" unique_id=202359052]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 42, 0, 1444)
+script = ExtResource("8_0hr2e")
+color = Color(1.1, 0.95, 0.6, 1)
+size = Vector2i(1, 2)
+
+[node name="Tint_klassiek_rood_rozig" type="Node3D" parent="TintKaart" unique_id=249582426]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 46, 0, 1444)
+script = ExtResource("8_0hr2e")
+color = Color(1.1, 0.82, 0.86, 1)
+size = Vector2i(1, 2)
+
+[node name="Tint_modern_wit_warm" type="Node3D" parent="TintKaart" unique_id=1923325886]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 22, 0, 1472)
+script = ExtResource("8_0hr2e")
+color = Color(1, 0.8, 0.62, 1)
+size = Vector2i(1, 2)
+
+[node name="Tint_modern_wit_koel" type="Node3D" parent="TintKaart" unique_id=691005186]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 26, 0, 1472)
+script = ExtResource("8_0hr2e")
+color = Color(0.75, 0.86, 1.1, 1)
+size = Vector2i(1, 2)
+
+[node name="Tint_modern_wit_groenig" type="Node3D" parent="TintKaart" unique_id=1742198772]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 0, 1472)
+script = ExtResource("8_0hr2e")
+color = Color(0.82, 1, 0.78, 1)
+size = Vector2i(1, 2)
+
+[node name="Tint_modern_wit_lichter" type="Node3D" parent="TintKaart" unique_id=558726256]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 34, 0, 1472)
+script = ExtResource("8_0hr2e")
+color = Color(1, 1, 1, 1)
+brightness = 1.35
+size = Vector2i(1, 2)
+
+[node name="Tint_modern_wit_donkerder" type="Node3D" parent="TintKaart" unique_id=49638998]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 38, 0, 1472)
+script = ExtResource("8_0hr2e")
+color = Color(1, 1, 1, 1)
+brightness = 0.65
+size = Vector2i(1, 2)
+
+[node name="Tint_modern_wit_oker" type="Node3D" parent="TintKaart" unique_id=1527232089]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 42, 0, 1472)
+script = ExtResource("8_0hr2e")
+color = Color(1.1, 0.95, 0.6, 1)
+size = Vector2i(1, 2)
+
+[node name="Tint_modern_wit_rozig" type="Node3D" parent="TintKaart" unique_id=2083920678]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 46, 0, 1472)
+script = ExtResource("8_0hr2e")
+color = Color(1.1, 0.82, 0.86, 1)
+size = Vector2i(1, 2)
+
+[node name="Tint_jaren30_warm" type="Node3D" parent="TintKaart" unique_id=780110765]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 22, 0, 1488)
+script = ExtResource("8_0hr2e")
+color = Color(1, 0.8, 0.62, 1)
+size = Vector2i(1, 2)
+
+[node name="Tint_jaren30_koel" type="Node3D" parent="TintKaart" unique_id=998046097]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 26, 0, 1488)
+script = ExtResource("8_0hr2e")
+color = Color(0.75, 0.86, 1.1, 1)
+size = Vector2i(1, 2)
+
+[node name="Tint_jaren30_groenig" type="Node3D" parent="TintKaart" unique_id=18517929]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 0, 1488)
+script = ExtResource("8_0hr2e")
+color = Color(0.82, 1, 0.78, 1)
+size = Vector2i(1, 2)
+
+[node name="Tint_jaren30_lichter" type="Node3D" parent="TintKaart" unique_id=1687395176]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 34, 0, 1488)
+script = ExtResource("8_0hr2e")
+color = Color(1, 1, 1, 1)
+brightness = 1.35
+size = Vector2i(1, 2)
+
+[node name="Tint_jaren30_donkerder" type="Node3D" parent="TintKaart" unique_id=1734142673]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 38, 0, 1488)
+script = ExtResource("8_0hr2e")
+color = Color(1, 1, 1, 1)
+brightness = 0.65
+size = Vector2i(1, 2)
+
+[node name="Tint_jaren30_oker" type="Node3D" parent="TintKaart" unique_id=1825507801]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 42, 0, 1488)
+script = ExtResource("8_0hr2e")
+color = Color(1.1, 0.95, 0.6, 1)
+size = Vector2i(1, 2)
+
+[node name="Tint_jaren30_rozig" type="Node3D" parent="TintKaart" unique_id=914544600]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 46, 0, 1488)
+script = ExtResource("8_0hr2e")
+color = Color(1.1, 0.82, 0.86, 1)
+size = Vector2i(1, 2)
+
+[node name="Tint_blok_inclusief_grond" type="Node3D" parent="TintKaart" unique_id=1404367587]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 60, 0, 1448)
+script = ExtResource("8_0hr2e")
+color = Color(0.7, 0.85, 1.15, 1)
+size = Vector2i(2, 4)
+
+[node name="GrondKaart" type="Node" parent="." unique_id=1400425605]
+script = ExtResource("9_kgtso")
+
+[node name="Grassprieten" type="Node3D" parent="." unique_id=1367653886]
+script = ExtResource("10_6itek")

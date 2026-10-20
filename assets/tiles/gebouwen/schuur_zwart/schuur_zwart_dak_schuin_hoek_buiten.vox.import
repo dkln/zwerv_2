@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://c4rxcidmiq18q"
 path="res://.godot/imported/schuur_zwart_dak_schuin_hoek_buiten.vox-27deba563cdf87c6e74be733b01db497.mesh"

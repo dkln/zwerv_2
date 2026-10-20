@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://c7gni4cuj6x6m"
 path="res://.godot/imported/klassiek_rood_gevel_tuit.vox-f3d8b16c8f8dfab67df7e8eabc18d088.mesh"

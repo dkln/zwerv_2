@@ -177,7 +177,7 @@ def curve_cell(src, w, i, j):
 def fill_block(w, i, j, grass=False):
     """One floor of solid earth with the footprint of the profile ring in cell (i, j);
     with `grass` the rest of the cell is a grass tile (for floor 0)."""
-    m = grass_tile(tufts=0.05) if grass else V(T, T, FLOOR)
+    m = grass_tile() if grass else V(T, T, FLOOR)
     for (x, y, _, _, _) in ring_columns(i, j, w):
         for z in range(FLOOR):
             m.set(x, y, z, EARTH)

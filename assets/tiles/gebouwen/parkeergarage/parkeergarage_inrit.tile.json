@@ -3,13 +3,11 @@
 	"materials": {
 		"1": "asphalt",
 		"3": "stone",
-		"4": "stone",
-		"5": "stone",
-		"6": "metal",
+		"4": "metal",
+		"5": "painted",
+		"6": "painted",
 		"7": "painted",
 		"8": "painted",
-		"9": "painted",
-		"10": "painted",
-		"11": "emit"
+		"9": "emit"
 	}
 }

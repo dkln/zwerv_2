@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://c3ejlhj7bhw0q"
 path="res://.godot/imported/vlag_utrecht.vox-30e5a2da95a3fa71a90305dec391a69c.mesh"

@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://cp0ay1ljcu7t3"
 path="res://.godot/imported/pannen_rood_zadel.vox-f998fd955d22504a1cb4c16e4a91eff8.mesh"

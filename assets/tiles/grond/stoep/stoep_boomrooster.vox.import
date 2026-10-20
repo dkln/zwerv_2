@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://cljhttmpfs7rq"
 path="res://.godot/imported/stoep_boomrooster.vox-4e90c15963d93b3f41adfdd7cebf5a7e.mesh"

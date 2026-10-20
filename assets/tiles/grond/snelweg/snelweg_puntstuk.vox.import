@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://c4th7kwg3cio3"
 path="res://.godot/imported/snelweg_puntstuk.vox-792f025ade0ad3b3f431665f294df817.mesh"

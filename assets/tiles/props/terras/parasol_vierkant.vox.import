@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://c0y7blhowixy3"
 path="res://.godot/imported/parasol_vierkant.vox-edb93333cc7b8d85ce247faf927f8956.mesh"

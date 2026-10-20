@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://mc0y8jkns0eo"
 path="res://.godot/imported/herenhuis_1600_dak_kantelen_rand.vox-e780082c81297f63d79e7cd2a18f2597.mesh"

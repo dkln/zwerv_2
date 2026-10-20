@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://c7xmvy3cqevcj"
 path="res://.godot/imported/hal_glas_wand.vox-871a455fdb9a1230c30a35f9f58f2074.mesh"

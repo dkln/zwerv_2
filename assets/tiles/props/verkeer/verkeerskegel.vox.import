@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://bgfwcv5k5tr8i"
 path="res://.godot/imported/verkeerskegel.vox-ddd28f7b26be9847665ced045db059ff.mesh"

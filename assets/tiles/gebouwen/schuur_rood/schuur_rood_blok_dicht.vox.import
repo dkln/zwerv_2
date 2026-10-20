@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://b21m27n447dso"
 path="res://.godot/imported/schuur_rood_blok_dicht.vox-f54e29def7f6a3ce9daa3de3e5dbe108.mesh"

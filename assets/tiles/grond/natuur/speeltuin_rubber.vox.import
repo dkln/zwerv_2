@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://nhm7tnww3c71"
 path="res://.godot/imported/speeltuin_rubber.vox-361a67208bf2a72db87cc41927a4c495.mesh"

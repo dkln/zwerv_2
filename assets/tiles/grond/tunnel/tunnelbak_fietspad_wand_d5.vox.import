@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://bufvx0htfynth"
 path="res://.godot/imported/tunnelbak_fietspad_wand_d5.vox-7b6be2330ad5fe961ad2f55c84b148d7.mesh"

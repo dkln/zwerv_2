@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://bfripgkx16y4q"
 path="res://.godot/imported/hal_zwembad_dak_kolom.vox-8f5c4462ac9464b00a2f8f587998d7d2.mesh"

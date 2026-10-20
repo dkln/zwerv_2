@@ -1,10 +1,7 @@
 {
 	"id": 623,
 	"materials": {
-		"1": "paving",
-		"2": "paving",
-		"3": "paving",
-		"4": "paving"
+		"1": "paving"
 	},
 	"slopes": [
 		"bocht",

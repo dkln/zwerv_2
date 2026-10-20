@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://lj4ibyvb7ny6"
 path="res://.godot/imported/pilaar_beton.vox-15a74abbf407165af8cb16d897f68bc5.mesh"

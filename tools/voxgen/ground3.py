@@ -299,7 +299,7 @@ def street_cobbles_gutter():
 @tile("grond/natuur/keienpad")
 def cobble_path():
     """Cobbled path (x=10..21) through grass."""
-    m = grass_tile(tufts=0.05)
+    m = grass_tile()
     k = cobble_tile(top=3)
     for y in range(T):
         for x in range(10, 22):
@@ -346,7 +346,7 @@ CURVE_PROFILES = {
     "tramweg": (lambda: [sidewalk("r"), _tram("geen", "kant").rot90(2), _tram("onderbroken", "kant"), sidewalk("l")], "stoep"),
     "laan": (lambda: [sidewalk("r"), lane("onderbroken", "kant").rot90(2), lane("geen", "geen").rot90(2),
                       sidewalk("lr", surface=GRASS), lane("geen", "geen"), lane("onderbroken", "kant"), sidewalk("l")], "stoep"),
-    "fietspad": (lambda: [grass_tile(tufts=0.03), bike_path_straight(), grass_tile(tufts=0.03)], "gras"),
+    "fietspad": (lambda: [grass_tile(), bike_path_straight(), grass_tile()], "gras"),
 }
 CURVE_RADIUS = 1   # inner radius in tiles
 
@@ -368,8 +368,8 @@ def _curve_source(name):
     if name not in _curve_cache:
         make, fill = CURVE_PROFILES[name]
         parts = make()
-        inner_src = sidewalk("") if fill == "stoep" else grass_tile(tufts=0.03)
-        outer_src = grass_tile(tufts=0.05)
+        inner_src = sidewalk("") if fill == "stoep" else grass_tile()
+        outer_src = grass_tile()
         _curve_cache[name] = (_profile(parts), len(parts), inner_src, outer_src)
     return _curve_cache[name]
 

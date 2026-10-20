@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://d4d4vm8nkb67d"
 path="res://.godot/imported/water_oever.vox-0af99747fac6bb686c190d0a1a457cfc.mesh"

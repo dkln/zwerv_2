@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://b8q5uea8qedsr"
 path="res://.godot/imported/lantaarn_snelweg.vox-49418e5a5376cd20748fc99af9352f64.mesh"

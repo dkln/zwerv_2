@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://da21gexuix3h3"
 path="res://.godot/imported/klassiek_donker_gevel_hals.vox-48500221ba3fd211975654e3902a6657.mesh"

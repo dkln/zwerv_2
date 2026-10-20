@@ -2,13 +2,8 @@
 	"id": 591,
 	"materials": {
 		"1": "asphalt",
-		"2": "asphalt",
-		"3": "asphalt",
-		"4": "asphalt",
-		"7": "paving",
-		"8": "paving",
-		"9": "stone",
-		"10": "stone",
-		"12": "metal"
+		"4": "paving",
+		"5": "stone",
+		"7": "metal"
 	}
 }

@@ -2,16 +2,11 @@
 	"id": 11,
 	"materials": {
 		"2": "gravel",
-		"3": "gravel",
-		"4": "gravel",
-		"5": "gravel",
-		"7": "metal",
+		"4": "metal",
+		"5": "metal",
+		"6": "stone",
+		"7": "stone",
 		"8": "metal",
-		"9": "stone",
-		"10": "stone",
-		"11": "stone",
-		"12": "stone",
-		"13": "metal",
-		"14": "metal"
+		"9": "metal"
 	}
 }

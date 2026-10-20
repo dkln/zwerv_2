@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://ct33a15bhkf6k"
 path="res://.godot/imported/pannen_antraciet_schuin_schoorsteen.vox-7d9a0ce7dc18e5638ff9aa21f01420c5.mesh"

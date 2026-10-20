@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://dq4xcd87fb7tm"
 path="res://.godot/imported/magazijn_verd_lichtstraat_hoek.vox-c29c8da1b0401e9c050927537da99c21.mesh"

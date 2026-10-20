@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://dn5j2bb1hicx3"
 path="res://.godot/imported/kantoor_modern_bg_kolonnade.vox-8548d2bf50258f4ce7bb0fdb51f5a8a5.mesh"

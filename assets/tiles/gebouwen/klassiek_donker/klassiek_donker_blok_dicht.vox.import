@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://dqpmkqhfhecvp"
 path="res://.godot/imported/klassiek_donker_blok_dicht.vox-e4f20aa3c26069e74cd27c6728d38d8f.mesh"

@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://dhb5q8ys6w1il"
 path="res://.godot/imported/brug_dek_trein_beide.vox-a76b9e3db3eefdaea81dcffd58b0d2a6.mesh"

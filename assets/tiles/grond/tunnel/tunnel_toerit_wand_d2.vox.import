@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://cuuwuxlthp12g"
 path="res://.godot/imported/tunnel_toerit_wand_d2.vox-1dc63ab0e80773dbe5bc7074212c6887.mesh"

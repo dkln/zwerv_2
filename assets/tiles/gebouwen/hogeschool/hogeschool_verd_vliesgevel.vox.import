@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://cxxbj3fuhdmb"
 path="res://.godot/imported/hogeschool_verd_vliesgevel.vox-4a53bc091fb8cb2154c1a0973527dab6.mesh"

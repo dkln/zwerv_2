@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://ctw5ht8ks3qbd"
 path="res://.godot/imported/parkeergarage_trappenhuis.vox-843769abdac54714ba754b0f515cb9bf.mesh"

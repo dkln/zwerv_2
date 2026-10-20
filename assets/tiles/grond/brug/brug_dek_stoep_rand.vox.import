@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://rdvu80kmn4b7"
 path="res://.godot/imported/brug_dek_stoep_rand.vox-cab204b99eb87e8152a1fba7e9e18df8.mesh"

@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://deqwlhhew18n1"
 path="res://.godot/imported/parkeerstrook.vox-eee84c7530bf514c449849782dff38db.mesh"

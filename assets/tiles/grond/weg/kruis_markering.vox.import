@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://dqujolyat21s0"
 path="res://.godot/imported/kruis_markering.vox-af18fed9f9f2e948920bb1a0c582612e.mesh"

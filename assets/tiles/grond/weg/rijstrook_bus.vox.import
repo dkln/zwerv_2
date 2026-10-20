@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://oktadlv4g0uo"
 path="res://.godot/imported/rijstrook_bus.vox-4a47327b350d2e9f968ee21ed21dfb25.mesh"

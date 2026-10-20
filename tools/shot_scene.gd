@@ -3,6 +3,7 @@ extends SceneTree
 ## removed), taken once DetailNiveau has finished merging.
 ## usage: Godot --script tools/shot_scene.gd -- <scene> <out.png> px py pz tx ty tz [fov]
 ## p = camera position, t = point looked at (world metres); fov in degrees (default 60).
+## For the tour scene the map part around the point looked at is loaded.
 
 const Common = preload("res://tools/tool_common.gd")
 
@@ -11,6 +12,7 @@ func _init() -> void:
 	Common.watchdog(self)
 	var sc := Common.instantiate(Common.arg(0))
 	var out := Common.arg(1)
+	Common.load_part_at(sc, Common.arg_float(7))
 	get_root().add_child(sc)
 	Common.render_size(self, Vector2i(1920, 1080))
 	var cam: Camera3D = sc.get_node("Camera")

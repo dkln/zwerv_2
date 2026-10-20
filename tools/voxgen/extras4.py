@@ -237,7 +237,7 @@ def revolving_door():
 
 def _path(mat):
     """Grass tile with a 12-voxel wide path of `mat` running front to back (x = 10..21)."""
-    m = grass_tile(tufts=0.05)
+    m = grass_tile()
     for y in range(T):
         for x in range(10, 22):
             m.clear(x, y, WALK, x + 1, y + 1, 8)   # remove grass tufts above the path
@@ -287,8 +287,6 @@ def verge():
                 column(m, x, y, ROAD, GRAVEL)
             else:
                 column(m, x, y, WALK, GRASS)
-                if h(x, y, 0, 701) < 0.1:
-                    m.set(x, y, WALK, "gras_droog")
     line_y(m, 8, dash=(4, 8, 0))
     for y in range(T):
         if y % 16 == 6:

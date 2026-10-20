@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://d28uo28t2wn4"
 path="res://.godot/imported/kunstwerk_modern.vox-6b5fd57b45ab453b2cea5da12cbaa80e.mesh"

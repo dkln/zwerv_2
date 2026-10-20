@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://c24fkl6kfwn8n"
 path="res://.godot/imported/klassiek_donker_bg_cafe.vox-2b10f3eec3a9a6e6d40e0b3dedfb9db0.mesh"

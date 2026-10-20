@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://bi272dofwk823"
 path="res://.godot/imported/kantoor_modern_verd_band.vox-b769b5a7b206973038468b1a547abbe2.mesh"

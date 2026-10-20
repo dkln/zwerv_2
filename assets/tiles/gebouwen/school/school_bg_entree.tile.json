@@ -3,12 +3,11 @@
 	"materials": {
 		"1": "brick",
 		"2": "brick",
-		"3": "brick",
+		"3": "stone",
 		"4": "stone",
-		"5": "stone",
+		"6": "glass",
 		"7": "glass",
-		"8": "glass",
-		"11": "painted",
-		"12": "stone"
+		"10": "painted",
+		"11": "stone"
 	}
 }

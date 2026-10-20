@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://bfr2g04ub5gwx"
 path="res://.godot/imported/hek_hoog_spijlen.vox-c267c00e2f715f2dcea5b137eb60a4b8.mesh"

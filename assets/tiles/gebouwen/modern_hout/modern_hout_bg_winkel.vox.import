@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://dc24o6w8bxsmp"
 path="res://.godot/imported/modern_hout_bg_winkel.vox-3923b624d29ea970e4e509bb19912218.mesh"

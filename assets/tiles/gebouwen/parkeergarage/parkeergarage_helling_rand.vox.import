@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://b1fa7m3tq7ied"
 path="res://.godot/imported/parkeergarage_helling_rand.vox-96273238ebc638bccd2634ac354dae0f.mesh"

@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://b68ema35c7ptg"
 path="res://.godot/imported/magazijn_dak_ton.vox-f0d6f92ce141465d1a1ec1cce2f80528.mesh"

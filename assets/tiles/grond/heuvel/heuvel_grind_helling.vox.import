@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://11lk4wh251s0"
 path="res://.godot/imported/heuvel_grind_helling.vox-599526a3f7cd87a5716cd2b7ecdba43b.mesh"

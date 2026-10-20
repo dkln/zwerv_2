@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://c638ejtl03251"
 path="res://.godot/imported/museum_modern_verd_dicht_hoek.vox-eb9b45c4155645a7f5370d9e6d4aed5f.mesh"

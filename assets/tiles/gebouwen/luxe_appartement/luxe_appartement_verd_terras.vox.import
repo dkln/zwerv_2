@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://c5b285lxkvnmh"
 path="res://.godot/imported/luxe_appartement_verd_terras.vox-3f2d137c897e02d9337d99b0a08a82a1.mesh"

@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://bwxfgdb3x6tof"
 path="res://.godot/imported/klassiek_rood_dak_schuin_afgeplat.vox-0cc9f17c0129b0219e661803e9e5cbed.mesh"

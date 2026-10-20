@@ -4,10 +4,8 @@
 		"1": "stone",
 		"2": "stone",
 		"3": "stone",
-		"4": "stone",
-		"5": "stone",
-		"6": "glass",
-		"8": "emit",
-		"9": "metal"
+		"4": "glass",
+		"6": "emit",
+		"7": "metal"
 	}
 }

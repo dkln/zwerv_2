@@ -1,10 +1,8 @@
 {
 	"id": 21,
 	"materials": {
+		"5": "stone",
 		"6": "stone",
-		"7": "stone",
-		"8": "stone",
-		"9": "stone",
 		"225": "water",
 		"226": "water",
 		"227": "water"

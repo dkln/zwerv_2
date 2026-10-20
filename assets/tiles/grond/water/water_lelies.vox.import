@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://nsbhqffniyo"
 path="res://.godot/imported/water_lelies.vox-3ae6e505385e5336d57baa2c17bf8ec9.mesh"

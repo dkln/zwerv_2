@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://cya41tlst6hxm"
 path="res://.godot/imported/tunnelbak_rijstrook_wand_d4.vox-13662cf3a0325a3c5cb55514d1e0c745.mesh"

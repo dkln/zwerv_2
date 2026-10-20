@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://cgcnt1iilqg8s"
 path="res://.godot/imported/bord_parkeerverbod.vox-f7bebc45391c09ff87313235b4342795.mesh"

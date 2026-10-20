@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://va3ttxi8emre"
 path="res://.godot/imported/museum_modern_blok_dicht.vox-1cbd2dec422a13e31b13630bac8922fa.mesh"

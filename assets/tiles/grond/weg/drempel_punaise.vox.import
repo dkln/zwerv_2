@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://drtvoxmwnuh71"
 path="res://.godot/imported/drempel_punaise.vox-110115a3d451d428888ef67987340220.mesh"

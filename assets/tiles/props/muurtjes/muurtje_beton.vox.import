@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://cni45awurk56d"
 path="res://.godot/imported/muurtje_beton.vox-4942a4c1a75a1766bb12ae4e7dfb9a1f.mesh"

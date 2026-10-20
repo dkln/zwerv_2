@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://cbvkyqxjl1cvy"
 path="res://.godot/imported/elektriciteitskast.vox-495328624ab85e09262bed0f184d5393.mesh"

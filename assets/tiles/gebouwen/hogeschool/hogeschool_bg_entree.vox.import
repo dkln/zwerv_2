@@ -1,7 +1,7 @@
 [remap]
 
 importer="zwervr.vox_tile"
-importer_version=5
+importer_version=6
 type="ArrayMesh"
 uid="uid://b1mtvra7agg61"
 path="res://.godot/imported/hogeschool_bg_entree.vox-8a13ac78c150c8cb7ecc02364fa68bf3.mesh"

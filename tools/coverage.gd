@@ -5,11 +5,13 @@ extends SceneTree
 ## usage: Godot --headless --script tools/coverage.gd
 
 const Common = preload("res://tools/tool_common.gd")
+const WorldParts = preload("res://scripts/world_parts.gd")
 
 
 func _init() -> void:
 	Common.watchdog(self)
 	var sc: Node = load(Common.WORLD).instantiate()
+	WorldParts.merge_all(sc)
 	var limit: float = sc.get_meta("catalog_start_m", 400.0)
 	var total := 0
 	var used_total := 0
