@@ -1232,12 +1232,17 @@ def trunk(m, cx, cy, height, r, bark):
         m.cyl(cx, cy, rr, z, z + 1, bark)
 
 
+# Leaf colour patches of a crown are CROWN_BLOCK voxels wide (less detail than single voxels).
+CROWN_BLOCK = 4
+
+
 def crown_clusters(m, cx, cy, base, top, radius, n, leaves, seed, shape="rond", blossom=None, light="blad_licht"):
     """Tree crown made of n leaf ellipsoids between z=base and z=top, each joined to the trunk by a branch.
 
     shape: "rond" (round), "zuil" (columnar), "breed" (broad) or anything else (loose).
     leaves: leaf colours (the last one is used for the shaded underside); blossom: optional
-    blossom colours (~40% of blocks); light: colour of sunlit tops. Colour varies per 2x2x2 block.
+    blossom colours (~40% of blocks); light: colour of sunlit tops. Colour varies per
+    CROWN_BLOCK^3 block, so the crown reads as a few calm leaf balls.
     """
     pts = []
     for i in range(n):
@@ -1257,17 +1262,17 @@ def crown_clusters(m, cx, cy, base, top, radius, n, leaves, seed, shape="rond", 
             z = base + (top - base) * t
         pts.append((cx + math.cos(a) * r, cy + math.sin(a) * r, z))
     for i, (px, py, pz) in enumerate(pts):
-        sr = radius * (0.38 + 0.2 * h(i, 3, 0, seed))
+        sr = radius * (0.44 + 0.16 * h(i, 3, 0, seed))
         if shape == "zuil":
             sr *= 0.8
         m.line((cx, cy, base - 4), (px, py, pz), "schors2", 0.6)
 
         def cfun(x, y, z, pz=pz, sr=sr):
-            bx, by, bz = x // 2, y // 2, z // 2   # colour per 2x2x2 block: fewer stray faces
+            bx, by, bz = x // CROWN_BLOCK, y // CROWN_BLOCK, z // CROWN_BLOCK   # calm colour patches
             if blossom and h(bx, by, bz, seed + 5) < 0.4:
                 return pick(blossom, bx, by, bz, seed + 6)
             rel = (z - (pz - sr)) / (2 * sr)      # 0 = bottom of the cluster, 1 = top
-            if rel > 0.7 and h(bx, by, bz, seed + 7) < 0.5:
+            if rel > 0.75 and h(bx, by, bz, seed + 7) < 0.35:
                 return P[light]
             if rel < 0.3:
                 return P[leaves[-1]]
@@ -1292,7 +1297,7 @@ def deciduous_tree(seed, size=1.0, leaves=("blad1", "blad2", "blad4", "blad3"), 
     cx = cy = Wd / 2
     th = trunk_h or int(Ht * 0.42)
     trunk(m, cx, cy, th, 1.6 * size + 0.4, bark)
-    crown_clusters(m, cx, cy, th, Ht - R * 0.55, R, 6, list(leaves), seed, shape, blossom, light)
+    crown_clusters(m, cx, cy, th, Ht - R * 0.55, R, 4, list(leaves), seed, shape, blossom, light)
     return m
 
 
@@ -1323,7 +1328,7 @@ def poplar():
     """Tall columnar poplar."""
     m = V(20, 20, 104)
     trunk(m, 10, 10, 30, 1.6, "schors3")
-    crown_clusters(m, 10, 10, 26, 98, 12, 12, ["blad2", "blad4", "blad1", "blad3"], 109, "zuil")
+    crown_clusters(m, 10, 10, 26, 98, 12, 7, ["blad2", "blad4", "blad1", "blad3"], 109, "zuil")
     return m
 
 
@@ -1335,7 +1340,7 @@ def birch():
     def bark(x, y, z):
         return P["berkenschors_zwart"] if h(x, y, z // 2, 110) < 0.18 else P["berkenschors"]
     trunk(m, 16, 16, 44, 1.2, bark)
-    crown_clusters(m, 16, 16, 34, 70, 12, 10, ["blad4", "blad_licht", "blad2"], 111, "zuil")
+    crown_clusters(m, 16, 16, 34, 70, 12, 6, ["blad4", "blad_licht", "blad2"], 111, "zuil")
     return m
 
 
@@ -1369,7 +1374,7 @@ def weeping_willow():
     """Weeping willow with hanging branch curtains."""
     m = V(48, 48, 72)
     trunk(m, 24, 24, 30, 2.2, "schors2")
-    crown_clusters(m, 24, 24, 34, 60, 18, 8, ["blad4", "blad_licht", "blad2"], 115, "breed")
+    crown_clusters(m, 24, 24, 34, 60, 18, 5, ["blad4", "blad_licht", "blad2"], 115, "breed")
     # hanging branches: 2x2 columns snapped to an even grid, one colour per branch
     for i in range(48):
         a = h(i, 0, 0, 116) * math.tau

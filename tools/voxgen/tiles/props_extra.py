@@ -463,7 +463,7 @@ def copse(seed, size):
         x = 6 + h(i, 5, 0, seed) * (size - 12)
         y = 6 + h(i, 6, 0, seed) * (size - 12)
         trunk(m, x, y, 16, 0.9, "schors2")
-        crown_clusters(m, x, y, 14, 32, 7, 4, ["blad1", "blad2", "blad4"], seed + 50 + i)
+        crown_clusters(m, x, y, 14, 32, 7, 3, ["blad1", "blad2", "blad4"], seed + 50 + i)
     return m
 
 
