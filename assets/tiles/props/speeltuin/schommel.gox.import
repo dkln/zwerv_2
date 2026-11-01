@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://c5xpopl35alf4"
+path="res://.godot/imported/schommel.gox-94f723e5b00772b1fd74cbfd0a7ec9e8.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/props/speeltuin/schommel.gox"
+dest_files=["res://.godot/imported/schommel.gox-94f723e5b00772b1fd74cbfd0a7ec9e8.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(0, 0, 0)

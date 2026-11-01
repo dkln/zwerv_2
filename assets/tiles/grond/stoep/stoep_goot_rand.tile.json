@@ -1,10 +1,5 @@
 {
 	"id": 110,
-	"materials": {
-		"1": "paving",
-		"2": "stone",
-		"3": "stone"
-	},
 	"slopes": [
 		"steil",
 		"flauw_a",

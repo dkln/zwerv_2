@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://d37x5ecu3r785"
+path="res://.godot/imported/zonnepanelen_klein.gox-fab4ae90c05bf87c7b2ca3fa02535eef.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/details/dak/zonnepanelen_klein.gox"
+dest_files=["res://.godot/imported/zonnepanelen_klein.gox-fab4ae90c05bf87c7b2ca3fa02535eef.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(0, 0, 0)

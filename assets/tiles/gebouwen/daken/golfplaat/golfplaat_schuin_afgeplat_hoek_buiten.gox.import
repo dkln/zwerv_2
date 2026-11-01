@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://uv2dw650wkxd"
+path="res://.godot/imported/golfplaat_schuin_afgeplat_hoek_buiten.gox-83880d604afc4ba7d84bb3d07471842d.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/gebouwen/daken/golfplaat/golfplaat_schuin_afgeplat_hoek_buiten.gox"
+dest_files=["res://.godot/imported/golfplaat_schuin_afgeplat_hoek_buiten.gox-83880d604afc4ba7d84bb3d07471842d.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(4, 3, 4)

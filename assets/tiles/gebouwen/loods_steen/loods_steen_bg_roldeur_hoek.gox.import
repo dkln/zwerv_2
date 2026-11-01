@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://cx5q75s34u8ys"
+path="res://.godot/imported/loods_steen_bg_roldeur_hoek.gox-a4ab4f33cf463defb472d42dbf7c83e9.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/gebouwen/loods_steen/loods_steen_bg_roldeur_hoek.gox"
+dest_files=["res://.godot/imported/loods_steen_bg_roldeur_hoek.gox-a4ab4f33cf463defb472d42dbf7c83e9.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(4, 3, 4)

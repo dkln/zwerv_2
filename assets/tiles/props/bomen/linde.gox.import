@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://g3n4me1ef5ep"
+path="res://.godot/imported/linde.gox-588dea7dd74898cc8f1f9ce962170b66.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/props/bomen/linde.gox"
+dest_files=["res://.godot/imported/linde.gox-588dea7dd74898cc8f1f9ce962170b66.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(0, 0, 0)

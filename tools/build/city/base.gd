@@ -12,7 +12,7 @@ extends SceneTree
 const Common = preload("res://tools/tool_common.gd")
 const LIB := "res://assets/libraries/%s.res"
 const SlopesLib = preload("res://addons/vox_tiles/importer/slopes.gd")
-const VoxLib = preload("res://addons/vox_tiles/importer/vox_parser.gd")
+const VoxelModel = preload("res://addons/vox_tiles/importer/voxel_model.gd")
 const WorldParts = preload("res://scripts/world/world_parts.gd")
 ## the example map is saved in this many parts (scenes/wereld/, see scripts/world/world_parts.gd)
 const WORLD_PARTS := 10

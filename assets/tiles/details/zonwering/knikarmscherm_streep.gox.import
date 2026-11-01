@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://dnvwmovtxpvh5"
+path="res://.godot/imported/knikarmscherm_streep.gox-2ce3bf303c5a5097f36575be9d2c6be7.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/details/zonwering/knikarmscherm_streep.gox"
+dest_files=["res://.godot/imported/knikarmscherm_streep.gox-2ce3bf303c5a5097f36575be9d2c6be7.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(0, 0, 0)

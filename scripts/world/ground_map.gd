@@ -15,8 +15,8 @@ extends Node
 
 ## Size of one map cell in metres (one texture pixel).
 const CELL := 4.0
-## Material names as the mesher names a tile's surfaces (vox_parser.gd MATERIAL_NAMES).
-const MATERIALS := preload("res://addons/vox_tiles/importer/vox_parser.gd").MATERIAL_NAMES
+## Material names as the mesher names a tile's surfaces (voxel_model.gd MATERIAL_NAMES).
+const MATERIALS := preload("res://addons/vox_tiles/importer/voxel_model.gd").MATERIAL_NAMES
 
 ## The ground types were rebuilt (grass_cells changed).
 signal rebuilt

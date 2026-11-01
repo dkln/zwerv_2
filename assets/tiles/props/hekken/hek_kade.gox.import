@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://cgt06xhdf0r6j"
+path="res://.godot/imported/hek_kade.gox-00767d9ec04d43b2f6ed0a8bcda1b777.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/props/hekken/hek_kade.gox"
+dest_files=["res://.godot/imported/hek_kade.gox-00767d9ec04d43b2f6ed0a8bcda1b777.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(0, 0, 0)

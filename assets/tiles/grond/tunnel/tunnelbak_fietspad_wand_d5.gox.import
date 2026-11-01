@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://bem7afxfjgkf2"
+path="res://.godot/imported/tunnelbak_fietspad_wand_d5.gox-d1ef25324724b1209f4a862e4f0cc32a.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/grond/tunnel/tunnelbak_fietspad_wand_d5.gox"
+dest_files=["res://.godot/imported/tunnelbak_fietspad_wand_d5.gox-d1ef25324724b1209f4a862e4f0cc32a.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(4, 1.5, 4)

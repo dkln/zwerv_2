@@ -1,9 +1,3 @@
 {
-	"id": 381,
-	"materials": {
-		"1": "brick",
-		"3": "glass",
-		"5": "emit",
-		"6": "metal"
-	}
+	"id": 381
 }

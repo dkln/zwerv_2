@@ -1,8 +1,5 @@
 {
 	"id": 255,
-	"materials": {
-		"1": "asphalt"
-	},
 	"smooth": {
 		"shape": "steil",
 		"lift": 2

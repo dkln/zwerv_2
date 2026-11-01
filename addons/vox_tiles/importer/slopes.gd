@@ -16,7 +16,7 @@ extends RefCounted
 ## tools/voxgen/tiles/ground_rising_curves.py (the tiles the generator used to write as .vox files), but
 ## with a smooth surface instead of 1-voxel steps (plan(), build(), smooth()).
 
-const Parser = preload("res://addons/vox_tiles/importer/vox_parser.gd")
+const Model = preload("res://addons/vox_tiles/importer/voxel_model.gd")
 const Mesher = preload("res://addons/vox_tiles/importer/vox_mesher.gd")
 
 ## Straight shapes, rising towards the back: steil: 1 m (one ground layer) over the
@@ -47,16 +47,16 @@ const PIER_R := 5.2
 ## Colours as the generator writes them (palette.py, numbered groups damped by
 ## VARIATION), with the material they get, and the random mixes of ground.py.
 const COLOURS := {
-	"aarde1": [Color8(110, 82, 58), Parser.MAT_OPAQUE],
-	"aarde2": [Color8(101, 74, 53), Parser.MAT_OPAQUE],
-	"aarde3": [Color8(119, 90, 63), Parser.MAT_OPAQUE],
-	"aarde_donker": [Color8(72, 54, 40), Parser.MAT_OPAQUE],
-	"beton1": [Color8(171, 170, 165), Parser.MAT_STONE],
-	"beton2": [Color8(161, 161, 156), Parser.MAT_STONE],
-	"beton3": [Color8(180, 179, 175), Parser.MAT_STONE],
-	"beton_donker": [Color8(120, 120, 116), Parser.MAT_STONE],
-	"metaal2": [Color8(120, 122, 126), Parser.MAT_METAL],
-	"metaal3": [Color8(160, 162, 166), Parser.MAT_METAL],
+	"aarde1": [Color8(110, 82, 58), Model.MAT_OPAQUE],
+	"aarde2": [Color8(101, 74, 53), Model.MAT_OPAQUE],
+	"aarde3": [Color8(119, 90, 63), Model.MAT_OPAQUE],
+	"aarde_donker": [Color8(72, 54, 40), Model.MAT_OPAQUE],
+	"beton1": [Color8(171, 170, 165), Model.MAT_STONE],
+	"beton2": [Color8(161, 161, 156), Model.MAT_STONE],
+	"beton3": [Color8(180, 179, 175), Model.MAT_STONE],
+	"beton_donker": [Color8(120, 120, 116), Model.MAT_STONE],
+	"metaal2": [Color8(120, 122, 126), Model.MAT_METAL],
+	"metaal3": [Color8(160, 162, 166), Model.MAT_METAL],
 }
 ## [names, weights (empty = uniform), seed]
 const EARTH := [["aarde1", "aarde2", "aarde3", "aarde_donker"], [3, 3, 2, 1], 10]
@@ -325,7 +325,7 @@ static func smooth(mesh: ArrayMesh, p: Dictionary, vs: float, block: Vector3, f 
 	for s in mesh.get_surface_count():
 		var arrays := mesh.surface_get_arrays(s)
 		var mat_name := mesh.surface_get_name(s)
-		var mat_index := Parser.MATERIAL_NAMES.find(mat_name)
+		var mat_index := Model.MATERIAL_NAMES.find(mat_name)
 		var pos: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
 		var nrm: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
 		var col: PackedColorArray = arrays[Mesh.ARRAY_COLOR]
@@ -386,7 +386,7 @@ static func smooth(mesh: ArrayMesh, p: Dictionary, vs: float, block: Vector3, f 
 							var side: int = Mesher.REST
 							if block != Vector3.ZERO and g != Mesher.REST:
 								side = Mesher._cell_side([a, b, c], n, block)
-								if side != Mesher.REST and Parser.is_opaque(mat_index):
+								if side != Mesher.REST and Model.is_opaque(mat_index):
 									covered[side] += cross.length() * 0.5
 							var d: Dictionary = out[side]
 							for idx in tri:
@@ -554,7 +554,7 @@ class Grid:
 				column.resize(vox.size.z)
 				source[c] = column
 			source[c][v[k + 2]] = v[k + 3]
-		for s in range(Parser.WATER_START - 1, 0, -1):
+		for s in range(255, 0, -1):
 			if not used.has(s):
 				free.append(s)
 
@@ -618,7 +618,7 @@ class Grid:
 		return slots[name]
 
 	func to_vox():
-		var out = Parser.new()
+		var out = Model.new()
 		out.size = size
 		out.palette = palette
 		out.materials = materials

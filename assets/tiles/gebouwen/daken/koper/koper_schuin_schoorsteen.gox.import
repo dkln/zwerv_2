@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://cmy1ia542gqcb"
+path="res://.godot/imported/koper_schuin_schoorsteen.gox-6d149e4019b661979c7d2d81a9179f96.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/gebouwen/daken/koper/koper_schuin_schoorsteen.gox"
+dest_files=["res://.godot/imported/koper_schuin_schoorsteen.gox-6d149e4019b661979c7d2d81a9179f96.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(4, 3, 4)

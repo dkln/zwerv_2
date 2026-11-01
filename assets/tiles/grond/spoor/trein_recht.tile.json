@@ -1,10 +1,5 @@
 {
 	"id": 95,
-	"materials": {
-		"3": "gravel",
-		"5": "metal",
-		"6": "metal"
-	},
 	"slopes": [
 		"steil",
 		"brug",

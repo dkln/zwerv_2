@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://c5eqmmvfudry5"
+path="res://.godot/imported/jaren60_verd_galerij_deur_hoek.gox-1eb07fdb8bdad0c97644bbf1140bd15d.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/gebouwen/jaren60/jaren60_verd_galerij_deur_hoek.gox"
+dest_files=["res://.godot/imported/jaren60_verd_galerij_deur_hoek.gox-1eb07fdb8bdad0c97644bbf1140bd15d.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(4, 3, 4)

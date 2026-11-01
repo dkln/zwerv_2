@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://b63i4mmrp6slj"
+path="res://.godot/imported/pad_zand.gox-6ada4f77aaf4261d61bc256f24eb231e.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/grond/natuur/pad_zand.gox"
+dest_files=["res://.godot/imported/pad_zand.gox-6ada4f77aaf4261d61bc256f24eb231e.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(4, 1.5, 4)

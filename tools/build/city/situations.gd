@@ -821,7 +821,7 @@ func _curve_loop(x0: int, z0: int, z1: int, profile: String, kind: String) -> vo
 ## Floor of cell (i, j) of the rising curve of `profile` (left, or right with `right`):
 ## the floor of its lowest point, as curve_floors() in tools/voxgen/ground4.py.
 func _rising_floor(profile: String, i: int, j: int, right: bool) -> int:
-	var vox = VoxLib.new()
+	var vox = VoxelModel.new()
 	vox.size = Vector3i(32, 32, 12)
 	var plan: Dictionary = SlopesLib.plan(vox, "bocht_rechts" if right else "bocht", {"curve": [i, j, PROFILES[profile].size()]})
 	return int(plan.base) / 8

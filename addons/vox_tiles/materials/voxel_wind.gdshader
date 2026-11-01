@@ -13,7 +13,7 @@ uniform float emission_energy = 0.0;
 uniform float tintable = 1.0;
 // voxel structure: light edges and small brightness differences per voxel
 uniform float voxel_edge : hint_range(0.0, 0.5) = 0.0;
-uniform float voxel_noise : hint_range(0.0, 0.3) = 0.0;   // the colour variation is in the .vox itself
+uniform float voxel_noise : hint_range(0.0, 0.3) = 0.0;   // the colour variation is in the tile itself
 uniform float voxel_size = 0.125;
 // wind: the higher up in the model, the more it moves (the foot stands still)
 uniform float wind_strength = 0.06;     // metres of sway at the top

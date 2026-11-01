@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://bs55uj8f7yx72"
+path="res://.godot/imported/hek_industrie.gox-40b8e4227e8292c0f0dcbce11e1b539b.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/props/hekken/hek_industrie.gox"
+dest_files=["res://.godot/imported/hek_industrie.gox-40b8e4227e8292c0f0dcbce11e1b539b.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(0, 0, 0)

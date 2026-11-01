@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://cxj4nw6l7jioh"
+path="res://.godot/imported/weg_4_1.gox-a2f83496793ccac16accedc6589a14ea.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/grond/bocht/weg_4_1.gox"
+dest_files=["res://.godot/imported/weg_4_1.gox-a2f83496793ccac16accedc6589a14ea.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(4, 1.5, 4)

@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://b3llf4do6iusv"
+path="res://.godot/imported/hoofdweg_4_0.gox-f86539f7a35a80130f70b8db371d8597.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/grond/bocht/hoofdweg_4_0.gox"
+dest_files=["res://.godot/imported/hoofdweg_4_0.gox-f86539f7a35a80130f70b8db371d8597.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(4, 1.5, 4)

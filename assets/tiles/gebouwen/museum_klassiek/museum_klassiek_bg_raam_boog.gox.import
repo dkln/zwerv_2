@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://brjgja8x1y048"
+path="res://.godot/imported/museum_klassiek_bg_raam_boog.gox-144ed214fbce2fd63155734a4654fecf.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/gebouwen/museum_klassiek/museum_klassiek_bg_raam_boog.gox"
+dest_files=["res://.godot/imported/museum_klassiek_bg_raam_boog.gox-144ed214fbce2fd63155734a4654fecf.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(4, 3, 4)

@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://drmf5u2iy5cc3"
+path="res://.godot/imported/schuifpoort_industrie.gox-ec1138f26b41a2c7609e528a9761c56e.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/props/hekken/schuifpoort_industrie.gox"
+dest_files=["res://.godot/imported/schuifpoort_industrie.gox-ec1138f26b41a2c7609e528a9761c56e.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(0, 0, 0)

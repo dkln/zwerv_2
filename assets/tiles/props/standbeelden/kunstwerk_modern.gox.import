@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://bs6eucx51kcqh"
+path="res://.godot/imported/kunstwerk_modern.gox-fe2d5d9c139efcbffae40ae45def978a.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/props/standbeelden/kunstwerk_modern.gox"
+dest_files=["res://.godot/imported/kunstwerk_modern.gox-fe2d5d9c139efcbffae40ae45def978a.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(0, 0, 0)

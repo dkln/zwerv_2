@@ -12,7 +12,7 @@ uniform float emission_energy = 0.0;
 uniform float tintable = 1.0;
 // voxel structure: light edges and small brightness differences per voxel
 uniform float voxel_edge : hint_range(0.0, 0.5) = 0.0;
-uniform float voxel_noise : hint_range(0.0, 0.3) = 0.0;   // the colour variation is in the .vox itself
+uniform float voxel_noise : hint_range(0.0, 0.3) = 0.0;   // the colour variation is in the tile itself
 uniform float voxel_size = 0.125;
 // asphalt: dark grey top faces get grain, wear patches and a slight sheen
 uniform float asphalt : hint_range(0.0, 1.0) = 0.0;

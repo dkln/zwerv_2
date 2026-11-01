@@ -1,12 +1,14 @@
 @tool
 extends RefCounted
-## Builds one MeshLibrary per category from all .vox files in assets/tiles/<category>.
+## Builds one MeshLibrary per category from all tile models (.gox, or .vox) in
+## assets/tiles/<category>.
 ## Item IDs stay stable (by name), so existing maps don't break when you add or
 ## remove tiles. Alias tiles (a .tile.json with "same_as", see tile_metadata.gd) get
 ## their own item with the mesh of the tile they point to; the slope variants of a
 ## tile (its "slopes", see slopes.gd) get items of their own as well.
 
 const TileMetadata = preload("res://addons/vox_tiles/importer/tile_metadata.gd")
+const Model = preload("res://addons/vox_tiles/importer/voxel_model.gd")
 const Atlas = preload("res://addons/vox_tiles/library/atlas.gd")
 ## Categories whose window tiles get a faked room behind the glass (_set_interior).
 const INTERIOR_CATEGORIES := ["gebouwen", "details"]
@@ -45,9 +47,9 @@ static func lod_path(cat: String, level := "lod") -> String:
 const SHADOW_MIN_HEIGHT := 0.7
 
 
-## Appends all tile .vox files below dir_path (recursively) to out; skips the
-## coarse `<name>.lod.vox` versions.
-static func list_vox(dir_path: String, out: PackedStringArray) -> void:
+## Appends all tile models below dir_path (recursively) to out; skips the coarse
+## `<name>.lod.gox` versions. A tile with both a .gox and a .vox counts once, as .gox.
+static func list_tiles(dir_path: String, out: PackedStringArray) -> void:
 	var d := DirAccess.open(dir_path)
 	if d == null:
 		return
@@ -56,15 +58,19 @@ static func list_vox(dir_path: String, out: PackedStringArray) -> void:
 	while f != "":
 		if d.current_is_dir():
 			if not f.begins_with("."):
-				list_vox(dir_path.path_join(f), out)
-		elif f.get_extension() == "vox" and not TileMetadata.is_lod_file(f):
-			out.append(dir_path.path_join(f))
+				list_tiles(dir_path.path_join(f), out)
+		elif Model.is_model_file(f) and not TileMetadata.is_lod_file(f):
+			var path := dir_path.path_join(f)
+			if TileMetadata.model_path(path.get_basename()) == path:
+				out.append(path)
+			else:
+				push_warning("Vox Tiles: %s skipped, %s has the same name" % [path, TileMetadata.model_path(path.get_basename())])
 		f = d.get_next()
 	d.list_dir_end()
 
 
-## Appends the vox paths of all alias tiles below dir_path (recursively) to out:
-## `<name>.vox` for every `<name>.tile.json` with a "same_as" and no `<name>.vox`.
+## Appends the model paths of all alias tiles below dir_path (recursively) to out:
+## `<name>.gox` for every `<name>.tile.json` with a "same_as" and no model of its own.
 static func list_aliases(dir_path: String, out: PackedStringArray) -> void:
 	var d := DirAccess.open(dir_path)
 	if d == null:
@@ -77,9 +83,10 @@ static func list_aliases(dir_path: String, out: PackedStringArray) -> void:
 			if not f.begins_with("."):
 				list_aliases(path, out)
 		elif f.ends_with(".tile.json"):
-			var vox := path.trim_suffix(".tile.json") + ".vox"
-			if not TileMetadata.is_lod_file(vox) and not FileAccess.file_exists(vox) and TileMetadata.read(vox).has("same_as"):
-				out.append(vox)
+			var base := path.trim_suffix(".tile.json")
+			var model := base + "." + Model.EXTENSIONS[0]
+			if not TileMetadata.is_lod_file(model) and TileMetadata.model_path(base) == "" and TileMetadata.read(model).has("same_as"):
+				out.append(model)
 		f = d.get_next()
 	d.list_dir_end()
 
@@ -88,14 +95,14 @@ static func list_aliases(dir_path: String, out: PackedStringArray) -> void:
 ## tiles, updates changed ones, removes deleted ones, keeps item ids stable
 ## (registry <category>_ids.json, or a pinned "id" in the tile metadata) and
 ## rebuilds the coarse libraries.
-## changed: Dictionary with paths (res://...vox) that were reimported.
+## changed: Dictionary with paths (res://...gox) that were reimported.
 ## previews: render palette previews (editor only). force: update every item.
 ## Returns true if the library was modified and saved.
 static func build_category(cat: String, changed: Dictionary, previews: bool, force := false) -> bool:
 	var cfg: Dictionary = CATEGORIES[cat]
 	var root := TILE_ROOT.path_join(cat)
 	var files := PackedStringArray()
-	list_vox(root, files)
+	list_tiles(root, files)
 	files.sort()
 	var lib_path := library_path(cat)
 	var lib: MeshLibrary = null
@@ -119,7 +126,7 @@ static func build_category(cat: String, changed: Dictionary, previews: bool, for
 	var need_preview: Array[int] = []
 	var stamp_of := {}   # item id -> import time stamp of its source (for the preview cache)
 	var sources := {}   # item id -> imported mesh (before the atlas copy)
-	# [item name, .vox path, mesh, own tile?]: every tile, then the slope variants
+	# [item name, model path, mesh, own tile?]: every tile, then the slope variants
 	# its import made (they have no metadata of their own; ids from the registry)
 	var entries := []
 	for path in files:
@@ -134,7 +141,7 @@ static func build_category(cat: String, changed: Dictionary, previews: bool, for
 		var slopes: Dictionary = mesh.get_meta("slopes", {})
 		for shape in slopes:
 			var slope_key := Slopes.item_name(key, shape)
-			if seen.has(slope_key) or files.has(root.path_join(slope_key) + ".vox"):
+			if seen.has(slope_key) or TileMetadata.model_path(root.path_join(slope_key)) != "":
 				push_warning("Vox Tiles: slope %s of %s already exists as a tile, skipped" % [slope_key, key])
 				continue
 			seen[slope_key] = true

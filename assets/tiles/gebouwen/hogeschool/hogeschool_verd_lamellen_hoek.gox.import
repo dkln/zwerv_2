@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://eqw2yyocp2wm"
+path="res://.godot/imported/hogeschool_verd_lamellen_hoek.gox-04c15722398207467a27e04596054d7d.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/gebouwen/hogeschool/hogeschool_verd_lamellen_hoek.gox"
+dest_files=["res://.godot/imported/hogeschool_verd_lamellen_hoek.gox-04c15722398207467a27e04596054d7d.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(4, 3, 4)

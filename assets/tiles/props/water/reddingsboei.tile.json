@@ -1,8 +1,4 @@
 {
 	"id": 117,
-	"animation": "float",
-	"materials": {
-		"2": "painted",
-		"3": "painted"
-	}
+	"animation": "float"
 }

@@ -1,17 +1,3 @@
 {
-	"id": 977,
-	"materials": {
-		"2": "brick",
-		"3": "stone",
-		"4": "plaster",
-		"6": "stone",
-		"7": "stone",
-		"9": "glass",
-		"10": "glass",
-		"13": "emit",
-		"14": "emit",
-		"15": "metal",
-		"16": "painted",
-		"17": "painted"
-	}
+	"id": 977
 }

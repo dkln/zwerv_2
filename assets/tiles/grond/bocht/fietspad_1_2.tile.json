@@ -1,8 +1,5 @@
 {
 	"id": 421,
-	"materials": {
-		"1": "asphalt"
-	},
 	"slopes": [
 		"bocht",
 		"bocht_rechts",

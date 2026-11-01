@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://defkkpd2d82oe"
+path="res://.godot/imported/muurtje_baksteen_hoog.gox-6b357d3a5cafa21747b6d60dd04c869f.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/props/muurtjes/muurtje_baksteen_hoog.gox"
+dest_files=["res://.godot/imported/muurtje_baksteen_hoog.gox-6b357d3a5cafa21747b6d60dd04c869f.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(0, 0, 0)

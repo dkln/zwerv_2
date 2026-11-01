@@ -1,8 +1,5 @@
 {
 	"id": 491,
-	"materials": {
-		"1": "stone"
-	},
 	"slopes": [
 		"bocht",
 		"bocht_rechts",

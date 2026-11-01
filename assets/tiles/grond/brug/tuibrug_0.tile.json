@@ -1,11 +1,3 @@
 {
-	"id": 197,
-	"materials": {
-		"1": "asphalt",
-		"2": "plaster",
-		"3": "stone",
-		"4": "stone",
-		"5": "metal",
-		"6": "emit"
-	}
+	"id": 197
 }

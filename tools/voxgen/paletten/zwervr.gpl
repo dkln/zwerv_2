@@ -1,0 +1,223 @@
+GIMP Palette
+Name: Zwervr
+Columns: 16
+#
+ 62  62  66 asfalt1, asfalt2, asfalt3, asfalt4 (asfalt)
+ 42  42  46 asfalt_reparatie (asfalt)
+232 232 226 markering
+214 214 208 markering2
+232 190  40 markering_geel
+150  63  53 fietsasfalt1, fietsasfalt2, fietsasfalt3 (asfalt)
+115  42  42 busbaan1, busbaan2 (asfalt)
+137 135 130 tegel1, tegel2, tegel3, tegel4 (tegels)
+100  98  94 tegel_voeg
+196 196 188 ribbel (steen)
+167 165 159 band1, band2 (steen)
+134 132 128 goot1, goot2 (steen)
+129  89  70 klinker1, klinker2, klinker3, klinker4, klinker5 (steen)
+104  98  91 kei1, kei2, kei3, kei4 (keien)
+ 60  58  54 kei_voeg
+167 158 141 plein1, plein2, plein3 (steen)
+110 104  96 plein_donker (steen)
+150 104  84 plein_rood (steen)
+ 88 136  53 gras1, gras2, gras3, gras4, gras5, gras_droog
+240 240 232 bloem_wit
+240 210  60 bloem_geel
+150  90 190 bloem_paars
+210  50  50 bloem_rood
+230 130 170 bloem_roze
+240 140  40 bloem_oranje
+110  82  58 aarde1, aarde2, aarde3
+ 72  54  40 aarde_donker
+207 189 144 zand1, zand2
+ 70  60  46 modder
+ 52  58  48 waterbodem
+ 44  50  42 waterbodem2
+ 63  82  46 alg1, alg2
+145 146  76 riet1
+125 134  64 riet2
+130 100  70 riet_pluim
+131 127 120 grind1, grind2, grind3 (grind)
+120 100  84 grind_roest (grind)
+170 168 160 biels_beton
+ 92  70  52 biels_hout
+120 118 116 rail (metaal)
+176 176 178 rail_glim (metaal)
+ 36  36  38 railgroef
+148  67  50 baksteen1, baksteen2, baksteen3, baksteen4, baksteen5 (baksteen)
+176 170 160 voeg
+ 84  47  41 donkersteen1, donkersteen2, donkersteen3 (steen)
+203 170 111 geelsteen1, geelsteen2, geelsteen3 (baksteen)
+206 200 185 natuursteen1, natuursteen2, natuursteen3 (steen)
+225 223 215 stuc1, stuc2, stuc3 (stuc)
+140 144 148 paneel1
+127 131 135 paneel2
+153 157 161 paneel3
+160 110  70 hout1
+147 100  62 hout2
+170 120  79 hout3
+ 93  62  41 hout_donker1
+ 83  54  35 hout_donker2
+ 53  55  59 antraciet1, antraciet2, antraciet3
+170 170 166 beton1, beton2, beton3 (steen)
+120 120 116 beton_donker (steen)
+240 240 236 kozijn_wit
+ 36  70  52 kozijn_groen
+ 30  30  32 kozijn_zwart
+230 222 196 kozijn_creme
+120 160 190 glas1 (glas)
+ 90 130 165 glas2 (glas)
+100 150 160 glas_kantoor (glas)
+170 200 215 glas_helder (glas)
+ 41  37  35 interieur1
+ 51  44  40 interieur2
+ 34  33  35 interieur3
+200 190 170 gordijn1
+150  60  50 gordijn2
+ 80  90 120 gordijn3
+255 210 140 licht_warm (licht)
+240 244 255 licht_wit (licht)
+159  63  41 pan_rood1, pan_rood2, pan_rood3
+ 45  45  49 pan_zwart1, pan_zwart2, pan_zwart3
+ 65  71  81 leisteen1, leisteen2 (steen)
+140 136 129 dakgrind1, dakgrind2 (grind)
+ 51  51  53 bitumen1, bitumen2 (asfalt)
+140 146 150 zink1, zink2 (metaal)
+ 30  40  70 zonnepaneel (paneel)
+ 28  72  50 deur_groen
+130  30  30 deur_rood
+ 30  50 100 deur_blauw
+ 24  24  26 deur_zwart
+230 230 226 deur_wit
+200 170  80 messing (metaal)
+140 142 146 metaal1 (metaal)
+120 122 126 metaal2 (metaal)
+160 162 166 metaal3 (metaal)
+ 60  62  66 metaal_donker (metaal)
+196 198 200 rvs (metaal)
+160 166 168 gegalvaniseerd (metaal)
+ 40  40  42 rooster (metaal)
+ 34  58  44 amsterdamgroen (gelakt)
+100  46  32 paal_bruin
+176 124  74 hout_bank1
+165 115  68 hout_bank2
+185 133  82 hout_bank3
+ 28  28  30 rubber
+240 110  20 oranje
+ 86  66  50 schors1
+ 77  60  45 schors2
+ 95  74  55 schors3
+226 222 212 berkenschors
+ 50  48  46 berkenschors_zwart
+170 160 120 plataanschors
+ 65 118  44 blad1
+ 72 128  48 blad2
+ 57 106  41 blad3
+ 83 139  55 blad4
+ 52  97  38 blad5
+120 170  70 blad_licht
+ 40  80  50 naald1
+ 34  71  45 naald2
+ 48  89  55 naald3
+200 121  41 herfst1
+187  95  35 herfst2
+213 154  54 herfst3
+242 195 214 bloesem1
+248 215 226 bloesem2
+ 45  94  39 haag1
+ 39  86  35 haag2
+166  89  57 terracotta1, terracotta2
+200  30  36 bord_rood (gelakt)
+170  24  30 bord_rood2 (gelakt)
+ 20  70 160 bord_blauw (gelakt)
+ 16  56 130 bord_blauw2 (gelakt)
+245 245 245 bord_wit (gelakt)
+ 20  20  22 bord_zwart (gelakt)
+250 200  30 bord_geel (gelakt)
+240 120  20 bord_oranje (gelakt)
+ 20 110  60 bord_groen (gelakt)
+ 14  90  50 bord_groen2 (gelakt)
+255 250 235 lamp_wit (licht)
+255 200 120 lamp_warm (licht)
+255  40  30 stoplicht_rood (licht)
+255 160  20 stoplicht_oranje (licht)
+ 40 255 120 stoplicht_groen (licht)
+ 70  20  18 stoplicht_rood_uit
+ 80  56  14 stoplicht_oranje_uit
+ 16  60  30 stoplicht_groen_uit
+240 240 220 reclame1 (licht)
+120 190 240 reclame2 (licht)
+250 120  90 reclame3 (licht)
+220  40  30 matrix (licht)
+180  40  40 luifel_rood
+ 40 110  70 luifel_groen
+ 40  70 140 luifel_blauw
+230 180  50 luifel_geel
+236 232 220 luifel_wit
+220 110  40 luifel_oranje
+150  30  30 fiets_rood
+ 40  60 120 fiets_blauw
+ 30  30  32 fiets_zwart
+236 236 232 boot_wit
+ 40  70 120 boot_blauw
+150  40  30 boot_rood
+ 40  90  60 boot_groen
+112  53  43 baksteen30_1, baksteen30_2, baksteen30_3 (baksteen)
+190 174 134 geelsteen60_1, geelsteen60_2 (baksteen)
+174 171 162 beton60 (steen)
+ 60 110 170 paneel_blauw
+230 190  60 paneel_geel
+190  70  50 paneel_rood
+ 80 140 100 paneel_groen
+101  73  55 bruin80_1, bruin80_2
+184 188 194 alu (metaal)
+220 190  90 glas_lood_geel (glas)
+180  60  50 glas_lood_rood (glas)
+ 60  90 170 glas_lood_blauw (glas)
+120  96  70 glas_brons (glas)
+ 60 120 170 glas_blauw (glas)
+ 90 150 140 glas_groen (glas)
+147 125  82 riet_dak1
+135 115  74 riet_dak2
+ 40  38  36 schuur_zwart
+120  40  32 schuur_rood
+ 90 150 130 koper (metaal)
+210 170  60 goud (metaal)
+255  80 180 neon_roze (licht)
+ 80 160 255 neon_blauw (licht)
+220 224 226 tegel_wit (tegels)
+ 60  80 140 stof1
+170  60  70 stof2
+230 220 200 stof3
+245 245 240 tafelkleed
+ 40 120 220 scherm (licht)
+189  93  49 pan_oranje1, pan_oranje2
+ 71  73  78 pan_antraciet1, pan_antraciet2
+145 151 145 golfplaat1 (metaal)
+125 131 125 golfplaat2 (metaal)
+ 40  70  52 pan_groen
+255  30  20 signaal_rood (licht)
+112 142  62 sedum1
+146 112  72 sedum2
+ 92 128  70 sedum3
+160 150  70 sedum4
+120  92  58 brons (metaal)
+ 86 128 108 brons_patina (metaal)
+232 230 224 marmer (steen)
+ 40  96 118 water1 (water)
+ 34  86 108 water2 (water)
+ 48 106 126 water3 (water)
+ 44  80  70 water_gracht (water)
+ 70 170 205 water_zwembad (water)
+200  30  40 vlag_rood (vlag)
+244 244 244 vlag_wit (vlag)
+ 30  70 160 vlag_blauw (vlag)
+240 121  20 vlag_oranje (vlag)
+250 205  30 vlag_geel (vlag)
+ 30 140  70 vlag_groen (vlag)
+130  60 170 vlag_paars (vlag)
+ 25  25  28 vlag_zwart (vlag)
+110 200 240 vlag_lichtblauw (vlag)
+240 160 190 vlag_roze (vlag)
+ 20  40 110 vlag_donkerblauw (vlag)
+110  70  40 vlag_bruin (vlag)

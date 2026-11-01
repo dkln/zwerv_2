@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://ckmd76dmv35y"
+path="res://.godot/imported/raam_modern_staand.gox-f7edcb81a82c25c4f9e82f3961b4d105.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/details/ramen/raam_modern_staand.gox"
+dest_files=["res://.godot/imported/raam_modern_staand.gox-f7edcb81a82c25c4f9e82f3961b4d105.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(0, 0, 0)

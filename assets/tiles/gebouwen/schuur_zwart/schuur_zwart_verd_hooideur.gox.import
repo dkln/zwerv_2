@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://cr51uvu71r6bt"
+path="res://.godot/imported/schuur_zwart_verd_hooideur.gox-c341d4ed645f576e6363d089a04494b6.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/gebouwen/schuur_zwart/schuur_zwart_verd_hooideur.gox"
+dest_files=["res://.godot/imported/schuur_zwart_verd_hooideur.gox-c341d4ed645f576e6363d089a04494b6.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(4, 3, 4)

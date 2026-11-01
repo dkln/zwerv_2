@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://cu5s8nck267wm"
+path="res://.godot/imported/kerk_steen_dak_kantelen_rand.gox-d3234fbf26ca5b4a08543cad09bdce9f.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/gebouwen/kerk_steen/kerk_steen_dak_kantelen_rand.gox"
+dest_files=["res://.godot/imported/kerk_steen_dak_kantelen_rand.gox-d3234fbf26ca5b4a08543cad09bdce9f.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(4, 3, 4)

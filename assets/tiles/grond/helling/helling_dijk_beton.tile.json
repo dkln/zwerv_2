@@ -1,9 +1,5 @@
 {
 	"id": 44,
-	"materials": {
-		"2": "stone",
-		"3": "stone"
-	},
 	"smooth": {
 		"shape": "steil",
 		"lift": 2

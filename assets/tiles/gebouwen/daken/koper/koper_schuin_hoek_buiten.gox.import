@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://sa6u3ypbu11l"
+path="res://.godot/imported/koper_schuin_hoek_buiten.gox-09e21b8c9c6cc50a8499b2bfb2c4cd24.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/gebouwen/daken/koper/koper_schuin_hoek_buiten.gox"
+dest_files=["res://.godot/imported/koper_schuin_hoek_buiten.gox-09e21b8c9c6cc50a8499b2bfb2c4cd24.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(4, 3, 4)

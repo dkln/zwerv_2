@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://gw4g03owokc2"
+path="res://.godot/imported/fietsenrek.gox-db7278761fbcffa681f6150360adea97.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/props/fietsen/fietsenrek.gox"
+dest_files=["res://.godot/imported/fietsenrek.gox-db7278761fbcffa681f6150360adea97.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(0, 0, 0)

@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://b4n4md503nx2o"
+path="res://.godot/imported/hogeschool_verd_band.gox-7612e763580d89cc62ece5bb12b13d00.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/gebouwen/hogeschool/hogeschool_verd_band.gox"
+dest_files=["res://.godot/imported/hogeschool_verd_band.gox-7612e763580d89cc62ece5bb12b13d00.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(4, 3, 4)

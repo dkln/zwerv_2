@@ -1,8 +1,5 @@
 {
 	"id": 323,
-	"materials": {
-		"2": "gravel"
-	},
 	"smooth": {
 		"shape": "hoek_buiten",
 		"lift": 2

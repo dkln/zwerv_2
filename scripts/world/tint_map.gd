@@ -1,7 +1,7 @@
 @tool
 class_name TintMap
 extends Node3D
-## Adjust the colour/tint of tiles without changing the .vox (the "TintKaart" node).
+## Adjust the colour/tint of tiles without changing the tile files (the "TintKaart" node).
 ##
 ## Put TintArea nodes (tint_area.gd) as children of this node and slide them over
 ## buildings or ground: everything inside an area gets that tint (works live in the

@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://dlcpxkoki7yr7"
+path="res://.godot/imported/kerk_baksteen_bg_portaal.gox-fa966d5a843fa07a4480d2e9a1b1a246.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/gebouwen/kerk_baksteen/kerk_baksteen_bg_portaal.gox"
+dest_files=["res://.godot/imported/kerk_baksteen_bg_portaal.gox-fa966d5a843fa07a4480d2e9a1b1a246.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(4, 3, 4)

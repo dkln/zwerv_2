@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://dq0pp81qanhye"
+path="res://.godot/imported/lantaarn_klassiek.gox-5239a67e7a3ab97bc9c05c14d068128b.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/props/verlichting/lantaarn_klassiek.gox"
+dest_files=["res://.godot/imported/lantaarn_klassiek.gox-5239a67e7a3ab97bc9c05c14d068128b.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(0, 0, 0)

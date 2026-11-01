@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://b68dpdmbbqdvg"
+path="res://.godot/imported/buxus_bol.gox-82c5c7c80b1c02c6c3bb0ea7245f8c3c.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/props/planten/buxus_bol.gox"
+dest_files=["res://.godot/imported/buxus_bol.gox-82c5c7c80b1c02c6c3bb0ea7245f8c3c.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(0, 0, 0)

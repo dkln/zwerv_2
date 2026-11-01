@@ -1,20 +1,20 @@
 @tool
 extends RefCounted
-## Turns a parsed .vox model into an ArrayMesh with greedy meshing,
+## Turns a voxel model (voxel_model.gd) into an ArrayMesh with greedy meshing,
 ## vertex colours and baked ambient occlusion.
 ##
 ## Per axis and direction, every slice of voxels gets a mask of visible faces
 ## (keyed by colour group + the AO of the 4 corners); equal neighbours in the
 ## mask are merged into rectangles (greedy meshing), which become two triangles.
-## There is one surface per material (Parser.MAT_*), with the triangles sorted
+## There is one surface per material (Model.MAT_*), with the triangles sorted
 ## into the 7 GROUPS so scripts/world/layer_baker.gd can drop hidden cell sides.
 ##
 ## Axes: MagicaVoxel (x, y, z-up) -> Godot (x, z, -y).
 ## Origin: centre of the model in x/z, bottom in y.
 
-const Parser = preload("res://addons/vox_tiles/importer/vox_parser.gd")
+const Model = preload("res://addons/vox_tiles/importer/voxel_model.gd")
 
-## indexed by Parser.MAT_*
+## indexed by Model.MAT_*
 const MATERIAL_PATHS := [
 	"res://addons/vox_tiles/materials/voxel_opaque.tres",
 	"res://addons/vox_tiles/materials/voxel_metal.tres",
@@ -87,7 +87,7 @@ static func build(vox, voxel_size: float, use_ao: bool, color_tolerance := 0, an
 	var opaque := PackedByteArray()
 	opaque.resize(256)
 	for c in range(1, 256):
-		opaque[c] = 1 if Parser.is_opaque(mats[c]) else 0
+		opaque[c] = 1 if Model.is_opaque(mats[c]) else 0
 
 	var lin := PackedColorArray()
 	lin.resize(256)
@@ -169,7 +169,7 @@ static func build(vox, voxel_size: float, use_ao: bool, color_tolerance := 0, an
 						if n == 0:
 							vis = true
 							# don't draw water sides at the edge of the model
-							if mats[c] == Parser.MAT_WATER and a != 2:
+							if mats[c] == Model.MAT_WATER and a != 2:
 								var na: int = i + sgn
 								if na < 0 or na >= da:
 									vis = false
@@ -180,7 +180,7 @@ static func build(vox, voxel_size: float, use_ao: bool, color_tolerance := 0, an
 						if not vis:
 							continue
 						var key := cg
-						if use_ao and mats[c] != Parser.MAT_EMIT and mats[c] != Parser.MAT_FLAG and opaque[c] == 1:
+						if use_ao and mats[c] != Model.MAT_EMIT and mats[c] != Model.MAT_FLAG and opaque[c] == 1:
 							# 4 corners: (u-,v-), (u+,v-), (u+,v+), (u-,v+)
 							var b := nidx
 							var um: int = opaque[vol[b - su]]
@@ -208,7 +208,7 @@ static func build(vox, voxel_size: float, use_ao: bool, color_tolerance := 0, an
 							continue
 						var w := 1
 						# don't merge water: a fine grid lets the wave shader deform the surface
-						var single: bool = _key_material(key, mats, textured) == Parser.MAT_WATER
+						var single: bool = _key_material(key, mats, textured) == Model.MAT_WATER
 						while not single and ju + w < du and mask[ju + w + jv * du] == key:
 							w += 1
 						var hgt := 1
@@ -261,15 +261,15 @@ static func build(vox, voxel_size: float, use_ao: bool, color_tolerance := 0, an
 		arrays[Mesh.ARRAY_TEX_UV2] = PackedVector2Array(s.u2)
 		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 		var path: String = MATERIAL_PATHS[m]
-		if animation == "float" and Parser.is_opaque(m) and m != Parser.MAT_EMIT:
+		if animation == "float" and Model.is_opaque(m) and m != Model.MAT_EMIT:
 			path = FLOAT_MATERIAL if block == Vector3.ZERO else FLOAT_PLANT_MATERIAL
-		elif animation == "wind" and m == Parser.MAT_OPAQUE:
+		elif animation == "wind" and m == Model.MAT_OPAQUE:
 			path = WIND_MATERIAL
-		elif animation == "flowers" and m == Parser.MAT_OPAQUE:
+		elif animation == "flowers" and m == Model.MAT_OPAQUE:
 			path = FLOWER_MATERIAL
 		var mat = load(path)
 		mesh.surface_set_material(mesh.get_surface_count() - 1, mat)
-		mesh.surface_set_name(mesh.get_surface_count() - 1, Parser.MATERIAL_NAMES[m])
+		mesh.surface_set_name(mesh.get_surface_count() - 1, Model.MATERIAL_NAMES[m])
 	if block != Vector3.ZERO:
 		# sides that are completely closed (opaque) hide the side of the neighbouring cell
 		var solid := 0
@@ -293,7 +293,7 @@ const BAYER := [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5]
 ## (most common colour of its top layer, or of what is seen from above when that layer is
 ## sparse; empty if all are empty).
 static func downscale(vox, f: int):
-	var out = Parser.new()
+	var out = Model.new()
 	out.palette = vox.palette
 	out.materials = vox.materials
 	var sx: int = vox.size.x
@@ -551,7 +551,7 @@ static func _emit_quad(surf: Array, key: int, a: int, u: int, v: int, sgn: int, 
 	var side := REST
 	if block != Vector3.ZERO:
 		side = _cell_side(pts, n, block)
-		if side != REST and Parser.is_opaque(mat):
+		if side != REST and Model.is_opaque(mat):
 			covered[side] += w * hgt * vs * vs
 	var s: Dictionary = surf[mat][side]
 	for t in tris:

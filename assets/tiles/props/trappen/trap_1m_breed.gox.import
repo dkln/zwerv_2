@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://bf67rcp2yjbhx"
+path="res://.godot/imported/trap_1m_breed.gox-5577708f4e6a2ceae594c358e75548db.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/props/trappen/trap_1m_breed.gox"
+dest_files=["res://.godot/imported/trap_1m_breed.gox-5577708f4e6a2ceae594c358e75548db.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(0, 0, 0)

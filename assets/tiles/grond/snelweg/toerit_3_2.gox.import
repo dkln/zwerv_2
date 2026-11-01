@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://ck7cj16i3hj4j"
+path="res://.godot/imported/toerit_3_2.gox-f6221fdfe466f8b935fe8321d00149d7.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/grond/snelweg/toerit_3_2.gox"
+dest_files=["res://.godot/imported/toerit_3_2.gox-f6221fdfe466f8b935fe8321d00149d7.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(4, 1.5, 4)

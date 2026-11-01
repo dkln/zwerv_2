@@ -1,8 +1,5 @@
 {
 	"id": 324,
-	"materials": {
-		"2": "gravel"
-	},
 	"smooth": {
 		"shape": "heuvel_top",
 		"lift": 2

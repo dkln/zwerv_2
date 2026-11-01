@@ -16,11 +16,11 @@ extends RefCounted
 ## The work is spread over frames (BUDGET_USEC per frame), so `bake` must be awaited.
 
 const Mesher = preload("res://addons/vox_tiles/importer/vox_mesher.gd")
-const Parser = preload("res://addons/vox_tiles/importer/vox_parser.gd")
+const Model = preload("res://addons/vox_tiles/importer/voxel_model.gd")
 
 ## Materials whose shaders compute in mesh-local coordinates: tiles using them stay separate.
 const LOCAL_MATERIALS := [
-	Mesher.MATERIAL_PATHS[Parser.MAT_FLAG],
+	Mesher.MATERIAL_PATHS[Model.MAT_FLAG],
 	Mesher.WIND_MATERIAL,
 	Mesher.FLOWER_MATERIAL,
 	Mesher.FLOAT_MATERIAL,

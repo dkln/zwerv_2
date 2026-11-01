@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://dunldj40ejb18"
+path="res://.godot/imported/loods_staal_bg_kantoor.gox-67700b5cbcce7a1a6b8e42fc1aa760f0.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/gebouwen/loods_staal/loods_staal_bg_kantoor.gox"
+dest_files=["res://.godot/imported/loods_staal_bg_kantoor.gox-67700b5cbcce7a1a6b8e42fc1aa760f0.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(4, 3, 4)

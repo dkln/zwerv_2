@@ -1,21 +1,21 @@
-"""Voxel model with drawing helpers, a minimal MagicaVoxel (.vox) writer and the
-.tile.json metadata writer.
+"""Voxel model with drawing helpers, the Goxel (.gox) tile writer, the colour ->
+material table and the .tile.json metadata writer.
 
 Pipeline position: palette.py defines the global colours -> tile modules build a
-``V`` model with the helpers below -> generate.py calls ``write_vox`` and
-``write_metadata`` for every registered tile.
+``V`` model with the helpers below -> generate.py calls ``write_tile`` and
+``write_metadata`` for every registered tile and ``write_material_table`` once.
 
-Coordinates follow MagicaVoxel: x = left->right, y = front->back, z = up; sizes are
-in voxels of 12.5 cm. The front of a tile is the y=0 side (Godot +Z). Voxel values
-in a V are *global* colour ids from palette.P (0 = empty); write_vox maps them to
-the 255 palette slots of the file.
+Coordinates follow Goxel: x = left->right, y = front->back, z = up; sizes are in
+voxels of 12.5 cm. The front of a tile is the y=0 side (Godot +Z). Voxel values in a
+V are *global* colour ids from palette.P (0 = empty); write_tile stores their colours.
 """
 import json
 import os
 import struct
 from array import array
 
-from palette import PALETTE, MATERIALS, P, ORDER, WATER_START, FLAG_START
+from palette import PALETTE, P, godot_material
+from gox import write_layers
 from common import SLOPES, CURVES, SMOOTH
 
 
@@ -233,111 +233,60 @@ class V:
         return sum(1 for v in self.d if v)
 
 
-# ---------------------------------------------------------------- .vox writing
+# ---------------------------------------------------------------- .gox writing
 
-def _chunk(cid, content, children=b""):
-    """Encode a RIFF-style .vox chunk: id, content size, children size, content, children."""
-    return cid + struct.pack("<ii", len(content), len(children)) + content + children
-
-
-def _dict(d):
-    """Encode a .vox DICT: entry count, then (len, key, len, value) with values as strings."""
-    out = struct.pack("<i", len(d))
-    for k, v in d.items():
-        kb, vb = k.encode(), str(v).encode()
-        out += struct.pack("<i", len(kb)) + kb + struct.pack("<i", len(vb)) + vb
-    return out
-
-
-def _matl(mat):
-    """MagicaVoxel MATL properties for a palette material tag (diffuse for anything else)."""
-    if mat == "glass":
-        return {"_type": "_glass", "_trans": "0.5", "_rough": "0.05", "_ior": "0.5", "_d": "0.05"}
-    if mat == "water":
-        return {"_type": "_glass", "_trans": "0.6", "_rough": "0.1", "_ior": "0.33", "_d": "0.2"}
-    if mat == "emit":
-        return {"_type": "_emit", "_emit": "1", "_flux": "2", "_ldr": "0.5"}
-    if mat == "metal":
-        return {"_type": "_metal", "_metal": "0.7", "_rough": "0.3", "_sp": "0.5"}
-    if mat == "paneel":   # glossy metal (solar panels); the importer checks _rough < 0.15
-        return {"_type": "_metal", "_metal": "0.8", "_rough": "0.1", "_sp": "0.8"}
-    return {"_type": "_diffuse"}
-
-
-_SPECIAL = ("water", "flag")   # materials with their own fixed slot range in every file
-
-
-def _fill_slots(slots, used, pool, start, end):
-    """Assign file slots start..end (inclusive): first the ``used`` ids, then the rest of
-    ``pool`` (in palette order) until the range is full. Writes into ``slots``."""
-    n = start
-    for c in used + [c for c in pool if c not in used]:
-        if n > end:
-            break
-        slots[c] = n
-        n += 1
-
-
-def write_vox(path, m):
-    """Write model ``m`` to ``path`` as a MagicaVoxel .vox (version 150); returns the voxel count.
-
-    A .vox palette has only 255 slots, so every file gets its own palette built
-    from the global colour ids:
-      * slots 1..WATER_START-1 (1..224): the normal colours used by this tile first
-        (sorted by global id), then the remaining normal colours in palette ORDER
-        until the range is full, so they are available for editing in MagicaVoxel;
-      * slots WATER_START..FLAG_START-1 (225..232): water colours, used ones first,
-        then the other water colours;
-      * slots FLAG_START..FLAG_START+15 (233..248): flag colours, same scheme.
-    Fixed ranges let the Godot importer recognise water/flag by index as well as by
-    colour. Slots left over are black. One MATL chunk per slot 1..255 stores the
-    material of that slot (see _matl). Asserts when a tile uses too many colours.
-    """
-    used = sorted(set(m.d) - {0})
-    normal = [c for c in used if MATERIALS.get(c) not in _SPECIAL]
-    water = [c for c in used if MATERIALS.get(c) == "water"]
-    flag = [c for c in used if MATERIALS.get(c) == "flag"]
-    assert len(normal) <= WATER_START - 1, f"{path}: too many colours ({len(normal)})"
-    assert len(water) <= 8, f"{path}: too many water colours"
-    assert len(flag) <= 16, f"{path}: too many flag colours"
-    slots = {}   # global id -> file palette slot
-    _fill_slots(slots, normal, [c for c in ORDER if MATERIALS.get(c) not in _SPECIAL], 1, WATER_START - 1)
-    _fill_slots(slots, water, [c for c in ORDER if MATERIALS.get(c) == "water"], WATER_START, FLAG_START - 1)
-    _fill_slots(slots, flag, [c for c in ORDER if MATERIALS.get(c) == "flag"], FLAG_START, FLAG_START + 15)
-    file_pal = {v: k for k, v in slots.items()}   # file slot -> global id
-
-    # XYZI: one (x, y, z, slot) byte quad per voxel, in z/y/x order
-    voxels = bytearray()
-    n = 0
+def write_tile(path, m):
+    """Write model ``m`` (global colour ids) to ``path`` as a Goxel .gox with one layer
+    "model"; returns the voxel count. The colour of a voxel is all a tile stores: the
+    importer looks its material up in the colour table (write_material_table)."""
+    voxels = {}
     for z in range(m.sz):
         for y in range(m.sy):
+            base = m.sx * (y + m.sy * z)
             for x in range(m.sx):
-                c = m.d[m._i(x, y, z)]
+                c = m.d[base + x]
                 if c:
-                    voxels += bytes((x, y, z, slots[c]))
-                    n += 1
-    size = _chunk(b"SIZE", struct.pack("<iii", m.sx, m.sy, m.sz))
-    xyzi = _chunk(b"XYZI", struct.pack("<i", n) + bytes(voxels))
-    # RGBA: 256 entries; entry k holds the colour of palette slot k + 1
-    rgba = bytearray()
-    for i in range(1, 257):
-        gid = file_pal.get(i)
-        r, g, b = PALETTE[gid] if gid else (0, 0, 0)
-        rgba += bytes((r, g, b, 255))
-    rgba_chunk = _chunk(b"RGBA", bytes(rgba))
-    matl = b""
-    for i in range(1, 256):
-        gid = file_pal.get(i)
-        matl += _chunk(b"MATL", struct.pack("<i", i) + _dict(_matl(MATERIALS.get(gid) if gid else None)))
-    children = size + xyzi + rgba_chunk + matl
-    data = b"VOX " + struct.pack("<i", 150) + _chunk(b"MAIN", b"", children)
-    with open(path, "wb") as fh:
-        fh.write(data)
-    return n
+                    voxels[(x, y, z)] = PALETTE[c]
+    return write_layers(path, (m.sx, m.sy, m.sz), [("model", None, voxels)])
+
+
+# Material names of the Godot importer (addons/vox_tiles/importer/voxel_model.gd
+# MATERIAL_NAMES); a Goxel layer with one of these names forces that material.
+MATERIAL_NAMES = ("opaque", "metal", "glass", "emit", "water", "flag", "panel", "asphalt", "stone", "brick",
+                  "gravel", "painted", "paving", "cobble", "plaster")
+
+
+# Colour -> material table of the whole project, read by the Godot importer
+# (addons/vox_tiles/importer/voxel_model.gd).
+MATERIAL_TABLE = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "assets", "tiles", "materialen.json"))
+
+
+def material_table():
+    """"#rrggbb" -> Godot material name for every palette colour that is not plain
+    opaque. Asserts that no colour is used with two different materials."""
+    out = {}
+    for gid, rgb in PALETTE.items():
+        mat = godot_material(gid)
+        key = "#%02x%02x%02x" % rgb
+        assert out.get(key, mat) == mat, f"colour {key} has two materials: {out[key]} and {mat}"
+        if mat != "opaque" or key in out:
+            out[key] = mat
+    return dict(sorted(out.items(), key=lambda kv: (kv[1], kv[0])))
+
+
+def write_material_table(path=MATERIAL_TABLE):
+    """Write the colour table (material_table) as JSON, only when it changed (a change
+    makes Godot reimport every tile). Returns the path."""
+    text = json.dumps(material_table(), indent="\t") + "\n"
+    old = open(path).read() if os.path.exists(path) else None
+    if old != text:
+        with open(path, "w") as fh:
+            fh.write(text)
+    return path
 
 
 # ---------------------------------------------------------------- tile metadata
-# <tile>.tile.json next to each .vox, read by addons/vox_tiles/importer/tile_metadata.gd.
+# <tile>.tile.json next to each tile file, read by addons/vox_tiles/importer/tile_metadata.gd.
 
 # tile base names that bob on the water (animation "float")
 _FLOAT_PREFIXES = ("sloep", "roeiboot", "reddingsboei", "woonboot", "water_lelies")
@@ -362,79 +311,6 @@ def tile_animation(name):
     return None
 
 
-def _read_vox_palette(path):
-    """The used palette slots of a .vox file: slot -> ((r, g, b), MATL dict).
-    MATL is MagicaVoxel's material per slot ({"_type": "_metal", "_rough": ...});
-    empty when the file has none for that slot."""
-    with open(path, "rb") as fh:
-        data = fh.read()
-    used, rgba, matl = set(), {}, {}
-    pos = 8
-    while pos + 12 <= len(data):
-        cid = data[pos:pos + 4]
-        content, children = struct.unpack("<ii", data[pos + 4:pos + 12])
-        body = data[pos + 12:pos + 12 + content]
-        if cid == b"MAIN":   # descend into MAIN's children
-            pos += 12
-            continue
-        if cid == b"XYZI" and not used:   # first model only; byte 3 of each voxel = slot
-            n = struct.unpack("<i", body[:4])[0]
-            used = {body[4 + k * 4 + 3] for k in range(n)}
-        elif cid == b"RGBA":   # entry i - 1 is slot i
-            for i in range(1, 256):
-                rgba[i] = tuple(body[(i - 1) * 4:(i - 1) * 4 + 3])
-        elif cid == b"MATL":
-            matl[struct.unpack("<i", body[:4])[0]] = _read_dict(body, 4)
-        pos += 12 + content + children
-    return {i: (rgba[i], matl.get(i, {})) for i in sorted(used) if i in rgba}
-
-
-def _read_dict(body, pos):
-    """Parse a MagicaVoxel DICT (count, then length-prefixed key/value strings)."""
-    out = {}
-    (n,) = struct.unpack("<i", body[pos:pos + 4])
-    pos += 4
-    for _ in range(n):
-        parts = []
-        for _ in range(2):
-            (ln,) = struct.unpack("<i", body[pos:pos + 4])
-            parts.append(body[pos + 4:pos + 4 + ln].decode())
-            pos += 4 + ln
-        out[parts[0]] = parts[1]
-    return out
-
-
-# Surface materials MagicaVoxel doesn't know (asphalt, stone, brick, gravel, painted, paving, cobble, plaster)
-# can only be found by
-# colour. rgb -> material, only where unambiguous: different palette entries can
-# share an rgb (e.g. 'antraciet2' and 'metaal_donker').
-_COLOR_MATERIALS = {}
-for _gid, _rgb in PALETTE.items():
-    # water and flag colours only count on their reserved slots (checked first in
-    # _material_at), so they don't make an rgb ambiguous elsewhere
-    if MATERIALS.get(_gid) not in ("water", "flag"):
-        _COLOR_MATERIALS.setdefault(_rgb, set()).add(MATERIALS.get(_gid))
-_SURFACE_COLOR = {rgb: next(iter(m)) for rgb, m in _COLOR_MATERIALS.items()
-                  if len(m) == 1 and next(iter(m)) in ("asphalt", "stone", "brick", "gravel", "painted", "paving", "cobble", "plaster")}
-
-
-def _material_at(slot, rgb, matl):
-    """Metadata material of a palette slot, or None for plain opaque. Water and
-    flag follow from the reserved slot ranges (write_vox puts them there), metal,
-    panel, glass and emit from the slot's MATL, asphalt and stone from the colour.
-    The same rules as the Godot importer's parser (vox_parser.gd)."""
-    kind = matl.get("_type", "_diffuse")
-    if FLAG_START <= slot < FLAG_START + 16:
-        return "flag"
-    if kind in ("_glass", "_blend"):
-        return "water" if WATER_START <= slot < FLAG_START else "glass"
-    if kind == "_emit":
-        return "emit"
-    if kind == "_metal":
-        return "panel" if float(matl.get("_rough", "1")) < 0.15 else "metal"
-    return _SURFACE_COLOR.get(rgb)
-
-
 _LIBRARIES = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "assets", "libraries"))
 _registries = {}   # category -> {tile key: id}, loaded on first use
 
@@ -450,31 +326,32 @@ def registry_id(name):
     return _registries[cat].get(key)
 
 
-def write_metadata(vox_path, name):
-    """Write <tile>.tile.json next to ``vox_path`` for tile path ``name``.
+def write_metadata(tile_path, name):
+    """Write <tile>.tile.json next to ``tile_path`` (the .gox) for tile path ``name``.
 
     Contents:
     - ``"id"``: the MeshLibrary item id. An id already in the file is kept (it may
       have been chosen by hand); otherwise the id from the registry (registry_id).
     - ``"animation"`` (from tile_animation).
-    - ``"materials"``: palette index (as string) -> material for every *used*
-      index whose colour has a special material (water, flag, glass, metal,
-      panel, emit, asphalt, stone, brick, gravel, painted, paving, cobble,
-      plaster). The palette is read back from the .vox
-      itself, so the metadata stays correct after edits in MagicaVoxel.
+    - ``"materials"``: only "#rrggbb" overrides already in the file (made by hand) are
+      kept; the materials of the palette colours come from the colour table
+      (write_material_table), not from the tile metadata.
     - ``"slopes"``: slope shapes the importer makes of the tile, and ``"curve"``:
       [i, j, parts] of a curve cell for the curve shapes (common.slopes).
     - ``"smooth"``: the tile is a padded block the importer smooths (common.smooth).
     The file is removed when there is nothing to record and left untouched when
     its content would not change. Returns the metadata dict, or None.
     """
-    meta_path = os.path.splitext(vox_path)[0] + ".tile.json"
+    meta_path = os.path.splitext(tile_path)[0] + ".tile.json"
     old = open(meta_path).read() if os.path.exists(meta_path) else None
     meta = {}
     try:
-        tile_id = json.loads(old).get("id") if old else None
-    except (ValueError, AttributeError):
-        tile_id = None
+        old_meta = json.loads(old) if old else {}
+        if not isinstance(old_meta, dict):
+            old_meta = {}
+    except ValueError:
+        old_meta = {}
+    tile_id = old_meta.get("id")
     if tile_id is None:
         tile_id = registry_id(name)
     if tile_id is not None:
@@ -482,11 +359,8 @@ def write_metadata(vox_path, name):
     anim = tile_animation(name)
     if anim:
         meta["animation"] = anim
-    mats = {}
-    for i, (rgb, matl) in _read_vox_palette(vox_path).items():
-        mat = _material_at(i, rgb, matl)
-        if mat:
-            mats[str(i)] = mat
+    old_mats = old_meta.get("materials")
+    mats = {k: v for k, v in old_mats.items() if k.startswith("#")} if isinstance(old_mats, dict) else {}
     if mats:
         meta["materials"] = mats
     if name in SLOPES:

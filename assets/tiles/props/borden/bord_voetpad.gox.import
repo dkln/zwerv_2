@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://u05dgil60jih"
+path="res://.godot/imported/bord_voetpad.gox-37f2eafeab91dd394108db2f60737eb5.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/props/borden/bord_voetpad.gox"
+dest_files=["res://.godot/imported/bord_voetpad.gox-37f2eafeab91dd394108db2f60737eb5.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(0, 0, 0)

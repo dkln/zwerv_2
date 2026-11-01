@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://p7762go85vwe"
+path="res://.godot/imported/leisteen_piramide.gox-3f7c1ccc33b8941773c885de3911e407.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/gebouwen/daken/leisteen/leisteen_piramide.gox"
+dest_files=["res://.godot/imported/leisteen_piramide.gox-3f7c1ccc33b8941773c885de3911e407.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(4, 3, 4)

@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://dhtc5ov5n5tli"
+path="res://.godot/imported/schuur_zwart_dak_schuin_dakkapel.gox-9c7cd276ecabd66d73048e1e2f269149.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/gebouwen/schuur_zwart/schuur_zwart_dak_schuin_dakkapel.gox"
+dest_files=["res://.godot/imported/schuur_zwart_dak_schuin_dakkapel.gox-9c7cd276ecabd66d73048e1e2f269149.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(4, 3, 4)

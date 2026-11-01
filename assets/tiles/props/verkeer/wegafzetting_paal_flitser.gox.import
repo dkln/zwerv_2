@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://dwqnnlbqb885x"
+path="res://.godot/imported/wegafzetting_paal_flitser.gox-4aeca87ac34ff47c875d7d47f8316a7f.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/props/verkeer/wegafzetting_paal_flitser.gox"
+dest_files=["res://.godot/imported/wegafzetting_paal_flitser.gox-4aeca87ac34ff47c875d7d47f8316a7f.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(0, 0, 0)

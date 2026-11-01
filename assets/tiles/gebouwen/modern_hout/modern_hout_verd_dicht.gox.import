@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://b5fbsryvx7ck5"
+path="res://.godot/imported/modern_hout_verd_dicht.gox-16d899c199622682a0f28396bda662a0.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/gebouwen/modern_hout/modern_hout_verd_dicht.gox"
+dest_files=["res://.godot/imported/modern_hout_verd_dicht.gox-16d899c199622682a0f28396bda662a0.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(4, 3, 4)

@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://bjig3e15tws5k"
+path="res://.godot/imported/universiteit_dak_plat_eind.gox-cc1c61c34d33a598b4179568aa5fb222.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/gebouwen/universiteit/universiteit_dak_plat_eind.gox"
+dest_files=["res://.godot/imported/universiteit_dak_plat_eind.gox-cc1c61c34d33a598b4179568aa5fb222.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(4, 3, 4)

@@ -1,11 +1,3 @@
 {
-	"id": 211,
-	"materials": {
-		"1": "metal",
-		"2": "painted",
-		"3": "painted",
-		"4": "painted",
-		"5": "emit",
-		"6": "emit"
-	}
+	"id": 211
 }

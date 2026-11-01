@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://bag23swvv6rcl"
+path="res://.godot/imported/fiets_rood.gox-42d8992bd1bfcd1a66fbd7925424bf27.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/props/verkeerslichten/fiets_rood.gox"
+dest_files=["res://.godot/imported/fiets_rood.gox-42d8992bd1bfcd1a66fbd7925424bf27.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(0, 0, 0)

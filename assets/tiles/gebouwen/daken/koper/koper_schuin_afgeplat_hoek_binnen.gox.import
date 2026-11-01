@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://dssfnfacta5xd"
+path="res://.godot/imported/koper_schuin_afgeplat_hoek_binnen.gox-25831b9edee20879f1e3ca2c4ee226bb.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/gebouwen/daken/koper/koper_schuin_afgeplat_hoek_binnen.gox"
+dest_files=["res://.godot/imported/koper_schuin_afgeplat_hoek_binnen.gox-25831b9edee20879f1e3ca2c4ee226bb.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(4, 3, 4)

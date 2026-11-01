@@ -1,17 +1,18 @@
 @tool
 extends EditorImportPlugin
-## Imports a MagicaVoxel .vox tile as an ArrayMesh. When you save a tile in
-## MagicaVoxel, Godot reimports it and plugin.gd updates the GridMap library.
+## Imports a voxel tile, a Goxel .gox (or a MagicaVoxel .vox), as an ArrayMesh. When
+## you save a tile in Goxel, Godot reimports it and plugin.gd updates the GridMap library.
 ##
-## Steps: parse the .vox (vox_parser.gd) -> apply the tile metadata
-## (`<name>.tile.json`, tile_metadata.gd) -> build the mesh (vox_mesher.gd) ->
-## attach two coarse versions as meta "lod" and "lod2", which library_builder.gd
-## puts in the coarse libraries. A hand-made `<name>.lod.vox` replaces both.
+## Steps: read the model and work out its materials with the tile metadata
+## (`<name>.tile.json`, tile_metadata.gd) and the colour table (voxel_model.gd) ->
+## build the mesh (vox_mesher.gd) -> attach two coarse versions as meta "lod" and
+## "lod2", which library_builder.gd puts in the coarse libraries. A hand-made
+## `<name>.lod.gox` replaces both.
 ## Slope variants listed in the metadata ("slopes", see slopes.gd) are built the same
 ## way from a padded block of the tile, moved onto the smooth slope, and attached as
 ## meta "slopes" ({shape: ArrayMesh}).
 
-const Parser = preload("res://addons/vox_tiles/importer/vox_parser.gd")
+const Model = preload("res://addons/vox_tiles/importer/voxel_model.gd")
 const Mesher = preload("res://addons/vox_tiles/importer/vox_mesher.gd")
 const TileMetadata = preload("res://addons/vox_tiles/importer/tile_metadata.gd")
 const Slopes = preload("res://addons/vox_tiles/importer/slopes.gd")
@@ -45,11 +46,11 @@ func _get_importer_name() -> String:
 
 
 func _get_visible_name() -> String:
-	return "Voxel Tile (MagicaVoxel)"
+	return "Voxel Tile (Goxel / MagicaVoxel)"
 
 
 func _get_recognized_extensions() -> PackedStringArray:
-	return PackedStringArray(["vox"])
+	return PackedStringArray(Model.EXTENSIONS)
 
 
 func _get_save_extension() -> String:
@@ -86,8 +87,9 @@ func _get_option_visibility(path: String, option_name: StringName, options: Dict
 ## Raise it whenever the mesh format changes (vertex colours, UVs, metadata), so Godot
 ## reimports every tile instead of keeping meshes the shaders no longer understand.
 ## 6: textured tiles keep the face's average colour in the vertex rgb (AO in alpha).
+## 7: materials by colour (colour table) instead of by palette index.
 func _get_format_version() -> int:
-	return 6
+	return 7
 
 
 func _get_priority() -> float:
@@ -142,7 +144,7 @@ func _import(source_file: String, save_path: String, options: Dictionary, platfo
 	var mesh := Mesher.build(vox, _option(options, "voxel_size"), _option(options, "ambient_occlusion"),
 		_option(options, "color_merge"), animation, block, textured)
 	mesh.resource_name = source_file.get_file().get_basename()
-	# a .lod.vox is only used through its tile: no coarse versions of the coarse version
+	# a .lod.gox is only used through its tile: no coarse versions of the coarse version
 	if not TileMetadata.is_lod_file(source_file):
 		var err := _add_lods(mesh, vox, source_file, meta, options, animation, block, textured)
 		if err != OK:
@@ -160,7 +162,7 @@ func _import(source_file: String, save_path: String, options: Dictionary, platfo
 			var slope := Mesher.build(padded, vs, _option(options, "ambient_occlusion"),
 				_option(options, "color_merge"), animation, block, textured)
 			slope.resource_name = mesh.resource_name + "_" + shape
-			# automatic coarse versions only: a .lod.vox belongs to the flat tile
+			# automatic coarse versions only: a .lod.gox belongs to the flat tile
 			_add_lods(slope, padded, "", {}, options, animation, block, textured)
 			_smooth_all(slope, plan, options, block)
 			slopes[shape] = slope
@@ -218,12 +220,9 @@ func _coarse(mesh: ArrayMesh, level: String, vox, vs: float, tol: int, animation
 	return lod
 
 
-## Parses a .vox and applies the materials from the metadata; null on failure.
+## Reads a tile model with its materials resolved (voxel_model.gd); null on failure.
 func _load_vox(path: String, meta: Dictionary):
-	var vox = Parser.load_file(path)
-	if vox != null:
-		TileMetadata.apply_materials(vox, meta, path)
-	return vox
+	return Model.load_file(path, meta)
 
 
 ## Animation chosen in the import options, or resolve_animation() for Auto.

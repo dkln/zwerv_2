@@ -1,7 +1,4 @@
 {
 	"id": 72,
-	"animation": "wind",
-	"materials": {
-		"2": "stone"
-	}
+	"animation": "wind"
 }

@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://b6p347k1do3jc"
+path="res://.godot/imported/herenhuis_1900_verd_erker_hoek.gox-813b924231d2da3866a3672fb9b72d61.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/gebouwen/herenhuis_1900/herenhuis_1900_verd_erker_hoek.gox"
+dest_files=["res://.godot/imported/herenhuis_1900_verd_erker_hoek.gox-813b924231d2da3866a3672fb9b72d61.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(4, 3, 4)

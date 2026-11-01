@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://dr5k13gdy6ha7"
+path="res://.godot/imported/modern_hout_verd_raam_breed_hoek.gox-89d8724ba652fa8670e4847ffc40cd4d.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/gebouwen/modern_hout/modern_hout_verd_raam_breed_hoek.gox"
+dest_files=["res://.godot/imported/modern_hout_verd_raam_breed_hoek.gox-89d8724ba652fa8670e4847ffc40cd4d.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(4, 3, 4)

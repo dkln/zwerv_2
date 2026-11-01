@@ -1,11 +1,12 @@
 @tool
 extends EditorPlugin
-## Vox Tiles: registers the .vox importer and keeps the GridMap libraries up to date.
+## Vox Tiles: registers the tile importer (.gox and .vox) and keeps the GridMap
+## libraries up to date.
 ##
-## Flow in the editor: you save a .vox -> Godot reimports it (vox_import_plugin.gd)
+## Flow in the editor: you save a .gox -> Godot reimports it (vox_import_plugin.gd)
 ## -> _on_reimported() remembers the path -> a second later _flush() rebuilds the
-## affected libraries (library_builder.gd). Saving a side file (.tile.json or
-## .lod.vox, see tile_metadata.gd) triggers a reimport of its tile first.
+## affected libraries (library_builder.gd). Saving a side file (.tile.json, .lod.gox or
+## the colour table, see tile_metadata.gd) triggers a reimport of its tiles first.
 ##
 ## Scenes built with the tiles are marked as a "Vox Tiles scene" (checkbox at the top of
 ## the Build dock, saved as metadata on the scene root). In such a scene the 3D views
@@ -17,6 +18,7 @@ extends EditorPlugin
 
 const Builder = preload("res://addons/vox_tiles/library/library_builder.gd")
 const TileMetadata = preload("res://addons/vox_tiles/importer/tile_metadata.gd")
+const Model = preload("res://addons/vox_tiles/importer/voxel_model.gd")
 const Importer = preload("res://addons/vox_tiles/importer/vox_import_plugin.gd")
 const BuildTools = preload("res://addons/vox_tiles/editor/build_tools.gd")
 const EditorView = preload("res://addons/vox_tiles/editor/editor_view.gd")
@@ -30,7 +32,7 @@ var _preview: ScenePreview
 var _timer: Timer
 var _pending := {}
 var _busy := false
-var _meta_handled := {}   # vox path -> side file mtime that was already reimported
+var _meta_handled := {}   # model path -> side file mtime that was already reimported
 
 
 func _enter_tree() -> void:
@@ -83,7 +85,7 @@ func _exit_tree() -> void:
 ## Collects reimported tiles; the libraries are rebuilt in _flush().
 func _on_reimported(paths: PackedStringArray) -> void:
 	for p in paths:
-		if p.begins_with(Builder.TILE_ROOT) and p.get_extension() == "vox":
+		if p.begins_with(Builder.TILE_ROOT) and Model.is_model_file(p):
 			_pending[p] = true
 	_schedule()
 
@@ -107,8 +109,8 @@ func _flush() -> void:
 	if _busy or EditorInterface.get_resource_filesystem().is_scanning():
 		_timer.start()
 		return
-	# Godot only watches the .vox itself; reimport tiles whose metadata or coarse
-	# version (.lod.vox) is newer than their last import. Their libraries are
+	# Godot only watches the model itself; reimport tiles whose metadata, coarse
+	# version (.lod.gox) or colour table is newer than their last import. Their libraries are
 	# updated after the reimport.
 	var stale := _tiles_with_newer_side_files()
 	if not stale.is_empty():
@@ -126,7 +128,7 @@ func _flush() -> void:
 func _tiles_with_newer_side_files() -> PackedStringArray:
 	var out := PackedStringArray()
 	var files := PackedStringArray()
-	Builder.list_vox(Builder.TILE_ROOT, files)
+	Builder.list_tiles(Builder.TILE_ROOT, files)
 	for vox in files:
 		var t := 0
 		for side_file in TileMetadata.side_files(vox):

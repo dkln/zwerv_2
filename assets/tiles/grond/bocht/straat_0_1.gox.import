@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://pucbg2s8tk3q"
+path="res://.godot/imported/straat_0_1.gox-83161b84df8ab2d5269745eed637a6e2.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/grond/bocht/straat_0_1.gox"
+dest_files=["res://.godot/imported/straat_0_1.gox-83161b84df8ab2d5269745eed637a6e2.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(4, 1.5, 4)

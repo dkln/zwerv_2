@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://bh4gjaeu6b3oj"
+path="res://.godot/imported/kantoor_2000_bg_kolonnade.gox-c6ba899fd3b5de2d6cf3cc8d0315da5c.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/gebouwen/kantoor_2000/kantoor_2000_bg_kolonnade.gox"
+dest_files=["res://.godot/imported/kantoor_2000_bg_kolonnade.gox-c6ba899fd3b5de2d6cf3cc8d0315da5c.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(4, 3, 4)

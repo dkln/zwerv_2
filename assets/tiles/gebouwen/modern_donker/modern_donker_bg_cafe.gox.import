@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://bgi228orrdh56"
+path="res://.godot/imported/modern_donker_bg_cafe.gox-18b813cfdb961c095e90b2c101c556f4.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/gebouwen/modern_donker/modern_donker_bg_cafe.gox"
+dest_files=["res://.godot/imported/modern_donker_bg_cafe.gox-18b813cfdb961c095e90b2c101c556f4.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(4, 3, 4)

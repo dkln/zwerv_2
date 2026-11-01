@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://ct7v32h4cb411"
+path="res://.godot/imported/pannen_antraciet_schuin_hoek_binnen.gox-7a693410d02b793fbc34c2eabeb6a025.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/gebouwen/daken/pannen_antraciet/pannen_antraciet_schuin_hoek_binnen.gox"
+dest_files=["res://.godot/imported/pannen_antraciet_schuin_hoek_binnen.gox-7a693410d02b793fbc34c2eabeb6a025.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(4, 3, 4)

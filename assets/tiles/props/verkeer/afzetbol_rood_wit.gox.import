@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://bij822t55ye4y"
+path="res://.godot/imported/afzetbol_rood_wit.gox-7bb6fd28229c06616683086882098e01.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/props/verkeer/afzetbol_rood_wit.gox"
+dest_files=["res://.godot/imported/afzetbol_rood_wit.gox-7bb6fd28229c06616683086882098e01.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(0, 0, 0)

@@ -2,9 +2,9 @@
 ZWERVR GAME
 ===========
 
-Een tile-gebaseerde wereldbouwer in Godot 4.7 met voxel-tiles uit MagicaVoxel.
+Een tile-gebaseerde wereldbouwer in Godot 4.7 met voxel-tiles uit Goxel.
 Je bouwt kaarten met vier GridMap-lagen (grond, gebouwen, details, props). Elke
-tile is een los `.vox` bestand dat je in MagicaVoxel kunt openen en aanpassen.
+tile is een los `.gox` bestand dat je in Goxel (open source) kunt openen en aanpassen.
 Na opslaan importeert Godot hem automatisch opnieuw.
 
 Er zijn ongeveer 2000 tiles. Ze staan allemaal in context in de voorbeeldkaart,
@@ -14,13 +14,15 @@ opgeknipt in 10 delen in `scenes/wereld/`.
 Projectstructuur
 ----------------
     addons/vox_tiles/      editor-plugin (plugin.gd, plugin.cfg)
-      importer/            .vox inlezen en meshen: vox_parser, vox_mesher, vox_import_plugin,
+      importer/            tiles inlezen en meshen: voxel_model, gox_parser (.gox),
+                           vox_parser (.vox), vox_mesher, vox_import_plugin,
                            slopes (hellingen/bochten), tile_metadata (.tile.json)
       library/             MeshLibraries bouwen: library_builder, atlas
       editor/              bouwpaneel en editor-weergave: build_dock, build_tools, stamps,
                            editor_view, outline, scene_preview
       materials/           shaders en materialen van de voxels
-    assets/                tiles (.vox + .tile.json), libraries (gemaakt), fonts
+    assets/                tiles (.gox + .tile.json, kleurentabel materialen.json),
+                           libraries (gemaakt), fonts
     scenes/                rondleiding.tscn, nieuwe_kaart.tscn, wereld/deel_NN.tscn
     scripts/               spelcode
       camera/              free_camera, iso_camera
@@ -38,7 +40,7 @@ Projectstructuur
       check/               coverage, fps_test, triangle_count, walk_test
       shots/               screenshots, shot_tiles, shot_iso, shot_scene, walk_shots
       voxgen/              Python-generator van de tiles (zie "Tiles (opnieuw) genereren")
-    docs/                  MagicaVoxel-handleiding (MAGICAVOXEL.md -> .html)
+    docs/                  Goxel-handleiding (GOXEL.md -> handleiding_goxel.html)
 
 
 Snel starten
@@ -212,7 +214,7 @@ Hoogtes en lagen (grond):
 - Hellingen (`helling/helling_*`) stijgen 1 laag over 1 tile; flauwe hellingen
   (`helling/flauw_*_a` en `_b`) stijgen 0,5 m per tile (a eerst, dan b).
   Zet `terrein/grond_blok` eronder als je verder ophoogt. De meeste hellingen
-  hebben geen eigen `.vox`: de importer maakt ze van de vlakke tile (`slopes` in
+  hebben geen eigen `.gox`: de importer maakt ze van de vlakke tile (`slopes` in
   de tile-metadata, zie hieronder).
 - Bruggen: brugdek op de gewenste laag, `brug_pijler` eronder gestapeld,
   `brug_pijler_kop` direct onder het dek en `brug_pijler_gras/stoep/water` op
@@ -299,7 +301,7 @@ Collision: grond en holle/beloopbare gebouwtiles hebben een exacte botsvorm;
 dichte gebouwblokken een doos van 4x3x4 m; props een omhullende doos.
 
 
-Kleur en tint aanpassen (zonder de .vox te wijzigen)
+Kleur en tint aanpassen (zonder de .gox te wijzigen)
 ----------------------------------------------------
 In elke kaart zit een node `TintKaart` (script `scripts/world/tint_map.gd`):
 - `variation`: geeft elke 4x4 m cel automatisch een net iets andere kleur.
@@ -338,7 +340,7 @@ Rook, water, vlaggen en voxelstructuur
   Houd `wave_height`, `wave_speed` en `wave_length` gelijk aan die van het
   water. Zulke tiles worden niet samengevoegd.
 - Zonnepanelen hebben een eigen glanzend materiaal (`materials/voxel_paneel.tres`,
-  een gewoon StandardMaterial3D). In MagicaVoxel: metaal met ruwheid onder 0,15.
+  een gewoon StandardMaterial3D); kleur `zonnepaneel` in het palet.
 - Glas is ondoorzichtig met een goedkope, nagebootste spiegeling (lucht, horizon,
   straat en lichte strepen; `reflection`), zie verderop.
 - Lampen, verkeerslichten en verlichte ramen (emit-materiaal, energie 6) geven
@@ -347,59 +349,63 @@ Rook, water, vlaggen en voxelstructuur
   dagcyclus), zodat verlichte ramen overdag geen witte vlekken zijn.
 - Vlaggen wapperen via `materials/voxel_vlag.tres` (`speed`, `strength`,
   `wavelength`). Hoe verder van de mast, hoe meer beweging.
-- In MagicaVoxel: paletkleuren 225-232 worden water, 233-248 worden
-  wapperend vlagdoek. De generator zet die kleuren automatisch op die plekken.
+- Water en vlagdoek zijn gewone kleuren uit het palet (`water1`, `vlag_rood`, …);
+  de kleurentabel `assets/tiles/materialen.json` geeft ze hun materiaal.
 
 
-Tiles aanpassen in MagicaVoxel
-------------------------------
-Uitgebreide, visuele handleiding (modelmaten, palet, materialen, metadata, met alle
-kleuren per paletnummer): `docs/handleiding_magicavoxel.html` (bron:
-`docs/MAGICAVOXEL.md`). Sjablonen met het juiste palet en de materialen staan in
-`tools/voxgen/paletten/` (`palet_straat.vox`, `palet_gebouwen.vox`); opnieuw maken met
+Tiles aanpassen in Goxel
+------------------------
+Uitgebreide, visuele handleiding (Goxel klaarzetten, modelmaten, palet, materialen,
+metadata, met alle kleuren): `docs/handleiding_goxel.html` (bron: `docs/GOXEL.md`).
+Het palet voor Goxel (`zwervr.gpl`), een kleurenoverzicht (`palet.gox`) en een
+legenda (`palet.md`) staan in `tools/voxgen/paletten/`; opnieuw maken met
 `python3 tools/voxgen/generate.py --palettes`.
 
-Alle tiles staan in `assets/tiles/<categorie>/<groep>/<naam>.vox`.
-1. Open een `.vox` in MagicaVoxel, pas aan, sla op (Ctrl+S).
+Alle tiles staan in `assets/tiles/<categorie>/<groep>/<naam>.gox`.
+1. Open een `.gox` in Goxel, pas aan, sla op (Ctrl+S).
 2. Ga terug naar Godot: de tile wordt automatisch opnieuw geïmporteerd en de
    bibliotheek (palet, preview en collision) wordt bijgewerkt.
 
 Belangrijk bij het bewerken:
-- Houd de modelgrootte (Size) gelijk; het draaipunt is het midden-onder van
-  het model. Grond-tiles 32x32, gebouwblokken 48x48 (blok in het midden, 8
-  voxels rand voor balkons en luifels).
-- De voorkant is de kant met de laagste Y in MagicaVoxel.
-- Materialen komen uit MagicaVoxel: metaal (`_metal`), glas (`_glass`) en
-  licht (`_emit`) worden in Godot metaal, doorzichtig glas en lichtgevend.
-  De tile-metadata (zie hieronder) gaat daar boven.
-- Elk bestand heeft een eigen palet (max 224 gewone kleuren + water + vlag).
-- Eén model per bestand (het eerste model wordt gebruikt).
+- Houd het kader van het model (paneel Image: Origin en Size) gelijk; het
+  draaipunt is het midden-onder van het kader. Grond-tiles 32x32 (Origin
+  -16, -16, 0), gebouwblokken 48x48 (blok in het midden, 8 voxels rand voor
+  balkons en luifels; Origin -24, -24, 0).
+- De voorkant is de kant met de laagste Y in Goxel.
+- Een `.gox` bewaart alleen kleuren. Het materiaal komt uit de kleur
+  (kleurentabel `assets/tiles/materialen.json`, gemaakt uit `palette.py`); teken
+  dus met de exacte kleuren van het palet Zwervr. Een laag met de naam van een
+  materiaal (`glass`, `emit`, `water`, …) dwingt dat materiaal af, de
+  tile-metadata (zie hieronder) gaat boven alles.
+- Alle zichtbare lagen samen vormen de tile; maximaal 255 kleuren per tile.
+- Oude MagicaVoxel-bestanden (`.vox`) worden nog gelezen; omzetten naar `.gox`
+  met `python3 tools/voxgen/convert_vox.py <bestand.vox>`.
 
 Tile-metadata (`<naam>.tile.json`)
 ----------------------------------
-Naast elke `.vox` kan een `<naam>.tile.json` staan met instellingen die
-MagicaVoxel niet kent:
+Naast elke `.gox` kan een `<naam>.tile.json` staan met instellingen die het
+modelbestand niet kent:
 
     {
         "animation": "float",
-        "materials": {"225": "water", "3": "glass", "#3a3a3e": "asphalt"}
+        "materials": {"#3a3a3e": "asphalt"}
     }
 
-- `animation`: `none`, `wind` (bomen, planten) of `float` (dobbert op het water).
-  Laat je hem weg, dan raadt de importer het aan de bestandsnaam.
-- `materials`: per palet-index (zoals MagicaVoxel hem toont) of `#rrggbb`-kleur
+- `animation`: `none`, `wind` (bomen, planten), `flowers` (bloemperken) of
+  `float` (dobbert op het water). Laat je hem weg, dan raadt de importer het aan
+  de bestandsnaam.
+- `materials`: alleen voor uitzonderingen in deze tile: per `#rrggbb`-kleur
   een materiaal: `opaque`, `metal`, `panel` (glanzend, zonnepanelen), `glass`,
-  `emit` (licht), `water`, `flag` (wapperend), `asphalt` (korrel, slijtplekken,
-  lichte glans) of `stone` (bestrating, natuursteen). Kleuren die er niet in
-  staan houden het materiaal uit MagicaVoxel.
-- Sla je het bestand op terwijl de editor open is, dan wordt de tile opnieuw
-  geïmporteerd. Zonder editor: verwijder `.godot/imported/<naam>.vox-*` en draai
-  `Godot --headless --import`.
-- De generator schrijft deze bestanden zelf voor gegenereerde tiles (water,
-  vlaggen, glas, metaal, licht, asfalt, steen en dobberen/wind). Alleen de
-  metadata opnieuw schrijven, zonder `.vox` te wijzigen:
-  `python3 tools/voxgen/generate.py --meta`. Die leest het palet uit de `.vox`
-  zelf, dus het klopt ook na je eigen aanpassingen in MagicaVoxel.
+  `emit` (licht), `water`, `flag` (wapperend), `asphalt`, `stone`, `brick`,
+  `gravel`, `painted`, `paving`, `cobble` of `plaster`. Gaat voor op
+  materiaallagen en de kleurentabel.
+- Sla je het bestand (of de kleurentabel) op terwijl de editor open is, dan
+  worden de tiles opnieuw geïmporteerd. Zonder editor: verwijder
+  `.godot/imported/<naam>.gox-*` en draai `tools/godot.sh --headless --import`.
+- De generator schrijft deze bestanden zelf voor gegenereerde tiles (id,
+  animatie, hellingen) en schrijft bij elke run de kleurentabel. Alleen de
+  metadata opnieuw schrijven, zonder `.gox` te wijzigen:
+  `python3 tools/voxgen/generate.py --meta`.
 - In het Import-paneel van Godot kun je `animation` per tile overschrijven.
 - `slopes`: hellingen die de importer van deze (vlakke) tile maakt, bv.
   `["steil", "flauw_a", "flauw_b"]`. Vormen: `steil` (1 m per tile) wordt
@@ -412,29 +418,29 @@ MagicaVoxel niet kent:
   bocht, `helling_bocht/<profiel>[_rechts]_<i>_<j>`), `brug_bocht`/`brug_bocht_rechts`
   (`helling_bocht/brug_<profiel>[_rechts]_<i>_<j>`) en `brug_vlak`
   (`brug/bocht_<profiel>_<i>_<j>`).
-  Er is geen eigen `.vox` voor; pas je de vlakke tile aan, dan veranderen de
+  Er is geen eigen `.gox` voor; pas je de vlakke tile aan, dan veranderen de
   hellingen mee. Zo kun je van elk wegdeel een helling maken. Hellingen zijn glad
   (geen voxeltrapjes): de importer bouwt de tile op een opgehoogd blok en schuift de
   mesh daarna op het schuine vlak.
 - `smooth`: voor hellingen zonder eigen vlakke tile (heuvels, betondijk,
-  tunneltoeritten) is de `.vox` zelf het opgehoogde blok (vlak oppervlak `lift`
+  tunneltoeritten) is de `.gox` zelf het opgehoogde blok (vlak oppervlak `lift`
   voxels boven de grond, met vulling eronder), bv.
   `{"shape": "steil", "lift": 2, "keep_x": [0, 1]}`. De importer maakt er een gladde
   helling van (`steil`, `flauw_a`, `flauw_b`, `hoek_buiten`, `hoek_binnen` of
   `heuvel_top`); kolommen in `keep_x` (een tunnelwand) blijven staan.
-- Alias-tile: alleen een `.tile.json`, zonder `.vox`, met
+- Alias-tile: alleen een `.tile.json`, zonder `.gox`, met
   `{"id": 285, "same_as": "weg/weg_vlak"}` (pad binnen dezelfde categorie). Hij
   houdt zijn eigen naam en ID in de bibliotheek, maar gebruikt de mesh van de tile
   waar hij naar wijst. Zo staan identieke tiles maar één keer in het atlas.
   Wil je een alias weer een eigen model geven: verwijder zijn `.tile.json` en
-  genereer hem opnieuw (of sla een `.vox` onder zijn naam op).
+  genereer hem opnieuw (of sla een `.gox` onder zijn naam op).
 
 
-Nieuwe tile toevoegen: zet een nieuw `.vox` bestand in de juiste map onder
+Nieuwe tile toevoegen: zet een nieuw `.gox` bestand in de juiste map onder
 `assets/tiles/`. Hij verschijnt vanzelf in het palet van de juiste GridMap.
 Bestaande item-ID's blijven gelijk, dus je kaarten breken niet: de ID van elke tile
 staat in zijn `.tile.json`. De bibliotheken (`assets/libraries/*.res`) staan daarom
-niet in git; ze worden gemaakt uit de `.vox`- en `.tile.json`-bestanden, door de
+niet in git; ze worden gemaakt uit de `.gox`- en `.tile.json`-bestanden, door de
 plugin bij het openen van de editor of met
 `Godot --headless --script tools/build/build_libraries.gd`. Het register
 `assets/libraries/<categorie>_ids.json` (naam -> ID) staat wel in git, als overzicht.
@@ -449,23 +455,28 @@ De tiles worden gemaakt door een Python-generator (alleen standaard Python 3):
     python3 tools/voxgen/generate.py --only weg   # alleen tiles met 'weg' in het pad
     python3 tools/voxgen/generate.py --force --only klassiek_rood   # overschrijven
     python3 tools/voxgen/generate.py --dedup      # alleen identieke tiles ontdubbelen
+    python3 tools/voxgen/generate.py --palettes   # Goxel-palet, kleurenoverzicht, handleiding
 
 LET OP: `--force` overschrijft bestaande bestanden, dus ook je eigen
-aanpassingen in MagicaVoxel. Zonder `--force` blijven bestaande tiles staan.
-Wil je één tile opnieuw laten genereren: verwijder het `.vox` bestand en draai
+aanpassingen in Goxel. Zonder `--force` blijven bestaande tiles staan.
+Wil je één tile opnieuw laten genereren: verwijder het `.gox` bestand en draai
 de generator. Na het maken van tiles worden identieke tiles (zelfde voxels,
 kleuren, materialen en importopties, binnen een categorie) vervangen door
 alias-tiles naar de tile met de kortste naam (`dedupe.py`).
 
 Generator-bestanden (`tools/voxgen/`):
 - `generate.py`  startpunt: schrijft alles naar `assets/tiles/`
-- `palette.py`   kleurenpalet + materiaaltypes (metal/glass/emit/water/flag);
+- `palette.py`   kleurenpalet + materiaaltypes (metal/glass/emit/water/flag, ...;
+  elke rgb heeft precies één materiaal);
   `VARIATION` (standaard 0,65) dempt de kleurverschillen binnen groepen als
   asfalt1..4, gras1..5 en baksteen1..5 (bestrating zoals tegels en klinkers niet)
-- `vox.py`       voxelmodel, tekenfuncties, .vox schrijver (palet per bestand)
+- `vox.py`       voxelmodel, tekenfuncties, tile-schrijver (`.gox`), kleurentabel
+  (`assets/tiles/materialen.json`) en metadata
+- `gox.py`       Goxel-bestanden lezen en schrijven (alleen standaard Python)
+- `convert_vox.py`  zet MagicaVoxel-tiles (`.vox`) om naar `.gox`
 - `common.py`    maten, registry, pixelfont en pictogrammen
 - `dedupe.py`    vervangt identieke tiles door alias-tiles
-- `palettes.py`, `handbook.py`   MagicaVoxel-paletten en de visuele handleiding (`--palettes`)
+- `palettes.py`, `handbook.py`   Goxel-palet, kleurenoverzicht en de visuele handleiding (`--palettes`)
 - `tiles/`       de tile-modules; `tiles/__init__.py` importeert ze in vaste volgorde:
   - `ground.py`, `ground_extra.py`, `ground_bridges_curves.py`, `ground_rising_curves.py`,
     `ground_junction.py`   grond: wegen, stoepen, pleinen, natuur, water, spoor, tram,
@@ -507,8 +518,9 @@ niet meer klopt na een `--force`).
 
 Hoe het werkt (techniek)
 ------------------------
-- `addons/vox_tiles/importer/vox_import_plugin.gd`: importer voor `.vox`. Leest het
-  model (`vox_parser.gd`) en maakt een mesh (`vox_mesher.gd`) met greedy
+- `addons/vox_tiles/importer/vox_import_plugin.gd`: importer voor `.gox` (en `.vox`).
+  Leest het model (`gox_parser.gd` of `vox_parser.gd` naar `voxel_model.gd`, dat
+  ook het materiaal per kleur bepaalt) en maakt een mesh (`vox_mesher.gd`) met greedy
   meshing, vertex-kleuren en ingebakken ambient occlusion. Per materiaaltype
   een eigen surface en shader (`materials/`: opaque, metal, glass, emit,
   water, vlag).

@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://dxow4fcli24yy"
+path="res://.godot/imported/appartement_modern_blok_dicht.gox-ce3110729c2479fde689b0790f8ee873.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/gebouwen/appartement_modern/appartement_modern_blok_dicht.gox"
+dest_files=["res://.godot/imported/appartement_modern_blok_dicht.gox-ce3110729c2479fde689b0790f8ee873.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(4, 3, 4)

@@ -1,8 +1,5 @@
 {
 	"id": 321,
-	"materials": {
-		"2": "gravel"
-	},
 	"smooth": {
 		"shape": "steil",
 		"lift": 2

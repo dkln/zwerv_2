@@ -1,25 +1,25 @@
 """Shared colour palette and material tags for all tiles.
 
 All tiles draw from one global palette, so the same colours (by name) show up in
-every tile in MagicaVoxel. Each entry is ``(name, (r, g, b))`` or
-``(name, (r, g, b), material)``. Colour names are data: tile code refers to them
-via ``P["name"]`` and they must not be renamed.
+every tile. Each entry is ``(name, (r, g, b))`` or ``(name, (r, g, b), material)``.
+Colour names are data: tile code refers to them via ``P["name"]`` and they must not
+be renamed.
 
 Exports (used by vox.py and the tile modules):
   P           colour name -> global colour id (1-based, unbounded)
   PALETTE     global id -> (r, g, b)
   MATERIALS   global id -> material tag
   ORDER       all global ids in palette order
-  WATER_START / FLAG_START  fixed per-file palette slots for water / flag colours
+  godot_material(gid)  the material name in Godot (tag "paneel" -> "panel", none -> "opaque")
 
 Material tags:
   metal  -> metallic             glass -> transparent glass
   emit   -> light emitting       paneel -> glossy metal (solar panels)
-  water  -> water (per-file palette slots WATER_START..FLAG_START-1, i.e. 225..232)
-  flag   -> waving flag cloth (per-file slots from FLAG_START = 233)
-  asphalt / stone -> Godot-only surface materials, assigned by name group below
-The MagicaVoxel tags are written as MATL chunks by vox.write_vox; all tags end up
-in the tile metadata via vox.write_metadata, which the Godot importer reads.
+  water  -> water                flag  -> waving flag cloth
+  asphalt / stone / ... -> Godot-only surface materials, assigned by name group below
+A tile file stores only colours: the Godot importer finds the material of a voxel by
+its colour in assets/tiles/materialen.json (vox.write_material_table). So one rgb
+must never be used for two materials (vox.material_table asserts that).
 """
 import re
 
@@ -138,20 +138,19 @@ _ENTRIES = [
     ("brons", (120, 92, 58), "metal"), ("brons_patina", (86, 128, 108), "metal"), ("marmer", (232, 230, 224)),
 ]
 
-# Flag cloth colours: material "flag", stored from FLAG_START in every .vox (max 16).
+# Flag cloth colours: material "flag". vlag_wit and vlag_oranje are one step off the
+# sign colours bord_wit / bord_oranje, so every rgb has one material.
 _FLAG = [
-    ("vlag_rood", (200, 30, 40)), ("vlag_wit", (245, 245, 245)), ("vlag_blauw", (30, 70, 160)), ("vlag_oranje", (240, 120, 20)),
+    ("vlag_rood", (200, 30, 40)), ("vlag_wit", (244, 244, 244)), ("vlag_blauw", (30, 70, 160)), ("vlag_oranje", (240, 121, 20)),
     ("vlag_geel", (250, 205, 30)), ("vlag_groen", (30, 140, 70)), ("vlag_paars", (130, 60, 170)), ("vlag_zwart", (25, 25, 28)),
     ("vlag_lichtblauw", (110, 200, 240)), ("vlag_roze", (240, 160, 190)), ("vlag_donkerblauw", (20, 40, 110)), ("vlag_bruin", (110, 70, 40)),
 ]
-FLAG_START = 233  # first per-file palette slot for flag colours
 
-# Water colours: material "water", stored from WATER_START in every .vox (max 8).
+# Water colours: material "water".
 _WATER = [
     ("water1", (40, 96, 118)), ("water2", (34, 86, 108)), ("water3", (48, 106, 126)), ("water_gracht", (44, 80, 70)),
     ("water_zwembad", (70, 170, 205)),
 ]
-WATER_START = 225  # first per-file palette slot for water colours (normal colours use 1..224)
 
 # Colour variation within numbered groups (asfalt1..4, gras1..5, baksteen1..5, ...):
 # every member is pulled towards the group average. 1.0 = original colours,
@@ -237,8 +236,7 @@ _ENTRIES, FLAT_ALIAS = _flat_groups(_ENTRIES)
 FLAT_ALIAS["gras_droog"] = "gras1"
 
 # Global colour ids (unlimited count): normal entries first, then water, then flags,
-# numbered from 1. On write every .vox file gets its own 255-colour palette holding
-# the colours it uses (max 224 normal + 8 water + 16 flag), see vox.write_vox.
+# numbered from 1. A tile file stores the rgb of each voxel (vox.write_tile).
 PALETTE = {}
 MATERIALS = {}
 P = {}
@@ -259,8 +257,8 @@ for _entries, _forced in ((_ENTRIES, None), (_WATER, "water"), (_FLAG, "flag")):
             MATERIALS[_gid] = _forced
 
 
-# Surface materials that only exist in Godot (MagicaVoxel shows them as diffuse).
-# They end up in the tile metadata (<tile>.tile.json, see vox.write_metadata).
+# Surface materials that only exist in Godot (Goxel shows them as plain colours).
+# They end up in the colour table (assets/tiles/materialen.json, vox.write_material_table).
 # A colour belongs to a group when its name without the trailing number (and optional
 # "_") is listed, e.g. "asfalt3" -> "asfalt", "beton_donker" stays "beton_donker".
 # Colours that already have a material tag keep it.
@@ -288,3 +286,13 @@ for _name, _gid in P.items():
     for _mat, _groups in _SURFACE_GROUPS.items():
         if _gid not in MATERIALS and _surface_group(_name) in _groups:
             MATERIALS[_gid] = _mat
+
+
+# material tag -> material name in Godot (addons/vox_tiles/importer/voxel_model.gd MATERIAL_NAMES)
+_TAG_TO_GODOT = {None: "opaque", "paneel": "panel"}
+
+
+def godot_material(gid):
+    """Godot material name of global colour id ``gid``: "opaque", "metal", "water", ..."""
+    tag = MATERIALS.get(gid)
+    return _TAG_TO_GODOT.get(tag, tag)

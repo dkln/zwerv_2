@@ -13,7 +13,7 @@ uniform float emission_energy = 0.0;
 uniform float tintable = 1.0;
 // voxel structure: light edges and small brightness differences per voxel
 uniform float voxel_edge : hint_range(0.0, 0.5) = 0.0;
-uniform float voxel_noise : hint_range(0.0, 0.3) = 0.0;   // the colour variation is in the .vox itself
+uniform float voxel_noise : hint_range(0.0, 0.3) = 0.0;   // the colour variation is in the tile itself
 uniform float voxel_size = 0.125;
 // bobbing: floating objects follow the same waves as the water
 // (keep wave_height, wave_speed and wave_length equal to voxel_water.tres)

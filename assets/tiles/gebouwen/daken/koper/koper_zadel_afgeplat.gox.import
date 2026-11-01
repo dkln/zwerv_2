@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://cfp2i68emjlw7"
+path="res://.godot/imported/koper_zadel_afgeplat.gox-fd6aa13ec4ae7312217086969b0a300d.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/gebouwen/daken/koper/koper_zadel_afgeplat.gox"
+dest_files=["res://.godot/imported/koper_zadel_afgeplat.gox-fd6aa13ec4ae7312217086969b0a300d.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(4, 3, 4)

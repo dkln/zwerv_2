@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://daj6v4kfa1oth"
+path="res://.godot/imported/bedrijfspand_dak_groen_hoek.gox-160c4663a55920834ccfff6f4792299f.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/gebouwen/bedrijfspand/bedrijfspand_dak_groen_hoek.gox"
+dest_files=["res://.godot/imported/bedrijfspand_dak_groen_hoek.gox-160c4663a55920834ccfff6f4792299f.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(4, 3, 4)

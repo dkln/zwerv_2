@@ -1,56 +1,11 @@
 @tool
 extends RefCounted
-## Reads a MagicaVoxel .vox file: the first model, the palette and a material per
-## palette index. Materials come from the MATL chunks MagicaVoxel writes (diffuse,
-## metal, glass, emit) plus two reserved palette ranges (water, flag); the tile
-## metadata can override them afterwards (tile_metadata.gd).
+## Reads a MagicaVoxel .vox file into a voxel model (voxel_model.gd): the first model,
+## the palette and, as rule 4 of the materials, what the MATL chunks say (glass,
+## emit, metal). Zwervr's tiles are Goxel files (gox_parser.gd); .vox stays readable
+## for tiles made in MagicaVoxel and for tools/voxgen/convert_vox.py.
 
-const MAT_OPAQUE := 0
-const MAT_METAL := 1
-const MAT_GLASS := 2
-const MAT_EMIT := 3
-const MAT_WATER := 4
-const MAT_FLAG := 5
-## shiny metal (MagicaVoxel: metal with _rough < 0.15), e.g. solar panels
-const MAT_PANEL := 6
-## road surface: grain, wear patches and a slight sheen (only via tile metadata)
-const MAT_ASPHALT := 7
-## paving, cobbles, natural stone (only via tile metadata)
-const MAT_STONE := 8
-## brickwork: brick bond with mortar joints in the lighting (only via tile metadata)
-const MAT_BRICK := 9
-## gravel: small round pebbles (only via tile metadata)
-const MAT_GRAVEL := 10
-## painted metal: semi-gloss paint with a slight metallic sheen, e.g. lamp posts and
-## road signs (only via tile metadata)
-const MAT_PAINTED := 11
-## paving tiles of 3 x 3 voxels (only via tile metadata)
-const MAT_PAVING := 12
-## cobbles: domed stones of 2 x 2 voxels (only via tile metadata)
-const MAT_COBBLE := 13
-## plaster / stucco walls: hairline cracks and pits (only via tile metadata)
-const MAT_PLASTER := 14
-
-## Names of the materials, indexed by MAT_*; used in tile metadata and as surface names.
-const MATERIAL_NAMES := ["opaque", "metal", "glass", "emit", "water", "flag", "panel", "asphalt", "stone", "brick", "gravel", "painted", "paving", "cobble", "plaster"]
-
-## Palette indices treated as water (glass material in MagicaVoxel).
-const WATER_START := 225
-const WATER_END := 232
-## Palette indices treated as a waving flag.
-const FLAG_START := 233
-const FLAG_END := 248
-
-var size := Vector3i.ZERO
-var voxels := PackedByteArray()   # x, y, z, colour index (4 bytes per voxel)
-var palette := PackedColorArray()  # index 0..255 (0 = empty)
-var materials := PackedByteArray() # material per colour index
-
-
-## True for materials you can't see through (everything except glass and water).
-## Opaque voxels hide neighbouring faces and count as closed for merging.
-static func is_opaque(material: int) -> bool:
-	return material != MAT_GLASS and material != MAT_WATER
+const Model = preload("res://addons/vox_tiles/importer/voxel_model.gd")
 
 
 ## Parses a .vox file; returns null (and reports an error) if it can't be read.
@@ -63,9 +18,8 @@ static func load_file(path: String) -> RefCounted:
 		push_error("vox: %s is not a MagicaVoxel file" % path)
 		return null
 	f.get_32() # version
-	var out = load("res://addons/vox_tiles/importer/vox_parser.gd").new()
-	out.palette.resize(256)
-	out.materials.resize(256)
+	var out = Model.new()
+	out.indexed = true
 	for i in 256:
 		out.palette[i] = Color(0.6, 0.6, 0.6)
 	var got_size := false
@@ -104,17 +58,13 @@ static func load_file(path: String) -> RefCounted:
 				matl_rough[mid] = float(d.get("_rough", "1"))
 		f.seek(start + content + children)
 	for i in range(1, 256):
-		var t: String = matl_types.get(i, "_diffuse")
-		var m := MAT_OPAQUE
-		if t == "_glass" or t == "_blend":
-			m = MAT_WATER if (i >= WATER_START and i <= WATER_END) else MAT_GLASS
-		elif t == "_emit":
-			m = MAT_EMIT
-		elif t == "_metal":
-			m = MAT_PANEL if float(matl_rough.get(i, 1.0)) < 0.15 else MAT_METAL
-		if i >= FLAG_START and i <= FLAG_END:
-			m = MAT_FLAG
-		out.materials[i] = m
+		match matl_types.get(i, "_diffuse"):
+			"_glass", "_blend":
+				out.file_materials[i] = Model.MAT_GLASS
+			"_emit":
+				out.file_materials[i] = Model.MAT_EMIT
+			"_metal":
+				out.file_materials[i] = Model.MAT_PANEL if float(matl_rough.get(i, 1.0)) < 0.15 else Model.MAT_METAL
 	if not got_size:
 		push_error("vox: %s contains no model" % path)
 		return null

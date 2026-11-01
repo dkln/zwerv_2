@@ -1,11 +1,5 @@
 {
 	"id": 337,
-	"materials": {
-		"1": "asphalt",
-		"3": "stone",
-		"4": "stone",
-		"5": "metal"
-	},
 	"smooth": {
 		"shape": "steil",
 		"lift": 2,

@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://ckxy7xmc1lrtb"
+path="res://.godot/imported/schuifdeur_glas.gox-a50f733e2b1befaf896d6538beb2e601.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/details/deuren/schuifdeur_glas.gox"
+dest_files=["res://.godot/imported/schuifdeur_glas.gox-a50f733e2b1befaf896d6538beb2e601.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(0, 0, 0)

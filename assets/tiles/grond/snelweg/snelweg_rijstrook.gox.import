@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://b550ikwqdl1ka"
+path="res://.godot/imported/snelweg_rijstrook.gox-c41ce2d4648d857aed03c6a3fa868c73.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/grond/snelweg/snelweg_rijstrook.gox"
+dest_files=["res://.godot/imported/snelweg_rijstrook.gox-c41ce2d4648d857aed03c6a3fa868c73.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(4, 1.5, 4)

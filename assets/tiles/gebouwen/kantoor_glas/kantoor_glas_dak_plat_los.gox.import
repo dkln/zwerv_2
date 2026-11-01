@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://dv4xl5ifj7wgk"
+path="res://.godot/imported/kantoor_glas_dak_plat_los.gox-c9f1e3a00a5dac02e18c1d920a0b418e.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/gebouwen/kantoor_glas/kantoor_glas_dak_plat_los.gox"
+dest_files=["res://.godot/imported/kantoor_glas_dak_plat_los.gox-c9f1e3a00a5dac02e18c1d920a0b418e.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(4, 3, 4)

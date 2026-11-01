@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://tedxjev245bv"
+path="res://.godot/imported/afzetbol_beton.gox-46073bc7880e03bc7e1a37efdf6e38a8.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/props/verkeer/afzetbol_beton.gox"
+dest_files=["res://.godot/imported/afzetbol_beton.gox-46073bc7880e03bc7e1a37efdf6e38a8.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(0, 0, 0)

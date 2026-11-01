@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate all .vox tiles (plus .tile.json metadata) into assets/tiles/.
+"""Generate all tiles as Goxel .gox files (plus .tile.json metadata) into assets/tiles/.
 
 Usage:
   python3 tools/voxgen/generate.py             # only create missing tiles
@@ -8,11 +8,15 @@ Usage:
   python3 tools/voxgen/generate.py --list      # list all tiles
   python3 tools/voxgen/generate.py --meta      # only (re)write the .tile.json metadata of existing tiles
   python3 tools/voxgen/generate.py --dedup     # only replace identical tiles by aliases (dedupe.py)
+  python3 tools/voxgen/generate.py --palettes  # Goxel palette, colour chart and handbook
 
-By default existing .vox files are NOT overwritten, so manual changes made in
-MagicaVoxel are kept. Alias tiles (dedupe.py) count as existing. After creating
-tiles, identical tiles are replaced by aliases. Importing the tiles package (tiles/) fills common.TILES via
-the @tile/register calls of its modules; each tile path maps to <OUT>/<path>.vox.
+By default existing tiles (.gox, or a .vox made by hand) are NOT overwritten, so
+manual changes made in Goxel are kept; --force replaces a .vox by the generated .gox.
+Alias tiles (dedupe.py) count as existing. After creating tiles, identical tiles are
+replaced by aliases. Every run also writes the colour -> material table
+(assets/tiles/materialen.json, vox.write_material_table). Importing the tiles package
+(tiles/) fills common.TILES via the @tile/register calls of its modules; each tile
+path maps to <OUT>/<path>.gox.
 """
 import argparse
 import os
@@ -24,23 +28,22 @@ sys.path.insert(0, HERE)
 
 from common import TILES  # noqa: E402
 import tiles  # noqa: E402,F401  (registers every tile, see tiles/__init__.py)
-from vox import write_vox, write_metadata  # noqa: E402
-from dedupe import dedupe, is_alias  # noqa: E402
+from vox import write_tile, write_metadata, write_material_table  # noqa: E402
+from dedupe import dedupe, is_alias, TILE_EXTENSIONS  # noqa: E402
 
 # Output root; read by main() at call time (tests patch it).
-
 OUT = os.path.normpath(os.path.join(HERE, "..", "..", "assets", "tiles"))
 
 
 def main():
     """Command line entry point; see the module docstring for the options."""
-    ap = argparse.ArgumentParser(description="Generate the MagicaVoxel tiles into <OUT>/<path>.vox.")
-    ap.add_argument("--force", action="store_true", help="overwrite existing .vox files")
+    ap = argparse.ArgumentParser(description="Generate the tiles into <OUT>/<path>.gox (Goxel).")
+    ap.add_argument("--force", action="store_true", help="overwrite existing tiles")
     ap.add_argument("--only", default=None, metavar="TEXT", help="only tiles whose path contains TEXT")
     ap.add_argument("--list", action="store_true", help="list the tile paths and exit")
     ap.add_argument("--meta", action="store_true", help="only write metadata for existing tiles")
     ap.add_argument("--dedup", action="store_true", help="only replace identical tiles by aliases")
-    ap.add_argument("--palettes", action="store_true", help="write MagicaVoxel palettes (tools/voxgen/paletten)")
+    ap.add_argument("--palettes", action="store_true", help="write the Goxel palette and colour chart (tools/voxgen/paletten)")
     a = ap.parse_args()
 
     names = sorted(TILES)
@@ -51,6 +54,8 @@ def main():
             print(n)
         print(f"{len(names)} tiles")
         return
+
+    print("  " + os.path.relpath(write_material_table()))
 
     if a.palettes:
         from palettes import write_palettes
@@ -64,28 +69,33 @@ def main():
         return
 
     if a.meta:
-        # every .vox on disk, generated or made by hand (not the coarse .lod.vox versions)
-        on_disk = []
+        # every tile on disk, generated or made by hand (not the coarse .lod versions)
+        on_disk = {}
         for folder, _, files in os.walk(OUT):
             for f in files:
-                if f.endswith(".vox") and not f.endswith(".lod.vox"):
-                    on_disk.append(os.path.relpath(os.path.join(folder, f), OUT)[:-4].replace(os.sep, "/"))
+                base, ext = os.path.splitext(f)
+                if ext in TILE_EXTENSIONS and not base.endswith(".lod"):
+                    on_disk[os.path.relpath(os.path.join(folder, base), OUT).replace(os.sep, "/")] = os.path.join(folder, f)
         if a.only:
-            on_disk = [n for n in on_disk if a.only in n]
-        count = sum(1 for n in sorted(on_disk) if write_metadata(os.path.join(OUT, n + ".vox"), n))
+            on_disk = {n: p for n, p in on_disk.items() if a.only in n}
+        count = sum(1 for n in sorted(on_disk) if write_metadata(on_disk[n], n))
         print(f"metadata for {count} of {len(on_disk)} tiles ({len(set(on_disk) - set(TILES))} not from the generator)")
         return
 
     made = skipped = 0
     t0 = time.time()
     for n in names:
-        path = os.path.join(OUT, n + ".vox")
-        if (os.path.exists(path) or is_alias(OUT, n)) and not a.force:
+        path = os.path.join(OUT, n + ".gox")
+        exists = any(os.path.exists(os.path.join(OUT, n + e)) for e in TILE_EXTENSIONS)
+        if (exists or is_alias(OUT, n)) and not a.force:
             skipped += 1
             continue
         os.makedirs(os.path.dirname(path), exist_ok=True)
         m = TILES[n]()
-        cnt = write_vox(path, m)
+        cnt = write_tile(path, m)
+        for ext in (".vox", ".vox.import"):   # a .vox under the same name would be a second tile
+            if os.path.exists(os.path.join(OUT, n + ext)):
+                os.remove(os.path.join(OUT, n + ext))
         write_metadata(path, n)
         made += 1
         print(f"  {n:60s} {m.sx}x{m.sy}x{m.sz}  {cnt} voxels")

@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://5wcoiusk6uxq"
+path="res://.godot/imported/klassiek_donker_dak_kantelen_toren.gox-d2cd8b68a0a828822e751843c0bf71bc.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/gebouwen/klassiek_donker/klassiek_donker_dak_kantelen_toren.gox"
+dest_files=["res://.godot/imported/klassiek_donker_dak_kantelen_toren.gox-d2cd8b68a0a828822e751843c0bf71bc.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(4, 3, 4)
