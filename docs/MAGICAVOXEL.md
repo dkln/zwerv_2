@@ -5,7 +5,6 @@ bestanden zelf en zet ze in de GridMap-bibliotheken. Dit document legt uit hoe j
 tile maakt, welke kleuren je gebruikt, hoe materialen werken en wat er in de
 metadata (`.tile.json`) staat.
 
-
 ## 1. Waar staan de tiles?
 
 ```
@@ -14,19 +13,18 @@ assets/tiles/<laag>/<groep>/<naam>.vox
 
 De eerste map bepaalt in welke laag (GridMap) de tile terechtkomt:
 
-| map        | laag in Godot | cel           | modelmaat (voxels)                     |
-|------------|---------------|---------------|----------------------------------------|
-| `grond`    | Grond         | 4 x 1 x 4 m   | 32 x 32, 8 hoog per meter (mag hoger)  |
-| `gebouwen` | Gebouwen      | 4 x 3 x 4 m   | 48 x 48 x 24: blok van 32 x 32 in het midden, 8 voxels rand voor balkons en luifels |
-| `details`  | Details       | 0,5 x 0,5 x 0,5 m | vrij                               |
-| `props`    | Props         | 0,5 x 0,5 x 0,5 m | vrij                               |
+| map        | laag in Godot | cel               | modelmaat (voxels)                                                                  |
+| ---------- | ------------- | ----------------- | ----------------------------------------------------------------------------------- |
+| `grond`    | Grond         | 4 x 1 x 4 m       | 32 x 32, 8 hoog per meter (mag hoger)                                               |
+| `gebouwen` | Gebouwen      | 4 x 3 x 4 m       | 48 x 48 x 24: blok van 32 x 32 in het midden, 8 voxels rand voor balkons en luifels |
+| `details`  | Details       | 0,5 x 0,5 x 0,5 m | vrij                                                                                |
+| `props`    | Props         | 0,5 x 0,5 x 0,5 m | vrij                                                                                |
 
 De groep (de tweede map) kies je zelf. De naam van de tile in het palet is
 `<groep>/<naam>`, bijvoorbeeld `weg/rijstrook_kant`.
 
 Maten: **1 voxel = 12,5 cm.** Een persoon van 1,80 m is 14 à 15 voxels hoog. Een
 verdieping is 3 m (24 voxels).
-
 
 ## 2. Een nieuwe tile maken
 
@@ -60,7 +58,6 @@ wijziging en importeert de tile opnieuw.
 - **Gebouwen** zijn van binnen leeg, zodat je er later in kunt lopen. Een dicht blok
   krijgt een botsdoos van 4 x 3 x 4 m; holle tiles een exacte vorm.
 
-
 ## 3. Het palet
 
 Een `.vox` heeft één palet van **255 kleuren**. Elke voxel onthoudt alleen het
@@ -68,10 +65,10 @@ Een `.vox` heeft één palet van **255 kleuren**. Elke voxel onthoudt alleen het
 
 Twee stukken van het palet zijn gereserveerd:
 
-| paletnummers | betekenis in Godot                    |
-|--------------|---------------------------------------|
+| paletnummers | betekenis in Godot                                           |
+| ------------ | ------------------------------------------------------------ |
 | 225 – 232    | **water** (golvend, spiegelend), mits het materiaal glass is |
-| 233 – 248    | **vlag** (wappert in de wind)         |
+| 233 – 248    | **vlag** (wappert in de wind)                                |
 
 Daardoor passen er 224 gewone kleuren in één bestand. Het totale palet van Zwervr is
 groter, daarom zijn er twee sjablonen ("straat" en "gebouwen"). Allebei hebben ze de
@@ -89,7 +86,6 @@ herkent `generate.py --meta` ze en krijgen ze vanzelf het goede materiaal.
 een gewone, matte kleur. Wil je er een ander materiaal op, zet dat dan zelf in de
 metadata (zie hoofdstuk 5).
 
-
 ## 4. Materialen
 
 Een materiaal bepaalt hoe een kleur eruitziet in Godot: mat, glanzend, doorzichtig,
@@ -97,28 +93,28 @@ lichtgevend, enzovoort. Er zijn twee bronnen:
 
 **Uit MagicaVoxel** (het Matter-paneel, per kleur in te stellen):
 
-| MagicaVoxel            | in Godot        | voorbeeld                         |
-|------------------------|-----------------|-----------------------------------|
-| diffuse                | `opaque`        | alles wat mat is                  |
-| metal                  | `metal`         | lantaarnkap, vangrail, kabels     |
-| metal met roughness < 0,15 | `panel`     | zonnepanelen (spiegelend)         |
-| glass / blend          | `glass`         | ramen                             |
-| glass op 225 – 232     | `water`         | grachten, vijvers                 |
-| emit                   | `emit`          | lampen, verlichte ramen ('s nachts) |
+| MagicaVoxel                | in Godot | voorbeeld                           |
+| -------------------------- | -------- | ----------------------------------- |
+| diffuse                    | `opaque` | alles wat mat is                    |
+| metal                      | `metal`  | lantaarnkap, vangrail, kabels       |
+| metal met roughness < 0,15 | `panel`  | zonnepanelen (spiegelend)           |
+| glass / blend              | `glass`  | ramen                               |
+| glass op 225 – 232         | `water`  | grachten, vijvers                   |
+| emit                       | `emit`   | lampen, verlichte ramen ('s nachts) |
 
 **Alleen via de metadata** (MagicaVoxel kent deze niet; in MagicaVoxel zijn ze diffuse):
 
-| materiaal  | effect in Godot                                                  |
-|------------|------------------------------------------------------------------|
-| `asphalt`  | steenkorrel, slijtplekken, haarscheurtjes, putjes en een lichte glans op liggende vlakken |
-| `stone`    | natuursteen, beton, klinkers: licht reliëf per voxel en wat haarscheurtjes |
-| `paving`   | stoeptegels: tegels van 3 x 3 voxels met voegen en een afgeronde rand |
-| `cobble`   | keien: bolle stenen van 2 x 2 voxels                             |
-| `brick`    | metselwerk: voegen precies op het verband van 3 x 1 voxels (elke laag 2 verspringend), puntjes |
-| `plaster`  | stucwerk: haarscheurtjes en kleine putjes                        |
-| `gravel`   | grind: kleine ronde steentjes                                    |
-| `painted`  | gelakt metaal: halfglanzend met een lichte metaalglans (lantaarnpalen, verkeersborden) |
-| `flag`     | wappert (ook buiten de vaste vlagplekken, als je dat in de metadata zet) |
+| materiaal | effect in Godot                                                                                |
+| --------- | ---------------------------------------------------------------------------------------------- |
+| `asphalt` | steenkorrel, slijtplekken, haarscheurtjes, putjes en een lichte glans op liggende vlakken      |
+| `stone`   | natuursteen, beton, klinkers: licht reliëf per voxel en wat haarscheurtjes                     |
+| `paving`  | stoeptegels: tegels van 3 x 3 voxels met voegen en een afgeronde rand                          |
+| `cobble`  | keien: bolle stenen van 2 x 2 voxels                                                           |
+| `brick`   | metselwerk: voegen precies op het verband van 3 x 1 voxels (elke laag 2 verspringend), puntjes |
+| `plaster` | stucwerk: haarscheurtjes en kleine putjes                                                      |
+| `gravel`  | grind: kleine ronde steentjes                                                                  |
+| `painted` | gelakt metaal: halfglanzend met een lichte metaalglans (lantaarnpalen, verkeersborden)         |
+| `flag`    | wappert (ook buiten de vaste vlagplekken, als je dat in de metadata zet)                       |
 
 Kleuren uit de sjablonen krijgen deze materialen automatisch via `generate.py --meta`
 (zie het overzicht bij het sjabloon, kolom "materiaal"). Het reliëf (voegen, randen,
@@ -126,20 +122,19 @@ scheurtjes) zit in de shader en volgt het voxelraster van de tile: teken stenen 
 tegels dus op het raster zoals de generator dat doet (baksteen 3 x 1, tegels 3 x 3).
 Van ver vervaagt het vanzelf.
 
-
 ## 5. Metadata: `<naam>.tile.json`
 
 Naast elke `.vox` staat een `.tile.json` met wat MagicaVoxel niet kan opslaan:
 
 ```json
 {
-	"id": 336,
-	"animation": "float",
-	"materials": {
-		"1": "asphalt",
-		"#3a3a3e": "asphalt",
-		"225": "water"
-	}
+  "id": 336,
+  "animation": "float",
+  "materials": {
+    "1": "asphalt",
+    "#3a3a3e": "asphalt",
+    "225": "water"
+  }
 }
 ```
 
@@ -167,7 +162,6 @@ opnieuw. Een `id` die al in het bestand staat, blijft behouden.
 Sla je een `.tile.json` op terwijl de Godot-editor open is, dan wordt de tile vanzelf
 opnieuw geïmporteerd.
 
-
 ## 6. Een eigen grove versie: `<naam>.lod.vox`
 
 Als je ver uitzoomt, gebruikt Godot grove versies van de tiles: eerst met
@@ -178,7 +172,6 @@ Wil je zelf bepalen hoe een tile er van ver uitziet, maak dan naast `huis.vox` e
 in het palet. Hij mag een lagere resolutie hebben (bijvoorbeeld 16 x 16 in plaats van
 32 x 32); de voxels worden dan groter, zodat hij even groot blijft. Een eigen
 `huis.lod.tile.json` mag; zonder gelden de materialen van `huis.tile.json`.
-
 
 ## 7. Handige commando's
 

@@ -50,7 +50,7 @@ static func part_at(root: Node, z: float) -> int:
 ## Shows part `index` in the running scene `root`: frees the layers (and DetailNiveau's
 ## copies) of the part shown so far, loads the new one, lets DetailNiveau start merging
 ## it (await Common.wait_for_merge or DetailNiveau.merge_finished), Rook find its
-## chimneys and GrondKaart its ground types. Also works on a scene that is not in the tree yet (then the nodes set
+## chimneys, GrondKaart its ground types and Wandelaar its routes. Also works on a scene that is not in the tree yet (then the nodes set
 ## themselves up in _ready).
 static func show_part(root: Node, index: int) -> void:
 	var dn := root.get_node_or_null("DetailNiveau")
@@ -67,6 +67,9 @@ static func show_part(root: Node, index: int) -> void:
 	var ground_map := root.get_node_or_null("GrondKaart")
 	if ground_map and ground_map.has_method("rebuild"):
 		ground_map.rebuild()
+	var walker := root.get_node_or_null("Wandelaar")
+	if walker and walker.has_method("rebuild"):
+		walker.rebuild()
 
 
 ## Part (from 1) whose layers are under `root` now; 0 = none (or merge_all).

@@ -15,6 +15,13 @@ extends Node
 ## next part (behind DetailNiveau's loading screen), so only one part is ever in memory.
 ## `part` limits the tour to a single part.
 ##
+## Every part ends with the test figure (scripts/walker.gd, node "Wandelaar") walking
+## its routes over the bridges, tunnels, stairs, ... of that part: shots of kind "walk",
+## with the camera following the figure; such a shot lasts until the figure arrives.
+##
+## Keys: right arrow = next shot, left arrow = previous shot, space = pause / play,
+## V = follow the figure from behind or in the iso view.
+##
 ## It takes over the camera (disables free_camera.gd's processing). Turn off `active` to
 ## look around yourself with the free camera (in part `part`, or the first part).
 
@@ -30,6 +37,14 @@ const FLY_NEAR := 0.2
 ## How far (metres) a flight looks ahead, and how much it looks down on the way.
 const LOOK_AHEAD := 30.0
 const LOOK_DOWN := 0.28
+## Walk shots: the longest a shot waits for the figure (seconds), the camera behind and
+## above the figure (metres), and the view size of the iso view (V).
+const WALK_MAX := 120.0
+## Expected length of a walk shot (seconds), for the clock (the real one is known later).
+const WALK_ESTIMATE := 35.0
+const CHASE_BACK := 4.5
+const CHASE_UP := 2.2
+const WALK_ISO_SIZE := 18.0
 
 ## Run the tour; off = free camera.
 @export var active := true
@@ -48,6 +63,8 @@ const LOOK_DOWN := 0.28
 @export var speed := 1.0
 ## The tour starts at the first shot whose slug contains this (empty = at the beginning).
 @export var start_at := ""
+## Path to the test figure; its routes end every part ("" or missing = no walk shots).
+@export var walker_path := NodePath("../Wandelaar")
 
 var _cam: Camera3D
 var _root: Node
@@ -69,6 +86,14 @@ var _played := 0.0
 var _loading := false
 ## The "aan" title of a shader shot is shown.
 var _effects_on := false
+## Paused with the space bar: the time of the shot stands still.
+var _paused := false
+## Counter text of the current shot (without the pause note).
+var _counter := ""
+var _walker: Node
+## Walk shots: camera position (smoothed) and the iso view instead of following (V).
+var _chase := Vector3.INF
+var _walk_iso := false
 
 
 func _ready() -> void:
@@ -90,6 +115,9 @@ func _ready() -> void:
 	_cam.set_process(false)
 	_cam.set_process_unhandled_input(false)
 	_shown = WorldParts.shown_part(_root)   # a tool may have loaded one already
+	_walker = get_node_or_null(walker_path)
+	if _walker:
+		_walker.set("auto", false)
 	var shots := Data.shots(_root)
 	if highlights_only:
 		var keep: Array = Data.HIGHLIGHTS
@@ -134,6 +162,11 @@ func _by_part(shots: Array) -> Array:
 			if WorldParts.part_at(_root, s["z"]) == p:
 				s["part"] = p
 				list.append(s)
+		if _walker:
+			# the figure's routes are picked when the part is loaded; missing ones are skipped
+			for k in _walker.route_slots():
+				list.append({"slug": "wandelaar_%d_%d" % [p, k + 1], "title": "Wandelaar", "text": "",
+					"kind": "walk", "route": k, "seconds": WALK_ESTIMATE, "part": p, "x": 0.0, "z": 0.0})
 	return list
 
 
@@ -151,12 +184,15 @@ func _start_shot() -> void:
 	_effects_on = false
 	if s.has("toggle"):
 		_effects(s, false)
+	if s["kind"] == "walk":
+		await _start_walk(s)
 	_caption.show_stop(s)
 	if s.has("toggle"):
 		_caption.title.text = "%s · uit" % s["title"]
-	_caption.counter.text = "%d / %d" % [(_i % _shots.size()) + 1, _shots.size()]
+	_counter = "%d / %d" % [(_i % _shots.size()) + 1, _shots.size()]
 	if s["part"] > 0:
-		_caption.counter.text += " · deel %d van %d" % [s["part"], WorldParts.part_count(_root)]
+		_counter += " · deel %d van %d" % [s["part"], WorldParts.part_count(_root)]
+	_show_counter()
 	var t := create_tween()
 	t.tween_property(_caption.panel, "modulate:a", 1.0, 0.4)
 
@@ -165,12 +201,17 @@ func _process(delta: float) -> void:
 	if _loading or _shots.is_empty():
 		return
 	var s: Dictionary = _shots[_i % _shots.size()]
-	var dt := delta * speed
+	var dt := 0.0 if _paused else delta * speed
 	_time += dt
 	_played += dt
+	if s["kind"] == "walk" and _walker:
+		_walker.set("paused", _paused)
+		# the shot ends shortly after the figure has arrived
+		if _walker.is_done() and s["seconds"] >= WALK_MAX:
+			s["seconds"] = _time + 0.8
 	var seconds: float = s["seconds"]
 	var t := clampf(_time / seconds, 0.0, 1.0)
-	var pose := _pose(s, t)
+	var pose := _pose(s, t) if s["kind"] != "walk" else _walk_pose(delta)
 	var blend := smoothstep(0.0, 1.0, _time / BLEND)
 	if blend < 1.0:
 		pose = _mix(_from, pose, blend)
@@ -194,8 +235,55 @@ func _process(delta: float) -> void:
 		_start_shot()
 
 
-## Camera pose [Transform3D, fov, near] of shot `s` at t (0..1).
+func _unhandled_input(event: InputEvent) -> void:
+	if not (event is InputEventKey and event.pressed and not event.echo):
+		return
+	match event.keycode:
+		KEY_RIGHT:
+			_jump(1)
+		KEY_LEFT:
+			_jump(-1)
+		KEY_SPACE:
+			_paused = not _paused
+			_show_counter()
+		KEY_V:
+			_walk_iso = not _walk_iso
+		_:
+			return
+	get_viewport().set_input_as_handled()
+
+
+## Jumps `step` shots ahead (or back): the camera blends over from where it is now (or,
+## when paused, goes straight to the start of the shot), and the clock follows.
+func _jump(step: int) -> void:
+	if _loading or _shots.is_empty() or not is_processing():
+		return
+	var s: Dictionary = _shots[_i % _shots.size()]
+	if s.has("toggle"):
+		_effects(s, true)
+	if s["kind"] == "walk" and _walker:
+		_walker.stop()
+	_i = posmod(_i + step, _shots.size())
+	_played = 0.0
+	for k in _i:
+		_played += _shots[k]["seconds"]
+	if _paused and _shots[_i]["kind"] != "walk":
+		_from = _pose(_shots[_i], 0.0)
+		_apply(_from)
+	else:
+		_from = [_cam.global_transform, _cam.fov, _cam.near]
+	_start_shot()
+
+
+func _show_counter() -> void:
+	_caption.counter.text = _counter + (" · pauze" if _paused else "")
+
+
+## Camera pose [Transform3D, fov, near] of shot `s` at t (0..1); for a walk shot (which
+## follows the figure, _walk_pose) where the camera is now.
 func _pose(s: Dictionary, t: float) -> Array:
+	if s["kind"] == "walk":
+		return [_cam.global_transform, _cam.fov, _cam.near]
 	if s["kind"] == "fly":
 		var from: Vector3 = s["from"]
 		var to: Vector3 = s["to"]
@@ -208,6 +296,41 @@ func _pose(s: Dictionary, t: float) -> Array:
 	var size: float = lerpf(s["size_a"], s["size_b"], e)
 	var basis := Basis.from_euler(Iso.ROTATION * (PI / 180.0))
 	return [Transform3D(basis, Iso.position(focus, size)), Iso.FOV, 2.0]
+
+
+## Starts walk shot `s`: the figure walks route s.route of the part, with its name and
+## explanation in the caption. Without that route the shot is skipped (ends at once).
+func _start_walk(s: Dictionary) -> void:
+	s["seconds"] = WALK_MAX
+	_chase = Vector3.INF
+	if _walker and _walker.preparing:
+		# the demo routes come after all navigation is baked: wait for them
+		_loading = true
+		await _walker.routes_ready
+		_loading = false
+	var info: Dictionary = _walker.route_info(s["route"]) if _walker else {}
+	if info.is_empty() or not _walker.walk(s["route"]):
+		s["seconds"] = 0.0
+		s["title"] = "Wandelaar"
+		s["text"] = ""
+		return
+	s["title"] = "Wandelaar: %s" % info["category"]
+	s["text"] = info["text"]
+
+
+## Camera pose of a walk shot: behind and above the figure, looking at it (smoothed), or
+## the iso view around it (key V).
+func _walk_pose(delta: float) -> Array:
+	var body: Node3D = _walker.get("body")
+	var feet := body.global_position
+	if _walk_iso:
+		var basis := Basis.from_euler(Iso.ROTATION * (PI / 180.0))
+		return [Transform3D(basis, Iso.position(feet, WALK_ISO_SIZE)), Iso.FOV, 2.0]
+	var facing: Vector3 = _walker.get("facing")
+	var want := feet - facing * CHASE_BACK + Vector3.UP * CHASE_UP
+	_chase = want if _chase == Vector3.INF else _chase.lerp(want, 1.0 - exp(-2.5 * delta))
+	var look := feet + Vector3.UP * 1.2
+	return [Transform3D(Basis.looking_at(look - _chase, Vector3.UP), _chase), FLY_FOV, 0.1]
 
 
 ## Pose between a and b (0..1): position and fov linear, rotation slerped.

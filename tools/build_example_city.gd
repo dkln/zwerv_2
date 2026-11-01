@@ -7,7 +7,8 @@ extends SceneTree
 ##
 ## HOW IT WORKS
 ## Both scenes get the same root setup (_make_scene): environment, sun and fill light,
-## camera, helper nodes (DetailNiveau, Dagcyclus, Rook, TintKaart, GrondKaart, Grassprieten) and four GridMaps,
+## camera, helper nodes (DetailNiveau, Dagcyclus, Rook, TintKaart, GrondKaart, Grassprieten,
+## Wandelaar) and four GridMaps,
 ## one per tile library. The town is then written cell by cell into those GridMaps and
 ## the scene is packed and saved. Placement is fully deterministic (no RNG; variation
 ## comes from the hash _r and round-robin counters), so the output is reproducible.
@@ -258,6 +259,10 @@ func _make_scene(node_name: String) -> Node3D:
 	gb.name = "Grassprieten"
 	gb.set_script(load("res://scripts/grass_blades.gd"))
 	root.add_child(gb)
+	var walker := Node3D.new()
+	walker.name = "Wandelaar"
+	walker.set_script(load("res://scripts/walker.gd"))
+	root.add_child(walker)
 	tint_map = tk
 	if node_name == "Wereld":
 		# example: give two buildings in the city block a different tint

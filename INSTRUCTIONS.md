@@ -530,6 +530,11 @@ Rondleiding, prestaties en uiterlijk
   `day_hours`). Duur per shot: `SHADER_TIME`, `CITY_TIME`, `DISTRICT_TIME`,
   `OVERVIEW_TIME`; alles sneller met `speed`. Verder: `highlights_only`, `start_at`,
   `part` (0 = alle delen na elkaar, n = alleen deel n).
+  Toetsen: pijltje rechts = volgende shot, pijltje links = vorige shot, spatie =
+  pauze / verder (de teller toont dan "· pauze"); de klok springt mee naar de shot.
+  Elk deel eindigt met de wandelaar (zie "Personages en navigatie"): per route een
+  shot waarin de camera het poppetje volgt tot het aankomt; V = van achteren of in de
+  iso-stand. Meteen beginnen bij de wandelaar: `start_at` = `wandelaar`.
 - `DetailNiveau` (`scripts/level_of_detail.gd`): schakelt bij het uitzoomen naar
   grove tiles (`coarse_from`, standaard 100 m in beeld: daar is een voxel al kleiner
   dan een pixel) en heel grove tiles (`very_coarse_from`, 130 m), voor Grond,
@@ -643,6 +648,35 @@ Rondleiding, prestaties en uiterlijk
   `-- 10 140 72 60 s` (drukke wijk rond x 72, z 60, zonder schaduw). Sluit de Godot-editor tijdens het meten, anders
   delen ze de GPU. `tools/triangle_count.gd` toont het aantal driehoeken per tile en
   LOD-niveau.
+
+Personages en navigatie
+-----------------------
+Herbruikbare onderdelen voor speler en NPC's, plus een testpoppetje dat laat zien of
+het werkt:
+- `VoxCharacter` (`scripts/characters/vox_character.gd`): het lopende lichaam, een
+  `CharacterBody3D` (kinematisch, `move_and_slide`; geen rigid-body-simulatie) met
+  zwaartekracht, `jump()` en `jump_to(doel)`. Botsvorm: een capsule vanaf `step`
+  (25 cm) tot `height` (1,80 m), met daaronder een `SeparationRayShape3D` tot de
+  voeten: daarmee loopt hij vanzelf stoepranden en traptreden op. Iets anders stuurt
+  hem via `move_direction`: straks de spelerbesturing, of een PathFollower.
+- `PathFollower` (`scripts/characters/path_follower.gd`): de "benen" van een NPC; volgt
+  een pad, springt de spronglinks, loopt bij een val-link gewoon over de rand, en meldt
+  `arrived` en `stuck`.
+- `GridNav` (`scripts/navigation/grid_nav.gd`): bakt in de achtergrond een navmesh van
+  de botsvormen van GridMap-cellen in een gebied (voxels van 12,5 cm), op een eigen
+  navigatiekaart; `path()`, `lowest_in_column()` (tunnelvloer in plaats van de straat
+  op het dak) en `add_jump_links()`: spronglinks over gaten in de navmesh (een richel
+  tot 1,2 m hoger of iets laags ertussen) en val-links naar beneden (tot 3 m).
+- Wandelaar (node `Wandelaar` in `rondleiding.tscn` en `nieuwe_kaart.tscn`,
+  `scripts/walker.gd`): alleen de demo. Kiest per kaart(deel) routes over bruggen,
+  tunnels, trappen, hellingen, heuvels en kades (anders over de stoep), plus een val en
+  een sprong, en laat het poppetje (prop `overig/persoon_1m80`) ze lopen. Linksonder:
+  padlengte, vast, gevallen, sprongen, hoogte, navmesh- en fysicatijd. Toetsen: N =
+  navmesh (blauw), pad (geel) en links (paars) aan/uit, C = botsvorm aan/uit.
+- Testen zonder venster: `tools/godot.sh --headless --script tools/walk_test.gd -- [deel]`
+  loopt alle routes van alle (of één) delen versneld en meldt per route wat er misging
+  (met de tile op die plek). Screenshots: `tools/walk_shots.gd -- <map> [delen]`.
+
 
 Afgeronde bochten
 -----------------

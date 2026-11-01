@@ -10,6 +10,7 @@
 [ext_resource type="Script" path="res://scripts/tint_area.gd" id="8_0hr2e"]
 [ext_resource type="Script" path="res://scripts/ground_map.gd" id="9_kgtso"]
 [ext_resource type="Script" path="res://scripts/grass_blades.gd" id="10_6itek"]
+[ext_resource type="Script" path="res://scripts/walker.gd" id="11_wndlr"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_uiq1o"]
 sky_top_color = Color(0.3, 0.5, 0.85, 1)
@@ -622,3 +623,6 @@ script = ExtResource("9_kgtso")
 
 [node name="Grassprieten" type="Node3D" parent="." unique_id=1367653886]
 script = ExtResource("10_6itek")
+
+[node name="Wandelaar" type="Node3D" parent="." unique_id=1690412357]
+script = ExtResource("11_wndlr")

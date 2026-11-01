@@ -22,7 +22,7 @@ const FLIGHTS := [
 ]
 ## Seconds per shot of each kind (tour.gd): shader stops (half off, half on), stops in
 ## the city, demo districts, and the overview shots.
-const SHADER_TIME := 8.0
+const SHADER_TIME := 4.0
 const CITY_TIME := 3.5
 const DISTRICT_TIME := 2.4
 const OVERVIEW_TIME := 5.0
