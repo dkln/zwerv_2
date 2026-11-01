@@ -1,0 +1,143 @@
+extends Node
+## Working traffic lights (the "Verkeerslichten" node): the traffic light props of the
+## Props layer (verkeerslichten/<kind>_<state>, one prop per light state) switch between
+## their states while the game runs, so the lights of every intersection go round a
+## real cycle.
+##
+## At start-up all cells of the Props layer holding a verkeerslichten/ prop are found
+## and grouped per intersection (lights closer than CLUSTER metres to each other). A
+## light belongs to the north-south or the east-west stream by the way it faces: a
+## light facing south or north is seen by traffic on the north-south road (pedestrian
+## lights the same way: they face the people crossing alongside that stream). Every
+## intersection then runs the cycle
+##   north-south green -> amber -> all red -> east-west green -> amber -> all red
+## with its own time offset. Cars, bicycles and masts show groen / oranje / rood, public
+## transport rijden / attentie / stop, pedestrians groen during the first part of their
+## stream's green and rood otherwise.
+##
+## Changing a cell swaps the prop for the one with the other state; the LOD copies of the
+## layer (Props_lod, Props_lod2, see level_of_detail.gd) are updated as well. In the
+## editor nothing moves: the scene keeps the states it was built with.
+
+## Seconds of green per stream.
+@export var green_time := 8.0
+## Seconds of amber.
+@export var amber_time := 2.5
+## Seconds that all lights are red between the streams.
+@export var clearance_time := 1.5
+## Seconds of the green during which pedestrians may start crossing.
+@export var pedestrian_time := 5.0
+## Lights closer than this (metres) belong to the same intersection.
+@export var cluster := 14.0
+## Name of the layer with the light props.
+@export var layer := "Props"
+
+const PREFIX := "verkeerslichten/"
+## kind -> [green, amber, red] state names in the prop names
+const STATES := {
+	"auto": ["groen", "oranje", "rood"],
+	"fiets": ["groen", "oranje", "rood"],
+	"mast": ["groen", "oranje", "rood"],
+	"ov": ["rijden", "attentie", "stop"],
+	"voetganger": ["groen", "rood", "rood"],
+}
+
+var _lights := []        # {cell, kind, ns, group, shown}
+var _groups := []        # per intersection: time offset
+var _ids := {}           # prop name -> item id
+var _time := 0.0
+
+
+func _ready() -> void:
+	if Engine.is_editor_hint():
+		return
+	var gm := _layer()
+	if gm == null or gm.mesh_library == null:
+		set_process(false)
+		return
+	var lib := gm.mesh_library
+	for id in lib.get_item_list():
+		var nm := lib.get_item_name(id)
+		if nm.begins_with(PREFIX):
+			_ids[nm] = id
+	var found := []
+	for c: Vector3i in gm.get_used_cells():
+		var nm := lib.get_item_name(gm.get_cell_item(c))
+		if not nm.begins_with(PREFIX):
+			continue
+		var kind := nm.trim_prefix(PREFIX).get_slice("_", 0)
+		if not STATES.has(kind):
+			continue
+		var facing := gm.get_basis_with_orthogonal_index(gm.get_cell_item_orientation(c)) * Vector3(0, 0, 1)
+		found.append({"cell": c, "kind": kind, "ns": absf(facing.z) > absf(facing.x), "group": -1, "shown": nm,
+			"pos": gm.map_to_local(c)})
+	# group the lights per intersection (connected within `cluster` metres)
+	for i in found.size():
+		if found[i].group >= 0:
+			continue
+		var g := _groups.size()
+		_groups.append(_offset(found[i].pos))
+		var todo := [i]
+		found[i].group = g
+		while not todo.is_empty():
+			var a: Dictionary = found[todo.pop_back()]
+			for b in found:
+				if b.group < 0 and Vector2(a.pos.x - b.pos.x, a.pos.z - b.pos.z).length() <= cluster:
+					b.group = g
+					todo.append(found.find(b))
+	_lights = found
+	if _lights.is_empty():
+		set_process(false)
+		return
+	_update()
+
+
+func _process(delta: float) -> void:
+	_time += delta
+	_update()
+
+
+## Sets every light to the state of its stream at the current time.
+func _update() -> void:
+	var cycle := 2.0 * (green_time + amber_time + clearance_time)
+	var changed := []
+	for l in _lights:
+		var t := fposmod(_time + _groups[l.group], cycle)
+		var half := green_time + amber_time + clearance_time
+		# the east-west stream runs the second half of the cycle
+		var own := t if l.ns else fposmod(t - half, cycle)
+		var phase := 2   # red
+		if own < green_time:
+			phase = 0
+			if l.kind == "voetganger" and own >= pedestrian_time:
+				phase = 2
+		elif own < green_time + amber_time:
+			phase = 1
+		var nm: String = PREFIX + l.kind + "_" + STATES[l.kind][phase]
+		if nm != l.shown and _ids.has(nm):
+			l.shown = nm
+			changed.append(l)
+	if changed.is_empty():
+		return
+	for gm in _layers():
+		for l in changed:
+			gm.set_cell_item(l.cell, _ids[l.shown], gm.get_cell_item_orientation(l.cell))
+
+
+## Repeatable time offset of an intersection from its position, so they don't all switch together.
+func _offset(p: Vector3) -> float:
+	var h := absi(int(p.x) * 73856093 ^ int(p.z) * 19349663) % 1000
+	return h / 1000.0 * 2.0 * (green_time + amber_time + clearance_time)
+
+
+func _layer() -> GridMap:
+	return get_parent().get_node_or_null(layer) as GridMap
+
+
+## The layer and its LOD copies (Props_lod, Props_lod2), whichever exist.
+func _layers() -> Array[GridMap]:
+	var out: Array[GridMap] = []
+	for n in get_parent().get_children():
+		if n is GridMap and (n.name == layer or String(n.name).begins_with(layer + "_lod")):
+			out.append(n)
+	return out

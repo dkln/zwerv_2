@@ -367,6 +367,9 @@ func _dress_streets() -> void:
 			var step := Vector2i(1, 0) if horizontal else Vector2i(0, 1)
 			if not run.is_empty() and c != prev + step:
 				var theme: String = "tram" if horizontal and run[0].y == tram_row else STREET_THEMES[section % STREET_THEMES.size()]
+				# bike lanes and bike streets only on sections long enough to read as such
+				if run.size() < 6 and theme in ["fietsstraat", "fietsstroken", "fietsstrook"]:
+					theme = "standaard"
 				_dress_section(run, horizontal, theme, inter, section)
 				section += 1
 				run = []
@@ -421,8 +424,9 @@ func _dress_section(run: Array, horizontal: bool, theme: String, inter: Dictiona
 				t0 = "weg/fietsstraat"
 				t1 = "weg/fietsstraat"
 			"fietsstroken":
-				t0 = "weg/rijstrook_fietsstrook"
-				t1 = "weg/rijstrook_fietsstrook"
+				# the pictogram every fourth cell, plain bike lane between
+				t0 = "weg/rijstrook_fietsstrook" if i % 4 == 1 else "weg/fietsstrook"
+				t1 = "weg/rijstrook_fietsstrook" if i % 4 == 3 else "weg/fietsstrook"
 			"fietsstrook":
 				t0 = "weg/fietsstrook"
 				t1 = "weg/fietsstrook"
@@ -684,10 +688,19 @@ func _intersection_with_lights(cx: int, cz: int, ns: String, ew: String, ov_ns: 
 		G(cx + 2, cz + i, "stoep/stoep_rand", "W")
 		G(cx + i, cz - 1, "stoep/stoep_rand", "S")
 		G(cx + i, cz + 2, "stoep/stoep_rand", "N")
-	G(cx + 1, cz + 2, "weg/rijstrook_stopstreep", "S")
-	G(cx, cz - 1, "weg/rijstrook_stopstreep", "N")
-	G(cx - 1, cz, "weg/rijstrook_stopstreep", "E")
-	G(cx + 2, cz + 1, "weg/rijstrook_stopstreep", "W")
+	# each approach (driving on the right): stop line two cells out, the zebra between
+	# it and the crossing, over the whole road. Southbound in column cx (from the
+	# north), northbound in cx+1 (from the south), westbound in row cz (from the
+	# east), eastbound in row cz+1 (from the west).
+	G(cx, cz - 2, "weg/rijstrook_stopstreep", "N")
+	G(cx + 1, cz + 3, "weg/rijstrook_stopstreep", "S")
+	G(cx + 3, cz, "weg/rijstrook_stopstreep", "E")
+	G(cx - 2, cz + 1, "weg/rijstrook_stopstreep", "W")
+	for k in 2:
+		G(cx + k, cz - 1, "weg/zebrapad", "S")
+		G(cx + k, cz + 2, "weg/zebrapad", "S")
+		G(cx + 2, cz + k, "weg/zebrapad", "E")
+		G(cx - 1, cz + k, "weg/zebrapad", "E")
 	for x in [cx, cx + 1]:
 		for z in [cz, cz + 1]:
 			G(x, z, "weg/weg_vlak")
@@ -711,8 +724,6 @@ func _intersection_with_lights(cx: int, cz: int, ns: String, ew: String, ov_ns: 
 		Pr((cx + 4) * 4 + 2.0, cz * 4 + 2.0, L + "mast_" + mast_ew, "E")
 	# eastbound traffic: southwest corner
 	_light_corner(Vector2((cx - 1) * 4 + 3.0, (cz + 2) * 4 + 1.0), Vector2(0, 1.5), Vector2(-1.5, 0), "W", ew, ov_ew, ped_ns, "N")
-	for c in [[cx, cz - 2], [cx + 1, cz + 3], [cx - 2, cz + 1], [cx + 3, cz]]:
-		G(c[0], c[1], "weg/zebrapad", "S" if c[0] <= cx + 1 and c[0] >= cx else "E")
 
 
 ## One corner of a signalised intersection: car light at pos (metres), bicycle light at

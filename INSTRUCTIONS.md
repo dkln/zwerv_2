@@ -10,6 +10,46 @@ Na opslaan importeert Godot hem automatisch opnieuw.
 Er zijn ongeveer 2000 tiles. Ze staan allemaal in context in de voorbeeldkaart,
 opgeknipt in 10 delen in `scenes/wereld/`.
 
+Daarnaast is er het centrum van Den Haag in één scène: `scenes/stad.tscn`, ingedikt op
+een stratengrid en alleen met de bestaande tiles. De Singelgracht loopt er rondom
+(kades aan beide kanten). Binnen de singel liggen de buurten ongeveer op hun echte
+plek: Paleis Noordeinde met de Paleistuin, het Lange Voorhout met Kloosterkerk en Hotel
+Des Indes, de Denneweg; de Grote Kerk met Hoogstraat en Oude Raadhuis, de Hofvijver
+(met eilandje) met Binnenhof, Ridderzaal, Torentje, Mauritshuis, Buitenhof en
+Gevangenpoort, het Plein met standbeeld en terrassen; de Grote Markt, Chinatown
+(Wagenstraat), de Grote Marktstraat met Bijenkorf en Passage, het Spuiplein met Nieuwe
+Kerk, wit stadhuis en Amare. Buiten de Prinsessegracht: het Haagse Bos met Paleis Huis
+ten Bosch, het Malieveld met de Koekamp en het Ministerie van Financien, het
+Bezuidenhout met daarachter de Theresiastraat (winkelstraat met portiekflats en een
+kerk) en de Bezuidenhout-Oost (galerijflats, park met vijver, woontoren), Centraal
+Station (stationshal en stationsplein, zonder spoor) met de torens erachter, het
+Beatrixkwartier en de kantoren aan de Prins Clauslaan. De A12 (Utrechtsebaan) komt van
+de oostrand als snelweg binnen, zakt in twee tunnelbakken en gaat overkapt verder van
+de Laan van NOI tot de Juliana van Stolberglaan; op het dek erboven staan de
+Malietoren, een rij winkels met Snackbar De Vrijheid en kantoren. Tussen Haagse Bos en
+Malieveld komt hij weer boven bij een kruispunt met stoplichten aan de Koningskade,
+naast het ministerie. Drie tramlijnen (Kneuterdijk - Korte Voorhout - Malieveld en
+Grote Marktstraat - Spui - Centraal, verbonden met bogen via de Buitenhof) met haltes
+en bruggen over de singel. Geen spoor. Opnieuw bouwen:
+`tools/godot.sh --headless --script tools/build/build_city.gd`.
+
+De game start met deze kaart (`run/main_scene` = `scenes/stad.tscn`): de node
+`Rondvlucht` (`scripts/camera/fly_over.gd`) laat de iso-camera langzaam in een ronde
+langs alle buurten glijden: boven elke buurt zoomt hij in, onderweg weer uit
+(instelbaar: `speed`, `zoom_near`, `zoom_far`, `route`).
+Een toets, muisklik of scroll geeft de camera aan jou (vrije camera); `active` uit =
+meteen zelf rondkijken. Een tilt-shift-lens (node `TiltShift`,
+`scripts/effects/tilt_shift.gd` + `.gdshader`) maakt het beeld boven en onder wazig,
+zodat de stad een maquette lijkt; instelbaar met `focus_center`, `focus_width`,
+`falloff`, `max_blur` en `saturation`, uit met `enabled`. De rondleiding door de voorbeeldkaart start je met
+`scenes/rondleiding.tscn` (F6 in de editor).
+
+Stoplichten werken: de node `Verkeerslichten` (`scripts/world/traffic_lights.gd`, in
+elke scène die de bouwers maken) laat de stoplichtprops (`verkeerslichten/auto_*`,
+`fiets_*`, `ov_*`, `voetganger_*`, `mast_*`) per kruispunt een vaste cyclus doorlopen:
+noord-zuid groen, oranje, alles rood, oost-west groen, oranje, alles rood. De richting
+van een licht volgt uit zijn draaiing; tijden zijn instelbaar op de node.
+
 
 Projectstructuur
 ----------------
@@ -51,7 +91,8 @@ Snel starten
    of `scenes/nieuwe_kaart.tscn` (leeg).
 3. Selecteer een GridMap-node (Grond / Gebouwen / Details / Props); onderin
    verschijnt het tile-palet. Zoek op naam, klik een tile, en klik in de 3D-view.
-4. Druk op F5 (start `scenes/rondleiding.tscn`): een automatische rondleiding begint met
+4. F5 start de stad (`scenes/stad.tscn`, zie boven). Open `scenes/rondleiding.tscn` en druk
+   op F6: een automatische rondleiding begint met
    de dag-nachtdemo (24 s boven gracht en plein: middag, avond, nacht, ochtend en weer
    middag, met de klok in de titel; `DAY_NIGHT` in `scripts/demo/tour_data.gd`), laadt
    dan de delen van de kaart een voor een en vliegt per deel isometrisch langs alle

@@ -341,14 +341,16 @@ def lane_bus():
 
 @tile("grond/weg/rijstrook_fietsstrook")
 def lane_bike_lane():
-    """Lane with an advisory bike lane on the right (x=20..31) and a bicycle pictogram."""
-    m = lane("onderbroken", "geen")
+    """Lane with an advisory bike lane on the right (x=18..31, as grond/weg/fietsstrook) and
+    a bicycle pictogram. No centre line: both lanes of a street use this tile (roads with
+    advisory bike lanes have none), so a line here would be doubled."""
+    m = lane("geen", "geen")
     for y in range(T):
-        for x in range(20, T):
+        for x in range(18, T):
             paint(m, x, y, BIKE_ASPHALT)
         if y % 8 < 4:
-            paint(m, 19, y, MARK)
-    paint_bitmap(m, PICTO["fiets"], 21, 12, MARK)
+            paint(m, 17, y, MARK)
+    paint_bitmap(m, PICTO["fiets"], 20, 12, MARK)
     return m
 
 

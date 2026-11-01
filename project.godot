@@ -12,7 +12,7 @@ config_version=5
 
 config/name="Zwervr"
 config/description="Tile-gebaseerde wereldbouwer met MagicaVoxel tiles."
-run/main_scene="res://scenes/rondleiding.tscn"
+run/main_scene="res://scenes/stad.tscn"
 config/features=PackedStringArray("4.7", "Forward Plus")
 
 [editor_plugins]

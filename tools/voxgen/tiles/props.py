@@ -1232,54 +1232,76 @@ def trunk(m, cx, cy, height, r, bark):
         m.cyl(cx, cy, rr, z, z + 1, bark)
 
 
-# Leaf colour patches of a crown are CROWN_BLOCK voxels wide (less detail than single voxels).
+# Crowns are built from CROWN_BLOCK^3 blocks of one colour each: chunky leaf balls without
+# voxel noise, which read calmly from the iso camera (and need far fewer faces).
 CROWN_BLOCK = 4
 
 
+def blocky_ellipsoid(m, cx, cy, cz, rx, ry, rz, colour, origin=(0, 0, 0), block=CROWN_BLOCK):
+    """Ellipsoid made of block^3 cubes on a grid starting at ``origin``: a cube is filled
+    when its centre lies inside. ``colour(rel)`` gets the height of the cube in the
+    ellipsoid (0 = bottom, 1 = top) and returns a colour."""
+    ox, oy, oz = origin
+    def snap(v, o):
+        return int((v - o) // block) * block + o
+    for z in range(snap(cz - rz, oz), int(cz + rz) + 1, block):
+        for y in range(snap(cy - ry, oy), int(cy + ry) + 1, block):
+            for x in range(snap(cx - rx, ox), int(cx + rx) + 1, block):
+                c = block / 2
+                d = ((x + c - cx) / rx) ** 2 + ((y + c - cy) / ry) ** 2 + ((z + c - cz) / rz) ** 2
+                if d <= 1.0:
+                    m.box(x, y, z, x + block, y + block, z + block, colour((z + c - (cz - rz)) / (2 * rz)))
+
+
 def crown_clusters(m, cx, cy, base, top, radius, n, leaves, seed, shape="rond", blossom=None, light="blad_licht"):
-    """Tree crown made of n leaf ellipsoids between z=base and z=top, each joined to the trunk by a branch.
+    """Tree crown made of n blocky leaf balls between z=base and z=top (blocky_ellipsoid).
 
     shape: "rond" (round), "zuil" (columnar), "breed" (broad) or anything else (loose).
-    leaves: leaf colours (the last one is used for the shaded underside); blossom: optional
-    blossom colours (~40% of blocks); light: colour of sunlit tops. Colour varies per
-    CROWN_BLOCK^3 block, so the crown reads as a few calm leaf balls.
+    leaves: leaf colours, one per ball (the last one is the shaded underside); blossom:
+    optional blossom colours (on some blocks of the upper half); light: colour of the
+    sunlit top of each ball.
     """
     pts = []
     for i in range(n):
         a = h(i, 0, 0, seed) * math.tau
         t = h(i, 1, 0, seed)
         if shape == "rond":
-            r = radius * 0.65 * math.sqrt(h(i, 2, 0, seed))
-            z = base + (top - base) * (0.3 + 0.55 * t)
+            r = radius * 0.6 * math.sqrt(h(i, 2, 0, seed))
+            z = base + (top - base) * (0.35 + 0.5 * t)
         elif shape == "zuil":
-            r = radius * 0.45 * h(i, 2, 0, seed)
+            r = radius * 0.4 * h(i, 2, 0, seed)
             z = base + (top - base) * t
         elif shape == "breed":
-            r = radius * 0.75 * math.sqrt(h(i, 2, 0, seed))
-            z = base + (top - base) * (0.35 + 0.4 * t)
+            r = radius * 0.7 * math.sqrt(h(i, 2, 0, seed))
+            z = base + (top - base) * (0.4 + 0.35 * t)
         else:
-            r = radius * 0.6 * h(i, 2, 0, seed)
+            r = radius * 0.55 * h(i, 2, 0, seed)
             z = base + (top - base) * t
         pts.append((cx + math.cos(a) * r, cy + math.sin(a) * r, z))
+    # the block grid is centred on the trunk
+    origin = (int(cx - CROWN_BLOCK // 2) % CROWN_BLOCK, int(cy - CROWN_BLOCK // 2) % CROWN_BLOCK, int(base) % CROWN_BLOCK)
+    body = leaves[:-1] or leaves
+    # the stem runs on into the lowest ball and a branch goes to every ball, so the crown
+    # rests on the trunk (both hidden inside the crown where it is closed)
+    lowest = min(p[2] for p in pts)
+    m.cyl(cx, cy, 1.2, int(base) - 2, int(lowest) + 1, "schors2")
+    for px, py, pz in pts:
+        m.line((cx, cy, base - 4), (px, py, pz), "schors2", 1.0)
     for i, (px, py, pz) in enumerate(pts):
-        sr = radius * (0.44 + 0.16 * h(i, 3, 0, seed))
+        sr = radius * (0.5 + 0.15 * h(i, 3, 0, seed))
         if shape == "zuil":
             sr *= 0.8
-        m.line((cx, cy, base - 4), (px, py, pz), "schors2", 0.6)
+        main = body[i % len(body)]
+        flower = blossom[i % len(blossom)] if blossom and i % 2 == 0 else None
 
-        def cfun(x, y, z, pz=pz, sr=sr):
-            bx, by, bz = x // CROWN_BLOCK, y // CROWN_BLOCK, z // CROWN_BLOCK   # calm colour patches
-            if blossom and h(bx, by, bz, seed + 5) < 0.4:
-                return pick(blossom, bx, by, bz, seed + 6)
-            rel = (z - (pz - sr)) / (2 * sr)      # 0 = bottom of the cluster, 1 = top
-            if rel > 0.75 and h(bx, by, bz, seed + 7) < 0.35:
-                return P[light]
+        def colour(rel, main=main, flower=flower):
+            if rel > 0.72:
+                return P[flower] if flower else P[light]
             if rel < 0.3:
                 return P[leaves[-1]]
-            return pick(leaves, bx, by, bz, seed + 8)
+            return P[main]
 
-        # closed crown; the variation is in the colour
-        m.ellipsoid(px, py, pz, sr, sr, sr * (1.25 if shape == "zuil" else 0.85), cfun)
+        blocky_ellipsoid(m, px, py, pz, sr, sr, sr * (1.25 if shape == "zuil" else 0.85), colour, origin)
 
 
 def deciduous_tree(seed, size=1.0, leaves=("blad1", "blad2", "blad4", "blad3"), bark="schors1", shape="rond",
@@ -1352,7 +1374,7 @@ def pine():
     for layer in range(9):
         z = 30 + layer * 6
         r = 13 - layer * 1.3
-        m.ellipsoid(16, 16, z, r, r, 3, mix("naald1", "naald2", "naald3", seed=113))
+        m.ellipsoid(16, 16, z, r, r, 3, ("naald1", "naald2", "naald3")[layer % 3])
     m.set(16, 16, 86, "naald3")
     m.set(16, 16, 85, "naald3")
     return m
@@ -1365,7 +1387,7 @@ def conifer():
     trunk(m, 7, 7, 4, 1, "schors2")
     for z in range(3, 38):
         r = 5.5 * (1 - (z - 3) / 38) + 0.6
-        m.cyl(7, 7, r, z, z + 1, mix("naald1", "naald2", "naald3", seed=114))
+        m.cyl(7, 7, r, z, z + 1, ("naald1", "naald2", "naald3")[(z // 6) % 3])
     return m
 
 

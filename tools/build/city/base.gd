@@ -170,6 +170,10 @@ func _make_scene(node_name: String) -> Node3D:
 	dc.name = "Dagcyclus"
 	dc.set_script(load("res://scripts/effects/day_cycle.gd"))
 	root.add_child(dc)
+	var tl := Node.new()
+	tl.name = "Verkeerslichten"
+	tl.set_script(load("res://scripts/world/traffic_lights.gd"))
+	root.add_child(tl)
 	var smoke := Node3D.new()
 	smoke.name = "Rook"
 	smoke.set_script(load("res://scripts/effects/smoke.gd"))
