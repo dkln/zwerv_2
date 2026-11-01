@@ -49,8 +49,11 @@ Snel starten
    of `scenes/nieuwe_kaart.tscn` (leeg).
 3. Selecteer een GridMap-node (Grond / Gebouwen / Details / Props); onderin
    verschijnt het tile-palet. Zoek op naam, klik een tile, en klik in de 3D-view.
-4. Druk op F5 (start `scenes/rondleiding.tscn`): een automatische rondleiding laadt de
-   delen van de kaart een voor een en vliegt per deel isometrisch langs alle situaties,
+4. Druk op F5 (start `scenes/rondleiding.tscn`): een automatische rondleiding begint met
+   de dag-nachtdemo (24 s boven gracht en plein: middag, avond, nacht, ochtend en weer
+   middag, met de klok in de titel; `DAY_NIGHT` in `scripts/demo/tour_data.gd`), laadt
+   dan de delen van de kaart een voor een en vliegt per deel isometrisch langs alle
+   situaties, terwijl de middag overgaat in de avond (`day_start`, `day_hours`),
    met titel en uitleg in beeld (node `Rondleiding`; zet `active` uit om zelf rond te
    kijken in deel `part`). Daarnaast: De camera staat standaard in
    isometrische stand: een perspectiefcamera met een smalle kijkhoek (20°),

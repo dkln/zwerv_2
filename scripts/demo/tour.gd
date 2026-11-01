@@ -1,10 +1,11 @@
 extends Node
 ## Automatic tour (the "Rondleiding" node of the world scene): a continuously moving demo.
-## It first shows how the shaders work (tour_data.gd SHADERS: each effect off, then on),
+## It opens with the day and night cycle (tour_data.gd DAY_NIGHT: one full day, from the
+## afternoon through the night and the morning back to the afternoon), then shows how the shaders work (tour_data.gd SHADERS: each effect off, then on),
 ## then flies over every area and kind of housing without ever standing still: the iso
 ## camera glides from area to area, pushing in and out (far away and close up), with low
 ## flights through the canal and the streets in between (tour_data.gd FLIGHTS), and starts
-## over after the last shot. Meanwhile the day goes by, from morning to night.
+## over after the last shot. Meanwhile the day goes on, from the afternoon into the evening.
 ##
 ## Every shot (tour_data.gd shots()) has a camera path; the camera follows it each frame,
 ## and at the start of a shot it blends from where it was in BLEND seconds, so the
@@ -45,6 +46,9 @@ const WALK_ESTIMATE := 35.0
 const CHASE_BACK := 4.5
 const CHASE_UP := 2.2
 const WALK_ISO_SIZE := 18.0
+## Day and night demo: the clock as [fraction of the shot, hours after day_start], so
+## the afternoon, sunset and sunrise take their time and the dark night goes quickly.
+const DAY_KEYS := [[0.0, 0.0], [0.1, 1.0], [0.36, 5.0], [0.56, 15.0], [0.82, 19.5], [1.0, 24.0]]
 
 ## Run the tour; off = free camera.
 @export var active := true
@@ -55,10 +59,10 @@ const WALK_ISO_SIZE := 18.0
 @export var part := 0
 @export var camera_path := NodePath("../Camera")
 @export var day_cycle_path := NodePath("../Dagcyclus")
-## Hours the clock runs during one round of the tour, from `day_start`: so the day goes
-## from morning into the night towards the end.
-@export var day_start := 8.0
-@export var day_hours := 15.0
+## The day and night demo starts and ends at `day_start`; the rest of the tour then runs
+## the clock `day_hours` further per round, from the afternoon into the evening.
+@export var day_start := 14.0
+@export var day_hours := 6.0
 ## Speed factor on all shots (2 = twice as fast).
 @export var speed := 1.0
 ## The tour starts at the first shot whose slug contains this (empty = at the beginning).
@@ -79,7 +83,8 @@ var _i := 0
 var _time := 0.0
 ## Camera pose at the start of the current shot: [Transform3D, fov, near].
 var _from: Array = []
-## Seconds of one round (for the clock) and the time played in this round.
+## Seconds of one round (for the clock) and the time played in this round, both
+## without the day and night demo (which runs its own clock).
 var _round := 1.0
 var _played := 0.0
 ## Busy loading a map part: the camera waits.
@@ -121,7 +126,7 @@ func _ready() -> void:
 	var shots := Data.shots(_root)
 	if highlights_only:
 		var keep: Array = Data.HIGHLIGHTS
-		shots = shots.filter(func(s): return s["slug"] in keep or s.has("toggle") or s["kind"] == "fly")
+		shots = shots.filter(func(s): return s["slug"] in keep or s.has("toggle") or s.has("day") or s["kind"] == "fly")
 	_shots = _by_part(shots)
 	_day = get_node_or_null(day_cycle_path)
 	_caption = Caption.new(self, true)
@@ -131,7 +136,8 @@ func _ready() -> void:
 		return
 	_round = 0.0
 	for s in _shots:
-		_round += s["seconds"]
+		if not s.has("day"):
+			_round += s["seconds"]
 	if start_at != "":
 		for k in _shots.size():
 			if start_at in str(_shots[k]["slug"]):
@@ -203,7 +209,8 @@ func _process(delta: float) -> void:
 	var s: Dictionary = _shots[_i % _shots.size()]
 	var dt := 0.0 if _paused else delta * speed
 	_time += dt
-	_played += dt
+	if not s.has("day"):
+		_played += dt
 	if s["kind"] == "walk" and _walker:
 		_walker.set("paused", _paused)
 		# the shot ends shortly after the figure has arrived
@@ -219,8 +226,14 @@ func _process(delta: float) -> void:
 	if s.has("toggle") and not _effects_on and t >= 0.5:
 		_effects_on = true
 		_effects(s, true)
-	# the clock: from day_start over day_hours per round
-	if _day:
+	# the clock: one full day in the day and night demo, else from day_start over
+	# day_hours per round
+	if s.has("day"):
+		var hour := day_start + _day_hours(t)
+		if _day:
+			_day.set_time(hour)
+		_caption.title.text = "%s · %s" % [s["title"], _clock_text(hour)]
+	elif _day:
 		_day.set_time(day_start + day_hours * fposmod(_played / maxf(_round, 0.001), 1.0))
 	# the caption fades out shortly before the shot ends
 	if _time > seconds - 0.4 and _caption.panel.modulate.a > 0.99:
@@ -266,7 +279,8 @@ func _jump(step: int) -> void:
 	_i = posmod(_i + step, _shots.size())
 	_played = 0.0
 	for k in _i:
-		_played += _shots[k]["seconds"]
+		if not _shots[k].has("day"):
+			_played += _shots[k]["seconds"]
 	if _paused and _shots[_i]["kind"] != "walk":
 		_from = _pose(_shots[_i], 0.0)
 		_apply(_from)
@@ -277,6 +291,32 @@ func _jump(step: int) -> void:
 
 func _show_counter() -> void:
 	_caption.counter.text = _counter + (" · pauze" if _paused else "")
+
+
+## Hours after day_start in the day and night demo at t (0..1), from DAY_KEYS (eased
+## within each step, so the clock never jumps in speed).
+func _day_hours(t: float) -> float:
+	for k in range(1, DAY_KEYS.size()):
+		var a: Array = DAY_KEYS[k - 1]
+		var b: Array = DAY_KEYS[k]
+		if t <= b[0] or k == DAY_KEYS.size() - 1:
+			var f := clampf((t - a[0]) / (b[0] - a[0]), 0.0, 1.0)
+			return lerpf(a[1], b[1], lerpf(f, smoothstep(0.0, 1.0, f), 0.5))
+	return 0.0
+
+
+## "16:30 · middag": the time of `hour` (wrapped to 0..24) and the part of the day.
+func _clock_text(hour: float) -> String:
+	var h := fposmod(hour, 24.0)
+	var minutes := int(h * 60.0) / 10 * 10   # in steps of 10 minutes, so it reads calmly
+	var part := "nacht"
+	if h >= 6.0 and h < 12.0:
+		part = "ochtend"
+	elif h >= 12.0 and h < 18.0:
+		part = "middag"
+	elif h >= 18.0:
+		part = "avond"
+	return "%02d:%02d %s" % [minutes / 60, minutes % 60, part]
 
 
 ## Camera pose [Transform3D, fov, near] of shot `s` at t (0..1); for a walk shot (which

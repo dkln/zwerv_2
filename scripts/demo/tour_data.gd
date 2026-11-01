@@ -27,7 +27,15 @@ const CITY_TIME := 3.5
 const DISTRICT_TIME := 2.4
 const OVERVIEW_TIME := 5.0
 
-## The first stops of the tour: how the shaders suggest depth and detail. Rows as
+## The very first shot of the tour: the day and night cycle (scripts/effects/day_cycle.gd)
+## over the canal and the square, with lanterns, lit windows and the water reflecting the
+## sky. tour.gd runs the clock one full day round during this shot, from the tour's
+## `day_start` (afternoon) through the evening and the night to the morning and back
+## to the afternoon. [slug, title, text, focus x, z at the start, x, z at the end,
+## view size at the start, at the end, seconds].
+const DAY_NIGHT := ["dag_nacht", "Dag en nacht", "Eén etmaal in beeld: de zon draait en kleurt oranje bij een lage stand, de lucht wordt donker, lantaarns en verlichte ramen gaan branden en het vullicht wordt blauw maanlicht. Daarna komt de ochtend en weer de middag.", 40, 40, 72, 76, 80.0, 60.0, 24.0]
+
+## The first stops of the tour after the day and night demo: how the shaders suggest depth and detail. Rows as
 ## CITY plus the shader globals (Project > Shader Globals) the tour switches off and on
 ## again halfway through the stop, so the difference shows (tour.gd); "node:<name>"
 ## switches a node of the tour scene with an "enabled" property instead.
@@ -185,7 +193,8 @@ static func stops(root: Node) -> Array:
 
 
 ## The tour as one continuous list of camera shots (tour.gd), from stops() plus the
-## FLIGHTS. Every shot: {slug, title, text, kind, seconds, ...}; kind "iso": the iso
+## FLIGHTS, preceded by the day and night demo (DAY_NIGHT, with "day": true). Every
+## shot: {slug, title, text, kind, seconds, ...}; kind "iso": the iso
 ## camera glides from focus `a` with `size_a` metres in view to `b` with `size_b`
 ## (a slow push in and a drift); kind "fly": a low flight from `from` to `to`. Shader
 ## stops keep their "toggle" (their globals go off, then on halfway); "x"/"z" is where
@@ -194,7 +203,10 @@ static func shots(root: Node) -> Array:
 	var flights := {}
 	for f in FLIGHTS:
 		flights[f[10]] = flights.get(f[10], []) + [f]
-	var list := []
+	var d: Array = DAY_NIGHT
+	var list := [{"slug": d[0], "title": d[1], "text": d[2], "kind": "iso", "day": true,
+		"a": Vector3(d[3], 0, d[4]), "b": Vector3(d[5], 0, d[6]), "size_a": d[7], "size_b": d[8],
+		"seconds": d[9], "x": (d[3] + d[5]) * 0.5, "z": (d[4] + d[6]) * 0.5}]
 	for st in stops(root):
 		var focus := Vector3(st["x"], 0, st["z"])
 		var size: float = st["size"]
