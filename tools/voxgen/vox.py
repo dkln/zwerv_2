@@ -337,7 +337,7 @@ def write_vox(path, m):
 
 
 # ---------------------------------------------------------------- tile metadata
-# <tile>.tile.json next to each .vox, read by addons/vox_tiles/tile_metadata.gd.
+# <tile>.tile.json next to each .vox, read by addons/vox_tiles/importer/tile_metadata.gd.
 
 # tile base names that bob on the water (animation "float")
 _FLOAT_PREFIXES = ("sloep", "roeiboot", "reddingsboei", "woonboot", "water_lelies")

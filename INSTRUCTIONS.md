@@ -11,6 +11,36 @@ Er zijn ongeveer 2000 tiles. Ze staan allemaal in context in de voorbeeldkaart,
 opgeknipt in 10 delen in `scenes/wereld/`.
 
 
+Projectstructuur
+----------------
+    addons/vox_tiles/      editor-plugin (plugin.gd, plugin.cfg)
+      importer/            .vox inlezen en meshen: vox_parser, vox_mesher, vox_import_plugin,
+                           slopes (hellingen/bochten), tile_metadata (.tile.json)
+      library/             MeshLibraries bouwen: library_builder, atlas
+      editor/              bouwpaneel en editor-weergave: build_dock, build_tools, stamps,
+                           editor_view, outline, scene_preview
+      materials/           shaders en materialen van de voxels
+    assets/                tiles (.vox + .tile.json), libraries (gemaakt), fonts
+    scenes/                rondleiding.tscn, nieuwe_kaart.tscn, wereld/deel_NN.tscn
+    scripts/               spelcode
+      camera/              free_camera, iso_camera
+      world/               world_parts (kaartdelen), level_of_detail, layer_baker,
+                           ground_map, tint_map, tint_area
+      effects/             day_cycle, smoke, grass_blades, motion_blur (.gd + .glsl)
+      characters/          vox_character, path_follower
+      navigation/          grid_nav
+      demo/                tour, tour_data, caption (rondleiding), walker (wandelaar)
+    tools/                 command-line tools (start ze met tools/godot.sh)
+      godot.sh             Godot met tijdslimiet en zonder stdin
+      tool_common.gd       gedeelde helpers van de tools
+      build/               build_example_city (+ city/: de bouwer in delen),
+                           build_libraries, build_previews
+      check/               coverage, fps_test, triangle_count, walk_test
+      shots/               screenshots, shot_tiles, shot_iso, shot_scene, walk_shots
+      voxgen/              Python-generator van de tiles (zie "Tiles (opnieuw) genereren")
+    docs/                  MagicaVoxel-handleiding (MAGICAVOXEL.md -> .html)
+
+
 Snel starten
 ------------
 1. Open de map in Godot 4.7 (`project.godot`). De eerste keer importeert Godot
@@ -24,7 +54,7 @@ Snel starten
    met titel en uitleg in beeld (node `Rondleiding`; zet `active` uit om zelf rond te
    kijken in deel `part`). Daarnaast: De camera staat standaard in
    isometrische stand: een perspectiefcamera met een smalle kijkhoek (20°),
-   45 graden gedraaid en ~35 graden naar beneden (`scripts/iso_camera.gd`).
+   45 graden gedraaid en ~35 graden naar beneden (`scripts/camera/iso_camera.gd`).
    Een echte perspectiefcamera, omdat Godot schaduwsplits en SSR alleen daarmee
    goed berekent; zoomen = de afstand veranderen. Zet `isometric`
    op de Camera-node uit voor een vrije perspectief-camera (rechtermuisknop =
@@ -104,21 +134,21 @@ polder aan de randen hoort bij het eerste en laatste deel):
 Elk deel is een eigen Vox Tiles-scene met de vier lagen (Grond, Gebouwen, Details,
 Props) op hun echte plek in de wereld: open een deel om erin te bouwen. In de editor
 toont de plugin een deel met de omgeving, zon, vullicht, TintKaart (met alle tintvlakken)
-en rook van `scenes/rondleiding.tscn` (`addons/vox_tiles/scene_preview.gd`, metadata
+en rook van `scenes/rondleiding.tscn` (`addons/vox_tiles/editor/scene_preview.gd`, metadata
 `preview_scene` op het deel), zodat licht, effecten en tinten kloppen; die nodes worden
 niet in het deel opgeslagen, je past ze aan in `rondleiding.tscn`. Er is geen
 scene meer met de hele kaart. `scenes/rondleiding.tscn` heeft alleen omgeving, licht,
 camera en de hulpnodes (Rondleiding, DetailNiveau, Dagcyclus, Rook, TintKaart) en de
 metadata van de hele kaart (wijken, plekken, `part_rows`: de rijen van elk deel). De
-rondleiding laadt steeds één deel (`scripts/world_parts.gd`, `show_part`): de lagen
+rondleiding laadt steeds één deel (`scripts/world/world_parts.gd`, `show_part`): de lagen
 van dat deel komen direct onder de root, DetailNiveau voegt ze samen (achter een
 laadscherm "Deel n van 10 laden…") en Rook zoekt de schoorstenen. Na de laatste stop
 in het deel wordt het weggegooid en komt het volgende. De tools laden het deel waar ze
-kijken; `tools/coverage.gd` laadt alle delen tegelijk (`merge_all`). De rij-grenzen kiest de build zelf (ongeveer evenveel cellen
+kijken; `tools/check/coverage.gd` laadt alle delen tegelijk (`merge_all`). De rij-grenzen kiest de build zelf (ongeveer evenveel cellen
 per deel, op een rij met zo min mogelijk gebouwen, zodat er geen gebouw doormidden gaat);
 ze staan ook als metadata `rows` op de root van elk deel. Een stop hoort bij het deel
 waar zijn middelpunt ligt; wat net over de grens ligt, is in dat beeld leeg. Het aantal
-delen staat in `WORLD_PARTS` in `tools/build_example_city.gd`.
+delen staat in `WORLD_PARTS` in `tools/build/city/base.gd`.
 
 De kaart is 96 x 80 tiles stad, met daaronder een campus en de demowijken.
 Gebruik hem als naslag: zoek een tile in het palet en kijk hoe hij in de kaart
@@ -144,7 +174,7 @@ is ingezet.
 
 Elke tile staat ergens in de kaart in een realistische situatie; de wijken
 worden automatisch opgebouwd uit de bibliotheken, dus nieuwe tiles komen er bij
-het opnieuw bouwen vanzelf bij (`_demo_districts()` in `tools/build_example_city.gd`).
+het opnieuw bouwen vanzelf bij (`_demo_districts()` in `tools/build/build_example_city.gd`).
 De demowijken vormen samen met de oude stad één stad: ze liggen als bouwblokken
 aan een stratennet (2 rijstroken, kruispunten, lantaarns en bomen) dat via twee
 straten op de campusweg aansluit; waar een wijk ruimte laat staan gebouwen langs de
@@ -156,7 +186,7 @@ bochtbruggen op pijlers.
 
 Controleren of echt alle tiles in de kaart staan:
 
-    /Applications/Godot.app/Contents/MacOS/Godot --headless --script tools/coverage.gd
+    /Applications/Godot.app/Contents/MacOS/Godot --headless --script tools/check/coverage.gd
 
 
 De vier lagen
@@ -268,9 +298,9 @@ dichte gebouwblokken een doos van 4x3x4 m; props een omhullende doos.
 
 Kleur en tint aanpassen (zonder de .vox te wijzigen)
 ----------------------------------------------------
-In elke kaart zit een node `TintKaart` (script `scripts/tint_map.gd`):
+In elke kaart zit een node `TintKaart` (script `scripts/world/tint_map.gd`):
 - `variation`: geeft elke 4x4 m cel automatisch een net iets andere kleur.
-- Voeg een kind-node toe met script `scripts/tint_area.gd` (TintArea), schuif
+- Voeg een kind-node toe met script `scripts/world/tint_area.gd` (TintArea), schuif
   hem over een gebouw of stuk grond en kies `color`, `brightness`, `strength`
   en `size` (in cellen). De tint werkt live in de editor.
   Wit = geen verandering; helderheid > 1 is lichter, < 1 donkerder.
@@ -280,7 +310,7 @@ Shader Globals: `zwervr_tint_map`, `zwervr_tint_area`, `zwervr_variation`).
 
 Rook, water, vlaggen en voxelstructuur
 --------------------------------------
-- Rook: de node `Rook` (script `scripts/smoke.gd`) zet automatisch rookpluimen
+- Rook: de node `Rook` (script `scripts/effects/smoke.gd`) zet automatisch rookpluimen
   op alle fabrieksschoorstenen (`overig/fabrieksschoorsteen_top`) en op de
   kleine schoorsteen-details. Werkt live in de editor; vink `rescan`
   aan nadat je schoorstenen hebt toegevoegd. `wind` bepaalt de richting.
@@ -403,7 +433,7 @@ Bestaande item-ID's blijven gelijk, dus je kaarten breken niet: de ID van elke t
 staat in zijn `.tile.json`. De bibliotheken (`assets/libraries/*.res`) staan daarom
 niet in git; ze worden gemaakt uit de `.vox`- en `.tile.json`-bestanden, door de
 plugin bij het openen van de editor of met
-`Godot --headless --script tools/build_libraries.gd`. Het register
+`Godot --headless --script tools/build/build_libraries.gd`. Het register
 `assets/libraries/<categorie>_ids.json` (naam -> ID) staat wel in git, als overzicht.
 
 
@@ -425,35 +455,41 @@ kleuren, materialen en importopties, binnen een categorie) vervangen door
 alias-tiles naar de tile met de kortste naam (`dedupe.py`).
 
 Generator-bestanden (`tools/voxgen/`):
+- `generate.py`  startpunt: schrijft alles naar `assets/tiles/`
 - `palette.py`   kleurenpalet + materiaaltypes (metal/glass/emit/water/flag);
   `VARIATION` (standaard 0,65) dempt de kleurverschillen binnen groepen als
   asfalt1..4, gras1..5 en baksteen1..5 (bestrating zoals tegels en klinkers niet)
 - `vox.py`       voxelmodel, tekenfuncties, .vox schrijver (palet per bestand)
 - `common.py`    maten, registry, pixelfont en pictogrammen
-- `ground.py`, `ground2.py`, `ground3.py`   grond: wegen, stoepen, pleinen,
-  natuur, water, spoor, tram, tunnels, zwembaden, waterkant, bruggen, hellingen
-- `buildings.py`, `buildings2.py`, `buildings3.py`   gebouwstijlen, gevels,
-  daken, dakpansoorten, kerken, musea, hallen, parkeergarage, radiotoren
-- `details.py`, `details2.py`   gevel- en dakonderdelen, zonwering, teksten, vlaggen
-- `props.py`, `props2.py`   straatmeubilair, borden (RVV), bomen, planten,
-  hekken, muurtjes, speeltuin, terras, zwembad, containers, steigers
-- `extras4.py`, `extras5.py`, `extras6.py`   latere uitbreidingen (bedrijfspand,
-  heuvels, loopbruggen, winkels, tunnelbakken, boulevards, luxe appartementen,
-  groendaken, standbeelden, universiteit, hogeschool, kolonnades)
-- `generate.py`  schrijft alles naar `assets/tiles/`
 - `dedupe.py`    vervangt identieke tiles door alias-tiles
+- `palettes.py`, `handbook.py`   MagicaVoxel-paletten en de visuele handleiding (`--palettes`)
+- `tiles/`       de tile-modules; `tiles/__init__.py` importeert ze in vaste volgorde:
+  - `ground.py`, `ground_extra.py`, `ground_bridges_curves.py`, `ground_rising_curves.py`,
+    `ground_junction.py`   grond: wegen, stoepen, pleinen, natuur, water, spoor, tram,
+    tunnels, zwembaden, waterkant, bruggen, (stijgende) bochten, op- en afritten
+  - `buildings.py`, `building_styles.py`, `building_roofs.py`, `building_campus.py`
+    gebouwstijlen, gevels, daken, dakpansoorten, kerken, musea, hallen, parkeergarage,
+    radiotoren, universiteit, hogeschool, kolonnades
+  - `details.py`, `details_extra.py`   gevel- en dakonderdelen, zonwering, teksten, vlaggen
+  - `props.py`, `props_extra.py`   straatmeubilair, borden (RVV), bomen, planten,
+    hekken, muurtjes, speeltuin, terras, zwembad, containers, steigers
+  - `extras_business_paths.py`, `extras_shops_lanes.py`, `traffic_lights_industry.py`
+    latere uitbreidingen over meerdere categorieën (bedrijfspand, heuvels, loopbruggen,
+    winkels, tunnelbakken, tram- en busbanen, luxe appartementen, groendaken,
+    standbeelden, verkeerslichten, loodsen en fabrieken)
+  De namen van gevelfuncties bepalen de seed van gebouwen: hernoem ze niet.
 
 Na het genereren (vanuit de projectmap):
 
     # 1. alle tiles importeren
     tools/godot.sh --headless --import
     # 2. bibliotheken bijwerken (zonder previews)
-    tools/godot.sh --headless --script tools/build_libraries.gd [-- force]
+    tools/godot.sh --headless --script tools/build/build_libraries.gd [-- force]
     # 2b. palet-previews renderen (met venster, ~1,5 min voor alles; daarna hoeft de
     #     editor bij het openen geen "Creating mesh previews" meer te doen)
-    tools/godot.sh --script tools/build_previews.gd [-- all]
+    tools/godot.sh --script tools/build/build_previews.gd [-- all]
     # 3. voorbeeldkaart opnieuw bouwen (overschrijft scenes/rondleiding.tscn en scenes/wereld/!)
-    tools/godot.sh --headless --script tools/build_example_city.gd
+    tools/godot.sh --headless --script tools/build/build_example_city.gd
 
 Previews worden bewaard in `.godot/vox_tiles_previews/` (per tile en importtijd); een
 bibliotheek die opnieuw gebouwd wordt, krijgt ze daar direct uit terug.
@@ -468,33 +504,37 @@ niet meer klopt na een `--force`).
 
 Hoe het werkt (techniek)
 ------------------------
-- `addons/vox_tiles/vox_import_plugin.gd`: importer voor `.vox`. Leest het
+- `addons/vox_tiles/importer/vox_import_plugin.gd`: importer voor `.vox`. Leest het
   model (`vox_parser.gd`) en maakt een mesh (`vox_mesher.gd`) met greedy
   meshing, vertex-kleuren en ingebakken ambient occlusion. Per materiaaltype
   een eigen surface en shader (`materials/`: opaque, metal, glass, emit,
   water, vlag).
-- `addons/vox_tiles/library_builder.gd`: bouwt per map onder `assets/tiles/`
+- `addons/vox_tiles/library/library_builder.gd`: bouwt per map onder `assets/tiles/`
   een MeshLibrary in `assets/libraries/` (grond, gebouwen, details, props),
   met previews en collision. Item-ID's blijven stabiel op naam.
 - `addons/vox_tiles/plugin.gd`: houdt de bibliotheken automatisch bij als er
   tiles bijkomen, verdwijnen of opnieuw geïmporteerd worden.
-- `scripts/free_camera.gd`: vliegcamera; `scripts/tint_map.gd` en
-  `scripts/tint_area.gd`: tint-systeem.
-- `tools/build_example_city.gd`: bouwt de voorbeeldkaart via code. Handige
-  helpers om zelf kaarten te scripten: `G/B/D/Pr` (één tile per laag),
-  `blok()` (rechthoekig gebouw met automatisch de juiste hoek-, gevel- en
-  dakstukken), `ring()` (gesloten bouwblok met kappen om de hoek), `toren()`,
-  `profiel_x/z()` (straatprofiel), `vlak()`.
-- `scripts/world_parts.gd`: knipt de voorbeeldkaart bij het opslaan op in delen
+- `scripts/camera/free_camera.gd`: vliegcamera; `scripts/world/tint_map.gd` en
+  `scripts/world/tint_area.gd`: tint-systeem.
+- `tools/build/build_example_city.gd`: bouwt de voorbeeldkaart via code. Dit bestand
+  bevat alleen de bouwvolgorde; de rest staat in `tools/build/city/`, een keten van
+  scripts die elk het vorige uitbreiden: `base` (toestand, scene, `G/B/D/Pr`) ->
+  `kit` (herbruikbare helpers) -> `old_town` -> `expansion` -> `street_grid` ->
+  `neighbourhoods` -> `situations`. Een deel kan alleen functies uit zichzelf of een
+  eerder deel aanroepen. Handige helpers om zelf kaarten te scripten: `G/B/D/Pr` (één
+  tile per laag, `base.gd`), `block()` (rechthoekig gebouw met automatisch de juiste
+  hoek-, gevel- en dakstukken), `ring()` (gesloten bouwblok met kappen om de hoek),
+  `tower()`, `profile_x/z()` (straatprofiel), `fill_rect()` (alle in `kit.gd`).
+- `scripts/world/world_parts.gd`: knipt de voorbeeldkaart bij het opslaan op in delen
   (`scenes/wereld/`) en laadt een deel (of alle delen) in de rondleidingsscene.
-- `tools/coverage.gd`: telt welke tiles in de voorbeeldkaart in context staan.
-- `tools/screenshots.gd`: maakt isometrische screenshots van alle gebieden en
+- `tools/check/coverage.gd`: telt welke tiles in de voorbeeldkaart in context staan.
+- `tools/shots/screenshots.gd`: maakt isometrische screenshots van alle gebieden en
   buurten met titel en uitleg in beeld, naar `docs/screenshots/` (met
   `index.json`; lokaal, staat niet in git).
-- `tools/shot.gd` / `tools/shot_scene.gd` / `tools/shot_iso.gd`: maken
+- `tools/shots/shot_tiles.gd` / `tools/shots/shot_scene.gd` / `tools/shots/shot_iso.gd`: maken
   screenshots van tiles of scenes, ook isometrisch (voor controle).
 
-Belichting (in `tools/build_example_city.gd`, functie `_maak_scene`): een zon
+Belichting (in `tools/build/city/base.gd`, functie `_make_scene`): een zon
 uit het zuid-zuidoosten met schaduwen (in de isometrische stand krijgen zowel
 de zuid- als de oostgevels licht), een zacht blauwig vullicht zonder schaduw,
 lucht-ambient, SSAO, glow en een lichte kleur/contrast-correctie. Pas
@@ -504,7 +544,7 @@ lucht-ambient, SSAO, glow en een lichte kleur/contrast-correctie. Pas
 Rondleiding, prestaties en uiterlijk
 ------------------------------------
 - Shader-showcase: direct na de opening laat de rondleiding zien hoe de shaders werken
-  (`SHADERS` in `scripts/tour_data.gd`): baksteen, asfalt, plaveisel, gras en grind,
+  (`SHADERS` in `scripts/demo/tour_data.gd`): baksteen, asfalt, plaveisel, gras en grind,
   golvende grond en de grond van ver. Elke stop duurt twee keer zo lang: eerst staat
   het effect uit, halverwege gaat het aan (titel "· uit" / "· aan"); de rondleiding
   zet daarvoor de shader-globals van die stop op 0 en terug op hun projectwaarde.
@@ -519,9 +559,9 @@ Rondleiding, prestaties en uiterlijk
   grijstint met een bolle bovenkant waarop de zon glinstert, plus zachte slijtplekken;
   dichtbij worden de voxelblokjes van 12,5 cm eerst verzacht (gemiddeld met de
   buur-texels), zodat het patroon de structuur draagt en niet het voxelraster.
-- `Rondleiding` (`scripts/tour.gd`): een doorlopend bewegende demo van ongeveer 6
+- `Rondleiding` (`scripts/demo/tour.gd`): een doorlopend bewegende demo van ongeveer 6
   minuten, die nergens stilstaat. Eerst de shader-showcase (`SHADERS` in
-  `scripts/tour_data.gd`, elk effect eerst uit en dan aan), daarna een vlucht langs alle
+  `scripts/demo/tour_data.gd`, elk effect eerst uit en dan aan), daarna een vlucht langs alle
   gebieden en woonwijken: de iso-camera glijdt van gebied naar gebied en zoomt daarbij
   in en uit (van ver en dichtbij), met lage vluchten door de gracht, de Hoofdstraat, de
   Zuidweg, de snelweg en de winkelstraat ertussen (`FLIGHTS`). Elke shot heeft een
@@ -535,7 +575,7 @@ Rondleiding, prestaties en uiterlijk
   Elk deel eindigt met de wandelaar (zie "Personages en navigatie"): per route een
   shot waarin de camera het poppetje volgt tot het aankomt; V = van achteren of in de
   iso-stand. Meteen beginnen bij de wandelaar: `start_at` = `wandelaar`.
-- `DetailNiveau` (`scripts/level_of_detail.gd`): schakelt bij het uitzoomen naar
+- `DetailNiveau` (`scripts/world/level_of_detail.gd`): schakelt bij het uitzoomen naar
   grove tiles (`coarse_from`, standaard 100 m in beeld: daar is een voxel al kleiner
   dan een pixel) en heel grove tiles (`very_coarse_from`, 130 m), voor Grond,
   Gebouwen en Props (bomen: een plataan 9.500 / 5.800 / 1.500 driehoeken), verbergt
@@ -561,7 +601,7 @@ Rondleiding, prestaties en uiterlijk
   geometrie opnieuw en is de grootste kostenpost na de geometrie zelf.
 - Rendering (`project.godot`): render-resolutie 85% met temporele upscaling (vrijwel niet te zien naast 100%, ~13% sneller; bij 77% werd het van ver korrelig en kartelig) en anti-aliasing: MetalFX op macOS, FSR 2 elders (MSAA/FXAA uit), debanding,
   depth prepass uit; GridMaps gebruiken octant-grootte 4 (snelst gemeten).
-- Samenvoegen (`scripts/layer_baker.gd`, aangestuurd door `DetailNiveau`, export
+- Samenvoegen (`scripts/world/layer_baker.gd`, aangestuurd door `DetailNiveau`, export
   `merge_layers`): bij het starten worden de lagen Gebouwen en Grond samengevoegd tot
   grote meshes (chunks van 8x8 cellen, per LOD-niveau). Zijden die tegen een
   dichte buurcel liggen en alle onderkanten vallen daarbij weg. De importer
@@ -572,7 +612,7 @@ Rondleiding, prestaties en uiterlijk
   en de tiles niet veranderen).
   Je bewerkt gewoon de GridMaps; botsingen blijven daar ook. Tiles met een vlag
   blijven losse meshes (de vlag-shader rekent in lokale coördinaten).
-- `Dagcyclus` (`scripts/day_cycle.gd`): basis voor dag en nacht (`time_of_day`,
+- `Dagcyclus` (`scripts/effects/day_cycle.gd`): basis voor dag en nacht (`time_of_day`,
   `speed`). De zon komt schuin van opzij (oost tot zuidoost, gezien vanuit de
   isometrische camera), zodat de schaduwen in beeld vallen en de gevels licht
   houden, en blijft tussen `min_elevation` (36°) en `max_elevation` (44°) hoog: geen
@@ -588,7 +628,7 @@ Rondleiding, prestaties en uiterlijk
   en zonder flikkeren. Gras wordt aan zijn kleur herkend (duidelijk groen, bovenvlakken):
   een korrel van 60 en 20 cm (geen vlekken van ver), en dichtbij lange, dunne grassprieten. Grind
   krijgt per kiezel een lichte en een schaduwkant en vlekken van ~15 cm.
-- Echte grassprieten (node `Grassprieten`, `scripts/grass_blades.gd`, shader
+- Echte grassprieten (node `Grassprieten`, `scripts/effects/grass_blades.gd`, shader
   `materials/grass_blade.gdshader`): ingezoomd (minder dan `show_from` = 45 m in beeld)
   groeien hoekige sprieten in voxelstijl uit het gras (drie vierkante blokjes van 3 x 3 cm
   op elkaar, getrapt in de buigrichting, elk een eigen tint, alleen in kwartslagen gedraaid) rond het punt waar de camera
@@ -602,7 +642,7 @@ Rondleiding, prestaties en uiterlijk
 - Randen tussen grondtiles (`zwervr_ground_edges`, 0 = uit): waar een grondtile een
   andere soort grond raakt (gras, weg, fietspad, stoep, grind, klinkers, ...), tekent de
   shader een rand die leest als een klein hoogteverschil, zonder echte geometrie. De
-  `GrondKaart` (`scripts/ground_map.gd`, globals `zwervr_ground_types` en
+  `GrondKaart` (`scripts/world/ground_map.gd`, globals `zwervr_ground_types` en
   `zwervr_ground_area`) kent elke 4 x 4 m-cel een soort toe (hoofdmateriaal plus
   kleurgroep, dus rood fietspadasfalt is iets anders dan grijs wegasfalt) en een
   nep-hoogte (`RANK`: weg laagst, fietspad, klinkers, grind en aarde, gras, stoep
@@ -635,7 +675,7 @@ Rondleiding, prestaties en uiterlijk
   In de polder naast het park ligt een bollenveld (rondleidingsstop "bollenveld").
 - Gras: `natuur/gras` (kort, in de stad) en `natuur/gras_hoog` (hoog, in de polder) zijn
   dezelfde egale tile; ze verschillen alleen in de lengte van de grassprieten
-  (`SHORT_GRASS`/`TALL_GRASS` in `scripts/ground_map.gd`). Ook `gras_droog` is in het palet gewoon gras.
+  (`SHORT_GRASS`/`TALL_GRASS` in `scripts/world/ground_map.gd`). Ook `gras_droog` is in het palet gewoon gras.
   Dichtbij tekent de shader lange, dunne grassprieten van ~30 cm die in de windrichting overhellen
   en elk een beetje wiegen, en op elke afstand trekken windvlagen als lichtere stroken
   langzaam over het gras (de sprieten buigen daar verder door).
@@ -643,10 +683,10 @@ Rondleiding, prestaties en uiterlijk
   afstanden mee met de afstand tot de grond (export `depth_of_field`).
 - Lettertype: Rubik (`assets/fonts/Rubik.ttf`, OFL-licentie), ingesteld als
   projectfont.
-- Meten: `Godot --script tools/fps_test.gd -- 20 tour` of
+- Meten: `Godot --script tools/check/fps_test.gd -- 20 tour` of
   `-- 10 140` (vaste zoom 140 m), of een vast beeld met vlaggen:
   `-- 10 140 72 60 s` (drukke wijk rond x 72, z 60, zonder schaduw). Sluit de Godot-editor tijdens het meten, anders
-  delen ze de GPU. `tools/triangle_count.gd` toont het aantal driehoeken per tile en
+  delen ze de GPU. `tools/check/triangle_count.gd` toont het aantal driehoeken per tile en
   LOD-niveau.
 
 Personages en navigatie
@@ -668,14 +708,14 @@ het werkt:
   op het dak) en `add_jump_links()`: spronglinks over gaten in de navmesh (een richel
   tot 1,2 m hoger of iets laags ertussen) en val-links naar beneden (tot 3 m).
 - Wandelaar (node `Wandelaar` in `rondleiding.tscn` en `nieuwe_kaart.tscn`,
-  `scripts/walker.gd`): alleen de demo. Kiest per kaart(deel) routes over bruggen,
+  `scripts/demo/walker.gd`): alleen de demo. Kiest per kaart(deel) routes over bruggen,
   tunnels, trappen, hellingen, heuvels en kades (anders over de stoep), plus een val en
   een sprong, en laat het poppetje (prop `overig/persoon_1m80`) ze lopen. Linksonder:
   padlengte, vast, gevallen, sprongen, hoogte, navmesh- en fysicatijd. Toetsen: N =
   navmesh (blauw), pad (geel) en links (paars) aan/uit, C = botsvorm aan/uit.
-- Testen zonder venster: `tools/godot.sh --headless --script tools/walk_test.gd -- [deel]`
+- Testen zonder venster: `tools/godot.sh --headless --script tools/check/walk_test.gd -- [deel]`
   loopt alle routes van alle (of één) delen versneld en meldt per route wat er misging
-  (met de tile op die plek). Screenshots: `tools/walk_shots.gd -- <map> [delen]`.
+  (met de tile op die plek). Screenshots: `tools/shots/walk_shots.gd -- <map> [delen]`.
 
 
 Afgeronde bochten
@@ -684,5 +724,5 @@ In `grond/bocht/` staan bochten voor hele straatprofielen (straat,
 klinkerstraat, weg, hoofdweg, tramweg, laan, fietspad). Elke bocht bestaat uit
 (n x n) tiles: `<profiel>_<i>_<j>`, met n = 1 + aantal delen van het profiel.
 De weg komt van het zuiden en buigt af naar het westen; leg cel (i, j) op
-(x + i, z - j) en draai alles samen. In `tools/build_example_city.gd` doet
-`bocht(x, z, profiel, draaiing)` dit inclusief de rechte stukken.
+(x + i, z - j) en draai alles samen. In `tools/build/city/situations.gd` doet
+`curve(x, z, profiel, draaiing)` dit inclusief de rechte stukken.

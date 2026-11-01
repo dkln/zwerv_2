@@ -11,8 +11,8 @@ Usage:
 
 By default existing .vox files are NOT overwritten, so manual changes made in
 MagicaVoxel are kept. Alias tiles (dedupe.py) count as existing. After creating
-tiles, identical tiles are replaced by aliases. Importing the tile modules below fills common.TILES via
-their @tile/register calls; each tile path maps to <OUT>/<path>.vox.
+tiles, identical tiles are replaced by aliases. Importing the tiles package (tiles/) fills common.TILES via
+the @tile/register calls of its modules; each tile path maps to <OUT>/<path>.vox.
 """
 import argparse
 import os
@@ -23,22 +23,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
 from common import TILES  # noqa: E402
-import ground  # noqa: E402,F401
-import ground2  # noqa: E402,F401
-import ground3  # noqa: E402,F401
-import ground4  # noqa: E402,F401
-import ground5  # noqa: E402,F401
-import buildings  # noqa: E402,F401
-import buildings2  # noqa: E402,F401
-import buildings3  # noqa: E402,F401
-import details  # noqa: E402,F401
-import details2  # noqa: E402,F401
-import props  # noqa: E402,F401
-import props2  # noqa: E402,F401
-import extras4  # noqa: E402,F401
-import extras5  # noqa: E402,F401
-import extras6  # noqa: E402,F401
-import extras7  # noqa: E402,F401
+import tiles  # noqa: E402,F401  (registers every tile, see tiles/__init__.py)
 from vox import write_vox, write_metadata  # noqa: E402
 from dedupe import dedupe, is_alias  # noqa: E402
 

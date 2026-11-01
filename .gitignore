@@ -19,12 +19,12 @@ Thumbs.db
 .idea/
 
 # MeshLibraries (alle lagen en LOD-niveaus) worden gemaakt uit assets/tiles/**/*.vox en
-# *.tile.json door de editor-plugin (bij het openen) of tools/build_libraries.gd. De item-ID's
+# *.tile.json door de editor-plugin (bij het openen) of tools/build/build_libraries.gd. De item-ID's
 # staan vast in de .tile.json van elke tile, dus opnieuw opbouwen geeft dezelfde ID's.
 assets/libraries/*.res
 
-# De samengevoegde meshes (scripts/layer_baker.gd) staan in user://merged/,
+# De samengevoegde meshes (scripts/world/layer_baker.gd) staan in user://merged/,
 # buiten het project; die hoeven hier niet genegeerd te worden.
 
-# Screenshots van tools/screenshots.gd (lokaal, niet in git)
+# Screenshots van tools/shots/screenshots.gd (lokaal, niet in git)
 docs/screenshots/

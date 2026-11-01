@@ -6,7 +6,7 @@ they import with the same animation, slopes and import options. Of every group o
 tiles the one with the shortest path (then alphabetical) keeps its .vox; the others
 become alias tiles: only a ``<name>.tile.json`` with ``{"id": <their id>, "same_as": "<path of the kept tile>"}``
 (path within the category, like the MeshLibrary item names). The library builder
-(addons/vox_tiles/library_builder.gd) gives an alias its own item (same name and id
+(addons/vox_tiles/library/library_builder.gd) gives an alias its own item (same name and id
 as before, so maps keep working) with the mesh of the kept tile.
 
 An alias follows its tile: to make it different again, delete its .tile.json and

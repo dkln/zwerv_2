@@ -2,7 +2,7 @@
 # Runs Godot on this project with a time limit and without stdin, so a stuck run (a
 # script error before quit(), a dialog, a hanging import) can never block the terminal:
 #
-#   tools/godot.sh --headless --script tools/build_example_city.gd
+#   tools/godot.sh --headless --script tools/build/build_example_city.gd
 #   GODOT_TIMEOUT=1200 tools/godot.sh --headless --import
 #
 # GODOT: the Godot binary (default: the macOS app). GODOT_TIMEOUT: seconds before the

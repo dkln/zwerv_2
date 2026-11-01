@@ -124,10 +124,10 @@ python3 tools/voxgen/generate.py --palettes
 
 # bibliotheken bouwen zonder editor (ook na een verse checkout)
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path . --import
-/Applications/Godot.app/Contents/MacOS/Godot --headless --path . --script res://tools/build_libraries.gd
+/Applications/Godot.app/Contents/MacOS/Godot --headless --path . --script res://tools/build/build_libraries.gd
 
 # controleren of alle tiles in de voorbeeldkaart staan
-/Applications/Godot.app/Contents/MacOS/Godot --headless --path . --script res://tools/coverage.gd</code></pre>
+/Applications/Godot.app/Contents/MacOS/Godot --headless --path . --script res://tools/check/coverage.gd</code></pre>
 <p>Gegenereerde tiles worden door <code>generate.py</code> gemaakt. Zonder <code>--force</code> worden bestaande bestanden <strong>niet</strong> overschreven, dus je eigen aanpassingen in MagicaVoxel blijven bewaard. Geef een eigen tile een naam die de generator niet gebruikt.</p>
 <h2 id="paletten">Paletten</h2>
 <p>De kleuren van de sjablonen in <code>tools/voxgen/paletten/</code>, per paletnummer zoals MagicaVoxel ze

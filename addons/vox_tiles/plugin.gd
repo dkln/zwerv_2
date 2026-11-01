@@ -15,12 +15,12 @@ extends EditorPlugin
 ## (F5/F6 and exports) never uses the editor view. A part of a map stored in parts gets
 ## the environment, lights, tint map and smoke of its tour scene (scene_preview.gd).
 
-const Builder = preload("res://addons/vox_tiles/library_builder.gd")
-const TileMetadata = preload("res://addons/vox_tiles/tile_metadata.gd")
-const Importer = preload("res://addons/vox_tiles/vox_import_plugin.gd")
-const BuildTools = preload("res://addons/vox_tiles/build_tools.gd")
-const EditorView = preload("res://addons/vox_tiles/editor_view.gd")
-const ScenePreview = preload("res://addons/vox_tiles/scene_preview.gd")
+const Builder = preload("res://addons/vox_tiles/library/library_builder.gd")
+const TileMetadata = preload("res://addons/vox_tiles/importer/tile_metadata.gd")
+const Importer = preload("res://addons/vox_tiles/importer/vox_import_plugin.gd")
+const BuildTools = preload("res://addons/vox_tiles/editor/build_tools.gd")
+const EditorView = preload("res://addons/vox_tiles/editor/editor_view.gd")
+const ScenePreview = preload("res://addons/vox_tiles/editor/scene_preview.gd")
 const MENU_REBUILD := "Vox Tiles: rebuild all libraries"
 
 var _importer: EditorImportPlugin

@@ -1,6 +1,6 @@
 // Colour of a voxel face, shared by the voxel shaders.
 //
-// Textured tiles (use_atlas, set by addons/vox_tiles/atlas.gd): up close the exact voxel
+// Textured tiles (use_atlas, set by addons/vox_tiles/library/atlas.gd): up close the exact voxel
 // colour from the library's texture atlas, always at full resolution (no mipmaps, so
 // nothing from neighbouring tiles in the atlas bleeds in); from afar, where a texel is
 // smaller than a pixel, it fades to the face's average colour stored in the vertex

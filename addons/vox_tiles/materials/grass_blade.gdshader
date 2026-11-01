@@ -1,7 +1,7 @@
 shader_type spatial;
 render_mode cull_back, diffuse_burley, specular_schlick_ggx;
 
-// Grass blades (scripts/grass_blades.gd): one blocky, stepped blade mesh drawn many times
+// Grass blades (scripts/effects/grass_blades.gd): one blocky, stepped blade mesh drawn many times
 // with a MultiMesh; the vertex shader bends every blade with the wind, more towards the
 // tip, along the same gusts as the grass texture in voxel.gdshader (wind direction and
 // speed match). Every square segment has its own flat tint (vertex colour r: 0 = base ..

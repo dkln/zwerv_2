@@ -3,10 +3,10 @@ extends RefCounted
 ## `Godot --script tools/<tool>.gd -- <args>`): argument parsing, loading a scene with a
 ## still camera, waiting frames and saving screenshots.
 
-const Iso = preload("res://scripts/iso_camera.gd")
-const WorldParts = preload("res://scripts/world_parts.gd")
+const Iso = preload("res://scripts/camera/iso_camera.gd")
+const WorldParts = preload("res://scripts/world/world_parts.gd")
 ## The tour scene of the example map; the map itself is stored in parts
-## (scenes/wereld/, scripts/world_parts.gd), see load_part_at and WorldParts.merge_all.
+## (scenes/wereld/, scripts/world/world_parts.gd), see load_part_at and WorldParts.merge_all.
 const WORLD := "res://scenes/rondleiding.tscn"
 ## The GridMap layers of the map (node names under the root).
 const LAYERS := ["Grond", "Gebouwen", "Details", "Props"]
@@ -57,7 +57,7 @@ static func load_part_at(sc: Node, z: float) -> void:
 
 
 ## Places the (still) camera of scene `sc` in the iso view around `focus` (world metres)
-## with `view_size` metres in view (see scripts/iso_camera.gd).
+## with `view_size` metres in view (see scripts/camera/iso_camera.gd).
 static func place_iso(sc: Node, focus: Vector3, view_size: float) -> void:
 	Iso.place(sc.get_node("Camera"), focus, view_size)
 

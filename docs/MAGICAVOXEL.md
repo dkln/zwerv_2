@@ -184,10 +184,10 @@ python3 tools/voxgen/generate.py --palettes
 
 # bibliotheken bouwen zonder editor (ook na een verse checkout)
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path . --import
-/Applications/Godot.app/Contents/MacOS/Godot --headless --path . --script res://tools/build_libraries.gd
+/Applications/Godot.app/Contents/MacOS/Godot --headless --path . --script res://tools/build/build_libraries.gd
 
 # controleren of alle tiles in de voorbeeldkaart staan
-/Applications/Godot.app/Contents/MacOS/Godot --headless --path . --script res://tools/coverage.gd
+/Applications/Godot.app/Contents/MacOS/Godot --headless --path . --script res://tools/check/coverage.gd
 ```
 
 Gegenereerde tiles worden door `generate.py` gemaakt. Zonder `--force` worden

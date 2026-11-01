@@ -10,7 +10,7 @@ y = front->back, z = up; the front of a tile is the y=0 side).
 """
 
 TILES = {}  # tile path (without .vox) -> function returning a vox.V model
-SLOPES = {}  # tile path -> slope shapes the importer makes of it (addons/vox_tiles/slopes.gd)
+SLOPES = {}  # tile path -> slope shapes the importer makes of it (addons/vox_tiles/importer/slopes.gd)
 CURVES = {}  # curve cell tile path -> (i, j, parts) for the curve slope shapes
 SMOOTH = {}  # tile path -> {"shape", "lift", "keep_x"}: tile is a padded block the importer smooths
 
@@ -48,7 +48,7 @@ def smooth(path, shape, lift=2, keep_x=()):
     """Tile ``path`` is a flat surface raised by ``lift`` voxels on a fill block (ground.padded);
     the importer moves it onto the smooth slope ``shape`` (steil, flauw_a, flauw_b,
     hoek_buiten, hoek_binnen or heuvel_top), except the columns x in ``keep_x`` (a wall).
-    Written to the metadata as "smooth" (addons/vox_tiles/slopes.gd)."""
+    Written to the metadata as "smooth" (addons/vox_tiles/importer/slopes.gd)."""
     SMOOTH[path] = {"shape": shape, "lift": lift, "keep_x": list(keep_x)} if keep_x else {"shape": shape, "lift": lift}
 
 
