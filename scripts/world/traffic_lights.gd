@@ -44,6 +44,7 @@ const STATES := {
 
 var _lights := []        # {cell, kind, ns, group, shown}
 var _groups := []        # per intersection: time offset
+var _centres := []       # per intersection: mean position of its lights (metres)
 var _ids := {}           # prop name -> item id
 var _time := 0.0
 
@@ -86,6 +87,14 @@ func _ready() -> void:
 					b.group = g
 					todo.append(found.find(b))
 	_lights = found
+	for g in _groups.size():
+		var sum := Vector3.ZERO
+		var n := 0
+		for l in found:
+			if l.group == g:
+				sum += l.pos
+				n += 1
+		_centres.append(sum / maxi(n, 1))
 	if _lights.is_empty():
 		set_process(false)
 		return
@@ -122,6 +131,29 @@ func _update() -> void:
 	for gm in _layers():
 		for l in changed:
 			gm.set_cell_item(l.cell, _ids[l.shown], gm.get_cell_item_orientation(l.cell))
+
+
+## Phase of the car lights for traffic on the north-south (or east-west) road at the
+## intersection nearest to `pos` (metres): 0 green, 1 amber, 2 red; -1 when no
+## intersection with lights lies within `radius` metres (for cars, scripts/characters/car.gd).
+func car_phase(pos: Vector3, north_south: bool, radius := 14.0) -> int:
+	var best := -1
+	var best_d := radius
+	for g in _centres.size():
+		var d := Vector2(_centres[g].x - pos.x, _centres[g].z - pos.z).length()
+		if d <= best_d:
+			best_d = d
+			best = g
+	if best < 0:
+		return -1
+	var half := green_time + amber_time + clearance_time
+	var t := fposmod(_time + _groups[best], 2.0 * half)
+	var own := t if north_south else fposmod(t - half, 2.0 * half)
+	if own < green_time:
+		return 0
+	if own < green_time + amber_time:
+		return 1
+	return 2
 
 
 ## Repeatable time offset of an intersection from its position, so they don't all switch together.

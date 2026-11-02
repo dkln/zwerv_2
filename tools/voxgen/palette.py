@@ -136,6 +136,8 @@ _ENTRIES = [
     ("signaal_rood", (255, 30, 20), "emit"),
     ("sedum1", (112, 142, 62)), ("sedum2", (146, 112, 72)), ("sedum3", (92, 128, 70)), ("sedum4", (160, 150, 70)),
     ("brons", (120, 92, 58), "metal"), ("brons_patina", (86, 128, 108), "metal"), ("marmer", (232, 230, 224)),
+    # car paint (material "painted", see _SURFACE_GROUPS), the car interior
+    ("autolak1", (38, 82, 150)), ("autolak2", (30, 66, 124)), ("auto_interieur", (34, 32, 36)),
 ]
 
 # Flag cloth colours: material "flag". vlag_wit and vlag_oranje are one step off the
@@ -273,7 +275,7 @@ _SURFACE_GROUPS = {
     "plaster": ("stuc",),
     # painted metal: lamp posts, bollards, road signs
     "painted": ("amsterdamgroen", "bord_blauw", "bord_geel", "bord_groen", "bord_oranje", "bord_rood",
-                "bord_wit", "bord_zwart"),
+                "bord_wit", "bord_zwart", "autolak"),
 }
 
 

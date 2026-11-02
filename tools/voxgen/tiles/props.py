@@ -1410,6 +1410,106 @@ def weeping_willow():
     return m
 
 
+# ------------------------------------------------------------------ cars
+
+@tile("props/voertuigen/auto_sedan")
+def sedan():
+    """Body of a sedan of 4.5 x 1.75 x 1.5 m, without its wheels (auto_wiel, placed and
+    turned by scripts/characters/vehicle.gd at SEDAN_WHEELS): x across (14 voxels), y along
+    (36, the front with the headlights at y=0, so it faces the way the prop faces), z up.
+    Painted body with a darker sill and wheel arches, glass greenhouse with a dark
+    interior behind it, roof, emissive head and tail lights, a grille, bumpers. Its lowest
+    voxels (the floor) are 1 voxel above the road."""
+    width, length, height = 14, 36, 12
+    model = V(width, length, height)
+    paint, sill, inside = "autolak1", "autolak2", "auto_interieur"
+    # body: sill to beltline, the corners rounded off
+    for along in range(length):
+        for across in range(width):
+            if along in (0, length - 1) and across in (0, width - 1):
+                continue
+            for up in range(2, 7):
+                model.set(across, along, up, sill if up == 2 else paint)
+    # greenhouse: windscreen rising y 10..12, roof y 13..24, rear window y 25..27
+    roof_height = {10: 7, 11: 8, 12: 9, 25: 9, 26: 8, 27: 7}
+    for along in range(10, 28):
+        top = roof_height.get(along, 10)
+        for across in range(1, width - 1):
+            for up in range(7, top + 1):
+                side = across in (1, width - 2)
+                pillar = along in (13, 19, 24) or along in (10, 11, 12, 25, 26, 27) and side
+                if up == top and along in range(13, 25):
+                    colour = paint                      # roof
+                elif up == top or side:
+                    colour = paint if pillar else "glas2"
+                else:
+                    colour = inside                     # seats behind the glass
+                model.set(across, along, up, colour)
+    # front: grille, headlights, bumper; rear: tail lights, bumper
+    for across in range(width):
+        for up in (2, 3):
+            model.set(across, 0, up, "metaal_donker")
+            model.set(across, length - 1, up, "metaal_donker")
+    for across in range(5, 9):
+        model.set(across, 0, 4, "rooster")
+    for across in (1, 2, 3, width - 4, width - 3, width - 2):
+        model.set(across, 0, 4, "lamp_wit")
+        model.set(across, length - 1, 5, "signaal_rood")
+        model.set(across, length - 1, 4, "signaal_rood")
+    # number plates
+    for across in range(5, 9):
+        model.set(across, 0, 3, "bord_geel")
+        model.set(across, length - 1, 3, "bord_geel")
+    # wheel arches: room for the wheels in the two outer columns, dark inside them
+    for wheel_along in SEDAN_WHEEL_ALONG:
+        for along in range(int(wheel_along - 4), int(wheel_along + 4)):
+            for up in range(0, 7):
+                distance = ((along + 0.5 - wheel_along) ** 2 + (up + 0.5 - SEDAN_WHEEL_UP) ** 2) ** 0.5
+                if distance <= SEDAN_WHEEL_RADIUS + 0.6:
+                    for across in (0, 1, width - 2, width - 1):
+                        model.set(across, along, up, 0)
+                    for across in (2, width - 3):
+                        if up >= 2:
+                            model.set(across, along, up, "metaal_donker")
+    # floor and axles under the car
+    for across in range(2, width - 2):
+        for along in range(3, length - 3):
+            model.set(across, along, 1, "metaal_donker")
+    # wing mirrors
+    for across in (0, width - 1):
+        model.set(across, 12, 6, paint)
+    return model
+
+
+# where the sedan's wheels go (voxels of its body): centres along (y) and up (z), radius
+SEDAN_WHEEL_ALONG = (7.5, 28.0)
+SEDAN_WHEEL_UP = 2.5
+SEDAN_WHEEL_RADIUS = 2.6
+
+
+@tile("props/voertuigen/auto_wiel")
+def car_wheel():
+    """Car wheel of 0.75 m across, 0.25 m wide: a disc in the y-z plane (2 x 6 x 6
+    voxels, the axle along x through the middle), a rubber tyre round a steel rim with
+    four dark spokes so it shows when it turns. Turned and steered by
+    scripts/characters/vehicle.gd."""
+    model = V(2, 6, 6)
+    for along in range(6):
+        for up in range(6):
+            distance = ((along + 0.5 - 3.0) ** 2 + (up + 0.5 - 3.0) ** 2) ** 0.5
+            if distance > SEDAN_WHEEL_RADIUS + 0.4:
+                continue
+            if distance > 1.9:
+                colour = "rubber"
+            elif along in (2, 3) or up in (2, 3):
+                colour = "metaal_donker"          # spokes and hub
+            else:
+                colour = "rvs"
+            for across in range(2):
+                model.set(across, along, up, colour)
+    return model
+
+
 # ------------------------------------------------------------------ railway
 
 @tile("props/spoor/bovenleidingmast")

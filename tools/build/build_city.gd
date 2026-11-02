@@ -91,6 +91,7 @@ func _init() -> void:
 	_fill_grass_all()
 	_bins()
 	_camera(root)
+	_car(root)
 	_own_tints(root)
 	if missing.size() > 0:
 		print("MISSING TILES: ", missing.keys())
@@ -1515,6 +1516,83 @@ func _camera(root: Node3D) -> void:
 	lens.set_script(load("res://scripts/effects/tilt_shift.gd"))
 	root.add_child(lens)
 	lens.owner = root
+
+
+## The lanes the vehicles drive on (scene metadata "roads", read by
+## scripts/world/road_network.gd): per road cell Vector3i(x, level, z), level = the
+## ground layer (1 m steps, 0 = street level, -6 = the floor of the A12 trough), a code:
+## bits 0-1 the lane of the east-west road (1 = westbound, 2 = eastbound), bits 2-3 the
+## lane of the north-south road (1 = southbound, 2 = northbound), driving on the right;
+## bits 4-5 the kind of road (RoadNetwork.Kind: 0 street, 1 main road, 2 tunnel, 3
+## motorway), which sets the speed limit. Only cells whose ground is still road count.
+## The A12 counts with its three lanes each way, down the ramps, through the troughs and
+## the covered part, but not its hard shoulders. Then the car (node Auto) and the camera
+## that follows it (node Volgcamera, F in the game).
+func _car(root: Node3D) -> void:
+	var roads := {}
+	var not_road := {}
+	var street_cells := {}
+	for cell in _street_h:
+		street_cells[cell] = true
+	for cell in _street_v:
+		street_cells[cell] = true
+	for cell: Vector2i in street_cells:
+		var tile_name := _ground_tile(Vector3i(cell.x, 0, cell.y))
+		if not _is_road_tile(tile_name):
+			not_road[tile_name] = not_road.get(tile_name, 0) + 1
+			continue
+		var east_west_lane: int = _street_h[cell] + 1 if _street_h.has(cell) else 0
+		var north_south_lane: int = _street_v[cell] + 1 if _street_v.has(cell) else 0
+		roads[Vector3i(cell.x, 0, cell.y)] = east_west_lane | (north_south_lane << 2)
+	# the A12: westbound in the north carriageway (rows AZ+1..AZ+3), eastbound in the
+	# south one (rows AZ+5..AZ+7); at street level only its city end (with the
+	# Koningskade crossing) and the flat motorway, the cells between are deck and streets
+	var motorway_cells := 0
+	for x in range(X5, X_END + 1):
+		for row in [1, 2, 3, 5, 6, 7]:
+			var z: int = AZ + row
+			var lane := 1 if row < 4 else 2
+			for level in range(0, -7, -1):
+				if level == 0 and x >= A_UP and x < A_FLAT:
+					continue
+				var cell := Vector3i(x, level, z)
+				var tile_name := _ground_tile(cell)
+				if not _is_road_tile(tile_name) or tile_name.contains("vluchtstrook"):
+					continue
+				var kind := 1
+				if level < 0:
+					kind = 2
+				elif x >= A_FLAT:
+					kind = 3
+				roads[cell] = (roads.get(cell, 0) & 15) | lane | (kind << 4)
+				motorway_cells += 1
+	print("roads: %d lane cells (%d on the A12), not road: %s" % [roads.size(), motorway_cells, not_road])
+	root.set_meta("roads", roads)
+	var car := Node3D.new()
+	car.name = "Auto"
+	car.set_script(load("res://scripts/characters/car.gd"))
+	root.add_child(car)
+	car.owner = root
+	var follow := Node.new()
+	follow.name = "Volgcamera"
+	follow.set_script(load("res://scripts/camera/follow_camera.gd"))
+	root.add_child(follow)
+	follow.owner = root
+
+
+## Name of the ground tile in a cell ("" if empty).
+func _ground_tile(cell: Vector3i) -> String:
+	var item := ground.get_cell_item(cell)
+	return ground.mesh_library.get_item_name(item) if item >= 0 else ""
+
+
+## True for ground tiles vehicles drive on: streets, tram track, bridge decks, the
+## motorway and the tunnel (its ramps and troughs).
+func _is_road_tile(tile_name: String) -> bool:
+	for prefix in ["weg/", "tram/", "brug", "snelweg/", "tunnel/"]:
+		if tile_name.begins_with(prefix):
+			return true
+	return false
 
 
 ## Props a waste bin belongs next to: benches, picnic tables, kiosks, tram shelters.

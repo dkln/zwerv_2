@@ -50,6 +50,35 @@ elke scène die de bouwers maken) laat de stoplichtprops (`verkeerslichten/auto_
 noord-zuid groen, oranje, alles rood, oost-west groen, oranje, alles rood. De richting
 van een licht volgt uit zijn draaiing; tijden zijn instelbaar op de node.
 
+Er rijdt een auto door de stad: node `Auto` (`scripts/characters/car.gd`). Druk op F en
+de camera volgt hem (node `Volgcamera`, `scripts/camera/follow_camera.gd`). Die zoomt
+uit naarmate de auto harder rijdt en gaat mee de tunnelbak in. Een andere toets geeft
+je de vrije camera terug.
+- Wegennet (`scripts/world/road_network.gd`, `RoadNetwork`): de bouwer slaat de
+  rijstroken op als scène-metadata `roads`. Per cel `Vector3i(x, niveau, z)` staat de
+  rijrichting van de oost-west- en de noord-zuidrijstrook erin (rechts rijden) en het
+  soort weg. Dat zijn de straten, het stadsdeel van de A12 met de kruising aan de
+  Koningskade, de toeritten, tunnelbakken en de overkapte tunnel (niveau -6) en de
+  vlakke snelweg, maar niet de vluchtstroken. De maximumsnelheid hangt af van het
+  soort weg (`SPEED_LIMIT_KMH`): straat 30, hoofdweg 50, tunnel 80, snelweg 100 km/u.
+  Een toerit stijgt naar zijn achterkant (uit de draaiing van de tile).
+- Voertuig (`scripts/characters/vehicle.gd`, `Vehicle`): de rijlogica voor elk
+  voertuig. Het plant een paar cellen vooruit (minstens de remafstand), kiest op
+  kruisingen willekeurig (`straight_chance`, `route_seed`) en remt af voor bochten
+  en een lagere maximumsnelheid. Het stopt voor zebrapaden en rode lichten, voegt
+  geleidelijk in waar een rijstrook ophoudt en keert op doodlopende wegen. Het rijdt
+  over het wegdek, ook op hellingen, en kantelt mee. Wielen
+  (`wheel_model`, `wheel_positions`) rollen mee en de voorste sturen in. Een nieuw
+  voertuig maak je door van `Vehicle` af te leiden en in `_init` model, wielen en
+  snelheden te zetten (zie `car.gd`); met de hooks `_may_use`, `_choose_heading` en
+  `_must_stop` pas je aan waar het mag rijden en waarvoor het stopt.
+- Modellen: `props/voertuigen/auto_sedan` (carrosserie zonder wielen) en
+  `props/voertuigen/auto_wiel`.
+- Test: `tools/godot.sh --headless --script tools/check/drive_test.gd -- 300`
+  (optioneel startcel en richting, bv. `-- 300 70 24 1 0` voor de A12). De test meldt
+  of de auto ergens naast de weg rijdt, boven of onder het wegdek zit, te hard gaat of
+  te scherp draait.
+
 
 Projectstructuur
 ----------------
