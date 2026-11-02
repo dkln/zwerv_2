@@ -29,7 +29,7 @@ sys.path.insert(0, HERE)
 from common import TILES  # noqa: E402
 import tiles  # noqa: E402,F401  (registers every tile, see tiles/__init__.py)
 from vox import write_tile, write_metadata, write_material_table  # noqa: E402
-from dedupe import dedupe, is_alias, TILE_EXTENSIONS  # noqa: E402
+from dedupe import dedupe, is_alias, write_alias_traffic, TILE_EXTENSIONS  # noqa: E402
 
 # Output root; read by main() at call time (tests patch it).
 OUT = os.path.normpath(os.path.join(HERE, "..", "..", "assets", "tiles"))
@@ -80,6 +80,10 @@ def main():
             on_disk = {n: p for n, p in on_disk.items() if a.only in n}
         count = sum(1 for n in sorted(on_disk) if write_metadata(on_disk[n], n))
         print(f"metadata for {count} of {len(on_disk)} tiles ({len(set(on_disk) - set(TILES))} not from the generator)")
+        # aliases: only their "traffic" (the rest belongs to the tile they point to)
+        alias_names = [n for n in sorted(TILES) if is_alias(OUT, n) and (not a.only or a.only in n)]
+        with_traffic = sum(1 for n in alias_names if write_alias_traffic(OUT, n))
+        print(f"traffic for {with_traffic} of {len(alias_names)} aliases")
         return
 
     made = skipped = 0

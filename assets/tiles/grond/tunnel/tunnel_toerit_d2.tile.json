@@ -1,4 +1,12 @@
 {
 	"id": 256,
-	"same_as": "tunnel/tunnel_toerit_d1"
+	"same_as": "tunnel/tunnel_toerit_d1",
+	"traffic": {
+		"lanes": [
+			"N",
+			"S"
+		],
+		"road": "tunnel",
+		"rise": 1.0
+	}
 }

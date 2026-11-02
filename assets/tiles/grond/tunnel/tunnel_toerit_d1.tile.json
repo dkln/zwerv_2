@@ -3,5 +3,13 @@
 	"smooth": {
 		"shape": "steil",
 		"lift": 2
+	},
+	"traffic": {
+		"lanes": [
+			"N",
+			"S"
+		],
+		"road": "tunnel",
+		"rise": 1.0
 	}
 }

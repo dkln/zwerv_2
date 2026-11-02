@@ -20,6 +20,7 @@ import os
 
 from gox import read_gox
 from vox import tile_animation, material_table, MATERIAL_NAMES
+from traffic import tile_traffic
 
 # Extensions of a tile model, in the order the Godot importer prefers them
 TILE_EXTENSIONS = (".gox", ".vox")
@@ -90,6 +91,9 @@ def dedupe(out_dir, dry_run=False):
             meta = json.load(open(base + ".tile.json")) if os.path.exists(base + ".tile.json") else {}
             alias = {"id": meta["id"]} if "id" in meta else {}
             alias["same_as"] = kept.partition("/")[2]
+            traffic = tile_traffic(name)
+            if traffic:
+                alias["traffic"] = traffic    # its own: the same model can be a different road
             with open(base + ".tile.json", "w") as fh:
                 fh.write(json.dumps(alias, indent="\t") + "\n")
             for ext in (".gox", ".gox.import"):
@@ -122,6 +126,24 @@ def _resolve_chains(out_dir):
             meta["same_as"] = final
             with open(path, "w") as fh:
                 fh.write(json.dumps(meta, indent="\t") + "\n")
+
+
+def write_alias_traffic(out_dir, name):
+    """Brings the "traffic" of alias tile ``name`` up to date (traffic.tile_traffic): an
+    alias shares the model of its tile, not its lanes. Returns True if it has traffic."""
+    path = os.path.join(out_dir, name + ".tile.json")
+    old = open(path).read()
+    meta = json.loads(old)
+    traffic = tile_traffic(name)
+    if traffic:
+        meta["traffic"] = traffic
+    else:
+        meta.pop("traffic", None)
+    text = json.dumps(meta, indent="\t") + "\n"
+    if text != old:
+        with open(path, "w") as fh:
+            fh.write(text)
+    return traffic is not None
 
 
 def is_alias(out_dir, name):

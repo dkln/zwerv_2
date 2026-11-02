@@ -23,6 +23,14 @@ extends RefCounted
 ##   smooth: {"shape": "steil", "lift": 2, "keep_x": [0, 1]}: the tile is the padded block
 ##     of a slope; the importer moves it onto the smooth slope (slopes.gd own_plan()).
 ##
+##   traffic: {"lanes": ["N"], "road": "straat", "rise": 1.0, "only": ["bus"]}: the lanes
+##     vehicles drive on a ground tile, relative to the tile as it lies unturned ("N" =
+##     towards its back; both headings of an axis = decided by the road around it), the
+##     kind of road (speed limit), how far a ramp rises towards its back (metres) and
+##     which vehicle kinds may use it. Written by tools/voxgen/traffic.py, collected per
+##     item name in the library's meta "traffic" (library_builder.gd) and read by
+##     scripts/world/road_network.gd.
+##
 ##   An alias tile has only this file, no model: {"id": 121, "same_as": "weg/weg_vlak"}.
 ##   same_as: another tile of the same category (path below assets/tiles/<category>);
 ##     the alias gets its own item (name and id) with that tile's mesh
@@ -36,7 +44,7 @@ extends RefCounted
 ##   shared by all tiles.
 ##
 ## Godot only watches the model itself; plugin.gd reimports a tile when one of these
-## files is saved.
+## files is saved. "traffic" needs no reimport: the library build reads it.
 
 const Model = preload("res://addons/vox_tiles/importer/voxel_model.gd")
 

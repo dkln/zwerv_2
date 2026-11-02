@@ -1,3 +1,10 @@
 {
-	"id": 380
+	"id": 380,
+	"traffic": {
+		"lanes": [
+			"N",
+			"S"
+		],
+		"road": "tunnel"
+	}
 }

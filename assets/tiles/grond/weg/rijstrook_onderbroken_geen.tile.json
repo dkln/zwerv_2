@@ -2,5 +2,11 @@
 	"id": 165,
 	"slopes": [
 		"steil"
-	]
+	],
+	"traffic": {
+		"lanes": [
+			"N"
+		],
+		"road": "straat"
+	}
 }

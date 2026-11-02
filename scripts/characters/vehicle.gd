@@ -1,6 +1,7 @@
 class_name Vehicle
 extends Node3D
-## A vehicle that drives round the road network on its own (scripts/world/road_network.gd):
+## A vehicle that drives round the road network on its own (scripts/world/road_network.gd,
+## made from the lanes in the metadata of the ground tiles):
 ## the base of the car (car.gd) and of later vehicles (a bus, a van, a tram on its own
 ## lanes, ...). A vehicle type extends this script, sets its own speeds and model in
 ## _init (the scene's values still override them) and can override the hooks:
@@ -34,6 +35,8 @@ extends Node3D
 @export var acceleration := 2.5
 @export var braking := 4.0
 @export_group("Rules")
+## Kind of vehicle, for lanes only some kinds may use (a bus lane: "bus").
+@export var vehicle_kind := "auto"
 ## Stops for traffic lights.
 @export var obeys_lights := true
 ## Seconds it waits before a zebra crossing without traffic lights.
@@ -135,9 +138,10 @@ func _physics_process(delta: float) -> void:
 
 # ------------------------------------------------------------------ hooks
 
-## True if the vehicle may drive this lane: `heading` on `cell`.
-func _may_use(_cell: Vector3i, _heading: Vector2i) -> bool:
-	return true
+## True if the vehicle may drive this lane: `heading` on `cell` (by default: every lane
+## its kind may use, see the "only" of the tile traffic).
+func _may_use(cell: Vector3i, _heading: Vector2i) -> bool:
+	return network.allows(cell, vehicle_kind)
 
 
 ## Heading it leaves `cell` in, out of `options` (more than one), arriving in `heading`.

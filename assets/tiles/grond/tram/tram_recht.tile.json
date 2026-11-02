@@ -4,5 +4,13 @@
 		"steil",
 		"brug",
 		"brug_rand"
-	]
+	],
+	"traffic": {
+		"lanes": [
+			"N",
+			"E",
+			"S",
+			"W"
+		]
+	}
 }

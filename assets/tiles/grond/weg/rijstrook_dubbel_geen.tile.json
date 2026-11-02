@@ -1,3 +1,9 @@
 {
-	"id": 158
+	"id": 158,
+	"traffic": {
+		"lanes": [
+			"N"
+		],
+		"road": "straat"
+	}
 }

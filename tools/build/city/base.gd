@@ -174,6 +174,10 @@ func _make_scene(node_name: String) -> Node3D:
 	tl.name = "Verkeerslichten"
 	tl.set_script(load("res://scripts/world/traffic_lights.gd"))
 	root.add_child(tl)
+	var arrows := Node3D.new()
+	arrows.name = "Rijrichtingen"   # editor only: the driving direction of every lane
+	arrows.set_script(load("res://scripts/world/lane_arrows.gd"))
+	root.add_child(arrows)
 	var smoke := Node3D.new()
 	smoke.name = "Rook"
 	smoke.set_script(load("res://scripts/effects/smoke.gd"))

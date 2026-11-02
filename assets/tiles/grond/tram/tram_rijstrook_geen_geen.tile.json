@@ -1,4 +1,10 @@
 {
 	"id": 340,
-	"same_as": "tram/tram_recht"
+	"same_as": "tram/tram_recht",
+	"traffic": {
+		"lanes": [
+			"N"
+		],
+		"road": "straat"
+	}
 }

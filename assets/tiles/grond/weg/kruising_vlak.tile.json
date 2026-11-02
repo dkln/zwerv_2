@@ -1,4 +1,12 @@
 {
 	"id": 285,
-	"same_as": "weg/weg_vlak"
+	"same_as": "weg/weg_vlak",
+	"traffic": {
+		"lanes": [
+			"N",
+			"E",
+			"S",
+			"W"
+		]
+	}
 }

@@ -6,5 +6,11 @@
 		"flauw_b",
 		"brug",
 		"brug_rand"
-	]
+	],
+	"traffic": {
+		"lanes": [
+			"N"
+		],
+		"road": "straat"
+	}
 }

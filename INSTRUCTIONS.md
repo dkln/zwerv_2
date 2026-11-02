@@ -54,14 +54,33 @@ Er rijdt een auto door de stad: node `Auto` (`scripts/characters/car.gd`). Druk 
 de camera volgt hem (node `Volgcamera`, `scripts/camera/follow_camera.gd`). Die zoomt
 uit naarmate de auto harder rijdt en gaat mee de tunnelbak in. Een andere toets geeft
 je de vrije camera terug.
-- Wegennet (`scripts/world/road_network.gd`, `RoadNetwork`): de bouwer slaat de
-  rijstroken op als scène-metadata `roads`. Per cel `Vector3i(x, niveau, z)` staat de
-  rijrichting van de oost-west- en de noord-zuidrijstrook erin (rechts rijden) en het
-  soort weg. Dat zijn de straten, het stadsdeel van de A12 met de kruising aan de
-  Koningskade, de toeritten, tunnelbakken en de overkapte tunnel (niveau -6) en de
-  vlakke snelweg, maar niet de vluchtstroken. De maximumsnelheid hangt af van het
-  soort weg (`SPEED_LIMIT_KMH`): straat 30, hoofdweg 50, tunnel 80, snelweg 100 km/u.
-  Een toerit stijgt naar zijn achterkant (uit de draaiing van de tile).
+- Wegennet (`scripts/world/road_network.gd`, `RoadNetwork`): het wegennet leest de
+  rijstroken uit de grondtiles zelf. Dat werkt op elke kaart, ook als je hem met de hand
+  bouwt. Elke tile waarop gereden wordt, heeft in zijn `.tile.json` een blok `traffic`,
+  naast `id` en `materials`:
+
+      "traffic": {"lanes": ["N"], "road": "straat", "rise": 1.0, "only": ["bus"]}
+
+  `lanes` geeft de rijrichtingen ten opzichte van de tile zoals hij onverdraaid ligt
+  (`N` = naar de achterkant van de tile). Ze draaien mee met de cel: draai je een tile
+  in de editor, dan draait de rijrichting mee. Eén richting op een as is een rijstrook.
+  Beide richtingen (`["N", "S"]`, of alle vier) betekent dat de tile zelf geen richting
+  heeft, zoals een kruising, kaal asfalt, een zebrapad of de tunnel-tiles. De richting
+  volgt dan uit de weg eromheen: de dichtstbijzijnde rijstrook met een richting op
+  dezelfde lijn, anders de stroken ernaast, anders rechts rijden langs de rand. `road`
+  is het soort weg, en daarmee de maximumsnelheid (`SPEED_LIMIT_KMH`: straat 30,
+  hoofdweg 50, tunnel 80, snelweg 100 km/u). Zonder `road` (markeringen, kruisingen)
+  neemt de tile het soort weg van zijn buren over. `rise` is hoeveel meter een helling
+  naar zijn achterkant stijgt. `only` zijn de voertuigsoorten die er mogen rijden
+  (busbaan, trambaan). De generator schrijft deze blokken (`tools/voxgen/traffic.py`,
+  één regel per groep tiles; `generate.py --meta` werkt ze bij, ook voor aliassen). De
+  bibliotheekbouwer zet ze per item op de MeshLibrary (meta `traffic`).
+- Rijrichtingen in de editor: de node `Rijrichtingen` (`scripts/world/lane_arrows.gd`)
+  tekent in de editor een pijl per rijstrook op het wegdek. Geel is de richting van de
+  tile zelf, lichtblauw is afgeleid uit de omgeving, magenta betekent nog beide kanten
+  op (niet te bepalen). Na het plaatsen of draaien van tiles werkt hij zich binnen een
+  seconde bij. In het spel verwijdert de node zichzelf. Instelbaar: `show_arrows`,
+  `through_walls`, de kleuren.
 - Voertuig (`scripts/characters/vehicle.gd`, `Vehicle`): de rijlogica voor elk
   voertuig. Het plant een paar cellen vooruit (minstens de remafstand), kiest op
   kruisingen willekeurig (`straight_chance`, `route_seed`) en remt af voor bochten
@@ -69,8 +88,8 @@ je de vrije camera terug.
   geleidelijk in waar een rijstrook ophoudt en keert op doodlopende wegen. Het rijdt
   over het wegdek, ook op hellingen, en kantelt mee. Wielen
   (`wheel_model`, `wheel_positions`) rollen mee en de voorste sturen in. Een nieuw
-  voertuig maak je door van `Vehicle` af te leiden en in `_init` model, wielen en
-  snelheden te zetten (zie `car.gd`); met de hooks `_may_use`, `_choose_heading` en
+  voertuig maak je door van `Vehicle` af te leiden en in `_init` model, wielen,
+  snelheden en `vehicle_kind` te zetten (zie `car.gd`); met de hooks `_may_use`, `_choose_heading` en
   `_must_stop` pas je aan waar het mag rijden en waarvoor het stopt.
 - Modellen: `props/voertuigen/auto_sedan` (carrosserie zonder wielen) en
   `props/voertuigen/auto_wiel`.

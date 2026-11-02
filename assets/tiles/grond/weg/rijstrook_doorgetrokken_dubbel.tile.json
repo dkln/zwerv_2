@@ -1,4 +1,10 @@
 {
 	"id": 290,
-	"same_as": "weg/rijstrook_dubbel_kant"
+	"same_as": "weg/rijstrook_dubbel_kant",
+	"traffic": {
+		"lanes": [
+			"N"
+		],
+		"road": "straat"
+	}
 }

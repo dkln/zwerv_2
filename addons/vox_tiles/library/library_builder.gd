@@ -232,6 +232,17 @@ static func build_category(cat: String, changed: Dictionary, previews: bool, for
 		if not seen.has(k):
 			lib.remove_item(by_name[k])
 			dirty = true
+	# the lanes of every item (metadata "traffic", tile_metadata.gd), for the road network
+	# (scripts/world/road_network.gd); on the coarse libraries as well, without rebuilding them
+	var traffic := _traffic_of(root, files, alias_files)
+	if traffic != lib.get_meta("traffic", {}):
+		lib.set_meta("traffic", traffic)
+		dirty = true
+		for level in ["lod", "lod2"]:
+			if ResourceLoader.exists(lod_path(cat, level)):
+				var coarse_library := load(lod_path(cat, level)) as MeshLibrary
+				coarse_library.set_meta("traffic", traffic)
+				ResourceSaver.save(coarse_library, lod_path(cat, level))
 	# any change: rebuild the texture atlases (every tile's UVs depend on the packing)
 	var missing_lods := not ResourceLoader.exists(lod_path(cat, "lod")) or not ResourceLoader.exists(lod_path(cat, "lod2"))
 	if dirty or force or missing_lods:
@@ -288,6 +299,16 @@ static func build_category(cat: String, changed: Dictionary, previews: bool, for
 		else:
 			print("Vox Tiles: library '%s' updated (%d items)" % [cat, lib.get_item_list().size()])
 	return dirty
+
+
+## Item name -> "traffic" metadata of every tile and alias tile that has it.
+static func _traffic_of(root: String, files: PackedStringArray, alias_files: PackedStringArray) -> Dictionary:
+	var traffic := {}
+	for path in files + alias_files:
+		var data = TileMetadata.read(path).get("traffic")
+		if data is Dictionary:
+			traffic[path.trim_prefix(root + "/").get_basename()] = data
+	return traffic
 
 
 ## File of the cached preview of item `key` of a category for an import time stamp.
@@ -399,6 +420,7 @@ static func _build_lod(cat: String, lib: MeshLibrary, level: String, sources: Di
 	var packed := Atlas.build(coarse)
 	_set_interior(packed.meshes, cat)
 	var lod := MeshLibrary.new()
+	lod.set_meta("traffic", lib.get_meta("traffic", {}))
 	for id in lib.get_item_list():
 		lod.create_item(id)
 		lod.set_item_name(id, lib.get_item_name(id))
