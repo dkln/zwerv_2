@@ -381,23 +381,12 @@ func _mix(a: Array, b: Array, k: float) -> Array:
 	return [Transform3D(Basis(q), ta.origin.lerp(tb.origin, k)), lerpf(a[1], b[1], k), minf(a[2], b[2])]
 
 
-## Puts the camera in pose [Transform3D, fov, near]. A low pose (the flights) gets no
-## tilt-shift blur close by, only a little far away (DetailNiveau scales the iso one).
+## Puts the camera in pose [Transform3D, fov, near].
 func _apply(pose: Array) -> void:
 	_cam.projection = Camera3D.PROJECTION_PERSPECTIVE
 	_cam.global_transform = pose[0]
 	_cam.fov = pose[1]
 	_cam.near = pose[2]
-	var low: bool = pose[1] > Iso.FOV + 1.0
-	var dn := get_node_or_null("../DetailNiveau")
-	if dn:
-		dn.set("depth_of_field", not low)
-	var attr := _cam.attributes as CameraAttributesPractical
-	if attr:
-		attr.dof_blur_near_enabled = not low
-		if low:
-			attr.dof_blur_far_distance = 70.0
-			attr.dof_blur_far_transition = 90.0
 
 
 ## Shows map part `p` (unless it is shown already) and waits until DetailNiveau has

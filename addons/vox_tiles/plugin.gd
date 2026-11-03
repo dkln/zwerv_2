@@ -12,7 +12,7 @@ extends EditorPlugin
 ## the Build dock, saved as metadata on the scene root). In such a scene the 3D views
 ## run in a light "editor view" (editor_view.gd) for a high frame rate: light voxel
 ## shaders with lines on the 4 m tile borders, no shadows, reflections, SSAO/SSIL/glow/
-## fog, motion blur or smoke; and the build tools below are available. The game itself
+## fog or smoke; and the build tools below are available. The game itself
 ## (F5/F6 and exports) never uses the editor view. A part of a map stored in parts gets
 ## the environment, lights, tint map and smoke of its tour scene (scene_preview.gd).
 

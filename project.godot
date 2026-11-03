@@ -58,14 +58,14 @@ cam_omlaag={
 
 [rendering]
 
+lights_and_shadows/directional_shadow/size=2048
+lights_and_shadows/directional_shadow/soft_shadow_filter_quality=0
 driver/depth_prepass/enable=false
-camera/depth_of_field/depth_of_field_bokeh_shape=0
-camera/depth_of_field/depth_of_field_bokeh_quality=0
 environment/ssao/quality=1
 anti_aliasing/quality/use_debanding=true
 scaling_3d/mode=2
 scaling_3d/mode.macos=4
-scaling_3d/scale=0.85
+scaling_3d/scale=0.7
 
 [shader_globals]
 

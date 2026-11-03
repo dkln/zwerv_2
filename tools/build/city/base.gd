@@ -100,10 +100,6 @@ func _make_scene(node_name: String) -> Node3D:
 	e.fog_light_color = Color(0.7, 0.78, 0.88)
 	e.fog_density = 0.0005
 	env.environment = e
-	# motion blur when the camera moves
-	var comp := Compositor.new()
-	comp.compositor_effects = [load("res://scripts/effects/motion_blur.gd").new()]
-	env.compositor = comp
 	root.add_child(env)
 	var sun := DirectionalLight3D.new()
 	sun.name = "Zon"
@@ -145,17 +141,6 @@ func _make_scene(node_name: String) -> Node3D:
 	cam.fov = Iso.FOV
 	cam.near = 2.0
 	cam.far = 6000.0
-	# depth of field (tilt-shift): sharp around the focus point, blurred in front and behind;
-	# DetailNiveau scales the distances along with the zoom
-	var attr := CameraAttributesPractical.new()
-	attr.dof_blur_far_enabled = true
-	attr.dof_blur_far_distance = 330.0
-	attr.dof_blur_far_transition = 140.0
-	attr.dof_blur_near_enabled = true
-	attr.dof_blur_near_distance = 250.0
-	attr.dof_blur_near_transition = 110.0
-	attr.dof_blur_amount = 0.1
-	cam.attributes = attr
 	root.add_child(cam)
 	if node_name == "Wereld":
 		var rl := Node.new()

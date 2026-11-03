@@ -23,8 +23,17 @@ extends Node3D
 ## Model: the props library item `model`, centred on the node, front along +Z, lifted by
 ## `model_lift`; its wheels (item `wheel_model`, at `wheel_positions`) roll with the
 ## distance driven, and the front ones (positions with z > 0) steer into the corners.
-## Windows: the glass of the model gets dark tinted glass with a broad sun glint and a
-## sheen that slides over it as the vehicle moves (voxel_glass.gdshader), no mirroring.
+## Other vehicles: it keeps behind a vehicle on the cells ahead of it (brakes and stops
+## behind it) and gives way on a crossing to a vehicle that will be there first. If two
+## vehicles touch all the same, they crash: each becomes a RigidBody3D (a "Wrak") with its
+## speed and mass, so they bounce off each other and off the colliders of the town (the
+## kerbs, medians and buildings of the GridMaps), spin and slide out, hazard lights
+## blinking; after WRECK_TIME seconds they are towed back onto the nearest lane and
+## drive on. drive_into() sends a vehicle the wrong way down another one's route, without
+## looking (the demo crash, key B in the follow camera).
+## Windows: the glass of the model gets dark tinted glass that mirrors the sky, more at a
+## grazing angle, with a sharp sun glint and light streaks that lie on the car itself
+## (voxel_glass.gdshader, streaks_on_object: world streaks would slide over its windows).
 ## Lamps (glowing blocks over the lamp voxels of the model, at the `*_positions`):
 ## - headlights, with a spotlight on the road, once it gets dark (the Dagcyclus node);
 ## - tail lights, dim at night, bright as brake lights while it brakes or stands still;
@@ -42,6 +51,10 @@ extends Node3D
 ## Acceleration and braking (m/s²).
 @export var acceleration := 2.5
 @export var braking := 4.0
+## How quickly the acceleration may change (m/s³): a driver eases onto the throttle and
+## the brake (no jolt); easing off and braking go faster than speeding up again.
+@export var throttle_rate := 3.0
+@export var brake_rate := 12.0
 @export_group("Rules")
 ## Kind of vehicle, for lanes only some kinds may use (a bus lane: "bus").
 @export var vehicle_kind := "auto"
@@ -49,8 +62,16 @@ extends Node3D
 @export var obeys_lights := true
 ## Seconds it waits before a zebra crossing without traffic lights.
 @export var zebra_wait := 1.5
-## Chance (0..1) to go straight on where it could also turn.
+## Chance (0..1) to go straight on where it could also turn (before its memory of the
+## roads it has driven weighs in, see _choose_heading).
 @export var straight_chance := 0.6
+## How strongly it avoids roads it has driven lately (0 = not at all).
+@export var variety := 4.0
+@export_group("Traffic")
+## Brakes for other vehicles ahead and gives way on crossings.
+@export var avoids_others := true
+## Mass for the crash (kg).
+@export var mass_kg := 1300.0
 @export_group("Start")
 ## Start cell (on the map, x and z) and heading; if that is not a lane in that heading the
 ## nearest one that is is taken.
@@ -74,7 +95,7 @@ extends Node3D
 ## Radius the wheels roll with (metres).
 @export var wheel_radius := 0.375
 ## Largest steering angle of the front wheels (degrees); 0 = they don't steer.
-@export var max_steering_degrees := 35.0
+@export var max_steering_degrees := 20.0
 ## How quickly the steering follows the corner (1/s).
 @export var steering_rate := 8.0
 @export_group("Lamps")
@@ -106,6 +127,30 @@ const BRAKE_ENERGY := 6.0
 const STANDING_SPEED := 0.3
 ## Seconds the brake lights stay on after it last slowed down (no flicker in a corner).
 const BRAKE_HOLD := 0.4
+## Planned cells back over which it never picks the opposite heading (no U-turns at forks).
+const U_TURN_CELLS := 6
+## Cells it looks ahead along each way out of a fork to see how much it has driven there.
+const VISIT_LOOKAHEAD := 8
+## Cells it remembers; past that the memory is halved (old routes fade).
+const VISIT_MEMORY := 600
+## Fastest the body turns (rad/s), also when its route swings round at once.
+const MAX_TURN_RATE := 3.0
+## Metres ahead along its route it looks for other vehicles, and how far ahead (in
+## seconds of driving) a crossing counts as claimed by a vehicle heading for it.
+const TRAFFIC_LOOKAHEAD := 40.0
+const CLAIM_SECONDS := 4.0
+## Metres it keeps from the back of a vehicle it stops behind.
+const TRAFFIC_GAP := 0.5
+## Seconds a crash lasts before the wrecks are towed back onto the road.
+const WRECK_TIME := 8.0
+## Metres added round the bodies when testing for a crash (they touch in the next step).
+const CRASH_MARGIN := 0.25
+## Speed (m/s) of a vehicle sent down another one's route (drive_into).
+const RECKLESS_SPEED := 11.0
+## Seconds in which it closes a gap between its speed and the speed it may drive.
+const SPEED_SETTLE := 0.5
+## Metres per second over the speed it may drive from which it brakes without easing in.
+const BRAKE_SLACK := 1.5
 ## Metres over which the corners of the route are rounded off.
 const ROUNDING := 1.6
 ## Metres it plans ahead at least, beyond what it needs to brake to a stop.
@@ -116,8 +161,21 @@ const MOVE_OVER_CELLS := [3, 2, 1]
 ## after it until it drives on.
 const CORNER_REACH := 2.0
 
+## Every vehicle in the game (for keeping clear of each other and crashing).
+static var all_vehicles: Array[Vehicle] = []
+
+## Crashed: a wreck under physics until it is towed back onto the road.
+var crashed := false
+## Drives without looking: no lights, no other vehicles (drive_into).
+var reckless := false
+var _wreck: RigidBody3D
+var _wreck_clock := 0.0
+var _body_size := Vector3(1.75, 1.5, 4.5)   # width, height (from the road), length
+
 ## Current speed (m/s) and velocity, for the camera.
 var speed := 0.0
+## Current acceleration (m/s², negative while braking), eased (throttle_rate, brake_rate).
+var acceleration_now := 0.0
 var velocity := Vector3.ZERO
 ## Speed limit of the road it is on (m/s).
 var speed_limit := 0.0
@@ -131,6 +189,7 @@ var _waited_at := {}                         # zebra cells it has already waited
 var _zebra_waiting := 0.0
 var _lights: Node
 var _random := RandomNumberGenerator.new()
+var _visits := {}                    # Vector3i cell -> times driven over (fades, VISIT_MEMORY)
 var _wheels: Array[Node3D] = []      # per wheel: the steering pivot, its child spins
 var _wheel_roll := 0.0               # radians the wheels have turned
 var _steering := 0.0                 # current steering angle (radians)
@@ -169,6 +228,7 @@ func _ready() -> void:
 	_add_wheels(props)
 	_add_lamps()
 	_day_cycle = root.get_node_or_null("Dagcyclus")
+	all_vehicles.append(self)
 	if network.is_empty():
 		set_physics_process(false)
 		_snap_body()
@@ -188,26 +248,43 @@ func _physics_process(delta: float) -> void:
 	var speed_before := speed
 	_plan()
 	var target := _target_speed(delta)
-	if speed < target:
-		speed = minf(target, speed + acceleration * delta)
+	# the acceleration that brings it to the target speed in about SPEED_SETTLE seconds,
+	# reached gradually; never past the target speed
+	var wanted := clampf((target - speed) / SPEED_SETTLE, -braking * 1.5, acceleration)
+	var rate := brake_rate if wanted < acceleration_now else throttle_rate
+	acceleration_now = move_toward(acceleration_now, wanted, rate * delta)
+	if speed > target + BRAKE_SLACK:
+		# well over the speed it may drive (a light turned red, a sharp corner seen late):
+		# brakes at once, as hard as needed
+		acceleration_now = minf(acceleration_now, wanted)
+	if target > speed:
+		speed = minf(target, speed + maxf(acceleration_now, 0.0) * delta)
 	else:
-		speed = maxf(target, speed - braking * 1.5 * delta)
+		speed = maxf(target, speed + minf(acceleration_now, 0.0) * delta)
 	var standing := speed < STANDING_SPEED and target < STANDING_SPEED
 	_brake_hold = BRAKE_HOLD if speed < speed_before - 0.0001 else maxf(_brake_hold - delta, 0.0)
 	braking_now = standing or _brake_hold > 0.0
 	var before := global_position
 	_distance += speed * delta
 	_drop_passed_cells()
-	_place()
+	_place(delta)
 	velocity = (global_position - before) / maxf(delta, 0.0001)
 	_tick_current = global_transform
+	_check_crash()
 	_turn_wheels(speed * delta, delta)
 	indicating = _indicator_side()
+
+
+func _exit_tree() -> void:
+	all_vehicles.erase(self)
 
 
 ## Draws the body between the last two physics steps (the frame rate differs from the
 ## physics rate, so placing it at the last step would make it judder).
 func _process(delta: float) -> void:
+	if crashed:
+		_follow_wreck(delta)
+		return
 	var fraction := Engine.get_physics_interpolation_fraction()
 	_body.global_transform = _tick_previous.interpolate_with(_tick_current, fraction)
 	var roll := lerp_angle(_roll_previous, _wheel_roll, fraction)
@@ -305,7 +382,8 @@ func _update_lamps() -> void:
 	var blink_on := fmod(Time.get_ticks_msec() / 1000.0, BLINK_TIME) < BLINK_TIME * 0.5
 	for lamp in _indicators:
 		var on_left := lamp.position.x > 0.0
-		lamp.visible = blink_on and indicating != 0 and on_left == (indicating < 0)
+		# a wreck: the hazard lights (all indicators at once)
+		lamp.visible = blink_on and (crashed or (indicating != 0 and on_left == (indicating < 0)))
 
 
 ## The side the vehicle should indicate now: -1 left, 1 right, 0 none. Looks along the
@@ -353,11 +431,49 @@ func _may_use(cell: Vector3i, _heading: Vector2i) -> bool:
 
 
 ## Heading it leaves `cell` in, out of `options` (more than one), arriving in `heading`.
-func _choose_heading(_cell: Vector3i, heading: Vector2i, options: Array[Vector2i]) -> Vector2i:
-	if options.has(heading) and _random.randf() < straight_chance:
-		return heading
-	var turns := options.filter(func(option: Vector2i) -> bool: return option != heading)
-	return turns[_random.randi() % turns.size()]
+## By default: straight on with `straight_chance`, else one of the turns, each weighed
+## down by how much it has driven the road that way lately (`variety`), so it explores
+## the town instead of driving the same loop.
+func _choose_heading(cell: Vector3i, heading: Vector2i, options: Array[Vector2i]) -> Vector2i:
+	var turn_count := options.size() - (1 if options.has(heading) else 0)
+	var weights: Array[float] = []
+	var total := 0.0
+	for option in options:
+		var base := 1.0
+		if options.has(heading):
+			base = straight_chance if option == heading else (1.0 - straight_chance) / maxf(turn_count, 1.0)
+		var weight := base / (1.0 + variety * _visited_ahead(cell, option))
+		weights.append(weight)
+		total += weight
+	var pick := _random.randf() * total
+	for index in options.size():
+		pick -= weights[index]
+		if pick <= 0.0:
+			return options[index]
+	return options[-1]
+
+
+## Average number of times it drove the cells along `heading` from `cell` (up to
+## VISIT_LOOKAHEAD cells, straight on).
+func _visited_ahead(cell: Vector3i, heading: Vector2i) -> float:
+	var total := 0.0
+	var here := cell
+	for step in VISIT_LOOKAHEAD:
+		here = network.step(here, heading)
+		if here == RoadNetwork.NONE:
+			break
+		total += _visits.get(here, 0)
+	return total / VISIT_LOOKAHEAD
+
+
+## Counts a cell it drove over; halves the whole memory once it holds too many cells.
+func _remember(cell: Vector3i) -> void:
+	_visits[cell] = _visits.get(cell, 0) + 1
+	if _visits.size() > VISIT_MEMORY:
+		for key in _visits.keys():
+			_visits[key] = _visits[key] / 2
+			if _visits[key] == 0:
+				_visits.erase(key)
 
 
 ## Why it must stop before driving from `from_cell` into `to_cell` ("" = it may go):
@@ -365,7 +481,7 @@ func _choose_heading(_cell: Vector3i, heading: Vector2i, options: Array[Vector2i
 ## metres), "zebra" for a zebra crossing without lights it has not yet waited at.
 ## Never inside a crossing.
 func _must_stop(from_cell: Vector3i, to_cell: Vector3i, distance: float) -> String:
-	if network.is_crossing(from_cell):
+	if reckless or network.is_crossing(from_cell):
 		return ""
 	var zebra := network.is_zebra(to_cell)
 	if not zebra and not network.is_crossing(to_cell):
@@ -409,6 +525,7 @@ func _current_index() -> int:
 func _drop_passed_cells() -> void:
 	while _route_cells.size() > 3 and _distance > _route_distances[2]:
 		_waited_at.erase(_route_cells[1])
+		_remember(_route_cells[1])
 		_route_cells.pop_front()
 		_route_headings.pop_front()
 		_route_distances.pop_front()
@@ -427,9 +544,17 @@ func _plan() -> void:
 		var next_cell := network.step(cell, heading)
 		var options: Array[Vector2i] = []
 		if next_cell != RoadNetwork.NONE:
+			var entered := _crossing_entry_heading()
 			for option in network.lanes(next_cell):
-				if option != -heading and _may_use(next_cell, option) and network.step(next_cell, option) != RoadNetwork.NONE:
-					options.append(option)
+				if option == -heading or not _may_use(next_cell, option) or network.step(next_cell, option) == RoadNetwork.NONE:
+					continue
+				# on a crossing it turns once at most, and never back where it came from
+				if network.is_crossing(next_cell) and entered != Vector2i.ZERO \
+						and (option == -entered or (heading != entered and option != heading)):
+					continue
+				if _doubles_back(option):
+					continue
+				options.append(option)
 		if options.is_empty():
 			if not _move_over(cell, heading):
 				_turn_round(cell, heading)
@@ -438,6 +563,26 @@ func _plan() -> void:
 		if options.size() > 1:
 			next_heading = _choose_heading(next_cell, heading, options)
 		_append(next_cell, next_heading)
+
+
+## True if `heading` points back the way it drove the last few planned cells (a U-turn
+## made of two turns close after each other, such as over a wide junction).
+func _doubles_back(heading: Vector2i) -> bool:
+	for index in range(maxi(0, _route_headings.size() - U_TURN_CELLS), _route_headings.size()):
+		if _route_headings[index] == -heading:
+			return true
+	return false
+
+
+## Heading it drove onto the crossing it is planning through now (the last planned cells
+## that are crossing cells); ZERO when the last planned cell is not on a crossing.
+func _crossing_entry_heading() -> Vector2i:
+	var index := _route_cells.size() - 1
+	if not network.is_crossing(_route_cells[index]):
+		return Vector2i.ZERO
+	while index > 0 and network.is_crossing(_route_cells[index - 1]):
+		index -= 1
+	return _route_headings[index - 1] if index > 0 else _route_headings[index]
 
 
 ## Where its lane ends: gradually over into the lane alongside, reaching it a few cells
@@ -482,6 +627,8 @@ func _target_speed(delta: float) -> float:
 	var top_speed := top_speed_kmh / 3.6
 	speed_limit = network.speed_limit(_cell_under())
 	var target := minf(top_speed, speed_limit)
+	if reckless:
+		return minf(target, RECKLESS_SPEED)
 	# a lower speed limit ahead: down to it where its cell starts
 	for ahead_index in range(index + 1, last + 1):
 		var cell_start := (_route_distances[ahead_index - 1] + _route_distances[ahead_index]) * 0.5
@@ -497,6 +644,8 @@ func _target_speed(delta: float) -> float:
 		var tight := (corner_index < last and _route_headings[corner_index] != _route_headings[corner_index + 1]) \
 				or (corner_index >= 2 and _route_headings[corner_index - 2] != _route_headings[corner_index - 1])
 		target = minf(target, _approach_speed(tight_corner_speed if tight else corner_speed, corner_at - CORNER_REACH))
+	if avoids_others:
+		target = minf(target, _traffic_speed(index, last))
 	# the first cell boundary it has to stop at
 	for ahead_index in range(index + 1, last + 1):
 		var stop_at := (_route_distances[ahead_index - 1] + _route_distances[ahead_index]) * 0.5 - half_length
@@ -552,7 +701,8 @@ func _route_point(at: float) -> Vector3:
 	return Vector3(spot.x, network.height(under, spot), spot.y)
 
 
-func _place() -> void:
+## Puts the vehicle on its route; delta 0 = at once (at the start).
+func _place(delta := 0.0) -> void:
 	# rounded corners: the mean of the route a little behind and ahead; the height of
 	# the road right under it (the mean would cut through the top of a ramp)
 	var position_now := (_route_point(_distance - ROUNDING) + _route_point(_distance + ROUNDING)) * 0.5
@@ -560,7 +710,14 @@ func _place() -> void:
 	var forward := _route_point(_distance + 2.0) - _route_point(_distance - 2.0)
 	global_position = position_now
 	if Vector2(forward.x, forward.z).length() > 0.01:
-		global_basis = Basis.looking_at(-forward, Vector3.UP)
+		var wanted := Quaternion(Basis.looking_at(-forward, Vector3.UP))
+		var now := Quaternion(global_basis.orthonormalized())
+		var angle := now.angle_to(wanted)
+		# turning round in a narrow street the route swings round at once: the body turns
+		# at MAX_TURN_RATE at most, so it never flips
+		if delta > 0.0 and angle > MAX_TURN_RATE * delta:
+			wanted = now.slerp(wanted, MAX_TURN_RATE * delta / angle)
+		global_basis = Basis(wanted)
 
 
 func _add_model(props: GridMap) -> void:
@@ -575,6 +732,7 @@ func _add_model(props: GridMap) -> void:
 	var mesh_transform := library.get_item_mesh_transform(item)
 	var box := mesh_transform * mesh.get_aabb()
 	var middle := box.get_center()
+	_body_size = Vector3(box.size.x, model_lift + box.size.y, box.size.z)
 	var instance := MeshInstance3D.new()
 	instance.name = "Model"
 	instance.mesh = mesh
@@ -582,12 +740,17 @@ func _add_model(props: GridMap) -> void:
 	for surface in mesh.get_surface_count():
 		var material := mesh.surface_get_material(surface) as ShaderMaterial
 		if material and material.shader and material.shader.resource_path.ends_with("voxel_glass.gdshader"):
+			# dark tinted car glass that mirrors the sky a little (more at a grazing angle)
+			# with a sharp sun glint and light streaks that lie on the car itself (world
+			# streaks would slide over the windows of a moving car all the time)
 			var windows := material.duplicate() as ShaderMaterial
 			windows.set_shader_parameter("interior", 0.0)
-			windows.set_shader_parameter("reflection", 0.05)
+			windows.set_shader_parameter("reflection", 0.08)
 			windows.set_shader_parameter("depth", 0.1)
-			windows.set_shader_parameter("glint_roughness", 0.1)
-			windows.set_shader_parameter("sheen", 0.4)
+			windows.set_shader_parameter("glint_roughness", 0.06)
+			windows.set_shader_parameter("streaks", 0.25)
+			windows.set_shader_parameter("streaks_on_object", 1.0)
+			windows.set_shader_parameter("sheen", 0.0)
 			instance.set_surface_override_material(surface, windows)
 	_body.add_child(instance)
 
@@ -651,3 +814,209 @@ func _turn_wheels(distance_driven: float, delta: float) -> void:
 		wanted = clampf(atan((front - back) * yaw_change / distance_driven), -max_angle, max_angle)
 	_steering = lerpf(_steering, wanted, 1.0 - exp(-steering_rate * delta))
 	# the wheels themselves are turned every frame in _process, between this step and the last
+
+
+# ------------------------------------------------------------------ other vehicles
+
+## Highest speed for the other vehicles ahead: it stops behind the first planned cell
+## (within TRAFFIC_LOOKAHEAD) that another vehicle stands on, or a crossing cell that
+## another vehicle will reach first (it gives way).
+func _traffic_speed(index: int, last: int) -> float:
+	var target := INF
+	for ahead_index in range(index + 1, last + 1):
+		var at := _route_distances[ahead_index]
+		if at - _distance > TRAFFIC_LOOKAHEAD:
+			break
+		var cell := _route_cells[ahead_index]
+		var my_time := (at - _distance) / maxf(speed, 1.0)
+		var blocked := false
+		for other in all_vehicles:
+			if other == self:
+				continue
+			if other.covers(cell):
+				blocked = true
+			elif network.is_crossing(cell) and not other.crashed and other.speed > 0.5:
+				var their_distance := other.distance_to(cell)
+				if their_distance >= 0.0:
+					var their_time := their_distance / maxf(other.speed, 1.0)
+					var first := their_time < my_time - 0.2 or (absf(their_time - my_time) <= 0.2 and other.get_instance_id() < get_instance_id())
+					blocked = their_time < CLAIM_SECONDS and first
+			if blocked:
+				break
+		if blocked:
+			var stop_at := (_route_distances[ahead_index - 1] + at) * 0.5 - half_length - TRAFFIC_GAP
+			target = _approach_speed(0.0, stop_at)
+			if stop_at - _distance < 0.4:
+				target = 0.0
+			break
+	return target
+
+
+## True if the vehicle stands on (part of) this road cell (a wreck: the cell under it).
+func covers(cell: Vector3i) -> bool:
+	var spot := _body.global_position if crashed else global_position
+	var reach := _body_size.z * 0.5 + 0.5
+	var centre := network.centre(cell)
+	if absi(cell.y - roundi(spot.y)) > 3:
+		return false
+	var forward := (_body.global_basis if crashed else global_basis).z
+	for along in [-reach, 0.0, reach]:
+		var point: Vector3 = spot + forward * along
+		if absf(point.x - centre.x) <= RoadNetwork.CELL * 0.5 and absf(point.z - centre.z) <= RoadNetwork.CELL * 0.5:
+			return true
+	return false
+
+
+## Metres along its route to the centre of `cell`; -1 if it has not planned it ahead.
+func distance_to(cell: Vector3i) -> float:
+	for index in range(_route_cells.size()):
+		if _route_cells[index] == cell and _route_distances[index] >= _distance - 1.0:
+			return maxf(_route_distances[index] - _distance, 0.0)
+	return -1.0
+
+
+## Crashes into every vehicle whose body touches this one's (within CRASH_MARGIN).
+func _check_crash() -> void:
+	for other in all_vehicles:
+		if other == self or other.crashed or crashed:
+			continue
+		if global_position.distance_to(other.global_position) > (_body_size.z + other._body_size.z) * 0.5 + 1.0:
+			continue
+		if _overlaps(other):
+			var impact := velocity
+			var their_impact := other.velocity
+			_become_wreck(impact)
+			other._become_wreck(their_impact)
+
+
+## True if the bodies (rectangles seen from above, CRASH_MARGIN larger) overlap
+## (separating axis test on the four side directions).
+func _overlaps(other: Vehicle) -> bool:
+	var mine := _corners(CRASH_MARGIN)
+	var theirs := other._corners(CRASH_MARGIN)
+	for axis in [Vector2(global_basis.x.x, global_basis.x.z), Vector2(global_basis.z.x, global_basis.z.z),
+			Vector2(other.global_basis.x.x, other.global_basis.x.z), Vector2(other.global_basis.z.x, other.global_basis.z.z)]:
+		var my_range := Vector2(INF, -INF)
+		var their_range := Vector2(INF, -INF)
+		for corner in mine:
+			var along: float = corner.dot(axis)
+			my_range = Vector2(minf(my_range.x, along), maxf(my_range.y, along))
+		for corner in theirs:
+			var along: float = corner.dot(axis)
+			their_range = Vector2(minf(their_range.x, along), maxf(their_range.y, along))
+		if my_range.y < their_range.x or their_range.y < my_range.x:
+			return false
+	return true
+
+
+## The four corners of the body seen from above (x, z), `margin` metres larger.
+func _corners(margin: float) -> Array[Vector2]:
+	var across := Vector2(global_basis.x.x, global_basis.x.z) * (_body_size.x * 0.5 + margin)
+	var along := Vector2(global_basis.z.x, global_basis.z.z) * (_body_size.z * 0.5 + margin)
+	var middle := Vector2(global_position.x, global_position.z)
+	return [middle + across + along, middle + across - along, middle - across + along, middle - across - along]
+
+
+## Hands the body to the physics engine: a RigidBody3D with a box the size of the body,
+## its mass and its speed, that hits the other wreck and the colliders of the town.
+func _become_wreck(impact: Vector3) -> void:
+	crashed = true
+	reckless = false
+	speed = 0.0
+	braking_now = false
+	indicating = 0
+	set_physics_process(false)
+	_wreck = RigidBody3D.new()
+	_wreck.name = "Wrak"
+	_wreck.mass = mass_kg
+	_wreck.continuous_cd = true
+	var material := PhysicsMaterial.new()
+	material.friction = 0.7
+	material.bounce = 0.15
+	_wreck.physics_material_override = material
+	var shape := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = Vector3(_body_size.x, _body_size.y - 0.05, _body_size.z)
+	shape.shape = box
+	shape.position = Vector3(0.0, _body_size.y * 0.5 + 0.03, 0.0)
+	_wreck.add_child(shape)
+	# lower centre of mass (engine and floor), so it slides and spins more than it rolls
+	_wreck.center_of_mass_mode = RigidBody3D.CENTER_OF_MASS_MODE_CUSTOM
+	_wreck.center_of_mass = Vector3(0.0, _body_size.y * 0.3, 0.0)
+	get_parent().add_child(_wreck)
+	_wreck.global_transform = global_transform
+	_wreck.linear_velocity = impact
+	_wreck_clock = 0.0
+
+
+## While crashed: the body sits on the wreck; after WRECK_TIME it is towed back.
+func _follow_wreck(delta: float) -> void:
+	_body.global_transform = _wreck.global_transform
+	_update_lamps()
+	_wreck_clock += delta
+	if _wreck_clock >= WRECK_TIME:
+		_tow()
+
+
+## Puts the vehicle back on the nearest lane (facing the way its wreck faces) and lets it
+## drive on.
+func _tow() -> void:
+	var spot := _wreck.global_position
+	var facing := _wreck.global_basis.z   # the front of a body is along its +Z
+	var heading := Vector2i(signi(roundi(facing.x)), 0) if absf(facing.x) > absf(facing.z) else Vector2i(0, signi(roundi(facing.z)))
+	if heading == Vector2i.ZERO:
+		heading = Vector2i(0, 1)
+	_wreck.queue_free()
+	_wreck = null
+	crashed = false
+	_route_cells.clear()
+	_route_headings.clear()
+	_route_distances.clear()
+	_waited_at.clear()
+	var first := network.nearest(Vector2i(floori(spot.x / RoadNetwork.CELL), floori(spot.z / RoadNetwork.CELL)), heading)
+	_append(first - Vector3i(heading.x, 0, heading.y), heading)
+	_append(first, heading)
+	_distance = _route_distances[1]
+	speed = 0.0
+	acceleration_now = 0.0
+	_plan()
+	_place()
+	_last_yaw = global_basis.get_euler().y
+	_snap_body()
+	set_physics_process(true)
+
+
+## Sends this vehicle the wrong way down the route `other` has planned, from beyond its
+## far end, without looking (no lights, no other vehicles): a head-on crash unless the
+## other gets out of the way. The demo crash.
+func drive_into(other: Vehicle) -> void:
+	if crashed or other.crashed:
+		return
+	other._plan_ahead(55.0)
+	var start := other._current_index() + 2
+	var last := other._route_cells.size() - 1
+	if last <= start:
+		return
+	_route_cells.clear()
+	_route_headings.clear()
+	_route_distances.clear()
+	_waited_at.clear()
+	var away := -other._route_headings[last]
+	_append(other._route_cells[last] - Vector3i(away.x, 0, away.y), away)
+	for index in range(last, start - 1, -1):
+		_append(other._route_cells[index], -other._route_headings[index - 1])
+	_distance = _route_distances[1]
+	speed = RECKLESS_SPEED
+	acceleration_now = 0.0
+	reckless = true
+	_place()
+	_last_yaw = global_basis.get_euler().y
+	_snap_body()
+
+
+## Plans at least `metres` ahead.
+func _plan_ahead(metres: float) -> void:
+	var keep := speed
+	speed = sqrt(maxf(0.0, 2.0 * braking * (metres - PLAN_MARGIN)))
+	_plan()
+	speed = keep

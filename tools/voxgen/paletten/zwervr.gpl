@@ -204,6 +204,11 @@ Columns: 16
 120  92  58 brons (metaal)
  86 128 108 brons_patina (metaal)
 232 230 224 marmer (steen)
+ 39  79 132 autolak1 (gelakt)
+ 34  69 115 autolak2 (gelakt)
+ 34  32  36 auto_interieur
+ 48  80  77 autolak3 (gelakt)
+ 40  68  68 autolak4 (gelakt)
  40  96 118 water1 (water)
  34  86 108 water2 (water)
  48 106 126 water3 (water)

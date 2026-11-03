@@ -38,10 +38,11 @@ De game start met deze kaart (`run/main_scene` = `scenes/stad.tscn`): de node
 langs alle buurten glijden: boven elke buurt zoomt hij in, onderweg weer uit
 (instelbaar: `speed`, `zoom_near`, `zoom_far`, `route`).
 Een toets, muisklik of scroll geeft de camera aan jou (vrije camera); `active` uit =
-meteen zelf rondkijken. Een tilt-shift-lens (node `TiltShift`,
-`scripts/effects/tilt_shift.gd` + `.gdshader`) maakt het beeld boven en onder wazig,
-zodat de stad een maquette lijkt; instelbaar met `focus_center`, `focus_width`,
-`falloff`, `max_blur` en `saturation`, uit met `enabled`. De rondleiding door de voorbeeldkaart start je met
+meteen zelf rondkijken. Over het beeld ligt een vignet (node `Vignet`,
+`scripts/effects/vignette.gd` + `vignette.gdshader`) dat de randen wat afdonkert
+(`strength`, `inner`, `softness`, uit met `enabled`): een laag die over het beeld wordt
+gemengd, zonder schermkopie of blur, dus vrijwel gratis. Er is geen tilt-shift en geen
+scherptediepte (DOF) meer: het beeld is overal scherp. De rondleiding door de voorbeeldkaart start je met
 `scenes/rondleiding.tscn` (F6 in de editor).
 
 Stoplichten werken: de node `Verkeerslichten` (`scripts/world/traffic_lights.gd`, in
@@ -50,29 +51,49 @@ elke scène die de bouwers maken) laat de stoplichtprops (`verkeerslichten/auto_
 noord-zuid groen, oranje, alles rood, oost-west groen, oranje, alles rood. De richting
 van een licht volgt uit zijn draaiing; tijden zijn instelbaar op de node.
 
-Er rijdt een auto door de stad: node `Auto` (`scripts/characters/car.gd`). Druk op F en
-de camera volgt hem (node `Volgcamera`, `scripts/camera/follow_camera.gd`). Die jaagt de
-auto niet elk frame na: elke seconde (`retarget_time`) kiest hij een punt waar de auto
-zo ongeveer zal zijn (`lead_time`, begrensd tot `max_lead` van het beeld) en glijdt daar
-op een kritisch gedempte veer heen (`glide_time`), zodat zijn snelheid nooit verspringt.
+Er rijden twee auto's door de stad: een sedan, node `Auto` (`scripts/characters/car.gd`),
+en een SUV, node `SUV` (`scripts/characters/suv.gd`, model `voertuigen/auto_suv`). Allebei
+zijn het een `Vehicle` (`scripts/characters/vehicle.gd`):
+- Route: bij een splitsing kiest een auto liever een weg die hij de laatste tijd niet
+  heeft gereden (`variety`), zodat hij de hele stad doorrijdt in plaats van steeds
+  hetzelfde rondje. Op een kruising slaat hij hooguit één keer af, en nooit terug waar
+  hij vandaan kwam (geen U-bocht over een brede kruising).
+- Rijden: gas geven en remmen bouwen geleidelijk op (`throttle_rate`, `brake_rate`), en
+  de carrosserie draait hooguit 3 rad/s, ook bij keren in een smalle straat.
+- Elkaar ontwijken (`avoids_others`): een auto remt en stopt achter een andere auto op
+  zijn route (tot 40 m vooruit), en geeft op een kruising voorrang aan wie er eerder is.
+- Botsen: raken twee auto's elkaar toch, dan worden het allebei een `RigidBody3D`
+  (`Wrak`, met `mass_kg`). Ze botsen met physics tegen elkaar en tegen de colliders van
+  de stad (stoepranden, middenbermen, gebouwen en props in de GridMaps), tollen en
+  schuiven uit, met de alarmlichten aan. Na 8 s worden ze weggesleept naar de dichtstbijzijnde
+  rijstrook en rijden ze verder.
+- De voorwielen sturen hooguit 20° (`max_steering_degrees`): de wielkasten zijn zo diep
+  dat een gestuurd wiel nooit door de carrosserie steekt.
+Druk op F en de camera volgt de sedan (node `Volgcamera`, `scripts/camera/follow_camera.gd`). Die jaagt de
+auto niet zelf na, maar een punt dat doorlopend vóór de auto ligt: waar hij over
+`lead_time` seconden is bij zijn gladgestreken snelheid (`velocity_smoothing`, begrensd
+tot `max_lead` van het beeld). Daar volgt hij op een kritisch gedempte veer
+(`glide_time`), zodat de camera bij een constante snelheid even gelijkmatig meebeweegt
+en bij optrekken en remmen geleidelijk meegaat.
 Hij zoomt van 16 m in beeld bij stilstand (`zoom_still`) tot 55 m (`zoom_fast`) en gaat
 mee de tunnelbak in. Om de 20 tot 35 s (`closeup_every`) maakt hij een close-up: hij
 zoomt in tot 7 m, zakt wat lager en zwaait om de auto heen (`closeup_*`, uit met
-`closeups`). Een andere toets geeft je de vrije camera terug. De auto rijdt met een vaste
+`closeups`). Tijdens het volgen laat B de SUV als spookrijder op de gevolgde auto
+inrijden (demo-botsing, `Vehicle.drive_into`), en zet T het spel op 4× snelheid en weer
+terug (`fast_forward`, de physics-stappen schalen mee). Een andere toets geeft je de
+vrije camera terug. De auto rijdt met een vaste
 stap van 60 Hz; zijn carrosserie (node `Carrosserie`) wordt elk frame tussen de laatste
 twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
 - Doorkijk (node `Doorkijk`, `scripts/world/building_fade.gd`): zolang de camera de auto
-  volgt, vervaagt alles wat tussen de auto en de camera staat, elk object als geheel, en
-  komt terug als het zicht weer vrij is:
-  - gebouwen (aaneengesloten cellen van de laag Gebouwen), met alles wat uit hun cel
-    steekt (erkers, winkelpuien, luifels) en hun gevel-details: de samengevoegde
-    gebouwen dragen per vertex de cel waar ze bij horen (`layer_baker.gd`, CUSTOM0) en de
-    shader kijkt die cel op in een fade-kaart (`voxel_fade.gdshaderinc`);
-  - props (bushokjes, lantaarnpalen, bomen): een blokkerende prop wordt tijdelijk uit de
-    GridMap getild in een eigen MeshInstance3D die vervaagt, en daarna teruggezet.
+  volgt, vervaagt elk gebouw (aaneengesloten cellen van de laag Gebouwen) dat tussen de
+  auto en de camera staat als geheel, en komt terug als het zicht weer vrij is. Alles wat
+  uit hun cel steekt (erkers, winkelpuien, luifels) en hun gevel-details vervaagt mee: de
+  samengevoegde gebouwen dragen per vertex de cel waar ze bij horen (`layer_baker.gd`,
+  CUSTOM0) en de shader kijkt die cel op in een fade-kaart (`voxel_fade.gdshaderinc`).
+  Objecten op straat (props: bushokjes, lantaarnpalen, bomen) vervagen niet.
   Alleen wat vervaagt krijgt een shadervariant die pixels weglaat (`ZWERVR_FADE`): zo'n
   shader is op een Apple-GPU flink trager. Instelbaar: `fade_time`, `strongest_fade`,
-  `test_reach`, `props_reach`.
+  `test_reach`.
 - Details (laag `Details`): je bouwt ze als losse laag, maar `DetailNiveau` bakt ze bij het
   laden in dezelfde stukken als de gebouwen (`merge_with`), ook per LOD-niveau. Dat
   scheelt een laag tekenen en draw calls, en elk detail vervaagt met zijn eigen gebouw.
@@ -81,15 +102,16 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
   remlichten bij afremmen en stilstaan, en richtingaanwijzers die knipperen vanaf 30 m
   voor een afslag op een kruising, voor het invoegen in een andere rijstrook en voor
   keren (niet in gewone bochten van de weg).
-- Ruiten: getint glas met een zonneglinstering en een glans die over de ruit schuift als
-  de auto rijdt (`voxel_glass.gdshader`: `glint_roughness`, `depth`, `sheen`), geen
-  spiegeling.
+- Ruiten: donker getint glas dat de lucht spiegelt, sterker naarmate je er schuiner op
+  kijkt, met een scherpe zonneglinstering (`voxel_glass.gdshader`: `reflection`,
+  `depth`, `glint_roughness`), en lichtstrepen die vast op de auto liggen
+  (`streaks_on_object`): de strepen van gebouwglas liggen vast in de wereld en zouden
+  bij een rijdende auto steeds over de ruit schuiven.
 - Wielen: het wielmodel draait zelf niet; `voxel_wheel.gdshader` tekent band, velg en
   spaken en draait de spaken mee (`roll`). Bij hoge snelheid vervagen ze tot een
   draaiwaas, anders lijken ze stil te staan of achteruit te draaien. De voorwielen sturen
   mee in de bocht.
-- Beeld: harde zonneschaduwen (`shadow_blur` 0,1), een lichte verscherping in de scherpe
-  band van de tilt-shift (`sharpen`), grasprieten pas onder 24 m in beeld. De
+- Beeld: harde zonneschaduwen (`shadow_blur` 0,1), grasprieten pas onder 24 m in beeld. De
   schaduwafstand verandert alleen in stappen (`SHADOW_DISTANCE_SLACK` in
   `level_of_detail.gd`), anders kruipen de schaduwranden bij een zoomende camera.
 - Wegennet (`scripts/world/road_network.gd`, `RoadNetwork`): het wegennet leest de
@@ -154,7 +176,7 @@ Projectstructuur
       camera/              free_camera, iso_camera
       world/               world_parts (kaartdelen), level_of_detail, layer_baker,
                            ground_map, tint_map, tint_area
-      effects/             day_cycle, smoke, grass_blades, motion_blur (.gd + .glsl)
+      effects/             day_cycle, smoke, grass_blades, vignette
       characters/          vox_character, path_follower
       navigation/          grid_nav
       demo/                tour, tour_data, caption (rondleiding), walker (wandelaar)
@@ -199,7 +221,7 @@ wordt (opgeslagen als metadata op de root-node, één stap in Ctrl+Z). De voorbe
 en de lege kaart zijn al gemarkeerd. In een gemarkeerde scene zijn de bouwtools
 beschikbaar en kies je met "View" hoe de 3D-view eruitziet:
 - Editor (standaard): snel, voor een hoge framerate tijdens het bouwen. Geen
-  schaduwen, reflecties, SSAO/SSIL/glow/mist, motion blur, rook of animatie; lijnen op
+  schaduwen, reflecties, SSAO/SSIL/glow/mist, rook of animatie; lijnen op
   de 4 m tile-randen; een lichtblauw kader om elke tile van de geselecteerde laag
   (Grond, Gebouwen, Details of Props); orthografische camera.
 - Game: zoals in het spel, met schaduwen, zon, reflecties, effecten en animatie, en
@@ -722,8 +744,7 @@ Rondleiding, prestaties en uiterlijk
   dan een pixel) en heel grove tiles (`very_coarse_from`, 130 m), voor Grond,
   Gebouwen en Props (bomen: een plataan 9.500 / 5.800 / 1.500 driehoeken), verbergt
   Details (vanaf 120 m) en Props (vanaf 300 m), past de schaduwafstand aan het
-  zoomniveau aan en laat de scherptediepte uitfaden tot `depth_of_field_until`
-  (200 m; daarboven uit, scheelt ~10% framerate). De grove versies
+  zoomniveau aan. De grove versies
   maakt de importer zelf: gelijkende kleuren samengevoegd (`lod`) en blokjes
   van 2x2x2 voxels (`lod2`). Een blok krijgt de kleur van zijn bovenste laag; is
   die laag dun (bloemen of plukjes met aarde ertussen), dan telt wat je van boven
@@ -817,12 +838,11 @@ Rondleiding, prestaties en uiterlijk
   In de polder naast het park ligt een bollenveld (rondleidingsstop "bollenveld").
 - Gras: `natuur/gras` (kort, in de stad) en `natuur/gras_hoog` (hoog, in de polder) zijn
   dezelfde egale tile; ze verschillen alleen in de lengte van de grassprieten
-  (`SHORT_GRASS`/`TALL_GRASS` in `scripts/world/ground_map.gd`). Ook `gras_droog` is in het palet gewoon gras.
+  (`SHORT_GRASS`/`TALL_GRASS` in `scripts/world/ground_map.gd`: kort gras ~30 cm, hoog
+  gras ~65 cm). Ook `gras_droog` is in het palet gewoon gras.
   Dichtbij tekent de shader lange, dunne grassprieten van ~30 cm die in de windrichting overhellen
   en elk een beetje wiegen, en op elke afstand trekken windvlagen als lichtere stroken
   langzaam over het gras (de sprieten buigen daar verder door).
-- Scherptediepte (tilt-shift): Camera > Attributes; DetailNiveau schaalt de
-  afstanden mee met de afstand tot de grond (export `depth_of_field`).
 - Lettertype: Rubik (`assets/fonts/Rubik.ttf`, OFL-licentie), ingesteld als
   projectfont.
 - Meten: `Godot --script tools/check/fps_test.gd -- 20 tour` of

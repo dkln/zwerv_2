@@ -1,6 +1,5 @@
 [gd_scene format=3]
 
-[ext_resource type="Script" path="res://scripts/effects/motion_blur.gd" id="1_b3b78"]
 [ext_resource type="Script" path="res://scripts/camera/free_camera.gd" id="2_1nqqr"]
 [ext_resource type="Script" path="res://scripts/demo/tour.gd" id="3_wf8fv"]
 [ext_resource type="Script" path="res://scripts/world/level_of_detail.gd" id="4_hyn8p"]
@@ -47,26 +46,6 @@ fog_density = 0.0005
 adjustment_enabled = true
 adjustment_contrast = 1.1
 adjustment_saturation = 1.12
-
-[sub_resource type="CompositorEffect" id="CompositorEffect_3goa0"]
-resource_local_to_scene = false
-resource_name = ""
-enabled = true
-effect_callback_type = 4
-needs_motion_vectors = true
-needs_normal_roughness = false
-script = ExtResource("1_b3b78")
-
-[sub_resource type="Compositor" id="Compositor_afrkk"]
-compositor_effects = Array[CompositorEffect]([SubResource("CompositorEffect_3goa0")])
-
-[sub_resource type="CameraAttributesPractical" id="CameraAttributesPractical_j1uxt"]
-dof_blur_far_enabled = true
-dof_blur_far_distance = 330.0
-dof_blur_far_transition = 140.0
-dof_blur_near_enabled = true
-dof_blur_near_distance = 250.0
-dof_blur_near_transition = 110.0
 
 [node name="Wereld" type="Node3D" unique_id=797283690]
 metadata/catalog_start_m = 2096.0
@@ -421,7 +400,6 @@ metadata/part_rows = [Vector2i(-10, 52), Vector2i(52, 100), Vector2i(100, 151), 
 
 [node name="Omgeving" type="WorldEnvironment" parent="." unique_id=1215861644]
 environment = SubResource("Environment_w68a6")
-compositor = SubResource("Compositor_afrkk")
 
 [node name="Zon" type="DirectionalLight3D" parent="." unique_id=1475307932]
 transform = Transform3D(0.8910065, -0.4008498, 0.21313564, 0, 0.4694716, 0.88294756, -0.4539905, -0.78671205, 0.41830227, 0, 0, 0)
@@ -441,7 +419,6 @@ light_energy = 0.22
 
 [node name="Camera" type="Camera3D" parent="." unique_id=1848146873]
 transform = Transform3D(0.70710677, -0.40824434, 0.577353, 0, 0.8165005, 0.5773447, -0.70710677, -0.40824434, 0.577353, 301.20203, 229.20203, 289.20203)
-attributes = SubResource("CameraAttributesPractical_j1uxt")
 fov = 20.0
 near = 2.0
 far = 6000.0

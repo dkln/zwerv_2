@@ -12,7 +12,7 @@ extends RefCounted
 ##   (global shader parameter zwervr_editor, see materials/voxel_editor.gdshaderinc);
 ## - use a copy of the scene's Environment without SSAO, SSIL, SSR, SDFGI, glow, fog,
 ##   volumetric fog, colour adjustment and sky reflections, and an empty Compositor (no
-##   motion blur), set on the editor cameras, so the scene's WorldEnvironment and
+##   compositor effects), set on the editor cameras, so the scene's WorldEnvironment and
 ##   Compositor stay untouched;
 ## - render the lights of the edited scene without shadows: their shadow_enabled is
 ##   switched off and switched on again before the scene is saved or run

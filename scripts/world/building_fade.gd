@@ -20,12 +20,6 @@ extends Node
 ## into those chunks too, each with the building cell it hangs on, so they fade with
 ## their own building (DetailNiveau, merge_with).
 ##
-## Props (the Props GridMap: bus shelters, lamp posts, trees, ...) that stand between
-## the vehicle and the camera fade too, each as a whole: a blocking prop is lifted out
-## of the GridMap into a MeshInstance3D of its own whose materials fade by an instance
-## parameter (ZWERVR_FADE_OBJECT in voxel_fade.gdshaderinc), and goes back into the
-## GridMap once it has faded back in.
-##
 ## Blocking is tested along the view direction of the camera (also while the follow
 ## camera swings round for a close-up) from a few points around the vehicle: the
 ## Gebouwen cells those lines pass through block it.
@@ -36,10 +30,6 @@ const Iso = preload("res://scripts/camera/iso_camera.gd")
 @export var follow_camera_path := NodePath("../Volgcamera")
 ## The Gebouwen GridMap whose buildings fade.
 @export var buildings_path := NodePath("../Gebouwen")
-## The Props GridMap whose props fade.
-@export var props_path := NodePath("../Props")
-## Props this far (metres, along the ground) from the vehicle are tested.
-@export var props_reach := 40.0
 ## Seconds a building takes to fade out or back in.
 @export var fade_time := 0.35
 ## How far a blocking building fades (1 = gone entirely; lower leaves a faint ghost of
@@ -67,9 +57,6 @@ var _chunks: Array = []             # [MeshInstance3D, Rect2 ground area] of the
 var _chunk_users := {}              # MeshInstance3D -> number of fading buildings on it
 var _variants := {}                 # Material or Shader -> its copy with ZWERVR_FADE
 var _is_variant := {}               # the copies themselves (never copied again)
-var _props: GridMap
-var _lifted := {}                   # Vector3i props cell -> [MeshInstance3D, item, orientation, fade]
-var _object_variants := {}          # Material -> its copy with ZWERVR_FADE_OBJECT
 var _fade := {}                     # building index -> current fade (0..1), only while > 0
 var _image: Image
 var _texture: ImageTexture
@@ -79,7 +66,6 @@ var _origin := Vector2i.ZERO        # cell at the texture's corner
 func _ready() -> void:
 	_follow = get_node_or_null(follow_camera_path)
 	_buildings = get_node_or_null(buildings_path) as GridMap
-	_props = get_node_or_null(props_path) as GridMap
 	if Engine.is_editor_hint() or _follow == null or _buildings == null or _buildings.get_used_cells().is_empty():
 		set_process(false)
 		return
@@ -175,110 +161,6 @@ func _process(delta: float) -> void:
 			_fade[index] = next
 	if changed:
 		_texture.update(_image)
-	_fade_props(_blocking_props() if following else {}, change)
-
-
-## Props cells whose prop stands between the vehicle and the camera (its box crosses a
-## view line from around the vehicle).
-func _blocking_props() -> Dictionary:
-	var found := {}
-	var vehicle: Node3D = _follow.get("target_node")
-	if _props == null or _props.mesh_library == null or vehicle == null:
-		return found
-	var camera := get_viewport().get_camera_3d()
-	if camera == null:
-		return found
-	var centre: Vector3 = vehicle.call("drawn_position") if vehicle.has_method("drawn_position") else vehicle.global_position
-	var lines: Array = []   # [from, to] per view line
-	for corner in [Vector2(0, 0), Vector2(-1, -1), Vector2(1, -1), Vector2(-1, 1), Vector2(1, 1)]:
-		var start := centre + Vector3(corner.x * 2.5, 0.8, corner.y * 2.5)
-		lines.append([start, camera.global_position.lerp(start, 0.02)])
-	var library := _props.mesh_library
-	var near := _props.local_to_map(_props.to_local(centre))
-	var reach := int(props_reach / _props.cell_size.x)
-	for cell in _props.get_used_cells():
-		if absi(cell.x - near.x) > reach or absi(cell.z - near.z) > reach:
-			continue
-		var item := _props.get_cell_item(cell)
-		var mesh := library.get_item_mesh(item)
-		if mesh == null:
-			continue
-		var box := _prop_transform(cell, item, _props.get_cell_item_orientation(cell)) * mesh.get_aabb()
-		for line in lines:
-			if box.intersects_segment(line[0], line[1]):
-				found[cell] = true
-				break
-	for cell in _lifted:   # lifted props are no longer in the GridMap: test their copy
-		var copy: MeshInstance3D = _lifted[cell][0]
-		var box: AABB = copy.global_transform * copy.get_aabb()
-		for line in lines:
-			if box.intersects_segment(line[0], line[1]):
-				found[cell] = true
-				break
-	return found
-
-
-## Fades the blocking props out (lifting them out of the GridMap first) and the others
-## back in (putting them back once they are whole again).
-func _fade_props(blocking: Dictionary, change: float) -> void:
-	for cell in blocking:
-		if not _lifted.has(cell):
-			_lift(cell)
-	for cell in _lifted.keys():
-		var entry: Array = _lifted[cell]
-		var wanted := strongest_fade if blocking.has(cell) else 0.0
-		entry[3] = move_toward(entry[3], wanted, change * strongest_fade)
-		var copy: MeshInstance3D = entry[0]
-		copy.set_instance_shader_parameter("zwervr_object_fade", entry[3])
-		if entry[3] <= 0.0 and not blocking.has(cell):
-			_props.set_cell_item(cell, entry[1], entry[2])
-			copy.queue_free()
-			_lifted.erase(cell)
-
-
-## Moves the prop in `cell` out of the GridMap into a MeshInstance3D that can fade.
-func _lift(cell: Vector3i) -> void:
-	var item := _props.get_cell_item(cell)
-	var orientation := _props.get_cell_item_orientation(cell)
-	var library := _props.mesh_library
-	var copy := MeshInstance3D.new()
-	copy.mesh = library.get_item_mesh(item)
-	copy.cast_shadow = library.get_item_mesh_cast_shadow(item) as GeometryInstance3D.ShadowCastingSetting
-	for surface in copy.mesh.get_surface_count():
-		copy.set_surface_override_material(surface, _object_variant(copy.mesh.surface_get_material(surface)))
-	add_child(copy)
-	copy.global_transform = _prop_transform(cell, item, orientation)
-	_props.set_cell_item(cell, GridMap.INVALID_CELL_ITEM)
-	_lifted[cell] = [copy, item, orientation, 0.0]
-
-
-## World transform of the mesh of the prop `item` in `cell`.
-func _prop_transform(cell: Vector3i, item: int, orientation: int) -> Transform3D:
-	return _props.global_transform * Transform3D(_props.get_basis_with_orthogonal_index(orientation),
-		_props.map_to_local(cell)) * _props.mesh_library.get_item_mesh_transform(item)
-
-
-## Copy of `material` whose shader fades by the object's own instance parameter
-## (ZWERVR_FADE and ZWERVR_FADE_OBJECT); the material itself if it cannot fade.
-func _object_variant(material: Material) -> Material:
-	if not material is ShaderMaterial:
-		return material
-	if _object_variants.has(material):
-		return _object_variants[material]
-	var shader: Shader = (material as ShaderMaterial).shader
-	var result: Material = material
-	if shader and "ZWERVR_FADE" in shader.code:
-		var key := [shader, "object"]
-		if not _variants.has(key):
-			var fading := Shader.new()
-			var lines := shader.code.split("\n")
-			lines.insert(1, "#define ZWERVR_FADE\n#define ZWERVR_FADE_OBJECT")
-			fading.code = "\n".join(lines)
-			_variants[key] = fading
-		result = material.duplicate()
-		(result as ShaderMaterial).shader = _variants[key]
-	_object_variants[material] = result
-	return result
 
 
 ## Gives the merged chunk meshes on building `index` the materials that can fade (on),
@@ -349,8 +231,5 @@ func _publish() -> void:
 
 
 func _exit_tree() -> void:
-	for cell in _lifted:   # put the lifted props back (the GridMap may be saved)
-		_props.set_cell_item(cell, _lifted[cell][1], _lifted[cell][2])
-	_lifted.clear()
 	if _texture:
 		RenderingServer.global_shader_parameter_set("zwervr_fade_area", Vector4.ZERO)

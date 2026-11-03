@@ -138,6 +138,8 @@ _ENTRIES = [
     ("brons", (120, 92, 58), "metal"), ("brons_patina", (86, 128, 108), "metal"), ("marmer", (232, 230, 224)),
     # car paint (material "painted", see _SURFACE_GROUPS), the car interior
     ("autolak1", (38, 82, 150)), ("autolak2", (30, 66, 124)), ("auto_interieur", (34, 32, 36)),
+    # SUV paint (dark green) and its darker sill
+    ("autolak3", (52, 84, 66)), ("autolak4", (40, 64, 52)),
 ]
 
 # Flag cloth colours: material "flag". vlag_wit and vlag_oranje are one step off the

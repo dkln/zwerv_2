@@ -3,16 +3,21 @@ extends Node
 ## the car): it keeps the vehicle in view, a little ahead of it in its driving direction
 ## and at the height it drives at (down into the tunnel trough), and zooms with its
 ## speed: close in when it stands still, further out the faster it goes.
-## It does not chase the vehicle every frame (every bump, corner and stop would show in
-## the view): every `retarget_time` seconds it picks a point, where the vehicle will be
-## in `lead_time` seconds at its average velocity of the last stretch, and glides there
-## on a critically damped spring (`glide_time`), so its speed never jumps. If the vehicle
-## gets too far from the middle of the view, it picks a new point at once.
+## It does not chase the vehicle itself (every bump, corner and stop would show in the
+## view): it follows a point ahead of it, where the vehicle will be in `lead_time`
+## seconds at its velocity smoothed over `velocity_smoothing` seconds, on a critically
+## damped spring (`glide_time`). That point moves on continuously, so at a steady speed
+## the view moves at that same steady speed (no surges), and when the vehicle speeds up
+## or brakes the view follows gradually. The spring lags `glide_time` times the speed
+## behind a moving point, so the point lies that much further ahead.
 ## Now and then (every `closeup_every` seconds) it moves in for a close-up: it zooms in
 ## on the vehicle, drops a little lower and swings round it, then glides back to the
 ## iso view (`closeup_*`, off with `closeups`). F follows the car
-## (also during the flight over the map, which it then ends); any other key or mouse
-## click hands the camera to the free camera (free_camera.gd).
+## (also during the flight over the map, which it then ends); B, while following, sends
+## another vehicle the wrong way into the followed one (the demo crash, Vehicle.drive_into);
+## T, while following, runs the game `fast_forward` times as fast (and back), to see more
+## of the town and the traffic without waiting;
+## any other key or mouse click hands the camera to the free camera (free_camera.gd).
 
 const Iso = preload("res://scripts/camera/iso_camera.gd")
 
@@ -27,18 +32,17 @@ const Iso = preload("res://scripts/camera/iso_camera.gd")
 ## Speed (m/s) at which the view is zoomed out furthest (100 km/h).
 @export var fast_speed := 28.0
 ## Seconds the view looks ahead of the car (times its average velocity), at most
-## `max_lead` times the view size: the car should stay near the middle, in the sharp
-## band of the tilt-shift lens.
+## `max_lead` times the view size: the car should stay near the middle of the view.
 @export var lead_time := 0.8
 @export var max_lead := 0.12
-## Seconds between two points the view glides to.
-@export var retarget_time := 1.0
-## Seconds the glide to a point takes (about); the zoom takes `zoom_glide_time`.
-@export var glide_time := 0.9
+## Seconds over which the vehicle's velocity is smoothed (for the point ahead and the zoom).
+@export var velocity_smoothing := 0.6
+## Seconds the view takes to catch up (about); the zoom takes `zoom_glide_time`.
+@export var glide_time := 0.6
 @export var zoom_glide_time := 2.0
-## A new point at once when the vehicle is further than this share of the view size from
-## the middle of the view.
-@export var keep_in_view := 0.3
+## Speed-up of the game with T while following (the physics steps scale with it, so the
+## driving and the crashes stay as precise).
+@export var fast_forward := 4.0
 @export_group("Close-ups")
 @export var closeups := true
 ## Seconds between close-ups (a random time between the two).
@@ -58,18 +62,15 @@ var _car: Node3D
 var _focus := Vector3.ZERO
 var _zoom := 40.0
 var _following := false
-var _goal := Vector3.ZERO            # the point the view glides to
-var _goal_zoom := 16.0
 var _focus_velocity := Vector3.ZERO
 var _zoom_velocity := 0.0
-var _since_goal := 0.0               # seconds since the last point was picked
-var _car_at_goal := Vector3.ZERO     # where the vehicle was then
-var _car_velocity := Vector3.ZERO    # the vehicle's velocity, smoothed over a few frames
+var _car_velocity := Vector3.ZERO    # the vehicle's velocity, smoothed (velocity_smoothing)
 var _car_last := Vector3.ZERO        # where it was drawn last frame
 var _closeup_wait := 0.0             # seconds until the next close-up
 var _closeup_clock := -1.0           # seconds into the current close-up (< 0: none)
 var _closeup_side := 1.0             # which way it swings round
 var _random := RandomNumberGenerator.new()
+var _base_physics_ticks := 0         # physics steps per second at normal speed
 
 ## The followed vehicle (for scripts/world/building_fade.gd).
 var target_node: Node3D:
@@ -102,15 +103,32 @@ func start() -> void:
 	_cam.set_process(false)
 	_cam.set_process_unhandled_input(false)
 	_focus = _car_position()
-	_goal = _focus
-	_car_at_goal = _focus
 	_focus_velocity = Vector3.ZERO
 	_zoom_velocity = 0.0
-	_since_goal = 0.0
 	_closeup_clock = -1.0
 	_closeup_wait = _random.randf_range(closeup_every.x, closeup_every.y)
 	_car_last = _focus
 	_car_velocity = Vector3.ZERO
+
+
+## Runs the game `scale` times as fast, with as many more physics steps per second.
+func _set_time_scale(scale: float) -> void:
+	if not _base_physics_ticks:
+		_base_physics_ticks = Engine.physics_ticks_per_second
+	Engine.time_scale = scale
+	Engine.physics_ticks_per_second = roundi(_base_physics_ticks * scale)
+	Engine.max_physics_steps_per_frame = maxi(8, roundi(8 * scale))
+
+
+## The demo crash: the nearest other vehicle drives the wrong way into the followed one.
+func crash_demo() -> void:
+	var nearest: Node3D = null
+	for vehicle in Vehicle.all_vehicles:
+		if vehicle != _car and not vehicle.crashed and (nearest == null
+				or vehicle.global_position.distance_to(_car.global_position) < nearest.global_position.distance_to(_car.global_position)):
+			nearest = vehicle
+	if nearest:
+		nearest.call("drive_into", _car)
 
 
 ## True while the camera follows the vehicle.
@@ -120,6 +138,8 @@ func is_following() -> bool:
 
 ## Hands the camera to the free camera.
 func stop() -> void:
+	if Engine.time_scale > 1.0:
+		_set_time_scale(1.0)
 	_following = false
 	set_process(false)
 	_cam.set_process(true)
@@ -134,6 +154,10 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.keycode == KEY_F:
 		if not _following:
 			start.call_deferred()   # after the flight has handled this key press too
+	elif event is InputEventKey and event.keycode == KEY_B and _following:
+		crash_demo()
+	elif event is InputEventKey and event.keycode == KEY_T and _following:
+		_set_time_scale(1.0 if Engine.time_scale > 1.0 else fast_forward)
 	elif _following:
 		stop()
 
@@ -142,27 +166,20 @@ func _process(delta: float) -> void:
 	var car_position := _car_position()
 	var closeness := _advance_closeup(delta)   # 0 = iso view .. 1 = closest
 	if delta > 0.0:
-		_car_velocity = _car_velocity.lerp((car_position - _car_last) / delta, 1.0 - exp(-8.0 * delta))
+		var frame_velocity := (car_position - _car_last) / delta
+		_car_velocity = _car_velocity.lerp(frame_velocity, 1.0 - exp(-delta / maxf(velocity_smoothing, 0.01)))
 	_car_last = car_position
-	_since_goal += delta
-	var off_centre := Vector2(car_position.x - _focus.x, car_position.z - _focus.z).length()
-	if _since_goal >= retarget_time or off_centre > _zoom * keep_in_view or closeness > 0.0:
-		# the average velocity since the last point: no jitter from single steps
-		var average_velocity := (car_position - _car_at_goal) / maxf(_since_goal, 0.05)
-		var lead := (average_velocity * lead_time).limit_length(_zoom * max_lead)
-		# close by: aim where the spring will catch up with it (no lag behind the car)
-		lead = lead.lerp(_car_velocity * glide_time, closeness)
-		_goal = car_position + lead
-		_goal.y = car_position.y
-		var speed := Vector2(average_velocity.x, average_velocity.z).length()
-		_goal_zoom = lerpf(zoom_still, zoom_fast, clampf(speed / fast_speed, 0.0, 1.0))
-		_car_at_goal = car_position
-		_since_goal = 0.0
+	# the point ahead; close by it only makes up for the spring's lag (the car in the middle)
+	var lead := (_car_velocity * lead_time).limit_length(_zoom * max_lead)
+	var goal := car_position + lead.lerp(Vector3.ZERO, closeness) + _car_velocity * glide_time
+	goal.y = car_position.y + _car_velocity.y * glide_time   # up and down ramps without lag
+	var speed := Vector2(_car_velocity.x, _car_velocity.z).length()
+	var goal_zoom := lerpf(zoom_still, zoom_fast, clampf(speed / fast_speed, 0.0, 1.0))
 	for axis in 3:
-		var glided := _glide(_focus[axis], _goal[axis], _focus_velocity[axis], glide_time, delta)
+		var glided := _glide(_focus[axis], goal[axis], _focus_velocity[axis], glide_time, delta)
 		_focus[axis] = glided.x
 		_focus_velocity[axis] = glided.y
-	var zoomed := _glide(_zoom, _goal_zoom, _zoom_velocity, zoom_glide_time, delta)
+	var zoomed := _glide(_zoom, goal_zoom, _zoom_velocity, zoom_glide_time, delta)
 	_zoom = zoomed.x
 	_zoom_velocity = zoomed.y
 	var view_size := lerpf(_zoom, closeup_zoom, closeness)

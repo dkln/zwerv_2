@@ -30,8 +30,8 @@ const TYPE_GRASS := 200
 ## tile is at 0.375 m.
 const GRASS_LEVEL := 0.3
 ## Blade height factors (scripts/effects/grass_blades.gd blade_height): short and tall grass.
-const SHORT_GRASS := 0.45
-const TALL_GRASS := 1.5
+const SHORT_GRASS := 1.0
+const TALL_GRASS := 2.0
 ## Resolution of a tile's grass mask (one per voxel of a 4 m tile).
 const MASK := 32
 ## mesh -> grass mask (see grass_cells)

@@ -13,8 +13,7 @@ extends Node
 ##   While merging, an optional loading screen is shown; `merge_finished` fires when done.
 ## - Distance culling: the Details and Props layers (and their LOD copies) are hidden
 ##   when zoomed out.
-## - Shadow distance and depth of field (tilt-shift) follow the camera distance; far out
-##   the depth of field fades out and is switched off (it costs ~10% framerate).
+## - The shadow distance follows the camera distance.
 ##
 ## You just edit the normal GridMaps; all copies are created automatically. When the
 ## layers are replaced (the tour loads one map part at a time, scripts/world/world_parts.gd),
@@ -61,11 +60,6 @@ signal merge_finished
 ## camera that zooms smoothly) re-divides the shadow cascades every frame, so the edges
 ## of all shadows crawl and flicker; a fixed one keeps them still.
 const SHADOW_DISTANCE_SLACK := 1.25
-## Depth of field (tilt-shift) scales with the distance to the ground.
-@export var depth_of_field := true
-## From this zoom size (metres in view) the depth of field is off; it fades out over the
-## last 20% before it.
-@export var depth_of_field_until := 200.0
 ## Show a loading screen while merging is in progress.
 @export var loading_screen := true
 ## Text of the loading screen (the tour names the map part being loaded).
@@ -90,7 +84,6 @@ var _progress := {}   # "<layer><suffix>" -> fraction done (0..1) of every merge
 ## Counts setup()/clear(); a merge that finds it changed belongs to layers that are gone.
 var _generation := 0
 ## Blur amount of the camera attributes as set in the scene (faded by the zoom).
-var _dof_amount := 0.0
 ## Extra layers baked into another layer's meshes (merge_with): name -> that layer.
 var _baked_into := {}
 
@@ -100,8 +93,6 @@ func _ready() -> void:
 		return
 	_cam = get_node_or_null(camera_path)
 	_sun = get_node_or_null(sun_path)
-	if _cam and _cam.attributes is CameraAttributesPractical:
-		_dof_amount = (_cam.attributes as CameraAttributesPractical).dof_blur_amount
 	setup()
 
 
@@ -346,7 +337,7 @@ func _save(node: Node3D, path: String) -> void:
 
 
 ## Per frame: picks the LOD level from the zoom, toggles Details/Props, and scales the
-## shadow distance and depth of field with the camera distance.
+## shadow distance with the camera distance.
 func _process(_delta: float) -> void:
 	if _cam == null:
 		return
@@ -384,19 +375,3 @@ func _process(_delta: float) -> void:
 		var current := _sun.directional_shadow_max_distance
 		if needed > current or needed * SHADOW_DISTANCE_SLACK * SHADOW_DISTANCE_SLACK < current:
 			_sun.directional_shadow_max_distance = needed * SHADOW_DISTANCE_SLACK
-	var attr := _cam.attributes as CameraAttributesPractical
-	if attr and depth_of_field:
-		var fade := 1.0 - smoothstep(depth_of_field_until * 0.8, depth_of_field_until, zoom)
-		attr.dof_blur_amount = _dof_amount * fade
-		attr.dof_blur_far_enabled = fade > 0.0
-		attr.dof_blur_near_enabled = fade > 0.0
-		# sharp band around the focus point, as fractions of the camera-ground distance,
-		# but at least a few metres deep (close-ups of the follow camera: a car is 1.5 m tall)
-		attr.dof_blur_far_distance = distance + maxf(distance * 0.1, 3.0)
-		attr.dof_blur_far_transition = distance * 0.4
-		attr.dof_blur_near_distance = distance - maxf(distance * 0.17, 6.0)
-		attr.dof_blur_near_transition = distance * 0.3
-	elif attr:
-		# someone else (the tour's low flights) sets the distances: undo the fade
-		attr.dof_blur_amount = _dof_amount
-		attr.dof_blur_far_enabled = true

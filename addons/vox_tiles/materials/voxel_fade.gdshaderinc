@@ -14,12 +14,6 @@
 // CUSTOM0, so it fades with its own building, as a whole. Shaders decode it in vertex()
 // with fade_owner_from(CUSTOM0) into a varying; vec4(0.0) = none, then the cell the
 // pixel is in is used.
-// With ZWERVR_FADE_OBJECT (a single object, such as a prop lifted out of the Props
-// GridMap while it blocks the view) the object's own instance parameter
-// zwervr_object_fade says how far it has faded, instead of the map.
-#ifdef ZWERVR_FADE_OBJECT
-instance uniform float zwervr_object_fade = 0.0;
-#endif
 global uniform sampler2D zwervr_fade_map : filter_nearest, repeat_disable;
 global uniform vec4 zwervr_fade_area;   // x0, z0, width, depth (metres); width 0 = nothing fades
 
@@ -48,9 +42,6 @@ bool faded_out(vec3 view_position, vec3 view_normal, mat4 inv_view, mat4 project
 	if (projection[3][3] > 0.5) {
 		return false;   // the (orthographic) shadow pass: the shadow stays
 	}
-#ifdef ZWERVR_FADE_OBJECT
-	return zwervr_object_fade > 0.0 && fade_threshold(pixel) < zwervr_object_fade;
-#endif
 	if (zwervr_fade_area.z <= 0.0) {
 		return false;   // nothing fades
 	}

@@ -31,7 +31,9 @@ extends "res://tools/build/city/situations.gd"
 ##   Centraal Station with its square and towers, the Beatrixkwartier and the
 ##   Bezuidenhout-Oost (z 60..91).
 ##   Trams: Buitenhof (x 24, z 29..59), Kneuterdijk - Korte Voorhout - Malieveld (z 29)
-##   and Grote Marktstraat - Spui - Centraal (z 58), over bridges across the singel.
+##   and Grote Marktstraat - Spui - Centraal (z 58), over bridges across the singel;
+##   the RandstadRail viaduct along the Schenkkade (z 90..91) from beside Centraal
+##   Station east over the Beatrixkwartier and the Bezuidenhout-Oost (_schenkviaduct).
 
 # streets: first lane (north or west) of the two
 const X1 := 5      # Hogewal / Prinsegracht
@@ -89,6 +91,7 @@ func _init() -> void:
 	_a12_junction()
 	_auto_kerbs()
 	_fill_grass_all()
+	_schenkviaduct()
 	_bins()
 	_camera(root)
 	_car(root)
@@ -1499,10 +1502,63 @@ func _fill_grass_all() -> void:
 			G(x, z, "natuur/gras")
 
 
+## Rows of the viaduct along the Schenkkade (north track, south track), the column of
+## its abutment beside Centraal Station, the level of its deck (1 m per level) and the
+## columns between its piers.
+const VIADUCT_ROWS := [90, 91]
+const VIADUCT_START := 73
+const VIADUCT_LEVEL := 6
+const VIADUCT_SPAN := 6
+
+
+## The RandstadRail viaduct along the Schenkkade: a two-track tram deck on concrete
+## piers, from an abutment beside Centraal Station east over the streets x 96, 128 and
+## 152 to the map edge (towards Laan van NOI). The piers stand on the pavement or grass
+## below, never on a lane or in the water, and props in their way are taken away. Built
+## after the grass fill, so the ground under it is final.
+func _schenkviaduct() -> void:
+	var foot_kinds := {"natuur": "brug/brug_pijler_gras", "stoep": "brug/brug_pijler_stoep", "plein": "brug/brug_pijler_stoep"}
+	var since_pier := VIADUCT_SPAN
+	for x in range(VIADUCT_START, X_END + 1):
+		# the deck: parapets on the outside, the north track turned to face north
+		G(x, VIADUCT_ROWS[0], "brug/brug_dek_tram_rand", "W", VIADUCT_LEVEL)
+		G(x, VIADUCT_ROWS[1], "brug/brug_dek_tram_rand", "E", VIADUCT_LEVEL)
+		if x == VIADUCT_START:
+			for z in VIADUCT_ROWS:
+				for y in range(VIADUCT_LEVEL):
+					G(x, z, "brug/brug_landhoofd", "E", y)
+			continue
+		since_pier += 1
+		if since_pier < VIADUCT_SPAN or x == X_END:
+			continue
+		var feet := []
+		for z in VIADUCT_ROWS:
+			var below := ground.get_cell_item(Vector3i(x, 0, z))
+			var kind: String = "" if below < 0 else ground.mesh_library.get_item_name(below).get_slice("/", 0)
+			feet.append(foot_kinds.get(kind, ""))
+		if "" in feet:
+			continue   # a lane, a crossing or water below: try the next column
+		for k in VIADUCT_ROWS.size():
+			_clear_props(x, VIADUCT_ROWS[k])
+			_pier(x, VIADUCT_ROWS[k], feet[k], 0, VIADUCT_LEVEL - 1)
+		since_pier = 0
+	places["schenkviaduct"] = Vector2(112 * 4.0, VIADUCT_ROWS[0] * 4.0)
+
+
+## Removes the props standing on ground cell (x, z).
+func _clear_props(x: int, z: int) -> void:
+	for cell in props.get_used_cells():
+		if floori(cell.x / 8.0) == x and floori(cell.z / 8.0) == z:
+			props.set_cell_item(cell, GridMap.INVALID_CELL_ITEM)
+
+
 ## The camera over the old centre, the slow flight over the map that starts the game
-## (node Rondvlucht, scripts/camera/fly_over.gd) and the tilt-shift lens (node TiltShift,
-## scripts/effects/tilt_shift.gd).
+## (node Rondvlucht, scripts/camera/fly_over.gd) and the vignette (node Vignet,
+## scripts/effects/vignette.gd).
 func _camera(root: Node3D) -> void:
+	# two shadow cascades instead of four: the game looks at the town from close by
+	# (following a car), where two are as sharp, and it saves the GPU most of a millisecond
+	(root.get_node("Zon") as DirectionalLight3D).directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
 	var cam: Camera3D = root.get_node("Camera")
 	var Iso = load("res://scripts/camera/iso_camera.gd")
 	cam.position = Iso.position(Vector3(40 * 4.0, 0, 42 * 4.0), 160.0)
@@ -1512,15 +1568,17 @@ func _camera(root: Node3D) -> void:
 	root.add_child(fly)
 	fly.owner = root
 	var lens := CanvasLayer.new()
-	lens.name = "TiltShift"
-	lens.set_script(load("res://scripts/effects/tilt_shift.gd"))
+	lens.name = "Vignet"
+	lens.set_script(load("res://scripts/effects/vignette.gd"))
 	root.add_child(lens)
 	lens.owner = root
 
 
-## The car (node Auto, scripts/characters/car.gd), the camera that follows it (node
-## Volgcamera, F in the game) and the see-through buildings while it follows (node
-## Doorkijk, scripts/world/building_fade.gd). The car finds its lanes in the ground tiles themselves
+## The car (node Auto, scripts/characters/car.gd), an SUV that drives round too (node
+## SUV, scripts/characters/suv.gd, starting in the Bezuidenhout), the camera that follows
+## the car (node Volgcamera, F in the game; B sends the SUV into it, the demo crash) and
+## the see-through buildings while it follows (node Doorkijk,
+## scripts/world/building_fade.gd). The car finds its lanes in the ground tiles themselves
 ## (their "traffic" metadata, scripts/world/road_network.gd).
 func _car(root: Node3D) -> void:
 	var car := Node3D.new()
@@ -1528,6 +1586,14 @@ func _car(root: Node3D) -> void:
 	car.set_script(load("res://scripts/characters/car.gd"))
 	root.add_child(car)
 	car.owner = root
+	var suv := Node3D.new()
+	suv.name = "SUV"
+	suv.set_script(load("res://scripts/characters/suv.gd"))
+	suv.set("start_cell", Vector2i(XB, ZB + 6))
+	suv.set("start_heading", Vector2i(0, 1))
+	suv.set("route_seed", 23)
+	root.add_child(suv)
+	suv.owner = root
 	var follow := Node.new()
 	follow.name = "Volgcamera"
 	follow.set_script(load("res://scripts/camera/follow_camera.gd"))

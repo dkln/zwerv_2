@@ -270,6 +270,11 @@ bij de kleur (`assets/tiles/materialen.json`), dus gebruik precies deze kleuren.
 | `#785c3a` | brons | metaal |
 | `#56806c` | brons_patina | metaal |
 | `#e8e6e0` | marmer | steen |
+| `#274f84` | autolak1 | gelakt |
+| `#224573` | autolak2 | gelakt |
+| `#222024` | auto_interieur | mat |
+| `#30504d` | autolak3 | gelakt |
+| `#284444` | autolak4 | gelakt |
 
 ## Water
 

@@ -30,6 +30,9 @@ uniform float streaks : hint_range(0.0, 1.0) = 0.12;
 // a light sheen in those same streaks, on top of everything: a flat voxel pane has one
 // normal, so the sun's highlight is even over it; the sheen makes it read as glass
 uniform float sheen : hint_range(0.0, 1.0) = 0.0;
+// 0 = the streaks lie still in the world (buildings); 1 = they lie on the object itself,
+// finer (vehicles: on a moving car world streaks would slide over the windows)
+uniform float streaks_on_object : hint_range(0.0, 1.0) = 0.0;
 
 // sky colours come from the day cycle (Project > Shader Globals)
 global uniform vec4 zwervr_sky_top : source_color;
@@ -37,6 +40,7 @@ global uniform vec4 zwervr_sky_horizon : source_color;
 global uniform float zwervr_night;
 
 varying vec3 wpos;
+varying vec3 object_position;   // the vertex in the object's own space (metres)
 
 float hash2(vec2 p) {
 	return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
@@ -52,6 +56,7 @@ void vertex() {
 	fade_owner = fade_owner_from(CUSTOM0);
 #endif
 	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	object_position = VERTEX;
 }
 
 void fragment() {
@@ -66,7 +71,8 @@ void fragment() {
 	vec3 surroundings = mix(zwervr_sky_horizon.rgb, zwervr_sky_top.rgb, smoothstep(0.05, 0.6, r.y));
 	surroundings = mix(city, surroundings, smoothstep(-0.6, 0.08, r.y));
 	// diagonal streaks of light that move with the viewing angle
-	float streak = smoothstep(0.82, 1.0, sin((wpos.x + wpos.z) * 0.9 + wpos.y * 1.4 + r.x * 3.0) * 0.5 + 0.5);
+	vec3 streak_position = streaks_on_object > 0.5 ? object_position * 4.0 : wpos;
+	float streak = smoothstep(0.82, 1.0, sin((streak_position.x + streak_position.z) * 0.9 + streak_position.y * 1.4 + r.x * 3.0) * 0.5 + 0.5);
 	surroundings += streak * streaks;
 	float fres = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 3.0);
 	float s = editor_view() ? 0.0 : clamp(reflection + fres * 0.4, 0.0, 1.0);   // editor: no reflection
