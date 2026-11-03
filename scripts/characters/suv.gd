@@ -26,11 +26,10 @@ func _init() -> void:
 	indicator_positions = PackedVector3Array([Vector3(-0.8125, 0.8125, 2.3125), Vector3(0.8125, 0.8125, 2.3125),
 		Vector3(-0.8125, 0.8125, -2.3125), Vector3(0.8125, 0.8125, -2.3125)])
 	indicator_size = Vector3(0.15, 0.13, 0.15)
-	max_steering_degrees = 20.0   # more and the steered wheels poke through the arches
 	top_speed_kmh = 120.0
 	corner_speed = 4.0
 	tight_corner_speed = 2.5
-	acceleration = 2.0
+	wheel_torque = 1575.0
 	braking = 4.0
 	half_length = 2.5
 	mass_kg = 2100.0

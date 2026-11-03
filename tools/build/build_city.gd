@@ -20,7 +20,10 @@ extends "res://tools/build/city/situations.gd"
 ##                Hoogstraat, Oude     Ridderzaal, Torentje,     ministries, Tweede Kamer
 ##                Raadhuis             Mauritshuis, Buitenhof
 ##   z 60..84     Grote Markt,         Grote Marktstraat with    Spuiplein, Nieuwe Kerk,
-##                Chinatown            the Bijenkorf, Passage    white city hall, Amare
+##                Chinatown            the Bijenkorf, Passage,   white city hall, Amare
+##                                     shops on the Spui (x 48)
+##   The street x 48 is the Korte Vijverberg, then the Lange Poten (z 31..57), then the Spui
+##   (z 60..84); the shops of the Lange Poten, Spui and Grote Marktstraat are on them.
 ##   East of the Prinsessegracht (street x 69, Koningskade), cut by the streets x 96
 ##   (Juliana van Stolberglaan) and x 128 (Laan van NOI): the Haagse Bos with Paleis Huis
 ##   ten Bosch (z 0..17) and the offices of the Prins Clauslaan east of it; the A12
@@ -213,6 +216,10 @@ const AWNINGS := ["luifels/luifel_rood", "luifels/luifel_groen", "luifels/luifel
 	"zonwering/knikarmscherm_groen", "zonwering/uitvalscherm_oranje"]
 const SHOPS := ["bg_bakker", "bg_cafe", "bg_kleding", "bg_boekhandel", "bg_restaurant", "bg_bloemist", "bg_juwelier", "bg_ijssalon",
 	"bg_slager", "bg_fietsenwinkel", "bg_drogist", "bg_kapper", "bg_snackbar", "bg_supermarkt", "bg_telefoon", "bg_bar", "bg_dierenwinkel"]
+## What the shopping streets around the Grote Marktstraat sell; HORECA is for the square.
+const RETAIL := ["bg_kleding", "bg_boekhandel", "bg_juwelier", "bg_kleding", "bg_drogist", "bg_telefoon", "bg_bakker", "bg_kapper",
+	"bg_kleding", "bg_bloemist", "bg_ijssalon", "bg_cafe"]
+const HORECA := ["bg_cafe", "bg_bar", "bg_restaurant", "bg_cafe", "bg_snackbar", "bg_ijssalon"]
 const SIGNS := {"bg_bakker": "tekst/bord_bakker", "bg_slager": "tekst/bord_slager", "bg_kapper": "tekst/bord_kapper",
 	"bg_bloemist": "tekst/bord_bloemen", "bg_fietsenwinkel": "tekst/bord_fietsen", "bg_cafe": "tekst/lichtreclame_cafe",
 	"bg_drogist": "tekst/tekst_apotheek", "bg_bar": "tekst/tekst_cafe", "bg_supermarkt": "tekst/bord_kaas"}
@@ -579,9 +586,12 @@ func _grote_kerk() -> void:
 	tower(22, 46, "overheid", ["toren_klok", "toren_spits_onder", "toren_spits_boven"], "N", 3)
 	D(20 * 4 + 2.0, 46 * 4.0, 3.0, "tekst/tekst_raadhuis", "N")
 	D(19 * 4 + 2.0, 46 * 4.0, 6.0, "gevel/vlag_denhaag", "N")
-	ring(8, 48, 9, 9, "klassiek_donker", 4, {"gf": ["bg_raam", "bg_deur", "bg_winkel_luifel"], "upper": ["verd_raam", "verd_drie_ramen"],
+	# shops on the north side of the Grote Marktstraat (the street runs along z 58-59)
+	_shops(Vector2i(8, 56), Vector2i(1, 0), 9, "S", 15, RETAIL)
+	_shops(Vector2i(18, 56), Vector2i(1, 0), 5, "S", 16, RETAIL)
+	ring(8, 48, 9, 7, "klassiek_donker", 4, {"gf": ["bg_raam", "bg_deur", "bg_winkel_luifel"], "upper": ["verd_raam", "verd_drie_ramen"],
 		"back": ["verd_raam"], "roof_extra": ["dak_schuin_schoorsteen", "dak_schuin_dakkapel"]})
-	block(18, 52, 5, 5, "herenhuis_1900", 3, {"front": "E", "gf": ["bg_deur", "bg_raam_boog"], "gf_side": "bg_raam_boog",
+	block(18, 52, 5, 3, "herenhuis_1900", 3, {"front": "E", "gf": ["bg_deur", "bg_raam_boog"], "gf_side": "bg_raam_boog",
 		"gf_corner": "bg_raam_boog_hoek", "upper": ["verd_raam_boog", "verd_erker"], "upper_corner": "verd_raam_boog_hoek", "roof": "sloped"})
 	places["grote_kerk"] = Vector2(15 * 4.0, 37 * 4.0)
 
@@ -642,10 +652,12 @@ func _binnenhof() -> void:
 	block(44, 40, 3, 5, "herenhuis_1600", 3, {"front": "N", "gf": ["bg_deur", "bg_raam"], "gf_side": "bg_raam", "gf_corner": "bg_raam_hoek",
 		"upper": ["verd_raam"], "upper_corner": "verd_raam_hoek", "roof": "sloped", "top": "top_lijstgevel_fronton"})
 	D(45 * 4 + 2.0, 40 * 4.0, 3.0, "tekst/tekst_museum", "N")
-	block(44, 46, 3, 10, "kantoor_modern", 5, {"front": "E", "gf": ["bg_entree", "bg_glas"], "gf_side": "bg_glas",
-		"gf_corner": "bg_glas_hoek", "upper": ["verd_lamellen", "verd_raam_groot"], "upper_corner": "verd_lamellen_hoek", "roof": "flat"})
-	D(47 * 4.0, 50 * 4.0, 0.0, "deuren/draaideur", "E")
-	D(47 * 4.0, 50 * 4.0, 0.0, "luifels/luifel_kantoor", "E")
+	# the Lange Poten: shops along its west side, round the corner into the Grote Marktstraat
+	_shops(Vector2i(46, 46), Vector2i(0, 1), 9, "E", 2, RETAIL)
+	_shops(Vector2i(43, 56), Vector2i(1, 0), 4, "S", 4, RETAIL)
+	places["lange_poten"] = Vector2(48 * 4.0, 50 * 4.0)
+	# the north side of the Grote Marktstraat, on the corner of the Buitenhof
+	_shops(Vector2i(27, 56), Vector2i(1, 0), 3, "S", 6, RETAIL)
 	places["hofvijver"] = Vector2(38 * 4.0, 35 * 4.0)
 	places["binnenhof"] = Vector2(37 * 4.0, 47 * 4.0)
 	places["buitenhof"] = Vector2(28 * 4.0, 45 * 4.0)
@@ -679,8 +691,11 @@ func _plein() -> void:
 	for z in range(33, 50, 4):
 		D(59 * 4.0, z * 4 + 2.0, 2.5, ["luifels/luifel_groen", "zonwering/knikarmscherm_streep", "luifels/luifel_rood", "luifels/luifel_blauw"][(z / 4) % 4], "W")
 	D(59 * 4.0, 45 * 4 + 2.0, 7.0, "gevel/vlag_nl", "W")
-	block(51, 52, 11, 5, "kantoor_modern", 6, {"front": "N", "gf": ["bg_entree", "bg_glas", "bg_kolonnade"], "gf_side": "bg_glas",
+	# on the Plein side offices; on the Lange Poten and the Spui shops in front of them
+	block(53, 52, 9, 3, "kantoor_modern", 6, {"front": "N", "gf": ["bg_entree", "bg_glas", "bg_kolonnade"], "gf_side": "bg_glas",
 		"gf_corner": "bg_glas_hoek", "upper": ["verd_lamellen", "verd_raam_groot"], "upper_corner": "verd_lamellen_hoek", "roof": "flat"})
+	_shops(Vector2i(51, 52), Vector2i(0, 1), 5, "W", 8, RETAIL)
+	_shops(Vector2i(53, 56), Vector2i(1, 0), 9, "S", 10, RETAIL)
 	D(56 * 4.0, 52 * 4.0, 0.0, "luifels/luifel_kantoor", "N")
 	D(56 * 4.0, 52 * 4.0, 0.0, "deuren/draaideur", "N")
 	places["plein"] = Vector2(55 * 4.0, 42 * 4.0)
@@ -695,7 +710,8 @@ func _grote_markt() -> void:
 	for c in [Vector2i(15, 65), Vector2i(16, 65), Vector2i(15, 66), Vector2i(16, 66)]:
 		_g(c.x, c.y, "plein/plein_dambord")
 	Pr(16 * 4.0, 66 * 4.0, "standbeelden/standbeeld_persoon", "S")
-	_shops(Vector2i(9, 61), Vector2i(0, 1), 10, "E", 3, ["bg_cafe", "bg_bar", "bg_restaurant", "bg_cafe", "bg_snackbar"])
+	_shops(Vector2i(9, 61), Vector2i(0, 1), 10, "E", 3, HORECA)
+	_shops(Vector2i(22, 63), Vector2i(0, 1), 6, "W", 5, HORECA)
 	var cafes := {"front": "N", "gf": ["bg_cafe", "bg_restaurant", "bg_bar", "bg_snackbar"], "gf_side": "bg_raam",
 		"gf_corner": "bg_cafe_hoek", "upper": ["verd_raam", "verd_balkon", "verd_erker"], "roof": "sloped", "roof_extra": ["dak_schuin_dakkapel"]}
 	block(10, 71, 5, 2, "jaren30", 3, cafes)
@@ -709,7 +725,14 @@ func _grote_markt() -> void:
 			Pr(x * 4 + 2.0, 69 * 4 + 1.0, "terras/terras_scherm", "N")
 	for z in range(62, 70, 2):
 		Pr(10 * 4 + 2.0, z * 4 + 2.0, ["terras/statafel", "terras/parasol_groot", "terras/bistrostoel"][(z / 2) % 3], "E")
-	Pr(20 * 4.0, 62 * 4.0, "straat/kiosk")
+	# terraces in front of the cafes on the west and the east side
+	for z in range(61, 69, 2):
+		Pr(11 * 4 + 2.0, z * 4 + 2.0, ["terras/terras_set_parasol", "terras/terras_set_parasol_groen", "terras/tafel_vierkant_stoelen"][(z / 2) % 3], "E")
+		Pr(12 * 4 + 2.0, z * 4 + 2.0, "terras/terras_set", "E")
+	for z in [63, 65, 68]:
+		Pr(20 * 4 + 2.0, z * 4 + 2.0, ["terras/terras_set_parasol_groen", "terras/tafel_rond_stoelen", "terras/terras_set_parasol"][z % 3], "W")
+		Pr(19 * 4 + 2.0, z * 4 + 2.0, "terras/terras_set", "W")
+	Pr(19 * 4.0, 61 * 4 + 2.0, "straat/kiosk")
 	Pr(13 * 4.0, 63 * 4.0, "verlichting/lantaarn_gietijzer")
 	Pr(20 * 4.0, 67 * 4.0, "verlichting/lantaarn_gietijzer")
 	Pr(22 * 4 + 2.0, 61 * 4 + 2.0, "straat/vlaggenmast_denhaag")
@@ -761,9 +784,13 @@ func _grote_marktstraat() -> void:
 		Pr(35 * 4 + 4.0, z * 4 + 2.0, "fietsen/fietsenrek_vol", "S")
 	ring(27, 68, 6, 16, "klassiek_rood", 4, {"gf": ["bg_raam", "bg_deur", "bg_winkel_luifel"], "upper": ["verd_raam", "verd_drie_ramen", "verd_balkon"],
 		"back": ["verd_raam"], "roof_extra": ["dak_schuin_dakraam", "dak_schuin_dakkapel"]})
-	block(40, 67, 7, 7, "kantoor_80", 5, {"front": "E", "gf": ["bg_entree", "bg_glas"], "gf_side": "bg_glas", "gf_corner": "bg_glas_hoek",
+	# the Spui (x 48): shops along its west side, in front of offices and flats
+	_shops(Vector2i(46, 67), Vector2i(0, 1), 7, "E", 12, RETAIL)
+	_shops(Vector2i(46, 76), Vector2i(0, 1), 8, "E", 14, RETAIL)
+	places["spui_straat"] = Vector2(48 * 4.0, 72 * 4.0)
+	block(40, 67, 5, 7, "kantoor_80", 5, {"front": "E", "gf": ["bg_entree", "bg_glas"], "gf_side": "bg_glas", "gf_corner": "bg_glas_hoek",
 		"upper": ["verd_spiegelband", "verd_raam_groot"], "upper_corner": "verd_spiegelband_hoek", "roof": "flat"})
-	block(40, 76, 7, 8, "jaren60", 4, {"front": "E", "gf": ["bg_deur", "bg_raam", "bg_erker"], "gf_side": "bg_raam",
+	block(40, 76, 5, 8, "jaren60", 4, {"front": "E", "gf": ["bg_deur", "bg_raam", "bg_erker"], "gf_side": "bg_raam",
 		"upper": ["verd_raam", "verd_balkon"], "roof": "flat"})
 	places["passage"] = Vector2(36 * 4.0, 66 * 4.0)
 
@@ -1576,7 +1603,8 @@ func _camera(root: Node3D) -> void:
 
 ## The car (node Auto, scripts/characters/car.gd), an SUV that drives round too (node
 ## SUV, scripts/characters/suv.gd, starting in the Bezuidenhout), the camera that follows
-## the car (node Volgcamera, F in the game; B sends the SUV into it, the demo crash) and
+## the car (node Volgcamera, F in the game; B sends the SUV into it, the demo crash), the
+## rest of the traffic (node Verkeer, scripts/world/traffic.gd, spreads it at the start) and
 ## the see-through buildings while it follows (node Doorkijk,
 ## scripts/world/building_fade.gd). The car finds its lanes in the ground tiles themselves
 ## (their "traffic" metadata, scripts/world/road_network.gd).
@@ -1594,6 +1622,11 @@ func _car(root: Node3D) -> void:
 	suv.set("route_seed", 23)
 	root.add_child(suv)
 	suv.owner = root
+	var traffic := Node.new()
+	traffic.name = "Verkeer"
+	traffic.set_script(load("res://scripts/world/traffic.gd"))
+	root.add_child(traffic)
+	traffic.owner = root
 	var follow := Node.new()
 	follow.name = "Volgcamera"
 	follow.set_script(load("res://scripts/camera/follow_camera.gd"))

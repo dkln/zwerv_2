@@ -1412,17 +1412,35 @@ def weeping_willow():
 
 # ------------------------------------------------------------------ cars
 
-@tile("props/voertuigen/auto_sedan")
-def sedan():
-    """Body of a sedan of 4.5 x 1.75 x 1.5 m, without its wheels (auto_wiel, placed and
-    turned by scripts/characters/vehicle.gd at SEDAN_WHEELS): x across (14 voxels), y along
-    (36, the front with the headlights at y=0, so it faces the way the prop faces), z up.
-    Painted body with a darker sill and wheel arches, glass greenhouse with a dark
-    interior behind it, roof, emissive head and tail lights, a grille, bumpers. Its lowest
-    voxels (the floor) are 1 voxel above the road."""
+def car_greenhouse(model, first, last, roof_height, pillars, roof_up, base_up, paint, inside):
+    """The glass upper part of a car from ``first`` to ``last`` along y, one column in from
+    the sides: glass with the interior behind it, painted pillars at ``pillars``, a painted
+    roof at ``roof_up``. ``roof_height`` gives the rows that slope (windscreen, rear window)
+    their lower top; their side columns are painted too."""
+    width = model.sx
+    for along in range(first, last + 1):
+        top = roof_height.get(along, roof_up)
+        for across in range(1, width - 1):
+            for up in range(base_up, top + 1):
+                side = across in (1, width - 2)
+                pillar = along in pillars or (along in roof_height and side)
+                if up == top and along not in roof_height:
+                    colour = paint                      # roof
+                elif up == top or side:
+                    colour = paint if pillar else "glas2"
+                else:
+                    colour = inside                     # seats behind the glass
+                model.set(across, along, up, colour)
+
+
+def sedan_body(paint, sill):
+    """Sedan of 4.5 x 1.75 x 1.5 m in these colours, without its wheels (auto_wiel, placed
+    and turned by scripts/characters/vehicle.gd at SEDAN_WHEEL_*): x across (14 voxels), y
+    along (36, the front with the headlights at y=0, so it faces the way the prop faces), z
+    up. Its lowest voxels (the floor) are 1 voxel above the road."""
     width, length, height = 14, 36, 12
     model = V(width, length, height)
-    paint, sill, inside = "autolak1", "autolak2", "auto_interieur"
+    inside = "auto_interieur"
     # body: sill to beltline, the corners rounded off
     for along in range(length):
         for across in range(width):
@@ -1431,20 +1449,7 @@ def sedan():
             for up in range(2, 7):
                 model.set(across, along, up, sill if up == 2 else paint)
     # greenhouse: windscreen rising y 10..12, roof y 13..24, rear window y 25..27
-    roof_height = {10: 7, 11: 8, 12: 9, 25: 9, 26: 8, 27: 7}
-    for along in range(10, 28):
-        top = roof_height.get(along, 10)
-        for across in range(1, width - 1):
-            for up in range(7, top + 1):
-                side = across in (1, width - 2)
-                pillar = along in (13, 19, 24) or along in (10, 11, 12, 25, 26, 27) and side
-                if up == top and along in range(13, 25):
-                    colour = paint                      # roof
-                elif up == top or side:
-                    colour = paint if pillar else "glas2"
-                else:
-                    colour = inside                     # seats behind the glass
-                model.set(across, along, up, colour)
+    car_greenhouse(model, 10, 27, {10: 7, 11: 8, 12: 9, 25: 9, 26: 8, 27: 7}, (13, 19, 24), 10, 7, paint, inside)
     # front: grille, headlights, bumper; rear: tail lights, bumper
     for across in range(width):
         for up in (2, 3):
@@ -1471,23 +1476,49 @@ def sedan():
         model.set(across, 12, 7, paint)
         model.set(across, 13, 7, "metaal_donker")
     car_details(model, paint=paint, seam=sill, doors=(12, 19, 26), handles=(16, 23), handle_up=6,
-                belt_up=6, glass_along=range(13, 25), glass_up=7, grille=(4, 9, 4), fog_up=2)
+                belt_up=6, glass_along=range(13, 25), glass_up=7, grille=(4, 9, 4), fog_up=2,
+                bonnet_along=9, boot_along=28, wiper=(10, 7), fuel_along=29, repeater_along=11,
+                rear_badge_up=5, wheel_along=SEDAN_WHEEL_ALONG)
     # sunroof and aerial on the roof (height 10, y 13..24)
     for across in range(5, 9):
         for along in range(15, 19):
             model.set(across, along, 10, "glas2")
     model.set(width - 4, 23, 11, "metaal_donker")
-    model.set(width - 4, 23, 12, "metaal_donker")
     return model
 
 
-def car_details(model, paint, seam, doors, handles, handle_up, belt_up, glass_along, glass_up, grille, fog_up):
+@tile("props/voertuigen/auto_sedan")
+def sedan():
+    """Blue sedan: painted body with a darker sill and wheel arches, glass greenhouse with
+    a dark interior behind it, roof, emissive head and tail lights, a grille, bumpers."""
+    return sedan_body("autolak1", "autolak2")
+
+
+@tile("props/voertuigen/auto_sedan_wit")
+def sedan_white():
+    """White sedan (the same body as auto_sedan)."""
+    return sedan_body("lak_wit1", "lak_wit2")
+
+
+@tile("props/voertuigen/auto_sedan_zilver")
+def sedan_silver():
+    """Silver sedan (the same body as auto_sedan)."""
+    return sedan_body("lak_zilver1", "lak_zilver2")
+
+
+def car_details(model, paint, seam, doors, handles, handle_up, belt_up, glass_along, glass_up, grille, fog_up,
+                bonnet_along, boot_along, wiper, fuel_along, repeater_along, rear_badge_up, wheel_along):
     """Small details shared by the car bodies: door seams (a darker line down each side at
     ``doors``), chrome door handles (at ``handles``, height ``handle_up``), a chrome strip
     under the side windows (``glass_along`` at height ``glass_up``, over the belt at
     ``belt_up``), a chrome frame round the grille (columns ``grille[0]``..``grille[1]`` at
-    height ``grille[2]``), two fog lamps in the front bumper (height ``fog_up``) and an
-    exhaust pipe under the rear bumper. Leaves the corner voxels for the indicators alone."""
+    height ``grille[2]``) with a badge in the middle, two fog lamps in the front bumper
+    (height ``fog_up``), an exhaust pipe under the rear bumper, the shut lines of the bonnet
+    (up to row ``bonnet_along``) and of the boot (from ``boot_along``, None = no boot),
+    wipers on the windscreen (``wiper`` = its row and height), a fuel cap on the left, an
+    orange side repeater on both wings, a badge on the back (height ``rear_badge_up``) and
+    rubber mud flaps behind each wheel (``wheel_along``). Leaves the corner voxels for the
+    indicators alone."""
     width, length = model.sx, model.sy
     for along in doors:
         for up in range(3, belt_up + 1):
@@ -1505,10 +1536,35 @@ def car_details(model, paint, seam, doors, handles, handle_up, belt_up, glass_al
     left, right, up = grille
     for column in (left, right):
         model.set(column, 0, up, "rvs")
+    model.set(width // 2, 0, up, "rvs")
     for across in (2, width - 3):
         model.set(across, 0, fog_up, "metaal3")
     model.set(3, length - 1, 1, "rvs")      # exhaust
     model.set(3, length - 2, 1, "metaal_donker")
+    # shut lines on the bonnet and the boot: across at the end, along both edges
+    for across in range(2, width - 2):
+        model.set(across, bonnet_along, belt_up, seam)
+    for along in range(1, bonnet_along):
+        model.set(2, along, belt_up, seam)
+        model.set(width - 3, along, belt_up, seam)
+    if boot_along is not None:
+        for across in range(2, width - 2):
+            model.set(across, boot_along, belt_up, seam)
+        for along in range(boot_along + 1, length - 1):
+            model.set(2, along, belt_up, seam)
+            model.set(width - 3, along, belt_up, seam)
+    # wipers: two dark lines low on the windscreen
+    wiper_along, wiper_up = wiper
+    for across in (3, 4, 5, width - 6, width - 5, width - 4):
+        model.set(across, wiper_along, wiper_up, "metaal_donker")
+    model.set(width - 1, fuel_along, belt_up - 1, "metaal_donker")
+    for across in (0, width - 1):
+        model.set(across, repeater_along, belt_up - 1, "oranje")
+        for along in wheel_along:
+            flap = int(along) + 4
+            if model.get(across, flap, 2):
+                model.set(across, flap, 2, "rubber")
+    model.set(width // 2, length - 1, rear_badge_up, "rvs")
 
 
 # where the sedan's wheels go (voxels of its body): centres along (y) and up (z), radius
@@ -1516,28 +1572,30 @@ SEDAN_WHEEL_ALONG = (7.5, 28.0)
 SEDAN_WHEEL_UP = 2.5
 SEDAN_WHEEL_RADIUS = 2.6
 # the wheel arches: this many outer columns are left open, the next one is the dark inner
-# wall. A front wheel steered by 20 degrees (vehicle.gd, max_steering_degrees) swings its
-# corners just under three columns in: it never pokes through the body.
+# wall. A front wheel at full lock (vehicle.gd, max_steering_degrees) swings its corners a
+# little past this, behind the wall, and its other side sticks out of the arch: as it does
+# on a real car.
 ARCH_DEPTH = 3
 
 
-def wheel_arches(model, wheel_along_list, wheel_up, top):
-    """Opens the wheel arches of a car body round the wheels (centres along y at
-    ``wheel_along_list``, height ``wheel_up``), up to height ``top``: ARCH_DEPTH outer
+def wheel_arches(model, wheel_along_list, wheel_up, top, wheel_radius=SEDAN_WHEEL_RADIUS, depth=ARCH_DEPTH):
+    """Opens the wheel arches of a body round the wheels (centres along y at
+    ``wheel_along_list``, height ``wheel_up``), up to height ``top``: ``depth`` outer
     columns on each side open, a dark inner wall next to them."""
     width = model.sx
+    reach = int(wheel_radius + 3)
     for wheel_along in wheel_along_list:
-        for along in range(int(wheel_along - 5), int(wheel_along + 5)):
+        for along in range(int(wheel_along - reach), int(wheel_along + reach)):
             for up in range(0, top):
                 distance = ((along + 0.5 - wheel_along) ** 2 + (up + 0.5 - wheel_up) ** 2) ** 0.5
-                if distance > SEDAN_WHEEL_RADIUS + 0.9:
+                if distance > wheel_radius + 0.9:
                     continue
-                for depth in range(ARCH_DEPTH):
-                    model.set(depth, along, up, 0)
-                    model.set(width - 1 - depth, along, up, 0)
+                for column in range(depth):
+                    model.set(column, along, up, 0)
+                    model.set(width - 1 - column, along, up, 0)
                 if up >= 2:
-                    model.set(ARCH_DEPTH, along, up, "metaal_donker")
-                    model.set(width - 1 - ARCH_DEPTH, along, up, "metaal_donker")
+                    model.set(depth, along, up, "metaal_donker")
+                    model.set(width - 1 - depth, along, up, "metaal_donker")
 
 
 @tile("props/voertuigen/auto_suv")
@@ -1610,7 +1668,9 @@ def suv():
         model.set(across, 11, 9, paint)
         model.set(across, 12, 9, "metaal_donker")
     car_details(model, paint=paint, seam="autolak4", doors=(11, 20, 28), handles=(15, 24), handle_up=8,
-                belt_up=8, glass_along=range(11, length - 2), glass_up=9, grille=(3, 10, 5), fog_up=3)
+                belt_up=8, glass_along=range(11, length - 2), glass_up=9, grille=(3, 10, 5), fog_up=3,
+                bonnet_along=8, boot_along=None, wiper=(9, 9), fuel_along=31, repeater_along=10,
+                rear_badge_up=4, wheel_along=SUV_WHEEL_ALONG)
     # running boards between the wheels, a skid plate under the front bumper
     for along in range(12, 27):
         for across in (0, width - 1):
@@ -1633,6 +1693,497 @@ SUV_WHEEL_ALONG = (7.5, 30.5)
 SUV_WHEEL_UP = 2.5
 
 
+def hatchback_body(paint, sill):
+    """Hatchback of 3.88 x 1.75 x 1.38 m in these colours, without its wheels (auto_wiel, at
+    HATCHBACK_WHEEL_ALONG; placed and turned by scripts/characters/hatchback.gd): x across
+    (14 voxels), y along (31, the front at y=0), z up. Shorter than the sedan, with a short
+    bonnet and no boot: the roof runs on to a steep tailgate with a spoiler over its window
+    and tall tail lights at the corners."""
+    width, length, height = 14, 31, 12
+    model = V(width, length, height)
+    inside = "auto_interieur"
+    for along in range(length):
+        for across in range(width):
+            if along in (0, length - 1) and across in (0, width - 1):
+                continue
+            for up in range(2, 7):
+                model.set(across, along, up, sill if up == 2 else paint)
+    # greenhouse: windscreen rising y 8..10, roof y 11..27, tailgate window y 28..29
+    car_greenhouse(model, 8, 29, {8: 7, 9: 8, 10: 9, 28: 9, 29: 8}, (11, 18, 27), 10, 7, paint, inside)
+    # front: grille, headlights, bumper; rear: bumper, plate, tail lights up the corners
+    for across in range(width):
+        for up in (2, 3):
+            model.set(across, 0, up, "metaal_donker")
+            model.set(across, length - 1, up, "metaal_donker")
+    for across in range(5, 9):
+        model.set(across, 0, 4, "rooster")
+        model.set(across, 0, 3, "bord_geel")
+        model.set(across, length - 1, 4, "bord_geel")
+    for across in (1, 2, 3, width - 4, width - 3, width - 2):
+        model.set(across, 0, 4, "lamp_wit")
+    for across in (1, 2, width - 3, width - 2):
+        for up in (4, 5, 6):
+            model.set(across, length - 1, up, "signaal_rood")
+    wheel_arches(model, HATCHBACK_WHEEL_ALONG, SEDAN_WHEEL_UP, 7)
+    for across in range(2, width - 2):
+        for along in range(3, length - 3):
+            model.set(across, along, 1, "metaal_donker")
+    for across in (0, width - 1):
+        model.set(across, 10, 6, paint)
+        model.set(across, 10, 7, paint)
+        model.set(across, 11, 7, "metaal_donker")
+    car_details(model, paint=paint, seam=sill, doors=(10, 17, 24), handles=(14, 21), handle_up=6,
+                belt_up=6, glass_along=range(11, 28), glass_up=7, grille=(4, 9, 4), fog_up=2,
+                bonnet_along=7, boot_along=None, wiper=(8, 7), fuel_along=25, repeater_along=9,
+                rear_badge_up=5, wheel_along=HATCHBACK_WHEEL_ALONG)
+    # spoiler over the tailgate window, with the third brake light in it; rear wiper
+    for across in range(2, width - 2):
+        model.set(across, 28, 10, paint)
+    for across in (6, 7):
+        model.set(across, 28, 10, "signaal_rood")
+    for across in range(6, 9):
+        model.set(across, 29, 8, "metaal_donker")
+    return model
+
+
+# where the hatchback's wheels go (voxels of its body)
+HATCHBACK_WHEEL_ALONG = (6.5, 24.5)
+
+
+@tile("props/voertuigen/auto_hatchback")
+def hatchback():
+    """Red hatchback (hatchback_body)."""
+    return hatchback_body("lak_rood1", "lak_rood2")
+
+
+@tile("props/voertuigen/auto_hatchback_zilver")
+def hatchback_silver():
+    """Silver hatchback (hatchback_body); this one tows the trailer."""
+    return hatchback_body("lak_zilver1", "lak_zilver2")
+
+
+@tile("props/voertuigen/auto_hatchback_groen")
+def hatchback_green():
+    """Dark green hatchback (hatchback_body)."""
+    return hatchback_body("autolak3", "autolak4")
+
+
+# where the van's wheels go (voxels of its body)
+VAN_WHEEL_ALONG = (8.0, 31.0)
+
+
+@tile("props/voertuigen/auto_busje")
+def van():
+    """White delivery van of 5 x 2 x 2.13 m, without its wheels (auto_wiel, at
+    VAN_WHEEL_ALONG; placed and turned by scripts/characters/van.gd): x across (16 voxels),
+    y along (40, the front at y=0), z up. A short sloping bonnet, a tall windscreen, windows
+    in the cab only, a closed cargo box with a sliding door on the right (the pavement side)
+    and two rear doors with windows, big mirrors, a ribbed roof."""
+    width, length, height = 16, 40, 17
+    model = V(width, length, height)
+    paint, sill, inside = "lak_wit1", "lak_wit2", "auto_interieur"
+    bonnet_top = {0: 7, 1: 7, 2: 8, 3: 8, 4: 9}
+    roof_up = 16
+    for along in range(length):
+        for across in range(width):
+            if along in (0, length - 1) and across in (0, width - 1):
+                continue
+            for up in range(2, bonnet_top.get(along, 9) + 1):
+                model.set(across, along, up, sill if up == 2 else paint)
+    # upper part: windscreen rising y 5..8, cab windows y 10..16, closed cargo box behind
+    windscreen_top = {5: 10, 6: 12, 7: 14, 8: 15}
+    for along in range(5, length):
+        top = windscreen_top.get(along, roof_up)
+        for across in range(1, width - 1):
+            side = across in (1, width - 2)
+            for up in range(10, top + 1):
+                if along in windscreen_top:
+                    colour = paint if side else ("glas2" if up == top else inside)
+                elif up == top:
+                    colour = sill if along % 5 == 0 and not side else paint     # roof ribs
+                elif along == length - 1:
+                    window = up in (11, 12, 13, 14) and (across in range(3, 7) or across in range(width - 7, width - 3))
+                    colour = "glas2" if window else paint
+                elif side:
+                    window = along in range(10, 17) and up in (11, 12, 13, 14) and along not in (10, 16)
+                    colour = "glas2" if window else paint
+                else:
+                    colour = inside
+                model.set(across, along, up, colour)
+    # front: bumper, grille with a chrome bar, headlights, plate
+    for across in range(width):
+        for up in (2, 3):
+            model.set(across, 0, up, "metaal_donker")
+            model.set(across, length - 1, up, "metaal_donker")
+    for across in range(5, 11):
+        for up in (5, 6):
+            model.set(across, 0, up, "rooster")
+        model.set(across, 0, 3, "bord_geel" if across in range(6, 10) else "metaal_donker")
+        model.set(across, length - 1, 3, "bord_geel" if across in range(6, 10) else "metaal_donker")
+    for across in (1, 2, 3, width - 4, width - 3, width - 2):
+        model.set(across, 0, 6, "lamp_wit")
+    # rear: tall tail lights at the corners, the seam between the doors, handles
+    for across in (1, 2, width - 3, width - 2):
+        for up in (6, 7, 8, 9):
+            model.set(across, length - 1, up, "signaal_rood")
+    for up in range(4, 16):
+        model.set(width // 2 - 1, length - 1, up, sill)
+    model.set(width // 2 - 2, length - 1, 8, "rvs")
+    model.set(width // 2, length - 1, 8, "rvs")
+    wheel_arches(model, VAN_WHEEL_ALONG, SEDAN_WHEEL_UP, 7)
+    for across in range(ARCH_DEPTH + 1, width - ARCH_DEPTH - 1):
+        for along in range(3, length - 3):
+            model.set(across, along, 1, "metaal_donker")
+    # big mirrors on arms by the windscreen
+    for across in (0, width - 1):
+        for up in (10, 11, 12):
+            model.set(across, 8, up, "metaal_donker")
+    car_details(model, paint=paint, seam=sill, doors=(10, 17), handles=(15,), handle_up=9,
+                belt_up=9, glass_along=range(11, 16), glass_up=11, grille=(4, 11, 6), fog_up=2,
+                bonnet_along=4, boot_along=None, wiper=(5, 10), fuel_along=33, repeater_along=7,
+                rear_badge_up=10, wheel_along=VAN_WHEEL_ALONG)
+    # sliding door on the right side: its seams up to the roof, a handle, the rail above it
+    for along in (18, 29):
+        for up in range(3, 10):
+            model.set(0, along, up, sill)
+        for up in range(10, 16):
+            model.set(1, along, up, sill)
+    model.set(0, 20, 8, "rvs")
+    for along in range(18, 36):
+        model.set(0, along, 9, "metaal_donker")
+    # the other cargo side: the dark rail only where the door would slide on a left-hand van
+    for along in (29,):
+        for up in range(3, 10):
+            model.set(width - 1, along, up, sill)
+    # a black rubbing strip along the cargo box
+    for along in range(10, length - 1):
+        for across in (0, width - 1):
+            if model.get(across, along, 5):
+                model.set(across, along, 5, "metaal_donker")
+    return model
+
+
+# the big wheel (auto_wiel_groot) under a truck and a bus: voxels of the body
+BIG_WHEEL_UP = 4.0
+BIG_WHEEL_RADIUS = 3.6
+TRUCK_WHEEL_ALONG = (9.0, 44.0)
+
+
+@tile("props/voertuigen/auto_vrachtwagen")
+def truck():
+    """Small yellow truck with an open cargo bed, of 7 x 2.25 x 3 m, without its wheels
+    (auto_wiel_groot, at TRUCK_WHEEL_ALONG; placed and turned by
+    scripts/characters/truck.gd): x across (18 voxels), y along (56, the front at y=0), z
+    up. A boxy cab with a flat front, a tall exhaust stack behind it, a dark chassis with a
+    fuel tank, mudguards over the rear wheels, and a cargo bed with steel sides and a
+    tailgate, loaded with a heap of sand."""
+    width, length, height = 18, 56, 24
+    model = V(width, length, height)
+    paint, sill, inside = "lak_geel1", "lak_geel2", "auto_interieur"
+    cab_end = 13          # last row of the cab
+    bed_start = 16        # first row of the cargo bed
+    bed_floor = 9         # height of its floor
+    side_top = 14         # top of its sides
+    # chassis
+    for along in range(2, length):
+        for across in range(4, width - 4):
+            for up in (3, 4, 5, 6, 7, 8):
+                model.set(across, along, up, "metaal_donker")
+    # cab: flat front y=0, body up to the roof at 19
+    for along in range(0, cab_end + 1):
+        for across in range(width):
+            for up in range(2, 20):
+                model.set(across, along, up, sill if up <= 3 else paint)
+    for along in range(1, cab_end):
+        for across in range(1, width - 1):
+            for up in range(11, 19):
+                model.set(across, along, up, inside)
+    # windscreen, side windows (with the door seams and a handle), roof visor
+    for across in range(1, width - 1):
+        for up in range(11, 18):
+            model.set(across, 0, up, "glas2")
+    for across in (3, 4, 5, 6, width - 7, width - 6, width - 5, width - 4):
+        model.set(across, 0, 11, "metaal_donker")          # wipers
+    for across in range(width):
+        model.set(across, 0, 18, "metaal_donker")
+    for along in range(2, 11):
+        for up in range(11, 17):
+            for across in (0, width - 1):
+                model.set(across, along, up, "glas2")
+    for along in (1, 11):
+        for up in range(4, 19):
+            for across in (0, width - 1):
+                model.set(across, along, up, sill)
+    for across in (0, width - 1):
+        model.set(across, 10, 10, "rvs")
+    # wind deflector and marker lamps on the roof
+    for across in range(2, width - 2):
+        for along in range(2, 11):
+            model.set(across, along, 20, paint)
+    for across in range(3, width - 3):
+        for along in range(4, 9):
+            model.set(across, along, 21, paint)
+    for across in (3, 8, 9, width - 4):
+        model.set(across, 1, 20, "oranje")
+    # front: bumper, grille with a chrome frame and a badge, headlights, plate, step
+    for across in range(width):
+        for up in (2, 3):
+            model.set(across, 0, up, "metaal_donker")
+    for across in range(4, width - 4):
+        for up in range(5, 10):
+            edge = across in (4, width - 5) or up in (5, 9)
+            model.set(across, 0, up, "rvs" if edge else "rooster")
+    model.set(width // 2, 0, 7, "rvs")
+    for across in (1, 2, 3, width - 4, width - 3, width - 2):
+        model.set(across, 0, 5, "lamp_wit")
+        model.set(across, 0, 4, "metaal3")
+    for across in range(6, 12):
+        model.set(across, 0, 3, "bord_geel")
+    # big mirrors on the corners
+    for across in (0, width - 1):
+        for up in (13, 14, 15, 16):
+            model.set(across, 0, up, "metaal_donker")
+    wheel_arches(model, TRUCK_WHEEL_ALONG[:1], BIG_WHEEL_UP, 11, BIG_WHEEL_RADIUS, 4)
+    # exhaust stack behind the cab, an air intake on the other side
+    for up in range(6, 24):
+        model.set(width - 2, 14, up, "rvs" if up < 20 else "metaal_donker")
+    for up in range(9, 20):
+        model.set(1, 14, up, "metaal_donker")
+    # fuel tank and a tool box on the chassis
+    for along in range(19, 29):
+        for across in (1, 2, 3):
+            for up in (4, 5, 6):
+                model.set(across, along, up, "metaal3")
+        for across in (width - 4, width - 3, width - 2):
+            for up in (4, 5, 6):
+                model.set(across, along, up, "metaal_donker")
+    # cargo bed: floor, steel sides with ribs and a top rail, tailgate
+    for along in range(bed_start, length):
+        for across in range(width):
+            model.set(across, along, bed_floor, "metaal_donker")
+            if across in (0, width - 1) or along in (bed_start, length - 1):
+                for up in range(bed_floor + 1, side_top):
+                    rib = along % 6 == 0 or (along in (bed_start, length - 1) and across % 4 == 0)
+                    model.set(across, along, up, "metaal1" if rib else "metaal2")
+                model.set(across, along, side_top, "rvs")
+    # the headboard is taller: it guards the cab
+    for across in range(width):
+        for up in range(side_top, 18):
+            model.set(across, bed_start, up, "metaal2")
+    # the load: a heap of sand, highest in the middle
+    for along in range(bed_start + 1, length - 1):
+        for across in range(1, width - 1):
+            from_side = min(across - 1, width - 2 - across)
+            from_end = min(along - bed_start - 1, length - 2 - along)
+            heap = min(5, 1 + min(from_side // 2 + 1, from_end // 2 + 1))
+            for up in range(bed_floor + 1, bed_floor + 1 + heap):
+                model.set(across, along, up, "zand2" if int(h(across, along, up, 271) * 4) == 0 else "zand1")
+    # mudguards over the rear wheels
+    rear_wheel = int(TRUCK_WHEEL_ALONG[1])
+    for along in range(rear_wheel - 5, rear_wheel + 6):
+        for across in (0, 1, 2, 3, width - 4, width - 3, width - 2, width - 1):
+            model.set(across, along, 8, "metaal_donker")
+    for across in (0, 1, 2, 3, width - 4, width - 3, width - 2, width - 1):
+        for up in (5, 6, 7):
+            model.set(across, rear_wheel + 5, up, "rubber")
+    # rear: bar with the tail lights and the plate, striped against running into it
+    for across in range(width):
+        for up in (5, 6, 7, 8):
+            model.set(across, length - 1, up, "metaal_donker")
+        model.set(across, length - 1, 4, "oranje" if across % 4 < 2 else "bord_wit")
+        model.set(across, length - 1, 3, "metaal_donker")
+    for across in (1, 2, 3, width - 4, width - 3, width - 2):
+        for up in (6, 7):
+            model.set(across, length - 1, up, "signaal_rood")
+    for across in range(6, 12):
+        model.set(across, length - 1, 6, "bord_geel")
+    # orange side markers along the bed
+    for along in (bed_start + 8, bed_start + 22, length - 3):
+        for across in (0, width - 1):
+            model.set(across, along, bed_floor, "oranje")
+    return model
+
+
+BUS_WHEEL_ALONG = (15.0, 62.0)
+
+
+@tile("props/voertuigen/auto_stadsbus")
+def city_bus():
+    """White city bus with a red band, of 10.5 x 2.5 x 3 m, without its wheels
+    (auto_wiel_groot, at BUS_WHEEL_ALONG; placed and turned by
+    scripts/characters/city_bus.gd): x across (20 voxels), y along (84, the front at y=0), z
+    up. A big windscreen with a lit line number over it, a band of windows down each side,
+    two double doors on the right (the pavement side), a ventilation grille at the back,
+    air-conditioning boxes on the roof."""
+    width, length, height = 20, 84, 25
+    model = V(width, length, height)
+    paint, sill, inside = "lak_wit1", "lak_wit2", "auto_interieur"
+    band = "lak_rood1"
+    for along in range(length):
+        for across in range(width):
+            if along in (0, length - 1) and across in (0, width - 1):
+                continue
+            for up in range(2, 22):
+                side = across in (0, width - 1)
+                if not side and along not in (0, length - 1) and up > 3:
+                    colour = inside
+                elif up <= 3:
+                    colour = sill
+                elif up in (7, 8):
+                    colour = band
+                elif 10 <= up <= 18 and side:
+                    colour = "metaal_donker" if along % 10 == 0 else "glas2"
+                else:
+                    colour = paint
+                model.set(across, along, up, colour)
+    # roof, its edge a step in, with two air-conditioning boxes and hatches
+    for along in range(1, length - 1):
+        for across in range(1, width - 1):
+            model.set(across, along, 22, paint)
+    for first, last in ((18, 32), (48, 62)):
+        for along in range(first, last):
+            for across in range(5, width - 5):
+                edge = along in (first, last - 1) or across in (5, width - 6)
+                model.set(across, along, 23, "metaal3" if edge else "rooster")
+    for along in (38, 39, 40, 41):
+        for across in range(7, width - 7):
+            model.set(across, along, 23, "metaal1")
+    # front: bumper, headlights, big windscreen with wipers, sign with the line number
+    for across in range(width):
+        for up in (2, 3):
+            model.set(across, 0, up, "metaal_donker")
+            model.set(across, length - 1, up, "metaal_donker")
+    for across in range(1, width - 1):
+        for up in range(9, 18):
+            model.set(across, 0, up, "glas2")
+        for up in range(18, 23):
+            model.set(across, 0, up, "bord_zwart")
+    pixels, (text_width, _) = text_pixels("22")
+    for column, row in pixels:
+        model.set((width - text_width) // 2 + column, 0, 22 - row, "lamp_warm")
+    for across in (5, 6, 7, 8, width - 9, width - 8, width - 7, width - 6):
+        model.set(across, 0, 9, "metaal_donker")
+    for across in (1, 2, 3, 4, width - 5, width - 4, width - 3, width - 2):
+        model.set(across, 0, 5, "lamp_wit")
+    for across in range(7, 13):
+        model.set(across, 0, 3, "bord_geel")
+    model.set(width // 2, 0, 6, "rvs")
+    # mirrors hanging on arms by the windscreen
+    for across in (0, width - 1):
+        for up in (13, 14, 15, 16):
+            model.set(across, 1, up, "metaal_donker")
+    # rear: window, ventilation grille, tall tail lights, plate
+    for across in range(3, width - 3):
+        for up in range(12, 19):
+            model.set(across, length - 1, up, "glas2")
+        for up in range(4, 9):
+            model.set(across, length - 1, up, "rooster" if up % 2 == 0 else "metaal_donker")
+    for across in (1, 2, width - 3, width - 2):
+        for up in (5, 6, 7, 8):
+            model.set(across, length - 1, up, "signaal_rood")
+    for across in range(7, 13):
+        model.set(across, length - 1, 3, "bord_geel")
+    wheel_arches(model, BUS_WHEEL_ALONG, BIG_WHEEL_UP, 11, BIG_WHEEL_RADIUS, 4)
+    # double doors on the right: glass from low to the top, dark frame, a seam in the middle,
+    # one ahead of the front wheels and one in the middle
+    for first, last in ((3, 10), (36, 44)):
+        for along in range(first, last + 1):
+            for up in range(3, 19):
+                edge = along in (first, last, (first + last) // 2) or up == 18
+                model.set(0, along, up, "metaal_donker" if edge else "glas2")
+    # lit line number on the side, above the first windows of the left side too
+    for across in (0, width - 1):
+        for along in (21, 22, 23):
+            model.set(across, along, 19, "lamp_warm")
+        # orange side markers along the skirt
+        for along in (26, 50, 72):
+            model.set(across, along, 4, "oranje")
+    # a seam round the engine hatch, a fuel flap on the left
+    for along in range(69, 80):
+        model.set(0, along, 6, "metaal_donker")
+    model.set(width - 1, 30, 5, "metaal_donker")
+    model.set(width - 1, 31, 5, "metaal_donker")
+    return model
+
+
+@tile("props/voertuigen/auto_aanhanger")
+def trailer():
+    """Trailer of 3.25 x 1.75 x 1.13 m with an open bed, without its wheels (auto_wiel,
+    placed by scripts/characters/vehicle.gd): x across (14 voxels), y along (26), z up. The
+    coupling is at the very front (y=0), the point it pivots about on the tow ball; an
+    A-frame runs back to the bed, whose axle is at y=18. A wooden floor, galvanised sides
+    with a chrome rail, mudguards over the wheels, tail lights and a plate at the back, and
+    two crates and a few planks for a load."""
+    width, length, height = 14, 26, 11
+    model = V(width, length, height)
+    frame, side, wood = "gegalvaniseerd", "gegalvaniseerd", "hout1"
+    bed_start = 10
+    axle = 18
+    middle = width // 2
+    # coupling (a dark cup over the ball) and the A-frame behind it
+    for across in (middle - 1, middle):
+        for along in (0, 1):
+            for up in (3, 4):
+                model.set(across, along, up, "metaal_donker")
+    for along in range(2, bed_start):
+        spread = (along - 1) * 3 // 4
+        for across in (middle - 1 - spread, middle + spread):
+            model.set(across, along, 3, frame)
+    for across in range(middle - 3, middle + 3):
+        model.set(across, 7, 3, frame)
+    # the jockey wheel's post, folded up
+    for up in (4, 5):
+        model.set(middle, 5, up, "metaal_donker")
+    # bed: frame, wooden floor, sides with a top rail, tailgate
+    for along in range(bed_start, length):
+        for across in range(2, width - 2):
+            model.set(across, along, 3, frame)
+            model.set(across, along, 4, "hout2" if across % 3 == 0 else wood)
+            border = across in (2, width - 3) or along in (bed_start, length - 1)
+            if border:
+                for up in (5, 6, 7):
+                    model.set(across, along, up, side)
+                model.set(across, along, 8, "rvs")
+    # mudguards over the wheels (outside the bed, wheels 0.75 m from the middle)
+    for along in range(axle - 4, axle + 4):
+        rise = 6 if abs(along + 0.5 - axle) < 3 else 5
+        for across in (0, 1, width - 2, width - 1):
+            model.set(across, along, rise, "metaal_donker")
+    # rear: tail lights, indicators' places, plate, a reflector strip
+    for across in (3, 4, width - 5, width - 4):
+        model.set(across, length - 1, 4, "signaal_rood")
+    for across in (6, 7):
+        model.set(across, length - 1, 4, "bord_geel")
+    for across in range(3, width - 3):
+        model.set(across, length - 1, 3, "metaal_donker")
+    # the load: two crates and planks lying alongside them
+    for first, last, across_first, across_last, top in ((12, 17, 4, 8, 8), (18, 22, 5, 9, 7)):
+        for along in range(first, last):
+            for across in range(across_first, across_last):
+                for up in range(5, top + 1):
+                    edge = along in (first, last - 1) or across in (across_first, across_last - 1)
+                    model.set(across, along, up, "hout3" if edge else "hout_donker1")
+    for along in range(12, 24):
+        for up in (5, 6):
+            model.set(10, along, up, "hout2")
+    return model
+
+
+@tile("props/voertuigen/auto_trekhaak")
+def tow_bar():
+    """Tow bar for under the back of a car (scripts/characters/vehicle.gd, hitch_model): a
+    dark bar, y along (0 under the bumper, 4 at the back), with the chrome ball the coupling
+    of a trailer pivots on at the back end, 2 voxels up."""
+    model = V(2, 5, 3)
+    for along in range(5):
+        for across in range(2):
+            model.set(across, along, 0, "metaal_donker")
+    for across in range(2):
+        model.set(across, 4, 1, "metaal_donker")
+        model.set(across, 4, 2, "rvs")
+    return model
+
+
 @tile("props/voertuigen/auto_wiel")
 def car_wheel():
     """Car wheel of 0.75 m across, 0.25 m wide: a disc in the y-z plane (2 x 6 x 6
@@ -1652,6 +2203,27 @@ def car_wheel():
             else:
                 colour = "rvs"
             for across in range(2):
+                model.set(across, along, up, colour)
+    return model
+
+
+@tile("props/voertuigen/auto_wiel_groot")
+def big_wheel():
+    """Wheel of a truck or a bus, 1 m across, 0.38 m wide: the car wheel made bigger
+    (3 x 8 x 8 voxels, the axle along x)."""
+    model = V(3, 8, 8)
+    for along in range(8):
+        for up in range(8):
+            distance = ((along + 0.5 - 4.0) ** 2 + (up + 0.5 - 4.0) ** 2) ** 0.5
+            if distance > 4.0:
+                continue
+            if distance > 2.6:
+                colour = "rubber"
+            elif along in (3, 4) or up in (3, 4):
+                colour = "metaal_donker"
+            else:
+                colour = "rvs"
+            for across in range(3):
                 model.set(across, along, up, colour)
     return model
 

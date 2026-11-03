@@ -1,14 +1,17 @@
 extends Node3D
-## Real grass blades (the "Grassprieten" node): when zoomed in, curved blades grow out of
-## the grass tiles around the point the camera looks at, and sway in the wind
+## Real grass blades (the "Grassprieten" node): curved blades grow out of the grass tiles
+## around the point the camera looks at, and sway in the wind
 ## (addons/vox_tiles/materials/grass_blade.gdshader). One blade mesh is drawn many times
 ## with a MultiMesh per chunk of CHUNK x CHUNK metres; chunks are made around the camera
 ## focus while zoomed in (and dropped again when out of range), only on grass cells
-## (scripts/world/ground_map.gd, the GrondKaart node). The blades fade in below `show_from`
-## metres in view (scripts/camera/iso_camera.gd view size) and cast no shadows. Not in the editor.
+## (scripts/world/ground_map.gd, the GrondKaart node). They cast no shadows. Not in the editor.
+## Three levels of detail by the metres in view (scripts/camera/iso_camera.gd view size),
+## growing into each other: the fine blades up close; further out `medium_*` and then
+## `far_*`: fewer and thicker tufts in bigger chunks, wide enough not to sparkle, so a zoomed
+## out meadow still has grass that moves, at about the same cost per screen.
 
 const Iso = preload("res://scripts/camera/iso_camera.gd")
-## Size of a chunk in metres (a multiple of the 4 m ground cell).
+## Size of a chunk of fine blades in metres (a multiple of the 4 m ground cell).
 const CHUNK := 8.0
 ## Ground cell size in metres.
 const CELL := 4.0
@@ -19,11 +22,11 @@ const GRASS_TOP := 0.375
 @export var enabled := true
 @export var camera_path := NodePath("../Camera")
 @export var ground_map_path := NodePath("../GrondKaart")
-## Blades per square metre (each chunk holds CHUNK^2 x this many, fewer on non-grass).
+## Fine blades per square metre (each chunk holds CHUNK^2 x this many, fewer on non-grass).
 @export var density := 220.0
-## Blades are shown below this view size (metres in view), fully below `full_from`.
-## Further out a blade is narrower than a pixel or two and the grass sparkles as the
-## view moves (and costs a lot of frame time).
+## Fine blades are shown below this view size (metres in view), fully below `full_from`.
+## Further out such a blade is narrower than a pixel or two and the grass sparkles as the
+## view moves (and costs a lot of frame time): the medium and far tufts take over.
 @export var show_from := 24.0
 @export var full_from := 16.0
 ## Blade height (m); each blade gets 0.6 .. 1.3 x this, times the cell's grass height
@@ -31,16 +34,39 @@ const GRASS_TOP := 0.375
 @export var blade_height := 0.32
 ## Width and depth of a blade's square columns (m).
 @export var blade_width := 0.03
-## Square columns per blade (the steps of the staircase).
-const SEGMENTS := 3
+## Medium tufts: per square metre, their width and up to which view size they are shown.
+@export var medium_density := 8.0
+@export var medium_width := 0.18
+@export var medium_until := 55.0
+## Far tufts: the same. Off when `far_until` is 0; `low_detail` off = only the fine blades.
+@export var far_density := 1.6
+@export var far_width := 0.4
+@export var far_until := 220.0
+@export var low_detail := true
+## Square columns per fine blade (the steps of the staircase); per medium and far tuft.
+const FINE_SEGMENTS := 3
+const MEDIUM_SEGMENTS := 2
+const FAR_SEGMENTS := 1
+## Chunk sizes of the medium and far tufts (metres, a multiple of the ground cell): a far
+## view holds many more square metres.
+const MEDIUM_CHUNK := 16.0
+const FAR_CHUNK := 32.0
+## How far from the focus the chunks of a level reach, as a part of the view size: the fine
+## blades only around the focus (they cost the most), the tufts as far as the screen goes, so
+## a meadow has no edge where they stop.
+const FINE_REACH := 0.6
+const LOW_DETAIL_REACH := 1.1
+## Where a level starts to fade out, as a part of the view size it ends at.
+const FADE_OUT_START := 0.75
 ## New chunks made per frame at most (so moving the camera doesn't hitch).
 const CHUNKS_PER_FRAME := 3
 
 var _cam: Camera3D
 var _map: Node
-var _mesh: ArrayMesh
-var _material: ShaderMaterial
-var _chunks := {}   # Vector2i chunk -> MultiMeshInstance3D (null = no grass there)
+## Per level of detail: its node, mesh, material, chunks (Vector2i chunk ->
+## MultiMeshInstance3D, null = no grass there), chunk size, blades per square metre, reach
+## and the view sizes between which it grows in and fades out.
+var _levels: Array[Dictionary] = []
 
 
 func _ready() -> void:
@@ -49,63 +75,98 @@ func _ready() -> void:
 		return
 	_cam = get_node_or_null(camera_path)
 	_map = get_node_or_null(ground_map_path)
-	_material = ShaderMaterial.new()
-	_material.shader = load("res://addons/vox_tiles/materials/grass_blade.gdshader")
-	_material.set_shader_parameter("blade_height", blade_height * 1.3)
-	_mesh = _blade_mesh()
+	_add_level(CHUNK, density, blade_width, FINE_SEGMENTS, FINE_REACH, 0.0, 0.0, full_from, show_from)
+	if low_detail:
+		_add_level(MEDIUM_CHUNK, medium_density, medium_width, MEDIUM_SEGMENTS, LOW_DETAIL_REACH,
+				full_from, show_from, medium_until * FADE_OUT_START, medium_until)
+		if far_until > 0.0:
+			_add_level(FAR_CHUNK, far_density, far_width, FAR_SEGMENTS, LOW_DETAIL_REACH,
+					medium_until * FADE_OUT_START, medium_until, far_until * FADE_OUT_START, far_until)
 	if _map and _map.has_signal("rebuilt"):
 		_map.rebuilt.connect(clear)
 
 
+func _add_level(chunk_size: float, blades_per_metre: float, width: float, segments: int, reach: float,
+		grow_in_from: float, grow_in_to: float, fade_out_from: float, fade_out_to: float) -> void:
+	var material := ShaderMaterial.new()
+	material.shader = load("res://addons/vox_tiles/materials/grass_blade.gdshader")
+	material.set_shader_parameter("blade_height", blade_height * 1.3)
+	var level_node := Node3D.new()
+	level_node.name = "Niveau%d" % _levels.size()
+	add_child(level_node)
+	_levels.append({"node": level_node, "mesh": _blade_mesh(width, segments), "material": material, "chunks": {},
+		"chunk_size": chunk_size, "density": blades_per_metre, "reach": reach, "grow_in_from": grow_in_from, "grow_in_to": grow_in_to,
+		"fade_out_from": fade_out_from, "fade_out_to": fade_out_to})
+
+
 ## Drops every chunk (the grass cells changed, e.g. another map part was loaded).
 func clear() -> void:
-	for k in _chunks:
-		if _chunks[k]:
-			_chunks[k].queue_free()
-	_chunks.clear()
+	for level in _levels:
+		_clear_level(level)
+
+
+func _clear_level(level: Dictionary) -> void:
+	var chunks: Dictionary = level.chunks
+	for chunk_key in chunks:
+		if chunks[chunk_key]:
+			chunks[chunk_key].queue_free()
+	chunks.clear()
 
 
 func _process(_delta: float) -> void:
 	if _cam == null or _map == null:
 		return
 	var view := Iso.view_size(_cam)
-	var grow := 1.0 - smoothstep(full_from, show_from, view)
-	_material.set_shader_parameter("grow", grow)
-	visible = enabled and grow > 0.0
-	if not visible:
-		return
-	# chunks within the visible part of the ground (plus a margin), around the focus
+	for level in _levels:
+		var grow := 1.0 - smoothstep(level.fade_out_from, level.fade_out_to, view)
+		if level.grow_in_to > 0.0:
+			grow *= smoothstep(level.grow_in_from, level.grow_in_to, view)
+		(level.material as ShaderMaterial).set_shader_parameter("grow", grow)
+		var shown: bool = enabled and grow > 0.0
+		(level.node as Node3D).visible = shown
+		if shown:
+			_update_chunks(level, view)
+		elif not (level.chunks as Dictionary).is_empty():
+			_clear_level(level)
+
+
+## Makes the chunks of this level within the visible part of the ground (plus a margin),
+## around the focus, a few per frame, and drops the ones out of range.
+func _update_chunks(level: Dictionary, view: float) -> void:
 	var focus := Iso.ground_focus(_cam)
-	var radius := view * 0.6
-	var lo := Vector2i(floori((focus.x - radius) / CHUNK), floori((focus.z - radius) / CHUNK))
-	var hi := Vector2i(floori((focus.x + radius) / CHUNK), floori((focus.z + radius) / CHUNK))
+	var radius: float = view * level.reach
+	var chunk_size: float = level.chunk_size
+	var chunks: Dictionary = level.chunks
+	var low := Vector2i(floori((focus.x - radius) / chunk_size), floori((focus.z - radius) / chunk_size))
+	var high := Vector2i(floori((focus.x + radius) / chunk_size), floori((focus.z + radius) / chunk_size))
 	var wanted := {}
 	var made := 0
-	for cz in range(lo.y, hi.y + 1):
-		for cx in range(lo.x, hi.x + 1):
-			var k := Vector2i(cx, cz)
-			wanted[k] = true
-			if not _chunks.has(k) and made < CHUNKS_PER_FRAME:
-				_chunks[k] = _make_chunk(k)
+	for chunk_z in range(low.y, high.y + 1):
+		for chunk_x in range(low.x, high.x + 1):
+			var chunk_key := Vector2i(chunk_x, chunk_z)
+			wanted[chunk_key] = true
+			if not chunks.has(chunk_key) and made < CHUNKS_PER_FRAME:
+				chunks[chunk_key] = _make_chunk(level, chunk_key)
 				made += 1
-	for k in _chunks.keys():
-		if not wanted.has(k):
-			if _chunks[k]:
-				_chunks[k].queue_free()
-			_chunks.erase(k)
+	for chunk_key in chunks.keys():
+		if not wanted.has(chunk_key):
+			if chunks[chunk_key]:
+				chunks[chunk_key].queue_free()
+			chunks.erase(chunk_key)
 
 
-## The blades of chunk `k` (a MultiMeshInstance3D), or null if it has no grass.
-func _make_chunk(k: Vector2i) -> MultiMeshInstance3D:
+## The blades of this chunk of the level (a MultiMeshInstance3D), or null if it has no grass.
+func _make_chunk(level: Dictionary, chunk_key: Vector2i) -> MultiMeshInstance3D:
 	var cells: Dictionary = _map.get("grass_cells")
-	var origin := Vector2(k) * CHUNK
-	var per_cell := int(CELL * CELL * density)
+	var chunk_size: float = level.chunk_size
+	var origin := Vector2(chunk_key) * chunk_size
+	var per_cell := int(CELL * CELL * level.density)
 	# per blade 12 floats of transform (rows of the 3x4 matrix) and 4 of custom data
 	var buf := PackedFloat32Array()
-	var n := int(CHUNK / CELL)
-	for j in n:
-		for i in n:
-			var cell := Vector2i(floori(origin.x / CELL) + i, floori(origin.y / CELL) + j)
+	var cells_across := int(chunk_size / CELL)
+	for cell_row in cells_across:
+		for cell_column in cells_across:
+			var cell := Vector2i(floori(origin.x / CELL) + cell_column, floori(origin.y / CELL) + cell_row)
 			if not cells.has(cell):
 				continue
 			var mask: PackedByteArray = cells[cell][0]
@@ -113,10 +174,9 @@ func _make_chunk(k: Vector2i) -> MultiMeshInstance3D:
 			var centre := Vector3(cell.x * CELL + CELL * 0.5, 0.0, cell.y * CELL + CELL * 0.5)
 			var mres := int(sqrt(mask.size()))
 			var height: float = cells[cell][2]
-			var seed := cell.x * 73856093 ^ cell.y * 19349663
 			var rng := RandomNumberGenerator.new()
-			rng.seed = seed
-			for b in per_cell:
+			rng.seed = cell.x * 73856093 ^ cell.y * 19349663
+			for blade_index in per_cell:
 				var x := cell.x * CELL + rng.randf() * CELL
 				var z := cell.y * CELL + rng.randf() * CELL
 				# clumps: some places dense, some thin (the same noise for every frame)
@@ -141,14 +201,14 @@ func _make_chunk(k: Vector2i) -> MultiMeshInstance3D:
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
 	mm.use_custom_data = true
-	mm.mesh = _mesh
+	mm.mesh = level.mesh
 	mm.instance_count = buf.size() / 16
 	mm.buffer = buf
 	var mmi := MultiMeshInstance3D.new()
 	mmi.multimesh = mm
-	mmi.material_override = _material
+	mmi.material_override = level.material
 	mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	add_child(mmi)
+	(level.node as Node3D).add_child(mmi)
 	return mmi
 
 
@@ -158,21 +218,22 @@ func _clump(x: float, z: float) -> float:
 	return 0.55 + 0.45 * clampf(v * 0.5 + 0.6, 0.0, 1.0)
 
 
-## One blocky blade in the voxel style: SEGMENTS square columns of blade_width x
-## blade_width stacked on each other, every next one shifted forward (+z) by a step, so
+## One blocky blade in the voxel style: `segments` square columns of `width` x `width`
+## stacked on each other, every next one shifted forward (+z) by a step, so
 ## the blade bends like a staircase; flat top, no bottom. Vertex colour r = the segment's
 ## tint (0 = base .. 1 = tip), which grass_blade.gdshader uses instead of a gradient.
-func _blade_mesh() -> ArrayMesh:
+func _blade_mesh(width: float, segments: int) -> ArrayMesh:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var h := blade_height * 1.3
-	var seg_h := h / SEGMENTS
-	var hw := blade_width * 0.5
-	for i in SEGMENTS:
-		var tint := float(i) / (SEGMENTS - 1)
+	var seg_h := h / segments
+	var hw := width * 0.5
+	for i in segments:
+		# one column alone: the colour halfway up a blade
+		var tint := float(i) / (segments - 1) if segments > 1 else 0.5
 		var y0 := seg_h * i
 		var y1 := seg_h * (i + 1)
-		var z := blade_width * 0.6 * i * i   # the staircase
+		var z := width * 0.6 * i * i   # the staircase
 		var lo := Vector3(-hw, y0, z - hw)
 		var hi := Vector3(hw, y1, z + hw)
 		# four sides and the top of the column

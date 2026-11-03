@@ -140,6 +140,12 @@ _ENTRIES = [
     ("autolak1", (38, 82, 150)), ("autolak2", (30, 66, 124)), ("auto_interieur", (34, 32, 36)),
     # SUV paint (dark green) and its darker sill
     ("autolak3", (52, 84, 66)), ("autolak4", (40, 64, 52)),
+    # the other vehicles: red, white, yellow and silver paint, each with its darker sill
+    # (a group per colour: one more number in the autolak group would shift its colours)
+    ("lak_rood1", (168, 38, 36)), ("lak_rood2", (128, 28, 30)),
+    ("lak_wit1", (226, 228, 226)), ("lak_wit2", (186, 190, 190)),
+    ("lak_geel1", (226, 170, 40)), ("lak_geel2", (186, 136, 32)),
+    ("lak_zilver1", (152, 158, 164)), ("lak_zilver2", (116, 122, 128)),
 ]
 
 # Flag cloth colours: material "flag". vlag_wit and vlag_oranje are one step off the
@@ -277,7 +283,7 @@ _SURFACE_GROUPS = {
     "plaster": ("stuc",),
     # painted metal: lamp posts, bollards, road signs
     "painted": ("amsterdamgroen", "bord_blauw", "bord_geel", "bord_groen", "bord_oranje", "bord_rood",
-                "bord_wit", "bord_zwart", "autolak"),
+                "bord_wit", "bord_zwart", "autolak", "lak_rood", "lak_wit", "lak_geel", "lak_zilver"),
 }
 
 

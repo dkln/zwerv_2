@@ -18,7 +18,9 @@ Des Indes, de Denneweg; de Grote Kerk met Hoogstraat en Oude Raadhuis, de Hofvij
 (met eilandje) met Binnenhof, Ridderzaal, Torentje, Mauritshuis, Buitenhof en
 Gevangenpoort, het Plein met standbeeld en terrassen; de Grote Markt, Chinatown
 (Wagenstraat), de Grote Marktstraat met Bijenkorf en Passage, het Spuiplein met Nieuwe
-Kerk, wit stadhuis en Amare. Buiten de Prinsessegracht: het Haagse Bos met Paleis Huis
+Kerk, wit stadhuis en Amare. De Grote Markt heeft cafés en terrassen aan drie kanten. Winkels
+staan langs de Grote Marktstraat (ook aan de noordkant), de Lange Poten (x 48, langs het Plein)
+en het Spui (x 48 ten zuiden van de Grote Marktstraat en de rij aan z 58 bij het Plein). Buiten de Prinsessegracht: het Haagse Bos met Paleis Huis
 ten Bosch, het Malieveld met de Koekamp en het Ministerie van Financien, het
 Bezuidenhout met daarachter de Theresiastraat (winkelstraat met portiekflats en een
 kerk) en de Bezuidenhout-Oost (galerijflats, park met vijver, woontoren), Centraal
@@ -51,9 +53,32 @@ elke scène die de bouwers maken) laat de stoplichtprops (`verkeerslichten/auto_
 noord-zuid groen, oranje, alles rood, oost-west groen, oranje, alles rood. De richting
 van een licht volgt uit zijn draaiing; tijden zijn instelbaar op de node.
 
-Er rijden twee auto's door de stad: een sedan, node `Auto` (`scripts/characters/car.gd`),
-en een SUV, node `SUV` (`scripts/characters/suv.gd`, model `voertuigen/auto_suv`). Allebei
-zijn het een `Vehicle` (`scripts/characters/vehicle.gd`):
+Er rijdt verkeer door de stad: een sedan, node `Auto` (`scripts/characters/car.gd`), en een
+SUV, node `SUV` (`scripts/characters/suv.gd`), staan in de scène; de node `Verkeer`
+(`scripts/world/traffic.gd`) zet er bij het starten nog `vehicle_count` (24) voertuigen bij,
+verspreid over het wegennet (`spacing`, `traffic_seed`, de mix in `MIX`). Soorten:
+
+| Script | Model (`voertuigen/`) | Lengte | Massa | Koppel wielen |
+|---|---|---|---|---|
+| `hatchback.gd` | `auto_hatchback`, `_zilver`, `_groen` | 3,9 m | 1100 kg | 1155 Nm |
+| `car.gd` | `auto_sedan`, `_wit`, `_zilver` | 4,5 m | 1300 kg | 1220 Nm |
+| `trailer_car.gd` | `auto_hatchback_zilver` + `auto_trekhaak` + `auto_aanhanger` | 3,9 + 3,3 m | 1100 + 500 kg | 1155 Nm |
+| `suv.gd` | `auto_suv` | 4,8 m | 2100 kg | 1575 Nm |
+| `van.gd` (busje) | `auto_busje` | 5 m | 2400 kg | 1800 Nm |
+| `truck.gd` (vrachtwagen met laadbak) | `auto_vrachtwagen` | 7 m | 7500 kg | 4875 Nm |
+| `city_bus.gd` (stadsbus, mag op de busbaan) | `auto_stadsbus` | 10,5 m | 12000 kg | 6600 Nm |
+
+Allemaal zijn het een `Vehicle` (`scripts/characters/vehicle.gd`):
+- Gewicht en koppel (`mass_kg`, `wheel_torque`): een zwaar voertuig heeft van allebei meer.
+  Koppel gedeeld door wielstraal en massa geeft de acceleratie (een aanhanger telt mee). Bij
+  een botsing delen de massa's de klap volgens de impuls: de lichtste krijgt de grootste
+  snelheidsverandering en de meeste draaiing. Daarna rolt een wrak nog even door op zijn wielen
+  met de motor aan (`ROLL_ON_*`), een bus veel langer dan een kleine auto, dus een bus duwt een
+  hatchback voor zich uit. Test: `tools/check/crash_test.gd -- heavy` of `light`.
+- Aanhanger (`trailer_model`, `hitch_position`): hij draait om zijn eigen punt, de bol van de
+  trekhaak. Elke stap wordt zijn as recht naar de bol getrokken, zodat hij de bocht afsnijdt
+  zoals een echte aanhanger, met eigen wielen en lampen. Bij een botsing blijft hij aangekoppeld
+  aan het wrak.
 - Route: bij een splitsing kiest een auto liever een weg die hij de laatste tijd niet
   heeft gereden (`variety`), zodat hij de hele stad doorrijdt in plaats van steeds
   hetzelfde rondje. Op een kruising slaat hij hooguit één keer af, en nooit terug waar
@@ -62,13 +87,15 @@ zijn het een `Vehicle` (`scripts/characters/vehicle.gd`):
   de carrosserie draait hooguit 3 rad/s, ook bij keren in een smalle straat.
 - Elkaar ontwijken (`avoids_others`): een auto remt en stopt achter een andere auto op
   zijn route (tot 40 m vooruit), en geeft op een kruising voorrang aan wie er eerder is.
-- Botsen: raken twee auto's elkaar toch, dan worden het allebei een `RigidBody3D`
-  (`Wrak`, met `mass_kg`). Ze botsen met physics tegen elkaar en tegen de colliders van
+- Botsen: rijden twee auto's toch met minstens `CRASH_SPEED` (5 m/s) op elkaar in, dan worden
+  het allebei een `RigidBody3D` (`Wrak`, met hun massa); een schampje in een bocht telt niet. Ze botsen met physics tegen elkaar en tegen de colliders van
   de stad (stoepranden, middenbermen, gebouwen en props in de GridMaps), tollen en
   schuiven uit, met de alarmlichten aan. Na 8 s worden ze weggesleept naar de dichtstbijzijnde
-  rijstrook en rijden ze verder.
-- De voorwielen sturen hooguit 20° (`max_steering_degrees`): de wielkasten zijn zo diep
-  dat een gestuurd wiel nooit door de carrosserie steekt.
+  vrije plek op de rijstrook en rijden ze verder.
+- Vastlopen: wachten voertuigen in een kring op elkaar (niet in de rij voor een stoplicht of
+  zebra), dan wringt er na een tijdje één langs de ander (`SQUEEZE_TIME`).
+- De voorwielen sturen hooguit 40° (`max_steering_degrees`): een wiel steekt dan wat uit de
+  wielkast, net als bij een echte auto.
 Druk op F en de camera volgt de sedan (node `Volgcamera`, `scripts/camera/follow_camera.gd`). Die jaagt de
 auto niet zelf na, maar een punt dat doorlopend vóór de auto ligt: waar hij over
 `lead_time` seconden is bij zijn gladgestreken snelheid (`velocity_smoothing`, begrensd
@@ -97,7 +124,7 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
 - Details (laag `Details`): je bouwt ze als losse laag, maar `DetailNiveau` bakt ze bij het
   laden in dezelfde stukken als de gebouwen (`merge_with`), ook per LOD-niveau. Dat
   scheelt een laag tekenen en draw calls, en elk detail vervaagt met zijn eigen gebouw.
-- Lampen (`vehicle.gd`, posities in `car.gd`): koplampen met een lichtbundel op de weg
+- Lampen (`vehicle.gd`, posities in het script van elk voertuig): koplampen met een lichtbundel op de weg
   zodra het donker wordt (`night` van de `Dagcyclus`), achterlichten 's nachts, felle
   remlichten bij afremmen en stilstaan, en richtingaanwijzers die knipperen vanaf 30 m
   voor een afslag op een kruising, voor het invoegen in een andere rijstrook en voor
@@ -151,8 +178,11 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
   voertuig maak je door van `Vehicle` af te leiden en in `_init` model, wielen,
   snelheden en `vehicle_kind` te zetten (zie `car.gd`); met de hooks `_may_use`, `_choose_heading` en
   `_must_stop` pas je aan waar het mag rijden en waarvoor het stopt.
-- Modellen: `props/voertuigen/auto_sedan` (carrosserie zonder wielen) en
-  `props/voertuigen/auto_wiel`.
+- Modellen: `props/voertuigen/` (carrosserieën zonder wielen, `auto_wiel` en
+  `auto_wiel_groot`). Vanuit `tools/voxgen/tiles/props.py`. Overzicht:
+  `tools/godot.sh --script tools/shots/shot_vehicles.gd -- <uit.png> [1|-1] [nummer]`.
+- Test van al het verkeer samen (botsingen, vaststaan, rekentijd):
+  `tools/godot.sh --headless --script tools/check/traffic_test.gd -- 300`
 - Test: `tools/godot.sh --headless --script tools/check/drive_test.gd -- 300`
   (optioneel startcel en richting, bv. `-- 300 70 24 1 0` voor de A12). De test meldt
   of de auto ergens naast de weg rijdt, boven of onder het wegdek zit, te hard gaat of
@@ -792,8 +822,10 @@ Rondleiding, prestaties en uiterlijk
   een korrel van 60 en 20 cm (geen vlekken van ver), en dichtbij lange, dunne grassprieten. Grind
   krijgt per kiezel een lichte en een schaduwkant en vlekken van ~15 cm.
 - Echte grassprieten (node `Grassprieten`, `scripts/effects/grass_blades.gd`, shader
-  `materials/grass_blade.gdshader`): ingezoomd (minder dan `show_from` = 45 m in beeld)
-  groeien hoekige sprieten in voxelstijl uit het gras (drie vierkante blokjes van 3 x 3 cm
+  `materials/grass_blade.gdshader`) in drie detailniveaus die in elkaar overgroeien:
+  fijne sprieten tot `show_from` (24 m in beeld), daarna dikkere plukken (`medium_*`, tot
+  55 m) en nog grovere, schaarse plukken (`far_*`, tot 220 m, die twee over het hele beeld;
+  uit met `low_detail`). Ingezoomd groeien hoekige sprieten in voxelstijl uit het gras (drie vierkante blokjes van 3 x 3 cm
   op elkaar, getrapt in de buigrichting, elk een eigen tint, alleen in kwartslagen gedraaid) rond het punt waar de camera
   naar kijkt, met een MultiMesh per stuk van 8 x 8 m. Ze buigen met dezelfde wind en
   windvlagen als de grasshader, staan in plukken (dicht, dun, kaal) en groeien alleen

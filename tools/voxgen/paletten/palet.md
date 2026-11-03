@@ -275,6 +275,14 @@ bij de kleur (`assets/tiles/materialen.json`), dus gebruik precies deze kleuren.
 | `#222024` | auto_interieur | mat |
 | `#30504d` | autolak3 | gelakt |
 | `#284444` | autolak4 | gelakt |
+| `#a12423` | lak_rood1 | gelakt |
+| `#871e1f` | lak_rood2 | gelakt |
+| `#dbdddc` | lak_wit1 | gelakt |
+| `#c1c5c4` | lak_wit2 | gelakt |
+| `#dba427` | lak_geel1 | gelakt |
+| `#c18e21` | lak_geel2 | gelakt |
+| `#92989e` | lak_zilver1 | gelakt |
+| `#7a8086` | lak_zilver2 | gelakt |
 
 ## Water
 
