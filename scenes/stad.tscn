@@ -18,6 +18,7 @@
 [ext_resource type="Script" path="res://scripts/effects/tilt_shift.gd" id="16_3c85h"]
 [ext_resource type="Script" path="res://scripts/characters/car.gd" id="17_ew4d3"]
 [ext_resource type="Script" path="res://scripts/camera/follow_camera.gd" id="18_hdyi6"]
+[ext_resource type="Script" path="res://scripts/world/building_fade.gd" id="19_dk7ws"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_tx4qj"]
 sky_top_color = Color(0.3, 0.5, 0.85, 1)
@@ -128,8 +129,8 @@ light_energy = 1.55
 shadow_enabled = true
 shadow_bias = 0.03
 shadow_normal_bias = 1.2
-shadow_opacity = 0.82
-shadow_blur = 0.4
+shadow_opacity = 0.9
+shadow_blur = 0.1
 directional_shadow_max_distance = 500.0
 
 [node name="Vullicht" type="DirectionalLight3D" parent="." unique_id=34703597]
@@ -228,3 +229,6 @@ wheel_positions = PackedVector3Array(-0.75, 0.375, 1.3125, 0.75, 0.375, 1.3125, 
 
 [node name="Volgcamera" type="Node" parent="." unique_id=193587421]
 script = ExtResource("18_hdyi6")
+
+[node name="Doorkijk" type="Node" parent="." unique_id=1418093527]
+script = ExtResource("19_dk7ws")

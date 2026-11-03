@@ -17,6 +17,10 @@ extends Node
 @export var fill_light_path := NodePath("../Vullicht")
 @export var environment_path := NodePath("../Omgeving")
 
+## How dark it is now: 0 = day, 1 = night (the same as the shader global zwervr_night),
+## for scripts that switch lights on (vehicle headlights, scripts/characters/vehicle.gd).
+var night := 0.0
+
 var _sun: DirectionalLight3D
 var _fill: DirectionalLight3D
 var _env: Environment
@@ -68,7 +72,8 @@ func _apply() -> void:
 	_sun.light_color = Color(1.0, 0.93 - warm * 0.25, 0.82 - warm * 0.45)
 	_sun.light_energy = 1.55 * light
 	_sun.shadow_enabled = light > 0.05
-	RenderingServer.global_shader_parameter_set("zwervr_night", 1.0 - light)
+	night = 1.0 - light
+	RenderingServer.global_shader_parameter_set("zwervr_night", night)
 	if _fill:
 		# at night the fill light becomes a blue moonlight, just bright enough to
 		# make out the streets and the buildings

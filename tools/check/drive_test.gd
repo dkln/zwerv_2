@@ -33,7 +33,7 @@ func _init() -> void:
 	get_root().add_child(scene)
 	await process_frame
 	var network := car.network
-	if not car.has_node("Model"):
+	if not car.has_node("Carrosserie/Model"):
 		print("FOUT: auto zonder model")
 	var elapsed := 0.0
 	var distance := 0.0

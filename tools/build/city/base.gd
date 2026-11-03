@@ -113,10 +113,10 @@ func _make_scene(node_name: String) -> Node3D:
 	sun.light_energy = 1.55
 	sun.light_color = Color(1.0, 0.93, 0.82)
 	sun.shadow_enabled = true
-	sun.shadow_opacity = 0.82
+	sun.shadow_opacity = 0.9
 	sun.shadow_bias = 0.03
 	sun.shadow_normal_bias = 1.2
-	sun.shadow_blur = 0.4
+	sun.shadow_blur = 0.1   # crisp shadow edges
 	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
 	sun.directional_shadow_max_distance = 500.0
 	root.add_child(sun)

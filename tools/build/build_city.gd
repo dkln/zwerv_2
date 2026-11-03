@@ -1518,8 +1518,9 @@ func _camera(root: Node3D) -> void:
 	lens.owner = root
 
 
-## The car (node Auto, scripts/characters/car.gd) and the camera that follows it (node
-## Volgcamera, F in the game). The car finds its lanes in the ground tiles themselves
+## The car (node Auto, scripts/characters/car.gd), the camera that follows it (node
+## Volgcamera, F in the game) and the see-through buildings while it follows (node
+## Doorkijk, scripts/world/building_fade.gd). The car finds its lanes in the ground tiles themselves
 ## (their "traffic" metadata, scripts/world/road_network.gd).
 func _car(root: Node3D) -> void:
 	var car := Node3D.new()
@@ -1532,6 +1533,11 @@ func _car(root: Node3D) -> void:
 	follow.set_script(load("res://scripts/camera/follow_camera.gd"))
 	root.add_child(follow)
 	follow.owner = root
+	var see_through := Node.new()
+	see_through.name = "Doorkijk"
+	see_through.set_script(load("res://scripts/world/building_fade.gd"))
+	root.add_child(see_through)
+	see_through.owner = root
 
 
 ## Props a waste bin belongs next to: benches, picnic tables, kiosks, tram shelters.

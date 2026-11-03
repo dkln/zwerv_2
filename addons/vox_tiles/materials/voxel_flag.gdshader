@@ -3,6 +3,7 @@ render_mode blend_mix, cull_disabled, depth_draw_opaque, diffuse_burley;
 
 #include "res://addons/vox_tiles/materials/voxel_colour.gdshaderinc"
 #include "res://addons/vox_tiles/materials/voxel_editor.gdshaderinc"
+#include "res://addons/vox_tiles/materials/voxel_fade.gdshaderinc"
 
 
 // Makes flags wave. The further a voxel is from the pole (the middle of the model),
@@ -27,6 +28,11 @@ void vertex() {
 }
 
 void fragment() {
+#ifdef ZWERVR_FADE
+	if (faded_out(VERTEX, NORMAL, INV_VIEW_MATRIX, PROJECTION_MATRIX, FRAGCOORD.xy, vec4(0.0))) {
+		discard;   // a building in front of the followed vehicle (voxel_fade.gdshaderinc)
+	}
+#endif
 	ALBEDO = voxel_albedo(UV, COLOR);
 	ROUGHNESS = editor_view() ? 1.0 : 0.85;
 	SPECULAR = editor_view() ? 0.0 : 0.2;

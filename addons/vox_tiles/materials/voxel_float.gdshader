@@ -3,6 +3,7 @@ render_mode blend_mix, cull_back, depth_draw_opaque, diffuse_burley, specular_sc
 
 #include "res://addons/vox_tiles/materials/voxel_colour.gdshaderinc"
 #include "res://addons/vox_tiles/materials/voxel_editor.gdshaderinc"
+#include "res://addons/vox_tiles/materials/voxel_fade.gdshaderinc"
 
 
 uniform float roughness : hint_range(0.0, 1.0) = 0.9;
@@ -76,6 +77,11 @@ void vertex() {
 }
 
 void fragment() {
+#ifdef ZWERVR_FADE
+	if (faded_out(VERTEX, NORMAL, INV_VIEW_MATRIX, PROJECTION_MATRIX, FRAGCOORD.xy, vec4(0.0))) {
+		discard;   // a building in front of the followed vehicle (voxel_fade.gdshaderinc)
+	}
+#endif
 	vec3 c = voxel_albedo(UV, COLOR);
 	if (tintable > 0.5) {
 		// voxel structure: position within the voxel on this face

@@ -84,8 +84,8 @@ light_energy = 1.55
 shadow_enabled = true
 shadow_bias = 0.03
 shadow_normal_bias = 1.2
-shadow_opacity = 0.82
-shadow_blur = 0.4
+shadow_opacity = 0.9
+shadow_blur = 0.1
 directional_shadow_max_distance = 500.0
 
 [node name="Vullicht" type="DirectionalLight3D" parent="." unique_id=247971148]

@@ -31,6 +31,11 @@ const SHADER = preload("res://scripts/effects/tilt_shift.gdshader")
 	set(v):
 		max_blur = v
 		_apply()
+## Sharpening in the sharp band (0 = none).
+@export_range(0.0, 1.5) var sharpen := 0.45:
+	set(v):
+		sharpen = v
+		_apply()
 ## Extra saturation (1 = unchanged).
 @export_range(0.0, 2.0) var saturation := 1.12:
 	set(v):
@@ -62,3 +67,4 @@ func _apply() -> void:
 	m.set_shader_parameter("falloff", falloff)
 	m.set_shader_parameter("max_blur", max_blur)
 	m.set_shader_parameter("saturation", saturation)
+	m.set_shader_parameter("sharpen", sharpen)

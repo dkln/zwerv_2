@@ -14,6 +14,15 @@ extends RefCounted
 ## a ditch or quay then only casts the shadow of its reeds or wall.
 ##
 ## The work is spread over frames (BUDGET_USEC per frame), so `bake` must be awaited.
+##
+## Extra layers (the Details GridMap: balconies, awnings, signs on the facades) can be
+## baked into the same chunks: no separate layer to draw, and fewer draw calls. With
+## owners on (always with extra layers) every vertex carries the centre of the cell it
+## belongs to in CUSTOM0: its own cell, or for an extra layer the main-layer cell it
+## hangs on. The see-through buildings (scripts/world/building_fade.gd,
+## voxel_fade.gdshaderinc) fade by that cell, so parts that stick out of their cell (bay
+## windows, shop fronts, awnings, signs) fade with their own building. Packed in 4 bytes
+## (RGBA8): world x and z in whole metres, each + 32768 as 16 bits (low byte first).
 
 const Mesher = preload("res://addons/vox_tiles/importer/vox_mesher.gd")
 const Model = preload("res://addons/vox_tiles/importer/voxel_model.gd")
@@ -33,7 +42,9 @@ const CHUNK := 8
 ## cells) cast no shadow; the same height as SHADOW_MIN_HEIGHT in library_builder.gd.
 const LOW_SHADOW := 0.7
 ## Bump when the output changes (invalidates the cache in user://merged).
-const VERSION := 7
+const VERSION := 9
+## Metres around an extra layer's cell centre searched for the main-layer cell it hangs on.
+const OWNER_REACH := 1.0
 ## Compute time per frame in microseconds; the rest continues in following frames.
 const BUDGET_USEC := 6000
 
@@ -42,9 +53,11 @@ const BUDGET_USEC := 6000
 ## copies with the same item IDs), into a new Node3D called `name` with the GridMap's
 ## transform. hide_tops: top faces may also be dropped when a solid cell sits on top
 ## (for layers whose tiles are as tall as the cell). progress (optional) is called with
-## the fraction done (0..1) whenever the work pauses for a frame. Coroutine: await it.
-## Returns null if `gm` is freed before it is done.
-static func bake(gm: GridMap, lib: MeshLibrary, name: String, hide_tops: bool, progress := Callable()) -> Node3D:
+## the fraction done (0..1) whenever the work pauses for a frame. extras: [GridMap,
+## MeshLibrary] pairs of layers baked into the same chunks (see the top). Coroutine:
+## await it. Returns null if `gm` is freed before it is done. owners: see the top.
+static func bake(gm: GridMap, lib: MeshLibrary, name: String, hide_tops: bool, progress := Callable(), extras := [], owners := false) -> Node3D:
+	owners = owners or not extras.is_empty()
 	var out := Node3D.new()
 	out.name = name
 	out.transform = gm.transform
@@ -110,20 +123,61 @@ static func bake(gm: GridMap, lib: MeshLibrary, name: String, hide_tops: bool, p
 		# the low triangles (part.low) of a shadow caster on the ground row cast none
 		var low_key := Vector3i(key.x, key.y, 0) if c.y == ground_row else key
 		var rot := Transform3D(xf.basis, Vector3.ZERO)   # for normals
+		var own_cell = _owner_bytes(gm.transform * gm.map_to_local(Vector3i(c.x, 0, c.z))) if owners else null
 		for part in parts:
 			for g in Mesher.GROUPS:
 				if (hidden >> g) & 1:
 					continue
-				_append(chunks, key, part.mat, part.groups[g], xf, rot)
-				_append(chunks, low_key, part.mat, part.low[g], xf, rot)
+				_append(chunks, key, part.mat, part.groups[g], xf, rot, own_cell)
+				_append(chunks, low_key, part.mat, part.low[g], xf, rot, own_cell)
+	# the extra layers: into the chunk of the main-layer cell they are in, every face
+	# but the bottom, with the cell they hang on
+	var columns := {}
+	for c: Vector3i in cells:
+		columns[Vector2i(c.x, c.z)] = true
+	var to_main := gm.transform.affine_inverse()
+	for extra: Array in extras:
+		var grid: GridMap = extra[0]
+		var extra_lib: MeshLibrary = extra[1]
+		for c: Vector3i in grid.get_used_cells():
+			if Time.get_ticks_usec() - start > BUDGET_USEC:
+				await Engine.get_main_loop().process_frame
+				if not is_instance_valid(gm) or not is_instance_valid(grid):
+					out.free()
+					return null
+				start = Time.get_ticks_usec()
+			var id := grid.get_cell_item(c)
+			var mesh := extra_lib.get_item_mesh(id) as ArrayMesh
+			if mesh == null:
+				continue
+			var b := _basis(grid, grid.get_cell_item_orientation(c), basis_cache)
+			var xf := to_main * grid.transform * Transform3D(b, grid.map_to_local(c)) * extra_lib.get_item_mesh_transform(id)
+			if not cache.has(mesh):
+				cache[mesh] = _split(mesh)
+			var parts: Array = cache[mesh]
+			if parts.is_empty():
+				loose.append([mesh, xf])
+				continue
+			var centre := to_main * grid.transform * grid.map_to_local(c)   # in the main layer's space
+			var owner := _owner(gm, columns, centre)
+			var cell := gm.local_to_map(centre)
+			var cast: int = extra_lib.get_item_mesh_cast_shadow(id) if extra_lib.has_method("get_item_mesh_cast_shadow") else 1
+			var key := Vector3i(floori(cell.x / float(CHUNK)), floori(cell.z / float(CHUNK)), cast)
+			var rot := Transform3D(xf.basis, Vector3.ZERO)
+			for part in parts:
+				for g in Mesher.GROUPS:
+					if g == Mesher.BOTTOM:
+						continue
+					_append(chunks, key, part.mat, part.groups[g], xf, rot, owner)
+					_append(chunks, key, part.mat, part.low[g], xf, rot, owner)
 	# build one mesh per chunk, one surface per material
 	var built := 0
 	for key in chunks:
 		built += 1
 		var chunk: Dictionary = chunks[key]
 		var mesh := ArrayMesh.new()
-		for mat in chunk:
-			var d: Array = chunk[mat]
+		for surface_key in chunk:
+			var d: Array = chunk[surface_key]
 			if d[0].is_empty():
 				continue
 			var arrays := []
@@ -135,8 +189,12 @@ static func bake(gm: GridMap, lib: MeshLibrary, name: String, hide_tops: bool, p
 				arrays[Mesh.ARRAY_TEX_UV] = d[3]
 			if d[4].size() == d[0].size():
 				arrays[Mesh.ARRAY_TEX_UV2] = d[4]
-			mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-			mesh.surface_set_material(mesh.get_surface_count() - 1, mat)
+			var flags := 0
+			if d.size() > 5:
+				arrays[Mesh.ARRAY_CUSTOM0] = d[5]
+				flags = Mesh.ARRAY_CUSTOM_RGBA8_UNORM << Mesh.ARRAY_FORMAT_CUSTOM0_SHIFT
+			mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays, [], {}, flags)
+			mesh.surface_set_material(mesh.get_surface_count() - 1, surface_key)
 		if mesh.get_surface_count() == 0:
 			continue
 		if Time.get_ticks_usec() - start > BUDGET_USEC:
@@ -157,8 +215,9 @@ static func bake(gm: GridMap, lib: MeshLibrary, name: String, hide_tops: bool, p
 
 
 ## Appends the face group `gr` ([v, n, c, uv, uv2], mesh space) to the surface of `mat`
-## in chunk `key`, transformed by `xf` (normals by `rot`).
-static func _append(chunks: Dictionary, key: Vector3i, mat: Material, gr: Array, xf: Transform3D, rot: Transform3D) -> void:
+## in chunk `key`, transformed by `xf` (normals by `rot`). `owner`: the 4 CUSTOM0 bytes
+## of the cell the faces belong to (_owner_bytes), or null when baking without owners.
+static func _append(chunks: Dictionary, key: Vector3i, mat: Material, gr: Array, xf: Transform3D, rot: Transform3D, owner = null) -> void:
 	if gr[0].is_empty():
 		return
 	var chunk: Dictionary = chunks.get(key, {})
@@ -166,12 +225,49 @@ static func _append(chunks: Dictionary, key: Vector3i, mat: Material, gr: Array,
 	var target: Array = chunk.get(mat, [])
 	if target.is_empty():
 		target = [PackedVector3Array(), PackedVector3Array(), PackedColorArray(), PackedVector2Array(), PackedVector2Array()]
+		if owner != null:
+			target.append(PackedByteArray())
 		chunk[mat] = target
+	if owner != null:
+		var custom: PackedByteArray = target[5]
+		var start := custom.size()
+		custom.resize(start + gr[0].size() * 4)
+		for vertex in gr[0].size():
+			for byte_index in 4:
+				custom[start + vertex * 4 + byte_index] = owner[byte_index]
 	target[0].append_array(xf * gr[0])
 	target[1].append_array(rot * gr[1])
 	target[2].append_array(gr[2])
 	target[3].append_array(gr[3])   # atlas UVs
 	target[4].append_array(gr[4])   # tile-local voxel coordinates (relief) stay valid in the chunk
+
+
+## The main-layer cell an extra layer's cell (centre `centre`, main layer space) hangs
+## on: the occupied column under it, or the nearest one within OWNER_REACH metres. As
+## CUSTOM0 bytes (_owner_bytes) of that cell's centre, or all 0 if there is none (the
+## shader then uses the pixel's own cell).
+static func _owner(gm: GridMap, columns: Dictionary, centre: Vector3) -> PackedByteArray:
+	var best := Vector2i.ZERO
+	var best_distance := INF
+	for dx in [0.0, -OWNER_REACH, OWNER_REACH]:
+		for dz in [0.0, -OWNER_REACH, OWNER_REACH]:
+			var cell := gm.local_to_map(centre + Vector3(dx, 0.0, dz))
+			var column := Vector2i(cell.x, cell.z)
+			var distance: float = dx * dx + dz * dz
+			if columns.has(column) and distance < best_distance:
+				best = column
+				best_distance = distance
+	if best_distance == INF:
+		return PackedByteArray([0, 0, 0, 0])
+	return _owner_bytes(gm.transform * gm.map_to_local(Vector3i(best.x, 0, best.y)))
+
+
+## CUSTOM0 bytes for a cell centre at `world` (metres): x and z rounded to whole metres,
+## + 32768, as 16 bits each, low byte first (see the top).
+static func _owner_bytes(world: Vector3) -> PackedByteArray:
+	var x := clampi(roundi(world.x) + 32768, 1, 65535)
+	var z := clampi(roundi(world.z) + 32768, 1, 65535)
+	return PackedByteArray([x & 255, x >> 8, z & 255, z >> 8])
 
 
 ## Cached Basis for a GridMap orthogonal orientation index.

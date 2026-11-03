@@ -3,6 +3,7 @@ render_mode blend_mix, cull_back, depth_draw_opaque, specular_schlick_ggx;
 
 #include "res://addons/vox_tiles/materials/voxel_colour.gdshaderinc"
 #include "res://addons/vox_tiles/materials/voxel_editor.gdshaderinc"
+#include "res://addons/vox_tiles/materials/voxel_fade.gdshaderinc"
 
 
 // Glass that only looks like glass: it is opaque (cheaper, and you never see into the
@@ -19,6 +20,16 @@ uniform vec3 city : source_color = vec3(0.24, 0.25, 0.26);
 // 1 = a window of a building (library_builder.gd sets it on tiles with little glass):
 // a faked room behind it; 0 = a large glass surface: tinted depth
 uniform float interior = 0.0;
+// roughness for the sun's highlight: low = a small sharp glint, higher = a broader
+// sheen visible over more angles (vehicle windows, scripts/characters/vehicle.gd)
+uniform float glint_roughness : hint_range(0.0, 1.0) = 0.04;
+// brightness of what is behind large glass (lower = darker tinted glass)
+uniform float depth : hint_range(0.0, 1.0) = 0.35;
+// strength of the diagonal streaks of light (in the faked reflection)
+uniform float streaks : hint_range(0.0, 1.0) = 0.12;
+// a light sheen in those same streaks, on top of everything: a flat voxel pane has one
+// normal, so the sun's highlight is even over it; the sheen makes it read as glass
+uniform float sheen : hint_range(0.0, 1.0) = 0.0;
 
 // sky colours come from the day cycle (Project > Shader Globals)
 global uniform vec4 zwervr_sky_top : source_color;
@@ -31,11 +42,24 @@ float hash2(vec2 p) {
 	return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
 }
 
+#ifdef ZWERVR_FADE
+// the building a baked facade detail hangs on (voxel_fade.gdshaderinc)
+varying vec4 fade_owner;
+#endif
+
 void vertex() {
+#ifdef ZWERVR_FADE
+	fade_owner = fade_owner_from(CUSTOM0);
+#endif
 	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 }
 
 void fragment() {
+#ifdef ZWERVR_FADE
+	if (faded_out(VERTEX, NORMAL, INV_VIEW_MATRIX, PROJECTION_MATRIX, FRAGCOORD.xy, fade_owner)) {
+		discard;   // a building in front of the followed vehicle (voxel_fade.gdshaderinc)
+	}
+#endif
 	vec3 n = normalize((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz);
 	vec3 v = normalize((INV_VIEW_MATRIX * vec4(VIEW, 0.0)).xyz);
 	vec3 r = reflect(-v, n);
@@ -43,7 +67,7 @@ void fragment() {
 	surroundings = mix(city, surroundings, smoothstep(-0.6, 0.08, r.y));
 	// diagonal streaks of light that move with the viewing angle
 	float streak = smoothstep(0.82, 1.0, sin((wpos.x + wpos.z) * 0.9 + wpos.y * 1.4 + r.x * 3.0) * 0.5 + 0.5);
-	surroundings += streak * 0.12;
+	surroundings += streak * streaks;
 	float fres = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 3.0);
 	float s = editor_view() ? 0.0 : clamp(reflection + fres * 0.4, 0.0, 1.0);   // editor: no reflection
 	vec3 glass = voxel_albedo(UV, COLOR);
@@ -63,11 +87,11 @@ void fragment() {
 		glow = vec3(1.0, 0.78, 0.5) * (0.6 + 0.6 * h2) * lit;
 	} else {
 		// large glass: the glass colour, dimmed as if you looked into a deep space
-		behind = glass * 0.35;
+		behind = glass * depth;
 	}
 	ALBEDO = behind * (1.0 - s);
-	EMISSION = surroundings * s + glow * (1.0 - s);
-	ROUGHNESS = editor_view() ? 1.0 : 0.04;
+	EMISSION = surroundings * s + glow * (1.0 - s) + vec3(streak * sheen) * (editor_view() ? 0.0 : 1.0);
+	ROUGHNESS = editor_view() ? 1.0 : glint_roughness;
 	METALLIC = 0.0;
-	SPECULAR = editor_view() ? 0.0 : 0.6;
+	SPECULAR = editor_view() ? 0.0 : mix(0.6, 1.0, smoothstep(0.04, 0.3, glint_roughness));
 }

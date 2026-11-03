@@ -23,6 +23,14 @@ extends Node3D
 ## Model: the props library item `model`, centred on the node, front along +Z, lifted by
 ## `model_lift`; its wheels (item `wheel_model`, at `wheel_positions`) roll with the
 ## distance driven, and the front ones (positions with z > 0) steer into the corners.
+## Windows: the glass of the model gets dark tinted glass with a broad sun glint and a
+## sheen that slides over it as the vehicle moves (voxel_glass.gdshader), no mirroring.
+## Lamps (glowing blocks over the lamp voxels of the model, at the `*_positions`):
+## - headlights, with a spotlight on the road, once it gets dark (the Dagcyclus node);
+## - tail lights, dim at night, bright as brake lights while it brakes or stands still;
+## - indicators (left: x > 0, right: x < 0, as the vehicle faces +Z), blinking from
+##   INDICATE_AHEAD metres before a turn at a crossing, before moving over into another
+##   lane and before turning round, until it has gone round; not for bends in the road.
 
 @export_group("Speed")
 ## Top speed of the vehicle itself (km/h); it never goes faster than the speed limit.
@@ -69,7 +77,35 @@ extends Node3D
 @export var max_steering_degrees := 35.0
 ## How quickly the steering follows the corner (1/s).
 @export var steering_rate := 8.0
+@export_group("Lamps")
+## Centres (metres on the vehicle) and size of the lamp blocks; empty = no such lamps.
+@export var headlight_positions := PackedVector3Array()
+@export var headlight_size := Vector3(0.3, 0.12, 0.03)
+@export var tail_light_positions := PackedVector3Array()
+@export var tail_light_size := Vector3(0.3, 0.2, 0.03)
+@export var indicator_positions := PackedVector3Array()
+@export var indicator_size := Vector3(0.1, 0.1, 0.1)
+## From this darkness (0 = day, 1 = night, the Dagcyclus node) the headlights are on.
+@export_range(0.0, 1.0) var lights_on_from := 0.35
 
+## Material of the wheels: draws and turns the spokes (the wheel model stays still).
+const WHEEL_SHADER = preload("res://addons/vox_tiles/materials/voxel_wheel.gdshader")
+## Metres before a turn, a moving over or a turning round from which it indicates.
+const INDICATE_AHEAD := 30.0
+## Seconds of one blink of the indicators (on and off).
+const BLINK_TIME := 0.7
+## Metres past the corner cell's centre before the indicator stops (it has gone round).
+const INDICATE_AFTER := 2.5
+## Lamp colours and brightness (emission energy); the brake light is the tail light, brighter.
+const HEADLIGHT_COLOUR := Color(1.0, 0.97, 0.88)
+const TAIL_COLOUR := Color(1.0, 0.08, 0.04)
+const INDICATOR_COLOUR := Color(1.0, 0.5, 0.05)
+const TAIL_ENERGY := 1.2
+const BRAKE_ENERGY := 6.0
+## Below this speed (m/s) a vehicle counts as standing still (brake lights on).
+const STANDING_SPEED := 0.3
+## Seconds the brake lights stay on after it last slowed down (no flicker in a corner).
+const BRAKE_HOLD := 0.4
 ## Metres over which the corners of the route are rounded off.
 const ROUNDING := 1.6
 ## Metres it plans ahead at least, beyond what it needs to brake to a stop.
@@ -99,6 +135,24 @@ var _wheels: Array[Node3D] = []      # per wheel: the steering pivot, its child 
 var _wheel_roll := 0.0               # radians the wheels have turned
 var _steering := 0.0                 # current steering angle (radians)
 var _last_yaw := 0.0
+## The drawn body (model and wheels), placed every frame between the last two physics
+## steps, so the vehicle moves smoothly at any frame rate while it drives at a fixed step.
+var _body: Node3D
+var _tick_previous := Transform3D.IDENTITY   # vehicle transform after the previous physics step
+var _tick_current := Transform3D.IDENTITY    # and after the last one
+var _roll_previous := 0.0       # wheel roll and steering after the previous physics step
+var _steering_previous := 0.0
+var _day_cycle: Node                 # the Dagcyclus node (how dark it is), if any
+var _headlights: Array[MeshInstance3D] = []
+var _tail_lights: Array[MeshInstance3D] = []
+var _indicators: Array[MeshInstance3D] = []
+var _beam: SpotLight3D               # the headlights' light on the road
+var _tail_material: StandardMaterial3D
+## Set every physics step: braking (or standing still), and the side it indicates
+## (-1 left, 1 right, 0 none).
+var braking_now := false
+var indicating := 0
+var _brake_hold := 0.0                # seconds the brake lights stay on
 
 
 func _ready() -> void:
@@ -107,10 +161,17 @@ func _ready() -> void:
 	_lights = root.get_node_or_null("Verkeerslichten") if obeys_lights else null
 	_random.seed = route_seed
 	var props := root.get_node_or_null("Props") as GridMap
+	_body = Node3D.new()
+	_body.name = "Carrosserie"
+	_body.top_level = true
+	add_child(_body)
 	_add_model(props)
 	_add_wheels(props)
+	_add_lamps()
+	_day_cycle = root.get_node_or_null("Dagcyclus")
 	if network.is_empty():
 		set_physics_process(false)
+		_snap_body()
 		return
 	var first := network.nearest(start_cell, start_heading)
 	_append(first - Vector3i(start_heading.x, 0, start_heading.y), start_heading)
@@ -119,21 +180,168 @@ func _ready() -> void:
 	_plan()
 	_place()
 	_last_yaw = global_basis.get_euler().y
+	_snap_body()
 
 
 func _physics_process(delta: float) -> void:
+	_tick_previous = _tick_current
+	var speed_before := speed
 	_plan()
 	var target := _target_speed(delta)
 	if speed < target:
 		speed = minf(target, speed + acceleration * delta)
 	else:
 		speed = maxf(target, speed - braking * 1.5 * delta)
+	var standing := speed < STANDING_SPEED and target < STANDING_SPEED
+	_brake_hold = BRAKE_HOLD if speed < speed_before - 0.0001 else maxf(_brake_hold - delta, 0.0)
+	braking_now = standing or _brake_hold > 0.0
 	var before := global_position
 	_distance += speed * delta
 	_drop_passed_cells()
 	_place()
 	velocity = (global_position - before) / maxf(delta, 0.0001)
+	_tick_current = global_transform
 	_turn_wheels(speed * delta, delta)
+	indicating = _indicator_side()
+
+
+## Draws the body between the last two physics steps (the frame rate differs from the
+## physics rate, so placing it at the last step would make it judder).
+func _process(delta: float) -> void:
+	var fraction := Engine.get_physics_interpolation_fraction()
+	_body.global_transform = _tick_previous.interpolate_with(_tick_current, fraction)
+	var roll := lerp_angle(_roll_previous, _wheel_roll, fraction)
+	var steering := lerpf(_steering_previous, _steering, fraction)
+	# the spokes blur once the wheel turns more than about a quarter radian a frame (they
+	# would seem to stand still or run backwards); delta is this frame's time
+	var turn_per_frame := speed / maxf(wheel_radius, 0.01) * delta
+	var blur := smoothstep(0.25, 0.7, turn_per_frame)
+	for wheel in _wheels:
+		wheel.rotation.y = steering if wheel.position.z > 0.0 and max_steering_degrees > 0.0 else 0.0
+		var instance := wheel.get_child(0) as GeometryInstance3D
+		# the wheel model itself never turns: voxel_wheel.gdshader turns its spokes
+		instance.set_instance_shader_parameter("roll", -roll)
+		instance.set_instance_shader_parameter("spin_blur", blur)
+	_update_lamps()
+
+
+## Where the vehicle is drawn this frame (for a camera that follows it).
+func drawn_position() -> Vector3:
+	return _body.global_position if _body else global_position
+
+
+## Puts the body on the vehicle without interpolation (at the start).
+func _snap_body() -> void:
+	_tick_previous = global_transform
+	_tick_current = global_transform
+	_body.global_transform = global_transform
+
+
+# ------------------------------------------------------------------ lamps
+
+## The lamp blocks (hidden until they are on) and the headlight beam.
+func _add_lamps() -> void:
+	for position in headlight_positions:
+		_headlights.append(_lamp(position, headlight_size, _glow(HEADLIGHT_COLOUR, 3.0)))
+	_tail_material = _glow(TAIL_COLOUR, TAIL_ENERGY)
+	for position in tail_light_positions:
+		_tail_lights.append(_lamp(position, tail_light_size, _tail_material))
+	var indicator_material := _glow(INDICATOR_COLOUR, 5.0)
+	for position in indicator_positions:
+		_indicators.append(_lamp(position, indicator_size, indicator_material))
+	if not headlight_positions.is_empty():
+		_beam = SpotLight3D.new()
+		_beam.name = "Koplampen"
+		var front := 0.0
+		for position in headlight_positions:
+			front = maxf(front, position.z)
+		_beam.position = Vector3(0.0, headlight_positions[0].y + 0.2, front)
+		# pointing ahead and a little down (a spotlight shines along its -Z)
+		_beam.basis = Basis.looking_at(Vector3(0.0, -0.25, 1.0))
+		_beam.light_color = HEADLIGHT_COLOUR
+		_beam.light_energy = 6.0
+		_beam.spot_range = 22.0
+		_beam.spot_angle = 32.0
+		_beam.spot_attenuation = 0.6
+		_beam.shadow_enabled = false
+		_beam.visible = false
+		_body.add_child(_beam)
+
+
+func _glow(colour: Color, energy: float) -> StandardMaterial3D:
+	var material := StandardMaterial3D.new()
+	material.albedo_color = colour
+	material.emission_enabled = true
+	material.emission = colour
+	material.emission_energy_multiplier = energy
+	return material
+
+
+func _lamp(centre: Vector3, size: Vector3, material: Material) -> MeshInstance3D:
+	var box := BoxMesh.new()
+	box.size = size
+	var lamp := MeshInstance3D.new()
+	lamp.mesh = box
+	lamp.material_override = material
+	lamp.position = centre
+	lamp.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	lamp.visible = false
+	_body.add_child(lamp)
+	return lamp
+
+
+## Switches the lamps by the light of day, the braking and the indicating (every frame).
+func _update_lamps() -> void:
+	var night: float = _day_cycle.get("night") if _day_cycle else 0.0
+	var lights_on := night >= lights_on_from
+	for lamp in _headlights:
+		lamp.visible = lights_on
+	if _beam:
+		_beam.visible = lights_on
+	for lamp in _tail_lights:
+		lamp.visible = lights_on or braking_now
+	if _tail_material:
+		_tail_material.emission_energy_multiplier = BRAKE_ENERGY if braking_now else TAIL_ENERGY
+	var blink_on := fmod(Time.get_ticks_msec() / 1000.0, BLINK_TIME) < BLINK_TIME * 0.5
+	for lamp in _indicators:
+		var on_left := lamp.position.x > 0.0
+		lamp.visible = blink_on and indicating != 0 and on_left == (indicating < 0)
+
+
+## The side the vehicle should indicate now: -1 left, 1 right, 0 none. Looks along the
+## planned route up to INDICATE_AHEAD metres for the first turn at a crossing, moving
+## over into the lane alongside, or turning round; keeps indicating until it is past.
+func _indicator_side() -> int:
+	var last := _route_cells.size() - 1
+	for index in range(1, last + 1):
+		var at := _route_distances[index]
+		if at - _distance > INDICATE_AHEAD:
+			break
+		if _distance > at + INDICATE_AFTER:
+			continue   # already gone round
+		var heading := _route_headings[index - 1]
+		var side := 0
+		if _route_headings[index] != heading:
+			# a change of heading: a turn at a crossing, or part of turning round
+			var turning_round := false
+			for later in range(index, mini(index + 3, last + 1)):
+				turning_round = turning_round or _route_headings[later] == -heading
+			if turning_round:
+				side = -1   # turning round goes over the left (driving on the right)
+			elif network.is_crossing(_route_cells[index]) or network.is_crossing(_route_cells[index - 1]):
+				side = _side_of(heading, _route_headings[index])
+		else:
+			# the same heading but a step sideways: moving over into the lane alongside
+			var step := _route_cells[index] - _route_cells[index - 1]
+			side = _side_of(heading, Vector2i(step.x, step.z))
+		if side != 0:
+			return side
+	return 0
+
+
+## Side of `towards` relative to `heading` (map x and z): 1 right, -1 left, 0 ahead or behind.
+static func _side_of(heading: Vector2i, towards: Vector2i) -> int:
+	return signi(heading.x * towards.y - heading.y * towards.x)
 
 
 # ------------------------------------------------------------------ hooks
@@ -371,11 +579,21 @@ func _add_model(props: GridMap) -> void:
 	instance.name = "Model"
 	instance.mesh = mesh
 	instance.transform = Transform3D(mesh_transform.basis, mesh_transform.origin - Vector3(middle.x, box.position.y - model_lift, middle.z))
-	add_child(instance)
+	for surface in mesh.get_surface_count():
+		var material := mesh.surface_get_material(surface) as ShaderMaterial
+		if material and material.shader and material.shader.resource_path.ends_with("voxel_glass.gdshader"):
+			var windows := material.duplicate() as ShaderMaterial
+			windows.set_shader_parameter("interior", 0.0)
+			windows.set_shader_parameter("reflection", 0.05)
+			windows.set_shader_parameter("depth", 0.1)
+			windows.set_shader_parameter("glint_roughness", 0.1)
+			windows.set_shader_parameter("sheen", 0.4)
+			instance.set_surface_override_material(surface, windows)
+	_body.add_child(instance)
 
 
-## The wheels: per position a pivot (steers about y) with a spinning node (rolls about
-## x) holding the wheel mesh centred on it.
+## The wheels: per position a pivot (steers about y) holding the wheel mesh centred on
+## it. The mesh does not roll: its material (voxel_wheel.gdshader) turns the spokes.
 func _add_wheels(props: GridMap) -> void:
 	if wheel_model == "" or props == null or props.mesh_library == null:
 		return
@@ -387,18 +605,26 @@ func _add_wheels(props: GridMap) -> void:
 	var mesh := library.get_item_mesh(item)
 	var mesh_transform := library.get_item_mesh_transform(item)
 	var middle := (mesh_transform * mesh.get_aabb()).get_center()
+	var material := ShaderMaterial.new()
+	material.shader = WHEEL_SHADER
+	var box := mesh.get_aabb()
+	material.set_shader_parameter("centre", box.get_center())
+	# the axle is the thinnest side of the wheel (in the mesh's own coordinates)
+	var axle_index := box.size.min_axis_index()
+	var axle := Vector3.ZERO
+	axle[axle_index] = 1.0
+	material.set_shader_parameter("axle", axle)
 	for wheel_index in wheel_positions.size():
 		var pivot := Node3D.new()
 		pivot.name = "Wiel%d" % (wheel_index + 1)
 		pivot.position = wheel_positions[wheel_index]
-		var spin := Node3D.new()
-		spin.name = "Draai"
 		var instance := MeshInstance3D.new()
+		instance.name = "Band"
 		instance.mesh = mesh
+		instance.material_override = material
 		instance.transform = Transform3D(mesh_transform.basis, mesh_transform.origin - middle)
-		spin.add_child(instance)
-		pivot.add_child(spin)
-		add_child(pivot)
+		pivot.add_child(instance)
+		_body.add_child(pivot)
 		_wheels.append(pivot)
 
 
@@ -408,6 +634,8 @@ func _add_wheels(props: GridMap) -> void:
 func _turn_wheels(distance_driven: float, delta: float) -> void:
 	if _wheels.is_empty():
 		return
+	_roll_previous = _wheel_roll
+	_steering_previous = _steering
 	_wheel_roll = fmod(_wheel_roll + distance_driven / maxf(wheel_radius, 0.01), TAU)
 	var yaw := global_basis.get_euler().y
 	var yaw_change := wrapf(yaw - _last_yaw, -PI, PI)
@@ -422,6 +650,4 @@ func _turn_wheels(distance_driven: float, delta: float) -> void:
 		var max_angle := deg_to_rad(max_steering_degrees)
 		wanted = clampf(atan((front - back) * yaw_change / distance_driven), -max_angle, max_angle)
 	_steering = lerpf(_steering, wanted, 1.0 - exp(-steering_rate * delta))
-	for wheel in _wheels:
-		wheel.rotation.y = _steering if wheel.position.z > 0.0 and max_steering_degrees > 0.0 else 0.0
-		(wheel.get_child(0) as Node3D).rotation.x = _wheel_roll
+	# the wheels themselves are turned every frame in _process, between this step and the last

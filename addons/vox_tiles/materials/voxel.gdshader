@@ -3,6 +3,7 @@ render_mode blend_mix, cull_back, depth_draw_opaque, diffuse_burley, specular_sc
 
 #include "res://addons/vox_tiles/materials/voxel_colour.gdshaderinc"
 #include "res://addons/vox_tiles/materials/voxel_editor.gdshaderinc"
+#include "res://addons/vox_tiles/materials/voxel_fade.gdshaderinc"
 
 uniform float roughness : hint_range(0.0, 1.0) = 0.9;
 uniform float metallic : hint_range(0.0, 1.0) = 0.0;
@@ -318,7 +319,15 @@ float cracks_and_pits(vec2 p, vec3 t, vec3 b, inout vec3 n, inout vec3 c, float 
 	return rougher;
 }
 
+#ifdef ZWERVR_FADE
+// the building a baked facade detail hangs on (voxel_fade.gdshaderinc)
+varying vec4 fade_owner;
+#endif
+
 void vertex() {
+#ifdef ZWERVR_FADE
+	fade_owner = fade_owner_from(CUSTOM0);
+#endif
 	// shift slightly inwards, so edge voxels fall in the right cell
 	wpos = (MODEL_MATRIX * vec4(VERTEX - NORMAL * 0.01, 1.0)).xyz;
 	vpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
@@ -326,6 +335,11 @@ void vertex() {
 }
 
 void fragment() {
+#ifdef ZWERVR_FADE
+	if (faded_out(VERTEX, NORMAL, INV_VIEW_MATRIX, PROJECTION_MATRIX, FRAGCOORD.xy, fade_owner)) {
+		discard;   // a building in front of the followed vehicle (voxel_fade.gdshaderinc)
+	}
+#endif
 	vec3 base = voxel_albedo(UV, COLOR);   // colour * AO
 	vec3 c = base;
 	if (tintable > 0.5) {

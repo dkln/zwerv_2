@@ -51,9 +51,47 @@ noord-zuid groen, oranje, alles rood, oost-west groen, oranje, alles rood. De ri
 van een licht volgt uit zijn draaiing; tijden zijn instelbaar op de node.
 
 Er rijdt een auto door de stad: node `Auto` (`scripts/characters/car.gd`). Druk op F en
-de camera volgt hem (node `Volgcamera`, `scripts/camera/follow_camera.gd`). Die zoomt
-uit naarmate de auto harder rijdt en gaat mee de tunnelbak in. Een andere toets geeft
-je de vrije camera terug.
+de camera volgt hem (node `Volgcamera`, `scripts/camera/follow_camera.gd`). Die jaagt de
+auto niet elk frame na: elke seconde (`retarget_time`) kiest hij een punt waar de auto
+zo ongeveer zal zijn (`lead_time`, begrensd tot `max_lead` van het beeld) en glijdt daar
+op een kritisch gedempte veer heen (`glide_time`), zodat zijn snelheid nooit verspringt.
+Hij zoomt van 16 m in beeld bij stilstand (`zoom_still`) tot 55 m (`zoom_fast`) en gaat
+mee de tunnelbak in. Om de 20 tot 35 s (`closeup_every`) maakt hij een close-up: hij
+zoomt in tot 7 m, zakt wat lager en zwaait om de auto heen (`closeup_*`, uit met
+`closeups`). Een andere toets geeft je de vrije camera terug. De auto rijdt met een vaste
+stap van 60 Hz; zijn carrosserie (node `Carrosserie`) wordt elk frame tussen de laatste
+twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
+- Doorkijk (node `Doorkijk`, `scripts/world/building_fade.gd`): zolang de camera de auto
+  volgt, vervaagt alles wat tussen de auto en de camera staat, elk object als geheel, en
+  komt terug als het zicht weer vrij is:
+  - gebouwen (aaneengesloten cellen van de laag Gebouwen), met alles wat uit hun cel
+    steekt (erkers, winkelpuien, luifels) en hun gevel-details: de samengevoegde
+    gebouwen dragen per vertex de cel waar ze bij horen (`layer_baker.gd`, CUSTOM0) en de
+    shader kijkt die cel op in een fade-kaart (`voxel_fade.gdshaderinc`);
+  - props (bushokjes, lantaarnpalen, bomen): een blokkerende prop wordt tijdelijk uit de
+    GridMap getild in een eigen MeshInstance3D die vervaagt, en daarna teruggezet.
+  Alleen wat vervaagt krijgt een shadervariant die pixels weglaat (`ZWERVR_FADE`): zo'n
+  shader is op een Apple-GPU flink trager. Instelbaar: `fade_time`, `strongest_fade`,
+  `test_reach`, `props_reach`.
+- Details (laag `Details`): je bouwt ze als losse laag, maar `DetailNiveau` bakt ze bij het
+  laden in dezelfde stukken als de gebouwen (`merge_with`), ook per LOD-niveau. Dat
+  scheelt een laag tekenen en draw calls, en elk detail vervaagt met zijn eigen gebouw.
+- Lampen (`vehicle.gd`, posities in `car.gd`): koplampen met een lichtbundel op de weg
+  zodra het donker wordt (`night` van de `Dagcyclus`), achterlichten 's nachts, felle
+  remlichten bij afremmen en stilstaan, en richtingaanwijzers die knipperen vanaf 30 m
+  voor een afslag op een kruising, voor het invoegen in een andere rijstrook en voor
+  keren (niet in gewone bochten van de weg).
+- Ruiten: getint glas met een zonneglinstering en een glans die over de ruit schuift als
+  de auto rijdt (`voxel_glass.gdshader`: `glint_roughness`, `depth`, `sheen`), geen
+  spiegeling.
+- Wielen: het wielmodel draait zelf niet; `voxel_wheel.gdshader` tekent band, velg en
+  spaken en draait de spaken mee (`roll`). Bij hoge snelheid vervagen ze tot een
+  draaiwaas, anders lijken ze stil te staan of achteruit te draaien. De voorwielen sturen
+  mee in de bocht.
+- Beeld: harde zonneschaduwen (`shadow_blur` 0,1), een lichte verscherping in de scherpe
+  band van de tilt-shift (`sharpen`), grasprieten pas onder 24 m in beeld. De
+  schaduwafstand verandert alleen in stappen (`SHADOW_DISTANCE_SLACK` in
+  `level_of_detail.gd`), anders kruipen de schaduwranden bij een zoomende camera.
 - Wegennet (`scripts/world/road_network.gd`, `RoadNetwork`): het wegennet leest de
   rijstroken uit de grondtiles zelf. Dat werkt op elke kaart, ook als je hem met de hand
   bouwt. Elke tile waarop gereden wordt, heeft in zijn `.tile.json` een blok `traffic`,

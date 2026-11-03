@@ -58,7 +58,6 @@ cam_omlaag={
 
 [rendering]
 
-lights_and_shadows/directional_shadow/soft_shadow_filter_quality=3
 driver/depth_prepass/enable=false
 camera/depth_of_field/depth_of_field_bokeh_shape=0
 camera/depth_of_field/depth_of_field_bokeh_quality=0
@@ -117,6 +116,14 @@ zwervr_ground_types={
 zwervr_ground_edges={
 "type": "float",
 "value": 1.0
+}
+zwervr_fade_map={
+"type": "sampler2D",
+"value": ""
+}
+zwervr_fade_area={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
 }
 zwervr_sky_top={
 "type": "color",

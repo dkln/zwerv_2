@@ -36,6 +36,14 @@ signal merge_finished
 ## These layers are merged at startup into large meshes without hidden
 ## faces (scripts/world/layer_baker.gd); the GridMap itself stays for collisions and editing.
 @export var merge_layers: Array[String] = ["Gebouwen", "Grond"]
+## Layers baked into the merged meshes of another layer, per merged layer: the facade
+## details go into the building chunks (fewer draw calls, LOD for the details, and they
+## fade with their own building, scripts/world/building_fade.gd). The extra layer's own
+## GridMap stays (hidden) for editing.
+@export var merge_with := {"Gebouwen": ["Details"]}
+## Merged layers whose vertices carry the cell they belong to, for the see-through
+## buildings (scripts/world/building_fade.gd); see layer_baker.gd.
+@export var fade_layers: Array[String] = ["Gebouwen"]
 ## Layers in which tiles are as tall as the cell (top face may go under a neighbouring block).
 @export var hide_top_layers: Array[String] = ["Gebouwen"]
 ## From this zoom size (metres in view, see scripts/camera/iso_camera.gd) coarse tiles are used.
@@ -48,6 +56,11 @@ signal merge_finished
 @export var props_until := 300.0
 ## Shadow distance = camera-ground distance + factor * zoom size (metres).
 @export var shadow_factor := 1.0
+## The shadow distance only changes when it is this share too short or too long, and
+## then to this share more than needed: a shadow distance that changes every frame (a
+## camera that zooms smoothly) re-divides the shadow cascades every frame, so the edges
+## of all shadows crawl and flicker; a fixed one keeps them still.
+const SHADOW_DISTANCE_SLACK := 1.25
 ## Depth of field (tilt-shift) scales with the distance to the ground.
 @export var depth_of_field := true
 ## From this zoom size (metres in view) the depth of field is off; it fades out over the
@@ -78,6 +91,8 @@ var _progress := {}   # "<layer><suffix>" -> fraction done (0..1) of every merge
 var _generation := 0
 ## Blur amount of the camera attributes as set in the scene (faded by the zoom).
 var _dof_amount := 0.0
+## Extra layers baked into another layer's meshes (merge_with): name -> that layer.
+var _baked_into := {}
 
 
 func _ready() -> void:
@@ -128,6 +143,7 @@ func clear() -> void:
 					p[i].queue_free()
 	_pairs.clear()
 	_names.clear()
+	_baked_into.clear()
 	_progress.clear()
 	_level = -1
 	if _screen:
@@ -233,18 +249,33 @@ func _merge(index: int, layer_name: String, gm: GridMap) -> void:
 	var generation := _generation
 	var data: Dictionary = gm.get("data")   # raw cell data, hashed for the cache key
 	var root := get_parent()
+	var extra_grids: Array[GridMap] = []
+	for extra_name in merge_with.get(layer_name, []):
+		var extra := root.get_node_or_null(str(extra_name)) as GridMap
+		if extra and extra.mesh_library:
+			extra_grids.append(extra)
 	var result := []
 	for suffix in LEVEL_SUFFIXES:
 		var path := _library_path(gm, suffix)
 		if not ResourceLoader.exists(path):
 			result.append(null)
 			continue
+		# the extra layers at this level (their normal library if they have no such level)
+		var extras := []
+		var extras_key := 0
+		for extra in extra_grids:
+			var extra_path := _library_path(extra, suffix)
+			if not ResourceLoader.exists(extra_path):
+				extra_path = extra.mesh_library.resource_path
+			extras.append([extra, load(extra_path)])
+			extras_key = hash([extras_key, extra.get("data").get("cells", PackedInt32Array()), extra.transform,
+				FileAccess.get_modified_time(extra_path)])
 		# everything before "__" identifies scene + layer + level, the rest the content
 		var scene := root.scene_file_path.get_file().get_basename()
 		if gm.has_meta("part"):
 			scene += "_" + str(gm.get_meta("part"))
-		var key := "%s_%s%s__%x_%x_%d" % [scene, layer_name, suffix,
-			hash(data.get("cells", PackedInt32Array())), hash(gm.transform),
+		var key := "%s_%s%s__%x_%x_%x_%d" % [scene, layer_name, suffix,
+			hash(data.get("cells", PackedInt32Array())), hash(gm.transform), extras_key,
 			FileAccess.get_modified_time(path) + Bakker.VERSION]
 		var cache := CACHE_DIR.path_join(key + ".scn")
 		var baked: Node3D
@@ -263,7 +294,7 @@ func _merge(index: int, layer_name: String, gm: GridMap) -> void:
 				baked = ps.instantiate()
 		if baked == null:
 			baked = await Bakker.bake(gm, load(path), layer_name + "_merged" + suffix, layer_name in hide_top_layers,
-				func(fraction: float): _set_progress(job, fraction))
+				func(fraction: float): _set_progress(job, fraction), extras, layer_name in fade_layers)
 			if not is_inside_tree() or generation != _generation or baked == null:
 				if baked:
 					baked.free()
@@ -280,6 +311,9 @@ func _merge(index: int, layer_name: String, gm: GridMap) -> void:
 	var old: Array = _pairs[index]
 	_pairs[index] = result
 	gm.visible = false
+	for extra in extra_grids:
+		extra.visible = false
+		_baked_into[str(extra.name)] = layer_name
 	for i in old.size():
 		if old[i] != null and old[i] != gm:
 			old[i].queue_free()
@@ -338,24 +372,29 @@ func _process(_delta: float) -> void:
 			for i in p.size():
 				if p[i] != null:
 					p[i].visible = shown and i == choice
-		# culled layers without LOD copies are toggled directly
+		# culled layers without LOD copies are toggled directly (not the ones baked into
+		# another layer's meshes: their GridMap stays hidden)
 		for layer_name in culled:
-			if not layer_name in _names:
+			if not layer_name in _names and not _baked_into.has(layer_name):
 				var gm := root.get_node_or_null(layer_name) as Node3D
 				if gm:
 					gm.visible = not culled[layer_name]
 	if _sun:
-		_sun.directional_shadow_max_distance = distance + zoom * shadow_factor
+		var needed := distance + zoom * shadow_factor
+		var current := _sun.directional_shadow_max_distance
+		if needed > current or needed * SHADOW_DISTANCE_SLACK * SHADOW_DISTANCE_SLACK < current:
+			_sun.directional_shadow_max_distance = needed * SHADOW_DISTANCE_SLACK
 	var attr := _cam.attributes as CameraAttributesPractical
 	if attr and depth_of_field:
 		var fade := 1.0 - smoothstep(depth_of_field_until * 0.8, depth_of_field_until, zoom)
 		attr.dof_blur_amount = _dof_amount * fade
 		attr.dof_blur_far_enabled = fade > 0.0
 		attr.dof_blur_near_enabled = fade > 0.0
-		# sharp band around the focus point, as fractions of the camera-ground distance
-		attr.dof_blur_far_distance = distance * 1.1
+		# sharp band around the focus point, as fractions of the camera-ground distance,
+		# but at least a few metres deep (close-ups of the follow camera: a car is 1.5 m tall)
+		attr.dof_blur_far_distance = distance + maxf(distance * 0.1, 3.0)
 		attr.dof_blur_far_transition = distance * 0.4
-		attr.dof_blur_near_distance = distance * 0.83
+		attr.dof_blur_near_distance = distance - maxf(distance * 0.17, 6.0)
 		attr.dof_blur_near_transition = distance * 0.3
 	elif attr:
 		# someone else (the tour's low flights) sets the distances: undo the fade

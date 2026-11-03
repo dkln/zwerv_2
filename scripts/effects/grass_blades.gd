@@ -22,8 +22,10 @@ const GRASS_TOP := 0.375
 ## Blades per square metre (each chunk holds CHUNK^2 x this many, fewer on non-grass).
 @export var density := 220.0
 ## Blades are shown below this view size (metres in view), fully below `full_from`.
-@export var show_from := 45.0
-@export var full_from := 30.0
+## Further out a blade is narrower than a pixel or two and the grass sparkles as the
+## view moves (and costs a lot of frame time).
+@export var show_from := 24.0
+@export var full_from := 16.0
 ## Blade height (m); each blade gets 0.6 .. 1.3 x this, times the cell's grass height
 ## (short or tall grass, scripts/world/ground_map.gd).
 @export var blade_height := 0.32
