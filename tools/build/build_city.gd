@@ -1,14 +1,14 @@
-extends "res://tools/build/city/situations.gd"
+extends "res://tools/build/city/street_grid.gd"
 ## Builds scenes/stad.tscn: the centre of The Hague, compressed onto a street grid and
 ## made only of the tiles in the libraries. No railway: Centraal Station is the hall
 ## and its square.
 ## usage: GODOT_TIMEOUT=1200 tools/godot.sh --headless --script tools/build/build_city.gd
 ##
-## It reuses the example-map builder (tools/build/city/): placement (G/B/D/Pr), building
+## It uses the builder in tools/build/city/: placement (G/B/D/Pr), building
 ## helpers (block, ring, tower, _hall, ...), the street grid (_h_street / _v_street, painted
 ## by _paint_streets, dressed with markings, zebra crossings and traffic lights by
 ## _dress_streets, kerbs by _auto_kerbs). Coordinates: x = east, z = south, ground tiles
-## of 4 m; directions name the side a tile's front faces (see build_example_city.gd).
+## of 4 m; directions name the side a tile's front faces (see city/base.gd).
 ##
 ## MAP (x 0..175, z 0..91)
 ##   The Singelgracht rings the old centre (water x 2-3, x 66-67, z 2-3, z 88-89, quays
@@ -64,7 +64,6 @@ var _tram := {}    # Vector2i -> "h" / "v": tram cells (painted after the street
 func _init() -> void:
 	Common.watchdog(self, 1100)
 	var root := _make_scene("Stad")
-	root.get_node("Wandelaar").free()
 	_streets()
 	_singel()
 	_noordeinde()
@@ -292,8 +291,7 @@ func _shops(start: Vector2i, step: Vector2i, n: int, front: String, seed: int, k
 
 # ------------------------------------------------------------------ streets and the singel
 
-## Cells of a 2-lane east-west street (like _h_street, but not cut off at the width of
-## the example map).
+## Cells of a 2-lane east-west street in rows z and z+1 from x0 to x1.
 func _hs(x0: int, x1: int, z: int) -> void:
 	for x in range(maxi(x0, 0), mini(x1, X_END) + 1):
 		_street_h[Vector2i(x, z)] = 0

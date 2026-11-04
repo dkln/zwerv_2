@@ -227,7 +227,7 @@ python3 tools/voxgen/generate.py --palettes
 tools/godot.sh --headless --import
 tools/godot.sh --headless --script res://tools/build/build_libraries.gd
 
-# controleren of alle tiles in de voorbeeldkaart staan
+# tellen welke tiles in de stad liggen
 tools/godot.sh --headless --script res://tools/check/coverage.gd
 ```
 

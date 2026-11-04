@@ -4,10 +4,8 @@ extends RefCounted
 ## still camera, waiting frames and saving screenshots.
 
 const Iso = preload("res://scripts/camera/iso_camera.gd")
-const WorldParts = preload("res://scripts/world/world_parts.gd")
-## The tour scene of the example map; the map itself is stored in parts
-## (scenes/wereld/, scripts/world/world_parts.gd), see load_part_at and WorldParts.merge_all.
-const WORLD := "res://scenes/rondleiding.tscn"
+## The map of the game.
+const CITY := "res://scenes/stad.tscn"
 ## The GridMap layers of the map (node names under the root).
 const LAYERS := ["Grond", "Gebouwen", "Details", "Props"]
 
@@ -37,26 +35,15 @@ static func arg_count() -> int:
 
 
 ## Instantiates the scene at `path` without adding it to the tree. still_camera: the
-## camera ("Camera") loses its free-camera script, the tour ("Rondleiding", if any) is
-## turned off and the fly-over ("Rondvlucht", if any) removed, so the tool positions the
-## camera itself.
+## camera ("Camera") loses its free-camera script and the fly-over ("Rondvlucht", if any)
+## is removed, so the tool positions the camera itself.
 static func instantiate(path: String, still_camera := true) -> Node:
 	var sc: Node = load(path).instantiate()
 	if still_camera:
 		(sc.get_node("Camera") as Camera3D).set_script(null)
-		if sc.has_node("Rondleiding"):
-			sc.get_node("Rondleiding").set("active", false)
 		if sc.has_node("Rondvlucht"):
 			sc.get_node("Rondvlucht").free()
 	return sc
-
-
-## Loads the map part holding world position z (metres) into the scene `sc` (before
-## or after adding it to the tree), for scenes whose map is stored in parts; does
-## nothing for other scenes. Await wait_for_merge after adding the scene.
-static func load_part_at(sc: Node, z: float) -> void:
-	if WorldParts.part_count(sc) > 0:
-		WorldParts.show_part(sc, WorldParts.part_at(sc, z))
 
 
 ## Places the (still) camera of scene `sc` in the iso view around `focus` (world metres)

@@ -16,8 +16,7 @@ extends Node
 ## - The shadow distance follows the camera distance.
 ##
 ## You just edit the normal GridMaps; all copies are created automatically. When the
-## layers are replaced (the tour loads one map part at a time, scripts/world/world_parts.gd),
-## clear() drops everything made for the old layers and setup() starts over.
+## layers are replaced, clear() drops everything made for the old layers and setup() starts over.
 
 const Bakker = preload("res://scripts/world/layer_baker.gd")
 const Iso = preload("res://scripts/camera/iso_camera.gd")
@@ -62,7 +61,7 @@ signal merge_finished
 const SHADOW_DISTANCE_SLACK := 1.25
 ## Show a loading screen while merging is in progress.
 @export var loading_screen := true
-## Text of the loading screen (the tour names the map part being loaded).
+## Text of the loading screen.
 @export var loading_text := "Stad laden…"
 
 var _cam: Camera3D

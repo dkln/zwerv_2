@@ -1,6 +1,6 @@
 extends RefCounted
 ## Camera math for the isometric-looking view, shared by the free camera
-## (free_camera.gd), the tour (tour.gd), DetailNiveau and the screenshot tools.
+## (free_camera.gd), DetailNiveau and the screenshot tools.
 ##
 ## The camera is a real perspective camera, rotated 45 degrees and tilted ~35 degrees
 ## down, with a narrow field of view so it looks almost isometric. Godot only computes

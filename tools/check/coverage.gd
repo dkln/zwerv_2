@@ -8,7 +8,7 @@ const Common = preload("res://tools/tool_common.gd")
 
 func _init() -> void:
 	Common.watchdog(self)
-	var sc: Node = load("res://scenes/stad.tscn").instantiate()
+	var sc: Node = load(Common.CITY).instantiate()
 	var total := 0
 	var used_total := 0
 	for layer_name in Common.LAYERS:

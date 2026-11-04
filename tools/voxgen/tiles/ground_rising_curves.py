@@ -14,7 +14,7 @@ PLACEMENT GUIDE (for the scene builder)
 ---------------------------------------
 Geometry (rotation k=0, x = east, z = south, in cells): the curve centre is the
 south-west corner of cell (hx, hz); cell (i, j) goes to grid cell (hx + i, floor, hz - j),
-every cell with the same rotation k (in tools/build/build_example_city.gd terms:
+every cell with the same rotation k (in tools/build/build_city.gd terms:
 ``o = _rotate_offset(Vector2i(i, -j), k)``, cell (hx + o.x, floor, hz + o.y), rotation k),
 exactly like the flat curves. The road enters at the START = the south edge of row
 j=0 (columns i=1..w, heading north) and leaves at the END = the west edge of column

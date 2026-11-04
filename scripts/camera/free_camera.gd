@@ -3,8 +3,7 @@ extends Camera3D
 ##
 ## Right mouse button held = look around, WASD = move, Q/E = down/up,
 ## Shift = faster, mouse wheel = adjust speed. The movement keys are the `cam_*`
-## input actions from the project settings. When the tour (tour.gd) is active
-## it disables this script's processing and steers the camera itself.
+## input actions from the project settings.
 
 const Iso = preload("res://scripts/camera/iso_camera.gd")
 

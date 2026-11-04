@@ -2,8 +2,7 @@ extends SceneTree
 ## Isometric screenshot of a scene (tour off, free-camera script removed), taken once
 ## DetailNiveau has finished merging.
 ## usage: Godot --script tools/shots/shot_iso.gd -- <scene> <out.png> focus_x focus_z view_size
-## focus in world metres; view_size = metres in view (see scripts/camera/iso_camera.gd). For
-## the tour scene the map part around the focus is loaded.
+## focus in world metres; view_size = metres in view (see scripts/camera/iso_camera.gd).
 
 const Common = preload("res://tools/tool_common.gd")
 
@@ -12,7 +11,6 @@ func _init() -> void:
 	Common.watchdog(self)
 	var sc := Common.instantiate(Common.arg(0))
 	var out := Common.arg(1)
-	Common.load_part_at(sc, Common.arg_float(3))
 	get_root().add_child(sc)
 	Common.render_size(self, Vector2i(1920, 1080))
 	await process_frame

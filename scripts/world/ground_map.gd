@@ -9,8 +9,8 @@ extends Node
 ## a contact shadow on the lower side and a dark joint (voxel.gdshader,
 ## `zwervr_ground_edges`).
 ## Global shader parameters: `zwervr_ground_types` and `zwervr_ground_area` (x, z,
-## width, depth in metres). Built in _ready, and again with rebuild() when the map changes
-## (the tour loads another map part, scripts/world/world_parts.gd); in the editor every
+## width, depth in metres). Built in _ready, and again with rebuild() when the map changes;
+## in the editor every
 ## couple of seconds, so it follows editing.
 
 ## Size of one map cell in metres (one texture pixel).

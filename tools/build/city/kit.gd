@@ -1,7 +1,6 @@
 extends "res://tools/build/city/base.gd"
-## Example-map builder, part 2 of 7: reusable build helpers (see base.gd for the chain):
-## building blocks and rings with facades and roofs, towers, street profiles, piers,
-## masts, halls, parking decks, pools, hills and trenches, and the style kits.
+## City builder, part 2 of 3 (see base.gd for the chain): reusable build helpers: building
+## blocks and rings with facades and roofs, towers, halls, parking decks and style helpers.
 
 
 const ORDER := ["S", "E", "N", "W"]  # directions in rotation order
@@ -40,13 +39,6 @@ func _corner_pair(sides: Array, front: String) -> String:
 		if key[0] == front:
 			return key
 	return candidates[0] if candidates.size() > 0 else ""
-
-
-## Corner key of a cell that is a corner of the rectangle (x0, z0, w, d), else "".
-## Only for rectangles at least 2 cells wide and deep.
-func _corner_of(x: int, z: int, x0: int, z0: int, w: int, d: int) -> String:
-	var sides := _sides(x, z, x0, z0, w, d)
-	return _corner_pair(sides, "") if sides.size() == 2 else ""
 
 
 ## Flat roof tile on one cell at storey y, chosen by its open sides (p = style prefix).
@@ -204,33 +196,6 @@ func tower(x: int, z: int, style: String, parts: Array, rot = "S", y0 := 0) -> v
 		B(x, y0 + i, z, p + parts[i], rot)
 
 
-## Street profile along x from x0 to x1: rows = Array of [z, tile, rot] from north to
-## south; x values in skip are left out (e.g. intersections).
-func profile_x(x0: int, x1: int, rows: Array, skip := []) -> void:
-	for x in range(x0, x1 + 1):
-		if skip.has(x):
-			continue
-		for r in rows:
-			G(x, r[0], r[1], r[2])
-
-
-## Street profile along z from z0 to z1: columns = Array of [x, tile, rot] from west to
-## east; z values in skip are left out.
-func profile_z(z0: int, z1: int, columns: Array, skip := []) -> void:
-	for z in range(z0, z1 + 1):
-		if skip.has(z):
-			continue
-		for c in columns:
-			G(c[0], z, c[1], c[2])
-
-
-## Fills the rectangle x0..x1, z0..z1 (inclusive, tiles) with one ground tile on level y.
-func fill_rect(x0: int, z0: int, x1: int, z1: int, tile_name: String, rot = "S", y := 0) -> void:
-	for x in range(x0, x1 + 1):
-		for z in range(z0, z1 + 1):
-			G(x, z, tile_name, rot, y)
-
-
 ## Classifies a cell by its open sides (see _sides / _open_sides) into the suffixes
 ## used by roof, deck and pool tiles. Returns [kind, rotation]:
 ##   "midden" no open side; "rand" one open side (rotated towards it);
@@ -257,24 +222,6 @@ func _edge(sides: Array) -> Array:
 	return ["los", "S"]
 
 
-## Open sides of cell c within an arbitrary set of cells (Array or Dictionary keyed
-## by Vector2i), in the order N, S, W, E (same order as _sides).
-func _open_sides(c: Vector2i, cells) -> Array:
-	var sides := []
-	for d in ["N", "S", "W", "E"]:
-		if not cells.has(c + DIR_OFFSET[d]):
-			sides.append(d)
-	return sides
-
-
-## Round-robin pick: returns list[counter[key]] (wrapping) and advances that counter.
-## The counter always advances; returns "" for an empty list.
-func _next(list: Array, counter: Dictionary, key: String) -> String:
-	var i: int = counter.get(key, 0)
-	counter[key] = i + 1
-	return "" if list.is_empty() else list[i % list.size()]
-
-
 ## Bridge pier on the ground layer: foot tile at level y0, plain shaft segments
 ## in between and a pier head at level y_top (the deck goes on y_top + 1).
 func _pier(x: int, z: int, foot: String, y0: int, y_top: int) -> void:
@@ -282,15 +229,6 @@ func _pier(x: int, z: int, foot: String, y0: int, y_top: int) -> void:
 	for y in range(y0 + 1, y_top):
 		G(x, z, "brug/brug_pijler", "S", y)
 	G(x, z, "brug/brug_pijler_kop", "S", y_top)
-
-
-## Stacked mast on the buildings layer (radio tower, factory chimney): prefix + "_voet"
-## at storey 0, "_segment" up to height - 1 and "_top" at storey height.
-func _mast(x: int, z: int, prefix: String, height: int) -> void:
-	B(x, 0, z, prefix + "_voet", "S")
-	for v in range(1, height):
-		B(x, v, z, prefix + "_segment", "S")
-	B(x, height, z, prefix + "_top", "S")
 
 
 ## Hollow hall of w x d cells (one storey, roof included) from the "hallen" group.
@@ -320,106 +258,42 @@ func _parking_decks(x0: int, z0: int, w: int, d: int, levels: int) -> void:
 				B(x, v, z, "parkeergarage/parkeergarage_%s_%s" % [kind, e[0]], e[1])
 
 
-## Swimming pool basin of w x d cells on ground level -1. stairs: the north edge
-## cell at x0 + 2 gets the edge with a ladder. clear_top: also empty level 0
-## above the basin (otherwise the surrounding tiles stay there, as in a covered pool).
-func _pool_basin(x0: int, z0: int, w: int, d: int, stairs: bool, clear_top: bool) -> void:
-	for x in range(x0, x0 + w):
-		for z in range(z0, z0 + d):
-			var es := _sides(x, z, x0, z0, w, d)
-			var e := _edge(es)
-			var nm: String = "zwembad/zwembad_" + e[0]
-			if stairs and es.size() == 1 and x == x0 + 2 and es[0] == "N":
-				nm = "zwembad/zwembad_rand_trap"
-			if clear_top:
-				_trench(x, z, nm, 1, e[1])
-			else:
-				G(x, z, nm, e[1], -1)
-				occupied[Vector2i(x, z)] = true
-
-
-## Small 3x3 hill of the given material ("gras", "zand", "grind"); (hx, hz) is the
-## north-west cell. Block with a top in the centre, slopes on the sides, outer corners.
-func _hill(hx: int, hz: int, mat: String) -> void:
-	var p: String = "heuvel/heuvel_" + mat + "_"
-	G(hx + 1, hz + 1, p + "blok")
-	G(hx + 1, hz + 1, p + "top", "S", 1)
-	G(hx + 1, hz, p + "helling", "S")
-	G(hx + 1, hz + 2, p + "helling", "N")
-	G(hx, hz + 1, p + "helling", "E")
-	G(hx + 2, hz + 1, p + "helling", "W")
-	G(hx, hz, p + "hoek_buiten", "SE")
-	G(hx + 2, hz, p + "hoek_buiten", "WS")
-	G(hx, hz + 2, p + "hoek_buiten", "EN")
-	G(hx + 2, hz + 2, p + "hoek_buiten", "NW")
-
-
 # ------------------------------------------------------------------ library names and style kits
 
 const DIR_OFFSET := {"N": Vector2i(0, -1), "S": Vector2i(0, 1), "W": Vector2i(-1, 0), "E": Vector2i(1, 0)}
-
-## Sorted names of all items in the library of gm that start with prefix.
-func _names(gm: GridMap, prefix: String) -> Array:
-	var result := []
-	for id in gm.mesh_library.get_item_list():
-		var nm := gm.mesh_library.get_item_name(id)
-		if nm.begins_with(prefix):
-			result.append(nm)
-	result.sort()
-	return result
-
-
-## Tile name without group folder and style prefix, e.g. "jaren30/jaren30_bg_deur" -> "bg_deur".
-func _short(style: String, nm: String) -> String:
-	return nm.split("/")[nm.split("/").size() - 1].trim_prefix(style + "_")
-
-
-## The tiles of a building style sorted by role (names without the style prefix): ground
-## and upper floor facades with their corners, flat roof kinds and sloped roofs.
-func _style_kit(style: String) -> Dictionary:
-	var kit := {"gf": [], "gf_corners": [], "upper": [], "upper_corners": [],
-		"flat": {"midden": [], "rand": [], "hoek": [], "tegenover": [], "eind": [], "los": []}, "sloped": [], "outer": []}
-	for nm in _names(buildings, style + "/"):
-		var k := _short(style, nm)
-		if k.begins_with("bg_"):
-			kit[("gf_corners" if k.contains("hoek") else "gf")].append(k)
-		elif k.begins_with("verd_"):
-			kit[("upper_corners" if k.contains("hoek") else "upper")].append(k)
-		elif k.begins_with("dak_schuin") and not k.contains("hoek_binnen"):
-			kit[("outer" if k.contains("hoek_buiten") else "sloped")].append(k)
-		elif k.begins_with("dak_plat") or k.begins_with("dak_bitumen") or k.begins_with("dak_grind"):
-			for e in ["rand", "hoek", "tegenover", "eind", "los"]:
-				if k.ends_with("_" + e):
-					kit.flat[e].append(k)
-					break
-			if k.ends_with("_midden"):
-				kit.flat.midden.append(k)
-	return kit
-
-
-## Flat roofs on storey y over a set of cells. kinds maps an edge kind (see _edge) to a list
-## of tile names (without style prefix); variants alternate per kind via `counter`.
-func _flat_roofs(cells: Array, style: String, y: int, kinds: Dictionary, counter: Dictionary) -> void:
-	var p := style + "/" + style + "_"
-	var cell_set := {}
-	for c in cells:
-		cell_set[c] = true
-	for c in cells:
-		var e := _edge(_open_sides(c, cell_set))
-		var kind: String = e[0]
-		# missing kinds fall back to an edge tile, then to a middle tile
-		var list: Array = kinds.get(kind, [])
-		if list.is_empty() and kind in ["tegenover", "eind", "los"]:
-			list = kinds.get("rand", [])
-		if list.is_empty():
-			list = kinds.get("midden", [])
-		if list.is_empty():
-			continue
-		B(c.x, y, c.y, p + _next(list, counter, kind), e[1])
-
 
 ## Sunk ground tile: empties level 0 at (x, z) and places tile_name on level -depth.
 func _trench(x: int, z: int, tile_name: String, depth: int, rot = "S") -> void:
 	ground.set_cell_item(Vector3i(x, 0, z), GridMap.INVALID_CELL_ITEM)
 	G(x, z, tile_name, rot, -depth)
 	occupied[Vector2i(x, z)] = true
+
+
+## One narrow canal house at tile (x, z) facing front: a ground floor picked by rnd,
+## floors - 1 upper storeys from facades and a gable top ("gevel_" + gable_top) on storey floors.
+func _house(x: int, z: int, front: String, style: String, floors: int, facades: Array, gable_top: String, rnd: int) -> void:
+	var p := style + "/" + style + "_"
+	var gf: String = ["bg_deur", "bg_deur", "bg_winkel_luifel", "bg_raam", "bg_winkel"][rnd % 5]
+	B(x, 0, z, p + gf, front)
+	for v in range(1, floors):
+		B(x, v, z, p + facades[(rnd + v) % facades.size()], front)
+	B(x, floors, z, p + "gevel_" + gable_top, front)
+
+
+## First option that exists as p + option in the buildings library, else "blok_dicht".
+func _first(p: String, options: Array) -> String:
+	for o in options:
+		if _has(p + o):
+			return o
+	return "blok_dicht"
+
+
+## A quay cell: pavement on top of a quay wall reaching down to the canal floor.
+func _quay(x: int, z: int, tile_name: String, rot) -> void:
+	G(x, z, "water/kademuur_alg", "S", -2)
+	G(x, z, "water/kademuur", "S", -1)
+	G(x, z, tile_name, rot)
+
+
+## 3-lane tunnel cross-section, from the "wand" side to the "wand_rechts" side.
+const TUNNEL_LANES := ["%s_wand%s", "%s%s", "%s_wand_rechts%s"]

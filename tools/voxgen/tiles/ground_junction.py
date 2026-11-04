@@ -13,7 +13,7 @@ ramp lane that continues from them. Dutch layout:
   joins over a hatched gore, runs as acceleration lane (invoegstrook) beside the right
   lane with a block marking and ends in the hard shoulder.
 
-PLACEMENT (tools/build/build_example_city.gd): tile (i, j) of ``grond/snelweg/afrit_<i>_<j>``
+PLACEMENT (tools/build/build_city.gd): tile (i, j) of ``grond/snelweg/afrit_<i>_<j>``
 / ``toerit_<i>_<j>`` goes to cell (x0 + i, z0 - j) with rotation "S" for a carriageway
 whose traffic drives west (towards -x) with its hard shoulder in row z0 (north side):
 j = 0 is the shoulder row, j = 1 the verge (``snelweg_berm_vangrail`` "E" outside the

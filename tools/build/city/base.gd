@@ -1,21 +1,41 @@
 extends SceneTree
-## Example-map builder, part 1 of 7: shared constants, the build state, the scene setup
-## (_make_scene, _save) and the placement primitives G/B/D/Pr, row and column.
+## City builder, part 1 of 3: shared constants, the build state, the scene setup
+## (_make_scene, _save) and the placement primitives G/B/D/Pr.
 ##
 ## The builder is a chain of scripts, each extending the previous one:
-## base -> kit -> old_town -> expansion -> street_grid -> neighbourhoods -> situations ->
-## tools/build/build_example_city.gd (the entry point). A part may only call what is
-## defined in itself or an earlier part. Coordinates, layers and the map layout are
-## described in the header of build_example_city.gd.
+## base -> kit -> street_grid -> tools/build/build_city.gd (the entry point). A part may only call what is defined in
+## itself or an earlier part.
+##
+## HOW IT WORKS
+## The scene gets its root setup from _make_scene: environment, sun and fill light,
+## camera, helper nodes (DetailNiveau, Dagcyclus, Rook, TintKaart, GrondKaart, Grassprieten)
+## and four GridMaps,
+## one per tile library. The town is then written cell by cell into those GridMaps and
+## the scene is packed and saved. Placement is fully deterministic (no RNG; variation
+## comes from the hash _r and round-robin counters), so the output is reproducible.
+##
+## COORDINATES AND ORIENTATION
+## x = east, z = south, in ground tiles of 4 m unless a parameter says metres.
+## Directions S/E/N/W name the side the front (facade, kerb, ...) of a tile faces;
+## rotation 0 = "S", then E, N, W in quarter turns (DIR). Corner tiles take a two-letter
+## key (front, right) from CORNER, e.g. "SE" = front south, right side east. Rotations
+## may also be passed as an int (quarter turns).
+##
+## LAYERS (GridMap node, library, cell size, origin height, placement helper)
+##   Grond     grond     4 x 1 x 4 m, centred, y 0      G(x, z, tile, rot, level)
+##             ground tiles; level = height in 1 m steps (water -2, quay walls -1,
+##             tunnels down to -6, ramps and bridge decks above 0)
+##   Gebouwen  gebouwen  4 x 3 x 4 m, centred, y 0.375  B(x, storey, z, tile, rot)
+##             building blocks; one cell per storey of 3 m
+##   Details   details   0.5 m, corner-aligned, y 0.375 D(wx, wz, wy, tile, rot)
+##             facade/roof details at a position in metres (wy above building base)
+##   Props     props     0.5 m, corner-aligned, y 0.25  Pr(wx, wz, tile, rot, wy)
+##             street furniture, trees, vehicles at a position in metres
+## A ground cell (x, z) spans metres x*4 .. x*4+4; its centre is x*4 + 2.
 
 
 const Common = preload("res://tools/tool_common.gd")
 const LIB := "res://assets/libraries/%s.res"
-const SlopesLib = preload("res://addons/vox_tiles/importer/slopes.gd")
-const VoxelModel = preload("res://addons/vox_tiles/importer/voxel_model.gd")
-const WorldParts = preload("res://scripts/world/world_parts.gd")
-## the example map is saved in this many parts (scenes/wereld/, see scripts/world/world_parts.gd)
-const WORLD_PARTS := 10
 ## direction the front of a tile faces -> quarter turns
 const DIR := {"S": 0, "E": 1, "N": 2, "W": 3}
 ## (front, right) -> rotation, for corner pieces with something on the front and right side
@@ -30,7 +50,6 @@ var orient := []    # quarter turns 0..3 -> GridMap orthogonal index
 var occupied := {}  # ground cells (x,z) at level 0 that are already filled
 var missing := {}   # tile names that are not in their library (reported at the end)
 var tint_map: Node3D  # TintKaart node of the scene being built
-var catalog_start := 0.0  # metres, see _expansion
 var _taken := {}    # cells (x,z) holding something other than plain grass or pavement (any layer)
 
 
@@ -142,11 +161,6 @@ func _make_scene(node_name: String) -> Node3D:
 	cam.near = 2.0
 	cam.far = 6000.0
 	root.add_child(cam)
-	if node_name == "Wereld":
-		var rl := Node.new()
-		rl.name = "Rondleiding"
-		rl.set_script(load("res://scripts/demo/tour.gd"))
-		root.add_child(rl)
 	var dn := Node.new()
 	dn.name = "DetailNiveau"
 	dn.set_script(load("res://scripts/world/level_of_detail.gd"))
@@ -179,23 +193,7 @@ func _make_scene(node_name: String) -> Node3D:
 	gb.name = "Grassprieten"
 	gb.set_script(load("res://scripts/effects/grass_blades.gd"))
 	root.add_child(gb)
-	var walker := Node3D.new()
-	walker.name = "Wandelaar"
-	walker.set_script(load("res://scripts/demo/walker.gd"))
-	root.add_child(walker)
 	tint_map = tk
-	if node_name == "Wereld":
-		# example: give two buildings in the city block a different tint
-		for v in [[Vector3(18 * 4 + 2, 0, 11 * 4 + 2), Color(1.0, 0.8, 0.65), Vector2i(2, 1)],
-				[Vector3(24 * 4 + 2, 0, 2 * 4 + 2), Color(0.8, 0.85, 1.0), Vector2i(1, 1)],
-				[Vector3(37 * 4 + 2, 0, 31 * 4 + 2), Color(1.1, 1.0, 0.8), Vector2i(3, 2)]]:
-			var tv := Node3D.new()
-			tv.name = "TintVlak"
-			tv.set_script(load("res://scripts/world/tint_area.gd"))
-			tv.position = v[0]
-			tv.set("color", v[1])
-			tv.set("size", v[2])
-			tk.add_child(tv)
 	for n in root.get_children():
 		n.owner = root
 	orient.clear()
@@ -297,45 +295,16 @@ func D(wx: float, wz: float, wy: float, tile_name: String, r = "S") -> void:
 	_taken[Vector2i(floori(wx / 4.0), floori(wz / 4.0))] = true
 
 
-## Ground tiles along x from x0 to x1 (inclusive) at row z.
-func row(x0: int, x1: int, z: int, tile_name: String, r = "S", y := 0) -> void:
-	for x in range(x0, x1 + 1):
-		G(x, z, tile_name, r, y)
-
-
-## Ground tiles along z from z0 to z1 (inclusive) at column x.
-func column(x: int, z0: int, z1: int, tile_name: String, r = "S", y := 0) -> void:
-	for z in range(z0, z1 + 1):
-		G(x, z, tile_name, r, y)
-
-
 # ------------------------------------------------------------------ map size
 
 const W := 96  # map width in tiles
-const H := 80  # depth of the main map in tiles (filled with grass by _fill_grass)
-const OLD_H := 30  # the original town
-
-
 # ------------------------------------------------------------------ build state of the demo districts (street_grid.gd and later)
 
-# packing cursor of _district: next free tile (x, z) and depth of the current row
-var _wx := 2
-var _wz := 0
-var _wrow := 0
-var _row := []        # districts of the current row: [origin, w, d, infill style]
 var _street_h := {}   # Vector2i -> lane (0 north, 1 south) of the east-west streets
 var _street_v := {}   # Vector2i -> lane (0 west, 1 east) of the north-south streets
-var _city_blocks := 0 # counter for the styles of the in-between city blocks
 var _pavement := {}   # Vector2i -> kerb variant ("", "goot_", "klinker_") of the pavement cells (_auto_kerbs)
 var _kerb_count := 0  # counter for the kerb variant of the next block
 var _special := {}    # street cells that are not ordinary lanes (roundabouts, avenues)
 var _h_rows := []     # z of the north lane of every full-width east-west street
-var _district_name := ""  # name recorded for the next _district call
 var districts := []  # {name, x, z, w, d} per demo district, saved as scene metadata
 var places := {}     # slug -> Vector2 (metres) of spots found while building, saved as scene metadata (tour stops)
-var _detail_queue := {}   # group -> Array of names (queue)
-var _prop_lists := {"street": [], "green": [], "water": []}  # kind -> prop names, filled from the library
-var _prop_counter := {}  # kind -> round-robin index into _prop_lists
-
-
-var _detail_used := {}  # detail names already placed by _take_new_detail

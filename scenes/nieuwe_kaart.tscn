@@ -11,7 +11,6 @@
 [ext_resource type="Script" path="res://scripts/world/tint_map.gd" id="10_eb4nf"]
 [ext_resource type="Script" path="res://scripts/world/ground_map.gd" id="11_0uy6c"]
 [ext_resource type="Script" path="res://scripts/effects/grass_blades.gd" id="12_s10jy"]
-[ext_resource type="Script" path="res://scripts/demo/walker.gd" id="13_wndlr"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_o8xcd"]
 sky_top_color = Color(0.3, 0.5, 0.85, 1)
@@ -127,5 +126,3 @@ script = ExtResource("11_0uy6c")
 [node name="Grassprieten" type="Node3D" parent="." unique_id=352546442]
 script = ExtResource("12_s10jy")
 
-[node name="Wandelaar" type="Node3D" parent="." unique_id=1690412358]
-script = ExtResource("13_wndlr")

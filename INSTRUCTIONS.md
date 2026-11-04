@@ -7,8 +7,8 @@ Je bouwt kaarten met vier GridMap-lagen (grond, gebouwen, details, props). Elke
 tile is een los `.gox` bestand dat je in Goxel (open source) kunt openen en aanpassen.
 Na opslaan importeert Godot hem automatisch opnieuw.
 
-Er zijn ongeveer 2000 tiles. De kaart van het spel is `scenes/stad.tscn`; de demokaarten
-in `scenes/wereld/` zijn weg, dus niet elke tile ligt nog ergens in context.
+Er zijn ongeveer 2000 tiles. De kaart van het spel is `scenes/stad.tscn`. Niet elke tile
+ligt daarin: `tools/check/coverage.gd` telt welke wel.
 
 Daarnaast is er het centrum van Den Haag in één scène: `scenes/stad.tscn`, ingedikt op
 een stratengrid en alleen met de bestaande tiles. De Singelgracht loopt er rondom
@@ -242,22 +242,21 @@ Projectstructuur
       materials/           shaders en materialen van de voxels
     assets/                tiles (.gox + .tile.json, kleurentabel materialen.json),
                            libraries (gemaakt), fonts
-    scenes/                stad.tscn, nieuwe_kaart.tscn, rondleiding.tscn (werkt niet meer)
+    scenes/                stad.tscn, nieuwe_kaart.tscn
     scripts/               spelcode
       camera/              free_camera, iso_camera
-      world/               world_parts (kaartdelen), level_of_detail, layer_baker,
+      world/               level_of_detail, layer_baker,
                            ground_map, tint_map, tint_area
       effects/             day_cycle, smoke, grass_blades, vignette
-      characters/          vox_character, path_follower
-      navigation/          grid_nav
-      demo/                tour, tour_data, caption (rondleiding), walker (wandelaar)
+      characters/          vehicle en de voertuigen
     tools/                 command-line tools (start ze met tools/godot.sh)
       godot.sh             Godot met tijdslimiet en zonder stdin
       tool_common.gd       gedeelde helpers van de tools
-      build/               build_example_city (+ city/: de bouwer in delen),
+      build/               build_city (+ city/: de bouwer in delen),
                            build_libraries, build_previews
-      check/               coverage, fps_test, triangle_count, walk_test
-      shots/               screenshots, shot_tiles, shot_iso, shot_scene, walk_shots
+      check/               coverage, corner_test, crash_test, drive_test, fps_test,
+                           lane_choice_test, traffic_test, triangle_count
+      shots/               shot_tiles, shot_iso, shot_scene, shot_vehicles
       voxgen/              Python-generator van de tiles (zie "Tiles (opnieuw) genereren")
     docs/                  Goxel-handleiding (GOXEL.md -> handleiding_goxel.html)
 
@@ -280,7 +279,7 @@ Snel starten
 
 Vox Tiles-scene en editor-weergave: bovenaan het Build-paneel staat het vinkje
 "Vox Tiles scene". Het markeert de geopende scene als scene die met de tiles gebouwd
-wordt (opgeslagen als metadata op de root-node, één stap in Ctrl+Z). De voorbeeldkaart
+wordt (opgeslagen als metadata op de root-node, één stap in Ctrl+Z). De stad
 en de lege kaart zijn al gemarkeerd. In een gemarkeerde scene zijn de bouwtools
 beschikbaar en kies je met "View" hoe de 3D-view eruitziet:
 - Editor (standaard): snel, voor een hoge framerate tijdens het bouwen. Geen
@@ -337,15 +336,6 @@ Bouwpaneel ("Build", rechtsboven in de editor)
     aan het eind gespiegeld; minstens 19 tiles lang.
   De lijn volgt de langste as; breedte loopt naar links gezien in de tekenrichting
   (de blauwe voorvertoning laat zien waar alles komt).
-
-
-De voorbeeldkaart (verwijderd)
-------------------------------
-De demokaarten `scenes/wereld/deel_*.tscn` zijn verwijderd. Daarmee werken de rondleiding
-(`scenes/rondleiding.tscn`, `scripts/demo/tour.gd`) en de tools die er delen uit laden
-(`tools/check/walk_test.gd`, `tools/shots/screenshots.gd`, `tools/shots/walk_shots.gd`) niet
-meer. `tools/build/build_example_city.gd` zou de delen opnieuw maken: draai die niet, tenzij
-je ze terug wilt. `tools/check/coverage.gd` kijkt nu naar `scenes/stad.tscn`.
 
 
 De vier lagen
@@ -685,19 +675,15 @@ Hoe het werkt (techniek)
   tiles bijkomen, verdwijnen of opnieuw geïmporteerd worden.
 - `scripts/camera/free_camera.gd`: vliegcamera; `scripts/world/tint_map.gd` en
   `scripts/world/tint_area.gd`: tint-systeem.
-- `tools/build/build_example_city.gd`: bouwt de voorbeeldkaart via code. Dit bestand
-  bevat alleen de bouwvolgorde; de rest staat in `tools/build/city/`, een keten van
-  scripts die elk het vorige uitbreiden: `base` (toestand, scene, `G/B/D/Pr`) ->
-  `kit` (herbruikbare helpers) -> `old_town` -> `expansion` -> `street_grid` ->
-  `neighbourhoods` -> `situations`. Een deel kan alleen functies uit zichzelf of een
+- `tools/build/build_city.gd`: bouwt de stad via code. De bouwer staat in
+  `tools/build/city/`, een keten van
+  scripts die elk het vorige uitbreiden: `base` (toestand, scene, `G/B/D/Pr`) -> `kit`
+  (herbruikbare helpers) -> `street_grid`. Een deel kan alleen functies uit zichzelf of een
   eerder deel aanroepen. Handige helpers om zelf kaarten te scripten: `G/B/D/Pr` (één
   tile per laag, `base.gd`), `block()` (rechthoekig gebouw met automatisch de juiste
   hoek-, gevel- en dakstukken), `ring()` (gesloten bouwblok met kappen om de hoek),
-  `tower()`, `profile_x/z()` (straatprofiel), `fill_rect()` (alle in `kit.gd`).
+  `tower()` (alle in `kit.gd`).
 - `tools/check/coverage.gd`: telt welke tiles in de stad liggen.
-- `tools/shots/screenshots.gd`: maakt isometrische screenshots van alle gebieden en
-  buurten met titel en uitleg in beeld, naar `docs/screenshots/` (met
-  `index.json`; lokaal, staat niet in git).
 - `tools/shots/shot_tiles.gd` / `tools/shots/shot_scene.gd` / `tools/shots/shot_iso.gd`: maken
   screenshots van tiles of scenes, ook isometrisch (voor controle).
 
@@ -708,13 +694,8 @@ lucht-ambient, SSAO, glow en een lichte kleur/contrast-correctie. Pas
 `Zon`, `Vullicht` en `Omgeving` in de scene aan voor een andere sfeer.
 
 
-Rondleiding, prestaties en uiterlijk
-------------------------------------
-- Shader-showcase: direct na de opening laat de rondleiding zien hoe de shaders werken
-  (`SHADERS` in `scripts/demo/tour_data.gd`): baksteen, asfalt, plaveisel, gras en grind,
-  golvende grond en de grond van ver. Elke stop duurt twee keer zo lang: eerst staat
-  het effect uit, halverwege gaat het aan (titel "· uit" / "· aan"); de rondleiding
-  zet daarvoor de shader-globals van die stop op 0 en terug op hun projectwaarde.
+Prestaties en uiterlijk
+-----------------------
 - Shader-globals (Project > Shader Globals, 0 = uit, 1 = normaal): `zwervr_relief`
   (alle reliëf, scheurtjes, putjes, asfaltkorrel en grindschaduw), `zwervr_grass`,
   `zwervr_undulation` (de grond wordt belicht alsof hij zacht golft: een trage
@@ -726,22 +707,6 @@ Rondleiding, prestaties en uiterlijk
   grijstint met een bolle bovenkant waarop de zon glinstert, plus zachte slijtplekken;
   dichtbij worden de voxelblokjes van 12,5 cm eerst verzacht (gemiddeld met de
   buur-texels), zodat het patroon de structuur draagt en niet het voxelraster.
-- `Rondleiding` (`scripts/demo/tour.gd`): een doorlopend bewegende demo van ongeveer 6
-  minuten, die nergens stilstaat. Eerst de shader-showcase (`SHADERS` in
-  `scripts/demo/tour_data.gd`, elk effect eerst uit en dan aan), daarna een vlucht langs alle
-  gebieden en woonwijken: de iso-camera glijdt van gebied naar gebied en zoomt daarbij
-  in en uit (van ver en dichtbij), met lage vluchten door de gracht, de Hoofdstraat, de
-  Zuidweg, de snelweg en de winkelstraat ertussen (`FLIGHTS`). Elke shot heeft een
-  camerapad; aan het begin van een shot vloeit de camera in `BLEND` (1,6 s) over vanuit
-  waar hij was. Intussen loopt de dag van de ochtend tot in de nacht (`day_start`,
-  `day_hours`). Duur per shot: `SHADER_TIME`, `CITY_TIME`, `DISTRICT_TIME`,
-  `OVERVIEW_TIME`; alles sneller met `speed`. Verder: `highlights_only`, `start_at`,
-  `part` (0 = alle delen na elkaar, n = alleen deel n).
-  Toetsen: pijltje rechts = volgende shot, pijltje links = vorige shot, spatie =
-  pauze / verder (de teller toont dan "· pauze"); de klok springt mee naar de shot.
-  Elk deel eindigt met de wandelaar (zie "Personages en navigatie"): per route een
-  shot waarin de camera het poppetje volgt tot het aankomt; V = van achteren of in de
-  iso-stand. Meteen beginnen bij de wandelaar: `start_at` = `wandelaar`.
 - `DetailNiveau` (`scripts/world/level_of_detail.gd`): schakelt bij het uitzoomen naar
   grove tiles (`coarse_from`, standaard 100 m in beeld: daar is een voxel al kleiner
   dan een pixel) en heel grove tiles (`very_coarse_from`, 130 m), voor Grond,
@@ -773,9 +738,8 @@ Rondleiding, prestaties en uiterlijk
   dichte buurcel liggen en alle onderkanten vallen daarbij weg. De importer
   groepeert de driehoeken daarvoor per celzijde (import-optie `cell_block`: 4x3x4 voor
   gebouwen, 4x1,5x4 voor grond). Tot het samenvoegen klaar is, staat er een laadscherm
-  (export `loading_screen`) en wacht de rondleiding; het resultaat wordt per kaartdeel
-  bewaard in `user://merged/`, zodat de volgende keer direct klaar is (zolang dat deel
-  en de tiles niet veranderen).
+  (export `loading_screen`); het resultaat wordt bewaard in `user://merged/`, zodat de
+  volgende keer direct klaar is (zolang de kaart en de tiles niet veranderen).
   Je bewerkt gewoon de GridMaps; botsingen blijven daar ook. Tiles met een vlag
   blijven losse meshes (de vlag-shader rekent in lokale coördinaten).
 - `Dagcyclus` (`scripts/effects/day_cycle.gd`): basis voor dag en nacht (`time_of_day`,
@@ -840,7 +804,7 @@ Rondleiding, prestaties en uiterlijk
 - Bloemperken in de grond (tulpen) wiegen sneller en over een kortere hoogte
   (`materials/voxel_wind_bloem.tres`, animatie `"flowers"`): alles boven `wind_base`
   (het grondoppervlak van de tile) buigt mee, vol op `wind_height` (0,4 m) erboven.
-  In de polder naast het park ligt een bollenveld (rondleidingsstop "bollenveld").
+  In de polder naast het park ligt een bollenveld.
 - Gras: `natuur/gras` (kort, in de stad) en `natuur/gras_hoog` (hoog, in de polder) zijn
   dezelfde egale tile; ze verschillen alleen in de lengte van de grassprieten
   (`SHORT_GRASS`/`TALL_GRASS` in `scripts/world/ground_map.gd`: kort gras ~30 cm, hoog
@@ -850,40 +814,11 @@ Rondleiding, prestaties en uiterlijk
   langzaam over het gras (de sprieten buigen daar verder door).
 - Lettertype: Rubik (`assets/fonts/Rubik.ttf`, OFL-licentie), ingesteld als
   projectfont.
-- Meten: `Godot --script tools/check/fps_test.gd -- 20 tour` of
+- Meten: `Godot --script tools/check/fps_test.gd -- 20 flyover` of
   `-- 10 140` (vaste zoom 140 m), of een vast beeld met vlaggen:
   `-- 10 140 72 60 s` (drukke wijk rond x 72, z 60, zonder schaduw). Sluit de Godot-editor tijdens het meten, anders
   delen ze de GPU. `tools/check/triangle_count.gd` toont het aantal driehoeken per tile en
   LOD-niveau.
-
-Personages en navigatie
------------------------
-Herbruikbare onderdelen voor speler en NPC's, plus een testpoppetje dat laat zien of
-het werkt:
-- `VoxCharacter` (`scripts/characters/vox_character.gd`): het lopende lichaam, een
-  `CharacterBody3D` (kinematisch, `move_and_slide`; geen rigid-body-simulatie) met
-  zwaartekracht, `jump()` en `jump_to(doel)`. Botsvorm: een capsule vanaf `step`
-  (25 cm) tot `height` (1,80 m), met daaronder een `SeparationRayShape3D` tot de
-  voeten: daarmee loopt hij vanzelf stoepranden en traptreden op. Iets anders stuurt
-  hem via `move_direction`: straks de spelerbesturing, of een PathFollower.
-- `PathFollower` (`scripts/characters/path_follower.gd`): de "benen" van een NPC; volgt
-  een pad, springt de spronglinks, loopt bij een val-link gewoon over de rand, en meldt
-  `arrived` en `stuck`.
-- `GridNav` (`scripts/navigation/grid_nav.gd`): bakt in de achtergrond een navmesh van
-  de botsvormen van GridMap-cellen in een gebied (voxels van 12,5 cm), op een eigen
-  navigatiekaart; `path()`, `lowest_in_column()` (tunnelvloer in plaats van de straat
-  op het dak) en `add_jump_links()`: spronglinks over gaten in de navmesh (een richel
-  tot 1,2 m hoger of iets laags ertussen) en val-links naar beneden (tot 3 m).
-- Wandelaar (node `Wandelaar` in `rondleiding.tscn` en `nieuwe_kaart.tscn`,
-  `scripts/demo/walker.gd`): alleen de demo. Kiest per kaart(deel) routes over bruggen,
-  tunnels, trappen, hellingen, heuvels en kades (anders over de stoep), plus een val en
-  een sprong, en laat het poppetje (prop `overig/persoon_1m80`) ze lopen. Linksonder:
-  padlengte, vast, gevallen, sprongen, hoogte, navmesh- en fysicatijd. Toetsen: N =
-  navmesh (blauw), pad (geel) en links (paars) aan/uit, C = botsvorm aan/uit.
-- Testen zonder venster: `tools/godot.sh --headless --script tools/check/walk_test.gd -- [deel]`
-  loopt alle routes van alle (of één) delen versneld en meldt per route wat er misging
-  (met de tile op die plek). Screenshots: `tools/shots/walk_shots.gd -- <map> [delen]`.
-
 
 Afgeronde bochten
 -----------------
