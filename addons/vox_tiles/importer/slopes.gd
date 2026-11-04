@@ -66,37 +66,39 @@ const CONCRETE_DARK := [["beton2", "beton_donker"], [], 14]
 const EARTH_SUB := "aarde2"
 
 
-## Item name of a slope of tile `key` (path below the category), e.g. for "weg/weg_vlak":
-## "helling/helling_weg_vlak", "helling/flauw_weg_vlak_a", "helling/helling_brug_weg_vlak_rand";
-## for the curve cell "bocht/straat_1_2": "helling_bocht/straat_rechts_1_2",
-## "helling_bocht/brug_straat_1_2", "brug/bocht_straat_1_2".
+## Item name of a slope of tile `key` (path below the category): in a subfolder "helling"
+## of the category of the tile, bridge ramps in that of "brug". For "weg/weg_vlak":
+## "weg/helling/helling_weg_vlak", "weg/helling/flauw_weg_vlak_a",
+## "brug/helling/helling_weg_vlak_rand"; for the curve cell "bocht/straat_1_2":
+## "bocht/helling/straat_rechts_1_2", "brug/helling/bocht_straat_1_2", "brug/bocht_straat_1_2".
 static func item_name(key: String, shape: String) -> String:
 	var base := key.get_file()
+	var slope_folder := key.get_base_dir().path_join("helling")
 	match shape:
 		"steil":
-			return "helling/helling_" + base
+			return slope_folder.path_join("helling_" + base)
 		"flauw_a", "flauw_b":
-			return "helling/flauw_%s_%s" % [base, shape.right(1)]
+			return slope_folder.path_join("flauw_%s_%s" % [base, shape.right(1)])
 		"brug":
-			return "helling/helling_brug_" + base
+			return "brug/helling/helling_" + base
 		"brug_rand":
-			return "helling/helling_brug_%s_rand" % base
+			return "brug/helling/helling_%s_rand" % base
 		"brug_rand_rechts":
-			return "helling/helling_brug_%s_rand_rechts" % base
+			return "brug/helling/helling_%s_rand_rechts" % base
 		"hoek_buiten", "hoek_binnen":
-			return "helling/helling_%s_%s" % [base, shape]
+			return slope_folder.path_join("helling_%s_%s" % [base, shape])
 	# curve cell "<profile>_<i>_<j>"
 	var parts := base.rsplit("_", true, 2)
 	var cell := "_%s_%s" % [parts[1], parts[2]]
 	match shape:
 		"bocht":
-			return "helling_bocht/" + base
+			return "bocht/helling/" + base
 		"bocht_rechts":
-			return "helling_bocht/%s_rechts%s" % [parts[0], cell]
+			return "bocht/helling/%s_rechts%s" % [parts[0], cell]
 		"brug_bocht":
-			return "helling_bocht/brug_" + base
+			return "brug/helling/bocht_" + base
 		"brug_bocht_rechts":
-			return "helling_bocht/brug_%s_rechts%s" % [parts[0], cell]
+			return "brug/helling/bocht_%s_rechts%s" % [parts[0], cell]
 	return "brug/bocht_" + base
 
 

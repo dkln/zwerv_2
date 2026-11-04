@@ -62,6 +62,7 @@ signal merge_finished
 ## camera that zooms smoothly) re-divides the shadow cascades every frame, so the edges
 ## of all shadows crawl and flicker; a fixed one keeps them still.
 const SHADOW_DISTANCE_SLACK := 1.25
+const MIN_SHADOW_DISTANCE := 60.0
 ## Show a loading screen while merging is in progress.
 @export var loading_screen := true
 ## Text of the loading screen.
@@ -373,7 +374,8 @@ func _process(_delta: float) -> void:
 				if gm:
 					gm.visible = not culled[layer_name]
 	if _sun:
-		var needed := distance + zoom * shadow_factor
+		# at least MIN_SHADOW_DISTANCE: below street level (a chase camera in a tunnel) both are negative
+		var needed := maxf(distance + zoom * shadow_factor, MIN_SHADOW_DISTANCE)
 		var current := _sun.directional_shadow_max_distance
 		if needed > current or needed * SHADOW_DISTANCE_SLACK * SHADOW_DISTANCE_SLACK < current:
 			_sun.directional_shadow_max_distance = needed * SHADOW_DISTANCE_SLACK

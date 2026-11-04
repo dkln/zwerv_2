@@ -2,7 +2,7 @@
 class_name RoadNetwork
 extends RefCounted
 ## The lanes vehicles drive on, shared by every vehicle of a scene
-## (scripts/characters/vehicle.gd) and shown in the editor (lane_arrows.gd). Read from
+## (scripts/vehicles/vehicle.gd) and shown in the editor (lane_arrows.gd). Read from
 ## the ground tiles themselves: every tile that vehicles drive on says so in its
 ## metadata ("traffic" in its .tile.json, written by tools/voxgen/traffic.py, collected
 ## in the meta "traffic" of the ground MeshLibrary by library_builder.gd). So it works
@@ -25,7 +25,9 @@ extends RefCounted
 ## - speed: speed limit in km/h, instead of the one of the kind of road; passed on along
 ##   the lanes in the same way.
 ## - rise: the surface rises this many metres towards the back of the tile (a ramp).
-## - only: who may come on it: ROAD_USER_KINDS, or for a track "bus" or "tram"; left out =
+## - rails: on a rail tile, the sides its rails join ("SN", "SE", ...), turned with the tile: a
+##   rail vehicle only leaves a tile along them (scripts/vehicles/rail_vehicle.gd).
+## - only: who may come on it: ROAD_USER_KINDS, or for a track "bus", "tram" or "trein"; left out =
 ##   all four. "auto" also lets buses on, so a bus lane is the one place for "bus" alone.
 ##   A tile with no "traffic" at all (water, a wall) is for nobody.
 ##
@@ -78,6 +80,7 @@ var _from_context := {}   # road cell -> Array[Vector2i] of axes its tile left o
 var _kinds := {}          # road cell -> Kind
 var _rises := {}          # ramp cell -> [heading it rises in, metres]
 var _only := {}           # road cell -> Array of vehicle kinds allowed on it
+var _rails := {}          # road cell -> Array of [side, side] its rails join (headings out of the cell)
 var _chosen := {}         # road cell whose lanes were chosen for this placed tile -> true
 var _chosen_kinds := {}   # road cell whose vehicle kinds were chosen for this placed tile -> true
 var _chosen_speeds := {}  # road cell whose speed limit was chosen for this placed tile -> true
@@ -212,12 +215,24 @@ func step(cell: Vector3i, heading: Vector2i) -> Vector3i:
 	return find(cell.x + heading.x, cell.z + heading.y, cell.y, cell)
 
 
-## Road cell with a lane in `heading` nearest to map cell `near`, street level first.
-func nearest(near: Vector2i, heading: Vector2i) -> Vector3i:
+## True if the rails of `cell` lead a vehicle that arrives in heading `arriving` out in heading
+## `leaving`; true on a tile without rails.
+func rail_connects(cell: Vector3i, arriving: Vector2i, leaving: Vector2i) -> bool:
+	if not _rails.has(cell):
+		return true
+	for rail: Array in _rails[cell]:
+		if (rail[0] == -arriving and rail[1] == leaving) or (rail[1] == -arriving and rail[0] == leaving):
+			return true
+	return false
+
+
+## Road cell with a lane in `heading` for this kind of vehicle nearest to map cell `near`,
+## street level first.
+func nearest(near: Vector2i, heading: Vector2i, vehicle_kind := "auto") -> Vector3i:
 	var best := NONE
 	var best_distance := INF
 	for cell: Vector3i in _lanes:
-		if not lanes(cell).has(heading):
+		if not lanes(cell).has(heading) or not allows(cell, vehicle_kind):
 			continue
 		var distance := Vector2(cell.x - near.x, cell.z - near.y).length() + absf(cell.y) * 100.0
 		if distance < best_distance:
@@ -287,6 +302,11 @@ func _read_tiles() -> void:
 		if choice.has("speed"):
 			_speeds[cell] = float(choice.speed)
 			_chosen_speeds[cell] = true
+		if data.has("rails"):
+			var rails := []
+			for rail: String in data.rails:
+				rails.append([_flat(turn * LOCAL_HEADINGS[rail[0]]), _flat(turn * LOCAL_HEADINGS[rail[1]])])
+			_rails[cell] = rails
 		var headings: Array[Vector2i] = []
 		for local_name in sides:
 			if LOCAL_HEADINGS.has(local_name):

@@ -18,7 +18,7 @@ extends Node
 @export var environment_path := NodePath("../Omgeving")
 
 ## How dark it is now: 0 = day, 1 = night (the same as the shader global zwervr_night),
-## for scripts that switch lights on (vehicle headlights, scripts/characters/vehicle.gd).
+## for scripts that switch lights on (vehicle headlights, scripts/vehicles/vehicle.gd).
 var night := 0.0
 
 var _sun: DirectionalLight3D

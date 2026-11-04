@@ -7,11 +7,15 @@
 			"S",
 			"W"
 		],
+		"rails": [
+			"SE"
+		],
 		"only": [
 			"auto",
 			"brommer",
 			"fiets",
-			"voetganger"
+			"voetganger",
+			"tram"
 		]
 	}
 }

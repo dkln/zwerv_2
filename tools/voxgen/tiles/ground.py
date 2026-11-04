@@ -561,7 +561,7 @@ def edge_dist(px, py, edges, R=6.0):
     return e
 
 
-def sidewalk(edges="", points=(), gutter=False, surface=PAVING, quay=False, sz=12):
+def sidewalk(edges="", points=(), gutter=False, surface=PAVING, quay=False, sz=12, corner_radius=6.0):
     """Sidewalk tile at WALK height with a curb towards the road.
 
     edges:   face letters (v/r/a/l) bordering road; see edge_dist.
@@ -570,12 +570,13 @@ def sidewalk(edges="", points=(), gutter=False, surface=PAVING, quay=False, sz=1
     gutter:  put a 3-voxel gutter at road level in front of the curb.
     surface: colour function of the walking surface.
     quay:    natural-stone quay edge (with brick underneath) instead of a curb.
+    corner_radius: radius in voxels of an outer corner between two road edges.
     """
     m = new(sz)
     for y in range(T):
         for x in range(T):
             px, py = x + 0.5, y + 0.5
-            e = edge_dist(px, py, edges)
+            e = edge_dist(px, py, edges, corner_radius)
             for (cx, cy) in points:
                 e = min(e, math.hypot(px - cx, py - cy))
             if quay:
@@ -612,13 +613,18 @@ SIDEWALK_SHAPES = {
     "smal_eind": ("vrl", ()),
 }
 
+# radius (voxels) of the kerb round a street corner: wide enough to read as a curve from afar
+STREET_CORNER_RADIUS = 12.0
+
 for _name, (_e, _p) in SIDEWALK_SHAPES.items():
-    register(f"grond/stoep/stoep_{_name}", partial(sidewalk, _e, _p))
+    _radius = STREET_CORNER_RADIUS if _name == "hoek_buiten" else 6.0
+    register(f"grond/stoep/stoep_{_name}", partial(sidewalk, _e, _p, corner_radius=_radius))
     if _name != "vol":
-        register(f"grond/stoep/stoep_goot_{_name}", partial(sidewalk, _e, _p, gutter=True))
+        register(f"grond/stoep/stoep_goot_{_name}", partial(sidewalk, _e, _p, gutter=True, corner_radius=_radius))
 for _name in ("vol", "rand", "hoek_buiten", "hoek_binnen"):
     _e, _p = SIDEWALK_SHAPES[_name]
-    register(f"grond/stoep/stoep_klinker_{_name}", partial(sidewalk, _e, _p, surface=paver_fn))
+    _radius = STREET_CORNER_RADIUS if _name == "hoek_buiten" else 6.0
+    register(f"grond/stoep/stoep_klinker_{_name}", partial(sidewalk, _e, _p, surface=paver_fn, corner_radius=_radius))
 
 
 @tile("grond/stoep/stoep_goot_kolk")
@@ -1705,22 +1711,25 @@ def padded(flat_tile, lift=2, fill=EARTH):
     return out
 
 
-# steep ramps (1 m per tile) grond/helling/helling_<name>, made by the importer
+# steep ramps (1 m per tile) grond/<category>/helling/helling_<name>, made by the importer
 for _p in ("weg/weg_vlak", "weg/rijstrook_onderbroken_kant", "weg/rijstrook_geen_kant", "weg/rijstrook_streep_kant",
            "weg/rijstrook_onderbroken_geen", "snelweg/snelweg_rijstrook", "snelweg/snelweg_vluchtstrook",
            "fietspad/fietspad_recht", "stoep/stoep_vol", "stoep/stoep_rand", "stoep/stoep_goot_rand",
            "weg/straat_klinkers", "plein/plein_tegels", "natuur/gras", "spoor/trein_recht", "tram/tram_recht"):
     slopes("grond/" + _p, "steil")
 
-# bridge ramps grond/helling/helling_brug_<name> (thin deck) and helling_brug_<name>_rand
+# bridge ramps grond/brug/helling/helling_<name> (thin deck) and helling_<name>_rand
 # (parapet on the left), made by the importer (addons/vox_tiles/importer/slopes.gd)
 for _p in ("weg/weg_vlak", "weg/rijstrook_onderbroken_kant", "weg/rijstrook_geen_kant", "fietspad/fietspad_recht",
            "stoep/stoep_vol", "spoor/trein_recht", "tram/tram_recht"):
     slopes("grond/" + _p, "brug", "brug_rand")
 # both edges of the ramps of the curved bridges, and klinker streets on bridges
 slopes("grond/stoep/stoep_vol", "brug_rand_rechts")
+# the south track of a two-track tram or train ramp
+slopes("grond/tram/tram_recht", "brug_rand_rechts")
+slopes("grond/spoor/trein_recht", "brug_rand_rechts")
 slopes("grond/weg/straat_klinkers", "brug")
 
 slopes("grond/natuur/gras", "hoek_buiten", "hoek_binnen")
-register("grond/helling/helling_dijk_beton", lambda: padded(flat(CONCRETE, top=WALK), fill=CONCRETE_DARK))
-smooth("grond/helling/helling_dijk_beton", "steil")
+register("grond/terrein/helling/helling_dijk_beton", lambda: padded(flat(CONCRETE, top=WALK), fill=CONCRETE_DARK))
+smooth("grond/terrein/helling/helling_dijk_beton", "steil")

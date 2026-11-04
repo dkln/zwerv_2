@@ -31,7 +31,7 @@ const STAMPS := {
 		"height": ["Deck level", 3, 2, 10],
 		"spacing": ["Pillar spacing", 2, 1, 8],
 		"ends": ["Ends", "abutments", ["abutments", "ramps"]],
-		"ramp": ["Ramp", "helling/helling_brug_weg_vlak", "helling/helling_brug_", "_rand"],
+		"ramp": ["Ramp", "brug/helling/helling_weg_vlak", "brug/helling/helling_", "_rand"],
 	}},
 	"tunnel": {"label": "Car tunnel (3 lanes)", "min_length": 19, "params": {}},
 }

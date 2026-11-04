@@ -6,10 +6,14 @@
 			"W"
 		],
 		"road": "straat",
+		"rails": [
+			"SW"
+		],
 		"only": [
 			"auto",
 			"brommer",
-			"fiets"
+			"fiets",
+			"tram"
 		]
 	}
 }

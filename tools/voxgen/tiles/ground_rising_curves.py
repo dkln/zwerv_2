@@ -27,21 +27,21 @@ Rising curves rise R = rise_floors(w) floors over the arc (slope along the centr
 weg (n=5): R=5. The height is constant across the road (radially level) and grows
 linearly with the angle (the importer makes the surface smooth, addons/vox_tiles/importer/slopes.gd).
 
-* ``grond/helling_bocht/<profile>_<i>_<j>`` (embankment, rises START -> END: climbing
+* ``grond/bocht/helling/<profile>_<i>_<j>`` (embankment, rises START -> END: climbing
   you turn LEFT). START is at height 0: it joins a flat road on floor 0 (or the top of
   a straight ramp on floor -1). END is at R floors: it joins a flat road / straight
   ramp on floor R (a ramp rising further west uses rotation k+1).
-* ``grond/helling_bocht/<profile>_rechts_<i>_<j>`` (embankment, rises END -> START:
+* ``grond/bocht/helling/<profile>_rechts_<i>_<j>`` (embankment, rises END -> START:
   climbing you turn RIGHT). END is at height 0 (floor 0), START at R floors (floor R;
   a ramp rising further south uses rotation k+2).
-* ``grond/helling_bocht/brug_<profile>_<i>_<j>`` / ``brug_<profile>_rechts_<i>_<j>``:
+* ``grond/brug/helling/bocht_<profile>_<i>_<j>`` / ``bocht_<profile>_rechts_<i>_<j>``:
   the same surfaces as thin bridge decks with parapets on both curved edges. Same
   cells, same floors, so embankment and bridge cells can be mixed per cell (e.g.
   embankment cells on floor 0, bridge cells above). Cells whose centre lies under the
   deck (pier_cell; table below) carry a pier stub from their z=0 up to the deck, so a
   ``brug/brug_pijler`` stack below them (``brug_pijler_gras/stoep/water`` on floor 0)
   meets the deck without a gap.
-* ``grond/helling_bocht/ophoging_<n>x<n>_<i>_<j>``: one floor (8 voxels) of solid earth
+* ``grond/bocht/helling/ophoging_<n>x<n>_<i>_<j>``: one floor (8 voxels) of solid earth
   with the footprint of the profile ring of cell (i, j); stack it on floors 1 .. f-1
   under an embankment cell that sits on floor f > 1 (n = 4 or 5).
   ``ophoging_gras_<n>x<n>_<i>_<j>`` is the same block with grass on the rest of the
@@ -209,8 +209,8 @@ for _pname in RISING_PROFILES:
 for _w in sorted({len(CURVE_PROFILES[_p][0]()) for _p in RISING_PROFILES}):
     _n = curve_size(_w)
     for (_i, _j) in used_cells(_w):
-        register(f"grond/helling_bocht/ophoging_{_n}x{_n}_{_i}_{_j}", partial(fill_block, _w, _i, _j))
-        register(f"grond/helling_bocht/ophoging_gras_{_n}x{_n}_{_i}_{_j}", partial(fill_block, _w, _i, _j, True))
+        register(f"grond/bocht/helling/ophoging_{_n}x{_n}_{_i}_{_j}", partial(fill_block, _w, _i, _j))
+        register(f"grond/bocht/helling/ophoging_gras_{_n}x{_n}_{_i}_{_j}", partial(fill_block, _w, _i, _j, True))
 
 for (_i, _j) in used_cells(3):
     register(f"grond/tunnel/bocht_{_i}_{_j}", partial(tunnel_curve, _i, _j))

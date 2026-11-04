@@ -1435,7 +1435,7 @@ def car_greenhouse(model, first, last, roof_height, pillars, roof_up, base_up, p
 
 def sedan_body(paint, sill):
     """Sedan of 4.5 x 1.75 x 1.5 m in these colours, without its wheels (auto_wiel, placed
-    and turned by scripts/characters/vehicle.gd at SEDAN_WHEEL_*): x across (14 voxels), y
+    and turned by scripts/vehicles/vehicle.gd at SEDAN_WHEEL_*): x across (14 voxels), y
     along (36, the front with the headlights at y=0, so it faces the way the prop faces), z
     up. Its lowest voxels (the floor) are 1 voxel above the road."""
     width, length, height = 14, 36, 12
@@ -1601,7 +1601,7 @@ def wheel_arches(model, wheel_along_list, wheel_up, top, wheel_radius=SEDAN_WHEE
 @tile("props/voertuigen/auto_suv")
 def suv():
     """Body of an SUV of 4.75 x 1.75 x 1.88 m, without its wheels (auto_wiel, the same as
-    the sedan's, at SUV_WHEEL_ALONG; placed and turned by scripts/characters/suv.gd): x
+    the sedan's, at SUV_WHEEL_ALONG; placed and turned by scripts/vehicles/suv.gd): x
     across (14 voxels), y along (38, the front with the headlights at y=0), z up. A tall,
     boxy dark green body with black cladding round the bottom and the wheel arches, an
     upright windscreen, a long roof with roof rails, a square tailgate with a spare wheel,
@@ -1695,7 +1695,7 @@ SUV_WHEEL_UP = 2.5
 
 def hatchback_body(paint, sill):
     """Hatchback of 3.88 x 1.75 x 1.38 m in these colours, without its wheels (auto_wiel, at
-    HATCHBACK_WHEEL_ALONG; placed and turned by scripts/characters/hatchback.gd): x across
+    HATCHBACK_WHEEL_ALONG; placed and turned by scripts/vehicles/hatchback.gd): x across
     (14 voxels), y along (31, the front at y=0), z up. Shorter than the sedan, with a short
     bonnet and no boot: the roof runs on to a steep tailgate with a spoiler over its window
     and tall tail lights at the corners."""
@@ -1775,7 +1775,7 @@ VAN_WHEEL_ALONG = (8.0, 31.0)
 @tile("props/voertuigen/auto_busje")
 def van():
     """White delivery van of 5 x 2 x 2.13 m, without its wheels (auto_wiel, at
-    VAN_WHEEL_ALONG; placed and turned by scripts/characters/van.gd): x across (16 voxels),
+    VAN_WHEEL_ALONG; placed and turned by scripts/vehicles/van.gd): x across (16 voxels),
     y along (40, the front at y=0), z up. A short sloping bonnet, a tall windscreen, windows
     in the cab only, a closed cargo box with a sliding door on the right (the pavement side)
     and two rear doors with windows, big mirrors, a ribbed roof."""
@@ -1873,7 +1873,7 @@ TRUCK_WHEEL_ALONG = (9.0, 44.0)
 def truck():
     """Small yellow truck with an open cargo bed, of 7 x 2.25 x 3 m, without its wheels
     (auto_wiel_groot, at TRUCK_WHEEL_ALONG; placed and turned by
-    scripts/characters/truck.gd): x across (18 voxels), y along (56, the front at y=0), z
+    scripts/vehicles/truck.gd): x across (18 voxels), y along (56, the front at y=0), z
     up. A boxy cab with a flat front, a tall exhaust stack behind it, a dark chassis with a
     fuel tank, mudguards over the rear wheels, and a cargo bed with steel sides and a
     tailgate, loaded with a heap of sand."""
@@ -2011,7 +2011,7 @@ BUS_WHEEL_ALONG = (15.0, 62.0)
 def city_bus():
     """White city bus with a red band, of 10.5 x 2.5 x 3 m, without its wheels
     (auto_wiel_groot, at BUS_WHEEL_ALONG; placed and turned by
-    scripts/characters/city_bus.gd): x across (20 voxels), y along (84, the front at y=0), z
+    scripts/vehicles/city_bus.gd): x across (20 voxels), y along (84, the front at y=0), z
     up. A big windscreen with a lit line number over it, a band of windows down each side,
     two double doors on the right (the pavement side), a ventilation grille at the back,
     air-conditioning boxes on the roof."""
@@ -2109,7 +2109,7 @@ def city_bus():
 @tile("props/voertuigen/auto_aanhanger")
 def trailer():
     """Trailer of 3.25 x 1.75 x 1.13 m with an open bed, without its wheels (auto_wiel,
-    placed by scripts/characters/vehicle.gd): x across (14 voxels), y along (26), z up. The
+    placed by scripts/vehicles/vehicle.gd): x across (14 voxels), y along (26), z up. The
     coupling is at the very front (y=0), the point it pivots about on the tow ball; an
     A-frame runs back to the bed, whose axle is at y=18. A wooden floor, galvanised sides
     with a chrome rail, mudguards over the wheels, tail lights and a plate at the back, and
@@ -2171,7 +2171,7 @@ def trailer():
 
 @tile("props/voertuigen/auto_trekhaak")
 def tow_bar():
-    """Tow bar for under the back of a car (scripts/characters/vehicle.gd, hitch_model): a
+    """Tow bar for under the back of a car (scripts/vehicles/vehicle.gd, hitch_model): a
     dark bar, y along (0 under the bumper, 4 at the back), with the chrome ball the coupling
     of a trailer pivots on at the back end, 2 voxels up."""
     model = V(2, 5, 3)
@@ -2189,7 +2189,7 @@ def car_wheel():
     """Car wheel of 0.75 m across, 0.25 m wide: a disc in the y-z plane (2 x 6 x 6
     voxels, the axle along x through the middle), a rubber tyre round a steel rim with
     four dark spokes so it shows when it turns. Turned and steered by
-    scripts/characters/vehicle.gd."""
+    scripts/vehicles/vehicle.gd."""
     model = V(2, 6, 6)
     for along in range(6):
         for up in range(6):

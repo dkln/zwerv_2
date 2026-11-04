@@ -3,16 +3,16 @@ extends Node
 ## The traffic of the town (the "Verkeer" node of scenes/stad.tscn): spreads `vehicle_count`
 ## vehicles over the road network when the game starts, at random but repeatable spots at
 ## least `spacing` metres apart, keeping off crossings and zebras. Each is an ordinary
-## Vehicle (scripts/characters/) under the scene root, next to the Auto and the SUV that
+## Vehicle (scripts/vehicles/) under the scene root, next to the Auto and the SUV that
 ## are in the scene itself. MIX says what drives: its entries take turns.
 
-const CAR = "res://scripts/characters/car.gd"
-const SUV = "res://scripts/characters/suv.gd"
-const HATCHBACK = "res://scripts/characters/hatchback.gd"
-const TRAILER_CAR = "res://scripts/characters/trailer_car.gd"
-const VAN = "res://scripts/characters/van.gd"
-const TRUCK = "res://scripts/characters/truck.gd"
-const CITY_BUS = "res://scripts/characters/city_bus.gd"
+const CAR = "res://scripts/vehicles/car.gd"
+const SUV = "res://scripts/vehicles/suv.gd"
+const HATCHBACK = "res://scripts/vehicles/hatchback.gd"
+const TRAILER_CAR = "res://scripts/vehicles/trailer_car.gd"
+const VAN = "res://scripts/vehicles/van.gd"
+const TRUCK = "res://scripts/vehicles/truck.gd"
+const CITY_BUS = "res://scripts/vehicles/city_bus.gd"
 ## [script, model ("" = the one of the script)]: town traffic, so mostly cars.
 const MIX := [
 	[HATCHBACK, ""],

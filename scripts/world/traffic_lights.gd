@@ -135,7 +135,7 @@ func _update() -> void:
 
 ## Phase of the car lights for traffic on the north-south (or east-west) road at the
 ## intersection nearest to `pos` (metres): 0 green, 1 amber, 2 red; -1 when no
-## intersection with lights lies within `radius` metres (for cars, scripts/characters/car.gd).
+## intersection with lights lies within `radius` metres (for cars, scripts/vehicles/car.gd).
 func car_phase(pos: Vector3, north_south: bool, radius := 14.0) -> int:
 	var best := -1
 	var best_d := radius

@@ -1,6 +1,6 @@
 shader_type spatial;
 render_mode blend_mix, cull_back, depth_draw_opaque, diffuse_burley, specular_schlick_ggx;
-// Wheel of a vehicle (scripts/characters/vehicle.gd puts it on the wheel model,
+// Wheel of a vehicle (scripts/vehicles/vehicle.gd puts it on the wheel model,
 // props/voertuigen/auto_wiel): the model itself never turns about its axle; this shader
 // draws the rubber tyre, the steel rim and the spokes, and turns the spokes by the
 // instance parameter `roll`. At speed the spokes blur into an even grey (`spin_blur`), as

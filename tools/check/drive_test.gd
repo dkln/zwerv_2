@@ -1,5 +1,5 @@
 extends SceneTree
-## Lets the car of scenes/stad.tscn (node "Auto", scripts/characters/car.gd, a Vehicle)
+## Lets the car of scenes/stad.tscn (node "Auto", scripts/vehicles/car.gd, a Vehicle)
 ## drive on its own, headless and faster than real time, and prints what it did:
 ## distance, cells visited, stops, its top speed and time per kind of road (against the
 ## speed limit), the lowest level it reached (the A12 trough is -6), and every moment it

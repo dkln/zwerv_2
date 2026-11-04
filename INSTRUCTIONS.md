@@ -31,8 +31,19 @@ de Laan van NOI tot de Juliana van Stolberglaan; op het dek erboven staan de
 Malietoren, een rij winkels met Snackbar De Vrijheid en kantoren. Tussen Haagse Bos en
 Malieveld komt hij weer boven bij een kruispunt met stoplichten aan de Koningskade,
 naast het ministerie. Drie tramlijnen (Kneuterdijk - Korte Voorhout - Malieveld en
-Grote Marktstraat - Spui - Centraal, verbonden met bogen via de Buitenhof) met haltes
-en bruggen over de singel. Geen spoor. Opnieuw bouwen:
+Grote Marktstraat - Spui - Centraal, verbonden met bogen via de Buitenhof) met haltes.
+Vier bruggen gaan over de oostarm van de singel: Mauritskade, de twee tramstraten en
+Zuidwal. Het RandstadRail-viaduct (rijen z 90-91) begint met een helling naast Centraal
+Station en loopt naar het oosten, met haltes bij Centraal en het Beatrixkwartier, en verder
+tot de kaartrand. Twee sporen langs de westkant van het station (x 72-73) sluiten het aan op
+de tramlijn in straat z 58. De trams van de Grote Marktstraat rijden door een tunnel (x 27 tot
+47) met een ondergrondse halte en ingangen op straat; oost daarvan rijden ze onder een ministerie
+door dat over de straat gebouwd is (x 56 tot 60). Treinsporen lopen uit de stationshal
+(x 83-84) naar het zuiden, onder het tramviaduct door, en een helling op naar een eigen viaduct
+(z 93-94) tot de kaartrand. Station Laan van NOI (x 122 tot 129) ligt 6 m boven de straat x
+128: trein en tram naast elkaar met drie perrons, elk met een trap. Daaronder de Schenkkade
+(z 96) en een nieuwe strook stad (z 98 tot 106, alleen oost van de Koningskade). Over het vlakke deel van de A12 (x 160) gaat een voetbrug met trappen van de
+kantoren aan de Prins Clauslaan naar de straat z 29. Opnieuw bouwen:
 `tools/godot.sh --headless --script tools/build/build_city.gd`.
 
 De game start met deze kaart (`run/main_scene` = `scenes/stad.tscn`): de node
@@ -46,14 +57,22 @@ meteen zelf rondkijken. Over het beeld ligt een vignet (node `Vignet`,
 gemengd, zonder schermkopie of blur, dus vrijwel gratis. Er is geen tilt-shift en geen
 scherptediepte (DOF) meer: het beeld is overal scherp.
 
+Op de rails rijden twee RandstadRails (`scripts/vehicles/randstadrail.gd`, drie wagons) en
+twee NS-treinen (`ns_train.gd`, vier wagons), beide op `rail_vehicle.gd`. Wat erop mag rijden staat
+op de tile: `"only": ["tram"]` of `["trein"]` in de `traffic`-metadata, en `"rails"` zegt welke
+zijden de rails verbinden (`SN`, `SE`), zodat een voertuig bij een splitsing alleen kan gaan
+waar de rails echt lopen. Ze stoppen bij perrons (`dwell_time`) en rijden heen en weer: aan het
+eind van het spoor wisselt de bestuurder van cabine en gaat het voertuig geleidelijk over op
+het spoor ernaast, dat de andere kant op gaat.
+
 Stoplichten werken: de node `Verkeerslichten` (`scripts/world/traffic_lights.gd`, in
 elke scène die de bouwers maken) laat de stoplichtprops (`verkeerslichten/auto_*`,
 `fiets_*`, `ov_*`, `voetganger_*`, `mast_*`) per kruispunt een vaste cyclus doorlopen:
 noord-zuid groen, oranje, alles rood, oost-west groen, oranje, alles rood. De richting
 van een licht volgt uit zijn draaiing; tijden zijn instelbaar op de node.
 
-Er rijdt verkeer door de stad: een sedan, node `Auto` (`scripts/characters/car.gd`), en een
-SUV, node `SUV` (`scripts/characters/suv.gd`), staan in de scène; de node `Verkeer`
+Er rijdt verkeer door de stad: een sedan, node `Auto` (`scripts/vehicles/car.gd`), en een
+SUV, node `SUV` (`scripts/vehicles/suv.gd`), staan in de scène; de node `Verkeer`
 (`scripts/world/traffic.gd`) zet er bij het starten nog `vehicle_count` (24) voertuigen bij,
 verspreid over het wegennet (`spacing`, `traffic_seed`, de mix in `MIX`). Soorten:
 
@@ -67,7 +86,7 @@ verspreid over het wegennet (`spacing`, `traffic_seed`, de mix in `MIX`). Soorte
 | `truck.gd` (vrachtwagen met laadbak) | `auto_vrachtwagen` | 7 m | 7500 kg | 4875 Nm |
 | `city_bus.gd` (stadsbus, mag op de busbaan) | `auto_stadsbus` | 10,5 m | 12000 kg | 6600 Nm |
 
-Allemaal zijn het een `Vehicle` (`scripts/characters/vehicle.gd`):
+Allemaal zijn het een `Vehicle` (`scripts/vehicles/vehicle.gd`):
 - Gewicht en koppel (`mass_kg`, `wheel_torque`): een zwaar voertuig heeft van allebei meer.
   Koppel gedeeld door wielstraal en massa geeft de acceleratie (een aanhanger telt mee). Bij
   een botsing delen de massa's de klap volgens de impuls: de lichtste krijgt de grootste
@@ -102,7 +121,10 @@ tot `max_lead` van het beeld). Daar volgt hij op een kritisch gedempte veer
 (`glide_time`), zodat de camera bij een constante snelheid even gelijkmatig meebeweegt
 en bij optrekken en remmen geleidelijk meegaat.
 Hij zoomt van 16 m in beeld bij stilstand (`zoom_still`) tot 55 m (`zoom_fast`) en gaat
-mee de tunnelbak in. Om de 20 tot 35 s (`closeup_every`) maakt hij een close-up: hij
+mee de tunnelbak in. Rijdt de auto onder iets door, dan zakt de camera al in de open bak
+achter hem en volgt hem als achtervolgcamera door de tunnel, die zijn eigen lampen heeft
+(node `Tunnelverlichting`, `scripts/world/tunnel_lights.gd`); pas als auto en camera weer
+buiten zijn, glijdt hij omhoog (`tunnel_*`). Om de 20 tot 35 s (`closeup_every`) maakt hij een close-up: hij
 zoomt in tot 7 m, zakt wat lager en zwaait om de auto heen (`closeup_*`, uit met
 `closeups`). Tijdens het volgen laat B de SUV als spookrijder op de gevolgde auto
 inrijden (demo-botsing, `Vehicle.drive_into`), en zet T het spel op 4× snelheid en weer
@@ -211,7 +233,7 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
   (busbaan, snelweg). De stadsbouwer legt ze zelf waar een tweestrookstraat de hoek omgaat
   (`_square_corners` in `build_city.gd`). Test: `tools/godot.sh --headless --script
   tools/check/corner_test.gd`.
-- Voertuig (`scripts/characters/vehicle.gd`, `Vehicle`): de rijlogica voor elk
+- Voertuig (`scripts/vehicles/vehicle.gd`, `Vehicle`): de rijlogica voor elk
   voertuig. Het plant een paar cellen vooruit (minstens de remafstand), kiest op
   kruisingen willekeurig (`straight_chance`, `route_seed`) en remt af voor bochten
   en een lagere maximumsnelheid. Het stopt voor zebrapaden en rode lichten, voegt
@@ -251,7 +273,7 @@ Projectstructuur
       world/               level_of_detail, layer_baker,
                            ground_map, tint_map, tint_area
       effects/             day_cycle, smoke, grass_blades, vignette
-      characters/          vehicle en de voertuigen
+      vehicles/            vehicle en de voertuigen (auto's, RandstadRail, NS-trein)
     tools/                 command-line tools (start ze met tools/godot.sh)
       godot.sh             Godot met tijdslimiet en zonder stdin
       tool_common.gd       gedeelde helpers van de tools
@@ -333,7 +355,7 @@ Bouwpaneel ("Build", rechtsboven in de editor)
   - Viaduct on pillars: dek op de gekozen laag, pijlers om de zoveel tiles (in het
     water op de bodem, op land op gras/stoep; niet op wegen of spoor, daar komt een
     ligger) en liggers ertussen. Einden: landhoofden voorbij beide einden, of
-    opritten (`helling_brug_*`) die per tile 1 m stijgen van straatniveau tot het
+    opritten (`brug/helling/*`) die per tile 1 m stijgen van straatniveau tot het
     dek, zodat een weg over een andere weg gaat (lijn minstens 2 x hoogte + 1).
   - Car tunnel (3 lanes): toerit omlaag, open bak, portaal en tunnel op laag -6,
     aan het eind gespiegeld; minstens 19 tiles lang.
@@ -358,8 +380,9 @@ trappen hebben treden van 12,5 cm.
 
 Hoogtes en lagen (grond):
 - Een grond-laag is 1 m hoog. Wegdek ligt op 0,25 m, stoep en gras op 0,375 m.
-- Hellingen (`helling/helling_*`) stijgen 1 laag over 1 tile; flauwe hellingen
-  (`helling/flauw_*_a` en `_b`) stijgen 0,5 m per tile (a eerst, dan b).
+- Hellingen staan in de submap `helling` van hun categorie (`weg/helling/helling_*`,
+  brughellingen in `brug/helling/*`) en stijgen 1 laag over 1 tile; flauwe hellingen
+  (`weg/helling/flauw_*_a` en `_b`) stijgen 0,5 m per tile (a eerst, dan b).
   Zet `terrein/grond_blok` eronder als je verder ophoogt. De meeste hellingen
   hebben geen eigen `.gox`: de importer maakt ze van de vlakke tile (`slopes` in
   de tile-metadata, zie hieronder).
@@ -369,12 +392,17 @@ Hoogtes en lagen (grond):
   overspanning), tuibrug: `tuibrug_0` (pyloon) + `tuibrug_1..3`.
 - Grachten en rivieren: water op laag -2, `kademuur` op laag -2 en -1 en
   `stoep_kade` op laag 0. De bakstenen boogbrug en de kadetrap zet je op laag -2.
+- Bochten: buiten een bocht in de straat volgt de stoeprand de lijn (`<rijstrook>_hoek_links_stoep`,
+  `_goot` of `_klinker`, met schuin buiten de hoek een volle stoeptegel `stoep_vol`). Stoephoeken
+  `stoep_*hoek_buiten` hebben een straal van 1,5 m.
 - Tunnels (6 lagen hoog): tunnel-tiles op laag -6; het dak komt dan precies op
   straatniveau, zodat je er een weg of snelweg bovenop kunt leggen. Toerit:
   `tunnel_toerit_*_d1` t/m `_d6` op laag -1 t/m -6; daarna `tunnelbak_*_d6` (open
   bak) en `tunnel_*_portaal` aan het begin van de overkapping. Varianten
   `_wand` / `_wand_rechts` hebben een keerwand links/rechts; fiets-varianten
-  bestaan ook.
+  bestaan ook. Tram: `tramtunnel_toerit_wand[_rechts]_d1` t/m `_d6`,
+  `tramtunnel_wand[_rechts][_portaal]`, `tramtunnel_kaal` en `tramtunnel_perron[_begin|_eind]` naast het
+  spoor bij een ondergrondse halte, met op straat de prop `ov/tramtunnel_ingang`.
 - Zwembaden buiten: `zwembad_*` op laag -1 (de rand komt op stoepniveau).
 - Grote bochten (`*_bocht_groot_3x3`) beslaan 3x3 tiles: plaats ze in de
   middelste cel en laat de 8 cellen eromheen leeg.
@@ -556,14 +584,15 @@ modelbestand niet kent:
 - In het Import-paneel van Godot kun je `animation` per tile overschrijven.
 - `slopes`: hellingen die de importer van deze (vlakke) tile maakt, bv.
   `["steil", "flauw_a", "flauw_b"]`. Vormen: `steil` (1 m per tile) wordt
-  `helling/helling_<naam>`, `flauw_a`/`flauw_b` worden `helling/flauw_<naam>_a`/`_b`,
-  `hoek_buiten`/`hoek_binnen` worden `helling/helling_<naam>_hoek_buiten`/`_binnen`,
+  `<categorie>/helling/helling_<naam>`, `flauw_a`/`flauw_b` worden
+  `<categorie>/helling/flauw_<naam>_a`/`_b`, `hoek_buiten`/`hoek_binnen` worden
+  `<categorie>/helling/helling_<naam>_hoek_buiten`/`_binnen`,
   `brug`/`brug_rand` (brugoprit, dunne plaat; `_rand` met borstwering links) worden
-  `helling/helling_brug_<naam>` en `helling/helling_brug_<naam>_rand`.
+  `brug/helling/helling_<naam>` en `brug/helling/helling_<naam>_rand`.
   Een cel van een vlakke bocht (`bocht/<profiel>_<i>_<j>`) heeft daarnaast
   `"curve": [i, j, delen]` en de bochtvormen `bocht`/`bocht_rechts` (stijgende
-  bocht, `helling_bocht/<profiel>[_rechts]_<i>_<j>`), `brug_bocht`/`brug_bocht_rechts`
-  (`helling_bocht/brug_<profiel>[_rechts]_<i>_<j>`) en `brug_vlak`
+  bocht, `bocht/helling/<profiel>[_rechts]_<i>_<j>`), `brug_bocht`/`brug_bocht_rechts`
+  (`brug/helling/bocht_<profiel>[_rechts]_<i>_<j>`) en `brug_vlak`
   (`brug/bocht_<profiel>_<i>_<j>`).
   Er is geen eigen `.gox` voor; pas je de vlakke tile aan, dan veranderen de
   hellingen mee. Zo kun je van elk wegdeel een helling maken. Hellingen zijn glad
@@ -634,6 +663,8 @@ Generator-bestanden (`tools/voxgen/`):
   - `details.py`, `details_extra.py`   gevel- en dakonderdelen, zonwering, teksten, vlaggen
   - `props.py`, `props_extra.py`   straatmeubilair, borden (RVV), bomen, planten,
     hekken, muurtjes, speeltuin, terras, zwembad, containers, steigers
+  - `tram_tunnel.py`   tramtunnel, tramhelling naar de tunnel, ondergrondse halte, tram in
+    een klinkerbocht en brugdekken met een opening voor trappen
   - `extras_business_paths.py`, `extras_shops_lanes.py`, `traffic_lights_industry.py`
     latere uitbreidingen over meerdere categorieën (bedrijfspand, heuvels, loopbruggen,
     winkels, tunnelbakken, tram- en busbanen, luxe appartementen, groendaken,

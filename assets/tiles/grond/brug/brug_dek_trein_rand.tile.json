@@ -1,3 +1,16 @@
 {
-	"id": 11
+	"id": 11,
+	"traffic": {
+		"lanes": [
+			"N",
+			"S"
+		],
+		"rails": [
+			"SN"
+		],
+		"speed": 80,
+		"only": [
+			"trein"
+		]
+	}
 }

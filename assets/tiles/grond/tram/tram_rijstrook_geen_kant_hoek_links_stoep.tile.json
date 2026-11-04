@@ -1,0 +1,18 @@
+{
+	"id": 1226,
+	"traffic": {
+		"lanes": [
+			"W"
+		],
+		"road": "straat",
+		"rails": [
+			"SW"
+		],
+		"only": [
+			"auto",
+			"brommer",
+			"fiets",
+			"tram"
+		]
+	}
+}

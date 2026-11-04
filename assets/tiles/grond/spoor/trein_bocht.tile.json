@@ -1,3 +1,17 @@
 {
-	"id": 92
+	"id": 92,
+	"traffic": {
+		"lanes": [
+			"N",
+			"E",
+			"S",
+			"W"
+		],
+		"rails": [
+			"SE"
+		],
+		"only": [
+			"trein"
+		]
+	}
 }

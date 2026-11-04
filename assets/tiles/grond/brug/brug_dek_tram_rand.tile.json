@@ -1,6 +1,13 @@
 {
 	"id": 9,
 	"traffic": {
+		"lanes": [
+			"N",
+			"S"
+		],
+		"rails": [
+			"SN"
+		],
 		"only": [
 			"tram"
 		]

@@ -325,7 +325,7 @@ func _motorway_start(network: RoadNetwork) -> Vector3i:
 
 
 func _hatchback(start: Dictionary) -> Vehicle:
-	var car: Vehicle = load("res://scripts/characters/hatchback.gd").new()
+	var car: Vehicle = load("res://scripts/vehicles/hatchback.gd").new()
 	car.start_cell = Vector2i(start.approach.x, start.approach.z)
 	car.start_heading = start.heading
 	return car

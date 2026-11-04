@@ -305,9 +305,16 @@ static func build_category(cat: String, changed: Dictionary, previews: bool, for
 static func _traffic_of(root: String, files: PackedStringArray, alias_files: PackedStringArray) -> Dictionary:
 	var traffic := {}
 	for path in files + alias_files:
-		var data = TileMetadata.read(path).get("traffic")
+		var metadata: Dictionary = TileMetadata.read(path)
+		var key := path.trim_prefix(root + "/").get_basename()
+		var data = metadata.get("traffic")
 		if data is Dictionary:
-			traffic[path.trim_prefix(root + "/").get_basename()] = data
+			traffic[key] = data
+		# rail tiles say what rides on the ramps made of them
+		var for_ramps = metadata.get("ramp_traffic")
+		if for_ramps is Dictionary:
+			for shape in metadata.get("slopes", []):
+				traffic[Slopes.item_name(key, shape)] = for_ramps
 	return traffic
 
 

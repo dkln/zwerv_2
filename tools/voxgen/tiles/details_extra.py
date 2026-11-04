@@ -194,7 +194,7 @@ def roll_awning():
 
 # ------------------------------------------------------------------ facade lettering
 
-WORDS = ["HOTEL", "THEATER", "BIOSCOOP", "STATION", "BAKKERIJ", "APOTHEEK", "ZWERVR", "MUSEUM", "SCHOOL",
+WORDS = ["MINISTERIE", "HOTEL", "THEATER", "BIOSCOOP", "STATION", "BAKKERIJ", "APOTHEEK", "ZWERVR", "MUSEUM", "SCHOOL",
          "RAADHUIS", "BIBLIOTHEEK", "ZWEMBAD", "SPORTHAL", "POLITIE", "MARKT", "CAFE", "HAVEN", "KERK"]
 
 

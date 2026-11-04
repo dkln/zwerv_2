@@ -3,7 +3,8 @@
 	"slopes": [
 		"steil",
 		"brug",
-		"brug_rand"
+		"brug_rand",
+		"brug_rand_rechts"
 	],
 	"traffic": {
 		"lanes": [
@@ -12,11 +13,28 @@
 			"S",
 			"W"
 		],
+		"rails": [
+			"SN"
+		],
 		"only": [
 			"auto",
 			"brommer",
 			"fiets",
-			"voetganger"
+			"voetganger",
+			"tram"
+		]
+	},
+	"ramp_traffic": {
+		"lanes": [
+			"N",
+			"S"
+		],
+		"rise": 1.0,
+		"rails": [
+			"SN"
+		],
+		"only": [
+			"tram"
 		]
 	}
 }

@@ -7,13 +7,13 @@ extends SceneTree
 
 const Common = preload("res://tools/tool_common.gd")
 const KINDS := [
-	["res://scripts/characters/car.gd", ""],
-	["res://scripts/characters/hatchback.gd", ""],
-	["res://scripts/characters/suv.gd", ""],
-	["res://scripts/characters/van.gd", ""],
-	["res://scripts/characters/trailer_car.gd", ""],
-	["res://scripts/characters/truck.gd", ""],
-	["res://scripts/characters/city_bus.gd", ""],
+	["res://scripts/vehicles/car.gd", ""],
+	["res://scripts/vehicles/hatchback.gd", ""],
+	["res://scripts/vehicles/suv.gd", ""],
+	["res://scripts/vehicles/van.gd", ""],
+	["res://scripts/vehicles/trailer_car.gd", ""],
+	["res://scripts/vehicles/truck.gd", ""],
+	["res://scripts/vehicles/city_bus.gd", ""],
 ]
 
 

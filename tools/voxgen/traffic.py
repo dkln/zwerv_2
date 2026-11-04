@@ -29,6 +29,13 @@ ALONG = ["N", "S"]      # both ways along the tile: decided by the road around i
 ONE_WAY = ["N"]         # a lane: traffic drives towards the back of the tile
 CORNER_LANES = {"rechts": ["E"], "links": ["W"]}   # a square corner: out to that side
 
+# which sides of a tile its rails join, for a rail vehicle ("rails"): a straight track, a curve
+RAIL_STRAIGHT = ["SN"]
+RAIL_CURVE = ["SE"]
+RAIL_BRANCH = ["SN", "SE"]
+RAIL_CROSSING = ["SN", "EW"]
+CORNER_RAILS = {"rechts": ["SE"], "links": ["SW"]}
+
 # who may come on a tile ("only")
 EVERYONE = ["auto", "brommer", "fiets", "voetganger"]
 ROAD = ["auto", "brommer", "fiets"]
@@ -75,20 +82,30 @@ _RULES = {
     "grond/terrein": [(["trap_1m_fietsgoot"], {"only": FOOT_AND_CYCLE}), (["trap_1m*"], {"only": FOOT})],
     "grond/brug": [
         (["brug_dek_fietspad_*"], {"only": CYCLE_PATH}),
-        (["brug_dek_stoep_rand", "loopbrug_open", "loopbrug_overdekt", "loopbrug_trap", "voetbrug_*"], {"only": FOOT}),
+        (["brug_dek_stoep_rand", "loopbrug_open", "loopbrug_open_zijtoegang*", "loopbrug_overdekt", "loopbrug_trap", "voetbrug_*"], {"only": FOOT}),
         (["brug_dek_klinker_*", "brug_dek_rijstrook_*", "brug_dek_weg_*", "ophaalbrug_dek"], {"only": ROAD}),
-        (["brug_dek_tram_rand"], {"only": ["tram"]}),
+        (["brug_dek_tram_rand"], {"lanes": ALONG, "rails": RAIL_STRAIGHT, "only": ["tram"]}),
+        (["brug_dek_trein_*"], {"lanes": ALONG, "rails": RAIL_STRAIGHT, "speed": 80, "only": ["trein"]}),
     ],
     "grond/bocht": [
         (["fietspad_*"], {"only": CYCLE_PATH}),
         (["*"], {"only": ROAD}),
     ],
     "grond/tram": [
-        (["tram_recht", "tram_bocht", "tram_kruising", "tram_t"], {"lanes": ALL, "only": EVERYONE}),
-        (["tram_rijstrook_*"], {"lanes": ONE_WAY, "road": "straat", "only": ROAD}),
+        (["tram_recht"], {"lanes": ALL, "rails": RAIL_STRAIGHT, "only": EVERYONE + ["tram"]}),
+        (["tram_bocht"], {"lanes": ALL, "rails": RAIL_CURVE, "only": EVERYONE + ["tram"]}),
+        (["tram_kruising"], {"lanes": ALL, "rails": RAIL_CROSSING, "only": EVERYONE + ["tram"]}),
+        (["tram_t"], {"lanes": ALL, "rails": RAIL_BRANCH, "only": EVERYONE + ["tram"]}),
+        (["tram_rijstrook_*"], {"lanes": ONE_WAY, "road": "straat", "rails": RAIL_STRAIGHT, "only": ROAD + ["tram"]}),
         (["tram_halte_perron", "tramhalte_middenperron"], {"only": FOOT}),
+        (["tram_klinker_bocht", "tram_gras_bocht"], {"lanes": ALL, "rails": RAIL_CURVE, "only": ["tram"]}),
         (["trambaan_vrij", "trambaan_vrij_gras", "tram_gras_recht", "tram_klinker_recht"],
-         {"lanes": ALONG, "only": ["tram"]}),
+         {"lanes": ALONG, "rails": RAIL_STRAIGHT, "only": ["tram"]}),
+    ],
+    "grond/spoor": [
+        (["trein_recht", "trein_bovenleiding_recht", "trein_stootblok"],
+         {"lanes": ALONG, "rails": RAIL_STRAIGHT, "speed": 80, "only": ["trein"]}),
+        (["trein_bocht"], {"lanes": ALL, "rails": RAIL_CURVE, "only": ["trein"]}),
     ],
     "grond/snelweg": [
         (["snelweg_rijstrook", "snelweg_rijstrook_links", "snelweg_rijstrook_zonder_streep",
@@ -97,6 +114,9 @@ _RULES = {
         (["afrit_*", "toerit_*", "snelweg_aansluiting", "snelweg_puntstuk", "snelweg_vluchtstrook"], {"only": MOTORWAY}),
     ],
     "grond/tunnel": [
+        (["tramtunnel_perron*"], {"only": FOOT}),
+        (["tramtunnel_toerit_*"], {"lanes": ALONG, "rise": 1.0, "rails": RAIL_STRAIGHT, "only": ["tram"]}),
+        (["tramtunnel_*"], {"lanes": ALONG, "rails": RAIL_STRAIGHT, "only": ["tram"]}),
         (["tunnel_toerit_d*", "tunnel_toerit_wand_d*", "tunnel_toerit_wand_rechts_d*"],
          {"lanes": ALONG, "road": "tunnel", "rise": 1.0, "only": MOTORWAY}),
         (["tunnel_rijstrook*", "tunnelbak_rijstrook_*"], {"lanes": ALONG, "road": "tunnel", "only": MOTORWAY}),
@@ -117,13 +137,29 @@ def _corner_traffic(folder, straight, turn):
     traffic = tile_traffic(f"{folder}/{straight}")
     if traffic and "lanes" in traffic:
         traffic["lanes"] = list(CORNER_LANES[turn])
+    if traffic and "rails" in traffic:
+        traffic["rails"] = list(CORNER_RAILS[turn])
     return traffic
+
+
+# Straight rail tiles: the traffic of the ramps the importer makes of them (common.slopes).
+_RAMP_TRAFFIC = {
+    "grond/tram/tram_recht": {"lanes": ALONG, "rise": 1.0, "rails": RAIL_STRAIGHT, "only": ["tram"]},
+    "grond/spoor/trein_recht": {"lanes": ALONG, "rise": 1.0, "rails": RAIL_STRAIGHT, "speed": 80, "only": ["trein"]},
+}
+
+
+def ramp_traffic(name):
+    """The "traffic" of the ramps made of tile path ``name``, or None."""
+    return _RAMP_TRAFFIC.get(name)
 
 
 def tile_traffic(name):
     """The "traffic" metadata of tile path ``name`` (e.g. 'grond/weg/zebrapad'), or None."""
     folder, base = os.path.dirname(name), os.path.basename(name)
     straight, corner, turn = base.rpartition("_hoek_")
+    # a corner with its pavement in the tile (_hoek_links_stoep) has the lanes of the corner
+    turn = turn.partition("_")[0]
     if corner and turn in CORNER_LANES:
         return _corner_traffic(folder, straight, turn)
     for patterns, traffic in _RULES.get(folder, []):

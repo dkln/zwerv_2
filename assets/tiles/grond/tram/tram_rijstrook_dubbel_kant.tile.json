@@ -5,10 +5,14 @@
 			"N"
 		],
 		"road": "straat",
+		"rails": [
+			"SN"
+		],
 		"only": [
 			"auto",
 			"brommer",
-			"fiets"
+			"fiets",
+			"tram"
 		]
 	}
 }

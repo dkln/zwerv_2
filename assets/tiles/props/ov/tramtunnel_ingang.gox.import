@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://bo6sl14ghuha1"
+path="res://.godot/imported/tramtunnel_ingang.gox-6c5ca93a5df23795d8c41bccc41746ea.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/props/ov/tramtunnel_ingang.gox"
+dest_files=["res://.godot/imported/tramtunnel_ingang.gox-6c5ca93a5df23795d8c41bccc41746ea.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(0, 0, 0)

@@ -16,8 +16,8 @@ func _init() -> void:
 		if scene.has_node(node_name):
 			scene.get_node(node_name).free()
 	scene.get_node("Verkeer").vehicle_count = 0
-	var heavy: Vehicle = load("res://scripts/characters/city_bus.gd").new()
-	var light: Vehicle = load("res://scripts/characters/hatchback.gd").new()
+	var heavy: Vehicle = load("res://scripts/vehicles/city_bus.gd").new()
+	var light: Vehicle = load("res://scripts/vehicles/hatchback.gd").new()
 	var target := light if sent_heavy else heavy
 	var sent := heavy if sent_heavy else light
 	target.start_cell = START_CELL

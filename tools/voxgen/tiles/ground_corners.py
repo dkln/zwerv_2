@@ -29,6 +29,15 @@ snelweg_rijstrook_hoek_rechts inside with snelweg_rijstrook_links_zonder_streep 
 outside it, left-hand bend snelweg_rijstrook_links_hoek_links inside with
 snelweg_rijstrook_zonder_streep.
 
+On the outside of a bend the road would end in a square corner of asphalt beyond the
+curved lines. The outside lane of a road with a pavement round the bend therefore has tiles
+with that pavement in them, its kerb following the same curve:
+
+    <straight>_hoek_links_stoep, _hoek_links_goot, _hoek_links_klinker
+
+named after the kind of pavement beside it (plain, with a gutter, clinkers). The pavement
+cell diagonally outside the corner then is a plain full tile, without its own road corner.
+
 Lanes and who may use the tile: tools/voxgen/traffic.py.
 """
 import math
@@ -37,7 +46,7 @@ from functools import partial
 
 from common import T, TILES, register
 from palette import P
-from .ground import BUS, flat, lane, line_y, DASH, _lines_y
+from .ground import BUS, CURB, GUTTER, PAVING, column, flat, lane, line_y, paver_fn, DASH, ROAD, WALK, _lines_y
 
 RIGHT = "rechts"
 LEFT = "links"
@@ -129,6 +138,26 @@ def bend(straight, turn):
     return m
 
 
+def bend_with_pavement(straight, surface, gutter):
+    """Tile `straight` bent to the left, with a pavement of `surface` beyond the arc of its
+    outermost column: a kerb along the curve, in front of it a gutter if `gutter`."""
+    m = bend(straight, LEFT)
+    kerb_start = 3 if gutter else 0
+    for y in range(T):
+        for x in range(T):
+            beyond_arc = math.hypot(x + 0.5, y + 0.5) - T
+            if beyond_arc <= 0:
+                continue
+            m.clear(x, y, 0, x + 1, y + 1, m.sz)
+            if beyond_arc < kerb_start:
+                column(m, x, y, ROAD, GUTTER)
+            elif beyond_arc < kerb_start + 1:
+                column(m, x, y, WALK, CURB, CURB)
+            else:
+                column(m, x, y, WALK, surface)
+    return m
+
+
 def _corner_maker(path, turn):
     """Tile function: the straight tile `path` bent to the side `turn`."""
     def make():
@@ -140,3 +169,9 @@ for _folder, _names in SOURCES.items():
     for _name in _names:
         for _turn in (RIGHT, LEFT):
             register(f"{_folder}/{_name}_hoek_{_turn}", _corner_maker(f"{_folder}/{_name}", _turn))
+
+# The outside lanes of the bends in the streets, per kind of pavement (see the top).
+for _path in ("grond/weg/rijstrook_geen_kant", "grond/tram/tram_rijstrook_geen_kant", "grond/weg/fietsstraat", "grond/weg/fietsstrook"):
+    for _pavement, _surface, _gutter in (("stoep", PAVING, False), ("goot", PAVING, True), ("klinker", paver_fn, False)):
+        register(f"{_path}_hoek_links_{_pavement}",
+                 partial(lambda path, surface, gutter: bend_with_pavement(TILES[path](), surface, gutter), _path, _surface, _gutter))

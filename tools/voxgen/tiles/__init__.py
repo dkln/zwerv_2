@@ -36,3 +36,5 @@ from . import extras_shops_lanes  # noqa: F401
 from . import building_campus  # noqa: F401
 from . import traffic_lights_industry  # noqa: F401
 from . import ground_corners  # noqa: F401
+from . import tram_tunnel  # noqa: F401
+from . import rail_vehicles  # noqa: F401

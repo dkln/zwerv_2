@@ -18,7 +18,7 @@ extends RefCounted
 ##     (for a .vox also a palette index). It beats the colour table and material
 ##     layers (voxel_model.gd), so it is only needed for exceptions.
 ##   slopes: slope shapes made of the tile while importing it (slopes.gd), e.g.
-##     ["steil", "flauw_a", "flauw_b"]; each becomes an item grond/helling/... .
+##     ["steil", "flauw_a", "flauw_b"]; each becomes an item in the subfolder helling of its category.
 ##   curve: [i, j, parts] of a flat curve cell, for the curve shapes (slopes.gd).
 ##   smooth: {"shape": "steil", "lift": 2, "keep_x": [0, 1]}: the tile is the padded block
 ##     of a slope; the importer moves it onto the smooth slope (slopes.gd own_plan()).

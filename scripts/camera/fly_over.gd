@@ -21,7 +21,7 @@ const Iso = preload("res://scripts/camera/iso_camera.gd")
 ## names are skipped.
 @export var route: PackedStringArray = [
 	"noordeinde", "lange_voorhout", "denneweg", "haagse_bos", "huis_ten_bosch", "prins_clauslaan",
-	"over_de_a12", "theresiastraat", "bezuidenhout_oost", "beatrixkwartier", "centraal", "malieveld",
+	"over_de_a12", "theresiastraat", "bezuidenhout_oost", "station_laan_van_noi", "schenkviaduct", "beatrixkwartier", "centraal", "malieveld",
 	"plein", "binnenhof", "spui", "passage", "chinatown", "grote_markt", "grote_kerk"]
 
 var _points: Array[Vector2] = []

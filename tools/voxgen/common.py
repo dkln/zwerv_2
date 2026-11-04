@@ -32,11 +32,12 @@ def register(path, fn):
 
 def slopes(path, *shapes, curve=None):
     """Let the importer also make the given slope shapes of flat tile ``path``; they become
-    tiles grond/helling/helling_<name> (steil), flauw_<name>_a / _b,
-    helling_<name>_hoek_buiten / _binnen and helling_brug_<name> / helling_brug_<name>_rand
-    / helling_brug_<name>_rand_rechts (parapet on the left / right).
+    tiles in the subfolder helling of their category: <category>/helling/helling_<name> (steil),
+    flauw_<name>_a / _b, helling_<name>_hoek_buiten / _binnen; the bridge ramps
+    brug/helling/helling_<name> / helling_<name>_rand / helling_<name>_rand_rechts (parapet
+    on the left / right).
     The curve shapes of a flat curve cell need ``curve=(i, j, parts)``: they become
-    grond/helling_bocht/<profile>[_rechts]_<i>_<j>, helling_bocht/brug_<profile>[_rechts]_<i>_<j>
+    grond/bocht/helling/<profile>[_rechts]_<i>_<j>, brug/helling/bocht_<profile>[_rechts]_<i>_<j>
     and brug/bocht_<profile>_<i>_<j>. Written to the metadata as "slopes" and "curve"."""
     have = set(SLOPES.get(path, ())) | set(shapes)
     SLOPES[path] = [s for s in SLOPE_SHAPES if s in have]

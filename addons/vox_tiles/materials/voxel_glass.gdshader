@@ -21,7 +21,7 @@ uniform vec3 city : source_color = vec3(0.24, 0.25, 0.26);
 // a faked room behind it; 0 = a large glass surface: tinted depth
 uniform float interior = 0.0;
 // roughness for the sun's highlight: low = a small sharp glint, higher = a broader
-// sheen visible over more angles (vehicle windows, scripts/characters/vehicle.gd)
+// sheen visible over more angles (vehicle windows, scripts/vehicles/vehicle.gd)
 uniform float glint_roughness : hint_range(0.0, 1.0) = 0.04;
 // brightness of what is behind large glass (lower = darker tinted glass)
 uniform float depth : hint_range(0.0, 1.0) = 0.35;

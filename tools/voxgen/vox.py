@@ -17,7 +17,7 @@ from array import array
 from palette import PALETTE, P, godot_material
 from gox import write_layers
 from common import SLOPES, CURVES, SMOOTH
-from traffic import tile_traffic
+from traffic import ramp_traffic, tile_traffic
 
 
 def h(x, y=0, z=0, seed=0):
@@ -374,6 +374,9 @@ def write_metadata(tile_path, name):
     traffic = tile_traffic(name)
     if traffic:
         meta["traffic"] = traffic
+    for_ramps = ramp_traffic(name)
+    if for_ramps:
+        meta["ramp_traffic"] = for_ramps
     if not meta:
         if old is not None:
             os.remove(meta_path)

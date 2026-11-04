@@ -230,7 +230,7 @@ def parking_lot_aisle():
 
 # ------------------------------------------------------------------ gentle slopes (0.5 m per tile)
 
-# Made by the importer (addons/vox_tiles/importer/slopes.gd): grond/helling/flauw_<name>_a (lower
+# Made by the importer (addons/vox_tiles/importer/slopes.gd): grond/<category>/helling/flauw_<name>_a (lower
 # half of a 1 m rise over two tiles, 0..3 voxels) and _b (upper half, 4..7 voxels).
 for _p in ("weg/weg_vlak", "weg/rijstrook_onderbroken_kant", "weg/rijstrook_geen_kant", "fietspad/fietspad_recht",
            "stoep/stoep_vol", "stoep/stoep_rand", "stoep/stoep_goot_rand", "weg/straat_klinkers",
@@ -297,8 +297,11 @@ def tunnel(wall=True, line=True, portal=False, bicycle=False):
             for z in range(CEIL, TH):
                 m.set(x, y, z, CONCRETE if z < TH - 1 else "beton_donker")
     if line and not bicycle:
-        line_y(m, 31, dash=DASH)
-        line_y(m, 2)
+        # in the road surface: line_y would paint the top of the column, the roof here
+        for y in range(T):
+            if (y + DASH[2]) % DASH[1] < DASH[0]:
+                m.set(31, y, ROAD - 1, MARK)
+            m.set(2, y, ROAD - 1, MARK)
     if wall:
         for y in range(T):
             for z in range(0, CEIL):

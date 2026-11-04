@@ -5,6 +5,9 @@
 			"N",
 			"S"
 		],
+		"rails": [
+			"SN"
+		],
 		"only": [
 			"tram"
 		]

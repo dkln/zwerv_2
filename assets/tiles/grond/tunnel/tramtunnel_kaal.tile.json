@@ -1,0 +1,15 @@
+{
+	"id": 1201,
+	"traffic": {
+		"lanes": [
+			"N",
+			"S"
+		],
+		"rails": [
+			"SN"
+		],
+		"only": [
+			"tram"
+		]
+	}
+}
