@@ -140,6 +140,9 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
 - Beeld: harde zonneschaduwen (`shadow_blur` 0,1), grasprieten pas onder 24 m in beeld. De
   schaduwafstand verandert alleen in stappen (`SHADOW_DISTANCE_SLACK` in
   `level_of_detail.gd`), anders kruipen de schaduwranden bij een zoomende camera.
+  Gevels met ramen werpen een gevuld blok als schaduw, iets achter de gevel, dus zonder
+  schaduwen van ramen en kozijnen (`filled_shadow_layers`, `layer_baker.gd`). Platte
+  gevelonderdelen werpen niets; balkons, luifels, dakdetails en vlaggen wel (`SHADOW_DETAILS`).
 - Wegennet (`scripts/world/road_network.gd`, `RoadNetwork`): het wegennet leest de
   rijstroken uit de grondtiles zelf. Dat werkt op elke kaart, ook als je hem met de hand
   bouwt. Elke tile waarop gereden wordt, heeft in zijn `.tile.json` een blok `traffic`,

@@ -23,6 +23,14 @@ extends RefCounted
 ## voxel_fade.gdshaderinc) fade by that cell, so parts that stick out of their cell (bay
 ## windows, shop fronts, awnings, signs) fade with their own building. Packed in 4 bytes
 ## (RGBA8): world x and z in whole metres, each + 32768 as 16 bits (low byte first).
+##
+## Filled shadows (filled_shadows on, for the buildings): facades with windows don't cast
+## their own detailed shadow. Tiles with opaque "interior" windows (library_builder.gd)
+## are drawn without shadow and cast a filled block instead, built from FILL_CELL cubes
+## and kept FACADE_DEPTH behind every open side, so sun still reaches the window
+## recesses in front of it. These blocks go into shadow-only chunks ("Schaduw" nodes).
+## Facade details that lie flat on the wall (windows, doors, signs: everything but
+## SHADOW_DETAILS) cast nothing; balconies, awnings, roof details and flags still do.
 
 const Mesher = preload("res://addons/vox_tiles/importer/vox_mesher.gd")
 const Model = preload("res://addons/vox_tiles/importer/voxel_model.gd")
@@ -42,11 +50,19 @@ const CHUNK := 8
 ## cells) cast no shadow; the same height as SHADOW_MIN_HEIGHT in library_builder.gd.
 const LOW_SHADOW := 0.7
 ## Bump when the output changes (invalidates the cache in user://merged).
-const VERSION := 9
+const VERSION := 10
 ## Metres around an extra layer's cell centre searched for the main-layer cell it hangs on.
 const OWNER_REACH := 1.0
 ## Compute time per frame in microseconds; the rest continues in following frames.
 const BUDGET_USEC := 6000
+## Filled shadows: size in metres of the cubes a block is made of.
+const FILL_CELL := 0.5
+## Filled shadows: metres a block stays behind an open side of its tile, more than the
+## deepest window recess (0.375 m).
+const FACADE_DEPTH := 0.4
+## Details (item name prefixes) that stick out of the facade, so they keep their shadow.
+const SHADOW_DETAILS := ["balkons/", "dak/", "luifels/", "zonwering/knikarmscherm", "zonwering/markies",
+	"zonwering/uitvalscherm", "deuren/bordes", "gevel/hijsbalk", "gevel/reclamebord", "gevel/uithangbord"]
 
 
 ## Bakes the GridMap `gm`, rendered with `lib` (the normal library or one of its LOD
@@ -55,8 +71,9 @@ const BUDGET_USEC := 6000
 ## (for layers whose tiles are as tall as the cell). progress (optional) is called with
 ## the fraction done (0..1) whenever the work pauses for a frame. extras: [GridMap,
 ## MeshLibrary] pairs of layers baked into the same chunks (see the top). Coroutine:
-## await it. Returns null if `gm` is freed before it is done. owners: see the top.
-static func bake(gm: GridMap, lib: MeshLibrary, name: String, hide_tops: bool, progress := Callable(), extras := [], owners := false) -> Node3D:
+## await it. Returns null if `gm` is freed before it is done. owners, filled_shadows:
+## see the top.
+static func bake(gm: GridMap, lib: MeshLibrary, name: String, hide_tops: bool, progress := Callable(), extras := [], owners := false, filled_shadows := false) -> Node3D:
 	owners = owners or not extras.is_empty()
 	var out := Node3D.new()
 	out.name = name
@@ -65,6 +82,9 @@ static func bake(gm: GridMap, lib: MeshLibrary, name: String, hide_tops: bool, p
 	var chunks := {}  # Vector3i(chunk x, chunk z, cast shadow) -> {material: [v, n, c, uv, uv2]}
 	var shadow := {}  # item -> cast shadow setting
 	var loose := []   # [mesh, transform] of tiles that stay a separate mesh
+	var fill_grids := {}    # mesh -> its filled cells (_fill_grid)
+	var fill_blocks := {}   # [mesh, open sides] -> triangles of its block (_fill_block)
+	var shadow_chunks := {} # Vector2i(chunk x, chunk z) -> PackedVector3Array of triangles
 	var basis_cache := {}  # orthogonal index -> Basis
 	var start := Time.get_ticks_usec()
 	var counter := 0
@@ -119,7 +139,21 @@ static func bake(gm: GridMap, lib: MeshLibrary, name: String, hide_tops: bool, p
 		if not shadow.has(id):
 			shadow[id] = lib.get_item_mesh_cast_shadow(id) if lib.has_method("get_item_mesh_cast_shadow") else 1
 		# chunks are split by shadow setting too, as cast_shadow is per MeshInstance3D
-		var key := Vector3i(floori(c.x / float(CHUNK)), floori(c.z / float(CHUNK)), shadow[id])
+		var cast: int = shadow[id]
+		if filled_shadows and cast != 0:
+			if not fill_grids.has(mesh):
+				fill_grids[mesh] = _fill_grid(mesh, gm.cell_size)
+			if not fill_grids[mesh].is_empty():
+				cast = 0
+				var open_sides := _open_sides(gm, c, b)
+				var block_key := [mesh, open_sides]
+				if not fill_blocks.has(block_key):
+					fill_blocks[block_key] = _fill_block(fill_grids[mesh], open_sides, gm.cell_size)
+				var shadow_key := Vector2i(floori(c.x / float(CHUNK)), floori(c.z / float(CHUNK)))
+				var triangles: PackedVector3Array = shadow_chunks.get(shadow_key, PackedVector3Array())
+				triangles.append_array(xf * (fill_blocks[block_key] as PackedVector3Array))
+				shadow_chunks[shadow_key] = triangles
+		var key := Vector3i(floori(c.x / float(CHUNK)), floori(c.z / float(CHUNK)), cast)
 		# the low triangles (part.low) of a shadow caster on the ground row cast none
 		var low_key := Vector3i(key.x, key.y, 0) if c.y == ground_row else key
 		var rot := Transform3D(xf.basis, Vector3.ZERO)   # for normals
@@ -162,6 +196,8 @@ static func bake(gm: GridMap, lib: MeshLibrary, name: String, hide_tops: bool, p
 			var owner := _owner(gm, columns, centre)
 			var cell := gm.local_to_map(centre)
 			var cast: int = extra_lib.get_item_mesh_cast_shadow(id) if extra_lib.has_method("get_item_mesh_cast_shadow") else 1
+			if filled_shadows and not _keeps_shadow(extra_lib.get_item_name(id)):
+				cast = 0
 			var key := Vector3i(floori(cell.x / float(CHUNK)), floori(cell.z / float(CHUNK)), cast)
 			var rot := Transform3D(xf.basis, Vector3.ZERO)
 			for part in parts:
@@ -211,7 +247,164 @@ static func bake(gm: GridMap, lib: MeshLibrary, name: String, hide_tops: bool, p
 		mi.mesh = l[0]
 		mi.transform = l[1]
 		out.add_child(mi)
+	for shadow_key in shadow_chunks:
+		var arrays := []
+		arrays.resize(Mesh.ARRAY_MAX)
+		arrays[Mesh.ARRAY_VERTEX] = shadow_chunks[shadow_key]
+		var mesh := ArrayMesh.new()
+		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+		var mi := MeshInstance3D.new()
+		mi.name = "Schaduw"
+		mi.mesh = mesh
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY
+		out.add_child(mi, true)
 	return out
+
+
+## Whether a detail tile (item name, "category/name") sticks out enough to cast a shadow.
+static func _keeps_shadow(item_name: String) -> bool:
+	for prefix: String in SHADOW_DETAILS:
+		if item_name.begins_with(prefix):
+			return true
+	return false
+
+
+## Bit g set = no tile lies against face group g of the mesh placed in cell `cell` with
+## basis `cell_basis` (Mesher.DIRECTIONS, in mesh space).
+static func _open_sides(gm: GridMap, cell: Vector3i, cell_basis: Basis) -> int:
+	var open_sides := 0
+	for g in 6:
+		var direction := Vector3i((cell_basis * Vector3(Mesher.DIRECTIONS[g])).round())
+		if gm.get_cell_item(cell + direction) < 0:
+			open_sides |= 1 << g
+	return open_sides
+
+
+## The cubes (FILL_CELL) of the filled shadow block of a tile with opaque windows: every
+## cube a surface passes through, plus those between two of them along x or z. Mesh
+## space, inside the cell: x and z -half..half, y from 0. Returns {} for all other tiles,
+## and {size: Vector3i, cells: PackedByteArray (x + z * size.x + y * size.x * size.z)}.
+static func _fill_grid(mesh: ArrayMesh, cell_size: Vector3) -> Dictionary:
+	var has_windows := false
+	for surface in mesh.get_surface_count():
+		var material := mesh.surface_get_material(surface) as ShaderMaterial
+		if material and mesh.surface_get_name(surface) == "glass" and material.get_shader_parameter("interior") == 1.0:
+			has_windows = true
+	if not has_windows:
+		return {}
+	var height := maxf(cell_size.y, mesh.get_aabb().end.y)
+	var size := Vector3i(ceili(cell_size.x / FILL_CELL), ceili(height / FILL_CELL), ceili(cell_size.z / FILL_CELL))
+	var filled := PackedByteArray()
+	filled.resize(size.x * size.y * size.z)
+	var mark := func(point: Vector3) -> void:
+		var column_x := clampi(floori((point.x + cell_size.x * 0.5) / FILL_CELL), 0, size.x - 1)
+		var row := clampi(floori(point.y / FILL_CELL), 0, size.y - 1)
+		var column_z := clampi(floori((point.z + cell_size.z * 0.5) / FILL_CELL), 0, size.z - 1)
+		filled[column_x + column_z * size.x + row * size.x * size.z] = 1
+	for surface in mesh.get_surface_count():
+		var vertices: PackedVector3Array = mesh.surface_get_arrays(surface)[Mesh.ARRAY_VERTEX]
+		for first in range(0, vertices.size() - 2, 3):
+			var corner_a := vertices[first]
+			var corner_b := vertices[first + 1]
+			var corner_c := vertices[first + 2]
+			# samples inside the triangle, closer together than a cube
+			var longest := maxf(corner_a.distance_to(corner_b), maxf(corner_b.distance_to(corner_c), corner_c.distance_to(corner_a)))
+			var steps := maxi(ceili(longest / (FILL_CELL * 0.5)), 1)
+			for step_b in steps + 1:
+				for step_c in steps - step_b + 1:
+					var weight_b := (step_b + 0.02) / (steps + 0.1)
+					var weight_c := (step_c + 0.02) / (steps + 0.1)
+					mark.call(corner_a + (corner_b - corner_a) * weight_b + (corner_c - corner_a) * weight_c)
+	# between two filled cubes on a row is filled too (the hollow inside of the building)
+	for row in size.y:
+		var at := func(column_x: int, column_z: int) -> int:
+			return column_x + column_z * size.x + row * size.x * size.z
+		for column_z in size.z:
+			var first := -1
+			for column_x in size.x:
+				if filled[at.call(column_x, column_z)]:
+					if first >= 0:
+						for between in range(first + 1, column_x):
+							filled[at.call(between, column_z)] = 1
+					first = column_x
+		for column_x in size.x:
+			var first := -1
+			for column_z in size.z:
+				if filled[at.call(column_x, column_z)]:
+					if first >= 0:
+						for between in range(first + 1, column_z):
+							filled[at.call(column_x, between)] = 1
+					first = column_z
+	return {"size": size, "cells": filled}
+
+
+## Triangles (mesh space) of the block of a _fill_grid result: cubes merged into boxes,
+## pulled FACADE_DEPTH back from the sides in `open_sides` (_open_sides); never from the
+## bottom, which stands on the ground or on the floor below.
+static func _fill_block(grid: Dictionary, open_sides: int, cell_size: Vector3) -> PackedVector3Array:
+	var size: Vector3i = grid.size
+	var left: PackedByteArray = grid.cells.duplicate()
+	var low_limit := Vector3(-cell_size.x * 0.5, 0.0, -cell_size.z * 0.5)
+	var high_limit := Vector3(cell_size.x * 0.5, size.y * FILL_CELL, cell_size.z * 0.5)
+	for g in 6:
+		if g == Mesher.BOTTOM or not (open_sides >> g) & 1:
+			continue
+		var direction := Vector3(Mesher.DIRECTIONS[g])
+		if direction.x + direction.y + direction.z > 0.0:
+			high_limit -= direction * FACADE_DEPTH
+		else:
+			low_limit -= direction * FACADE_DEPTH
+	var triangles := PackedVector3Array()
+	var index := func(column_x: int, column_z: int, row: int) -> int:
+		return column_x + column_z * size.x + row * size.x * size.z
+	# whether all cubes from `from` up to (not including) `to` are still left
+	var all_left := func(from: Vector3i, to: Vector3i) -> bool:
+		for row in range(from.y, to.y):
+			for column_z in range(from.z, to.z):
+				for column_x in range(from.x, to.x):
+					if not left[index.call(column_x, column_z, row)]:
+						return false
+		return true
+	for row in size.y:
+		for column_z in size.z:
+			for column_x in size.x:
+				if not left[index.call(column_x, column_z, row)]:
+					continue
+				var from := Vector3i(column_x, row, column_z)
+				var to := from + Vector3i.ONE
+				while to.x < size.x and all_left.call(Vector3i(to.x, from.y, from.z), Vector3i(to.x + 1, to.y, to.z)):
+					to.x += 1
+				while to.z < size.z and all_left.call(Vector3i(from.x, from.y, to.z), Vector3i(to.x, to.y, to.z + 1)):
+					to.z += 1
+				while to.y < size.y and all_left.call(Vector3i(from.x, to.y, from.z), Vector3i(to.x, to.y + 1, to.z)):
+					to.y += 1
+				for clear_row in range(from.y, to.y):
+					for clear_z in range(from.z, to.z):
+						for clear_x in range(from.x, to.x):
+							left[index.call(clear_x, clear_z, clear_row)] = 0
+				var origin := Vector3(-cell_size.x * 0.5, 0.0, -cell_size.z * 0.5)
+				var low := (origin + Vector3(from) * FILL_CELL).max(low_limit)
+				var high := (origin + Vector3(to) * FILL_CELL).min(high_limit)
+				if low.x < high.x and low.y < high.y and low.z < high.z:
+					_append_box(triangles, low, high)
+	return triangles
+
+
+## Appends the 12 triangles of the box low..high, front faces outwards (clockwise).
+static func _append_box(triangles: PackedVector3Array, low: Vector3, high: Vector3) -> void:
+	var corner := func(on_x: bool, on_y: bool, on_z: bool) -> Vector3:
+		return Vector3(high.x if on_x else low.x, high.y if on_y else low.y, high.z if on_z else low.z)
+	# per side: four corners going round it, seen from outside clockwise
+	var sides := [
+		[corner.call(true, true, true), corner.call(true, true, false), corner.call(true, false, false), corner.call(true, false, true)],
+		[corner.call(false, true, false), corner.call(false, true, true), corner.call(false, false, true), corner.call(false, false, false)],
+		[corner.call(false, true, false), corner.call(true, true, false), corner.call(true, true, true), corner.call(false, true, true)],
+		[corner.call(false, false, true), corner.call(true, false, true), corner.call(true, false, false), corner.call(false, false, false)],
+		[corner.call(false, true, true), corner.call(true, true, true), corner.call(true, false, true), corner.call(false, false, true)],
+		[corner.call(true, true, false), corner.call(false, true, false), corner.call(false, false, false), corner.call(true, false, false)],
+	]
+	for side: Array in sides:
+		triangles.append_array(PackedVector3Array([side[0], side[1], side[2], side[0], side[2], side[3]]))
 
 
 ## Appends the face group `gr` ([v, n, c, uv, uv2], mesh space) to the surface of `mat`

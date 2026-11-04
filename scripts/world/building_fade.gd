@@ -195,7 +195,8 @@ func _find_chunks() -> void:
 		if not str(layer.name).begins_with(str(_buildings.name) + "_merged"):
 			continue
 		for chunk in layer.get_children():
-			if chunk is MeshInstance3D and chunk.mesh:
+			# the shadow-only blocks (layer_baker.gd) are never seen, so they don't fade
+			if chunk is MeshInstance3D and chunk.mesh and chunk.cast_shadow != GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY:
 				var box: AABB = chunk.global_transform * chunk.get_aabb()
 				_chunks.append([chunk, Rect2(box.position.x, box.position.z, box.size.x, box.size.z)])
 

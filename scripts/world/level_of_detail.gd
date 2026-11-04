@@ -42,6 +42,9 @@ signal merge_finished
 ## Merged layers whose vertices carry the cell they belong to, for the see-through
 ## buildings (scripts/world/building_fade.gd); see layer_baker.gd.
 @export var fade_layers: Array[String] = ["Gebouwen"]
+## Merged layers whose facades with windows cast a filled shadow, without the shadows of
+## their windows and flat facade details (see layer_baker.gd).
+@export var filled_shadow_layers: Array[String] = ["Gebouwen"]
 ## Layers in which tiles are as tall as the cell (top face may go under a neighbouring block).
 @export var hide_top_layers: Array[String] = ["Gebouwen"]
 ## From this zoom size (metres in view, see scripts/camera/iso_camera.gd) coarse tiles are used.
@@ -284,7 +287,7 @@ func _merge(index: int, layer_name: String, gm: GridMap) -> void:
 				baked = ps.instantiate()
 		if baked == null:
 			baked = await Bakker.bake(gm, load(path), layer_name + "_merged" + suffix, layer_name in hide_top_layers,
-				func(fraction: float): _set_progress(job, fraction), extras, layer_name in fade_layers)
+				func(fraction: float): _set_progress(job, fraction), extras, layer_name in fade_layers, layer_name in filled_shadow_layers)
 			if not is_inside_tree() or generation != _generation or baked == null:
 				if baked:
 					baked.free()
