@@ -1,3 +1,8 @@
 {
-	"id": 201
+	"id": 201,
+	"traffic": {
+		"only": [
+			"voetganger"
+		]
+	}
 }

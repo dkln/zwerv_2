@@ -3,6 +3,11 @@
 	"traffic": {
 		"lanes": [
 			"N"
+		],
+		"only": [
+			"auto",
+			"brommer",
+			"fiets"
 		]
 	}
 }

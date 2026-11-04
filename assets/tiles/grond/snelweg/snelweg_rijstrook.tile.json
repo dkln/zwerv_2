@@ -7,6 +7,9 @@
 		"lanes": [
 			"N"
 		],
-		"road": "snelweg"
+		"road": "snelweg",
+		"only": [
+			"auto"
+		]
 	}
 }

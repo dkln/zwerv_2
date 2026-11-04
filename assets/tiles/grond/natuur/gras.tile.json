@@ -6,5 +6,10 @@
 		"flauw_b",
 		"hoek_buiten",
 		"hoek_binnen"
-	]
+	],
+	"traffic": {
+		"only": [
+			"voetganger"
+		]
+	}
 }

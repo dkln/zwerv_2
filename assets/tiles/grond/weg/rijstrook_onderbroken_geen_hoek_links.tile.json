@@ -1,0 +1,15 @@
+{
+	"id": 1195,
+	"same_as": "weg/rijstrook_streep_geen_hoek_links",
+	"traffic": {
+		"lanes": [
+			"W"
+		],
+		"road": "straat",
+		"only": [
+			"auto",
+			"brommer",
+			"fiets"
+		]
+	}
+}

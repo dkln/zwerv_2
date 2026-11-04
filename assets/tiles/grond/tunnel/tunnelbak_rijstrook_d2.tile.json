@@ -5,6 +5,9 @@
 			"N",
 			"S"
 		],
-		"road": "tunnel"
+		"road": "tunnel",
+		"only": [
+			"auto"
+		]
 	}
 }

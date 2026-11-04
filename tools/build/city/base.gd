@@ -215,11 +215,29 @@ func _own_tints(root: Node3D) -> void:
 ## is marked as a Vox Tiles scene (fast editor view and build tools, see the plugin).
 func _save(root: Node3D, scene_path: String) -> void:
 	root.set_meta("vox_tiles", true)
+	keep_lane_choices(root, scene_path)
 	var ps := PackedScene.new()
 	ps.pack(root)
 	var err := ResourceSaver.save(ps, scene_path)
 	print("saved: ", scene_path, " (", err, ")")
 	root.free()
+
+
+## Copies the lanes chosen by hand in the editor (RoadNetwork.LANE_CHOICES on Grond) from
+## the scene about to be overwritten, so building again does not lose them. A choice only
+## counts while the same tile is in its cell (road_network.gd).
+static func keep_lane_choices(root: Node3D, scene_path: String) -> void:
+	var ground := root.get_node_or_null("Grond")
+	if ground == null or not ResourceLoader.exists(scene_path):
+		return
+	var state: SceneState = (load(scene_path) as PackedScene).get_state()
+	var property := "metadata/" + String(RoadNetwork.LANE_CHOICES)
+	for node_index in state.get_node_count():
+		if state.get_node_name(node_index) != &"Grond":
+			continue
+		for property_index in state.get_node_property_count(node_index):
+			if state.get_node_property_name(node_index, property_index) == property:
+				ground.set_meta(RoadNetwork.LANE_CHOICES, state.get_node_property_value(node_index, property_index))
 
 
 ## Library item id of tile_name in gm, or -1 (then recorded in `missing`).

@@ -9,12 +9,24 @@ extends VBoxContainer
 
 const Stamps = preload("res://addons/vox_tiles/editor/stamps.gd")
 
+## The sides of a tile as the Lanes buttons and the 3D view call them.
+const SIDE_LABELS := {"N": "Forward", "W": "Left", "E": "Right", "S": "Back"}
+## The kinds of road user (RoadNetwork.ROAD_USER_KINDS) as the checkboxes call them.
+const KIND_LABELS := {"auto": "Auto", "brommer": "Brommer", "fiets": "Fiets", "voetganger": "Voetganger"}
+
 signal marked_toggled(on: bool)
 signal game_view_toggled(on: bool)
 signal layer_chosen(layer_name: String)
 signal floor_step(delta: int)
 signal solo_toggled(on: bool)
 signal stamping_toggled(on: bool)
+signal lane_picking_toggled(on: bool)
+signal lane_side_toggled(side: String, on: bool)
+signal lanes_automatic_pressed
+signal lane_kind_toggled(kind: String, on: bool)
+signal lane_kinds_automatic_pressed
+signal lane_speed_changed(kmh: int)
+signal lane_speed_automatic_pressed
 
 var _marked: CheckBox
 var _tools: VBoxContainer       # everything below the checkbox
@@ -29,6 +41,15 @@ var _param_controls := {}   # parameter name -> SpinBox / OptionButton
 var _stamp_button: Button
 var _status: Label
 var _library: MeshLibrary
+var _lane_pick_button: Button
+var _lane_tile_label: Label
+var _lane_box: VBoxContainer
+var _lane_side_buttons := {}   # "N", "E", "S", "W" -> Button
+var _lanes_automatic: Button
+var _lane_kind_boxes := {}     # road user kind -> CheckBox
+var _lane_kinds_automatic: Button
+var _lane_speed: SpinBox
+var _lane_speed_automatic: Button
 
 
 func _init() -> void:
@@ -90,6 +111,8 @@ func _init() -> void:
 	_status = Label.new()
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_tools.add_child(_status)
+	_tools.add_child(_heading("Traffic"))
+	_build_lane_controls()
 	_build_params()
 	set_layers([], "")
 	set_floor_text("")
@@ -188,6 +211,99 @@ func _build_params() -> void:
 		control.size_flags_horizontal = SIZE_EXPAND_FILL
 		_params_grid.add_child(control)
 		_param_controls[p] = control
+
+
+## Pick button, the placed tile that is picked, and a button per side of that tile.
+func _build_lane_controls() -> void:
+	_lane_pick_button = Button.new()
+	_lane_pick_button.text = "Pick tile"
+	_lane_pick_button.toggle_mode = true
+	_lane_pick_button.tooltip_text = "Click a ground tile in the 3D view to choose its directions, who may come on it and its speed limit.\nClick it again for the tile below it. Esc stops."
+	_lane_pick_button.toggled.connect(func(on): lane_picking_toggled.emit(on))
+	_tools.add_child(_lane_pick_button)
+	_lane_tile_label = Label.new()
+	_lane_tile_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_tools.add_child(_lane_tile_label)
+	_lane_box = VBoxContainer.new()
+	_tools.add_child(_lane_box)
+	var sides := GridContainer.new()
+	sides.columns = 3
+	_lane_box.add_child(sides)
+	# a cross, as the sides lie on the tile: empty corners, forward on top
+	for side in ["", "N", "", "W", "", "E", "", "S", ""]:
+		if side == "":
+			sides.add_child(Control.new())
+			continue
+		var side_button := Button.new()
+		side_button.text = SIDE_LABELS[side]
+		side_button.toggle_mode = true
+		side_button.size_flags_horizontal = SIZE_EXPAND_FILL
+		side_button.toggled.connect(func(on): lane_side_toggled.emit(side, on))
+		sides.add_child(side_button)
+		_lane_side_buttons[side] = side_button
+	_lanes_automatic = Button.new()
+	_lanes_automatic.text = "Automatic"
+	_lanes_automatic.tooltip_text = "Forget the choice: the lanes of the tile itself, decided from the road around it."
+	_lanes_automatic.pressed.connect(func(): lanes_automatic_pressed.emit())
+	_lane_box.add_child(_lanes_automatic)
+	var allowed := Label.new()
+	allowed.text = "Allowed on this tile"
+	_lane_box.add_child(allowed)
+	for kind: String in KIND_LABELS:
+		var kind_box := CheckBox.new()
+		kind_box.text = KIND_LABELS[kind]
+		if kind == "auto":
+			kind_box.tooltip_text = "Cars, vans, trucks and buses."
+		else:
+			kind_box.tooltip_text = "Stored with the tile; this road user is not in the game yet."
+		kind_box.toggled.connect(func(on): lane_kind_toggled.emit(kind, on))
+		_lane_box.add_child(kind_box)
+		_lane_kind_boxes[kind] = kind_box
+	_lane_kinds_automatic = Button.new()
+	_lane_kinds_automatic.text = "Tile default"
+	_lane_kinds_automatic.tooltip_text = "Forget the choice: who may use it follows from the tile itself."
+	_lane_kinds_automatic.pressed.connect(func(): lane_kinds_automatic_pressed.emit())
+	_lane_box.add_child(_lane_kinds_automatic)
+	var speed_row := HBoxContainer.new()
+	var speed_label := Label.new()
+	speed_label.text = "Speed limit"
+	speed_row.add_child(speed_label)
+	_lane_speed = SpinBox.new()
+	_lane_speed.min_value = 5
+	_lane_speed.max_value = 130
+	_lane_speed.step = 5
+	_lane_speed.suffix = "km/h"
+	_lane_speed.size_flags_horizontal = SIZE_EXPAND_FILL
+	_lane_speed.value_changed.connect(func(kmh): lane_speed_changed.emit(int(kmh)))
+	speed_row.add_child(_lane_speed)
+	_lane_box.add_child(speed_row)
+	_lane_speed_automatic = Button.new()
+	_lane_speed_automatic.text = "Tile speed"
+	_lane_speed_automatic.tooltip_text = "Forget the choice: the speed limit follows from the tile and the road it is part of."
+	_lane_speed_automatic.pressed.connect(func(): lane_speed_automatic_pressed.emit())
+	_lane_box.add_child(_lane_speed_automatic)
+	set_lane_tile("", [], false)
+
+
+func set_lane_picking(on: bool) -> void:
+	_lane_pick_button.set_pressed_no_signal(on)
+
+
+## Shows the picked tile ("" = none): the sides traffic may leave it in, and whether
+## they were chosen by hand; the same for the kinds of road user allowed on it and for
+## its speed limit (km/h).
+func set_lane_tile(description: String, open_sides: Array, chosen: bool, allowed_kinds := [], kinds_chosen := false,
+		speed_kmh := 50.0, speed_chosen := false) -> void:
+	_lane_tile_label.text = description
+	_lane_box.visible = description != ""
+	for side in _lane_side_buttons:
+		_lane_side_buttons[side].set_pressed_no_signal(side in open_sides)
+	_lanes_automatic.disabled = not chosen
+	for kind in _lane_kind_boxes:
+		_lane_kind_boxes[kind].set_pressed_no_signal(kind in allowed_kinds)
+	_lane_kinds_automatic.disabled = not kinds_chosen
+	_lane_speed.set_value_no_signal(speed_kmh)
+	_lane_speed_automatic.disabled = not speed_chosen
 
 
 func _library_items(prefix: String, excluded_suffix := "") -> Array:

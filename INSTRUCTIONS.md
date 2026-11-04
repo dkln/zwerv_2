@@ -7,8 +7,8 @@ Je bouwt kaarten met vier GridMap-lagen (grond, gebouwen, details, props). Elke
 tile is een los `.gox` bestand dat je in Goxel (open source) kunt openen en aanpassen.
 Na opslaan importeert Godot hem automatisch opnieuw.
 
-Er zijn ongeveer 2000 tiles. Ze staan allemaal in context in de voorbeeldkaart,
-opgeknipt in 10 delen in `scenes/wereld/`.
+Er zijn ongeveer 2000 tiles. De kaart van het spel is `scenes/stad.tscn`; de demokaarten
+in `scenes/wereld/` zijn weg, dus niet elke tile ligt nog ergens in context.
 
 Daarnaast is er het centrum van Den Haag in één scène: `scenes/stad.tscn`, ingedikt op
 een stratengrid en alleen met de bestaande tiles. De Singelgracht loopt er rondom
@@ -44,8 +44,7 @@ meteen zelf rondkijken. Over het beeld ligt een vignet (node `Vignet`,
 `scripts/effects/vignette.gd` + `vignette.gdshader`) dat de randen wat afdonkert
 (`strength`, `inner`, `softness`, uit met `enabled`): een laag die over het beeld wordt
 gemengd, zonder schermkopie of blur, dus vrijwel gratis. Er is geen tilt-shift en geen
-scherptediepte (DOF) meer: het beeld is overal scherp. De rondleiding door de voorbeeldkaart start je met
-`scenes/rondleiding.tscn` (F6 in de editor).
+scherptediepte (DOF) meer: het beeld is overal scherp.
 
 Stoplichten werken: de node `Verkeerslichten` (`scripts/world/traffic_lights.gd`, in
 elke scène die de bouwers maken) laat de stoplichtprops (`verkeerslichten/auto_*`,
@@ -155,7 +154,7 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
   heeft, zoals een kruising, kaal asfalt, een zebrapad of de tunnel-tiles. De richting
   volgt dan uit de weg eromheen: de dichtstbijzijnde rijstrook met een richting op
   dezelfde lijn, anders de stroken ernaast, anders rechts rijden langs de rand. `road`
-  is het soort weg, en daarmee de maximumsnelheid (`SPEED_LIMIT_KMH`: straat 30,
+  is het soort weg, en daarmee de maximumsnelheid (`SPEED_LIMIT_KMH`, voor auto's: straat en
   hoofdweg 50, tunnel 80, snelweg 100 km/u). Zonder `road` (markeringen, kruisingen)
   neemt de tile het soort weg van zijn buren over. `rise` is hoeveel meter een helling
   naar zijn achterkant stijgt. `only` zijn de voertuigsoorten die er mogen rijden
@@ -165,9 +164,50 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
 - Rijrichtingen in de editor: de node `Rijrichtingen` (`scripts/world/lane_arrows.gd`)
   tekent in de editor een pijl per rijstrook op het wegdek. Geel is de richting van de
   tile zelf, lichtblauw is afgeleid uit de omgeving, magenta betekent nog beide kanten
-  op (niet te bepalen). Na het plaatsen of draaien van tiles werkt hij zich binnen een
-  seconde bij. In het spel verwijdert de node zichzelf. Instelbaar: `show_arrows`,
+  op (niet te bepalen), groen is met de hand gekozen voor deze tile (richtingen, wie er mag komen of de snelheid). Na het plaatsen of
+  draaien van tiles of het kiezen van richtingen werkt hij zich binnen een seconde bij. In het spel verwijdert de node zichzelf. Instelbaar: `show_arrows`,
   `through_walls`, de kleuren.
+- Verkeer per tile: elke grondtile zegt zelf wie erop mag komen en hoe hard, in `traffic`
+  van zijn `.tile.json`: `only` is een lijst van `auto` (ook busjes, vrachtwagens en
+  bussen), `brommer`, `fiets` en `voetganger`, voor een baan alleen `bus` of `tram`. `speed`
+  is de limiet in km/u, in plaats van die van `road`. De regels per groep tiles staan in
+  `tools/voxgen/traffic.py` (daarna `generate.py --meta` en `build_libraries.gd`). Een tile
+  zonder `traffic` (water, kademuur) is voor niemand.
+- Per geplaatste tile kun je daarvan afwijken: in het Build-paneel, onder `Traffic`, zet je
+  `Pick tile` aan en klik je een grondtile aan in de 3D-view (nog eens klikken = de tile
+  eronder, bijvoorbeeld een tunnel; Esc stopt). Ctrl+Z werkt voor elke wijziging.
+  - Richtingen: `Forward`, `Left`, `Right` en `Back` los aan of uit, in elke combinatie:
+    alleen links, rechtdoor en rechts, alleen achteruit. De kanten staan als labels op de
+    tile in de 3D-view en draaien mee met de tile. `Automatic` haalt de keuze weg. Een
+    voertuig verlaat de tile alleen in een gekozen richting, waar het ook vandaan komt.
+  - Wie: `Auto`, `Brommer`, `Fiets`, `Voetganger`; alles uit sluit de tile af, `Tile default`
+    haalt de keuze weg. Auto's mogen standaard op fietsstroken en fietsstraten; een autovrije
+    fietsstraat maak je door per tile `Auto` uit te zetten. Een voertuig dat er niet op mag, rijdt om, voegt in of keert. Nu
+    rijden alleen auto's en bussen over het wegennet: voor de andere drie wordt de keuze
+    bewaard (`RoadNetwork.allows`), maar die heeft nog geen effect.
+  - Snelheid: `Speed limit` in km/u (5 tot 130), `Tile speed` haalt de keuze weg. Tiles
+    zonder eigen limiet (markeringen, kruisingen) nemen die van de weg ernaast over, dus
+    ook een gekozen limiet.
+
+  De keuze staat in de scène (meta `lane_choices` op `Grond`) en blijft bewaard als je de
+  stad opnieuw bouwt, zolang dezelfde tile in de cel ligt.
+- Hoeken op het raster: waar rechte wegen haaks op elkaar aansluiten, buigt de belijning mee
+  met `<rechte tile>_hoek_rechts` en `_hoek_links`, in dezelfde map als de rechte tile
+  (`tools/voxgen/tiles/ground_corners.py`). Ze zijn er voor de rijstroken, fietsstrook,
+  fietsstraat, busbaan, tram (de rails buigen mee), snelweg en het fietspad naast de weg. De
+  tile komt binnen aan de voorkant en gaat er rechts of links uit, dus er rijdt verkeer
+  overheen zonder dat het een kruising is. Een weg van n stroken beslaat n x n cellen: elke
+  strook slaat af op de diagonaal, de andere cellen zijn gewone rechte tiles. Bij een
+  tweerichtingsweg:
+
+      rijstrook_geen_kant                      rijstrook_geen_kant_hoek_links  (buiten)
+      rijstrook_onderbroken_kant_hoek_rechts   rijstrook_geen_kant
+
+  De middenstreep buigt in de binnenste cel, dus de rechte tiles ernaast hebben die streep
+  niet. Heeft een strook geen versie zonder streep, dan is er een `_zonder_streep`
+  (busbaan, snelweg). De stadsbouwer legt ze zelf waar een tweestrookstraat de hoek omgaat
+  (`_square_corners` in `build_city.gd`). Test: `tools/godot.sh --headless --script
+  tools/check/corner_test.gd`.
 - Voertuig (`scripts/characters/vehicle.gd`, `Vehicle`): de rijlogica voor elk
   voertuig. Het plant een paar cellen vooruit (minstens de remafstand), kiest op
   kruisingen willekeurig (`straight_chance`, `route_seed`) en remt af voor bochten
@@ -183,6 +223,7 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
   `tools/godot.sh --script tools/shots/shot_vehicles.gd -- <uit.png> [1|-1] [nummer]`.
 - Test van al het verkeer samen (botsingen, vaststaan, rekentijd):
   `tools/godot.sh --headless --script tools/check/traffic_test.gd -- 300`
+- Test van de richtingen per tile: `tools/godot.sh --headless --script tools/check/lane_choice_test.gd`
 - Test: `tools/godot.sh --headless --script tools/check/drive_test.gd -- 300`
   (optioneel startcel en richting, bv. `-- 300 70 24 1 0` voor de A12). De test meldt
   of de auto ergens naast de weg rijdt, boven of onder het wegdek zit, te hard gaat of
@@ -197,11 +238,11 @@ Projectstructuur
                            slopes (hellingen/bochten), tile_metadata (.tile.json)
       library/             MeshLibraries bouwen: library_builder, atlas
       editor/              bouwpaneel en editor-weergave: build_dock, build_tools, stamps,
-                           editor_view, outline, scene_preview
+                           editor_view, outline, layer_highlight, scene_preview
       materials/           shaders en materialen van de voxels
     assets/                tiles (.gox + .tile.json, kleurentabel materialen.json),
                            libraries (gemaakt), fonts
-    scenes/                rondleiding.tscn, nieuwe_kaart.tscn, wereld/deel_NN.tscn
+    scenes/                stad.tscn, nieuwe_kaart.tscn, rondleiding.tscn (werkt niet meer)
     scripts/               spelcode
       camera/              free_camera, iso_camera
       world/               world_parts (kaartdelen), level_of_detail, layer_baker,
@@ -225,18 +266,10 @@ Snel starten
 ------------
 1. Open de map in Godot 4.7 (`project.godot`). De eerste keer importeert Godot
    alle tiles en maakt de plugin de palet-previews (dat duurt even).
-2. Open een deel van de voorbeeldkaart (`scenes/wereld/deel_01.tscn` t/m `deel_10.tscn`)
-   of `scenes/nieuwe_kaart.tscn` (leeg).
+2. Open `scenes/stad.tscn` of `scenes/nieuwe_kaart.tscn` (leeg).
 3. Selecteer een GridMap-node (Grond / Gebouwen / Details / Props); onderin
    verschijnt het tile-palet. Zoek op naam, klik een tile, en klik in de 3D-view.
-4. F5 start de stad (`scenes/stad.tscn`, zie boven). Open `scenes/rondleiding.tscn` en druk
-   op F6: een automatische rondleiding begint met
-   de dag-nachtdemo (24 s boven gracht en plein: middag, avond, nacht, ochtend en weer
-   middag, met de klok in de titel; `DAY_NIGHT` in `scripts/demo/tour_data.gd`), laadt
-   dan de delen van de kaart een voor een en vliegt per deel isometrisch langs alle
-   situaties, terwijl de middag overgaat in de avond (`day_start`, `day_hours`),
-   met titel en uitleg in beeld (node `Rondleiding`; zet `active` uit om zelf rond te
-   kijken in deel `part`). Daarnaast: De camera staat standaard in
+4. F5 start de stad (`scenes/stad.tscn`, zie boven). De camera staat standaard in
    isometrische stand: een perspectiefcamera met een smalle kijkhoek (20°),
    45 graden gedraaid en ~35 graden naar beneden (`scripts/camera/iso_camera.gd`).
    Een echte perspectiefcamera, omdat Godot schaduwsplits en SSR alleen daarmee
@@ -277,6 +310,12 @@ Bouwpaneel ("Build", rechtsboven in de editor)
   bewerken; het tile-palet van Godot verschijnt onderin.
 - Verdieping: `-`/`+` (of Q/E in de 3D-view) en de hoogte van die verdieping in
   meters. Grond-verdiepingen zijn 1 m, gebouw-verdiepingen 3 m.
+- Wat je bewerkt valt op in de 3D-view zodra je een laag hebt geselecteerd (uit in de
+  weergave `Game`): de verdieping krijgt een dun oranje raster, dat bij ver uitzoomen wegvalt, zijn tiles een oranje waas met
+  felle lijnen (`layer_highlight.gd`, `outline.gd`), de andere verdiepingen vage lijnen. Een
+  kaart linksboven toont laag, verdieping en de tile uit het palet met zijn voorbeeld; onder
+  de muis staat een dikke box. Daarnaast staat de naam van de tile die daar ligt (wit; op de
+  gekozen verdieping, anders de hoogste verdieping van de laag), en oranje de tile die je zou plaatsen.
 - "Hide other layers": verbergt de andere lagen zolang je bewerkt. Bij opslaan of
   starten worden ze eerst weer zichtbaar gemaakt, dus dit komt nooit in de scene.
 - Godot zelf: met "Edit X/Z Axis" teken je op een staand vlak (pijlers, muren over
@@ -300,77 +339,13 @@ Bouwpaneel ("Build", rechtsboven in de editor)
   (de blauwe voorvertoning laat zien waar alles komt).
 
 
-De voorbeeldkaart (`scenes/wereld/`)
-------------------------------------
-De kaart is opgeknipt in 10 delen, zodat de editor snel blijft en het spel nooit de
-hele kaart tegelijk hoeft te laden: `scenes/wereld/deel_01.tscn`
-t/m `deel_10.tscn`, elk een strook van de kaart van noord naar zuid (tile-rijen z, de
-polder aan de randen hoort bij het eerste en laatste deel):
-
-| Deel | Rijen z | Deel | Rijen z |
-|---|---|---|---|
-| 01 | ..51 | 06 | 245..298 |
-| 02 | 52..99 | 07 | 299..353 |
-| 03 | 100..150 | 08 | 354..409 |
-| 04 | 151..203 | 09 | 410..464 |
-| 05 | 204..244 | 10 | 465.. |
-
-Elk deel is een eigen Vox Tiles-scene met de vier lagen (Grond, Gebouwen, Details,
-Props) op hun echte plek in de wereld: open een deel om erin te bouwen. In de editor
-toont de plugin een deel met de omgeving, zon, vullicht, TintKaart (met alle tintvlakken)
-en rook van `scenes/rondleiding.tscn` (`addons/vox_tiles/editor/scene_preview.gd`, metadata
-`preview_scene` op het deel), zodat licht, effecten en tinten kloppen; die nodes worden
-niet in het deel opgeslagen, je past ze aan in `rondleiding.tscn`. Er is geen
-scene meer met de hele kaart. `scenes/rondleiding.tscn` heeft alleen omgeving, licht,
-camera en de hulpnodes (Rondleiding, DetailNiveau, Dagcyclus, Rook, TintKaart) en de
-metadata van de hele kaart (wijken, plekken, `part_rows`: de rijen van elk deel). De
-rondleiding laadt steeds één deel (`scripts/world/world_parts.gd`, `show_part`): de lagen
-van dat deel komen direct onder de root, DetailNiveau voegt ze samen (achter een
-laadscherm "Deel n van 10 laden…") en Rook zoekt de schoorstenen. Na de laatste stop
-in het deel wordt het weggegooid en komt het volgende. De tools laden het deel waar ze
-kijken; `tools/check/coverage.gd` laadt alle delen tegelijk (`merge_all`). De rij-grenzen kiest de build zelf (ongeveer evenveel cellen
-per deel, op een rij met zo min mogelijk gebouwen, zodat er geen gebouw doormidden gaat);
-ze staan ook als metadata `rows` op de root van elk deel. Een stop hoort bij het deel
-waar zijn middelpunt ligt; wat net over de grens ligt, is in dat beeld leeg. Het aantal
-delen staat in `WORLD_PARTS` in `tools/build/city/base.gd`.
-
-De kaart is 96 x 80 tiles stad, met daaronder een campus en de demowijken.
-Gebruik hem als naslag: zoek een tile in het palet en kijk hoe hij in de kaart
-is ingezet.
-
-| Gebied (tile-coördinaten x, z) | Wat je er ziet |
-|---|---|
-| 0..35, 0..29 | Oude stad: gracht met grachtenpanden (trap/klok/hals/tuitgevels), boogbrug, bouwblok met kappen die om de hoek lopen, plein met terrassen, park met vijver, spoorviaduct, perron, overweg |
-| 36..58, 0..11 | Kathedraal (torens, roosvenster, luchtbogen), school met speelplaats |
-| 63..95, 0..11 | Klassiek museum met koepel, raadhuis met klokkentoren en vlaggen, modern museum |
-| 36..58, 18..39 | Jaren-30 bovenhuizen (gesloten bouwblok, 4 lagen) met horeca en terrassen, middelhoge portiekflats, herenhuizen (1600 en 1900), dorpskerk, moderne kerk met klokkenstoel |
-| 63..95, 18..39 | Hoogbouw: kantoren jaren 80/2000/modern, appartemententoren, galerijflat, parkeergarage, radiotoren, glazen overkapping, glazen hal, binnen- en buitenzwembad, pilaren, loopbrug |
-| z 40..46 | Zuidweg: fietspaden, busstrook, middenberm-lantaarns, bushaltes |
-| z 48..54 | Rivier met stalen boogbrug, tuibrug, ophaalbrug, moderne voetbrug, kadetrap, woonboten |
-| 0..30, 55..71 | Jaren-60 wijk: eengezinswoningen (erkers, dakkapellen), maisonnettes met galerij, parkeerplaats met laadpalen, speeltuin, vijver met strand/beschoeiing/basalt |
-| 31..58, 55..71 | Boerderij met schuren, moestuin, heide, bos, sloot met duiker, heuvels (gras/zand/grind), bedrijfspand met industrieel hekwerk, kasteeltoren met kantelen |
-| 59..63, 55..79 | Tunnelbak voor auto en fiets die onder de snelweg door gaat |
-| 63..72, 55..71 | Brede boulevard: 2 rijstroken, stoep met halte, 2 trambanen, stoep met halte, 2 rijstroken |
-| 73..95, 55..71 | Viaduct over een weg met middenberm, luxe appartementen met penthouse en daktuin/dakzwembad, kantoor met grind-/bitumen-/groendak en koelinstallaties, rijtjes met groendak, busstation, sporthal |
-| z 72..79 | Snelweg (vluchtstroken, middenberm, portalen met blauwe borden, lantaarns) met auto- en fietstunnel eronder en een aansluiting met af- en toerit (x 34..58) |
-| z 80..98 | Campus: universiteit, hogeschool, twee kantoortorens met kolonnade en een loopbrug ertussen; ernaast (x 62..95, z 86..97) een autovrije winkelstraat met alle winkel- en horecatypes, terrassen, bomen, fontein en paaltjes bij de ingangen |
-| vanaf z 99 | Demowijken als stadsblokken aan een doorlopend stratennet (ook: kruisingen met verkeerslichten in alle standen en een bedrijventerrein met loodsen, magazijn, fabriek met rokende schoorsteen): een buurt per gebouwstijl (bouwblok met alle gevels, winkels en hoekpanden, hofje met kappen om de hoek, zadeldak-L en -T, rijtje smalle panden met elk een andere gevel/top, torens, een "detailpand" met aangebrachte ramen/deuren/luifels/zonwering/teksten/dakonderdelen), een dakenwijk met alle dakpansoorten, een sportcomplex met hallen en parkeergarage, woonlussen met alle bochtprofielen, een straat met getinte rijtjeshuizen, fiets-, tram- en spoorlussen, een rivierdijk met op- en afritten en viaducten, een tunnelpark, een grachtengordel met alle bruggen, keerlussen met stijgende bochten (dijk en brug), viaductbochten en een natuur- en recreatiepark. Alle markeringen, stoepvormen, rotondes en verkeerslichten zitten in het stratennet zelf. Elke tile staat ergens logisch in de stad; de build meldt tiles die nergens staan |
-
-Elke tile staat ergens in de kaart in een realistische situatie; de wijken
-worden automatisch opgebouwd uit de bibliotheken, dus nieuwe tiles komen er bij
-het opnieuw bouwen vanzelf bij (`_demo_districts()` in `tools/build/build_example_city.gd`).
-De demowijken vormen samen met de oude stad één stad: ze liggen als bouwblokken
-aan een stratennet (2 rijstroken, kruispunten, lantaarns en bomen) dat via twee
-straten op de campusweg aansluit; waar een wijk ruimte laat staan gebouwen langs de
-straat in de stijl van de wijk, en lege plekken worden gewone stadsblokken. Rond de
-hele kaart ligt een strook polder. De snelweg heeft een aansluiting met af- en
-toerit (`snelweg/afrit_*`, `toerit_*`, x 34..58), en de wijken "keerlussen" en
-"viaductbochten" tonen de stijgende bochten als dijk- en bruglussen en de vlakke
-bochtbruggen op pijlers.
-
-Controleren of echt alle tiles in de kaart staan:
-
-    /Applications/Godot.app/Contents/MacOS/Godot --headless --script tools/check/coverage.gd
+De voorbeeldkaart (verwijderd)
+------------------------------
+De demokaarten `scenes/wereld/deel_*.tscn` zijn verwijderd. Daarmee werken de rondleiding
+(`scenes/rondleiding.tscn`, `scripts/demo/tour.gd`) en de tools die er delen uit laden
+(`tools/check/walk_test.gd`, `tools/shots/screenshots.gd`, `tools/shots/walk_shots.gd`) niet
+meer. `tools/build/build_example_city.gd` zou de delen opnieuw maken: draai die niet, tenzij
+je ze terug wilt. `tools/check/coverage.gd` kijkt nu naar `scenes/stad.tscn`.
 
 
 De vier lagen
@@ -681,8 +656,8 @@ Na het genereren (vanuit de projectmap):
     # 2b. palet-previews renderen (met venster, ~1,5 min voor alles; daarna hoeft de
     #     editor bij het openen geen "Creating mesh previews" meer te doen)
     tools/godot.sh --script tools/build/build_previews.gd [-- all]
-    # 3. voorbeeldkaart opnieuw bouwen (overschrijft scenes/rondleiding.tscn en scenes/wereld/!)
-    tools/godot.sh --headless --script tools/build/build_example_city.gd
+    # 3. de stad opnieuw bouwen (overschrijft scenes/stad.tscn, behalve de keuzes per tile)
+    tools/godot.sh --headless --script tools/build/build_city.gd
 
 Previews worden bewaard in `.godot/vox_tiles_previews/` (per tile en importtijd); een
 bibliotheek die opnieuw gebouwd wordt, krijgt ze daar direct uit terug.
@@ -719,9 +694,7 @@ Hoe het werkt (techniek)
   tile per laag, `base.gd`), `block()` (rechthoekig gebouw met automatisch de juiste
   hoek-, gevel- en dakstukken), `ring()` (gesloten bouwblok met kappen om de hoek),
   `tower()`, `profile_x/z()` (straatprofiel), `fill_rect()` (alle in `kit.gd`).
-- `scripts/world/world_parts.gd`: knipt de voorbeeldkaart bij het opslaan op in delen
-  (`scenes/wereld/`) en laadt een deel (of alle delen) in de rondleidingsscene.
-- `tools/check/coverage.gd`: telt welke tiles in de voorbeeldkaart in context staan.
+- `tools/check/coverage.gd`: telt welke tiles in de stad liggen.
 - `tools/shots/screenshots.gd`: maakt isometrische screenshots van alle gebieden en
   buurten met titel en uitleg in beeld, naar `docs/screenshots/` (met
   `index.json`; lokaal, staat niet in git).

@@ -1,0 +1,13 @@
+{
+	"id": 1186,
+	"same_as": "weg/rijstrook_geen_geen_hoek_links",
+	"traffic": {
+		"lanes": [
+			"N"
+		],
+		"road": "snelweg",
+		"only": [
+			"auto"
+		]
+	}
+}

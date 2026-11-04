@@ -1,4 +1,9 @@
 {
 	"id": 122,
-	"same_as": "plein/plein_klinkers"
+	"same_as": "plein/plein_klinkers",
+	"traffic": {
+		"only": [
+			"voetganger"
+		]
+	}
 }

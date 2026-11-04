@@ -1,4 +1,11 @@
 {
 	"id": 594,
-	"same_as": "bocht/weg_3_3"
+	"same_as": "bocht/weg_3_3",
+	"traffic": {
+		"only": [
+			"auto",
+			"brommer",
+			"fiets"
+		]
+	}
 }

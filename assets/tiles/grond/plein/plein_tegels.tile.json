@@ -4,5 +4,11 @@
 		"steil",
 		"flauw_a",
 		"flauw_b"
-	]
+	],
+	"traffic": {
+		"only": [
+			"voetganger",
+			"fiets"
+		]
+	}
 }

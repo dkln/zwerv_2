@@ -1,4 +1,9 @@
 {
 	"id": 1102,
-	"same_as": "snelweg/toerit_0_1"
+	"same_as": "snelweg/toerit_0_1",
+	"traffic": {
+		"only": [
+			"auto"
+		]
+	}
 }

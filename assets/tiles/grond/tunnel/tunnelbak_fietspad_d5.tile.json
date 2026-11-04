@@ -1,3 +1,9 @@
 {
-	"id": 361
+	"id": 361,
+	"traffic": {
+		"only": [
+			"fiets",
+			"brommer"
+		]
+	}
 }

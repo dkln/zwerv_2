@@ -92,6 +92,7 @@ func _init() -> void:
 	_paint_trams()
 	_bridges()
 	_a12_junction()
+	_square_corners()
 	_auto_kerbs()
 	_fill_grass_all()
 	_schenkviaduct()
@@ -355,6 +356,147 @@ func _streets() -> void:
 		Pr(x * 4 + 2.0, Z3 * 4 + 4.0, "straat/bank_modern", "S")
 	Pr(14 * 4.0, Z3 * 4 + 4.0, "verlichting/lantaarn_modern")
 	places["grote_marktstraat"] = Vector2(16 * 4.0, Z3 * 4 + 4.0)
+
+
+## Heading of a lane -> rotation of its tile (a lane tile drives towards its back).
+const ROTATION_OF_HEADING := {Vector2i(0, -1): "S", Vector2i(-1, 0): "E", Vector2i(0, 1): "N", Vector2i(1, 0): "W"}
+const FLAT_CROSSING_TILES := ["weg/kruising_vlak", "weg/weg_vlak"]
+## Cells of a street next to a corner that are checked for junction markings.
+const UNDRESSED_CELLS := 3
+
+
+## Name of the ground tile at street level in a cell, or "".
+func _street_tile(cell: Vector2i) -> String:
+	var item := ground.get_cell_item(Vector3i(cell.x, 0, cell.y))
+	return ground.mesh_library.get_item_name(item) if item >= 0 else ""
+
+
+## True if this tile is part of a lane: it has markings for traffic along it.
+func _is_lane_tile(tile_name: String) -> bool:
+	for start: String in ["weg/rijstrook_", "tram/tram_rijstrook_", "weg/fietsstr", "weg/straat_", "weg/zebrapad", "weg/fietsoversteek"]:
+		if tile_name.begins_with(start):
+			return true
+	return false
+
+
+## Where a two-lane street turns a corner without a side road, its 2 x 2 flat crossing
+## cells become lanes whose lines bend round (tools/voxgen/tiles/ground_corners.py).
+func _square_corners() -> void:
+	var corners := 0
+	for cell: Vector3i in ground.get_used_cells():
+		var north_west := Vector2i(cell.x, cell.z)
+		if cell.y == 0 and _lay_square_corner(north_west):
+			corners += 1
+	print("square street corners: ", corners)
+
+
+## Lays the corner on the 2 x 2 cells from this north-west cell, if they are one.
+func _lay_square_corner(north_west: Vector2i) -> bool:
+	var block: Array[Vector2i] = [north_west, north_west + Vector2i(1, 0), north_west + Vector2i(0, 1), north_west + Vector2i(1, 1)]
+	for cell in block:
+		if not _street_tile(cell) in FLAT_CROSSING_TILES:
+			return false
+	var east_lanes := [_street_tile(north_west + Vector2i(2, 0)), _street_tile(north_west + Vector2i(2, 1))]
+	var west_lanes := [_street_tile(north_west + Vector2i(-1, 0)), _street_tile(north_west + Vector2i(-1, 1))]
+	var south_lanes := [_street_tile(north_west + Vector2i(0, 2)), _street_tile(north_west + Vector2i(1, 2))]
+	var north_lanes := [_street_tile(north_west + Vector2i(0, -1)), _street_tile(north_west + Vector2i(1, -1))]
+	var arm_x := _street_arm(east_lanes, west_lanes)
+	var arm_z := _street_arm(south_lanes, north_lanes)
+	if arm_x == 0 or arm_z == 0:
+		return false
+	var arm_cells_x: Array[Vector2i] = [north_west + Vector2i(2 if arm_x > 0 else -1, 0), north_west + Vector2i(2 if arm_x > 0 else -1, 1)]
+	var arm_cells_z: Array[Vector2i] = [north_west + Vector2i(0, 2 if arm_z > 0 else -1), north_west + Vector2i(1, 2 if arm_z > 0 else -1)]
+	var tiles: Dictionary = _corner_tiles(arm_cells_x + arm_cells_z)
+	var inner := north_west + Vector2i(1 if arm_x > 0 else 0, 1 if arm_z > 0 else 0)
+	var outer := north_west + Vector2i(0 if arm_x > 0 else 1, 0 if arm_z > 0 else 1)
+	var to_side := Vector2i(arm_x, 0)
+	var to_street := Vector2i(0, arm_z)
+	# driving on the right: the inside lane turns right, the outside lane turns left. Each
+	# lane is entered from the arm whose outgoing side is on that hand.
+	var inner_heading: Vector2i = -to_street if _right_of(-to_street) == to_side else -to_side
+	var outer_heading: Vector2i = -to_street if _left_of(-to_street) == to_side else -to_side
+	G(inner.x, inner.y, tiles.inner + "_hoek_rechts", ROTATION_OF_HEADING[inner_heading])
+	G(outer.x, outer.y, tiles.outer + "_hoek_links", ROTATION_OF_HEADING[outer_heading])
+	# the two cells between belong to the outside lane: towards its corner, and away from it
+	for beside: Vector2i in [Vector2i(inner.x, outer.y), Vector2i(outer.x, inner.y)]:
+		var towards_outer: Vector2i = outer - beside
+		var along_outer_lane: Vector2i = towards_outer if towards_outer == outer_heading else -towards_outer
+		G(beside.x, beside.y, tiles.outer, ROTATION_OF_HEADING[along_outer_lane])
+	_undress_arm(arm_cells_x, Vector2i(arm_x, 0))
+	_undress_arm(arm_cells_z, Vector2i(0, arm_z))
+	return true
+
+
+## The straight tile of the inside and the outside lane of a corner, from the streets that
+## meet there; a mark that only one of them has (a bike lane, a solid line) goes round.
+func _corner_tiles(arm_cells: Array[Vector2i]) -> Dictionary:
+	var names := ""
+	for cell in arm_cells:
+		names += _street_tile(cell) + " "
+	if names.contains("tram/"):
+		return {"inner": "tram/tram_rijstrook_onderbroken_kant", "outer": "tram/tram_rijstrook_geen_kant"}
+	if names.contains("weg/fietsstraat"):
+		return {"inner": "weg/fietsstraat", "outer": "weg/fietsstraat"}
+	if names.contains("fietsstrook"):
+		return {"inner": "weg/fietsstrook", "outer": "weg/fietsstrook"}
+	if names.contains("dubbel"):
+		return {"inner": "weg/rijstrook_dubbel_kant", "outer": "weg/rijstrook_geen_kant"}
+	if names.contains("streep"):
+		return {"inner": "weg/rijstrook_streep_kant", "outer": "weg/rijstrook_geen_kant"}
+	return {"inner": "weg/rijstrook_onderbroken_kant", "outer": "weg/rijstrook_geen_kant"}
+
+
+## Takes what belongs before a junction (arrows, give-way lines) off the first cells of a
+## street that now just turns a corner: they get the tile that comes next along their lane.
+func _undress_arm(first_cells: Array[Vector2i], outward: Vector2i) -> void:
+	for first_cell in first_cells:
+		for cells_out in UNDRESSED_CELLS:
+			var cell := first_cell + outward * cells_out
+			if not _is_junction_marking(_street_tile(cell)):
+				continue
+			var plain := cell + outward
+			while _is_junction_marking(_street_tile(plain)):
+				plain += outward
+			var at := Vector3i(plain.x, 0, plain.y)
+			if ground.get_cell_item(at) >= 0:
+				ground.set_cell_item(Vector3i(cell.x, 0, cell.y), ground.get_cell_item(at), ground.get_cell_item_orientation(at))
+
+
+func _is_junction_marking(tile_name: String) -> bool:
+	for start: String in ["weg/rijstrook_pijl_", "weg/rijstrook_haaientanden", "weg/rijstrook_stop", "weg/rijstrook_blok_"]:
+		if tile_name.begins_with(start):
+			return true
+	return false
+
+
+## 1 or -1 if a two-lane street leaves on that side only (positive, negative), else 0.
+func _street_arm(positive: Array, negative: Array) -> int:
+	if _both_lanes(positive) and not _any_road(negative):
+		return 1
+	if _both_lanes(negative) and not _any_road(positive):
+		return -1
+	return 0
+
+
+func _both_lanes(tiles: Array) -> bool:
+	return _is_lane_tile(tiles[0]) and _is_lane_tile(tiles[1])
+
+
+## A flat crossing cell counts: then this is part of a wider junction, not a corner.
+func _any_road(tiles: Array) -> bool:
+	for tile_name: String in tiles:
+		if _is_lane_tile(tile_name) or tile_name in FLAT_CROSSING_TILES:
+			return true
+	return false
+
+
+## The heading to the right of this one on the map (x = east, y = south).
+static func _right_of(heading: Vector2i) -> Vector2i:
+	return Vector2i(-heading.y, heading.x)
+
+
+static func _left_of(heading: Vector2i) -> Vector2i:
+	return Vector2i(heading.y, -heading.x)
 
 
 ## The Singelgracht round the old centre, the outer quays with a row of trees along the

@@ -4,5 +4,10 @@
 		"steil",
 		"brug",
 		"brug_rand"
-	]
+	],
+	"traffic": {
+		"only": [
+			"auto"
+		]
+	}
 }

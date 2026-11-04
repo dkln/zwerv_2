@@ -1,4 +1,9 @@
 {
 	"id": 64,
-	"animation": "flowers"
+	"animation": "flowers",
+	"traffic": {
+		"only": [
+			"voetganger"
+		]
+	}
 }

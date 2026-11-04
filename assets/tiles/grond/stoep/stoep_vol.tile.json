@@ -7,5 +7,10 @@
 		"brug",
 		"brug_rand",
 		"brug_rand_rechts"
-	]
+	],
+	"traffic": {
+		"only": [
+			"voetganger"
+		]
+	}
 }

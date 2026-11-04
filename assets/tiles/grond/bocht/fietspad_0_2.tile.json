@@ -11,5 +11,11 @@
 		0,
 		2,
 		3
-	]
+	],
+	"traffic": {
+		"only": [
+			"fiets",
+			"brommer"
+		]
+	}
 }

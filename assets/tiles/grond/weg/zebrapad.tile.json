@@ -4,6 +4,12 @@
 		"lanes": [
 			"N",
 			"S"
+		],
+		"only": [
+			"auto",
+			"brommer",
+			"fiets",
+			"voetganger"
 		]
 	}
 }

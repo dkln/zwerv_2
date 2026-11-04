@@ -1,0 +1,15 @@
+{
+	"id": 1194,
+	"same_as": "weg/rijstrook_geen_kant_hoek_rechts",
+	"traffic": {
+		"lanes": [
+			"E"
+		],
+		"road": "straat",
+		"only": [
+			"auto",
+			"brommer",
+			"fiets"
+		]
+	}
+}

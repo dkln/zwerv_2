@@ -1,0 +1,12 @@
+{
+	"id": 1161,
+	"traffic": {
+		"lanes": [
+			"N"
+		],
+		"road": "straat",
+		"only": [
+			"bus"
+		]
+	}
+}

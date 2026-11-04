@@ -1,0 +1,9 @@
+{
+	"id": 1189,
+	"same_as": "weg/rijstrook_blok_geen_hoek_links",
+	"traffic": {
+		"only": [
+			"auto"
+		]
+	}
+}

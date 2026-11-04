@@ -1,0 +1,15 @@
+{
+	"id": 1190,
+	"same_as": "tram/tram_rijstrook_streep_kant_hoek_links",
+	"traffic": {
+		"lanes": [
+			"W"
+		],
+		"road": "straat",
+		"only": [
+			"auto",
+			"brommer",
+			"fiets"
+		]
+	}
+}

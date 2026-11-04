@@ -5,7 +5,8 @@ Modules per category (later ones build on the helpers of earlier ones):
 - ground: ground (roads, pavements, squares, nature, water, rail, tram, base helpers),
   ground_extra (markings, parking, gentle slopes, stairs, tunnels, pools, waterfront, ...),
   ground_bridges_curves (bridges, cobbles, rounded curves), ground_rising_curves (curves with
-  height), ground_junction (motorway exits and on-ramps)
+  height), ground_junction (motorway exits and on-ramps), ground_corners (square road
+  corners, registered last because they bend the straight tiles)
 - buildings: buildings (toolkit and classic styles), building_styles (most other styles),
   building_roofs (roof coverings, battlements, radio tower, car park), building_campus
   (university, college, offices with a colonnade)
@@ -34,3 +35,4 @@ from . import extras_business_paths  # noqa: F401
 from . import extras_shops_lanes  # noqa: F401
 from . import building_campus  # noqa: F401
 from . import traffic_lights_industry  # noqa: F401
+from . import ground_corners  # noqa: F401

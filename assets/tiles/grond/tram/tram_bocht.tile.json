@@ -6,6 +6,12 @@
 			"E",
 			"S",
 			"W"
+		],
+		"only": [
+			"auto",
+			"brommer",
+			"fiets",
+			"voetganger"
 		]
 	}
 }

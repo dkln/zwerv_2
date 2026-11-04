@@ -7,8 +7,10 @@ extends Node3D
 ## - `fixed_color`: the direction the tile itself gives (a lane tile, turned as placed);
 ## - `context_color`: a tile without a direction of its own (a crossing, plain asphalt,
 ##   a zebra, the tunnel), its direction decided from the road around it;
-## - `open_color`: still both ways (nothing around it decides it), an arrow each way.
-## Placing or turning ground tiles updates the arrows within a second.
+## - `open_color`: still both ways (nothing around it decides it), an arrow each way;
+## - `chosen_color`: lanes, road users or speed limit chosen for this one placed tile
+##   (Build dock, "Traffic").
+## Placing or turning ground tiles or choosing lanes updates the arrows within a second.
 
 ## The ground GridMap with the road tiles.
 @export var ground: NodePath = ^"../Grond"
@@ -19,6 +21,7 @@ extends Node3D
 @export var fixed_color := Color(1.0, 0.85, 0.1)
 @export var context_color := Color(0.35, 0.8, 1.0)
 @export var open_color := Color(1.0, 0.2, 0.8)
+@export var chosen_color := Color(0.3, 1.0, 0.35)
 ## Show the arrows through buildings and bridges too.
 @export var through_walls := false:
 	set(value):
@@ -98,7 +101,9 @@ func arrow_list(gridmap: GridMap) -> Array[Dictionary]:
 		var headings := network.lanes(cell)
 		for heading in headings:
 			var color := context_color if network.is_from_context(cell, heading) else fixed_color
-			if headings.has(-heading):
+			if network.is_chosen(cell) or network.has_chosen_kinds(cell) or network.has_chosen_speed(cell):
+				color = chosen_color
+			elif headings.has(-heading):
 				color = open_color
 			var placement := gridmap.global_transform * _placement(network, cell, heading, headings.size() > 1) \
 					if gridmap.is_inside_tree() else _placement(network, cell, heading, headings.size() > 1)
@@ -137,7 +142,7 @@ func _arrow_mesh() -> ArrayMesh:
 	return mesh
 
 
-## A number that changes when a ground tile is placed, removed or turned.
+## A number that changes when a ground tile is placed, removed or turned, or its lanes chosen.
 func _signature_of(gridmap: GridMap) -> int:
 	var cells := gridmap.get_used_cells()
 	var values := PackedInt32Array()
@@ -149,4 +154,4 @@ func _signature_of(gridmap: GridMap) -> int:
 		values[index * 5 + 2] = cell.z
 		values[index * 5 + 3] = gridmap.get_cell_item(cell)
 		values[index * 5 + 4] = gridmap.get_cell_item_orientation(cell)
-	return hash(values)
+	return hash([values, gridmap.get_meta(RoadNetwork.LANE_CHOICES, {})])

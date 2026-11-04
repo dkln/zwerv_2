@@ -1,0 +1,13 @@
+{
+	"id": 1185,
+	"same_as": "snelweg/snelweg_vluchtstrook_hoek_rechts",
+	"traffic": {
+		"lanes": [
+			"E"
+		],
+		"road": "snelweg",
+		"only": [
+			"auto"
+		]
+	}
+}

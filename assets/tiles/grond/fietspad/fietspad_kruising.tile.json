@@ -1,4 +1,10 @@
 {
 	"id": 25,
-	"same_as": "fietspad/fietspad_recht"
+	"same_as": "fietspad/fietspad_recht",
+	"traffic": {
+		"only": [
+			"fiets",
+			"brommer"
+		]
+	}
 }

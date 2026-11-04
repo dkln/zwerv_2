@@ -10,6 +10,11 @@
 		"lanes": [
 			"N"
 		],
-		"road": "straat"
+		"road": "straat",
+		"only": [
+			"auto",
+			"brommer",
+			"fiets"
+		]
 	}
 }
