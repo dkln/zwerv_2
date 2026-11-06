@@ -1,3 +1,7 @@
 {
-	"id": 118
+	"id": 118,
+	"bake": {
+		"shadow": true,
+		"merge": true
+	}
 }

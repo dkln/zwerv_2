@@ -40,7 +40,7 @@ de tramlijn in straat z 58. De trams van de Grote Marktstraat rijden door een tu
 47) met een ondergrondse halte en ingangen op straat; oost daarvan rijden ze onder een ministerie
 door dat over de straat gebouwd is (x 56 tot 60). Treinsporen lopen uit de stationshal
 (x 83-84) naar het zuiden, onder het tramviaduct door, en een helling op naar een eigen viaduct
-(z 93-94) tot de kaartrand. Station Laan van NOI (x 122 tot 129) ligt 6 m boven de straat x
+(z 93-94) tot de kaartrand. Station Laan van NOI (x 119 tot 129) ligt 6 m boven de straat x
 128: trein en tram naast elkaar met drie perrons, elk met een trap. Daaronder de Schenkkade
 (z 96) en een nieuwe strook stad (z 98 tot 106). Ook west van de Koningskade, ten zuiden van de singel, loopt de Schenkkade door, met galerijflats aan de kade, gesloten bouwblokken en een pleintje met kerk en grasveld, Daaronder het zuiden van de stad op drie straten (z 107, 130, 153): de Schilderswijk (west, bouwblokken, marktplein, school, kerk, park met vijver), Laak (midden, galerijflats, hogeschool, kantoren, woontoren) en de Binckhorst (oost, loodsen en fabrieken met containers en tanks). De kaart is zo een vierkant van 176 x 176 cellen (x en z 0..175, 704 x 704 m). Over het vlakke deel van de A12 (x 160) gaat een voetbrug met trappen van de
 kantoren aan de Prins Clauslaan naar de straat z 29. Opnieuw bouwen:
@@ -57,13 +57,15 @@ meteen zelf rondkijken. Over het beeld ligt een vignet (node `Vignet`,
 gemengd, zonder schermkopie of blur, dus vrijwel gratis. Er is geen tilt-shift en geen
 scherptediepte (DOF) meer: het beeld is overal scherp.
 
-Op de rails rijden twee RandstadRails (`scripts/vehicles/randstadrail.gd`, drie wagons) en
-twee NS-treinen (`ns_train.gd`, vier wagons), beide op `rail_vehicle.gd`. Wat erop mag rijden staat
+Op de rails rijden twee RandstadRails (`scripts/vehicles/randstadrail.gd`, twee wagons, 22,25 m) en
+twee NS-treinen (`ns_train.gd`, drie wagons, 40 m; elk blijft op zijn eigen spoor, `own_track`), beide op `rail_vehicle.gd`. Ze passen op hun perrons: een tramhalte
+is 6 cellen (24 m), een treinperron 11 cellen (44 m); `tools/check/rail_stop_test.gd` controleert dat. Wat erop mag rijden staat
 op de tile: `"only": ["tram"]` of `["trein"]` in de `traffic`-metadata, en `"rails"` zegt welke
 zijden de rails verbinden (`SN`, `SE`), zodat een voertuig bij een splitsing alleen kan gaan
-waar de rails echt lopen. Ze stoppen bij perrons (`dwell_time`) en rijden heen en weer: aan het
+waar de rails echt lopen. Ze stoppen bij perrons (een tile met `"platform": ["tram"]` of `["trein"]` in zijn metadata, `dwell_time`), openen dan de deuren aan de perronkant
+(`door_model`: elk deurblad is een eigen mesh die uit de wagon stapt en opzij schuift) en rijden heen en weer: aan het
 eind van het spoor wisselt de bestuurder van cabine en gaat het voertuig geleidelijk over op
-het spoor ernaast, dat de andere kant op gaat. De kopwagons hebben een echte cabine: een
+het spoor ernaast, dat de andere kant op gaat (treinen niet: die rijden over hun eigen spoor terug). De kopwagons hebben een echte cabine: een
 versmallende neus met schuin achteroverhellende voorruit, bord erboven, en een zijraam voor de
 bestuurder. Dag en nacht branden wit voorop de eerste wagon en rood achterop de laatste
 (`rear_lamp_positions`), zonder remlicht (`lamps_always_on`, `brake_lights`).
@@ -596,6 +598,10 @@ modelbestand niet kent:
   `emit` (licht), `water`, `flag` (wapperend), `asphalt`, `stone`, `brick`,
   `gravel`, `painted`, `paving`, `cobble` of `plaster`. Gaat voor op
   materiaallagen en de kleurentabel.
+- `bake` (geschreven door `tools/voxgen/bake.py`): `shadow` (wel of geen schaduw, weg = naar
+  hoogte), `merge` (`false`: blijft een losse mesh; `true`: ook een vlag meebaken) en
+  `building_part` (`false`: fade niet mee met het gebouw ernaast). De baker kent geen
+  tilenamen, alleen deze metadata.
 - Sla je het bestand (of de kleurentabel) op terwijl de editor open is, dan
   worden de tiles opnieuw geïmporteerd. Zonder editor: verwijder
   `.godot/imported/<naam>.gox-*` en draai `tools/godot.sh --headless --import`.

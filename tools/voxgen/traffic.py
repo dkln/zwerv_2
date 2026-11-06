@@ -149,6 +149,24 @@ _RAMP_TRAFFIC = {
 }
 
 
+# Who stops beside a tile: the "platform" of its metadata (the kinds of rail vehicle).
+_PLATFORMS = {
+    "grond/spoor/perron": ["tram", "trein"],
+    "grond/spoor/perron_midden": ["tram", "trein"],
+    "grond/spoor/perron_trap": ["tram", "trein"],
+    "grond/tram/tram_halte_perron": ["tram"],
+    "grond/tram/tramhalte_middenperron": ["tram"],
+    "grond/tunnel/tramtunnel_perron": ["tram"],
+    "grond/tunnel/tramtunnel_perron_begin": ["tram"],
+    "grond/tunnel/tramtunnel_perron_eind": ["tram"],
+}
+
+
+def tile_platform(name):
+    """The "platform" metadata of tile path ``name``: who stops beside it, or None."""
+    return _PLATFORMS.get(name)
+
+
 def ramp_traffic(name):
     """The "traffic" of the ramps made of tile path ``name``, or None."""
     return _RAMP_TRAFFIC.get(name)

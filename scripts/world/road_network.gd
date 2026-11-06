@@ -226,6 +226,25 @@ func rail_connects(cell: Vector3i, arriving: Vector2i, leaving: Vector2i) -> boo
 	return false
 
 
+## The headings in which the rails of `cell` leave it, both ways along them.
+func rail_headings(cell: Vector3i) -> Array[Vector2i]:
+	var headings: Array[Vector2i] = []
+	for rail: Array in _rails.get(cell, []):
+		for heading: Vector2i in rail:
+			if not heading in headings:
+				headings.append(heading)
+	return headings
+
+
+## True if rail vehicles of this kind stop beside the tile in `cell` (metadata "platform").
+func is_platform_for(cell: Vector3i, vehicle_kind: String) -> bool:
+	var item := _ground.get_cell_item(cell)
+	if item < 0:
+		return false
+	var library := _ground.mesh_library
+	return vehicle_kind in library.get_meta("platforms", {}).get(library.get_item_name(item), [])
+
+
 ## Road cell with a lane in `heading` for this kind of vehicle nearest to map cell `near`,
 ## street level first.
 func nearest(near: Vector2i, heading: Vector2i, vehicle_kind := "auto") -> Vector3i:

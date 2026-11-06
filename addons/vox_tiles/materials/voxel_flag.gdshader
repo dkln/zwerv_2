@@ -13,8 +13,18 @@ uniform float wavelength = 1.6;
 uniform float strength = 0.12;
 uniform float pole_distance = 0.15;
 
+#ifdef ZWERVR_FADE
+// the building a baked flag hangs on (voxel_fade.gdshaderinc)
+varying vec4 fade_owner;
+#endif
+
 void vertex() {
-	vec2 d = VERTEX.xz;
+#ifdef ZWERVR_FADE
+	fade_owner = fade_owner_from(CUSTOM0);
+#endif
+	// a flag baked into a chunk (layer_baker.gd) has its pole in CUSTOM1; otherwise the
+	// pole is the origin of its own mesh
+	vec2 d = CUSTOM1.w > 0.5 ? VERTEX.xz - CUSTOM1.xy : VERTEX.xz;
 	float r = length(d);
 	float f = clamp((r - pole_distance) / 1.2, 0.0, 1.0);
 	vec2 dir = r > 0.001 ? d / r : vec2(1.0, 0.0);
@@ -29,7 +39,7 @@ void vertex() {
 
 void fragment() {
 #ifdef ZWERVR_FADE
-	if (faded_out(VERTEX, NORMAL, INV_VIEW_MATRIX, PROJECTION_MATRIX, FRAGCOORD.xy, vec4(0.0))) {
+	if (faded_out(VERTEX, NORMAL, INV_VIEW_MATRIX, PROJECTION_MATRIX, FRAGCOORD.xy, fade_owner)) {
 		discard;   // a building in front of the followed vehicle (voxel_fade.gdshaderinc)
 	}
 #endif

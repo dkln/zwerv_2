@@ -692,7 +692,7 @@ func _plan() -> void:
 		var options: Array[Vector2i] = []
 		if next_cell != RoadNetwork.NONE:
 			var entered := _crossing_entry_heading()
-			for option in network.lanes(next_cell):
+			for option in _ways_out(next_cell):
 				if option == -heading or not _may_use(next_cell, option) or network.step(next_cell, option) == RoadNetwork.NONE:
 					continue
 				if not _may_continue(next_cell, heading, option):
@@ -712,6 +712,11 @@ func _plan() -> void:
 		if options.size() > 1:
 			next_heading = _choose_heading(next_cell, heading, options)
 		_append(next_cell, next_heading)
+
+
+## The headings it may leave a cell in (RailVehicle: its rails, on a track of its own).
+func _ways_out(cell: Vector3i) -> Array[Vector2i]:
+	return network.lanes(cell)
 
 
 ## True if `heading` points back the way it drove the last few planned cells (a U-turn

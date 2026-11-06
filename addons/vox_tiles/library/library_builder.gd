@@ -243,6 +243,18 @@ static func build_category(cat: String, changed: Dictionary, previews: bool, for
 				var coarse_library := load(lod_path(cat, level)) as MeshLibrary
 				coarse_library.set_meta("traffic", traffic)
 				ResourceSaver.save(coarse_library, lod_path(cat, level))
+	# their shadow and how they are baked (metadata "bake"), without reimporting them
+	var platforms := _metadata_of("platform", files, alias_files, root)
+	if platforms != lib.get_meta("platforms", {}):
+		lib.set_meta("platforms", platforms)
+		dirty = true
+	var bake_rules := _metadata_of("bake", files, alias_files, root)
+	if bake_rules != lib.get_meta("bake", {}):
+		lib.set_meta("bake", bake_rules)
+		dirty = true
+		for id in lib.get_item_list():
+			if sources.has(aliases.get(id, id)):
+				_set_shadow(lib, id, sources[aliases.get(id, id)])
 	# any change: rebuild the texture atlases (every tile's UVs depend on the packing)
 	var missing_lods := not ResourceLoader.exists(lod_path(cat, "lod")) or not ResourceLoader.exists(lod_path(cat, "lod2"))
 	if dirty or force or missing_lods:
@@ -302,6 +314,16 @@ static func build_category(cat: String, changed: Dictionary, previews: bool, for
 
 
 ## Item name -> "traffic" metadata of every tile and alias tile that has it.
+## Item name -> the value of metadata `field`, of every tile that has it.
+static func _metadata_of(field: String, files: PackedStringArray, alias_files: PackedStringArray, root: String) -> Dictionary:
+	var values := {}
+	for path in files + alias_files:
+		var value = TileMetadata.read(path).get(field)
+		if value != null:
+			values[path.trim_prefix(root + "/").get_basename()] = value
+	return values
+
+
 static func _traffic_of(root: String, files: PackedStringArray, alias_files: PackedStringArray) -> Dictionary:
 	var traffic := {}
 	for path in files + alias_files:
@@ -407,12 +429,16 @@ const EXACT := ["hallen/", "parkeergarage", "overkapping", "pilaren", "zuilengan
 	"toren_beton", "radiotoren", "_dak", "penthouse", "gevel_", "top_", "toren_spits", "toren_pinakels", "bg_portiek", "verd_loggia"]
 
 
-## Low tiles (roads, grass) don't cast shadows: cheaper and avoids shadow acne.
+## Low tiles (roads, grass) don't cast shadows: cheaper and avoids shadow acne. The tile's
+## metadata "bake" can say otherwise ("shadow").
 static func _set_shadow(lib: MeshLibrary, id: int, mesh: Mesh) -> void:
 	if not lib.has_method("set_item_mesh_cast_shadow"):
 		return
 	var height := mesh.get_aabb().size.y
 	var mode := RenderingServer.SHADOW_CASTING_SETTING_ON if height >= SHADOW_MIN_HEIGHT else RenderingServer.SHADOW_CASTING_SETTING_OFF
+	var rule: Dictionary = lib.get_meta("bake", {}).get(lib.get_item_name(id), {})
+	if rule.has("shadow"):
+		mode = RenderingServer.SHADOW_CASTING_SETTING_ON if rule.shadow else RenderingServer.SHADOW_CASTING_SETTING_OFF
 	lib.set_item_mesh_cast_shadow(id, mode)
 
 
@@ -428,6 +454,8 @@ static func _build_lod(cat: String, lib: MeshLibrary, level: String, sources: Di
 	_set_interior(packed.meshes, cat)
 	var lod := MeshLibrary.new()
 	lod.set_meta("traffic", lib.get_meta("traffic", {}))
+	lod.set_meta("bake", lib.get_meta("bake", {}))
+	lod.set_meta("platforms", lib.get_meta("platforms", {}))
 	for id in lib.get_item_list():
 		lod.create_item(id)
 		lod.set_item_name(id, lib.get_item_name(id))

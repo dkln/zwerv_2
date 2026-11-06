@@ -31,6 +31,17 @@ extends RefCounted
 ##     item name in the library's meta "traffic" (library_builder.gd) and read by
 ##     scripts/world/road_network.gd.
 ##
+##   platform: ["tram", "trein"]: the kinds of rail vehicle that stop beside this ground tile
+##     and open their doors there. Written by tools/voxgen/traffic.py, collected per item name
+##     in the library's meta "platforms" and read by scripts/world/road_network.gd.
+##
+##   bake: {"shadow": false, "merge": true, "building_part": false}, every key optional: casts
+##     a shadow or not (left out = by its height), bake it into the chunks (true also for a
+##     flag) or leave it a separate mesh (false; left out = merged unless its shader cannot
+##     be), and whether a detail fades with the building beside it (left out = yes). Written
+##     by tools/voxgen/bake.py, collected per item name in the library's meta "bake"
+##     (library_builder.gd) and read by scripts/world/layer_baker.gd.
+##
 ##   An alias tile has only this file, no model: {"id": 121, "same_as": "weg/weg_vlak"}.
 ##   same_as: another tile of the same category (path below assets/tiles/<category>);
 ##     the alias gets its own item (name and id) with that tile's mesh

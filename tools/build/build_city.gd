@@ -1241,10 +1241,11 @@ func _centraal() -> void:
 	block(74, 80, 3, 3, "kantoor_glas", 22, {"front": "N", "gf": ["bg_entree", "bg_glas"], "gf_side": "bg_glas", "gf_corner": "bg_glas_hoek",
 		"upper": ["verd_vliesgevel"], "upper_corner": "verd_vliesgevel_hoek", "roof": "flat"})
 	B(75, 22, 81, "kantoor_glas/kantoor_glas_dak_installatie", "S")
-	for tx in [79, 85]:
-		block(tx, 80, 4, 4, "kantoor_beton", 15, {"front": "N", "gf": ["bg_entree", "bg_glas"], "gf_side": "bg_glas", "gf_corner": "bg_glas_hoek",
+	# (three wide: the platforms of the railway run on between them)
+	for tx in [79, 86]:
+		block(tx, 80, 3, 4, "kantoor_beton", 15, {"front": "N", "gf": ["bg_entree", "bg_glas"], "gf_side": "bg_glas", "gf_corner": "bg_glas_hoek",
 			"upper": ["verd_band", "verd_raam_groot"], "upper_corner": "verd_band_hoek", "roof": "flat"})
-	for x in [83, 84]:
+	for x in range(82, 86):
 		G(x, 81, "brug/loopbrug_overdekt", "E", 15)
 	block(90, 80, 3, 4, "luxe_appartement", 11, {"front": "N", "gf": ["bg_glas", "bg_lobby", "bg_glas"], "gf_side": "bg_glas",
 		"gf_corner": "bg_glas_hoek", "upper": ["verd_terras", "verd_glas"], "upper_corner": "verd_terras_hoek", "roof": "none"})
@@ -1846,6 +1847,10 @@ func _bezuidenhout_oost() -> void:
 
 # ------------------------------------------------------------------ trams
 
+## Cells of a tram stop on the street: 24 m, for a RandstadRail of 22.25 m.
+const TRAM_STOP_CELLS := 6
+
+
 ## Registers the tram cells (so the street dressing leaves them alone), puts the
 ## overhead line masts on the pavements and the stops (platform on the kerb, shelter,
 ## stop sign) along the three tram streets.
@@ -1861,23 +1866,24 @@ func _tram_lines() -> void:
 	for c in _tram:
 		_special[c] = true
 	# stops: [first cell, step, cells, side the platform faces]
-	var stops := [[Vector2i(26, 41), Vector2i(0, 1), 3, "W", "buitenhof"], [Vector2i(23, 47), Vector2i(0, 1), 3, "E", ""],
-		[Vector2i(51, Z2 - 1), Vector2i(1, 0), 3, "S", "korte_voorhout"], [Vector2i(56, Z2 + 2), Vector2i(1, 0), 3, "N", ""],
-		[Vector2i(80, Z2 + 2), Vector2i(1, 0), 3, "N", "tram_malieveld"], [Vector2i(84, Z2 - 1), Vector2i(1, 0), 3, "S", ""],
-		[Vector2i(52, Z3 - 1), Vector2i(1, 0), 3, "S", "tram_spui"], [Vector2i(51, Z3 + 2), Vector2i(1, 0), 3, "N", ""],
-		[Vector2i(77, Z3 + 2), Vector2i(1, 0), 6, "N", "tram_centraal"], [Vector2i(86, Z3 - 1), Vector2i(1, 0), 3, "S", ""]]
+	# (TRAM_STOP_CELLS long: a RandstadRail fits, the Spui between the crossing and the ministry)
+	var stops := [[Vector2i(26, 38), Vector2i(0, 1), "W", "buitenhof"], [Vector2i(23, 47), Vector2i(0, 1), "E", ""],
+		[Vector2i(56, Z2 - 1), Vector2i(1, 0), "S", "korte_voorhout"], [Vector2i(51, Z2 + 2), Vector2i(1, 0), "N", ""],
+		[Vector2i(77, Z2 + 2), Vector2i(1, 0), "N", "tram_malieveld"], [Vector2i(84, Z2 - 1), Vector2i(1, 0), "S", ""],
+		[Vector2i(50, Z3 - 1), Vector2i(1, 0), "S", "tram_spui"], [Vector2i(50, Z3 + 2), Vector2i(1, 0), "N", ""],
+		[Vector2i(77, Z3 + 2), Vector2i(1, 0), "N", "tram_centraal"], [Vector2i(86, Z3 - 1), Vector2i(1, 0), "S", ""]]
 	var stop_cells := {}
 	for st in stops:
-		for i in st[2]:
+		for i in TRAM_STOP_CELLS:
 			var c: Vector2i = st[0] + st[1] * i
-			_g(c.x, c.y, "tram/tram_halte_perron", st[3])
+			_g(c.x, c.y, "tram/tram_halte_perron", st[2])
 			stop_cells[c] = true
-		var mid: Vector2i = st[0] + st[1]
-		Pr(mid.x * 4 + 2.0, mid.y * 4 + 2.0, "ov/abri", st[3], 0.5)
-		var last: Vector2i = st[0] + st[1] * (st[2] - 1)
-		Pr(last.x * 4 + 2.0, last.y * 4 + 2.0, "ov/tramhalte_paal", st[3], 0.5)
-		if st[4] != "":
-			places[st[4]] = Vector2(mid) * 4.0 + Vector2(2.0, 2.0)
+		var mid: Vector2i = st[0] + st[1] * (TRAM_STOP_CELLS / 2)
+		Pr(mid.x * 4 + 2.0, mid.y * 4 + 2.0, "ov/abri", st[2], 0.5)
+		var last: Vector2i = st[0] + st[1] * (TRAM_STOP_CELLS - 1)
+		Pr(last.x * 4 + 2.0, last.y * 4 + 2.0, "ov/tramhalte_paal", st[2], 0.5)
+		if st[3] != "":
+			places[st[3]] = Vector2(mid) * 4.0 + Vector2(2.0, 2.0)
 	# overhead line masts on the pavement, away from the stops, bridges and crossings
 	for z in range(Z2 + 4, Z3 - 2, 4):
 		var c := Vector2i(X2 - 1, z)
@@ -1940,7 +1946,7 @@ func _paint_trams() -> void:
 ## Columns of the tram tunnel under the Grote Marktstraat: the portals (ramps of 6 columns
 ## lie outside them) and the underground stop.
 const TRAM_TUNNEL_PORTALS := [33, 41]
-const TRAM_TUNNEL_STOP := [35, 39]
+const TRAM_TUNNEL_STOP := [35, 40]
 
 
 ## The tram tunnel under the Grote Marktstraat: two ramps, two portals and a covered part
@@ -2020,7 +2026,7 @@ const VIADUCT_LINK_COLUMNS := [72, 73]
 ## The stop at Centraal has its platform on the south side only, a car park stands to the
 ## north. Station Laan van NOI lies over the street x 128 with the trains on its south side:
 ## the platform between the tram and the train is shared.
-const STATION_FIRST := 122
+const STATION_FIRST := 119
 const STATION_LAST := 129
 const VIADUCT_STOPS := [
 	[88, 93, [92], "halte_centraal_viaduct", false],
@@ -2036,6 +2042,8 @@ const RAILWAY_DECK_START := 91
 const RAILWAY_COLUMNS := [83, 84]
 const RAILWAY_LEAVE_HALL := 77
 const RAILWAY_HALL_END := 73
+## Cells of a railway platform: 44 m, for an NS train of 40 m.
+const RAILWAY_PLATFORM_CELLS := 11
 
 
 ## The RandstadRail viaduct north of the Schenkkade: a two-track tram deck on concrete
@@ -2096,8 +2104,8 @@ func _railway() -> void:
 		for z in range(RAILWAY_HALL_END + 1, RAILWAY_ROWS[0]):
 			_clear_props(x, z)
 			G(x, z, "spoor/trein_recht", "S")
-	# platforms on both sides, as far as the office towers leave room
-	for z in range(RAILWAY_HALL_END, RAILWAY_LEAVE_HALL + 3):
+	# platforms on both sides, out of the hall and on between the office towers
+	for z in range(RAILWAY_HALL_END, RAILWAY_HALL_END + RAILWAY_PLATFORM_CELLS):
 		_clear_props(RAILWAY_COLUMNS[0] - 1, z)
 		_clear_props(RAILWAY_COLUMNS[1] + 1, z)
 		G(RAILWAY_COLUMNS[0] - 1, z, "spoor/perron", "E")
@@ -2340,6 +2348,7 @@ func _camera(root: Node3D) -> void:
 	# the rail traffic: each on its own kind of rails, a tile knows who rides on it
 	for rail_start: Array in [["RandstadRail1", "res://scripts/vehicles/randstadrail.gd", Vector2i(VIADUCT_LINK_COLUMNS[1], 70), Vector2i(0, -1)],
 			["RandstadRail2", "res://scripts/vehicles/randstadrail.gd", Vector2i(VIADUCT_LINK_COLUMNS[0], 74), Vector2i(0, 1)],
+			# two trains, each on its own track (own_track in ns_train.gd)
 			["Trein1", "res://scripts/vehicles/ns_train.gd", Vector2i(RAILWAY_COLUMNS[1], 90), Vector2i(0, -1)],
 			["Trein2", "res://scripts/vehicles/ns_train.gd", Vector2i(RAILWAY_COLUMNS[0], 75), Vector2i(0, 1)]]:
 		var rail_vehicle := Node3D.new()

@@ -1,3 +1,6 @@
 {
-	"id": 55
+	"id": 55,
+	"bake": {
+		"shadow": false
+	}
 }

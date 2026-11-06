@@ -9,11 +9,14 @@ extends Vehicle
 ## The node is the first car. Every other car rides on the same route further back, its
 ## two bogies on the track, so the train bends through a curve car by car. A car is a
 ## Node3D of its own that is drawn between the last two physics steps, like the body.
-## At a platform (a tile with one of `platform_names` in its name beside the track) it stops
+## At a platform (a tile beside the track whose metadata "platform" names its kind) it stops
 ## with its nose at the end of the platform for `dwell_time` seconds. At the end of the
 ## track it stops and goes back and forth: the driver changes ends, so the last car leads
 ## (the train looks the same from both ends, so nothing jumps), and it moves over to the
 ## track beside it, the one that goes the other way, gradually on its way back.
+## Standing at a platform it opens the doors beside that platform: each leaf (`door_model`)
+## is a mesh of its own that steps out of the car and slides along it, and the doors on the
+## other side and beyond the platform stay shut.
 ## Other vehicles keep clear of all of its cars; it is not thrown off the rails by a crash.
 ## Lamps as usual on rails: white at the front and red at the back of the whole train, by
 ## day and by night, no brake lights. The first car always leads (_change_ends), so the
@@ -30,14 +33,30 @@ extends Vehicle
 @export var bogie_inset := 2.0
 ## Seconds it stands at a platform.
 @export var dwell_time := 12.0
-## A tile beside the track with one of these in its name is a platform of this vehicle.
-@export var platform_names: Array[String] = []
+## It stays on the track it started on and goes back along it, whatever way the lanes run
+## there, so another vehicle on the track beside it never meets it.
+@export var own_track := false
 ## The red lamps on the last car, seen from that car (its back is towards -Z).
 @export var rear_lamp_positions := PackedVector3Array()
+## Props library item of one door leaf; empty = no doors that open.
+@export var door_model := ""
+## Seconds a door takes to open or close.
+@export var door_time := 1.4
+## Seconds it stands still before the doors open.
+@export var door_delay := 0.6
 
 const NO_CELL := Vector3i(0, -1000, 0)
 const STOP_MARGIN := 0.5
 const END_MARGIN := 1.5
+const VOXEL := 0.125
+## Voxels under the floor of a car, and of a door leaf along it (rail_vehicles.py).
+const DOOR_SILL_VOXELS := 4
+const DOOR_LEAF_VOXELS := 5
+## How far a leaf steps out of the car (metres), and which share of opening that takes.
+const DOOR_STEP_OUT := 0.125
+const DOOR_STEP_SHARE := 0.25
+## Metres beyond a door where the platform has to be.
+const DOOR_PLATFORM_REACH := 2.0
 
 var _cars: Array[Node3D] = []
 var _car_previous: Array[Transform3D] = []
@@ -47,6 +66,10 @@ var _dwell_clock := 0.0
 var _waiting_before := NO_CELL      # the cell beyond the platform it is stopping before
 var _stop_at := 0.0                 # route distance where it stands still for that platform
 var _served := NO_CELL              # the cell beyond the platform it last stood at
+var _leaving_platform := false      # it changed ends at a platform: no stop at its other end
+var _door_leaves: Array[Dictionary] = []   # {node, closed, slide: Vector3, outward: Vector3}
+var _opening_leaves: Array[Dictionary] = [] # the leaves beside the platform, at this stop
+var _door_amount := 0.0             # 0 = shut .. 1 = open
 
 
 func _ready() -> void:
@@ -56,6 +79,7 @@ func _ready() -> void:
 	var props := get_parent().get_node_or_null("Props") as GridMap
 	if props == null or network.is_empty():
 		return
+	_add_doors(props, _body, false)
 	for index in car_models.size():
 		_add_car(props, car_models[index], index + 1 in reversed_cars)
 	if not _cars.is_empty():
@@ -105,6 +129,76 @@ func _add_car(props: GridMap, item_name: String, turned_round: bool) -> void:
 	_car_boxes.append(_mesh_bounds(car))
 	_car_previous.append(Transform3D.IDENTITY)
 	_car_current.append(Transform3D.IDENTITY)
+	_add_doors(props, car, turned_round)
+
+
+## The leaves of the four doors of a car (two on each side), in the openings of its model.
+func _add_doors(props: GridMap, car: Node3D, turned_round: bool) -> void:
+	if door_model == "":
+		return
+	var library := props.mesh_library
+	var item := library.find_item_by_name(door_model)
+	if item < 0:
+		push_warning("rail vehicle: no item '%s' in the props library" % door_model)
+		return
+	var mesh := library.get_item_mesh(item)
+	var mesh_transform := library.get_item_mesh_transform(item)
+	var leaf_box := mesh_transform * mesh.get_aabb()
+	var model := car.get_node("Model") as MeshInstance3D
+	var car_width: float = (model.transform * model.mesh.get_aabb()).size.x
+	var doors := Node3D.new()
+	doors.name = "Deuren"
+	if turned_round:
+		doors.rotation.y = PI
+	car.add_child(doors)
+	var car_voxels := roundi(car_length / VOXEL)
+	var leaf_height := model_lift + (DOOR_SILL_VOXELS * VOXEL) + leaf_box.size.y * 0.5
+	for door_voxel: int in [car_voxels / 4, 3 * car_voxels / 4]:
+		for slide_direction: float in [-1.0, 1.0]:
+			var along := car_length * 0.5 - (door_voxel - slide_direction * DOOR_LEAF_VOXELS * 0.5) * VOXEL
+			for outward: float in [-1.0, 1.0]:
+				var instance := MeshInstance3D.new()
+				instance.name = "Deurblad"
+				instance.mesh = mesh
+				_tint_windows(instance, mesh)
+				var wanted := Vector3(outward * (car_width - VOXEL) * 0.5, leaf_height, along)
+				var closed := Transform3D(mesh_transform.basis, mesh_transform.origin + wanted - leaf_box.get_center())
+				instance.transform = closed
+				doors.add_child(instance, true)
+				_door_leaves.append({"node": instance, "closed": closed.origin, "centre": wanted,
+					# towards the back of the car for a leaf behind the middle of its door
+					"slide": Vector3(0.0, 0.0, -slide_direction), "outward": Vector3(outward, 0.0, 0.0)})
+
+
+## The leaves on the platform side beside a platform, at `level` of the ground layer.
+func _leaves_beside_platform(level: int) -> Array[Dictionary]:
+	var leaves: Array[Dictionary] = []
+	for leaf in _door_leaves:
+		var parent := (leaf.node as Node3D).get_parent() as Node3D
+		var outside: Vector3 = parent.global_transform * (leaf.centre + leaf.outward * DOOR_PLATFORM_REACH)
+		if network.is_platform_for(Vector3i(floori(outside.x / RoadNetwork.CELL), level, floori(outside.z / RoadNetwork.CELL)), vehicle_kind):
+			leaves.append(leaf)
+	return leaves
+
+
+## Opens the doors beside the platform once it stands there, and shuts them in time to leave.
+func _move_doors(delta: float) -> void:
+	if _door_leaves.is_empty():
+		return
+	var at_platform := _waiting_before != NO_CELL and speed < STANDING_SPEED
+	var at_end := _route_ended and speed < STANDING_SPEED and _distance > _end_of_track() - END_MARGIN
+	var open := (at_platform or at_end) and _dwell_clock > door_delay and _dwell_clock < dwell_time - door_time - door_delay
+	if open and _door_amount == 0.0:
+		_opening_leaves = _leaves_beside_platform(_waiting_before.y if at_platform else _route_cells[-1].y)
+	var amount := move_toward(_door_amount, 1.0 if open else 0.0, delta / door_time)
+	if amount == _door_amount:
+		return
+	_door_amount = amount
+	var stepped := minf(amount / DOOR_STEP_SHARE, 1.0)
+	var slid := maxf(amount - DOOR_STEP_SHARE, 0.0) / (1.0 - DOOR_STEP_SHARE)
+	for leaf in _opening_leaves:
+		(leaf.node as Node3D).position = leaf.closed + leaf.outward * DOOR_STEP_OUT * smoothstep(0.0, 1.0, stepped) \
+			+ leaf.slide * DOOR_LEAF_VOXELS * VOXEL * smoothstep(0.0, 1.0, slid)
 
 
 ## Where car `index` of _cars rides: between its two bogies on the route.
@@ -147,6 +241,7 @@ func _physics_process(delta: float) -> void:
 		if _dwell_clock >= dwell_time:
 			_dwell_clock = 0.0
 			_change_ends()
+	_move_doors(delta)
 	super(delta)
 	for index in _cars.size():
 		_car_previous[index] = _car_current[index]
@@ -199,6 +294,7 @@ func _change_ends() -> void:
 	_waited_at.clear()
 	_served = NO_CELL
 	_waiting_before = NO_CELL
+	_leaving_platform = _stands_at_platform()
 	speed = 0.0
 	acceleration_now = 0.0
 	_plan()
@@ -208,6 +304,16 @@ func _change_ends() -> void:
 		_car_current[index] = _car_transform(index)
 		_car_previous[index] = _car_current[index]
 		_cars[index].global_transform = _car_current[index]
+
+
+## On a track of its own it may ride the rails both ways.
+func _ways_out(cell: Vector3i) -> Array[Vector2i]:
+	return network.rail_headings(cell) if own_track else super(cell)
+
+
+## On a track of its own it never moves over to the one beside it.
+func _move_over(cell: Vector3i, heading: Vector2i) -> bool:
+	return false if own_track else super(cell, heading)
 
 
 ## From a tile it only leaves the way its rails go.
@@ -227,6 +333,10 @@ func _must_stop(from_cell: Vector3i, to_cell: Vector3i, distance: float) -> Stri
 		return reason
 	if to_cell == _served or not _beside_platform(from_cell, to_cell - from_cell) or _beside_platform(to_cell, to_cell - from_cell):
 		return ""
+	if _leaving_platform:
+		_leaving_platform = false
+		_served = to_cell
+		return ""
 	if _waiting_before != NO_CELL and _waiting_before != to_cell:
 		return ""   # a platform further on, after this one
 	_waiting_before = to_cell
@@ -234,13 +344,20 @@ func _must_stop(from_cell: Vector3i, to_cell: Vector3i, distance: float) -> Stri
 	return "platform"
 
 
+## True if the route cell under the first car lies beside a platform.
+func _stands_at_platform() -> bool:
+	for index in range(_route_distances.size() - 1, -1, -1):
+		if _route_distances[index] <= _distance:
+			var heading: Vector2i = _route_headings[index]
+			return _beside_platform(_route_cells[index], Vector3i(heading.x, 0, heading.y))
+	return false
+
+
 func _beside_platform(cell: Vector3i, direction: Vector3i) -> bool:
 	var ground_heading := Vector2i(signi(direction.x), signi(direction.z))
 	for side in [Vector2i(ground_heading.y, -ground_heading.x), Vector2i(-ground_heading.y, ground_heading.x)]:
-		var tile := network.tile_name(Vector3i(cell.x + side.x, cell.y, cell.z + side.y))
-		for platform_name in platform_names:
-			if tile.contains(platform_name):
-				return true
+		if network.is_platform_for(Vector3i(cell.x + side.x, cell.y, cell.z + side.y), vehicle_kind):
+			return true
 	return false
 
 

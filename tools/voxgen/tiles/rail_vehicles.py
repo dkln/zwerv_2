@@ -3,7 +3,9 @@ by scripts/vehicles/randstadrail.gd and ns_train.gd). x across, y along with the
 at y=0, z up. A cab car has a driver's cab at the front: a narrowing nose with a windscreen
 that leans back, a sign above it, lamps and a bumper under it and a side window for the
 driver; every car has bogies under it, a band of windows, doors on both sides and something
-on its roof. The last car of a train is a cab car turned round, so that end looks the same."""
+on its roof. The last car of a train is a cab car turned round, so that end looks the same.
+The door leaves are models of their own (props/voertuigen/*_deur): the car has an opening
+for them, scripts/vehicles/rail_vehicle.gd slides them open at a platform."""
 from common import tile
 from vox import V
 
@@ -11,6 +13,9 @@ from vox import V
 NOSE_LENGTH = 6
 CAB_WINDOW = range(8, 14)
 CAB_LENGTH = 16
+# Voxels of the floor under a car, and of one door leaf along the car (a door has two).
+FLOOR_HEIGHT = 4
+DOOR_LEAF_LENGTH = 5
 
 
 def nose_narrowing(along):
@@ -53,7 +58,7 @@ def cab_colour(along, across, up, width, front, window_low, window_high, lower, 
 def rail_car(width, length, height, body, lower, band, door, cab, roof_box):
     """A car: `body` above, `lower` below the windows, a `band` under them, `door` panels."""
     model = V(width, length, height)
-    floor = 4
+    floor = FLOOR_HEIGHT
     window_low = floor + 8
     window_high = height - 7
     doors = (length // 4, 3 * length // 4)
@@ -70,7 +75,9 @@ def rail_car(width, length, height, body, lower, band, door, cab, roof_box):
                     model.set(across, along, up, colour or "auto_interieur")
                     continue
                 nearest_door = min(doors, key=lambda place: abs(along - place))
-                in_door = abs(along - nearest_door) <= 5
+                in_door = -DOOR_LEAF_LENGTH <= along - nearest_door < DOOR_LEAF_LENGTH
+                if in_door and side:
+                    continue         # the opening: the leaves are models of their own
                 if not side and along not in (0, length - 1):
                     colour = "auto_interieur"
                 elif up < window_low - 2:
@@ -80,9 +87,6 @@ def rail_car(width, length, height, body, lower, band, door, cab, roof_box):
                 elif cab and along < CAB_LENGTH and side:
                     # no doors here: the driver's own side window
                     colour = "glas2" if along in CAB_WINDOW and window_low <= up < window_high else body
-                elif in_door and side:
-                    # double doors with a window in each leaf, a seam between them
-                    colour = "glas2" if along != nearest_door and window_low <= up < window_high else door
                 elif window_low <= up < window_high and side:
                     colour = "metaal_donker" if along % 12 == 0 else "glas2"
                 else:
@@ -112,6 +116,32 @@ def rail_car(width, length, height, body, lower, band, door, cab, roof_box):
         for across in (7, 8, width - 9, width - 8):
             model.set(across, 0, window_low - 3, "stoplicht_rood_uit")
     return model
+
+
+def door_leaf(car_height, colour):
+    """One leaf of a car door, from the floor to under the roof, with a window in it."""
+    floor = FLOOR_HEIGHT
+    height = car_height - 1 - floor
+    window_low = 8
+    window_high = car_height - 7 - floor
+    model = V(1, DOOR_LEAF_LENGTH, height)
+    for along in range(DOOR_LEAF_LENGTH):
+        for up in range(height):
+            in_window = 0 < along < DOOR_LEAF_LENGTH - 1 and window_low <= up < window_high
+            model.set(0, along, up, "glas2" if in_window else colour)
+    return model
+
+
+@tile("props/voertuigen/randstadrail_deur")
+def randstadrail_door():
+    """Door leaf of a RandstadRail car."""
+    return door_leaf(29, "lak_rood1")
+
+
+@tile("props/voertuigen/ns_deur")
+def ns_door():
+    """Door leaf of an NS car."""
+    return door_leaf(30, "bord_blauw")
 
 
 @tile("props/voertuigen/randstadrail_kop")

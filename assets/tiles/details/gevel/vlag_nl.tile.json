@@ -1,4 +1,8 @@
 {
 	"id": 119,
-	"same_as": "gevel/vlag"
+	"same_as": "gevel/vlag",
+	"bake": {
+		"shadow": true,
+		"merge": true
+	}
 }

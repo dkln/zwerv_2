@@ -4,5 +4,8 @@
 		"only": [
 			"voetganger"
 		]
-	}
+	},
+	"platform": [
+		"tram"
+	]
 }

@@ -17,7 +17,8 @@ from array import array
 from palette import PALETTE, P, godot_material
 from gox import write_layers
 from common import SLOPES, CURVES, SMOOTH
-from traffic import ramp_traffic, tile_traffic
+from bake import tile_bake
+from traffic import ramp_traffic, tile_platform, tile_traffic
 
 
 def h(x, y=0, z=0, seed=0):
@@ -341,6 +342,8 @@ def write_metadata(tile_path, name):
       [i, j, parts] of a curve cell for the curve shapes (common.slopes).
     - ``"smooth"``: the tile is a padded block the importer smooths (common.smooth).
     - ``"traffic"``: the lanes vehicles drive on it (traffic.tile_traffic).
+    - ``"platform"``: the rail vehicles that stop beside it (traffic.tile_platform).
+    - ``"bake"``: its shadow and how it is baked (bake.tile_bake).
     The file is removed when there is nothing to record and left untouched when
     its content would not change. Returns the metadata dict, or None.
     """
@@ -377,6 +380,12 @@ def write_metadata(tile_path, name):
     for_ramps = ramp_traffic(name)
     if for_ramps:
         meta["ramp_traffic"] = for_ramps
+    platform = tile_platform(name)
+    if platform:
+        meta["platform"] = platform
+    bake = tile_bake(name)
+    if bake:
+        meta["bake"] = bake
     if not meta:
         if old is not None:
             os.remove(meta_path)
