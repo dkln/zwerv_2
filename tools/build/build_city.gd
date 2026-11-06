@@ -9,7 +9,7 @@ extends "res://tools/build/city/street_grid.gd"
 ## _dress_streets, kerbs by _auto_kerbs). Coordinates: x = east, z = south, ground tiles
 ## of 4 m; directions name the side a tile's front faces (see city/base.gd).
 ##
-## MAP (x 0..175, z 0..106; west of the Koningskade only to z 91)
+## MAP (x 0..175, z 0..175, a full square)
 ##   The Singelgracht rings the old centre (water x 2-3, x 66-67, z 2-3, z 88-89, quays
 ##   on both sides). Inside, on a grid of streets (x 5, 24, 48, 63 and z 5, 29, 58, 85):
 ##                x 7..23              x 26..47                  x 50..62
@@ -63,8 +63,12 @@ const Z3 := 58     # Grote Marktstraat - Spui - Centraal (tram)
 const Z4 := 85     # Zuidwal
 const CW := 66     # east arm of the singel, water x 66-67
 const ZS := 96     # Schenkkade, south of the viaducts
-const SINGEL_END := 91  # last row of the map west of the Koningskade, along the singel
-const Z_END := 106 # last row of the map
+const SINGEL_END := 91  # last row of the quay on the south side of the singel
+const ZR1 := 107   # first street of the south of the town (Schilderswijk, Laak, Binckhorst)
+const ZR2 := 130   # second
+const ZR3 := 153   # third
+const SOUTH_BLOCK_DEPTH := 21  # rows of a block between those streets
+const Z_END := 175 # last row of the map
 const X_END := 175 # last column of the map
 
 var _tram := {}    # Vector2i -> "h" / "v": tram cells (painted after the streets)
@@ -96,6 +100,9 @@ func _init() -> void:
 	_centraal()
 	_beatrixkwartier()
 	_schenkkade()
+	_schilderswijk()
+	_laakkwartier()
+	_binckhorst()
 	_tram_lines()
 	_paint_streets()
 	_dress_streets()
@@ -328,7 +335,7 @@ func _streets() -> void:
 	_hs(X1, X_END, Z2)
 	_hs(X2, X_END, Z3)
 	_hs(X1, X5 + 1, Z4)
-	_hs(X5, X_END, ZS)
+	_hs(0, X_END, ZS)
 	_hs(X6 + 2, X_END, ZB)
 	for x in [X1, X2, X3, X4]:
 		_vs(x, Z1, Z4 + 1)
@@ -337,6 +344,11 @@ func _streets() -> void:
 	_vs(XB, Z2 + 2, Z3 - 1)
 	_vs(XC, 0, Z_END)
 	_vs(XD, Z2, Z_END)
+	_vs(X2, ZS, Z_END)
+	_vs(X3, ZS, Z_END)
+	for z in [ZR1, ZR2, ZR3]:
+		_hs(0, X_END, z)
+	_vs(XB, ZR1, Z_END)
 	for col in [[7, 17], [26, 22], [50, 13]]:
 		_kerb_block(col[0], 7, col[1], 22)
 		_kerb_block(col[0], 31, col[1], 27)
@@ -357,14 +369,23 @@ func _streets() -> void:
 	_kerb_block(71, 60, 25, ZS - 60)
 	_kerb_block(X6 + 2, 60, XC - X6 - 2, ZS - 60)
 	# south of the Schenkkade
-	_kerb_block(71, ZS + 2, 25, Z_END - ZS - 1)
-	_kerb_block(X6 + 2, ZS + 2, XC - X6 - 2, Z_END - ZS - 1)
-	# the pavement west of the Koningskade, where the map ends south of the singel
-	_kerb_block(X5 - 2, SINGEL_END + 1, 2, Z_END - SINGEL_END)
+	_kerb_block(71, ZS + 2, 25, ZR1 - ZS - 2)
+	_kerb_block(X6 + 2, ZS + 2, XC - X6 - 2, ZR1 - ZS - 2)
+	# south of the singel, west of the Koningskade: a strip along the quay, three blocks
+	# south of the Schenkkade
+	_kerb_block(0, SINGEL_END + 1, X5, ZS - SINGEL_END - 1)
+	_kerb_block(0, ZS + 2, X2, ZR1 - ZS - 2)
+	_kerb_block(X2 + 2, ZS + 2, X3 - X2 - 2, ZR1 - ZS - 2)
+	_kerb_block(X3 + 2, ZS + 2, X5 - X3 - 2, ZR1 - ZS - 2)
 	# the Bezuidenhout-Oost on both sides of the street x 152
-	for zd in [[31, ZB - 31], [ZB + 2, Z3 - ZB - 2], [60, ZS - 60], [ZS + 2, Z_END - ZS - 1]]:
+	for zd in [[31, ZB - 31], [ZB + 2, Z3 - ZB - 2], [60, ZS - 60], [ZS + 2, ZR1 - ZS - 2]]:
 		_kerb_block(XC + 2, zd[0], XD - XC - 2, zd[1])
 		_kerb_block(XD + 2, zd[0], X_END - XD - 1, zd[1])
+	# the south of the town: eight columns of blocks between the three streets
+	for column in [[0, X2], [X2 + 2, X3 - X2 - 2], [X3 + 2, X5 - X3 - 2], [X5 + 2, X6 - X5 - 2],
+			[X6 + 2, XB - X6 - 2], [XB + 2, XC - XB - 2], [XC + 2, XD - XC - 2], [XD + 2, X_END - XD - 1]]:
+		for street in [ZR1, ZR2, ZR3]:
+			_kerb_block(column[0], street + 2, column[1], SOUTH_BLOCK_DEPTH)
 	# the pedestrian part of the Grote Marktstraat west of the Buitenhof
 	_fill(7, Z3, X2 - 1, Z3 + 1, "plein/plein_klinkers")
 	for z in [Z3, Z3 + 1]:
@@ -1273,6 +1294,186 @@ func _schenkkade() -> void:
 		"upper": ["verd_balkon", "verd_loggia", "verd_glas"], "upper_corner": "verd_balkon_hoek", "roof": "flat"})
 	_trees([Vector2i(XD + 4, south + 5), Vector2i(XD + 13, south + 2), Vector2i(XD + 16, south + 5), Vector2i(XD + 19, south + 1)], ["bomen/eik", "bomen/linde", "bomen/kastanje"])
 	places["schenkkade"] = Vector2(112 * 4.0, ZS * 4.0)
+	_schenkkade_west(south, depth, flats, dark)
+
+
+## The Schenkkade west of the Koningskade, on the south side of the singel: gallery flats
+## and trees on the strip along the quay; south of the street closed blocks of flats and,
+## in the middle, a square with a church and a playing green.
+func _schenkkade_west(south: int, depth: int, flats: Dictionary, dark: Dictionary) -> void:
+	var gallery := {"front": "S", "gf": ["bg_deur", "bg_berging", "bg_raam"], "gf_side": "bg_raam",
+		"gf_corner": "bg_raam_hoek", "upper": ["verd_galerij_deur", "verd_galerij_raam"], "upper_corner": "verd_galerij_raam_hoek", "roof": "flat"}
+	for x in [6, 28, 50]:
+		block(x, SINGEL_END + 2, 11, 2, "jaren60", 3, gallery)
+	_trees([Vector2i(3, 93), Vector2i(20, 93), Vector2i(24, 94), Vector2i(42, 93), Vector2i(46, 94), Vector2i(64, 93)], ["bomen/plataan", "bomen/linde"])
+	ring(2, south, 10, depth, "klassiek_donker", 4, dark)
+	ring(13, south, 10, depth, "jaren30", 4, flats)
+	_fill(X2 + 3, south, X3 - 2, south + depth - 1, "plein/plein_tegels")
+	block(X2 + 5, south + 1, 4, 5, "kerk_modern", 2, {"front": "E", "gf": ["bg_entree", "bg_dicht"], "gf_side": "bg_dicht", "gf_corner": "bg_entree_hoek",
+		"upper": ["verd_spleet", "verd_kruis"], "upper_corner": "verd_spleet_hoek", "roof": "flat"})
+	_fill(X2 + 12, south + 1, X3 - 3, south + depth - 2, "natuur/gras")
+	_trees([Vector2i(X2 + 13, south + 2), Vector2i(X2 + 19, south + 2), Vector2i(X2 + 16, south + 4)], ["bomen/eik", "bomen/kastanje"])
+	for x in [X2 + 11, X2 + 17]:
+		Pr(x * 4 + 2.0, (south + depth - 1) * 4 + 2.0, "straat/bank_beton", "N")
+	ring(X3 + 3, south, 7, depth, "jaren30", 4, flats)
+	ring(X3 + 11, south, 7, depth, "klassiek_donker", 4, dark)
+	places["schenkkade_west"] = Vector2(36 * 4.0, ZS * 4.0)
+
+
+## Closed blocks of flats filling a block of the south of the town (columns of `w` tiles at
+## x0, the block `SOUTH_BLOCK_DEPTH` deep from z0): two on two if it is wide enough, with a
+## strip of grass and a few trees between them. The styles take turns.
+func _housing_block(x0: int, z0: int, w: int, styles: Array) -> void:
+	var columns := 2 if w >= 19 else 1
+	var ring_width := (w - 2 - (columns - 1)) / columns
+	var ring_depth := (SOUTH_BLOCK_DEPTH - 3) / 2
+	var style_index := 0
+	for row in 2:
+		for column in columns:
+			var style: String = styles[style_index % styles.size()]
+			style_index += 1
+			ring(x0 + 1 + column * (ring_width + 1), z0 + 1 + row * (ring_depth + 1), ring_width, ring_depth, style, 4, _housing_options(style))
+	_trees([Vector2i(x0 + 2, z0 + ring_depth + 1), Vector2i(x0 + w - 3, z0 + ring_depth + 1)], ["bomen/linde", "bomen/plataan"])
+
+
+func _housing_options(style: String) -> Dictionary:
+	if style == "jaren30":
+		return {"gf": ["bg_portiek", "bg_raam"], "upper": ["verd_raam", "verd_balkon"], "back": ["verd_raam"], "roof_extra": ["dak_schuin_dakkapel"]}
+	if style == "klassiek_donker":
+		return {"gf": ["bg_raam", "bg_deur", "bg_winkel_luifel"], "upper": ["verd_raam", "verd_drie_ramen"], "back": ["verd_raam"],
+			"roof_extra": ["dak_schuin_schoorsteen", "dak_schuin_dakkapel"]}
+	return {"gf": ["bg_raam", "bg_deur"], "upper": ["verd_raam"], "back": ["verd_raam"]}
+
+
+## The Schilderswijk (x 0..68, z 109..175), west of the Koningskade: closed blocks of flats
+## round a market square, a school and a church, and a park with a pond at the south end.
+func _schilderswijk() -> void:
+	var first := ZR1 + 2
+	var second := ZR2 + 2
+	var third := ZR3 + 2
+	var west_width := X2
+	var middle := X2 + 2
+	var middle_width := X3 - X2 - 2
+	var east := X3 + 2
+	var east_width := X5 - X3 - 2
+	_housing_block(0, first, west_width, ["klassiek_donker", "jaren30", "klassiek_rood", "jaren30"])
+	_housing_block(middle, first, middle_width, ["jaren30", "klassiek_rood", "klassiek_donker", "jaren30"])
+	_housing_block(east, first, east_width, ["klassiek_geel", "jaren30", "jaren30", "klassiek_donker"])
+	_housing_block(0, second, west_width, ["jaren30", "klassiek_geel", "klassiek_donker", "jaren30"])
+	# the market square with shops along its north side
+	_fill(middle + 1, second + 1, middle + middle_width - 2, second + SOUTH_BLOCK_DEPTH - 2, "plein/plein_klinkers")
+	block(middle + 1, second + 1, middle_width - 2, 3, "jaren30", 3, {"front": "S", "gf": ["bg_winkel_luifel", "bg_raam"], "gf_side": "bg_raam",
+		"gf_corner": "bg_raam_hoek", "upper": ["verd_raam"], "upper_corner": "verd_raam_hoek", "roof": "flat"})
+	_trees([Vector2i(middle + 3, second + 7), Vector2i(middle + 9, second + 7), Vector2i(middle + 15, second + 7),
+		Vector2i(middle + 3, second + 16), Vector2i(middle + 9, second + 16), Vector2i(middle + 15, second + 16)], ["bomen/plataan", "bomen/linde"])
+	for x in [middle + 5, middle + 11]:
+		Pr(x * 4 + 2.0, (second + 12) * 4 + 2.0, "straat/bank_beton", "S")
+	Pr((middle + 10) * 4.0, (second + 11) * 4.0, "standbeelden/buste", "S")
+	places["schilderswijk"] = Vector2((middle + 10) * 4.0, (second + 11) * 4.0)
+	# the school and its playground
+	block(east + 2, second + 2, east_width - 4, 4, "school", 2, {"front": "S", "gf": ["bg_entree", "bg_raam"], "gf_side": "bg_raam", "gf_corner": "bg_raam_hoek",
+		"upper": ["verd_raam"], "upper_corner": "verd_raam_hoek", "roof": "flat"})
+	_fill(east + 3, second + 8, east + east_width - 4, second + 15, "natuur/speeltuin_zand")
+	var play := ["speeltuin/glijbaan", "speeltuin/schommel", "speeltuin/zandbak", "speeltuin/klimrek"]
+	for play_index in play.size():
+		Pr((east + 5 + (play_index % 2) * 6) * 4.0 + 2.0, (second + 10 + (play_index / 2) * 3) * 4.0 + 2.0, play[play_index], "S")
+	# the park: a pond, a path through it to both streets
+	_fill(1, third + 1, west_width - 2, third + SOUTH_BLOCK_DEPTH - 2, "natuur/gras")
+	_pond(4, third + 3, 19, third + 11)
+	for z in range(third + 1, third + 19):
+		_g(21, z, "natuur/pad_grind", "S")
+	_kerb_path(21, third, "N")
+	_trees([Vector2i(2, third + 2), Vector2i(20, third + 3), Vector2i(3, third + 14), Vector2i(9, third + 16), Vector2i(15, third + 14), Vector2i(19, third + 17)],
+		["bomen/treurwilg", "bomen/eik", "bomen/kastanje", "bomen/linde"])
+	for x in [7, 14]:
+		Pr(x * 4 + 2.0, (third + 13) * 4 + 2.0, "straat/bank_hout", "S")
+	# the church on its own square, flats beside it
+	_fill(middle + 1, third + 1, middle + middle_width - 2, third + 9, "plein/plein_tegels")
+	block(middle + 7, third + 3, 4, 5, "kerk_baksteen", 2, {"front": "N", "gf": ["bg_spitsraam"], "gf_side": "bg_spitsraam", "gf_corner": "bg_spitsraam_hoek",
+		"upper": ["verd_spitsraam"], "upper_corner": "verd_spitsraam_hoek", "roof": "sloped"})
+	tower(middle + 8, third + 2, "kerk_baksteen", ["toren_portaal", "toren_raam", "toren_galmgat", "toren_spits_onder", "toren_spits_boven"], "N")
+	ring(middle + 1, third + 11, middle_width - 2, 9, "klassiek_rood", 4, _housing_options("klassiek_rood"))
+	_housing_block(east, third, east_width, ["jaren30", "klassiek_donker", "klassiek_geel", "jaren30"])
+
+
+## Laak (x 71..127, z 109..175), between the Koningskade and the Laan van NOI: gallery flats
+## with parking, the university of applied sciences with its square, offices and flats.
+func _laakkwartier() -> void:
+	var first := ZR1 + 2
+	var second := ZR2 + 2
+	var third := ZR3 + 2
+	var west := X5 + 2
+	var west_width := X6 - X5 - 2
+	var middle := X6 + 2
+	var middle_width := XB - X6 - 2
+	var east := XB + 2
+	var east_width := XC - XB - 2
+	var slab := {"front": "S", "gf": ["bg_deur", "bg_berging", "bg_raam"], "gf_side": "bg_raam",
+		"gf_corner": "bg_raam_hoek", "upper": ["verd_galerij_deur", "verd_galerij_raam"], "upper_corner": "verd_galerij_raam_hoek", "roof": "flat"}
+	for offset: int in [1, 11]:
+		var z := first + offset
+		block(west + 2, z, west_width - 4, 3, "jaren60", 5, slab)
+		for x in range(west + 1, west + west_width - 1):
+			_g(x, z + 4, "parkeren/parkeerplaats_rijbaan", "E")
+			_g(x, z + 5, "parkeren/parkeervak_haaks" if x % 5 else "parkeren/parkeervak_laadpaal", "N")
+		_kerb_path(west, z + 4, "W")
+	_housing_block(middle, first, middle_width, ["jaren30", "klassiek_donker"])
+	_housing_block(east, first, east_width, ["klassiek_rood", "jaren30"])
+	# the university and its square
+	_fill(west + 1, second + 1, west + west_width - 2, second + SOUTH_BLOCK_DEPTH - 2, "plein/plein_tegels")
+	block(west + 3, second + 2, west_width - 6, 9, "hogeschool", 4, {"front": "S", "gf": ["bg_entree", "bg_glas", "bg_kolonnade"], "gf_side": "bg_glas",
+		"gf_corner": "bg_kolonnade_hoek", "upper": ["verd_band", "verd_lamellen", "verd_raam_groot"], "upper_corner": "verd_lamellen_hoek", "roof": "flat"})
+	_trees([Vector2i(west + 4, second + 14), Vector2i(west + 10, second + 16), Vector2i(west + 16, second + 14), Vector2i(west + 21, second + 16)], ["bomen/plataan", "bomen/linde"])
+	for x in [west + 7, west + 13, west + 19]:
+		Pr(x * 4 + 2.0, (second + 13) * 4 + 2.0, "straat/bank_beton", "S")
+	places["laakkwartier"] = Vector2((west + west_width / 2) * 4.0, (second + 10) * 4.0)
+	# offices on a square
+	_fill(middle + 1, second + 1, middle + middle_width - 2, second + SOUTH_BLOCK_DEPTH - 2, "plein/plein_tegels")
+	block(middle + 2, second + 2, middle_width - 4, 7, "kantoor_modern", 8, {"front": "S", "gf": ["bg_entree", "bg_glas"], "gf_side": "bg_glas", "gf_corner": "bg_glas_hoek",
+		"upper": ["verd_lamellen", "verd_raam_groot"], "upper_corner": "verd_lamellen_hoek", "roof": "flat"})
+	block(middle + 2, second + 11, middle_width - 4, 7, "kantoor_beton", 6, {"front": "N", "gf": ["bg_entree", "bg_glas"], "gf_side": "bg_glas", "gf_corner": "bg_glas_hoek",
+		"upper": ["verd_band", "verd_raam_groot"], "upper_corner": "verd_band_hoek", "roof": "flat"})
+	_housing_block(east, second, east_width, ["klassiek_donker", "jaren30"])
+	_housing_block(west, third, west_width, ["jaren30", "klassiek_geel", "klassiek_donker", "jaren30"])
+	# an apartment tower in the green
+	_fill(middle + 1, third + 1, middle + middle_width - 2, third + SOUTH_BLOCK_DEPTH - 2, "natuur/gras")
+	block(middle + 3, third + 6, middle_width - 6, 4, "appartement_modern", 11, {"front": "N", "gf": ["bg_entree", "bg_glas"], "gf_side": "bg_glas", "gf_corner": "bg_glas_hoek",
+		"upper": ["verd_balkon", "verd_loggia", "verd_glas"], "upper_corner": "verd_balkon_hoek", "roof": "flat"})
+	_trees([Vector2i(middle + 2, third + 2), Vector2i(middle + 11, third + 3), Vector2i(middle + 3, third + 15), Vector2i(middle + 10, third + 17)], ["bomen/eik", "bomen/linde", "bomen/kastanje"])
+	_housing_block(east, third, east_width, ["jaren30", "klassiek_rood"])
+
+
+## One lot of the Binckhorst, `SOUTH_BLOCK_DEPTH` deep from z0: a paved yard with a driveway off
+## the street to the north, a hall with its loading doors towards the yard and, per
+## `yard_props`, what stands about in the yard.
+func _industrial_lot(x0: int, z0: int, w: int, style: String, yard_props: Array) -> void:
+	_fill(x0 + 1, z0 + 1, x0 + w - 2, z0 + SOUTH_BLOCK_DEPTH - 2, "plein/plein_tegels")
+	_kerb_path(x0 + w / 2, z0, "N")
+	block(x0 + 2, z0 + 8, w - 4, 10, style, 2, {"front": "N", "gf": ["bg_roldeur", "bg_dock", "bg_loopdeur", "bg_kantoor"], "gf_side": "bg_dicht", "gf_corner": "bg_dicht_hoek",
+		"upper": ["verd_wand", "verd_lichtstraat", "verd_logo"], "upper_corner": "verd_lichtstraat_hoek", "roof": "flat"})
+	for prop_index in yard_props.size():
+		var x: int = x0 + 2 + prop_index * 4
+		if x < x0 + w - 2:
+			Pr(x * 4 + 2.0, (z0 + 3 + prop_index % 2) * 4 + 2.0, yard_props[prop_index], "E" if prop_index % 2 else "S")
+
+
+## The Binckhorst (x 130..175, z 109..175), east of the Laan van NOI: the industrial estate of
+## the town, halls and warehouses on paved yards with containers, tanks and fork-lifts.
+func _binckhorst() -> void:
+	var west := XC + 2
+	var west_width := XD - XC - 2
+	var east := XD + 2
+	var east_width := X_END - XD - 1
+	var containers := ["industrie/zeecontainer", "industrie/zeecontainer_stapel", "industrie/heftruck", "industrie/pallet_stapel", "industrie/zeecontainer"]
+	var stores := ["industrie/pallet_stapel", "industrie/heftruck", "industrie/kabelhaspel", "industrie/laadperron", "industrie/pallet_stapel"]
+	var tanks := ["industrie/opslagtank", "industrie/silo", "industrie/heftruck", "industrie/opslagtank", "industrie/kabelhaspel"]
+	_industrial_lot(west, ZR1 + 2, west_width, "loods_staal", containers)
+	_industrial_lot(east, ZR1 + 2, east_width, "fabriek", tanks)
+	_industrial_lot(west, ZR2 + 2, west_width, "magazijn", stores)
+	_industrial_lot(east, ZR2 + 2, east_width, "loods_steen", containers)
+	_industrial_lot(west, ZR3 + 2, west_width, "fabriek", stores)
+	_industrial_lot(east, ZR3 + 2, east_width, "loods_staal", tanks)
+	places["binckhorst"] = Vector2(XD * 4.0, ZR2 * 4.0)
 
 
 ## The Beatrixkwartier (x 98..127, z 60..91): office towers, an apartment tower and the
@@ -1795,7 +1996,7 @@ func _tram_tunnel() -> void:
 ## Grass on every empty ground cell of the map (not water or a sunk cell).
 func _fill_grass_all() -> void:
 	for x in range(0, X_END + 1):
-		for z in range(0, (SINGEL_END if x < X5 else Z_END) + 1):
+		for z in range(0, Z_END + 1):
 			if ground.get_cell_item(Vector3i(x, 0, z)) != GridMap.INVALID_CELL_ITEM:
 				continue
 			if occupied.has(Vector2i(x, z)) or ground.get_cell_item(Vector3i(x, -2, z)) != GridMap.INVALID_CELL_ITEM:

@@ -15,6 +15,9 @@ extends Vehicle
 ## (the train looks the same from both ends, so nothing jumps), and it moves over to the
 ## track beside it, the one that goes the other way, gradually on its way back.
 ## Other vehicles keep clear of all of its cars; it is not thrown off the rails by a crash.
+## Lamps as usual on rails: white at the front and red at the back of the whole train, by
+## day and by night, no brake lights. The first car always leads (_change_ends), so the
+## headlights are on it and the red ones (`rear_lamp_positions`) on the last car.
 
 ## Props library items of the cars behind the first one, from front to back. A car whose
 ## number (1 = the first of these) is in `reversed_cars` is turned round (a cab looking back).
@@ -29,6 +32,8 @@ extends Vehicle
 @export var dwell_time := 12.0
 ## A tile beside the track with one of these in its name is a platform of this vehicle.
 @export var platform_names: Array[String] = []
+## The red lamps on the last car, seen from that car (its back is towards -Z).
+@export var rear_lamp_positions := PackedVector3Array()
 
 const NO_CELL := Vector3i(0, -1000, 0)
 const STOP_MARGIN := 0.5
@@ -37,6 +42,7 @@ const END_MARGIN := 1.5
 var _cars: Array[Node3D] = []
 var _car_previous: Array[Transform3D] = []
 var _car_current: Array[Transform3D] = []
+var _car_boxes: Array[AABB] = []     # around what is drawn on each car, seen from its origin
 var _dwell_clock := 0.0
 var _waiting_before := NO_CELL      # the cell beyond the platform it is stopping before
 var _stop_at := 0.0                 # route distance where it stands still for that platform
@@ -44,12 +50,18 @@ var _served := NO_CELL              # the cell beyond the platform it last stood
 
 
 func _ready() -> void:
+	lamps_always_on = true
+	brake_lights = false
 	super()
 	var props := get_parent().get_node_or_null("Props") as GridMap
 	if props == null or network.is_empty():
 		return
 	for index in car_models.size():
 		_add_car(props, car_models[index], index + 1 in reversed_cars)
+	if not _cars.is_empty():
+		for position in rear_lamp_positions:
+			_tail_lights.append(_lamp(position, tail_light_size, _tail_material, _cars[-1]))
+		_car_boxes[-1] = _mesh_bounds(_cars[-1])
 	_put_whole_train_on_the_track()
 
 
@@ -61,7 +73,6 @@ func _put_whole_train_on_the_track() -> void:
 		_plan()
 	_place()
 	_snap_body()
-	_last_yaw = global_basis.get_euler().y
 	for index in _cars.size():
 		_car_current[index] = _car_transform(index)
 		_car_previous[index] = _car_current[index]
@@ -91,13 +102,23 @@ func _add_car(props: GridMap, item_name: String, turned_round: bool) -> void:
 	_tint_windows(instance, mesh)
 	car.add_child(instance)
 	_cars.append(car)
+	_car_boxes.append(_mesh_bounds(car))
 	_car_previous.append(Transform3D.IDENTITY)
 	_car_current.append(Transform3D.IDENTITY)
 
 
 ## Where car `index` of _cars rides: between its two bogies on the route.
 func _car_transform(index: int) -> Transform3D:
-	var centre := _distance - (car_length + car_gap) * (index + 1)
+	return _transform_between_bogies(_distance - (car_length + car_gap) * (index + 1))
+
+
+## The first car rides on its two bogies too, not with an axle pulled behind it.
+func _place(_delta := 0.0) -> void:
+	global_transform = _transform_between_bogies(_distance)
+
+
+## A car with its middle at route distance `centre`: both bogies on the track.
+func _transform_between_bogies(centre: float) -> Transform3D:
 	var reach := car_length * 0.5 - bogie_inset
 	var front := _route_point(centre + reach)
 	var rear := _route_point(centre - reach)
@@ -109,7 +130,7 @@ func _car_transform(index: int) -> Transform3D:
 
 func _measure_length() -> void:
 	super()
-	_heading_reach = car_length * 0.5 - bogie_inset
+	_corner_lead = CORNER_REACH
 	var train_length := (car_length + car_gap) * (car_models.size() + 1) + car_length
 	_cells_kept_behind = ceili(train_length / RoadNetwork.CELL) + 2
 
@@ -183,7 +204,6 @@ func _change_ends() -> void:
 	_plan()
 	_place()
 	_snap_body()
-	_last_yaw = global_basis.get_euler().y
 	for index in _cars.size():
 		_car_current[index] = _car_transform(index)
 		_car_previous[index] = _car_current[index]
@@ -242,9 +262,10 @@ func covers(cell: Vector3i) -> bool:
 	if absi(cell.y - roundi(global_position.y)) > 3:
 		return false
 	var centre := network.centre(cell)
-	for frame in _car_current:
-		var reach := frame.basis.z * car_length * 0.5
-		if _line_covers(centre, frame.origin + reach, frame.origin - reach):
+	for index in _car_current.size():
+		var frame := _car_current[index]
+		var box := _car_boxes[index]
+		if _line_covers(centre, frame * Vector3(0.0, 0.0, box.end.z), frame * Vector3(0.0, 0.0, box.position.z)):
 			return true
 	return false
 
@@ -255,6 +276,6 @@ func _reach() -> float:
 
 func _footprints(margin: float) -> Array:
 	var rectangles := super(margin)
-	for frame in _car_current:
-		rectangles.append(_rectangle(frame, frame.origin, _body_size.x, car_length, margin))
+	for index in _car_current.size():
+		rectangles.append(_box_rectangle(_car_current[index], _car_boxes[index], margin))
 	return rectangles

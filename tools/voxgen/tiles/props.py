@@ -434,25 +434,38 @@ def advertising_column():
 
 # ------------------------------------------------------------------ traffic lights
 
+# The bicycle in a lens of a bicycle light (column, row from the bottom): two wheels, the
+# frame between them and the handlebars.
+BIKE_IN_LENS = [(0, 0), (2, 0), (1, 1), (2, 2)]
+
+
 def light_head(m, x, y, z, lit="rood", kind="auto"):
-    """Draw a 3-aspect traffic light head into m.
+    """Draw a Dutch 3-aspect traffic light head into m: a black housing with round-looking
+    lenses and a white edge on its contrast board.
 
     The 4-wide housing spans x..x+3, y..y+1 and z..z+9; lenses face the front at y-1.
     Aspects from bottom to top: green, amber, red; ``lit`` ("groen"/"oranje"/"rood") is lit,
-    the others use their "_uit" colour. A striped backboard is drawn at x-1 and x+4.
-    ``kind`` is unused (kept for API compatibility).
+    the others use their "_uit" colour. A white edge is drawn at x-1 and x+4.
+    ``kind`` "fiets": a head one wider and three higher, with a bicycle in each lens.
     """
+    if kind == "fiets":
+        m.box(x, y, z, x + 5, y + 2, z + 13, "bord_zwart")
+        for i, name in enumerate(["groen", "oranje", "rood"]):
+            c = f"stoplicht_{name}" if name == lit else f"stoplicht_{name}_uit"
+            for column, row in BIKE_IN_LENS:
+                m.set(x + 1 + column, y - 1, z + 1 + i * 4 + row, c)
+        for zz in range(z - 1, z + 14):
+            for xx in (x - 1, x + 5):
+                m.set(xx, y + 1, zz, "bord_wit")
+        return
     m.box(x, y, z, x + 4, y + 2, z + 10, "bord_zwart")
     for i, name in enumerate(["groen", "oranje", "rood"]):
         zz = z + 1 + i * 3
         c = f"stoplicht_{name}" if name == lit else f"stoplicht_{name}_uit"
         m.box(x + 1, y - 1, zz, x + 3, y, zz + 2, c)
-        m.set(x + 1, y - 1, zz + 2, "bord_zwart")   # visor
-        m.set(x + 2, y - 1, zz + 2, "bord_zwart")
-    # white/red striped backboard
     for zz in range(z - 1, z + 11):
         for xx in (x - 1, x + 4):
-            m.set(xx, y + 1, zz, "bord_wit" if (zz % 2) else "bord_rood")
+            m.set(xx, y + 1, zz, "bord_wit")
 
 
 def _light_pole(hgt, lit=None):

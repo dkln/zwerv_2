@@ -42,7 +42,7 @@ door dat over de straat gebouwd is (x 56 tot 60). Treinsporen lopen uit de stati
 (x 83-84) naar het zuiden, onder het tramviaduct door, en een helling op naar een eigen viaduct
 (z 93-94) tot de kaartrand. Station Laan van NOI (x 122 tot 129) ligt 6 m boven de straat x
 128: trein en tram naast elkaar met drie perrons, elk met een trap. Daaronder de Schenkkade
-(z 96) en een nieuwe strook stad (z 98 tot 106, alleen oost van de Koningskade). Over het vlakke deel van de A12 (x 160) gaat een voetbrug met trappen van de
+(z 96) en een nieuwe strook stad (z 98 tot 106). Ook west van de Koningskade, ten zuiden van de singel, loopt de Schenkkade door, met galerijflats aan de kade, gesloten bouwblokken en een pleintje met kerk en grasveld, Daaronder het zuiden van de stad op drie straten (z 107, 130, 153): de Schilderswijk (west, bouwblokken, marktplein, school, kerk, park met vijver), Laak (midden, galerijflats, hogeschool, kantoren, woontoren) en de Binckhorst (oost, loodsen en fabrieken met containers en tanks). De kaart is zo een vierkant van 176 x 176 cellen (x en z 0..175, 704 x 704 m). Over het vlakke deel van de A12 (x 160) gaat een voetbrug met trappen van de
 kantoren aan de Prins Clauslaan naar de straat z 29. Opnieuw bouwen:
 `tools/godot.sh --headless --script tools/build/build_city.gd`.
 
@@ -63,7 +63,14 @@ op de tile: `"only": ["tram"]` of `["trein"]` in de `traffic`-metadata, en `"rai
 zijden de rails verbinden (`SN`, `SE`), zodat een voertuig bij een splitsing alleen kan gaan
 waar de rails echt lopen. Ze stoppen bij perrons (`dwell_time`) en rijden heen en weer: aan het
 eind van het spoor wisselt de bestuurder van cabine en gaat het voertuig geleidelijk over op
-het spoor ernaast, dat de andere kant op gaat.
+het spoor ernaast, dat de andere kant op gaat. De kopwagons hebben een echte cabine: een
+versmallende neus met schuin achteroverhellende voorruit, bord erboven, en een zijraam voor de
+bestuurder. Dag en nacht branden wit voorop de eerste wagon en rood achterop de laatste
+(`rear_lamp_positions`), zonder remlicht (`lamps_always_on`, `brake_lights`).
+
+De verkeerslichten zijn Nederlands: zwarte kasten met een witte rand, fietslichten met een fiets in
+elke lens en voor bus en tram een negenoog (negen witte lampjes: stop horizontaal, rijden verticaal,
+attentie een driehoek).
 
 Stoplichten werken: de node `Verkeerslichten` (`scripts/world/traffic_lights.gd`, in
 elke scène die de bouwers maken) laat de stoplichtprops (`verkeerslichten/auto_*`,
@@ -101,8 +108,19 @@ Allemaal zijn het een `Vehicle` (`scripts/vehicles/vehicle.gd`):
   heeft gereden (`variety`), zodat hij de hele stad doorrijdt in plaats van steeds
   hetzelfde rondje. Op een kruising slaat hij hooguit één keer af, en nooit terug waar
   hij vandaan kwam (geen U-bocht over een brede kruising).
-- Rijden: gas geven en remmen bouwen geleidelijk op (`throttle_rate`, `brake_rate`), en
-  de carrosserie draait hooguit 3 rad/s, ook bij keren in een smalle straat.
+- Rijden: gas geven en remmen bouwen geleidelijk op (`throttle_rate`, `brake_rate`).
+- Sturen: een voertuig draait om zijn achteras. De vooras volgt de route met afgeronde
+  bochten (`_corner_rounding`: hoe langer de wielbasis, hoe ruimer), de achteras wordt recht
+  naar de vooras getrokken en snijdt de bocht dus af, en de carrosserie ligt op de lijn
+  ertussen. De voorwielen wijzen waar de vooras echt heen beweegt. De aanhanger volgt op
+  dezelfde manier: zijn as wordt naar de trekhaak getrokken. Treinen en trams rijden met
+  elke wagon op twee draaistellen.
+- Ramen: elk voertuig krijgt dezelfde glasinstellingen (`_tint_windows`): donker getint, met een
+  gesimuleerde weerspiegeling van lucht en gebouwen die tijdens het rijden over het glas schuift
+  (`passing_surroundings`, `pane_lean` in `voxel_glass.gdshader`; sterkte `reflection`).
+- Buitenmaten: voor anderen en bij een botsing telt alles wat op een voertuig getekend is
+  (carrosserie, wielen, trekhaak, lampen; `_outer_box`), ook bij aanhanger en wagons. Als
+  wrak heeft de aanhanger een eigen collider die hem volgt.
 - Elkaar ontwijken (`avoids_others`): een auto remt en stopt achter een andere auto op
   zijn route (tot 40 m vooruit), en geeft op een kruising voorrang aan wie er eerder is.
 - Botsen: rijden twee auto's toch met minstens `CRASH_SPEED` (5 m/s) op elkaar in, dan worden
@@ -128,8 +146,11 @@ buiten zijn, glijdt hij omhoog (`tunnel_*`). Om de 20 tot 35 s (`closeup_every`)
 zoomt in tot 7 m, zakt wat lager en zwaait om de auto heen (`closeup_*`, uit met
 `closeups`). Tijdens het volgen laat B de SUV als spookrijder op de gevolgde auto
 inrijden (demo-botsing, `Vehicle.drive_into`), en zet T het spel op 4× snelheid en weer
-terug (`fast_forward`, de physics-stappen schalen mee). Een andere toets geeft je de
-vrije camera terug. De auto rijdt met een vaste
+terug (`fast_forward`, de physics-stappen schalen mee). Tab volgt het volgende voertuig en
+Shift+Tab het vorige, ook de treinen en trams (die staan in de lijst vlak vóór de sedan, dus
+Shift+Tab is er het snelst). Het beeld glijdt er in `switch_time` seconden heen en zoomt op een
+lange weg wat uit (`switch_zoom_out`, `switch_zoom_out_most`); F volgt daarna het laatst gevolgde
+voertuig. Een andere toets geeft je de vrije camera terug. De auto rijdt met een vaste
 stap van 60 Hz; zijn carrosserie (node `Carrosserie`) wordt elk frame tussen de laatste
 twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
 - Doorkijk (node `Doorkijk`, `scripts/world/building_fade.gd`): zolang de camera de auto
@@ -280,7 +301,8 @@ Projectstructuur
       build/               build_city (+ city/: de bouwer in delen),
                            build_libraries, build_previews
       check/               coverage, corner_test, crash_test, drive_test, fps_test,
-                           lane_choice_test, traffic_test, triangle_count
+                           axle_test, follow_switch_test, lane_choice_test, traffic_test,
+                           triangle_count
       shots/               shot_tiles, shot_iso, shot_scene, shot_vehicles
       voxgen/              Python-generator van de tiles (zie "Tiles (opnieuw) genereren")
     docs/                  Goxel-handleiding (GOXEL.md -> handleiding_goxel.html)

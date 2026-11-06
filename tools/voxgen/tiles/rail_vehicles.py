@@ -1,9 +1,53 @@
 """The cars of the rail vehicles: props/voertuigen/randstadrail_* and ns_* (placed and moved
 by scripts/vehicles/randstadrail.gd and ns_train.gd). x across, y along with the front
-at y=0, z up. A cab car has a sloping nose with a windscreen at the front; every car has
-bogies under it, a band of windows, doors on both sides and something on its roof."""
+at y=0, z up. A cab car has a driver's cab at the front: a narrowing nose with a windscreen
+that leans back, a sign above it, lamps and a bumper under it and a side window for the
+driver; every car has bogies under it, a band of windows, doors on both sides and something
+on its roof. The last car of a train is a cab car turned round, so that end looks the same."""
 from common import tile
 from vox import V
+
+# Cars of the cab: how far back the nose goes, and where the driver's side window is.
+NOSE_LENGTH = 6
+CAB_WINDOW = range(8, 14)
+CAB_LENGTH = 16
+
+
+def nose_narrowing(along):
+    """Voxels the nose is narrower on each side at this distance from the front."""
+    return (NOSE_LENGTH - along) // 2 if along < NOSE_LENGTH else 0
+
+
+def nose_front(up, window_low, height):
+    """Where the nose starts at this height: straight below the windows, then leaning back."""
+    if up < window_low:
+        return 0
+    return 1 + (up - window_low) * (NOSE_LENGTH - 1) // (height - 1 - window_low)
+
+
+def cab_colour(along, across, up, width, front, window_low, window_high, lower, band, body):
+    """The colour of the outside of the nose, or None for what lies inside it."""
+    narrowing = nose_narrowing(along)
+    at_side = across in (narrowing, width - 1 - narrowing)
+    if along == front:
+        if up < window_low - 4:
+            return "metaal_donker"   # the bumper
+        if up < window_low - 2:
+            return lower
+        if up < window_low:
+            return band
+        if up >= window_high:
+            return "bord_zwart" if up < window_high + 3 and not at_side else body
+        if at_side:
+            return body              # the corner posts of the windscreen
+        return "metaal_donker" if across == width // 2 else "glas2"
+    if at_side:
+        if up < window_low - 2:
+            return lower
+        if up < window_low:
+            return band
+        return body
+    return None
 
 
 def rail_car(width, length, height, body, lower, band, door, cab, roof_box):
@@ -17,13 +61,14 @@ def rail_car(width, length, height, body, lower, band, door, cab, roof_box):
         for across in range(width):
             side = across in (0, width - 1)
             for up in range(floor, height - 1):
-                if cab and along < 6:
-                    # the nose narrows towards the front and slopes back above the windows
-                    nose_cut = (6 - along) // 2
-                    if across < nose_cut or across >= width - nose_cut:
+                if cab and along < NOSE_LENGTH:
+                    narrowing = nose_narrowing(along)
+                    front = nose_front(up, window_low, height)
+                    if across < narrowing or across >= width - narrowing or along < front:
                         continue
-                    if up >= height - 1 - (6 - along):
-                        continue
+                    colour = cab_colour(along, across, up, width, front, window_low, window_high, lower, band, body)
+                    model.set(across, along, up, colour or "auto_interieur")
+                    continue
                 nearest_door = min(doors, key=lambda place: abs(along - place))
                 in_door = abs(along - nearest_door) <= 5
                 if not side and along not in (0, length - 1):
@@ -32,6 +77,9 @@ def rail_car(width, length, height, body, lower, band, door, cab, roof_box):
                     colour = lower
                 elif up < window_low:
                     colour = band
+                elif cab and along < CAB_LENGTH and side:
+                    # no doors here: the driver's own side window
+                    colour = "glas2" if along in CAB_WINDOW and window_low <= up < window_high else body
                 elif in_door and side:
                     # double doors with a window in each leaf, a seam between them
                     colour = "glas2" if along != nearest_door and window_low <= up < window_high else door
@@ -41,7 +89,7 @@ def rail_car(width, length, height, body, lower, band, door, cab, roof_box):
                     colour = body
                 model.set(across, along, up, colour)
     # the roof, with a box of equipment and a darker edge
-    for along in range(6 if cab else 0, length):
+    for along in range(NOSE_LENGTH if cab else 0, length):
         for across in range(1, width - 1):
             model.set(across, along, height - 1, "lak_zilver2" if along % 16 else "metaal_donker")
     for along in range(length // 2 - roof_box // 2, length // 2 + roof_box // 2):
@@ -57,16 +105,12 @@ def rail_car(width, length, height, body, lower, band, door, cab, roof_box):
                 if abs(along - centre) in (5, 6) or abs(along - centre) in (4, 7):
                     model.set(across, along, 0, "rubber")
     if cab:
-        # windscreen, headlights, a coupling and a dark sign above the windscreen
-        for across in range(4, width - 4):
-            for up in range(window_low, window_high):
-                model.set(across, 3, up, "glas2")
-            for up in (floor, floor + 1):
-                model.set(across, 3, up, "metaal_donker")
+        # white headlights on the front, under the windscreen, and red tail lights between
+        # them (they burn on the last car, scripts/vehicles/rail_vehicle.gd)
         for across in (4, 5, width - 6, width - 5):
-            model.set(across, 3, window_low - 3, "lamp_wit")
-        for across in range(7, width - 7):
-            model.set(across, 3, window_high, "bord_zwart")
+            model.set(across, 0, window_low - 3, "lamp_wit")
+        for across in (7, 8, width - 9, width - 8):
+            model.set(across, 0, window_low - 3, "stoplicht_rood_uit")
     return model
 
 

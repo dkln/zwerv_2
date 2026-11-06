@@ -14,6 +14,8 @@ const KINDS := [
 	["res://scripts/vehicles/trailer_car.gd", ""],
 	["res://scripts/vehicles/truck.gd", ""],
 	["res://scripts/vehicles/city_bus.gd", ""],
+	["res://scripts/vehicles/randstadrail.gd", ""],
+	["res://scripts/vehicles/ns_train.gd", ""],
 ]
 
 
@@ -74,7 +76,9 @@ func _init() -> void:
 	if Common.arg_count() > 2:
 		var focus := vehicles[int(Common.arg_float(2))]
 		var close_up := focus.global_transform * focus.hitch_position
-		camera.look_at_from_position(close_up + Vector3(3.0, 2.5, 5.0 * side), close_up)
+		# further away for a long one, whose front is further from its middle
+		var front_distance := focus.half_length * side
+		camera.look_at_from_position(close_up + Vector3(3.0, 2.5, 5.0 * side + front_distance), close_up + Vector3(0.0, 1.0, front_distance))
 	Common.render_size(self, Vector2i(1800, 900))
 	await Common.wait_frames(self, 10)
 	Common.save_screenshot(self, out)

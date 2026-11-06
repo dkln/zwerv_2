@@ -13,7 +13,10 @@ extends Node3D
 ## No physics and no gravity: the vehicle follows the lanes kinematically, which keeps it
 ## exactly in its lane, and rides on the road surface (up and down the ramps of a
 ## tunnel, tilted with the slope). Its route is a chain of cell centres, planned a few
-## cells ahead; it rides along it with the corners rounded off. It keeps to the speed
+## cells ahead. Like a real vehicle it turns about its rear axle: the front axle follows the
+## route with the corners rounded off (the longer the wheelbase, the wider), the rear axle
+## is pulled straight towards the front axle and so cuts the corner, and the body lies on
+## the line between them. It keeps to the speed
 ## limit of the road it is on (and brakes in time for a lower one ahead), slows down for
 ## corners, and stops:
 ## - before a zebra crossing (weg/zebrapad), for `zebra_wait` seconds, then drives on;
@@ -23,7 +26,11 @@ extends Node3D
 ## (a motorway losing a lane); at a dead end it turns round into the opposite lane.
 ## Model: the props library item `model`, centred on the node, front along +Z, lifted by
 ## `model_lift`; its wheels (item `wheel_model`, at `wheel_positions`) roll with the
-## distance driven, and the front ones (positions with z > 0) steer into the corners.
+## distance driven, and the front ones (positions with z > 0) point the way the front axle
+## moves.
+## Its outer size for the others and for a crash is that of everything drawn on it (body,
+## wheels, tow bar, lamps; _outer_box), the same for the trailer (_trailer_box); as a wreck
+## the trailer has a collider of its own that follows it.
 ## Trailer (`trailer_model`): a tow bar (`hitch_model`) on the back of the body and a trailer
 ## that pivots on its own point, the ball of the tow bar (`hitch_position`): each step its
 ## axle is pulled straight towards the ball (the way a real trailer follows), so it cuts
@@ -145,6 +152,10 @@ extends Node3D
 @export var tail_light_size := Vector3(0.3, 0.2, 0.03)
 @export var indicator_positions := PackedVector3Array()
 @export var indicator_size := Vector3(0.1, 0.1, 0.1)
+## Head and tail lamps burn by day too (a train, a tram).
+@export var lamps_always_on := false
+## The tail lights brighten while it brakes; off = they stay as they are.
+@export var brake_lights := true
 ## From this darkness (0 = day, 1 = night, the Dagcyclus node) the headlights are on.
 @export_range(0.0, 1.0) var lights_on_from := 0.35
 
@@ -171,9 +182,7 @@ const U_TURN_CELLS := 6
 ## Cells it looks ahead along each way out of a fork to see how much it has driven there.
 const VISIT_LOOKAHEAD := 8
 ## Cells it remembers; past that the memory is halved (old routes fade).
-const VISIT_MEMORY := 600
-## Fastest the body turns (rad/s), also when its route swings round at once.
-const MAX_TURN_RATE := 3.0
+const VISIT_MEMORY := 1000
 ## Metres ahead along its route it looks for other vehicles, and how far ahead (in
 ## seconds of driving) a crossing counts as claimed by a vehicle heading for it.
 const TRAFFIC_LOOKAHEAD := 40.0
@@ -223,8 +232,12 @@ const RECKLESS_SPEED := 11.0
 const SPEED_SETTLE := 0.5
 ## Metres per second over the speed it may drive from which it brakes without easing in.
 const BRAKE_SLACK := 1.5
-## Metres over which the corners of the route are rounded off.
-const ROUNDING := 1.6
+## Metres before and after a point of the route over which the front axle's path is
+## averaged, which rounds off the corners: the wheelbase plus CORNER_ROUNDING_EXTRA, within
+## these limits.
+const CORNER_ROUNDING_LEAST := 3.0
+const CORNER_ROUNDING_MOST := 6.0
+const CORNER_ROUNDING_EXTRA := 1.0
 ## Metres it plans ahead at least, beyond what it needs to brake to a stop.
 const PLAN_MARGIN := 16.0
 ## Cells forward over which it moves over into the lane alongside, longest first.
@@ -235,9 +248,6 @@ const CORNER_REACH := 2.0
 ## Physics steps between looks at the other vehicles (each vehicle in its own step, so not
 ## all look at once; a sixth of a second at most goes by unseen).
 const TRAFFIC_LOOK_STEPS := 4
-## Metres before and after its middle at which the route gives a vehicle its heading, at
-## least (a long one: from axle to axle, so it swings round a corner as a whole).
-const HEADING_REACH := 2.0
 ## Largest angle (radians, about 80 degrees) between a trailer and its vehicle.
 const MAX_TRAILER_ANGLE := 1.4
 ## Metres from the camera beyond which the wheels are not drawn (saves draw calls).
@@ -259,6 +269,7 @@ var _traffic_limit := INF            # speed the other vehicles allow, at the la
 var _traffic_blocker: Vehicle        # who it was waiting for at the last look
 var _look_countdown := 0             # physics steps until the next look at the others
 var _body_size := Vector3(1.75, 1.5, 4.5)   # width, height (from the road), length
+var _outer_box := AABB(Vector3(-0.875, 0.0, -2.25), Vector3(1.75, 1.5, 4.5))  # around what is drawn on it, seen from its origin
 
 ## Current speed (m/s) and velocity, for the camera.
 var speed := 0.0
@@ -283,16 +294,23 @@ var _visits := {}                    # Vector3i cell -> times driven over (fades
 var _wheels: Array[Node3D] = []      # per wheel: the steering pivot, its child spins
 var _wheel_roll := 0.0               # radians the wheels have turned
 var _steering := 0.0                 # current steering angle (radians)
-var _heading_reach := HEADING_REACH  # metres either side of it that give its heading
+var _front_axle := 1.2               # where the axles are (metres forwards on the body)
+var _rear_axle := -1.2
+var _front_axle_spot := Vector2.ZERO # where they are now in the world (x, z)
+var _rear_axle_spot := Vector2.ZERO
+var _front_axle_motion := Vector2.ZERO  # how far the front axle moved in the last step
+var _corner_rounding := CORNER_ROUNDING_LEAST  # metres, see the constant
+var _corner_lead := CORNER_REACH     # metres before a corner from which it keeps to its corner speed
 var _cells_kept_behind := 1          # planned cells it keeps behind it (a long one: more)
-## The trailer: its body (placed like _body), the point of the road under its axle, its
-## length, width and transforms after the last two physics steps.
+## The trailer: its body (placed like _body), the point of the road under its axle, what
+## is drawn on it (on the trailer, from the coupling) and its transforms after the last
+## two physics steps. _trailer_collider: its collider while it hangs behind a wreck.
 var _trailer: Node3D
 var _trailer_axle := Vector3.ZERO
-var _trailer_size := Vector2.ZERO
+var _trailer_box := AABB()
+var _trailer_collider: AnimatableBody3D
 var _trailer_previous := Transform3D.IDENTITY
 var _trailer_current := Transform3D.IDENTITY
-var _last_yaw := 0.0
 ## The drawn body (model and wheels), placed every frame between the last two physics
 ## steps, so the vehicle moves smoothly at any frame rate while it drives at a fixed step.
 var _body: Node3D
@@ -347,7 +365,6 @@ func _ready() -> void:
 	_distance = _route_distances[1]
 	_plan()
 	_place()
-	_last_yaw = global_basis.get_euler().y
 	_snap_body()
 
 
@@ -492,14 +509,16 @@ func _lamp(centre: Vector3, size: Vector3, material: Material, parent: Node3D = 
 func _update_lamps() -> void:
 	var night: float = _day_cycle.get("night") if _day_cycle else 0.0
 	var lights_on := night >= lights_on_from
+	var lamps_on := lights_on or lamps_always_on
+	var braking_shows := brake_lights and braking_now
 	for lamp in _headlights:
-		lamp.visible = lights_on
+		lamp.visible = lamps_on
 	if _beam:
 		_beam.visible = lights_on
 	for lamp in _tail_lights:
-		lamp.visible = lights_on or braking_now
+		lamp.visible = lamps_on or braking_shows
 	if _tail_material:
-		_tail_material.emission_energy_multiplier = BRAKE_ENERGY if braking_now else TAIL_ENERGY
+		_tail_material.emission_energy_multiplier = BRAKE_ENERGY if braking_shows else TAIL_ENERGY
 	var blink_on := fmod(Time.get_ticks_msec() / 1000.0, BLINK_TIME) < BLINK_TIME * 0.5
 	for lamp in _indicators:
 		var on_left := lamp.position.x > 0.0
@@ -774,11 +793,11 @@ func _target_speed(delta: float) -> float:
 		if _route_headings[corner_index - 1] == _route_headings[corner_index]:
 			continue
 		var corner_at := _route_distances[corner_index]
-		if _distance > corner_at + CORNER_REACH:
+		if _distance > corner_at + CORNER_REACH:   # the front axle is round it by then
 			continue
 		var tight := (corner_index < last and _route_headings[corner_index] != _route_headings[corner_index + 1]) \
 				or (corner_index >= 2 and _route_headings[corner_index - 2] != _route_headings[corner_index - 1])
-		target = minf(target, _approach_speed(tight_corner_speed if tight else corner_speed, corner_at - CORNER_REACH))
+		target = minf(target, _approach_speed(tight_corner_speed if tight else corner_speed, corner_at - _corner_lead))
 	if avoids_others and _squeeze_clock <= 0.0:
 		_look_countdown -= 1
 		if _look_countdown < 0:
@@ -843,23 +862,57 @@ func _route_point(at: float) -> Vector3:
 	return Vector3(spot.x, network.height(under, spot), spot.y)
 
 
-## Puts the vehicle on its route; delta 0 = at once (at the start).
+## Where the route is at distance `at` with its corners rounded off (x, z): the mean of the
+## chain of cell centres over `_corner_rounding` metres either way.
+func _rounded_route_point(at: float) -> Vector2:
+	var window_start := at - _corner_rounding
+	var window_end := at + _corner_rounding
+	var weighted := Vector2.ZERO
+	var first_centre := network.centre(_route_cells[0])
+	weighted += Vector2(first_centre.x, first_centre.z) * maxf(_route_distances[0] - window_start, 0.0)
+	for index in _route_distances.size() - 1:
+		var segment_start := _route_distances[index]
+		var segment_end := _route_distances[index + 1]
+		if segment_end <= window_start:
+			continue
+		if segment_start >= window_end:
+			break
+		var from := network.centre(_route_cells[index])
+		var to := network.centre(_route_cells[index + 1])
+		var overlap_start := maxf(segment_start, window_start)
+		var overlap_end := minf(segment_end, window_end)
+		var overlap_middle := (overlap_start + overlap_end) * 0.5
+		var fraction := (overlap_middle - segment_start) / maxf(segment_end - segment_start, 0.001)
+		var middle := Vector2(lerpf(from.x, to.x, fraction), lerpf(from.z, to.z, fraction))
+		weighted += middle * (overlap_end - overlap_start)
+	var last_centre := network.centre(_route_cells[-1])
+	weighted += Vector2(last_centre.x, last_centre.z) * maxf(window_end - _route_distances[-1], 0.0)
+	return weighted / (_corner_rounding * 2.0)
+
+
+## Puts the vehicle on its route: the front axle on the rounded route, the rear axle pulled
+## straight towards it, the body on the line between them, tilted with the road under the
+## axles. delta 0 = at once (at the start): the rear axle on the route too.
 func _place(delta := 0.0) -> void:
-	# rounded corners: the mean of the route a little behind and ahead; the height of
-	# the road right under it (the mean would cut through the top of a ramp)
-	var position_now := (_route_point(_distance - ROUNDING) + _route_point(_distance + ROUNDING)) * 0.5
-	position_now.y = _route_point(_distance).y
-	var forward := _route_point(_distance + _heading_reach) - _route_point(_distance - _heading_reach)
-	global_position = position_now
-	if Vector2(forward.x, forward.z).length() > 0.01:
-		var wanted := Quaternion(Basis.looking_at(-forward, Vector3.UP))
-		var now := Quaternion(global_basis.orthonormalized())
-		var angle := now.angle_to(wanted)
-		# turning round in a narrow street the route swings round at once: the body turns
-		# at MAX_TURN_RATE at most, so it never flips
-		if delta > 0.0 and angle > MAX_TURN_RATE * delta:
-			wanted = now.slerp(wanted, MAX_TURN_RATE * delta / angle)
-		global_basis = Basis(wanted)
+	var front_spot := _rounded_route_point(_distance + _front_axle)
+	var wheelbase := _front_axle - _rear_axle
+	if delta > 0.0:
+		_front_axle_motion = front_spot - _front_axle_spot
+	else:
+		_rear_axle_spot = _rounded_route_point(_distance + _rear_axle)
+		_front_axle_motion = Vector2.ZERO
+	_front_axle_spot = front_spot
+	var along_body := front_spot - _rear_axle_spot
+	if along_body.length_squared() < 0.000001:
+		along_body = Vector2(global_basis.z.x, global_basis.z.z)
+	along_body = along_body.normalized()
+	_rear_axle_spot = front_spot - along_body * wheelbase
+	var rise := _route_point(_distance + _front_axle).y - _route_point(_distance + _rear_axle).y
+	var middle := front_spot - along_body * _front_axle
+	# the height of the road right under its middle (a line between the axles would cut
+	# through the top of a ramp)
+	global_position = Vector3(middle.x, _route_point(_distance).y, middle.y)
+	global_basis = Basis.looking_at(-Vector3(along_body.x * wheelbase, rise, along_body.y * wheelbase), Vector3.UP)
 
 
 func _add_model(props: GridMap) -> void:
@@ -888,33 +941,58 @@ func _tint_windows(instance: MeshInstance3D, mesh: Mesh) -> void:
 	for surface in mesh.get_surface_count():
 		var material := mesh.surface_get_material(surface) as ShaderMaterial
 		if material and material.shader and material.shader.resource_path.ends_with("voxel_glass.gdshader"):
-			# dark tinted car glass that mirrors the sky a little (more at a grazing angle)
-			# with a sharp sun glint and light streaks that lie on the car itself (world
-			# streaks would slide over the windows of a moving car all the time)
+			# the same for every vehicle: dark tinted glass that mirrors the town and the sky
+			# sliding past (more at a grazing angle), with a sharp sun glint and light
+			# streaks that lie on the vehicle itself (world streaks would slide all over it)
 			var windows := material.duplicate() as ShaderMaterial
 			windows.set_shader_parameter("interior", 0.0)
-			windows.set_shader_parameter("reflection", 0.08)
+			windows.set_shader_parameter("reflection", 0.2)
+			windows.set_shader_parameter("passing_surroundings", 0.6)
 			windows.set_shader_parameter("depth", 0.1)
 			windows.set_shader_parameter("glint_roughness", 0.06)
-			windows.set_shader_parameter("streaks", 0.25)
+			windows.set_shader_parameter("streaks", 0.12)
 			windows.set_shader_parameter("streaks_on_object", 1.0)
 			windows.set_shader_parameter("sheen", 0.0)
 			instance.set_surface_override_material(surface, windows)
 
 
-## Length of the wheelbase and how far behind it it must remember the road: the heading
+## What is drawn on it, the axles and how far behind it it must remember the road: the
 ## of a long vehicle comes from around its axles, and a trailer rides on the road behind.
 func _measure_length() -> void:
-	var front := 0.0
-	var back := 0.0
-	for wheel_position in wheel_positions:
-		front = maxf(front, wheel_position.z)
-		back = minf(back, wheel_position.z)
-	_heading_reach = maxf(HEADING_REACH, (front - back) * 0.5)
-	var behind := _heading_reach + ROUNDING
+	var body_bounds := _mesh_bounds(_body)
+	if body_bounds.size.z > 0.0:
+		_outer_box = body_bounds
+		_body_size = body_bounds.size
 	if _trailer:
-		behind = maxf(behind, -hitch_position.z + trailer_axle_distance + ROUNDING)
-	_cells_kept_behind = maxi(1, ceili(behind / RoadNetwork.CELL))
+		_trailer_box = _mesh_bounds(_trailer)
+	if wheel_positions.is_empty():
+		_front_axle = _outer_box.end.z * 0.6
+		_rear_axle = _outer_box.position.z * 0.6
+	else:
+		_front_axle = -INF
+		_rear_axle = INF
+		for wheel_position in wheel_positions:
+			_front_axle = maxf(_front_axle, wheel_position.z)
+			_rear_axle = minf(_rear_axle, wheel_position.z)
+	_corner_rounding = clampf(_front_axle - _rear_axle + CORNER_ROUNDING_EXTRA, CORNER_ROUNDING_LEAST, CORNER_ROUNDING_MOST)
+	_corner_lead = maxf(CORNER_REACH, _corner_rounding + _front_axle)
+	var behind := maxf(_corner_rounding - _front_axle, -_rear_axle)
+	if _trailer:
+		behind = maxf(behind, -hitch_position.z + trailer_axle_distance)
+	_cells_kept_behind = maxi(1, ceili(behind / RoadNetwork.CELL) + 1)
+
+
+## The box around all meshes below `node`, seen from `node` (with its own origin in it).
+static func _mesh_bounds(node: Node3D, from_root := Transform3D.IDENTITY) -> AABB:
+	var bounds := AABB()
+	for child in node.get_children():
+		if not child is Node3D:
+			continue
+		var to_child: Transform3D = from_root * child.transform
+		if child is MeshInstance3D and child.mesh:
+			bounds = bounds.merge(to_child * child.mesh.get_aabb())
+		bounds = bounds.merge(_mesh_bounds(child, to_child))
+	return bounds
 
 
 # ------------------------------------------------------------------ trailer
@@ -948,7 +1026,6 @@ func _add_trailer(props: GridMap) -> void:
 	var mesh := library.get_item_mesh(item)
 	var mesh_transform := library.get_item_mesh_transform(item)
 	var box := mesh_transform * mesh.get_aabb()
-	_trailer_size = Vector2(box.size.x, box.size.z)
 	var instance := MeshInstance3D.new()
 	instance.name = "Model"
 	instance.mesh = mesh
@@ -1040,27 +1117,19 @@ func _add_wheel(parent: Node3D, at: Vector3, mesh: Mesh, material: Material, whe
 	_wheels.append(pivot)
 
 
-## Rolls the wheels over the distance driven and steers the front ones: the angle that
-## makes a vehicle with this wheelbase follow the curve it is driving (its turn rate per
-## metre).
+## Rolls the wheels over the distance driven and steers the front ones the way the front
+## axle really moves, seen from the body.
 func _turn_wheels(distance_driven: float, delta: float) -> void:
 	if _wheels.is_empty():
 		return
 	_roll_previous = _wheel_roll
 	_steering_previous = _steering
 	_wheel_roll = fmod(_wheel_roll + distance_driven / maxf(wheel_radius, 0.01), TAU)
-	var yaw := global_basis.get_euler().y
-	var yaw_change := wrapf(yaw - _last_yaw, -PI, PI)
-	_last_yaw = yaw
 	var wanted := _steering
-	if distance_driven > 0.001:
-		var front := -INF
-		var back := INF
-		for wheel_position in wheel_positions:
-			front = maxf(front, wheel_position.z)
-			back = minf(back, wheel_position.z)
+	if distance_driven > 0.001 and _front_axle_motion.length_squared() > 0.0:
+		var seen_from_body := global_basis.inverse() * Vector3(_front_axle_motion.x, 0.0, _front_axle_motion.y)
 		var max_angle := deg_to_rad(max_steering_degrees)
-		wanted = clampf(atan((front - back) * yaw_change / distance_driven), -max_angle, max_angle)
+		wanted = clampf(atan2(seen_from_body.x, seen_from_body.z), -max_angle, max_angle)
 	_steering = lerpf(_steering, wanted, 1.0 - exp(-steering_rate * delta))
 	# the wheels themselves are turned every frame in _process, between this step and the last
 
@@ -1109,8 +1178,8 @@ func _traffic_speed(index: int, last: int) -> float:
 func _body_ahead_speed() -> float:
 	var forward := Vector2(global_basis.z.x, global_basis.z.z).normalized()
 	var mine := Vector2(global_position.x, global_position.z)
-	var nose := _body_size.z * 0.5
-	var side_room := _body_size.x * 0.5 + BODY_SIDE_ROOM
+	var nose := _outer_box.end.z
+	var side_room := _outer_box.size.x * 0.5 + BODY_SIDE_ROOM
 	var nearest_gap := INF
 	for other in all_vehicles:
 		if other == self or other.crashed or absf(other.global_position.y - global_position.y) > 2.5:
@@ -1172,13 +1241,12 @@ func covers(cell: Vector3i) -> bool:
 	if absi(cell.y - roundi(spot.y)) > 3:
 		return false
 	var centre := network.centre(cell)
-	var reach := _body_size.z * 0.5 + 0.5
 	var forward := (_body.global_basis if crashed else global_basis).z
-	if _line_covers(centre, spot + forward * reach, spot - forward * reach):
+	if _line_covers(centre, spot + forward * (_outer_box.end.z + 0.5), spot + forward * (_outer_box.position.z - 0.5)):
 		return true
 	if _trailer:
-		var pivot := _trailer_current.origin
-		return _line_covers(centre, pivot, pivot - _trailer_current.basis.z * _trailer_size.y)
+		return _line_covers(centre, _trailer_current * Vector3(0.0, 0.0, _trailer_box.end.z),
+				_trailer_current * Vector3(0.0, 0.0, _trailer_box.position.z))
 	return false
 
 
@@ -1251,8 +1319,8 @@ func total_mass() -> float:
 ## Metres from its middle to the far end of the vehicle (with its trailer).
 func _reach() -> float:
 	if _trailer:
-		return _body_size.z * 0.5 + _trailer_size.y + 1.0
-	return _body_size.z * 0.5
+		return -hitch_position.z - _trailer_box.position.z
+	return maxf(_outer_box.end.z, -_outer_box.position.z)
 
 
 ## True if the bodies or trailers (rectangles seen from above, CRASH_MARGIN larger) overlap.
@@ -1283,11 +1351,15 @@ static func _rectangles_overlap(first: Array[Vector2], second: Array[Vector2]) -
 
 ## What it takes up on the road seen from above: its body, and its trailer if it has one.
 func _footprints(margin: float) -> Array:
-	var rectangles := [_rectangle(global_transform, global_position, _body_size.x, _body_size.z, margin)]
+	var rectangles := [_box_rectangle(global_transform, _outer_box, margin)]
 	if _trailer:
-		var middle := _trailer_current.origin - _trailer_current.basis.z * _trailer_size.y * 0.5
-		rectangles.append(_rectangle(_trailer_current, middle, _trailer_size.x, _trailer_size.y, margin))
+		rectangles.append(_box_rectangle(_trailer_current, _trailer_box, margin))
 	return rectangles
+
+
+## The rectangle of a box of a body that stands at `frame`.
+static func _box_rectangle(frame: Transform3D, box: AABB, margin: float) -> Array[Vector2]:
+	return _rectangle(frame, frame * box.get_center(), box.size.x, box.size.z, margin)
 
 
 ## The four corners (x, z) of a rectangle around `middle`, turned like `frame`.
@@ -1298,8 +1370,10 @@ static func _rectangle(frame: Transform3D, middle: Vector3, width: float, length
 	return [centre + across + along, centre + across - along, centre - across + along, centre - across - along]
 
 
-## Hands the body to the physics engine: a RigidBody3D with a box the size of the body,
-## its mass and its speed, that hits the other wreck and the colliders of the town.
+## Hands the body to the physics engine: a RigidBody3D with a box the outer size of the
+## body, its mass and its speed, that hits the other wreck and the colliders of the town.
+## A trailer gets a collider of its own: it is dragged along behind the wreck (_move_trailer)
+## and pushes other wrecks out of the way.
 func _become_wreck(impact: Vector3, spin := 0.0) -> void:
 	crashed = true
 	reckless = false
@@ -1317,9 +1391,9 @@ func _become_wreck(impact: Vector3, spin := 0.0) -> void:
 	_wreck.physics_material_override = material
 	var shape := CollisionShape3D.new()
 	var box := BoxShape3D.new()
-	box.size = Vector3(_body_size.x, _body_size.y - 0.05, _body_size.z)
+	box.size = Vector3(_outer_box.size.x, _outer_box.size.y - 0.05, _outer_box.size.z)
 	shape.shape = box
-	shape.position = Vector3(0.0, _body_size.y * 0.5 + 0.03, 0.0)
+	shape.position = _outer_box.get_center() + Vector3(0.0, 0.03, 0.0)
 	_wreck.add_child(shape)
 	# lower centre of mass (engine and floor), so it slides and spins more than it rolls
 	_wreck.center_of_mass_mode = RigidBody3D.CENTER_OF_MASS_MODE_CUSTOM
@@ -1328,8 +1402,25 @@ func _become_wreck(impact: Vector3, spin := 0.0) -> void:
 	_wreck.global_transform = global_transform
 	_wreck.linear_velocity = impact
 	_wreck.angular_velocity = Vector3.UP * spin
+	if _trailer:
+		_add_trailer_collider()
 	_wreck_clock = 0.0
 	_roll_on_clock = ROLL_ON_TIME + ROLL_ON_PER_KG * total_mass()
+
+
+func _add_trailer_collider() -> void:
+	_trailer_collider = AnimatableBody3D.new()
+	_trailer_collider.name = "WrakAanhanger"
+	_trailer_collider.sync_to_physics = false
+	var shape := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = _trailer_box.size
+	shape.shape = box
+	shape.position = _trailer_box.get_center()
+	_trailer_collider.add_child(shape)
+	get_parent().add_child(_trailer_collider)
+	_trailer_collider.global_transform = _trailer_current
+	_wreck.add_collision_exception_with(_trailer_collider)
 
 
 ## While crashed: the body sits on the wreck; after WRECK_TIME it is towed back.
@@ -1339,6 +1430,7 @@ func _follow_wreck(delta: float) -> void:
 	if _trailer:
 		_move_trailer()
 		_trailer.global_transform = _trailer_current
+		_trailer_collider.global_transform = _trailer_current
 	_update_lamps()
 	_wreck_clock += delta
 	if _wreck_clock >= WRECK_TIME:
@@ -1368,6 +1460,9 @@ func _tow() -> void:
 		heading = Vector2i(0, 1)
 	_wreck.queue_free()
 	_wreck = null
+	if _trailer_collider:
+		_trailer_collider.queue_free()
+		_trailer_collider = null
 	crashed = false
 	_route_cells.clear()
 	_route_headings.clear()
@@ -1382,7 +1477,6 @@ func _tow() -> void:
 	acceleration_now = 0.0
 	_plan()
 	_place()
-	_last_yaw = global_basis.get_euler().y
 	_snap_body()
 	set_physics_process(true)
 
@@ -1431,7 +1525,6 @@ func drive_into(other: Vehicle) -> void:
 	acceleration_now = 0.0
 	reckless = true
 	_place()
-	_last_yaw = global_basis.get_euler().y
 	_snap_body()
 
 

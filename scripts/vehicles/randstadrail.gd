@@ -14,8 +14,12 @@ func _init() -> void:
 	car_gap = 0.25
 	platform_names = ["perron"]
 	model_lift = 0.0
-	headlight_positions = PackedVector3Array([Vector3(-0.875, 0.75, 5.55), Vector3(0.875, 0.75, 5.55)])
-	headlight_size = Vector3(0.4, 0.2, 0.03)
+	# over the lamp voxels of the tile (across 4-5 and 15-16, height 9, on the front)
+	headlight_positions = PackedVector3Array([Vector3(-0.6875, 1.1875, 5.505), Vector3(0.6875, 1.1875, 5.505)])
+	headlight_size = Vector3(0.25, 0.125, 0.03)
+	# over the red voxels between them
+	rear_lamp_positions = PackedVector3Array([Vector3(-0.3125, 1.1875, -5.505), Vector3(0.3125, 1.1875, -5.505)])
+	tail_light_size = Vector3(0.25, 0.125, 0.03)
 	# where a line branches off it takes the branch: from the street to the viaduct
 	straight_chance = 0.0
 	variety = 0.0

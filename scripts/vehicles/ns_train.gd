@@ -16,8 +16,12 @@ func _init() -> void:
 	car_gap = 0.5
 	platform_names = ["perron"]
 	model_lift = 0.375
-	headlight_positions = PackedVector3Array([Vector3(-1.0, 1.1, 6.55), Vector3(1.0, 1.1, 6.55)])
-	headlight_size = Vector3(0.4, 0.2, 0.03)
+	# over the lamp voxels of the tile (across 4-5 and 16-17, height 9, on the front)
+	headlight_positions = PackedVector3Array([Vector3(-0.75, 1.5625, 6.505), Vector3(0.75, 1.5625, 6.505)])
+	headlight_size = Vector3(0.25, 0.125, 0.03)
+	# over the red voxels between them
+	rear_lamp_positions = PackedVector3Array([Vector3(-0.375, 1.5625, -6.505), Vector3(0.375, 1.5625, -6.505)])
+	tail_light_size = Vector3(0.25, 0.125, 0.03)
 	top_speed_kmh = 80.0
 	corner_speed = 4.0
 	tight_corner_speed = 1.5

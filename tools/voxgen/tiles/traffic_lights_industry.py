@@ -36,12 +36,10 @@ def car_light(stand, height=32, head_z=19):
 
 
 def bike_light(stand):
-    """Lower bicycle traffic light with a bike pictogram on the back board."""
+    """Lower bicycle traffic light: a bicycle in each lens."""
     m = V(8, 4, 24)
     pole(m, 3, 2, 0, 22, "metaal3")
-    light_head(m, 2, 1, 11, stand)
-    for (c, r) in [(0, 0), (2, 0), (1, 1), (0, 2), (2, 2)]:
-        m.set(2 + c, 3, 22 - r, "bord_wit")
+    light_head(m, 1, 1, 9, stand, "fiets")
     return m
 
 
@@ -70,19 +68,26 @@ def pedestrian_light(stand):
     return m
 
 
+# The white lamps of a "negenoog" (column, row of its three by three) that burn per state:
+# stop = a horizontal bar, rijden (go) = a vertical bar, attentie = a triangle.
+NEGENOOG = {
+    "stop": [(0, 1), (1, 1), (2, 1)],
+    "rijden": [(1, 0), (1, 1), (1, 2)],
+    "attentie": [(1, 2), (0, 0), (2, 0)],
+}
+
+
 def transit_light(stand):
-    """Public-transport signal (bus/tram): stop = horizontal bar, rijden (go) = vertical bar,
-    attentie = dot; the bottom dot is always lit."""
+    """Public-transport signal (bus/tram), a Dutch "negenoog": nine small white lamps in a
+    black board, the ones of this state burning."""
     m = V(8, 4, 32)
     pole(m, 3, 2, 0, 30, "metaal3")
-    m.box(1, 1, 19, 7, 3, 30, "bord_zwart")
-    if stand == "stop":
-        m.box(2, 0, 25, 6, 1, 26, "lamp_wit")
-    elif stand == "rijden":
-        m.box(3, 0, 22, 5, 1, 28, "lamp_wit")
-    else:
-        m.box(3, 0, 24, 5, 1, 26, "lamp_wit")
-    m.box(3, 0, 20, 5, 1, 21, "lamp_wit")
+    m.box(1, 1, 20, 8, 3, 30, "bord_zwart")
+    burning = NEGENOOG[stand]
+    for column in range(3):
+        for row in range(3):
+            colour = "lamp_wit" if (column, row) in burning else "metaal_donker"
+            m.set(2 + column * 2, 0, 22 + row * 2, colour)
     return m
 
 

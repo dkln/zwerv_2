@@ -33,6 +33,11 @@ uniform float sheen : hint_range(0.0, 1.0) = 0.0;
 // 0 = the streaks lie still in the world (buildings); 1 = they lie on the object itself,
 // finer (vehicles: on a moving car world streaks would slide over the windows)
 uniform float streaks_on_object : hint_range(0.0, 1.0) = 0.0;
+// vehicles: a faked mirror image of the town, a row of buildings against the sky that slides
+// over the glass as it drives. As if the pane leans back (`pane_lean`): seen from above a
+// straight pane would only mirror the road.
+uniform float passing_surroundings : hint_range(0.0, 1.0) = 0.0;
+uniform float pane_lean = 0.6;
 
 // sky colours come from the day cycle (Project > Shader Globals)
 global uniform vec4 zwervr_sky_top : source_color;
@@ -50,6 +55,30 @@ float hash2(vec2 p) {
 // the building a baked facade detail hangs on (voxel_fade.gdshaderinc)
 varying vec4 fade_owner;
 #endif
+
+// What a leaning vehicle pane mirrors: sky, with buildings of different heights in a row
+// along the mirrored direction, darker and with lit windows at night, and the road below.
+vec3 passing_town(vec3 normal_world, vec3 view_world, vec3 world_position, float height_on_object, float strength) {
+	vec3 mirrored = reflect(-view_world, normalize(normal_world + vec3(0.0, pane_lean, 0.0)));
+	vec3 sky = mix(zwervr_sky_horizon.rgb, zwervr_sky_top.rgb, smoothstep(0.05, 0.7, mirrored.y));
+	vec2 flat_direction = normalize(mirrored.xz + vec2(0.0001));
+	float along_street = dot(world_position.xz, vec2(-flat_direction.y, flat_direction.x)) * 0.6 + atan(mirrored.z, mirrored.x) * 3.0;
+	float building = floor(along_street);
+	float within = fract(along_street);
+	float softness = max(fwidth(along_street) * 1.5, 0.02);
+	float blend = smoothstep(0.0, softness, within);
+	float height_here = mix(hash2(vec2(building - 1.0, 3.7)), hash2(vec2(building, 3.7)), blend);
+	float shade = mix(hash2(vec2(building - 1.0, 9.1)), hash2(vec2(building, 9.1)), blend);
+	float roof_line = mix(0.12, 0.62, height_here);
+	float looked_at = mirrored.y + height_on_object * 0.05;
+	float in_building = 1.0 - smoothstep(roof_line - 0.03, roof_line + 0.03, looked_at);
+	vec3 town = city * mix(0.45, 1.1, shade) * mix(1.0, 0.25, zwervr_night);
+	vec2 window_cell = vec2(along_street * 5.0, looked_at * 34.0);
+	float lit_window = step(0.72, hash2(floor(window_cell))) * zwervr_night;
+	town += vec3(1.0, 0.8, 0.55) * lit_window * 0.55;
+	vec3 mirrored_scene = mix(sky, town, in_building * strength);
+	return mix(city * 0.5, mirrored_scene, smoothstep(-0.25, 0.02, looked_at));
+}
 
 void vertex() {
 #ifdef ZWERVR_FADE
@@ -69,7 +98,11 @@ void fragment() {
 	vec3 v = normalize((INV_VIEW_MATRIX * vec4(VIEW, 0.0)).xyz);
 	vec3 r = reflect(-v, n);
 	vec3 surroundings = mix(zwervr_sky_horizon.rgb, zwervr_sky_top.rgb, smoothstep(0.05, 0.6, r.y));
-	surroundings = mix(city, surroundings, smoothstep(-0.6, 0.08, r.y));
+	if (passing_surroundings > 0.0 && !editor_view()) {
+		surroundings = passing_town(n, v, wpos, object_position.y, passing_surroundings);
+	} else {
+		surroundings = mix(city, surroundings, smoothstep(-0.6, 0.08, r.y));
+	}
 	// diagonal streaks of light that move with the viewing angle
 	vec3 streak_position = streaks_on_object > 0.5 ? object_position * 4.0 : wpos;
 	float streak = smoothstep(0.82, 1.0, sin((streak_position.x + streak_position.z) * 0.9 + streak_position.y * 1.4 + r.x * 3.0) * 0.5 + 0.5);
