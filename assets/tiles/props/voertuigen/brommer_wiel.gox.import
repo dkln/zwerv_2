@@ -13,7 +13,7 @@ dest_files=["res://.godot/imported/brommer_wiel.gox-3030d2e75bd0ac61b2acf11ec300
 
 [params]
 
-voxel_size=0.125
+voxel_size=0.0625
 ambient_occlusion=true
 color_merge=14
 lod_color_tolerance=24

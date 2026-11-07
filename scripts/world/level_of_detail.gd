@@ -67,6 +67,9 @@ signal merge_finished
 ## of all shadows crawl and flicker; a fixed one keeps them still.
 const SHADOW_DISTANCE_SLACK := 1.25
 const MIN_SHADOW_DISTANCE := 60.0
+## Largest share of the shadow distance the first cascade may take (the part before what is
+## in view: a tower close to the camera still gets a shadow).
+const MAX_FIRST_SPLIT := 0.6
 ## Show a loading screen while merging is in progress.
 @export var loading_screen := true
 ## Text of the loading screen.
@@ -88,6 +91,7 @@ var _busy := 0
 var _screen: CanvasLayer
 var _screen_label: Label
 var _screen_bar: GameHud.SegmentBar
+var _screen_crt: ColorRect
 var _progress := {}   # "<layer><suffix>" -> fraction done (0..1) of every merge job
 ## Counts setup()/clear(); a merge that finds it changed belongs to layers that are gone.
 var _generation := 0
@@ -150,6 +154,7 @@ func clear() -> void:
 		_screen = null
 		_screen_label = null
 		_screen_bar = null
+		_screen_crt = null
 	if _busy > 0:
 		_busy = 0
 		merge_finished.emit()
@@ -237,6 +242,16 @@ func _create_loading_screen() -> void:
 	_screen_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(_screen_label)
 	column.add_child(box)
+	# the CRT look of the HUD (scripts/ui/hud.gd) over the loading screen too, with the
+	# HUD's settings when there is one
+	var hud := get_parent().get_node_or_null("HUD")
+	var curvature: float = hud.get("crt_curvature") if hud and hud.get("crt_curvature") != null else 0.05
+	var corner: float = hud.get("crt_corner") if hud and hud.get("crt_corner") != null else 0.035
+	var scanline_strength: float = hud.get("scanline_strength") if hud and hud.get("scanline_strength") != null else 0.1
+	if hud and hud.get("scanlines") == false:
+		scanline_strength = 0.0
+	_screen_crt = GameHud.make_crt_overlay(curvature, corner, scanline_strength, get_viewport().get_visible_rect().size)
+	_screen.add_child(_screen_crt)
 	add_child(_screen)
 	_set_progress("", 0.0)
 
@@ -284,11 +299,16 @@ func _layer_finished() -> void:
 	if _screen:
 		var panel := _screen.get_child(0) as ColorRect
 		var t := create_tween()
+		t.set_parallel(true)
 		t.tween_property(panel, "modulate:a", 0.0, 0.6)
-		t.tween_callback(_screen.queue_free)
+		if _screen_crt:
+			var crt_material := _screen_crt.material as ShaderMaterial
+			t.tween_method(func(value: float) -> void: crt_material.set_shader_parameter("opacity", value), 1.0, 0.0, 0.6)
+		t.chain().tween_callback(_screen.queue_free)
 		_screen = null
 		_screen_label = null
 		_screen_bar = null
+		_screen_crt = null
 
 
 ## Replaces the GridMap rendering of layer `index` (_pairs) with merged meshes for every
@@ -337,9 +357,11 @@ func _merge(index: int, layer_name: String, gm: GridMap) -> void:
 			var loaded := []
 			while ResourceLoader.load_threaded_get_status(cache, loaded) == ResourceLoader.THREAD_LOAD_IN_PROGRESS:
 				_set_progress(job, loaded[0])
+				if not is_inside_tree():
+					break   # the town was left while loading (back to the main menu)
 				await get_tree().process_frame
 			var ps := ResourceLoader.load_threaded_get(cache) as PackedScene
-			if generation != _generation:
+			if not is_inside_tree() or generation != _generation:
 				_drop(result)
 				return
 			if ps:
@@ -436,4 +458,12 @@ func _process(_delta: float) -> void:
 		var needed := maxf(distance + zoom * shadow_factor, MIN_SHADOW_DISTANCE)
 		var current := _sun.directional_shadow_max_distance
 		if needed > current or needed * SHADOW_DISTANCE_SLACK * SHADOW_DISTANCE_SLACK < current:
-			_sun.directional_shadow_max_distance = needed * SHADOW_DISTANCE_SLACK
+			var shadow_distance := needed * SHADOW_DISTANCE_SLACK
+			_sun.directional_shadow_max_distance = shadow_distance
+			# the cascades round what is in view: the camera looks from far off (a narrow
+			# field of view), so the default splits would spend the sharp ones on the empty
+			# air before it and leave the town in the coarsest one (stripes of "shadow acne")
+			var nearest_in_view := clampf((distance - zoom) / shadow_distance, 0.0, MAX_FIRST_SPLIT)
+			_sun.directional_shadow_split_1 = maxf(nearest_in_view, 0.05)
+			_sun.directional_shadow_split_2 = nearest_in_view + (1.0 - nearest_in_view) * 0.25
+			_sun.directional_shadow_split_3 = nearest_in_view + (1.0 - nearest_in_view) * 0.55

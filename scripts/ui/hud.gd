@@ -1,11 +1,13 @@
 class_name GameHud
 extends CanvasLayer
+const UiSounds = preload("res://scripts/ui/ui_sounds.gd")
 ## The game HUD (the "HUD" node of the city scene), in the pixel style of the design
 ## "HUD — open world" (1280 x 720; everything scales with the window, the corners stay in
 ## the corners):
 ## - top left: the player frame (portrait with level badge, name) and the stats as
 ##   segmented pixel bars with an icon each (STATS: gezondheid, uithoudingsvermogen,
-##   honger, overprikkeldheid), set with set_stat(name, value, maximum);
+##   honger, overprikkeldheid), set with set_stat(name, value, maximum), and under them the
+##   experience: a thin bar and "XP 6.420 / 10.000" (set_xp(points, points_for_level));
 ## - top centre: "nieuw gebied ontdekt" with the name of the area, fading in and out
 ##   (show_area);
 ## - top right: a minimap of 200 x 200 (north up, the player arrow in the middle) with the
@@ -21,9 +23,10 @@ extends CanvasLayer
 ##   ("places") within place_near metres, in a box as wide as the minimap over it; entering a
 ##   neighbourhood for the first time shows it as a new area (show_area);
 ## - bottom right: the money in euros (set_money);
-## - a CRT look over the world (not the HUD, which stays straight on top of it): the
-##   picture bulges like a tube, its edges bending in to black rounded corners
-##   (`crt_curvature`), and faint scanlines (`scanlines`).
+## - the pause menu (Escape: the game stands still; VERDER SPELEN, HOOFDMENU, AFSLUITEN);
+## - a CRT look over the whole picture: the world bulges like a tube, its edges bending in
+##   to black rounded corners (`crt_curvature`); the HUD bends with it, but less
+##   (`crt_ui_curvature`), so its corners stay readable; faint scanlines (`scanlines`).
 ## Fonts: Silkscreen, Pixelify Sans and JetBrains Mono (assets/fonts, OFL); Rubik when
 ## one is missing.
 
@@ -48,14 +51,18 @@ const SHADOW_OFFSET := 5.0
 const STATS := {
 	"gezondheid": {"colour": Color("#FF5D73"), "empty": Color("#3A2340"), "segments": 20, "height": 12, "icon": "heart"},
 	"uithoudingsvermogen": {"colour": Color("#8BE36B"), "empty": Color("#22352A"), "segments": 20, "height": 8, "icon": "bolt"},
-	"honger": {"colour": Color("#FFB547"), "empty": Color("#3D2E14"), "segments": 20, "height": 8, "icon": "apple"},
+	"honger": {"colour": Color("#FFB547"), "empty": Color("#3D2E14"), "segments": 20, "height": 8, "icon": "chomp"},
 	"overprikkeldheid": {"colour": Color("#C08BFF"), "empty": Color("#2E2340"), "segments": 20, "height": 8, "icon": "burst"},
 }
+## The experience bar: its colour (teal: the purple of the design is taken by
+## overprikkeldheid) and width (that of the stat rows).
+const XP_COLOUR := Color("#47D6C2")
+const XP_BAR_WIDTH := 240.0
 ## Icons of 7 x 7 pixels ("#" = coloured), drawn at 2 x 2 screen pixels per pixel.
 const PIXEL_ICONS := {
 	"heart": [".##.##.", "#######", "#######", ".#####.", "..###..", "...#...", "......."],
 	"bolt": ["....##.", "...##..", "..##...", ".######", "...##..", "..##...", ".##...."],
-	"apple": ["...#...", "..#....", ".##.##.", "#######", "#######", ".#####.", "..#.#.."],
+	"chomp": ["..###..", ".#####.", "####...", "###....", "####...", ".#####.", "..###.."],
 	"burst": ["#..#..#", ".#.#.#.", "..###..", "#######", "..###..", ".#.#.#.", "#..#..#"],
 	"person": ["..###..", ".#####.", ".#####.", "..###..", ".......", ".#####.", "#######"],
 }
@@ -101,6 +108,12 @@ const EXAMPLE_QUESTS := [
 	set(value):
 		crt_curvature = value
 		_update_crt()
+## How far the HUD bends with it (less than the world, so its corners stay readable;
+## at most crt_curvature).
+@export_range(0.0, 0.2) var crt_ui_curvature := 0.02:
+	set(value):
+		crt_ui_curvature = value
+		_update_crt()
 ## Rounding of the black corners of the tube (share of the screen height).
 @export_range(0.0, 0.1) var crt_corner := 0.035:
 	set(value):
@@ -138,8 +151,11 @@ var _font_pixel_bold: Font   # Silkscreen bold
 var _font_body: Font         # JetBrains Mono
 
 var _root: Control
+var _ui_viewport: SubViewport   # the HUD's own picture (see _build_crt)
 var _player_frame: Control
 var _level_badge: Label
+var _xp_bar: ThinBar
+var _xp_text: Label
 var _name_label: Label
 var _stat_bars := {}         # stat name -> SegmentBar
 var _stat_texts := {}        # stat name -> Label
@@ -168,21 +184,35 @@ var _clock_from_api := false
 
 func _ready() -> void:
 	layer = 10
+	# it keeps running while the game is paused (the pause menu, the CRT picture)
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	_day = start_day
+	_read_menu_settings()
 	_load_fonts()
+	# the HUD is drawn into a picture of its own, which the CRT overlay lays over the world
+	# bent a little less than the world (crt_ui_curvature)
+	_ui_viewport = SubViewport.new()
+	_ui_viewport.name = "HUDBeeld"
+	_ui_viewport.transparent_bg = true
+	_ui_viewport.disable_3d = true
+	_ui_viewport.gui_disable_input = true
+	_ui_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	add_child(_ui_viewport)
 	_root = Control.new()
 	_root.name = "Ontwerp"
 	_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(_root)
+	_ui_viewport.add_child(_root)
 	_build_player_frame()
 	_build_area_banner()
 	_build_minimap()
 	_build_quest_tracker()
 	_build_money()
+	_build_pause_menu()
 	_build_crt()
 	for stat_name in STATS:
 		set_stat(stat_name, 0.0 if stat_name in ["honger", "overprikkeldheid"] else 100.0, 100.0)
 	set_player(player_name, player_level)
+	set_xp(0.0, 1000.0)
 	set_money(0.0)
 	set_quests(EXAMPLE_QUESTS if show_example_quests else [])
 	get_viewport().size_changed.connect(_fit_to_window)
@@ -218,6 +248,15 @@ func set_stat(stat_name: String, value: float, maximum := -1.0) -> void:
 ## The value and maximum of a stat (Vector2).
 func get_stat(stat_name: String) -> Vector2:
 	return _stat_values.get(stat_name, Vector2.ZERO)
+
+
+## The experience: points so far within this level and the points the level takes; the
+## bar fills to their share.
+func set_xp(points: float, points_for_level: float) -> void:
+	var top := maxf(points_for_level, 1.0)
+	var clamped := clampf(points, 0.0, top)
+	_xp_bar.fill = clamped / top
+	_xp_text.text = "XP %s / %s" % [_thousands(roundi(clamped)), _thousands(roundi(top))]
 
 
 func set_player(new_name: String, level: int) -> void:
@@ -423,6 +462,17 @@ func _build_player_frame() -> void:
 		column.add_child(row)
 		_stat_bars[stat_name] = bar
 		_stat_texts[stat_name] = value_text
+	# experience: a thin bar the width of the stats and the points under it, as in the design
+	var experience := VBoxContainer.new()
+	experience.add_theme_constant_override("separation", 5)
+	experience.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_xp_bar = ThinBar.new()
+	_xp_bar.custom_minimum_size = Vector2(XP_BAR_WIDTH, 10)
+	_xp_bar.fill_colour = XP_COLOUR
+	experience.add_child(_xp_bar)
+	_xp_text = _label("XP 0 / 0", _font_pixel, 11)
+	experience.add_child(_xp_text)
+	column.add_child(experience)
 
 
 func _build_area_banner() -> void:
@@ -635,20 +685,167 @@ func _build_money() -> void:
 	_root.add_child(_money_panel)
 
 
-## The CRT overlay: on a canvas layer of its own just under the HUD, it takes the picture
-## so far (the world, the vignette) and draws it again bent like the glass of a tube, with
-## black rounded corners and scanlines; the HUD is drawn over it unbent.
+# ------------------------------------------------------------------ pause menu
+
+## The pause menu (Escape): the game stands still (the tree paused) and a panel in the
+## middle offers these; up/down, Enter, Escape (back to the game) or the mouse.
+const PAUSE_ITEMS := [["VERDER SPELEN", "resume"], ["HOOFDMENU", "menu"], ["AFSLUITEN", "quit"]]
+const MAIN_MENU_SCENE := "res://scenes/hoofdmenu.tscn"
+const PAUSE_WIDTH := 300.0
+
+var _pause_layer: Control
+var _pause_buttons: Array[Button] = []
+var _pause_selected := 0
+
+
+func _build_pause_menu() -> void:
+	_pause_layer = Control.new()
+	_pause_layer.name = "Pauze"
+	_pause_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_pause_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_pause_layer.visible = false
+	_root.add_child(_pause_layer)
+	var dim := ColorRect.new()
+	dim.color = Color(INK, 0.55)
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_pause_layer.add_child(dim)
+	var box := PanelContainer.new()
+	var style := _box_style(Color(INK, 0.94), BORDER, 3)
+	style.content_margin_left = 18
+	style.content_margin_right = 18
+	style.content_margin_top = 16
+	style.content_margin_bottom = 18
+	box.add_theme_stylebox_override("panel", style)
+	box.set_anchors_preset(Control.PRESET_CENTER)
+	box.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	box.grow_vertical = Control.GROW_DIRECTION_BOTH
+	_pause_layer.add_child(box)
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 6)
+	box.add_child(column)
+	var title := _label("— PAUZE —", _font_pixel, 12, ACCENT, 2)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	column.add_child(title)
+	for index in PAUSE_ITEMS.size():
+		var button := Button.new()
+		button.custom_minimum_size = Vector2(PAUSE_WIDTH, 44)
+		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		button.focus_mode = Control.FOCUS_NONE
+		button.add_theme_font_override("font", _font_title_medium)
+		button.add_theme_font_size_override("font_size", 22)
+		button.mouse_entered.connect(func() -> void: _select_pause_item(index))
+		button.pressed.connect(func() -> void: _choose_pause_item(index))
+		column.add_child(button)
+		_pause_buttons.append(button)
+	var keys := _label("[↑↓] KIEZEN   [ENTER] KIES   [ESC] TERUG", _font_pixel, 10, MUTED, 0)
+	keys.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	column.add_child(keys)
+	_select_pause_item(0)
+
+
+func _input(event: InputEvent) -> void:
+	# the HUD's picture takes no input of its own; while the pause menu is open the mouse
+	# is handed to it (the picture has the size of the window)
+	if _pause_layer and _pause_layer.visible and event is InputEventMouse:
+		_ui_viewport.push_input(event)
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed("ui_cancel"):
+		set_paused(not _pause_layer.visible)
+	elif not _pause_layer.visible:
+		return
+	elif event.is_action_pressed("ui_down"):
+		_select_pause_item(posmod(_pause_selected + 1, PAUSE_ITEMS.size()))
+	elif event.is_action_pressed("ui_up"):
+		_select_pause_item(posmod(_pause_selected - 1, PAUSE_ITEMS.size()))
+	elif event.is_action_pressed("ui_accept"):
+		_choose_pause_item(_pause_selected)
+	else:
+		return
+	# HOOFDMENU has taken it out of the tree already
+	if is_inside_tree():
+		get_viewport().set_input_as_handled()
+
+
+## Pauses the game with the pause menu open, or goes on.
+func set_paused(on: bool) -> void:
+	if on != _pause_layer.visible:
+		UiSounds.play(self, "doe" if on else "terug")
+	_pause_layer.visible = on
+	_ui_viewport.gui_disable_input = not on
+	get_tree().paused = on
+	if on:
+		_select_pause_item(0)
+
+
+func _select_pause_item(index: int) -> void:
+	if index != _pause_selected and _pause_layer.visible:
+		UiSounds.play(self, "kies")
+	_pause_selected = index
+	for button_index in _pause_buttons.size():
+		var on := button_index == index
+		var button := _pause_buttons[button_index]
+		var style := StyleBoxFlat.new()
+		style.bg_color = ACCENT if on else Color(0, 0, 0, 0)
+		style.shadow_color = Color.BLACK if on else Color(0, 0, 0, 0)
+		style.shadow_offset = Vector2(4, 4) if on else Vector2.ZERO
+		style.anti_aliasing = false
+		style.content_margin_left = 12
+		for state in ["normal", "hover", "pressed", "focus"]:
+			button.add_theme_stylebox_override(state, style)
+		for colour_name in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
+			button.add_theme_color_override(colour_name, INK if on else TEXT)
+		button.text = ("▶  " if on else "    ") + PAUSE_ITEMS[button_index][0]
+
+
+func _choose_pause_item(index: int) -> void:
+	if PAUSE_ITEMS[index][1] != "resume":   # going on sounds as closing the menu (set_paused)
+		UiSounds.play(self, "doe")
+	match PAUSE_ITEMS[index][1]:
+		"resume":
+			set_paused(false)
+		"menu":
+			get_tree().paused = false
+			get_tree().change_scene_to_file(MAIN_MENU_SCENE)
+		"quit":
+			get_tree().quit()
+
+
+## The CRT overlay: it takes the picture so far (the world, the vignette) and draws it
+## again bent like the glass of a tube, with black rounded corners, lays the HUD's own
+## picture (_ui_viewport) over it bent less (ui_curvature), and puts scanlines over both.
 const CRT_SHADER := """shader_type canvas_item;
 uniform sampler2D screen_texture : hint_screen_texture, filter_linear, repeat_disable;
+uniform sampler2D ui_texture : filter_linear, repeat_disable, hint_default_transparent;
 uniform float curvature = 0.05;
+uniform float ui_curvature = 0.02;
 uniform float corner = 0.035;
 uniform float scanline_strength = 0.1;
 uniform vec2 screen_size = vec2(1280.0, 720.0);
+uniform float opacity = 1.0;
+// a rolling disturbance: a band at this height of the screen (0 top .. 1 bottom; off when
+// outside), shifting the picture sideways a little and lighting it, a dark line above it
+uniform float glitch_y = -1.0;
+uniform float glitch_strength = 1.0;
+// VHS tracking trouble (0 = none .. 1): the lines jump sideways at random, most in a frayed
+// strip at the bottom, the whole picture wobbles, the colours slip apart, noise
+uniform float tracking = 0.0;
 
 void fragment() {
 	// from the middle (-1..1); further out the picture is taken from further out, so the
 	// edges bend in, most at the corners
-	vec2 centred = SCREEN_UV * 2.0 - 1.0;
+	float band = 1.0 - smoothstep(0.0, 0.035, abs(SCREEN_UV.y - glitch_y));
+	float leading_line = 1.0 - smoothstep(0.0, 0.004, abs(SCREEN_UV.y - glitch_y + 0.04));
+	vec2 screen_uv = SCREEN_UV;
+	screen_uv.x += band * glitch_strength * 0.006 * sin(SCREEN_UV.y * 900.0 + TIME * 40.0);
+	// tracking: per pair of screen lines a jump that changes 24 times a second
+	float line_pair = floor(SCREEN_UV.y * screen_size.y * 0.5);
+	float jump = fract(sin(line_pair * 12.9898 + floor(TIME * 24.0) * 78.233) * 43758.5453) - 0.5;
+	float frayed = smoothstep(0.78, 0.97, SCREEN_UV.y) + 0.25 * band;
+	screen_uv.x += tracking * (jump * 0.03 * frayed + 0.0025 * sin(SCREEN_UV.y * 24.0 + TIME * 6.0));
+	vec2 centred = screen_uv * 2.0 - 1.0;
 	vec2 bent = centred * (1.0 + curvature * centred.yx * centred.yx);
 	vec2 uv = bent * 0.5 + 0.5;
 	// the black edge of the tube with rounded corners (in pixels, so round on any window)
@@ -657,15 +854,50 @@ void fragment() {
 	vec2 into_corner = max(pixels + radius, 0.0);
 	float outside = length(into_corner) - radius;
 	float glass = 1.0 - smoothstep(-1.5, 0.5, outside);
-	vec3 picture = texture(screen_texture, clamp(uv, 0.0, 1.0)).rgb;
+	vec3 picture = texture(screen_texture, clamp(uv, 0.0, 1.0)).rgb * glass;
+	// the colours slipping apart in tracking trouble (red one way, blue the other)
+	vec2 slip = vec2(0.004 * tracking, 0.0);
+	picture.r = mix(picture.r, texture(screen_texture, clamp(uv + slip, 0.0, 1.0)).r * glass, step(0.001, tracking));
+	picture.b = mix(picture.b, texture(screen_texture, clamp(uv - slip, 0.0, 1.0)).b * glass, step(0.001, tracking));
+	// the HUD over it, bent less (and never cut off by the black corners)
+	vec2 ui_uv = centred * (1.0 + ui_curvature * centred.yx * centred.yx) * 0.5 + 0.5;
+	vec4 ui = texture(ui_texture, clamp(ui_uv, 0.0, 1.0));
+	float ui_inside = step(0.0, ui_uv.x) * step(ui_uv.x, 1.0) * step(0.0, ui_uv.y) * step(ui_uv.y, 1.0);
+	picture = mix(picture, ui.rgb, ui.a * ui_inside);
 	// one darker line in every three, on the bent picture
 	float line = step(mod(uv.y * screen_size.y, 3.0), 1.0);
 	picture *= 1.0 - scanline_strength * line;
+	// tracking noise, most in the frayed strip
+	float speck = fract(sin(dot(floor(SCREEN_UV * screen_size * 0.5), vec2(12.9898, 78.233)) + floor(TIME * 30.0)) * 43758.5453);
+	picture += vec3(speck - 0.5) * 0.22 * tracking * (0.25 + frayed);
+	// the disturbance: lighter in its band, a dark line running ahead of it
+	picture += vec3(0.07, 0.08, 0.09) * band * glitch_strength;
+	picture *= 1.0 - 0.35 * leading_line * glitch_strength;
 	// a little darker towards the rim, as the glass curves away
 	picture *= 1.0 - 0.18 * smoothstep(0.55, 1.4, length(centred * vec2(0.9, 1.0)));
-	COLOR = vec4(picture * glass, 1.0);
+	COLOR = vec4(picture, opacity);
 }
 """
+
+
+## A full-window CRT overlay of its own (the loading screen): the CRT shader with these
+## settings, without a HUD picture over it; it bends what is drawn before it.
+static func make_crt_overlay(curvature: float, corner: float, scanline_strength: float, screen_size: Vector2) -> ColorRect:
+	var overlay := ColorRect.new()
+	overlay.name = "CRT"
+	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var shader := Shader.new()
+	shader.code = CRT_SHADER
+	var material := ShaderMaterial.new()
+	material.shader = shader
+	material.set_shader_parameter("curvature", curvature)
+	material.set_shader_parameter("ui_curvature", 0.0)
+	material.set_shader_parameter("corner", corner)
+	material.set_shader_parameter("scanline_strength", scanline_strength)
+	material.set_shader_parameter("screen_size", screen_size)
+	overlay.material = material
+	overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	return overlay
 
 
 func _build_crt() -> void:
@@ -679,13 +911,23 @@ func _build_crt() -> void:
 	_crt_overlay.material = material
 	# outside the scaled design: always the whole window, in real screen lines
 	_crt_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
-	var crt_layer := CanvasLayer.new()
-	crt_layer.name = "CRT"
-	crt_layer.layer = layer - 1
-	add_child(crt_layer)
-	crt_layer.add_child(_crt_overlay)
+	material.set_shader_parameter("ui_texture", _ui_viewport.get_texture())
+	add_child(_crt_overlay)
 	_crt_overlay.resized.connect(_update_crt)
 	_update_crt()
+
+
+## The settings of the main menu (MainMenu.SETTINGS_PATH): the CRT look and the scanlines
+## off if the player turned them off there.
+func _read_menu_settings() -> void:
+	var config := ConfigFile.new()
+	if config.load(MainMenu.SETTINGS_PATH) != OK:
+		return
+	if not config.get_value("beeld", "crt", true):
+		crt_curvature = 0.0
+		crt_ui_curvature = 0.0
+	if not config.get_value("beeld", "scanlijnen", true):
+		scanlines = false
 
 
 ## Hands the CRT settings to its shader; off altogether when it would change nothing.
@@ -694,10 +936,11 @@ func _update_crt() -> void:
 		return
 	var material := _crt_overlay.material as ShaderMaterial
 	material.set_shader_parameter("curvature", crt_curvature)
+	material.set_shader_parameter("ui_curvature", minf(crt_ui_curvature, crt_curvature))
 	material.set_shader_parameter("corner", crt_corner if crt_curvature > 0.0 else 0.0)
 	material.set_shader_parameter("scanline_strength", scanline_strength if scanlines else 0.0)
 	material.set_shader_parameter("screen_size", _crt_overlay.size if _crt_overlay.size.x > 0.0 else Vector2(1280, 720))
-	_crt_overlay.visible = crt_curvature > 0.0 or (scanlines and scanline_strength > 0.0)
+	# always drawn: it also lays the HUD's picture over the world
 
 
 # ------------------------------------------------------------------ layout
@@ -706,6 +949,8 @@ func _update_crt() -> void:
 ## in the corners.
 func _fit_to_window() -> void:
 	var window := get_viewport().get_visible_rect().size
+	if _ui_viewport:
+		_ui_viewport.size = Vector2i(window)
 	var factor := minf(window.x / DESIGN_SIZE.x, window.y / DESIGN_SIZE.y)
 	_root.scale = Vector2(factor, factor)
 	_root.size = window / factor
@@ -910,6 +1155,9 @@ static func _street_at(world: Node, cell: Vector2) -> String:
 ## "a12_koningskade" -> "A12 Koningskade".
 static func _place_name(place_key: String) -> String:
 	var words := place_key.split("_", false)
+	# a second one of the same (a supermarket chain: "derrek_3") is just its name
+	if words.size() > 1 and words[-1].is_valid_int():
+		words.resize(words.size() - 1)
 	for index in words.size():
 		var word := words[index]
 		if index > 0 and word in ["van", "de", "het", "en", "der", "den", "op"]:
@@ -992,6 +1240,25 @@ class SegmentBar extends Control:
 		for segment_index in segments:
 			var at := start + Vector2(segment_index * (SEGMENT_WIDTH + GAP), 0.0)
 			draw_rect(Rect2(at, Vector2(SEGMENT_WIDTH, segment_height)), full_colour if segment_index < full else empty_colour)
+
+
+## A thin bar with a border (the experience): filled to `fill` (0..1) in `fill_colour`.
+class ThinBar extends Control:
+	const BORDER_WIDTH := 2.0
+	var fill_colour := Color.WHITE
+	var fill := 0.0:
+		set(value):
+			fill = clampf(value, 0.0, 1.0)
+			queue_redraw()
+
+	func _init() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	func _draw() -> void:
+		draw_rect(Rect2(Vector2.ZERO, size), GameHud.BORDER)
+		var inner := Rect2(Vector2.ONE * BORDER_WIDTH, size - Vector2.ONE * 2.0 * BORDER_WIDTH)
+		draw_rect(inner, GameHud.INK)
+		draw_rect(Rect2(inner.position, Vector2(inner.size.x * fill, inner.size.y)), fill_colour)
 
 
 ## A quest step's box: filled grey when done, else an open square.

@@ -13,7 +13,7 @@ trunk, crown_clusters, deciduous_tree, bicycle and the re-exported PICTO table.
 import math
 
 from common import register, tile, PICTO, text_pixels
-from palette import P
+from palette import P, lit_colour
 from vox import V, mix, pick, h
 
 POLE_COLOR = "metaal2"
@@ -1032,6 +1032,44 @@ register("props/borden/snelweg_bord_anwb_den_haag_centrum", lambda: anwb_roadsid
     [[("afrit", "3")], [("tekst", "DEN HAAG")], [("tekst", "CENTRUM")], [("pijl_schuin",)]]))
 register("props/borden/snelweg_bord_anwb_rotterdam_utrecht", lambda: anwb_roadside(
     [[("a", "A4"), ("tekst", "ROTTERDAM")], [("a", "A12"), ("tekst", "UTRECHT")]]))
+
+
+def station_name_board(lines, scale, bottom=18):
+    """Free-standing station name board in Dutch railway style for a platform: a dark blue
+    board with a white rim on two galvanised posts, its bottom ``bottom`` voxels up, with
+    the name in ``lines`` (centred, ``scale`` voxels per font pixel) in white capitals that
+    glow at night, on the front (y=0) and, mirrored to read right, on the back (y=3).
+    Pivot: the middle between the posts at their foot."""
+    rendered = [text_pixels(line) for line in lines]
+    margin = 3
+    text_width = max(width for _, (width, _) in rendered) * scale
+    width = text_width + 2 * margin
+    width += width % 2
+    height = 2 * margin + (len(lines) * 6 - 1) * scale
+    m = V(width, 4, bottom + height)
+    for x in (4, width - 6):
+        pole(m, x, 1, 0, bottom + height - 1, "gegalvaniseerd")
+    for y in (1, 2):
+        for x in range(width):
+            for z in range(bottom, bottom + height):
+                edge = x in (0, width - 1) or z in (bottom, bottom + height - 1)
+                m.set(x, y, z, "bord_wit" if edge else "bord_blauw2")
+    letter = lit_colour("bord_wit")
+    for line_index, (pixels, (line_width, _)) in enumerate(rendered):
+        left = (width - line_width * scale) // 2
+        top = bottom + height - margin - line_index * 6 * scale
+        for column, row in pixels:
+            for dx in range(scale):
+                for dz in range(scale):
+                    x = left + column * scale + dx
+                    z = top - (row + 1) * scale + dz
+                    m.set(x, 0, z, letter)
+                    m.set(width - 1 - x, 3, z, letter)
+    return m
+
+
+register("props/borden/stationsbord_laan_van_noi", lambda: station_name_board(["DEN HAAG", "LAAN V NOI"], 1))
+register("props/borden/stationsbord_voorburg", lambda: station_name_board(["VOORBURG"], 2))
 
 
 @tile("props/borden/bord_afrit")

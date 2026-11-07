@@ -13,7 +13,7 @@ dest_files=["res://.godot/imported/fatbike.gox-b57ddc395be1837798b3e3f3e42b1476.
 
 [params]
 
-voxel_size=0.125
+voxel_size=0.0625
 ambient_occlusion=true
 color_merge=14
 lod_color_tolerance=24

@@ -67,10 +67,6 @@ func block(x0: int, z0: int, w: int, d: int, style: String, floors: int, opts :=
 	var upper_corner: String = opts.get("upper_corner", "verd_raam_hoek")
 	var roof: String = opts.get("roof", "flat")
 	var roof_extra: Array = opts.get("roof_extra", [])
-	# a sloped roof without variants of its own still gets chimneys (houses without one
-	# look bare), where the style has them
-	if roof == "sloped" and roof_extra.is_empty() and _has(p + "dak_schuin_schoorsteen"):
-		roof_extra = ["dak_schuin_schoorsteen"]
 	var top: String = opts.get("top", "")
 	var y0: int = opts.get("y0", 0)
 	var gap: Array = opts.get("gap", [])
@@ -118,12 +114,9 @@ func block(x0: int, z0: int, w: int, d: int, style: String, floors: int, opts :=
 				"sloped":
 					if sides.size() == 1:
 						var nm := "dak_schuin"
-						# roughly one in three edge cells gets a variant (dormer, chimney, ...),
-						# and of the rest one in five a chimney all the same
+						# roughly one in three edge cells gets a variant (dormer, chimney, ...)
 						if roof_extra.size() > 0 and _r(x, z * 3, 3) == 0:
 							nm = roof_extra[_r(x, z, roof_extra.size())]
-						elif _r(x * 5, z, 5) == 0 and _has(p + "dak_schuin_schoorsteen"):
-							nm = "dak_schuin_schoorsteen"
 						B(x, yd, z, p + nm, sides[0])
 					elif _corner_pair(sides, front) != "":
 						B(x, yd, z, p + "dak_schuin_hoek_buiten", CORNER[_corner_pair(sides, front)])

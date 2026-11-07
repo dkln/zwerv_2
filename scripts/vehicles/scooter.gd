@@ -1,7 +1,7 @@
 class_name Scooter
 extends Vehicle
 ## A 45 km/h scooter with its rider (props/voertuigen/scooter, also _zwart;
-## tools/voxgen/tiles/small_vehicles.py, 1.75 m long) on two small wheels (klein_wiel). A
+## tools/voxgen/tiles/two_wheelers.py, 1.75 m long, 6 cm voxels) on two small wheels (klein_wiel). A
 ## "brommer": on the road and on the cycle paths that allow mopeds.
 
 
@@ -13,12 +13,14 @@ func _init() -> void:
 	wheel_positions = PackedVector3Array([Vector3(0.0, 0.25, 0.625), Vector3(0.0, 0.25, -0.625)])
 	wheel_radius = 0.25
 	max_steering_degrees = 15.0
-	headlight_positions = PackedVector3Array([Vector3(0.0, 1.0625, 0.64)])
-	headlight_size = Vector3(0.14, 0.14, 0.03)
-	tail_light_positions = PackedVector3Array([Vector3(0.0, 0.6875, -0.89)])
-	tail_light_size = Vector3(0.14, 0.14, 0.03)
+	headlight_positions = PackedVector3Array([Vector3(0.0, 1.0938, 0.5)])
+	headlight_size = Vector3(0.19, 0.07, 0.03)
+	tail_light_positions = PackedVector3Array([Vector3(0.0, 0.5625, -0.875)])
+	tail_light_size = Vector3(0.19, 0.13, 0.03)
 	vehicle_kind = "brommer"
 	top_speed_kmh = 45.0
+	leans = true
+	max_lean_degrees = 22.0
 	corner_speed = 4.0
 	tight_corner_speed = 2.8
 	wheel_torque = 76.0

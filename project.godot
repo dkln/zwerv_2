@@ -12,7 +12,7 @@ config_version=5
 
 config/name="Zwervr"
 config/description="Tile-gebaseerde wereldbouwer met MagicaVoxel tiles."
-run/main_scene="res://scenes/stad.tscn"
+run/main_scene="res://scenes/intro.tscn"
 config/features=PackedStringArray("4.7", "Forward Plus")
 
 [editor_plugins]
@@ -58,8 +58,8 @@ cam_omlaag={
 
 [rendering]
 
-lights_and_shadows/directional_shadow/size=2048
-lights_and_shadows/directional_shadow/soft_shadow_filter_quality=0
+lights_and_shadows/directional_shadow/size=4096
+lights_and_shadows/directional_shadow/soft_shadow_filter_quality=1
 driver/depth_prepass/enable=false
 environment/ssao/quality=1
 anti_aliasing/quality/use_debanding=true

@@ -13,7 +13,7 @@ dest_files=["res://.godot/imported/fiets_wiel.gox-dd3496fb070a505e54d0c2f6db1396
 
 [params]
 
-voxel_size=0.125
+voxel_size=0.0625
 ambient_occlusion=true
 color_merge=14
 lod_color_tolerance=24

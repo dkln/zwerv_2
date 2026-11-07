@@ -142,10 +142,18 @@ verspreid over het wegennet (`spacing`, `traffic_seed`, de mix in `MIX`), en daa
 | `microcar.gd` (gehandicaptenauto/brommobiel, 45 km/h) | `gehandicaptenauto`, `_blauw` + `klein_wiel` | 2,5 m | 450 kg | 135 Nm |
 | `tractor.gd` (trekker, 25 km/h) | `trekker`, `_rood` + `tractor_wiel` (achter) en `auto_wiel` (voor) | 3,75 m | 4500 kg | 2250 Nm |
 
-Fietsers, de fatbike, brommer en scooter (`tools/voxgen/tiles/small_vehicles.py`) zijn één model met
-de berijder erop (een eenvoudig voxelpoppetje, op brommer, scooter en motor met helm); de wielen
-zitten er los onder zoals bij de auto's. Ze hebben een andere `vehicle_kind`: `fiets` (fietser,
-fatbike) en `brommer` (brommer, scooter) mogen ook over de fietspaden die dat toestaan
+De tweewielers (fietser, fatbike, brommer, scooter, motorfiets; `tools/voxgen/tiles/two_wheelers.py`)
+zijn één model met de berijder erop, met voxels van 6,25 cm in plaats van 12,5 cm: de import-optie
+`voxel_size` = 0,0625 in hun `<naam>.gox.import` (lijst `FINE_TILES`, ook `fiets_wiel` en
+`brommer_wiel`; een nieuwe `.import` krijgt eerst de standaard 0,125, zet hem dan weer op 0,0625).
+De berijder heeft een hoofd met ogen en haar of een helm (open of integraal met vizier), armen
+tot de handen op de handvatten, benen op de trappers of steunen, schoenen, riem, rits en kraag;
+de fietsen dunne buizen, zadel, spatborden, kettingkast, bagagedrager en lampen. Materialen:
+frames, tanks, kappen en helmen gelakt (`painted`: `lak_*`, `bord_*`), chroom en staal `metal`
+(`rvs`, `metaal*`), banden, zadels, zitjes, kleding, huid en haar mat (`opaque`: `rubber`,
+`fiets_zadel`, `auto_interieur`, `stof*`, `gordijn*`), vizier `glass` (`glas2`), lampen en
+reflectoren `emit` (`lamp_wit`, `signaal_rood`). Ze hebben een andere `vehicle_kind`: `fiets`
+(fietser, fatbike) en `brommer` (brommer, scooter) mogen ook over de fietspaden die dat toestaan
 (`RoadNetwork.allows`); motor en brommobiel zijn `auto`. Het voorwiel stuurt maar weinig
 (`max_steering_degrees` 15), fietsen hebben geen remlicht en richtingaanwijzers.
 De trekker heeft grote achterwielen (`wheel_model`/`wheel_radius` van `Vehicle`) en kleinere
@@ -154,7 +162,7 @@ krijgen; die rollen in hun eigen tempo).
 
 Hulpdiensten (`emergency`: politie, ME, ambulance, brandweer; modellen in
 `tools/voxgen/tiles/emergency_vehicles.py`, met de Nederlandse striping en een lichtbalk) hebben
-een sirene (zonder geluid: de game heeft geen audio) en blauwe zwaailichten (`beacon_positions`: links en rechts om beurten, met een blauw
+een sirene (zonder geluid; de enige audio is de muziek van intro en menu en de menugeluiden) en blauwe zwaailichten (`beacon_positions`: links en rechts om beurten, met een blauw
 licht op de omgeving). Ze gaan vanzelf aan en uit (`siren_duty`, `SIREN_ON_SECONDS`,
 `SIREN_OFF_SECONDS`), met `set_siren`/`toggle_siren`, of met S terwijl de volgcamera het voertuig
 volgt. Met de sirene aan (`has_priority`) rijdt het `EMERGENCY_SPEED_FACTOR` (1,4×) de limiet,
@@ -220,6 +228,11 @@ Allemaal zijn het een `Vehicle` (`scripts/vehicles/vehicle.gd`):
 - Test op door elkaar heen rijden: `tools/godot.sh --headless --script
   tools/check/overlap_test.gd -- 300` meldt elke overlap van twee rijdende carrosserieën met de
   situatie erbij (`TRACE=Verkeer4,Verkeer9` volgt ook voertuigen per halve seconde).
+- Bochten: alle bochtsnelheden (`corner_speed`, `tight_corner_speed` per type) keer
+  `CORNER_SPEED_FACTOR` (1,6), zodat de verhoudingen tussen de typen blijven.
+- Tweewielers (`leans`: motor, brommer, scooter, fiets, fatbike) hellen de bocht in, zo ver als
+  snelheid en bocht vragen (`atan(v · draaisnelheid / g)`, hooguit `max_lean_degrees`: motor 28°,
+  brommer en scooter 22°, fietsen 15°), geleidelijk (`LEAN_RATE`).
 - De voorwielen sturen hooguit 40° (`max_steering_degrees`): een wiel steekt dan wat uit de
   wielkast, net als bij een echte auto.
 Druk op F en de camera volgt de sedan (node `Volgcamera`, `scripts/camera/follow_camera.gd`). Die jaagt de
@@ -393,7 +406,105 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
   `tools/godot.sh --script tools/shots/shot_vehicles.gd -- <uit.png> [1|-1] [nummer]`.
 - Test van al het verkeer samen (botsingen, vaststaan, rekentijd):
   `tools/godot.sh --headless --script tools/check/traffic_test.gd -- 300`
+- Intro (startscène `scenes/intro.tscn`, `scripts/ui/intro.gd`): op zwart een teal regel ("Niet
+  zo lang geleden, kortgeleden, recent en laatst…", `OPENING_LINE`), dan met een klap sterren en
+  het logo ZWERVR in grote amberkleurige omlijnde letters dat even blijft staan (`LOGO_HOLD`) en dan langzaam de diepte in krimpt, dan
+  het verhaal (`STORY`) dat in amber schuin wegrolt de verte in (op de muziek, `CRAWL_CUES`; de tekst
+  in een eigen SubViewport, door een shader in perspectief gelegd), dan het hoofdmenu
+  (al op de achtergrond geladen): het beeld fadet in 1,4 s naar zwart met een trackingstoring
+  (`FADE_TO_MENU`) en het menu komt daar in 2 s uit omhoog (`UP_FROM_BLACK`), terwijl de
+  muziek van intro naar menu overvloeit. Alleen de spatiebalk breekt hem af en gaat naar het
+  hoofdmenu (andere toetsen, zoals de volumetoetsen, en de muis doen niets). Linksonder staat, zoals de actieknop in het ontwerp, "SPATIE · Intro
+  overslaan". De sterren fonkelen. Muziek: `assets/audio/muziek/intro.mp3`; de intro loopt op die
+  muziek (de klok is waar de muziek is): het logo fadet in van 6 tot 8 s, heel groot, bijna buiten
+  beeld, en krimpt langzaam naar zijn normale formaat tot de eerste grote inzet (16,0 s):
+  daar wijkt het in 2,5 s de diepte in en fadet het daarbij uit (`LOGO_SECONDS`), en komt de
+  tekst op, de
+  zwerver op de tweede (63,9 s), zijn vragen direct na de stilte (111,5 s), de slotzin op het
+  rustige slot (142,2 s), het menu waar de muziek uitfadet (172,5 s; `LINE_IN_AT` …
+  `END_AT`, `CRAWL_CUES`). Bij het einde of overslaan loopt de muziek door in het menu en
+  fadet daar in 2 s uit, terwijl de menumuziek infadet. Met het CRT-beeld en dezelfde storingen als het menu
+  (rollende band, VHS-tracking; `CrtDisturbance`). De hele intro duurt zo lang als de muziek: 172,5 s. Test: `tools/check/intro_test.gd` (met `-- volledig`:
+  de hele intro, met de gemeten duur).
+- Hoofdmenu (`scenes/hoofdmenu.tscn`, `scripts/ui/main_menu.gd`), naar het ontwerp
+  "Titelscherm" in de HUD-stijl: titel ZWERVR, menu (VERDERGAAN en LADEN uitgegrijsd tot er
+  opslag is; NIEUW SPEL toont "LADEN…" en opent de stad (op de hoofdthread: op een achtergrondthread crashte het met het LOD-systeem; daarna het laadscherm van de stad);
+  INSTELLINGEN: CRT-beeld en scanlijnen aan/uit in `user://instellingen.cfg`, die de HUD ook
+  leest; CREDITS; AFSLUITEN), pijltjes/Enter/Esc of de muis, en het CRT-beeld. Erachter het
+  kleine 3D-kaartje (meteen staat er de nachtkleur; het kaartje laadt op de achtergrond en
+  vloeit er in 1,5 s overheen). Zon en maan, gloeiende schijven met een zachte gloed ver weg,
+  gaan met de snelle menudag mee: de zon van opkomst tot ondergang, de maan door de nacht,
+  elk links op, in een boog over het beeld en rechts onder (`sky_arc_left`, `sky_arc_right`,
+  `sky_arc_highest` op `Menu`); de zon in de kleur van het zonlicht. De camera staat op 6 m. De tijd gaat in het menu snel (`MENU_HOURS_PER_SECOND` 0,4:
+  een dag in een minuut, vanaf `MENU_START_HOUR` 21:30), en om de 20 tot 40 s rijdt een
+  RandstadRail-tram door het beeld, op twee lijnen: op de voorgrond en vlak voor de gebouwen
+  achterin (`Tramlijn1`, `Tramlijn2`, gebakken door de tool; `TRAM_EVERY`, `TRAM_SPEED`). Over het gras achter het water komen af en toe colonnes langs
+  (`COLUMN_KINDS`): boze boeren met 6 tot 12 trekkers (groen en rood, hobbelend; om de 20 tot 35 s,
+  de eerste na een paar seconden) op weg naar het Malieveld, en de politie: een politieauto
+  met ME-busjes erachter, blauwe zwaailichten knipperend met hun blauwe licht op de omgeving
+  (om de 15 tot 30 s, de eerste zo'n 5 s na het openen); ze beginnen net buiten beeld. Ze rijden
+  op twee stroken; af en toe (`CRASH_CHANCE`) komt de politie de trekkers tegemoet op hun
+  strook en botsen ze: de voertuigen worden wrakken (RigidBody3D met een box-collider ter grootte
+  van het voertuig, hun massa en snelheid, een sprong en een draai) die over het gras (een
+  vloer-collider) stuiteren, met scherven en stof; wat erachter rijdt en een wrak raakt,
+  botst ook; na `WRECK_SECONDS` verdwijnen ze (`Trekkers` en `Politie` in het kaartje). De voorgrond tot Centraal is grasland
+  (grastiles in de grove `_lod2`-versie, met wuivende grasplukjes van de grassprieten-shader in
+  drie banden naar afstand, over de hele strook; de voorste strook, van de camera tot zo'n
+  65 m, is water met reflectie en een oever aan de overkant, `DITCH_ROWS`; alleen gewoon water,
+  met hogere golven, meer glinstering en een spiegeling die tot de skyline reikt: `MENU_WATER`), de zon heeft schaduw tot 900 m. Achter de skyline staan, bewust
+  niet op hun echte plek, de Malietoren, de toren van de Grote Kerk, de Paulussen-schoorsteen en
+  Paleis Huis ten Bosch (`TRANSPLANTS`), en het Strijkijzer en de woontoren in Laak
+  (`LANDMARK_AREAS`). Het kaartje wordt al tijdens de intro
+  geladen, zodat het menu er meteen mee opent: een stuk van de stad rond Centraal 's nachts, met een lage camera ver weg
+  (de skyline van het ontwerp), die langzaam heen en weer glijdt (exports op de node `Menu`:
+  `pan_speed` 2,5 m/s: de camera glijdt eindeloos opzij; het kaartje herhaalt zich over een
+  strook van 356 m, kolommen `STRIP_FIRST_COLUMN`..`STRIP_LAST_COLUMN`, metadata `periode`, het
+  menu legt kopieën links en rechts en de camera springt na een periode ongemerkt terug). Je past de bron aan:
+  `scenes/menu_kaart_bron.tscn` (gewone GridMaps, camera, licht). Het menu toont de gebakken
+  versie `scenes/menu_kaart.scn` (vaste meshes, de details zoals borden samen met de gebouwen
+  gebakken zoals in de stad, zonder de props die je van die afstand niet ziet, materialen in de
+  scène zelf; 23:45, zomernacht), zodat het menu de
+  enorme tilebibliotheken van de stad niet laadt; met die bibliotheken in het menu crashte Godot
+  bij het openen van de stad. Na het aanpassen van de bron opnieuw bakken met
+  `tools/godot.sh --headless --script tools/build/build_menu_map.gd` (de bron opnieuw uit de
+  stad maken, je aanpassingen weg: `-- overschrijf`). De shaderkaarten die TintKaart en
+  GrondKaart in de stad uit de GridMaps maken (kleurvariatie per cel, soorten grond voor gras,
+  reliëf en randen) rekent de tool bij het bakken uit en bewaart ze in het kaartje (node
+  `Shaderkaarten`, `scripts/world/baked_shader_maps.gd`), want daar zijn geen GridMaps meer. Pauze in het spel: Esc (VERDER SPELEN,
+  HOOFDMENU, AFSLUITEN; `GameHud.set_paused`).
+  Bij aankomst komt het menu binnen: de titel schuift met een fade van links in, de knoppen
+  volgen een voor een, dan de voettekst; het beeld verliest even zijn tracking alsof de band
+  start (`_play_entrance`, `ENTRANCE_*`). Het menu werkt meteen. Bij NIEUW SPEL gaat het
+  omgekeerd (`_play_exit`): de knoppen faden weg, de titel schuift naar links uit beeld, alles
+  vervaagt naar inktblauw met een sterke trackingstoring, en het laadscherm van de stad (ook
+  inktblauw) neemt het over.
+  Muziek: `assets/audio/muziek/menu.mp3`, heel en in een lus, die bij het openen in 2,5 s infadet en
+  bij het verlaten (NIEUW SPEL, AFSLUITEN) in 2 s uitfadet, ook als de stad al opent
+  (`MUSIC`, `MUSIC_VOLUME_DB`, `MUSIC_FADE_IN`, `MUSIC_FADE_OUT`).
+  Geluidseffecten (`scripts/ui/ui_sounds.gd`, `UiSounds.play(node, naam)`, in code gemaakt in
+  de stijl van de FM-geluidschip van een 16-bit console: twee-operator-FM, snelle
+  toonhoogtesweeps, 6-bit korrel; geen samples): `kies` (ander item kiezen: twee snelle heldere
+  oplopende noten), `doe` (een item uitvoeren, een menu in, intro overslaan: snelle oplopende arpeggio van een
+  majeurakkoord, de laatste noot klinkt na),
+  `terug` (terug of een menu verlaten: twee zachtere dalende noten); in het hoofdmenu, het pauzemenu
+  en de intro.
+  Om de 6 tot 16 s stoort het beeld even: een lichte band rolt in 0,7 s van boven naar beneden
+  over het scherm, het beeld verspringt daarin een fractie opzij (`glitch_y`,
+  `glitch_strength` van de CRT-shader; `every`, `roll_seconds` in `scripts/ui/crt_disturbance.gd`,
+  dat het menu en de intro allebei gebruiken). Bij
+  ongeveer de helft verliest de "band" ook zijn tracking, zoals een VHS-band: beeldlijnen
+  springen opzij (het meest in een rafelige strook onderaan), het beeld golft, de kleuren
+  schuiven uit elkaar en er komt ruis (`tracking` van de shader; `tracking_chance`,
+  `tracking_seconds`).
+  Test: `tools/godot.sh --headless --script tools/check/menu_test.gd`.
 - Test van de richtingen per tile: `tools/godot.sh --headless --script tools/check/lane_choice_test.gd`
+- Stukken die in elkaar staan (muren door muren, knipperende vlakken): `tools/godot.sh --headless
+  --script tools/check/clash_test.gd -- 60` geeft per paar tiles hoe vaak hun meshboxen door
+  elkaar of in één vlak liggen (stukken van één gebouw naast elkaar tellen niet), met plekken.
+  Grof (boxen, geen echte vlakken): gebruik het om plekken te vinden. De bouwer ruimt het
+  meeste zelf op: hoekstukken die tegen een ander gebouw staan worden recht
+  (`_straighten_hidden_corners`), balkons naast een viaduct vlak (`_flatten_facades_by_viaducts`)
+  en bomen die in een gevel groeien gaan weg (`_remove_trees_in_buildings`).
 - Test: `tools/godot.sh --headless --script tools/check/drive_test.gd -- 300`
   (optioneel startcel en richting, bv. `-- 300 70 24 1 0` voor de A12). De test meldt
   of de auto ergens naast de weg rijdt, boven of onder het wegdek zit, te hard gaat of
@@ -822,8 +933,9 @@ Generator-bestanden (`tools/voxgen/`):
   - `details.py`, `details_extra.py`   gevel- en dakonderdelen, zonwering, teksten, vlaggen
   - `props.py`, `props_extra.py`   straatmeubilair, borden (RVV), bomen, planten,
     hekken, muurtjes, speeltuin, terras, zwembad, containers, steigers
-  - `small_vehicles.py`   fietsers, fatbike, brommer, scooter, motorfiets, brommobiel en
-    trekker met hun wielen
+  - `small_vehicles.py`   brommobiel en trekker met hun wielen
+  - `two_wheelers.py`   fietsers, fatbike, brommer, scooter en motorfiets met berijder, in
+    voxels van 6,25 cm (import-optie `voxel_size`)
   - `tram_tunnel.py`   tramtunnel, tramhelling naar de tunnel, ondergrondse halte, tram in
     een klinkerbocht en brugdekken met een opening voor trappen
   - `extras_business_paths.py`, `extras_shops_lanes.py`, `traffic_lights_industry.py`
@@ -953,12 +1065,21 @@ Prestaties en uiterlijk
   dichte buurcel liggen en alle onderkanten vallen daarbij weg. De importer
   groepeert de driehoeken daarvoor per celzijde (import-optie `cell_block`: 4x3x4 voor
   gebouwen, 4x1,5x4 voor grond). Tot het samenvoegen klaar is, staat er een laadscherm
-  (export `loading_screen`); het resultaat wordt bewaard in `user://merged/`, zodat de
+  (export `loading_screen`; in de stijl van de HUD: inktblauw, "ZWERVR", een blokjesbalk met
+  percentage, en hetzelfde CRT-beeld met de instellingen van de HUD, `GameHud.make_crt_overlay`,
+  dat met het scherm mee uitfadet); het resultaat wordt bewaard in `user://merged/`, zodat de
   volgende keer direct klaar is (zolang de kaart en de tiles niet veranderen).
   Je bewerkt gewoon de GridMaps; botsingen blijven daar ook. Tiles met een vlag
   blijven losse meshes (de vlag-shader rekent in lokale coördinaten).
 - `Dagcyclus` (`scripts/effects/day_cycle.gd`): basis voor dag en nacht (`time_of_day`,
-  `speed`). De zon komt schuin van opzij (oost tot zuidoost, gezien vanuit de
+  start 13:00; `speed` 0,08 uur per seconde: een dag duurt 5 minuten, 0 = stilstaan; een
+  Nederlandse zomerdag: zon op `SUNRISE` 5:30, onder `SUNSET` 22:00, blauw uur tot ruim tien,
+  pas rond half twaalf echt donker). De tijd
+  loopt en zon, vullicht, omgevingslicht, lucht en de shader-global `zwervr_night` (verlichte
+  ramen, lampen, borden, koplampen) volgen hem, met de kleuren van het moment (`DAY_COLOURS`:
+  blauw uur, roodoranje zonsopkomst, gouden uren, wit middaglicht, rode zonsondergang onder
+  violet, diepblauwe nacht met maanlicht; ertussen vloeiend gemengd); dat wordt elke `APPLY_STEP_HOURS` (0,02 uur)
+  bijgewerkt, niet elk frame, omdat de lucht bij elke kleurwijziging opnieuw wordt gebakken. De zon komt schuin van opzij (oost tot zuidoost, gezien vanuit de
   isometrische camera), zodat de schaduwen in beeld vallen en de gevels licht
   houden, en blijft tussen `min_elevation` (36°) en `max_elevation` (44°) hoog: geen
   lange schaduwen. Alle licht is realtime.
@@ -1043,6 +1164,7 @@ Prestaties en uiterlijk
   - Linksboven: portret met niveau (`set_player(naam, niveau)`) en de stats als blokjesbalken
     met eigen icoon en kleur: `gezondheid`, `uithoudingsvermogen`, `honger`,
     `overprikkeldheid` (`set_stat(naam, waarde, maximum)`, `get_stat`; nieuwe stats in `STATS`).
+    Daaronder de ervaring: een dunne balk (teal) met "XP 6.420 / 10.000" (`set_xp(punten, punten_voor_niveau)`).
   - Midden boven: "nieuw gebied ontdekt" met de naam, in- en uitfaden (`show_area(naam)`).
   - Rechtsboven: kaartje van 200 x 200, noord boven, pijl in het midden (de gevolgde auto van
     de `Volgcamera`, anders het punt waar de camera naar kijkt). Geen extra camera: één
@@ -1057,10 +1179,12 @@ Prestaties en uiterlijk
     De bouwer zet de wijken (`WIJKEN`) en straten (`STRATEN`, in cellen, met de stoep ernaast)
     als scènemetadata `wijken` en `straten` in `build_city.gd`; plekken komen uit `places`. Kom
     je voor het eerst in een wijk, dan meldt de HUD die als nieuw gebied (`show_area`).
-  - CRT-beeld over de wereld (een eigen CanvasLayer `CRT` net onder de HUD; de HUD zelf blijft recht):
-    het beeld bolt als een beeldbuis en de randen buigen naar binnen naar zwarte, afgeronde
-    hoeken (`crt_curvature` 0,05, `crt_corner` 0,035; 0 = plat), met scanlijnen
-    (`scanlines`, standaard aan, `scanline_strength` 0,1) en de rand iets donkerder.
+  - CRT-beeld over het hele beeld: de wereld bolt als een beeldbuis en de randen buigen naar
+    zwarte, afgeronde hoeken (`crt_curvature` 0,05, `crt_corner` 0,035). De HUD wordt eerst in
+    een eigen SubViewport (`HUDBeeld`) getekend en buigt in dezelfde shader mee, maar minder
+    (`crt_ui_curvature` 0,02), zodat de hoeken leesbaar blijven; de zwarte hoeken snijden de HUD
+    niet af. Scanlijnen (`scanlines`, `scanline_strength` 0,1) en een iets donkerdere rand
+    liggen over beide.
   Test: `tools/godot.sh --headless --script tools/check/hud_test.gd`.
 - Lettertype: Rubik (`assets/fonts/Rubik.ttf`, OFL-licentie), ingesteld als
   projectfont.

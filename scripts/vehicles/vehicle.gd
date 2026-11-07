@@ -151,6 +151,10 @@ const CROSSING_LOOKAHEAD := 4
 ## radius, each rolling at its own rate; "" / 0 = the same as the others.
 @export var front_wheel_model := ""
 @export var front_wheel_radius := 0.0
+## Two wheels: it leans into a corner as far as its speed and the sharpness of the corner
+## ask (the angle whose tangent is the sideways acceleration over gravity), at most this.
+@export var leans := false
+@export var max_lean_degrees := 25.0
 ## Largest steering angle of the front wheels (degrees); 0 = they don't steer.
 @export var max_steering_degrees := 40.0
 ## How quickly the steering follows the corner (1/s).
@@ -317,6 +321,12 @@ const CORNER_ROUNDING_EXTRA := 1.0
 const PLAN_MARGIN := 16.0
 ## Cells forward over which it moves over into the lane alongside, longest first.
 const MOVE_OVER_CELLS := [3, 2, 1]
+## How fast a two-wheeler takes up its lean (1/s), and gravity for it (m/s²).
+const LEAN_RATE := 5.0
+const GRAVITY := 9.81
+## All corner speeds (corner_speed, tight_corner_speed of each type) times this: the types
+## keep their order (a bus slower than a car), the whole town a little quicker round them.
+const CORNER_SPEED_FACTOR := 1.6
 ## Metres before the centre of a corner cell from which it keeps to its corner speed, and
 ## after it until it drives on.
 const CORNER_REACH := 2.0
@@ -400,6 +410,8 @@ var _front_axle_spot := Vector2.ZERO # where they are now in the world (x, z)
 var _rear_axle_spot := Vector2.ZERO
 var _front_axle_motion := Vector2.ZERO  # how far the front axle moved in the last step
 var _corner_rounding := CORNER_ROUNDING_LEAST  # metres, see the constant
+var _lean := 0.0                     # radians a two-wheeler leans (left > 0)
+var _last_yaw := 0.0                 # its heading at the last step
 var _corner_lead := CORNER_REACH     # metres before a corner from which it keeps to its corner speed
 var _cells_kept_behind := 1          # planned cells it keeps behind it (a long one: more)
 ## The trailer: its body (placed like _body), the point of the road under its axle, what
@@ -1225,7 +1237,8 @@ func _target_speed(delta: float) -> float:
 			continue
 		var tight := (corner_index < last and _route_headings[corner_index] != _route_headings[corner_index + 1]) \
 				or (corner_index >= 2 and _route_headings[corner_index - 2] != _route_headings[corner_index - 1])
-		target = minf(target, _approach_speed(tight_corner_speed if tight else corner_speed, corner_at - _corner_lead))
+		var through_corner := (tight_corner_speed if tight else corner_speed) * CORNER_SPEED_FACTOR
+		target = minf(target, _approach_speed(through_corner, corner_at - _corner_lead))
 	if avoids_others and not (_squeeze_clock > 0.0 and _squeeze_through):
 		_look_countdown -= 1
 		if _look_countdown < 0:
@@ -1347,6 +1360,21 @@ func _place(delta := 0.0) -> void:
 	middle += Vector2(-along_body.y, along_body.x) * _side_offset
 	global_position = Vector3(middle.x, _route_point(_distance).y, middle.y)
 	global_basis = Basis.looking_at(-Vector3(along_body.x * wheelbase, rise, along_body.y * wheelbase), Vector3.UP)
+	if leans:
+		_lean_into_corner(atan2(along_body.x, along_body.y), delta)
+
+
+## Tilts a two-wheeler into its corner: the lean that balances turning at this rate at this
+## speed, eased in and out (LEAN_RATE); a left turn (the heading turning towards +x, its left)
+## leans it to the left.
+func _lean_into_corner(yaw: float, delta: float) -> void:
+	if delta > 0.0:
+		var yaw_rate := wrapf(yaw - _last_yaw, -PI, PI) / delta
+		var limit := deg_to_rad(max_lean_degrees)
+		var wanted := clampf(atan(speed * yaw_rate / GRAVITY), -limit, limit)
+		_lean = lerpf(_lean, wanted, 1.0 - exp(-LEAN_RATE * delta))
+	_last_yaw = yaw
+	global_basis = global_basis * Basis(Vector3(0.0, 0.0, 1.0), -_lean)
 
 
 func _add_model(props: GridMap) -> void:

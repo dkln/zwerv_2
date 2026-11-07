@@ -13,7 +13,7 @@ dest_files=["res://.godot/imported/motorfiets.gox-53047b1e3a5bcc5cb0404b8101d1a8
 
 [params]
 
-voxel_size=0.125
+voxel_size=0.0625
 ambient_occlusion=true
 color_merge=14
 lod_color_tolerance=24

@@ -153,6 +153,20 @@ _ENTRIES = [
     ("winkel_rood", (222, 24, 40)), ("winkel_lichtblauw", (44, 168, 228)),
 ]
 
+# Lit letters and emblems of the facade signs (details/tekst): for each colour below a
+# "<name>_licht" twin with material "emit", SIGN_LIGHT_FACTOR times as bright. The voxel
+# shader lets emissive voxels glow with emission_energy (6) x mix(0.25, 1, night): by day
+# the dimmed twin plus its quarter glow looks about like the plain colour, at night it
+# glows. lit_colour(name) gives the twin.
+SIGN_LIGHT_FACTOR = 0.4
+_SIGN_LIGHT_BASES = ("bord_wit", "goud", "bord_geel", "bord_rood", "bord_rood2", "bord_blauw", "bord_groen",
+                     "bord_oranje", "bloem_roze", "bloem_oranje", "bloem_paars", "bloem_geel", "deur_rood",
+                     "deur_groen", "deur_blauw", "paneel_blauw", "luifel_wit", "luifel_geel", "hout_donker1",
+                     "winkel_rood", "winkel_lichtblauw")
+_raw_colours = {entry[0]: entry[1] for entry in _ENTRIES}
+_ENTRIES += [(base + "_licht", tuple(round(channel * SIGN_LIGHT_FACTOR) for channel in _raw_colours[base]), "emit")
+             for base in _SIGN_LIGHT_BASES]
+
 # Flag cloth colours: material "flag". vlag_wit and vlag_oranje are one step off the
 # sign colours bord_wit / bord_oranje, so every rgb has one material.
 _FLAG = [
@@ -311,3 +325,9 @@ def godot_material(gid):
     """Godot material name of global colour id ``gid``: "opaque", "metal", "water", ..."""
     tag = MATERIALS.get(gid)
     return _TAG_TO_GODOT.get(tag, tag)
+
+
+def lit_colour(name):
+    """The glowing twin of sign colour ``name`` ("<name>_licht"), or ``name`` itself when it
+    has none (dark colours such as black stay unlit)."""
+    return name + "_licht" if name + "_licht" in P else name

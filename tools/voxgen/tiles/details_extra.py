@@ -12,6 +12,7 @@ z is up.
 import math
 
 from common import register, tile, text_pixels, PICTO
+from palette import lit_colour
 from vox import V
 from .details import att, att_box, wd, pole_flag, stripe, striped_cloth
 from .props_extra import FLAGS
@@ -201,7 +202,8 @@ WORDS = ["MINISTERIE", "HOTEL", "THEATER", "BIOSCOOP", "STATION", "BAKKERIJ", "A
 def facade_text(word, scale=2, letter="goud", plate=None, lit=False):
     """Facade lettering for ``word`` in the common 3x5 pixel font.
 
-    scale: voxels per font pixel. letter: letter colour (``lamp_warm`` when lit=True).
+    scale: voxels per font pixel. letter: letter colour, drawn in its glowing twin
+    (palette.lit_colour) so the letters light up at night; ``lamp_warm`` when lit=True.
     plate: optional backing plate colour on the wall layer; letters sit one layer in front
     of it. The canvas has a 2-voxel margin and an even width (so it centres on the grid).
     """
@@ -212,7 +214,7 @@ def facade_text(word, scale=2, letter="goud", plate=None, lit=False):
     m = att(w, 2, hgt)
     if plate:
         att_box(m, 0, w, 0, 1, 0, hgt, plate)
-    c = "lamp_warm" if lit else letter
+    c = "lamp_warm" if lit else lit_colour(letter)   # letters glow at night
     for (col, row) in px:
         # font row 0 is the top line
         att_box(m, 2 + col * scale, 2 + (col + 1) * scale, 1, 2, 2 + (4 - row) * scale, 2 + (5 - row) * scale, c)
@@ -261,22 +263,22 @@ def name_lettering(lines, scale=2, letter="goud", plate=None, line_gap=2):
         for column, row in pixels:
             x0 = left + column * scale
             z0 = top_row - (row + 1) * scale
-            att_box(model, x0, x0 + scale, 1, 2, z0, z0 + scale, letter)
+            att_box(model, x0, x0 + scale, 1, 2, z0, z0 + scale, lit_colour(letter))
     return model
 
 
-# The big name on the station hall, and the names of the ministries (one per building that
-# carries "tekst/tekst_ministerie" in the city).
+# The big name on the station hall, and the names of the ministries without "Ministerie van"
+# (one per building that carries "tekst/tekst_ministerie" in the city).
 register("details/tekst/tekst_den_haag_centraal",
          lambda: name_lettering(["DEN HAAG CENTRAAL"], 3, "bord_wit", plate="bord_blauw"))
 register("details/tekst/tekst_ministerie_financien",
-         lambda: name_lettering(["MINISTERIE VAN", "FINANCIËN"], 2))
+         lambda: name_lettering(["FINANCIËN"], 2))
 register("details/tekst/tekst_ministerie_justitie_en_veiligheid",
-         lambda: name_lettering(["MINISTERIE VAN", "JUSTITIE EN VEILIGHEID"], 1))
+         lambda: name_lettering(["JUSTITIE EN VEILIGHEID"], 1))
 register("details/tekst/tekst_ministerie_binnenlandse_zaken",
-         lambda: name_lettering(["MINISTERIE VAN", "BINNENLANDSE ZAKEN"], 1))
+         lambda: name_lettering(["BINNENLANDSE ZAKEN"], 1))
 register("details/tekst/tekst_ministerie_vws",
-         lambda: name_lettering(["MINISTERIE VAN", "VOLKSGEZONDHEID,", "WELZIJN EN SPORT"], 1))
+         lambda: name_lettering(["VOLKSGEZONDHEID,", "WELZIJN EN SPORT"], 1))
 
 
 # The emblems of the parody supermarkets: (pictogram in PICTO, badge shape "vierkant" or
@@ -290,6 +292,7 @@ def draw_badge(model, left, bottom, size, picto_name, shape, background, foregro
     in ``background``, with the pictogram PICTO[picto_name] in ``foreground``, centred and
     scaled up as far as it fits."""
     rows = PICTO[picto_name]
+    background, foreground = lit_colour(background), lit_colour(foreground)   # emblems glow at night
     centre = size / 2
     for x in range(size):
         for z in range(size):
@@ -339,7 +342,7 @@ def brand_sign(word, scale, plate, letter="bord_wit", brand=None):
     for column, row in pixels:
         x0 = left + column * scale
         z0 = height - margin - (row + 1) * scale
-        att_box(model, x0, x0 + scale, 1, 2, z0, z0 + scale, letter)
+        att_box(model, x0, x0 + scale, 1, 2, z0, z0 + scale, lit_colour(letter))
     return model
 
 
@@ -387,7 +390,7 @@ def name_sign(lines, picto, plate, letter, badge, mark, shape="vierkant", scale=
         for column, row in pixels:
             x0 = left + column * scale
             z0 = top - (row + 1) * scale
-            att_box(model, x0, x0 + scale, 1, 2, z0, z0 + scale, letter)
+            att_box(model, x0, x0 + scale, 1, 2, z0, z0 + scale, lit_colour(letter))
     return model
 
 

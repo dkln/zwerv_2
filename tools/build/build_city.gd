@@ -131,6 +131,12 @@ func _init() -> void:
 	_paths_to_lonely_buildings()
 	_join_gravel_paths()
 	_roof_equipment()
+	_straighten_hidden_corners()
+	_flatten_facades_by_viaducts()
+	_remove_trees_in_buildings()
+	_fit_signs_on_facades()
+	_one_sign_per_spot()
+	_clear_behind_signs()
 	_bins()
 	_grote_marktstraat_lanes()
 	_camera(root)
@@ -343,7 +349,7 @@ func _shops(start: Vector2i, step: Vector2i, n: int, front: String, seed: int, k
 	if gables:
 		styles[5] = "herenhuis_1600"   # the old centre has no modern white houses, but 17th-century ones
 	var upper := ["verd_raam", "verd_balkon", "verd_luiken", "verd_erker", "verd_raam_breed", "verd_drie_ramen"]
-	var roofs := ["dak_schuin", "dak_schuin_dakkapel", "dak_schuin_schoorsteen", "dak_schuin", "dak_schuin_schoorsteen"]
+	var roofs := ["dak_schuin", "dak_schuin_dakkapel", "dak_schuin", "dak_schuin_schoorsteen"]
 	for i in n:
 		var c: Vector2i = start + step * i
 		var bc: Vector2i = c - off
@@ -406,9 +412,12 @@ func _shops(start: Vector2i, step: Vector2i, n: int, front: String, seed: int, k
 		# every other shop its own name over the window (they are wider than a shop: never
 		# two side by side), else the sign of its trade or an awning
 		var name_sign := _name_sign(shop, i / 2 + seed) if (i + seed) % 2 == 0 else ""
+		# beside a shop with its own name (on the even ones) no hanging sign at that height
+		var beside_a_name := (i + seed) % 2 == 1 and (_name_sign(kinds[(i - 1 + seed) % kinds.size()], 0) != "" \
+				or _name_sign(kinds[(i + 1 + seed) % kinds.size()], 0) != "")
 		if name_sign != "":
 			D(wx, wz, NAME_SIGN_HEIGHT, name_sign, front)
-		elif SIGNS.has(shop):
+		elif SIGNS.has(shop) and not beside_a_name:
 			D(wx - step.x, wz - step.y, 3.5, SIGNS[shop], front)
 		elif (i + seed) % 2 == 0:
 			D(wx, wz, 2.5, awnings[(i + seed) % awnings.size()], front)
@@ -1306,6 +1315,7 @@ func _ministerie_van_financien() -> void:
 	D(entrance, (z1 + 1) * 4.0, 0.0, "deuren/draaideur", "S")
 	D(entrance + 4.0, (z1 + 1) * 4.0, 7.5, "tekst/tekst_ministerie_financien", "S")
 	D(entrance + 4.0, (z1 + 1) * 4.0, FINANCIEN_STOREYS * 3.0 - 4.0, "gevel/vlag_nl", "S")
+	_entrance_flags(entrance, (z1 + 1) * 4.0, "S")
 	places["ministerie_van_financien"] = Vector2((x0 + x1 + 1) * 2.0, (z0 + z1 + 1) * 2.0)
 
 
@@ -1454,7 +1464,8 @@ func _centraal() -> void:
 	_tall_hall(74, 69, 19, 9, "hal_glas", CENTRAAL_HALL_STOREYS, Vector2i(83, 69), [Vector2i(77, 69), Vector2i(89, 69)])
 	block(80, 70, 7, 3, "kantoor_glas", 3, {"front": "N", "gf": ["verd_vliesgevel"], "gf_side": "verd_vliesgevel",
 		"gf_corner": "verd_vliesgevel_hoek", "upper": ["verd_vliesgevel"], "upper_corner": "verd_vliesgevel_hoek", "roof": "flat"})
-	D(83 * 4 + 2.0, 69 * 4.0, CENTRAAL_HALL_STOREYS * 3.0 - 3.9, "tekst/tekst_den_haag_centraal", "N")
+	# half a metre in front of the hall: on the glass wall itself the glass drew over it
+	D(83 * 4 + 2.0, 69 * 4.0 - 0.5, CENTRAAL_HALL_STOREYS * 3.0 - 3.9, "tekst/tekst_den_haag_centraal", "N")
 	D(83 * 4 + 2.0, 69 * 4.0, 0.0, "luifels/luifel_glas", "N")
 	D(77 * 4 + 2.0, 69 * 4.0, 0.0, "luifels/luifel_glas", "N")
 	D(89 * 4 + 2.0, 69 * 4.0, 0.0, "luifels/luifel_glas", "N")
@@ -1496,6 +1507,7 @@ func _centraal() -> void:
 		B(tx + 1, MINISTRY_TOWER_STOREYS, 82, "kantoor_beton/kantoor_beton_dak_installatie", "S")
 		D(tx * 4 + 6.0, 80 * 4.0, 4.5, "tekst/tekst_ministerie_justitie_en_veiligheid" if tx == 79 else "tekst/tekst_ministerie_binnenlandse_zaken", "N")
 		D(tx * 4 + 6.0, 80 * 4.0, MINISTRY_TOWER_STOREYS * 3.0 - 4.0, "gevel/vlag_nl", "N")
+		_entrance_flags(tx * 4 + 6.0, 80 * 4.0, "N")
 	for x in range(82, 86):
 		G(x, 81, "brug/loopbrug_overdekt", "E", 15)
 	places["ministerie_van_justitie"] = Vector2(80 * 4.0 + 2.0, 80 * 4.0)
@@ -1546,6 +1558,7 @@ func _de_resident() -> void:
 	_tall_hall(77, 86, 2, 3, "hal_glas", PARNASSUS_ATRIUM_STOREYS, Vector2i(77, 86))
 	D(77 * 4.0 + 4.0, 86 * 4.0, 4.5, "tekst/tekst_ministerie_vws", "N")
 	D(77 * 4.0 + 4.0, 86 * 4.0, PARNASSUS_ATRIUM_STOREYS * 3.0 + 1.0, "gevel/vlag_nl", "N")
+	_entrance_flags(77 * 4.0 + 4.0, 86 * 4.0, "N")
 	places["de_resident"] = Vector2(78 * 4.0, 87 * 4.0)
 	places["castalia"] = Vector2(76 * 4.0, 86 * 4.0)
 	block(81, 87, 2, 2, "klassiek_donker", MUZENTOREN_STOREYS, {"front": "N", "gf": ["bg_deur"], "gf_side": "bg_raam", "gf_corner": "bg_raam_hoek",
@@ -1669,7 +1682,15 @@ func _housing_block(x0: int, z0: int, w: int, styles: Array) -> void:
 		for column in columns:
 			var style: String = styles[style_index % styles.size()]
 			style_index += 1
-			ring(x0 + 1 + column * (ring_width + 1), z0 + 1 + row * (ring_depth + 1), ring_width, ring_depth, style, 4, _housing_options(style))
+			var ring_x := x0 + 1 + column * (ring_width + 1)
+			var ring_z := z0 + 1 + row * (ring_depth + 1)
+			ring(ring_x, ring_z, ring_width, ring_depth, style, 4, _housing_options(style))
+			# a supermarket on the street side of the block's first ring, where its style has
+			# the storefronts (the brands take turns through the town)
+			if row == 0 and column == 0 and _has(style + "/" + style + "_bg_derrek_raam"):
+				var brand: String = SUPERMARKET_BRANDS[_supermarket_count % SUPERMARKET_BRANDS.size()]
+				_supermarket(ring_x, ring_z, mini(ring_width, SUPERMARKET_MOST_CELLS), style, brand, SUPERMARKET_CARTS[brand])
+				_supermarket_count += 1
 	_trees([Vector2i(x0 + 2, z0 + ring_depth + 1), Vector2i(x0 + w - 3, z0 + ring_depth + 1)], ["bomen/linde", "bomen/plataan"])
 
 
@@ -2502,6 +2523,7 @@ func _over_a12() -> void:
 	block(mx, AZ + 1, XC - 3 - mx, 4, "kantoor_modern", 8, {"front": "S", "gf": ["bg_entree", "bg_glas", "bg_kolonnade"], "gf_side": "bg_glas",
 		"gf_corner": "bg_glas_hoek", "upper": ["verd_lamellen", "verd_raam_groot"], "upper_corner": "verd_lamellen_hoek", "roof": "flat"})
 	D((mx + 4) * 4 + 2.0, (AZ + 5) * 4.0, 0.0, "luifels/luifel_kantoor", "S")
+	_entrance_flags((mx + 4) * 4 + 2.0, (AZ + 5) * 4.0, "S")
 	D((mx + 4) * 4 + 2.0, (AZ + 5) * 4.0, 0.0, "deuren/draaideur", "S")
 	D((mx + 2) * 4 + 2.0, (AZ + 5) * 4.0, 9.0, "gevel/vlag_nl", "S")
 	_trees([Vector2i(mx, Z2 - 3), Vector2i(mx + 3, Z2 - 2), Vector2i(mx + 6, Z2 - 3), Vector2i(mx + 9, Z2 - 2)], ["bomen/plataan", "bomen/linde"])
@@ -2950,6 +2972,345 @@ func _company_name(x0: int, width: int, z: int, front: String, storeys: int, num
 	D(x0 * 4 + width * 2.0, z * 4.0, storeys * 3.0 - 4.2, "tekst/naam_kantoor_%d" % number, front)
 
 
+## A corner piece of a building (its "_hoek" tiles: a facade on its front and its right
+## side, often with a corner pillar) whose side stands against another building (a glass
+## hall built on, the next block): its pillar and facade would stand in the other one's wall
+## and flicker through it. It becomes the straight piece facing its open side.
+func _straighten_hidden_corners() -> void:
+	var straightened := 0
+	for cell in buildings.get_used_cells():
+		var tile_name := buildings.mesh_library.get_item_name(buildings.get_cell_item(cell))
+		if not tile_name.ends_with("_hoek"):
+			continue
+		var straight := tile_name.trim_suffix("_hoek")
+		if not _has(straight):
+			continue
+		var turn := orient.find(buildings.get_cell_item_orientation(cell))
+		if turn < 0:
+			continue
+		var front: String = ORDER[turn]
+		var right: String = ORDER[(turn + 1) % 4]
+		var style := tile_name.get_slice("/", 0)
+		var front_blocked := _other_building(cell, front, style)
+		var right_blocked := _other_building(cell, right, style)
+		if right_blocked and not front_blocked:
+			B(cell.x, cell.y, cell.z, straight, front)
+		elif front_blocked and not right_blocked:
+			B(cell.x, cell.y, cell.z, straight, right)
+		else:
+			continue
+		straightened += 1
+	print("corners against another building made straight: %d" % straightened)
+
+
+## True if the cell beside `cell` towards `side` holds a building piece of another style
+## in the same storey.
+func _other_building(cell: Vector3i, side: String, style: String) -> bool:
+	var offset: Vector2i = DIR_OFFSET[side]
+	var item := buildings.get_cell_item(cell + Vector3i(offset.x, 0, offset.y))
+	return item >= 0 and buildings.mesh_library.get_item_name(item).get_slice("/", 0) != style
+
+
+## Facade pieces that stick out (balconies, bay windows) right beside a viaduct deck or a
+## bridge (Grond above street level) at their height would reach into it: they become the
+## plain facade of their style.
+func _flatten_facades_by_viaducts() -> void:
+	var flattened := 0
+	for cell in ground.get_used_cells():
+		if cell.y < 2:
+			continue
+		var tile_name := ground.mesh_library.get_item_name(ground.get_cell_item(cell))
+		if not (tile_name.begins_with("brug/") or tile_name.begins_with("spoor/") or tile_name.begins_with("tram/")):
+			continue
+		var storey := floori(cell.y / 3.0)
+		for side: String in ORDER:
+			var offset: Vector2i = DIR_OFFSET[side]
+			for nearby_storey in [storey - 1, storey, storey + 1]:
+				if nearby_storey >= 1 and _flatten_facade(Vector3i(cell.x + offset.x, nearby_storey, cell.z + offset.y)):
+					flattened += 1
+	print("facades beside viaducts made plain: %d" % flattened)
+
+
+## Trees whose crown would grow into a building (planted too close to a facade) go.
+const TREE_CLEARANCE := 0.4
+
+
+func _remove_trees_in_buildings() -> void:
+	var removed := 0
+	var boxes := {}
+	for cell in props.get_used_cells():
+		var item := props.get_cell_item(cell)
+		var tile_name := props.mesh_library.get_item_name(item)
+		if not tile_name.begins_with("bomen/"):
+			continue
+		if not boxes.has(item):
+			boxes[item] = props.mesh_library.get_item_mesh_transform(item) * props.mesh_library.get_item_mesh(item).get_aabb()
+		var turn := props.get_basis_with_orthogonal_index(props.get_cell_item_orientation(cell))
+		var box: AABB = (props.transform * Transform3D(turn, props.map_to_local(cell))) * boxes[item]
+		box = box.grow(-TREE_CLEARANCE)
+		var hits := false
+		for x in range(floori(box.position.x / 4.0), floori(box.end.x / 4.0) + 1):
+			for z in range(floori(box.position.z / 4.0), floori(box.end.z / 4.0) + 1):
+				for storey in range(maxi(1, floori(box.position.y / 3.0)), floori(box.end.y / 3.0) + 1):
+					hits = hits or buildings.get_cell_item(Vector3i(x, storey, z)) >= 0
+		if hits:
+			props.set_cell_item(cell, GridMap.INVALID_CELL_ITEM)
+			removed += 1
+	print("trees growing into buildings taken away: %d" % removed)
+
+
+## Two Dutch flags on poles flanking the entrance of a government building: the door in the
+## middle of the front face at (wx, wz) metres, which faces `front` ("N", "S", "E", "W").
+const ENTRANCE_FLAG_SPREAD := 3.5
+const ENTRANCE_FLAG_OUT := 2.5
+
+
+func _entrance_flags(wx: float, wz: float, front: String) -> void:
+	var out := Vector2(DIR_OFFSET[front])
+	var along := Vector2(-out.y, out.x)
+	for side in [-1.0, 1.0]:
+		var spot: Vector2 = Vector2(wx, wz) + out * ENTRANCE_FLAG_OUT + along * side * ENTRANCE_FLAG_SPREAD
+		Pr(spot.x, spot.y, "straat/vlaggenmast_nl", front)
+
+
+## Keeps every sign and logo on a facade (Details "tekst/...") on its building: where it
+## would hang past the end of the facade (a wide name on a narrow front or near a corner)
+## it moves along the wall until it lies on it whole, or, wider than the front, to its
+## middle.
+func _fit_signs_on_facades() -> void:
+	var moved := 0
+	var signs: Array[Vector3i] = []
+	for cell in details.get_used_cells():
+		if details.mesh_library.get_item_name(details.get_cell_item(cell)).begins_with("tekst/"):
+			signs.append(cell)
+	for sign_cell in signs:
+		var item := details.get_cell_item(sign_cell)
+		var orientation := details.get_cell_item_orientation(sign_cell)
+		var half_width := details.mesh_library.get_item_mesh(item).get_aabb().size.x * 0.5
+		var turn := details.get_basis_with_orthogonal_index(orientation)
+		var out := turn * Vector3(0, 0, 1)
+		var across := turn * Vector3(1, 0, 0)
+		var wall := Vector3(sign_cell) * 0.5
+		var storey := floori(wall.y / 3.0)
+		# the facade behind it: from its middle along the wall each way while there is building
+		var behind := wall - out * 0.5
+		if not _building_at(behind, storey):
+			continue
+		var left := 0.0
+		while left > -40.0 and _building_at(behind + across * (left - 0.5), storey):
+			left -= 0.5
+		var right := 0.0
+		while right < 40.0 and _building_at(behind + across * (right + 0.5), storey):
+			right += 0.5
+		# the facade runs from left - (the rest of that half metre) to right; the cell centres
+		# lie on whole cells, so measure to the cell edges
+		var start := _facade_edge(behind, across, left, storey, -1.0)
+		var finish := _facade_edge(behind, across, right, storey, 1.0)
+		var shift := 0.0
+		if finish - start < half_width * 2.0:
+			shift = (start + finish) * 0.5
+		elif -half_width < start:
+			shift = start + half_width
+		elif half_width > finish:
+			shift = finish - half_width
+		var steps := roundi(shift * 2.0)
+		if steps == 0:
+			continue
+		var target := Vector3i((wall + across * steps * 0.5) * 2.0)
+		details.set_cell_item(sign_cell, GridMap.INVALID_CELL_ITEM)
+		details.set_cell_item(target, item, orientation)
+		moved += 1
+	print("signs fitted on their facades: %d moved" % moved)
+
+
+## True if a building piece stands at this point (metres) in this storey.
+func _building_at(point: Vector3, storey: int) -> bool:
+	return buildings.get_cell_item(Vector3i(floori(point.x / 4.0), storey, floori(point.z / 4.0))) >= 0
+
+
+## The end of the facade along `across` (metres from the sign's middle), from the last
+## offset with building found that way (`direction` -1 or 1): the edge of that cell.
+func _facade_edge(behind: Vector3, across: Vector3, last_offset: float, storey: int, direction: float) -> float:
+	var point := behind + across * last_offset
+	var cell_start := Vector3(floorf(point.x / 4.0) * 4.0, 0.0, floorf(point.z / 4.0) * 4.0)
+	# along `across` the cell spans 4 m from its start (across is +-x or +-z)
+	var along_start := (cell_start - behind).dot(across)
+	var along_end := along_start + 4.0 * (across.x + across.z)
+	var low := minf(along_start, along_end)
+	var high := maxf(along_start, along_end)
+	return high if direction > 0.0 else low
+
+
+## Two signs or logos (Details "tekst/...") on the same facade that overlap (a wide shop name
+## over the hanging sign of the shop next door, a logo over a sign): the smaller one moves
+## aside along the wall until it is clear; only without room on the facade does it go.
+func _one_sign_per_spot() -> void:
+	var signs: Array[Dictionary] = []
+	for cell in details.get_used_cells():
+		var item := details.get_cell_item(cell)
+		if not details.mesh_library.get_item_name(item).begins_with("tekst/"):
+			continue
+		var box := details.mesh_library.get_item_mesh(item).get_aabb()
+		var turn := details.get_basis_with_orthogonal_index(details.get_cell_item_orientation(cell))
+		signs.append({"cell": cell, "wall": Vector3(cell) * 0.5, "out": turn * Vector3(0, 0, 1),
+			"across": turn * Vector3(1, 0, 0), "width": box.size.x, "height": box.size.y, "gone": false})
+	var removed := 0
+	var shifted := 0
+	for first_index in signs.size():
+		var first: Dictionary = signs[first_index]
+		for second_index in range(first_index + 1, signs.size()):
+			var second: Dictionary = signs[second_index]
+			if first.gone or second.gone:
+				continue
+			var relative: Vector3 = second.wall - first.wall
+			# the same wall: facing the same way, (almost) in one plane
+			if (first.out as Vector3).dot(second.out) < 0.9 or absf(relative.dot(first.out)) > 0.6:
+				continue
+			var apart_sideways := absf(relative.dot(first.across))
+			var first_top: float = first.wall.y + first.height
+			var second_top: float = second.wall.y + second.height
+			var overlap_up := minf(first_top, second_top) - maxf(first.wall.y, second.wall.y)
+			if apart_sideways >= (first.width + second.width) * 0.5 or overlap_up <= 0.0:
+				continue
+			var smaller: Dictionary = first if first.width * first.height < second.width * second.height else second
+			var bigger: Dictionary = second if smaller == first else first
+			if _shift_sign_clear(smaller, bigger, signs):
+				shifted += 1
+			else:
+				details.set_cell_item(smaller.cell, GridMap.INVALID_CELL_ITEM)
+				smaller.gone = true
+				removed += 1
+	print("signs over each other: %d moved aside, %d without room taken away" % [shifted, removed])
+
+
+## Moves `sign` along its wall away from `other` until it clears every other sign there,
+## staying on the facade; false if there is no such spot within SIGN_SHIFT_MOST metres.
+const SIGN_SHIFT_MOST := 4.0
+
+
+func _shift_sign_clear(sign: Dictionary, other: Dictionary, signs: Array[Dictionary]) -> bool:
+	var across: Vector3 = sign.across
+	var away := signf((sign.wall as Vector3 - other.wall).dot(across))
+	if away == 0.0:
+		away = 1.0
+	var item := details.get_cell_item(sign.cell)
+	var orientation := details.get_cell_item_orientation(sign.cell)
+	var behind: Vector3 = sign.wall - (sign.out as Vector3) * 0.5
+	var storey := floori((sign.wall as Vector3).y / 3.0)
+	var step := 0.5
+	while step <= SIGN_SHIFT_MOST:
+		var spot: Vector3 = sign.wall + across * away * step
+		# whole on the facade?
+		var on_facade := true
+		for edge in [-sign.width * 0.5, sign.width * 0.5]:
+			on_facade = on_facade and _building_at(behind + across * (away * step + edge * 0.98), storey)
+		if on_facade and not _overlaps_a_sign(spot, sign, signs):
+			details.set_cell_item(sign.cell, GridMap.INVALID_CELL_ITEM)
+			var target := Vector3i((spot * 2.0).round())
+			details.set_cell_item(target, item, orientation)
+			sign.cell = target
+			sign.wall = Vector3(target) * 0.5
+			return true
+		step += 0.5
+	return false
+
+
+## True if `sign` put at `spot` would overlap another sign on its wall.
+func _overlaps_a_sign(spot: Vector3, sign: Dictionary, signs: Array[Dictionary]) -> bool:
+	for other: Dictionary in signs:
+		if other == sign or other.gone:
+			continue
+		var relative: Vector3 = other.wall - spot
+		if (sign.out as Vector3).dot(other.out) < 0.9 or absf(relative.dot(sign.out)) > 0.6:
+			continue
+		var overlap_up := minf(spot.y + sign.height, other.wall.y + other.height) - maxf(spot.y, other.wall.y)
+		if absf(relative.dot(sign.across)) < (sign.width + other.width) * 0.5 and overlap_up > 0.0:
+			return true
+	return false
+
+
+## Facade parts that stick out (balconies, bay windows, loggias, terraces, awnings) and
+## would cover a sign or logo; the plain facade pieces that take their place, the first a
+## style has.
+const STICKING_OUT := ["balkon", "erker", "loggia", "terras", "luifel"]
+const PLAIN_FACADES := ["verd_raam", "verd_glas", "verd_raam_groot", "verd_wand", "verd_dicht"]
+## Details that may hang in front of a sign (the signs themselves are "tekst/").
+const SIGN_FREE_MARGIN := 0.5
+
+
+## Keeps every sign and logo on a facade (Details items "tekst/...") free: the building
+## pieces behind it that stick out become the plain facade of their style, and other
+## details hanging in front of it (flower boxes, flags, awnings) go.
+func _clear_behind_signs() -> void:
+	var flattened := 0
+	var removed := 0
+	var signs: Array[Vector3i] = []
+	for cell in details.get_used_cells():
+		if details.mesh_library.get_item_name(details.get_cell_item(cell)).begins_with("tekst/"):
+			signs.append(cell)
+	for sign_cell in signs:
+		var item := details.get_cell_item(sign_cell)
+		var box := details.mesh_library.get_item_mesh(item).get_aabb()
+		var turn := details.get_basis_with_orthogonal_index(details.get_cell_item_orientation(sign_cell))
+		var out := turn * Vector3(0, 0, 1)        # the way the sign faces
+		var across := turn * Vector3(1, 0, 0)
+		var wall := Vector3(sign_cell) * 0.5      # metres: on the wall, mid-width, its bottom
+		var half_width := box.size.x * 0.5
+		var bottom := wall.y
+		var top := wall.y + box.size.y
+		# the building pieces behind it
+		var offset := -half_width
+		while offset <= half_width + 0.01:
+			var behind := wall - out * 0.5 + across * offset
+			for storey in range(floori(bottom / 3.0), floori((top - 0.01) / 3.0) + 1):
+				if _flatten_facade(Vector3i(floori(behind.x / 4.0), storey, floori(behind.z / 4.0))):
+					flattened += 1
+			offset += 1.0
+		# other details in front of it
+		for other in details.get_used_cells():
+			if other == sign_cell:
+				continue
+			var other_name := details.mesh_library.get_item_name(details.get_cell_item(other))
+			if other_name.begins_with("tekst/") or other_name.begins_with("deuren/"):
+				continue
+			var relative := Vector3(other) * 0.5 - wall
+			var sideways := absf(relative.dot(across))
+			var outwards := relative.dot(out)
+			var up := Vector3(other).y * 0.5
+			if sideways < half_width + SIGN_FREE_MARGIN and outwards > -0.6 and outwards < 1.6 \
+					and up > bottom - 1.5 and up < top + SIGN_FREE_MARGIN:
+				details.set_cell_item(other, GridMap.INVALID_CELL_ITEM)
+				removed += 1
+	print("signs kept free: %d facade pieces made plain, %d details taken away" % [flattened, removed])
+
+
+## Turns a building piece that sticks out (STICKING_OUT) into the plain facade of its
+## style, kept facing the same way; true if it did.
+func _flatten_facade(cell: Vector3i) -> bool:
+	var item := buildings.get_cell_item(cell)
+	if item < 0:
+		return false
+	var tile_name := buildings.mesh_library.get_item_name(item)
+	if not STICKING_OUT.any(func(part: String) -> bool: return tile_name.contains(part)):
+		return false
+	var style := tile_name.get_slice("/", 0)
+	var corner := "_hoek" if tile_name.ends_with("_hoek") else ""
+	for plain: String in PLAIN_FACADES:
+		var replacement := style + "/" + style + "_" + plain + corner
+		if _has(replacement):
+			buildings.set_cell_item(cell, buildings.mesh_library.find_item_by_name(replacement), buildings.get_cell_item_orientation(cell))
+			return true
+	return false
+
+
+## The supermarket brands, taking turns (_housing_block), the colour of their carts, and
+## the most cells of front a supermarket in a housing block takes.
+const SUPERMARKET_BRANDS := ["derrek", "alfred_steyhn"]
+const SUPERMARKET_CARTS := {"derrek": "rood", "alfred_steyhn": "blauw"}
+const SUPERMARKET_MOST_CELLS := 7
+var _supermarket_count := 0
+
+
 ## A supermarket of `brand` ("derrek", "alfred_steyhn") in the ground floor of the north
 ## front (row z) of a block of `style` from column x0, `width` wide: shop windows in the
 ## brand's colours between the corners, the sliding doors in the middle, the brand's sign
@@ -2968,7 +3329,12 @@ func _supermarket(x0: int, z: int, width: int, style: String, brand: String, car
 	Pr((x0 + width - 2) * 4 + 2.0, (z - 1) * 4 + 2.5, "winkel/winkelwagens_rij_" + cart_colour, "E")
 	Pr((door - 1) * 4 + 2.5, (z - 1) * 4 + 2.0, "winkel/winkelwagen_" + cart_colour, "W")
 	Pr((door + 1) * 4 + 1.0, (z - 1) * 4 + 1.0, "winkel/winkelwagen", "N")
-	places[brand] = Vector2(door * 4 + 2.0, z * 4.0)
+	var key := brand
+	var number := 2
+	while places.has(key):
+		key = "%s_%d" % [brand, number]
+		number += 1
+	places[key] = Vector2(door * 4 + 2.0, z * 4.0)
 
 
 ## A paved path over the grass from the entrance of every building standing free in the
@@ -3365,6 +3731,11 @@ func _viaduct_platforms(stop: Array, foot_kinds: Dictionary) -> void:
 		Pr(middle * 4 + 2.0, row * 4 + 2.0, "ov/abri", towards_track, VIADUCT_LEVEL + platform_height)
 		for reader_x: int in [first + 1, last - 1]:
 			Pr(reader_x * 4 + 2.0, row * 4 + 2.0, "ov/ov_incheckpaal", towards_track, VIADUCT_LEVEL + platform_height)
+		# a station's name board on its platforms, either side of the shelter
+		var board := "borden/stationsbord_" + (stop[3] as String).trim_prefix("station_")
+		if high and _has(board, props):
+			for board_x: int in [middle - 3, middle + 3]:
+				Pr(board_x * 4 + 2.0, row * 4 + 2.0, board, towards_track, VIADUCT_LEVEL + platform_height)
 		# two flights of 3 m (6 m long each) up to the west end of the platform: to deck
 		# level on a station (the stairs in the first cell go on), else to the low platform
 		var stairs_start: float = 0.0 if high else 0.5
