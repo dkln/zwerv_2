@@ -3,13 +3,13 @@ auto_politie_busje (the ME van), auto_ambulance, auto_brandweer and auto_diensta
 bodies of the sedan, the van and the truck (props.py), and the OV-chipkaart reader at the
 stops (props/ov/ov_incheckpaal).
 
-The emergency vehicles have the Dutch striping on their sides: diagonal bands (police: blue
-and orange on white, ambulance: red and blue on yellow, fire service: yellow and white on
-red), and a light bar of blue glass on the roof. The blue flashing and the siren are not in
+The emergency vehicles have the Dutch striping on their sides, without lettering: diagonal
+bands (police: blue and orange on white, ambulance: red and blue on yellow, fire service:
+yellow and white on red), and a light bar of blue glass on the roof. The blue flashing and the siren are not in
 the model: scripts/vehicles/vehicle.gd lights glowing blocks over the light bar
 (`beacon_positions` of the vehicle script) while the siren is on. x across, y along with
 the front at y=0, z up (as the bodies they are made of)."""
-from common import tile, text_pixels
+from common import tile
 from palette import P
 from vox import V
 from .props import sedan_body, van_body, truck_body
@@ -47,15 +47,6 @@ def light_bar(model, bar):
         model.set(across, front, height, "metaal_donker")
 
 
-def side_text(model, word, along_start, top, colour):
-    """`word` on both sides of the body, reading from the front backwards on the right side
-    and the other way on the left, so it reads the right way round on each."""
-    pixels, (text_width, _) = text_pixels(word)
-    for column, row in pixels:
-        model.set(0, along_start + text_width - 1 - column, top - row, colour)
-        model.set(model.sx - 1, along_start + column, top - row, colour)
-
-
 @tile("props/voertuigen/auto_politie")
 def police_car():
     """Police car: the white sedan with blue and orange striping and a light bar."""
@@ -78,11 +69,10 @@ def ministers_car():
 
 @tile("props/voertuigen/auto_politie_busje")
 def riot_van():
-    """ME van: the van in police white with striping, POLITIE on its sides, a light bar and
+    """ME van: the van in police white with striping, a light bar and
     grilles over the windscreen and the windows."""
     model = van_body("lak_wit1", "lak_wit2", 18)
     striping(model, (1, model.sy - 2), (4, 5, 6, 7), ("bord_blauw", "bord_oranje"), "lak_wit1")
-    side_text(model, "POLITIE", 18, 14, "bord_blauw")
     for across in range(1, model.sx - 1):
         for along in range(5, 9):
             for up in range(10, 16):
@@ -99,11 +89,9 @@ def riot_van():
 
 @tile("props/voertuigen/auto_ambulance")
 def ambulance():
-    """Ambulance: the van in yellow with red and blue striping, AMBULANCE on its sides and a
-    light bar."""
+    """Ambulance: the van in yellow with red and blue striping and a light bar."""
     model = van_body("bord_geel", "lak_geel2", 18)
     striping(model, (1, model.sy - 2), (4, 5, 6, 7), ("bord_rood", "bord_blauw"), "bord_geel")
-    side_text(model, "AMBULANCE", 3, 15, "bord_blauw")
     light_bar(model, VAN_LIGHT_BAR)
     return model
 
@@ -111,7 +99,7 @@ def ambulance():
 @tile("props/voertuigen/auto_brandweer")
 def fire_engine():
     """Fire engine: the truck in red with a closed body of lockers behind the cab (roller
-    shutters in steel), yellow and white striping, BRANDWEER on its sides, a ladder on the
+    shutters in steel), yellow and white striping, a ladder on the
     roof and a light bar on the cab."""
     model = truck_body("lak_rood1", "lak_rood2")
     paint = "lak_rood1"
@@ -134,13 +122,12 @@ def fire_engine():
     for across in range(2, width - 2):
         for up in range(floor + 3, roof - 1):
             model.set(across, length - 1, up, "rvs" if up % 2 else "metaal1")
-    # the striping along the bottom of the body and the cab, the name above the shutters
+    # the striping along the bottom of the body and the cab
     for along in range(1, length - 1):
         for up in (floor + 1, floor + 2):
             for across in (0, width - 1):
                 if model.get(across, along, up) == P[paint]:
                     model.set(across, along, up, "bord_geel" if (along + up) % 8 < 4 else "bord_wit")
-    side_text(model, "BRANDWEER", 18, roof - 1, "bord_wit")
     for along in range(1, 11):
         for up in (5, 6):
             for across in (0, width - 1):

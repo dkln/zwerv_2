@@ -76,6 +76,11 @@ const SCREEN_MARGIN := 3.0
 const FADE_OUT_START := 0.75
 ## New chunks made per frame at most (so moving the camera doesn't hitch).
 const CHUNKS_PER_FRAME := 3
+## Zoomed out the blades get calmer (shader parameter `calm`: less light and dark between
+## tops, sides and blades), from CALM_FROM to CALM_TO metres in view; up close they keep
+## their full contrast.
+const CALM_FROM := 30.0
+const CALM_TO := 90.0
 
 var _cam: Camera3D
 var _map: Node
@@ -143,6 +148,7 @@ func _process(_delta: float) -> void:
 			grow *= smoothstep(level.grow_in_from, level.grow_in_to, view)
 		var material := level.material as ShaderMaterial
 		material.set_shader_parameter("grow", grow)
+		material.set_shader_parameter("calm", smoothstep(CALM_FROM, CALM_TO, view))
 		if level.thins:
 			var focus := Iso.ground_focus(_cam)
 			material.set_shader_parameter("thin_centre", Vector2(focus.x, focus.z))

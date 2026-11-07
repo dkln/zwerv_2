@@ -11,7 +11,7 @@ z is up.
 """
 import math
 
-from common import register, tile, text_pixels
+from common import register, tile, text_pixels, PICTO
 from vox import V
 from .details import att, att_box, wd, pole_flag, stripe, striped_cloth
 from .props_extra import FLAGS
@@ -225,6 +225,251 @@ for _w in ("HOTEL", "THEATER", "BIOSCOOP", "CAFE", "ZWERVR"):
     register(f"details/tekst/lichtreclame_{_w.lower()}", lambda w=_w: facade_text(w, 2, plate="bord_zwart", lit=True))
 for _w in ("BAKKER", "SLAGER", "KAAS", "BLOEMEN", "FIETSEN", "KAPPER"):
     register(f"details/tekst/bord_{_w.lower()}", lambda w=_w: facade_text(w, 1, "bord_wit", "deur_groen"))
+
+
+# Letters with a diaeresis: drawn as the plain letter with two dots in the row above it.
+DIAERESIS = {"Ë": "E", "Ï": "I", "Ö": "O", "Ü": "U"}
+
+
+def name_lettering(lines, scale=2, letter="goud", plate=None, line_gap=2):
+    """Facade lettering of several centred ``lines`` (3x5 pixel font, ``scale`` voxels per
+    pixel), for the names of buildings. A letter with a diaeresis (Ë) gets its two dots in
+    the gap above its line. plate: optional backing plate on the wall layer, the letters one
+    layer in front of it. att() canvas: the wall on the centre plane, the letters stick out
+    to the front (y=0); width even so it centres on the 0.5 m grid."""
+    rendered = []
+    for line in lines:
+        plain = "".join(DIAERESIS.get(char, char) for char in line.upper())
+        pixels, (text_width, _) = text_pixels(plain)
+        dots = []
+        for index, char in enumerate(line.upper()):
+            if char in DIAERESIS:
+                dots += [(index * 4, -1), (index * 4 + 2, -1)]
+        rendered.append((pixels + dots, text_width))
+    margin = 2 * scale
+    widest = max(text_width for _, text_width in rendered)
+    width = widest * scale + 2 * margin
+    width += width % 2
+    line_height = 5 + line_gap
+    height = (len(lines) * line_height - line_gap) * scale + 2 * margin
+    model = att(width, 2, height)
+    if plate:
+        att_box(model, 0, width, 0, 1, 0, height, plate)
+    for line_index, (pixels, text_width) in enumerate(rendered):
+        left = (width - text_width * scale) // 2
+        top_row = height - margin - line_index * line_height * scale   # z above the top pixel row
+        for column, row in pixels:
+            x0 = left + column * scale
+            z0 = top_row - (row + 1) * scale
+            att_box(model, x0, x0 + scale, 1, 2, z0, z0 + scale, letter)
+    return model
+
+
+# The big name on the station hall, and the names of the ministries (one per building that
+# carries "tekst/tekst_ministerie" in the city).
+register("details/tekst/tekst_den_haag_centraal",
+         lambda: name_lettering(["DEN HAAG CENTRAAL"], 3, "bord_wit", plate="bord_blauw"))
+register("details/tekst/tekst_ministerie_financien",
+         lambda: name_lettering(["MINISTERIE VAN", "FINANCIËN"], 2))
+register("details/tekst/tekst_ministerie_justitie_en_veiligheid",
+         lambda: name_lettering(["MINISTERIE VAN", "JUSTITIE EN VEILIGHEID"], 1))
+register("details/tekst/tekst_ministerie_binnenlandse_zaken",
+         lambda: name_lettering(["MINISTERIE VAN", "BINNENLANDSE ZAKEN"], 1))
+register("details/tekst/tekst_ministerie_vws",
+         lambda: name_lettering(["MINISTERIE VAN", "VOLKSGEZONDHEID,", "WELZIJN EN SPORT"], 1))
+
+
+# The emblems of the parody supermarkets: (pictogram in PICTO, badge shape "vierkant" or
+# "rond"). Original marks, not after the real chains' logos.
+BRAND_EMBLEMS = {"derrek": ("mandje", "vierkant"), "alfred_steyhn": ("tulp", "rond")}
+
+
+def draw_badge(model, left, bottom, size, picto_name, shape, background, foreground, depth=1):
+    """A ``size`` x ``size`` badge with its bottom-left at (left, bottom) on depth layer
+    ``depth`` of an att() canvas: a square with cut corners ("vierkant") or a disc ("rond")
+    in ``background``, with the pictogram PICTO[picto_name] in ``foreground``, centred and
+    scaled up as far as it fits."""
+    rows = PICTO[picto_name]
+    centre = size / 2
+    for x in range(size):
+        for z in range(size):
+            if shape == "rond":
+                inside = math.hypot(x + 0.5 - centre, z + 0.5 - centre) <= centre
+            else:
+                inside = min(x, size - 1 - x) + min(z, size - 1 - z) >= 1
+            if inside:
+                att_box(model, left + x, left + x + 1, depth, depth + 1, bottom + z, bottom + z + 1, background)
+    picto_width, picto_height = len(rows[0]), len(rows)
+    room = size - 4 if shape == "vierkant" else int(size * 0.72)
+    scale = max(1, room // max(picto_width, picto_height))
+    picto_left = left + (size - picto_width * scale) // 2
+    picto_top = bottom + (size + picto_height * scale) // 2
+    for row_index, line in enumerate(rows):
+        for column, pixel in enumerate(line):
+            if pixel == "#":
+                x0 = picto_left + column * scale
+                z0 = picto_top - (row_index + 1) * scale
+                att_box(model, x0, x0 + scale, depth, depth + 1, z0, z0 + scale, foreground)
+
+
+def draw_emblem(model, left, bottom, size, brand, background, foreground, depth=1):
+    """The emblem of supermarket ``brand`` (BRAND_EMBLEMS) as a badge, see draw_badge."""
+    picto_name, shape = BRAND_EMBLEMS[brand]
+    draw_badge(model, left, bottom, size, picto_name, shape, background, foreground, depth)
+
+
+def brand_sign(word, scale, plate, letter="bord_wit", brand=None):
+    """Big facade sign of a shop chain: ``word`` in ``letter`` on a ``plate`` with a rim in
+    the letter colour; with ``brand`` the chain's emblem (a ``letter``-coloured badge with
+    the pictogram in the plate colour) stands left of the name. att() canvas, wall on the
+    centre plane."""
+    pixels, (text_width, _) = text_pixels(word)
+    margin = 2 * scale
+    height = 5 * scale + 2 * margin
+    badge = height - 4 if brand else 0
+    width = text_width * scale + 2 * margin + (badge + margin if brand else 0)
+    width += width % 2
+    model = att(width, 2, height)
+    att_box(model, 0, width, 0, 1, 0, height, letter)                 # rim
+    att_box(model, 1, width - 1, 0, 1, 1, height - 1, plate)
+    left = margin
+    if brand:
+        draw_emblem(model, margin, 2, badge, brand, letter, plate)
+        left += badge + margin
+    for column, row in pixels:
+        x0 = left + column * scale
+        z0 = height - margin - (row + 1) * scale
+        att_box(model, x0, x0 + scale, 1, 2, z0, z0 + scale, letter)
+    return model
+
+
+def brand_logo(brand, plate, size=20):
+    """Free-standing logo for a facade (``size`` voxels square, 2.5 m by default): the
+    emblem of ``brand`` with a white pictogram on its house colour, framed by a white
+    rim of the same shape. att() canvas, wall on the centre plane."""
+    model = att(size, 2, size)
+    draw_emblem(model, 0, 0, size, brand, "bord_wit", "bord_wit", depth=0)
+    draw_emblem(model, 1, 1, size - 2, brand, plate, "bord_wit", depth=1)
+    return model
+
+
+register("details/tekst/tekst_derrek", lambda: brand_sign("DERREK", 3, "winkel_rood", brand="derrek"))
+register("details/tekst/tekst_alfred_steyhn", lambda: brand_sign("ALFRED STEYHN", 2, "winkel_lichtblauw",
+                                                                 brand="alfred_steyhn"))
+register("details/tekst/logo_derrek", lambda: brand_logo("derrek", "winkel_rood"))
+register("details/tekst/logo_alfred_steyhn", lambda: brand_logo("alfred_steyhn", "winkel_lichtblauw"))
+
+
+# ------------------------------------------------------------------ made-up shop and company names
+
+def name_sign(lines, picto, plate, letter, badge, mark, shape="vierkant", scale=1):
+    """Name sign of a (made-up) business: its emblem (a ``badge``-coloured badge with the
+    pictogram ``picto`` in ``mark``) on the left, the name in ``lines`` (one or two) in
+    ``letter`` to its right, each line centred. With a ``plate`` colour the sign is a board
+    with a rim in the letter colour; without, loose letters and emblem on the wall. att()
+    canvas: the wall on the centre plane, the front at y=0; width even."""
+    rendered = [text_pixels(line) for line in lines]
+    margin = 2 * scale
+    height = 2 * margin + (len(lines) * 6 - 1) * scale
+    badge_size = height - 2 * scale
+    text_width = max(width for _, (width, _) in rendered) * scale
+    text_left = margin + badge_size + margin
+    width = text_left + text_width + margin
+    width += width % 2
+    model = att(width, 2, height)
+    if plate:
+        att_box(model, 0, width, 0, 1, 0, height, letter)
+        att_box(model, 1, width - 1, 0, 1, 1, height - 1, plate)
+    draw_badge(model, margin, scale, badge_size, picto, shape, badge, mark)
+    for line_index, (pixels, (line_width, _)) in enumerate(rendered):
+        left = text_left + (text_width - line_width * scale) // 2
+        top = height - margin - line_index * 6 * scale
+        for column, row in pixels:
+            x0 = left + column * scale
+            z0 = top - (row + 1) * scale
+            att_box(model, x0, x0 + scale, 1, 2, z0, z0 + scale, letter)
+    return model
+
+
+# Shop kind (the bg_ suffix of the shop ground floors in the city) -> its pictogram and
+# its made-up names: (lines, plate, letter colour, badge colour, pictogram colour, shape).
+# Names are data (they end up on the facades); none is a real brand.
+SHOP_NAMES = {
+    "bakker": ("brood", [
+        (["KORSTJE", "EN ZOON"], "deur_rood", "bord_wit", "bord_geel", "deur_rood", "rond"),
+        (["GOUDEN", "KORST"], "bord_zwart", "goud", "goud", "bord_zwart", "vierkant"),
+        (["BAKKERIJ", "DEEGNIET"], "luifel_wit", "deur_rood", "deur_rood", "luifel_wit", "rond")]),
+    "cafe": ("koffie", [
+        (["KOFFIE", "KLETS"], "hout_donker1", "luifel_wit", "luifel_wit", "hout_donker1", "rond"),
+        (["CAFE", "HOEKJE"], "deur_groen", "goud", "goud", "deur_groen", "vierkant"),
+        (["BONEN", "BAR"], "bord_zwart", "bloem_oranje", "bloem_oranje", "bord_zwart", "rond")]),
+    "kleding": ("shirt", [
+        (["MODE", "MAATJE"], "bord_zwart", "bord_wit", "bloem_roze", "bord_zwart", "vierkant"),
+        (["JASSEN", "JANSEN"], "deur_blauw", "bord_wit", "bord_wit", "deur_blauw", "rond"),
+        (["KLEREN", "KASTJE"], "luifel_wit", "bord_zwart", "bord_zwart", "luifel_wit", "vierkant")]),
+    "boekhandel": ("boek", [
+        (["BOEKJE", "OPEN"], "deur_blauw", "luifel_wit", "luifel_wit", "deur_blauw", "vierkant"),
+        (["PAGINA", "TWEE"], "deur_groen", "goud", "goud", "deur_groen", "rond")]),
+    "restaurant": ("bestek", [
+        (["EETHUIS", "DE VORK"], "bord_zwart", "goud", "goud", "bord_zwart", "rond"),
+        (["TAFEL", "VOOR 2"], "deur_rood", "luifel_wit", "luifel_wit", "deur_rood", "vierkant"),
+        (["BISTRO", "BORDJE"], "deur_groen", "luifel_wit", "luifel_wit", "deur_groen", "rond")]),
+    "bloemist": ("bloem", [
+        (["STEELTJE", "BLOEMEN"], "deur_groen", "bord_wit", "bloem_roze", "deur_groen", "rond"),
+        (["FLEUR", "EN FLORA"], "luifel_wit", "deur_groen", "bloem_geel", "deur_groen", "vierkant")]),
+    "juwelier": ("diamant", [
+        (["GLIMMER", "JUWELEN"], "bord_zwart", "goud", "goud", "bord_zwart", "vierkant"),
+        (["KARAAT", "KEES"], "deur_blauw", "bord_wit", "bord_wit", "deur_blauw", "rond")]),
+    "ijssalon": ("ijsje", [
+        (["BOLLETJE", "IJS"], "bloem_roze", "bord_wit", "bord_wit", "bloem_roze", "rond"),
+        (["KOUD", "KOUDER"], "paneel_blauw", "bord_wit", "bord_wit", "paneel_blauw", "vierkant")]),
+    "slager": ("hakmes", [
+        (["WORST", "WIM"], "deur_rood", "bord_wit", "bord_wit", "deur_rood", "vierkant"),
+        (["SLAGERIJ", "ROSBIEF"], "luifel_wit", "bord_rood2", "bord_rood2", "luifel_wit", "rond")]),
+    "fietsenwinkel": ("fiets", [
+        (["TRAPPERS", "FIETSEN"], "bord_zwart", "bord_geel", "bord_geel", "bord_zwart", "vierkant"),
+        (["SPAAK", "EN ZADEL"], "bord_blauw", "bord_wit", "bord_wit", "bord_blauw", "rond")]),
+    "drogist": ("capsule", [
+        (["PLEISTER", "DROGIST"], "luifel_wit", "bord_groen", "bord_groen", "luifel_wit", "rond"),
+        (["ZALFJE", "EN ZO"], "bloem_roze", "bord_wit", "bord_wit", "bloem_roze", "vierkant")]),
+    "kapper": ("schaar", [
+        (["KNIPPIE", "KAPSALON"], "bord_zwart", "bord_wit", "bord_wit", "bord_zwart", "vierkant"),
+        (["HAAR", "KLOPT"], "luifel_wit", "bord_zwart", "bloem_paars", "luifel_wit", "rond")]),
+    "snackbar": ("friet", [
+        (["FRIETJE", "FATSOEN"], "bord_geel", "bord_rood", "bord_rood", "bord_geel", "rond"),
+        (["DE", "VETPOT"], "bord_rood", "bord_geel", "bord_geel", "bord_rood", "vierkant")]),
+    "supermarkt": ("mandje", [
+        (["BUURT", "SUPER"], "bord_groen", "bord_wit", "bord_wit", "bord_groen", "vierkant"),
+        (["KOOPJE", "MARKT"], "bloem_oranje", "bord_wit", "bord_wit", "bloem_oranje", "rond")]),
+    "telefoon": ("telefoon", [
+        (["BEREIK", "TELECOM"], "paneel_blauw", "bord_wit", "bord_wit", "paneel_blauw", "vierkant"),
+        (["BELLEN", "EN ZO"], "bord_oranje", "bord_wit", "bord_wit", "bord_oranje", "rond")]),
+    "bar": ("bier", [
+        (["DE", "TAPKRAAN"], "hout_donker1", "goud", "goud", "hout_donker1", "rond"),
+        (["DORST", "BAR"], "bord_zwart", "bord_rood", "bord_rood", "bord_zwart", "vierkant")]),
+    "dierenwinkel": ("poot", [
+        (["POOTJE", "DIEREN"], "deur_groen", "bord_wit", "bord_wit", "deur_groen", "rond"),
+        (["KWISPEL", "EN KO"], "luifel_geel", "hout_donker1", "hout_donker1", "luifel_geel", "vierkant")]),
+}
+
+for _kind, (_picto, _names) in SHOP_NAMES.items():
+    for _number, (_lines, _plate, _letter, _badge, _mark, _shape) in enumerate(_names, 1):
+        register(f"details/tekst/naam_{_kind}_{_number}",
+                 lambda lines=_lines, picto=_picto, plate=_plate, letter=_letter, badge=_badge, mark=_mark, shape=_shape:
+                 name_sign(lines, picto, plate, letter, badge, mark, shape))
+
+# Office towers: big loose letters (scale 2) with an emblem, no board.
+OFFICE_NAMES = [
+    (["POLDERTECH"], "golf", "bord_wit", "paneel_blauw", "bord_wit", "rond"),
+    (["DIJK EN DAM", "ADVOCATEN"], "blokken", "bord_wit", "deur_blauw", "bord_wit", "vierkant"),
+    (["HOFSTAD", "VERZEKERD"], "ruit", "bord_wit", "deur_rood", "bord_wit", "vierkant"),
+    (["KLOMPENBERG", "CONSULTANCY"], "pijl_op", "bord_wit", "bord_groen", "bord_wit", "rond"),
+    (["DUINWATER", "ENERGIE"], "zon", "bord_wit", "bord_geel", "bord_wit", "rond"),
+]
+for _number, (_lines, _picto, _letter, _badge, _mark, _shape) in enumerate(OFFICE_NAMES, 1):
+    register(f"details/tekst/naam_kantoor_{_number}",
+             lambda lines=_lines, picto=_picto, letter=_letter, badge=_badge, mark=_mark, shape=_shape:
+             name_sign(lines, picto, None, letter, badge, mark, shape, scale=2))
 
 
 # ------------------------------------------------------------------ flags on the facade

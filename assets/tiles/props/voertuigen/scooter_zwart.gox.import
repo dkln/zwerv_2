@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://bxjyykgssncad"
+path="res://.godot/imported/scooter_zwart.gox-7bb5b11261d397d602033fee5373aa5d.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/props/voertuigen/scooter_zwart.gox"
+dest_files=["res://.godot/imported/scooter_zwart.gox-7bb5b11261d397d602033fee5373aa5d.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(0, 0, 0)

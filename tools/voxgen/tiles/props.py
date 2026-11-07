@@ -263,32 +263,90 @@ def picnic_table():
 
 # ------------------------------------------------------------------ bicycles
 
-def bicycle(color="fiets_zwart"):
-    """Side-on bicycle (16x6x10) in the plane y=3, front wheel at high x; frame colour ``color``."""
+# Wheel centres of a bicycle (x along, z up; the bicycle stands in the plane y=3).
+BIKE_REAR_HUB = (3.5, 3.5)
+BIKE_FRONT_HUB = (12.5, 3.5)
+
+
+def bike_wheel(model, hub, frame_colour):
+    """A wheel of 7 voxels (~0.9 m) around `hub`: a black tyre, four spokes in steel with
+    the open quarters between them, and a mudguard in the frame colour over the top."""
+    hub_x, hub_z = hub
+    plane = 3
+    for along in range(int(hub_x - 4.5), int(hub_x + 4.5)):
+        for up in range(0, 9):
+            offset_along = along + 0.5 - hub_x
+            offset_up = up + 0.5 - hub_z
+            distance = math.hypot(offset_along, offset_up)
+            if 2.5 < distance <= 3.5:
+                model.set(along, plane, up, "rubber")
+            elif distance < 0.5:
+                model.set(along, plane, up, "metaal_donker")
+            elif distance <= 2.5 and (offset_along == 0 or offset_up == 0):
+                model.set(along, plane, up, "rvs")
+            elif 3.5 < distance <= 4.3 and offset_up > 1.5 and model.get(along, plane, up) == 0:
+                model.set(along, plane, up, frame_colour)
+
+
+def bicycle(color="fiets_zwart", step_through=False, crate=None):
+    """Side-on Dutch bicycle (16x6x10) in the plane y=3, front wheel at high x; frame colour
+    ``color``. Spoked wheels with mudguards, a diamond frame (or a low step-through frame
+    with ``step_through``), brown saddle, swept-back steel handlebars with grips, chain guard,
+    pedals, steel rear carrier with a red reflector and a white front lamp; ``crate`` (a colour)
+    puts a crate on a front carrier."""
     m = V(16, 6, 10)
     y = 3
-    for cx in (3.5, 12.5):
-        for z in range(0, 8):
-            for x in range(16):
-                d = math.hypot(x + 0.5 - cx, z + 0.5 - 3.5)
-                if 2.6 < d < 3.6:
-                    m.set(x, y, z, "rubber")
-                elif d < 0.8:
-                    m.set(x, y, z, "metaal3")
-    m.line((3.5, y, 3.5), (8, y, 3.5), color)
-    m.line((8, y, 3.5), (5.5, y, 7.5), color)
-    m.line((8, y, 3.5), (11.5, y, 7.5), color)
-    m.line((5.5, y, 7.5), (11.5, y, 7.5), color)
-    m.line((3.5, y, 3.5), (5.5, y, 7.5), color)
-    m.line((12.5, y, 3.5), (11.5, y, 8.5), color)
-    for yy in range(1, 6):        # handlebar
-        m.set(11, yy, 9, "metaal_donker")
-    m.set(5, y, 8, "rubber")      # saddle
-    m.set(6, y, 8, "rubber")
-    m.set(4, y, 8, "rubber")
-    # rear carrier and mudguard
-    for x in range(1, 6):
-        m.set(x, y, 6, "metaal_donker")
+    bottom_bracket = (8.0, y, 2.5)
+    rear_hub = (BIKE_REAR_HUB[0], y, BIKE_REAR_HUB[1])
+    front_hub = (BIKE_FRONT_HUB[0], y, BIKE_FRONT_HUB[1])
+    seat_top = (5.8, y, 7.5)
+    head_top = (11.6, y, 7.5)
+    head_bottom = (12.0, y, 5.5)
+    bike_wheel(m, BIKE_REAR_HUB, color)
+    bike_wheel(m, BIKE_FRONT_HUB, color)
+    # frame: chain stay, seat stay, seat tube, down tube, fork, and a top tube or a low curve
+    m.line(rear_hub, bottom_bracket, color)
+    m.line(rear_hub, seat_top, color)
+    m.line(bottom_bracket, seat_top, color)
+    m.line(head_bottom, head_top, color)
+    m.line(head_bottom, front_hub, color)
+    if step_through:
+        m.line(bottom_bracket, (10.5, y, 4.5), color)
+        m.line((10.5, y, 4.5), head_bottom, color)
+    else:
+        m.line(bottom_bracket, head_bottom, color)
+        m.line(seat_top, head_top, color)
+    # saddle on its post
+    m.set(5, y, 8, "metaal3")
+    for along in range(4, 7):
+        m.set(along, y, 9, "fiets_zadel")
+    # stem and swept-back handlebars with grips
+    m.set(11, y, 8, "metaal3")
+    for across in range(1, 6):
+        m.set(11, across, 9, "rvs")
+    for across in (1, 5):
+        m.set(10, across, 9, "rubber")
+    # chain guard on the right side, crank and pedals
+    for along in range(4, 9):
+        m.set(along, y + 1, 3, color)
+    m.set(8, y + 1, 2, color)
+    m.set(7, y - 1, 3, "metaal_donker")
+    m.set(9, y + 2, 2, "metaal_donker")
+    m.set(7, y - 2, 3, "rubber")
+    m.set(9, y + 2, 1, "rubber")
+    # rear carrier over the mudguard, and the red reflector behind it
+    for along in range(1, 6):
+        for across in (y - 1, y, y + 1):
+            m.set(along, across, 8, "rvs")
+    m.set(0, y, 8, "bord_rood")
+    # white lamp on the front
+    m.set(13, y, 6, "bord_wit")
+    if crate:
+        for along in range(13, 16):
+            for across in range(1, 6):
+                m.set(along, across, 7, crate)
+                if along in (13, 15) or across in (1, 5):
+                    m.set(along, across, 8, crate)
     return m
 
 
@@ -319,7 +377,11 @@ def bike_rack():
 
 # Slots of a full bike rack (voxels along the rack) that hold a bicycle, and their colours:
 # one slot stays empty, so the row reads as separate bicycles.
-RACK_BIKES = [(2, "fiets_zwart"), (7, "fiets_rood"), (12, "fiets_zwart"), (17, "fiets_blauw"), (27, "fiets_zwart"), (32, "fiets_zwart")]
+# light colours so they stand out against the street; every other one a step-through frame,
+# and two with a crate on the front.
+RACK_BIKES = [(2, "fiets_mint", False, None), (7, "fiets_koraal", True, None),
+              (12, "fiets_creme", False, "luifel_blauw"), (17, "fiets_lichtblauw", True, None),
+              (27, "fiets_geel", False, None), (32, "fiets_creme", True, "luifel_rood")]
 # How far every other bicycle stands further forward (a Dutch high-low rack): so the
 # handlebars of neighbours never touch.
 RACK_STAGGER = 4
@@ -331,11 +393,133 @@ def bike_rack_full():
     stands further forward (a high-low rack), so the handlebars of neighbours lie apart."""
     m = V(36, 22, 10)
     m.paste(bike_rack(), 2, 9, 0)
-    for index, (slot, colour) in enumerate(RACK_BIKES):
+    for index, (slot, colour, step_through, crate) in enumerate(RACK_BIKES):
         forward = RACK_STAGGER if index % 2 else 0
         # rotated bicycle: 6 wide, 16 deep; its frame lies in the middle of the 6
-        m.paste(bicycle(colour).rot90(1), slot - 3, 1 + forward, 0)
+        m.paste(bicycle(colour, step_through, crate).rot90(1), slot - 3, 1 + forward, 0)
     return m
+
+
+# ------------------------------------------------------------------ shopping trolleys
+
+TROLLEY_LENGTH = 9    # voxels along y (front y=0, handle at the back)
+TROLLEY_NEST = 3      # how far the next trolley of a nested row stands behind the previous
+
+
+def trolley(handle="metaal_donker"):
+    """Shopping trolley (6 x 9 x 9 voxels, 0.75 x 1.1 x 1.1 m): a wire basket (a grid of
+    steel with open holes) on a chassis with four castors and a lower tray, and a handle
+    bar at the back in ``handle`` (the shop's colour). Front (y=0) is the nose."""
+    m = V(6, TROLLEY_LENGTH, 9)
+    for x, y in ((0, 1), (5, 1), (0, 6), (5, 6)):
+        m.set(x, y, 0, "rubber")
+    for y in range(0, 8):                   # chassis rails
+        m.set(1, y, 1, "metaal3")
+        m.set(4, y, 1, "metaal3")
+    for x in range(1, 5):                   # lower tray
+        for y in range(2, 7):
+            if (x + y) % 2 == 0:
+                m.set(x, y, 2, "metaal3")
+    for z in range(3, 8):                   # basket: wire walls, solid floor and rim
+        for y in range(0, 7):
+            for x in range(6):
+                wall = x in (0, 5) or y in (0, 6)
+                floor = z == 3
+                rim = z == 7 and wall
+                if floor or rim or (wall and (x + y + z) % 2 == 1):
+                    m.set(x, y, z, "rvs")
+    for x in (0, 5):                        # handle posts and bar
+        m.set(x, 7, 7, "rvs")
+        m.set(x, 8, 8, "rvs")
+    for x in range(6):
+        m.set(x, 8, 8, handle)
+    return m
+
+
+register("props/winkel/winkelwagen", lambda: trolley())
+register("props/winkel/winkelwagen_rood", lambda: trolley("winkel_rood"))
+register("props/winkel/winkelwagen_blauw", lambda: trolley("winkel_lichtblauw"))
+
+
+def trolley_row(handle, count=6):
+    """``count`` trolleys pushed into each other, TROLLEY_NEST voxels apart, noses towards
+    y=0."""
+    m = V(6, TROLLEY_LENGTH + TROLLEY_NEST * (count - 1), 9)
+    for index in range(count - 1, -1, -1):
+        m.paste(trolley(handle), 0, index * TROLLEY_NEST, 0)
+    return m
+
+
+register("props/winkel/winkelwagens_rij", lambda: trolley_row("metaal_donker"))
+register("props/winkel/winkelwagens_rij_rood", lambda: trolley_row("winkel_rood"))
+register("props/winkel/winkelwagens_rij_blauw", lambda: trolley_row("winkel_lichtblauw"))
+
+
+def trolley_shelter(handle="metaal_donker"):
+    """Trolley shelter (3 x 4.5 m, 2.5 m high), open at the front (y=0): a galvanised frame
+    with a clear roof sloping to the back, glass side and back walls on a low plinth, a
+    sign strip in ``handle`` along the front of the roof, and two nested rows of trolleys
+    inside."""
+    width, depth, height = 24, 36, 21
+    m = V(width, depth, height)
+    for x in (0, width - 1):
+        for y in (0, depth // 2, depth - 1):
+            for z in range(0, height - 1 - y // 18):
+                m.set(x, y, z, "gegalvaniseerd")
+    for y in range(depth):                     # roof: frame and clear panels, falling 1 voxel backwards
+        roof_z = height - 1 - y // 18
+        for x in range(width):
+            edge = x in (0, width - 1) or y in (0, depth - 1) or y % 9 == 0
+            m.set(x, y, roof_z, "gegalvaniseerd" if edge else "glas_helder")
+    for x in range(width):                     # sign strip along the front edge
+        for z in (height - 3, height - 2):
+            m.set(x, 0, z, handle)
+    for y in range(1, depth - 1):              # side walls: plinth and glass
+        for x in (0, width - 1):
+            m.set(x, y, 0, "beton2")
+            for z in range(1, 12):
+                if y not in (depth // 2,):
+                    m.set(x, y, z, "glas_helder")
+    for x in range(1, width - 1):              # back wall
+        m.set(x, depth - 1, 0, "beton2")
+        for z in range(1, 12):
+            m.set(x, depth - 1, z, "glas_helder")
+    for left in (3, 15):                       # two rows of trolleys
+        m.paste(trolley_row(handle, 7), left, 2, 0)
+    return m
+
+
+register("props/winkel/winkelwagenstalling", lambda: trolley_shelter())
+register("props/winkel/winkelwagenstalling_rood", lambda: trolley_shelter("winkel_rood"))
+register("props/winkel/winkelwagenstalling_blauw", lambda: trolley_shelter("winkel_lichtblauw"))
+
+
+def advertising_pylon(brand, house):
+    """Advertising pylon of a parody supermarket (1.75 x 0.5 x 5 m): a column in the house
+    colour on a concrete foot, with the brand's emblem in a white frame near the top on the
+    front (y=0) and the back, and white bands below it."""
+    from .details_extra import draw_emblem, att    # imported here: details_extra imports this module
+    width, depth, height = 14, 4, 40
+    m = V(width, depth, height)
+    m.box(0, 0, 0, width, depth, 2, "beton2")
+    m.box(1, 0, 2, width - 1, depth, height, house)
+    m.box(1, 0, height - 1, width - 1, depth, height, "bord_wit")
+    for z in (12, 14):
+        m.box(1, 0, z, width - 1, depth, z + 1, "bord_wit")
+    # the emblem, drawn on an att() canvas (wall on its centre plane) and pasted on both faces
+    emblem = att(12, 1, 12)
+    draw_emblem(emblem, 0, 0, 12, brand, "bord_wit", house, depth=0)
+    for x in range(12):
+        for z in range(12):
+            colour = emblem.get(x, 0, z)
+            if colour:
+                m.set(1 + x, 0, height - 15 + z, colour)
+                m.set(width - 2 - x, depth - 1, height - 15 + z, colour)
+    return m
+
+
+register("props/winkel/reclamezuil_derrek", lambda: advertising_pylon("derrek", "winkel_rood"))
+register("props/winkel/reclamezuil_alfred_steyhn", lambda: advertising_pylon("alfred_steyhn", "winkel_lichtblauw"))
 
 
 # ------------------------------------------------------------------ public transport
@@ -698,6 +882,156 @@ def highway_gantry():
             m.set(x0 + 7 - k, 1, 32 + k, "matrix")
         m.box(x0 + 4, 2, 40, x0 + 5, 3, 54, "gegalvaniseerd")
     return m
+
+
+# ------------------------------------------------------------------ ANWB motorway signs
+# Dutch direction signs: blue boards with a white rim and white capitals, red A-road shields,
+# green E-road shields and a white plate with the exit number. A board is a list of rows,
+# each row a list of elements drawn side by side and centred:
+#   ("tekst", "UTRECHT")  ("a", "A12")  ("e", "E30")  ("afrit", "3")  ("pijl_omlaag",)  ("pijl_schuin",)
+
+ANWB_GAP = 2       # voxels between the elements of a row and between rows
+ANWB_MARGIN = 3    # voxels from the board's edge (rim included) to its content
+ANWB_SHIELDS = {"a": ("bord_rood", "bord_wit"), "e": ("bord_groen", "bord_wit"), "afrit": ("bord_wit", "bord_zwart")}
+
+
+def _anwb_element_size(element):
+    """(width, height) in voxels of one board element."""
+    kind = element[0]
+    if kind in ("pijl_omlaag", "pijl_schuin"):
+        return 7, 7
+    _, (text_width, _) = text_pixels(element[1])
+    if kind == "tekst":
+        return text_width, 5
+    return text_width + 4, 9
+
+
+def anwb_board_size(rows):
+    """(width, height) in voxels of a board with these rows."""
+    widths, heights = [], []
+    for row in rows:
+        sizes = [_anwb_element_size(element) for element in row]
+        widths.append(sum(width for width, _ in sizes) + ANWB_GAP * (len(sizes) - 1))
+        heights.append(max(height for _, height in sizes))
+    return max(widths) + 2 * ANWB_MARGIN, sum(heights) + ANWB_GAP * (len(rows) - 1) + 2 * ANWB_MARGIN
+
+
+def _anwb_arrow(m, x0, y, z0, kind):
+    """A white 7x7 arrow with its bottom-left at (x0, z0): straight down onto the lane, or
+    diagonally up to the right (the exit)."""
+    if kind == "pijl_omlaag":
+        for row in range(4):                     # the head, its point at the bottom
+            for x in range(3 - row, 4 + row):
+                m.set(x0 + x, y, z0 + row, "bord_wit")
+        for z in range(4, 7):
+            for x in range(2, 5):
+                m.set(x0 + x, y, z0 + z, "bord_wit")
+    else:
+        for step in range(6):
+            m.set(x0 + step, y, z0 + step, "bord_wit")
+            m.set(x0 + step + 1, y, z0 + step, "bord_wit")
+        for offset in range(4):
+            m.set(x0 + 3 + offset, y, z0 + 6, "bord_wit")
+            m.set(x0 + 6, y, z0 + 3 + offset, "bord_wit")
+
+
+def anwb_board(m, x_left, z_top, rows, y=0):
+    """Draw an ANWB board with its top-left corner at (x_left, z_top) in the plane y, the
+    galvanised back plate at y + 1. Returns (width, height)."""
+    width, height = anwb_board_size(rows)
+    _framed_panel(m, x_left, x_left + width - 1, z_top - height + 1, z_top, y, "bord_wit", "bord_blauw", back="metaal1")
+    row_top = z_top - ANWB_MARGIN
+    for row in rows:
+        sizes = [_anwb_element_size(element) for element in row]
+        row_width = sum(element_width for element_width, _ in sizes) + ANWB_GAP * (len(sizes) - 1)
+        row_height = max(element_height for _, element_height in sizes)
+        x = x_left + (width - row_width) // 2
+        for element, (element_width, element_height) in zip(row, sizes):
+            element_top = row_top - (row_height - element_height) // 2
+            kind = element[0]
+            if kind in ("pijl_omlaag", "pijl_schuin"):
+                _anwb_arrow(m, x, y, element_top - 6, kind)
+            elif kind == "tekst":
+                pixels, _ = text_pixels(element[1])
+                _stamp(m, pixels, x, y, element_top, "bord_wit")
+            else:
+                plate, letter = ANWB_SHIELDS[kind]
+                _framed_panel(m, x, x + element_width - 1, element_top - 8, element_top, y,
+                              "bord_wit" if kind != "afrit" else "bord_zwart", plate)
+                pixels, _ = text_pixels(element[1])
+                _stamp(m, pixels, x + 2, y, element_top - 2, letter)
+            x += element_width + ANWB_GAP
+        row_top -= row_height + ANWB_GAP
+    return width, height
+
+
+# A gantry spans one carriageway: its towers stand on the middle of the central reservation
+# and of the verge, 16 m (4 cells) apart, so the pivot (the middle of the model) lies on the
+# middle of the right-hand driving lane. Lane centres in model x, seen from the front:
+ANWB_GANTRY_WIDTH = 136
+ANWB_GANTRY_TOWERS = (2, 130)          # left x of the 4x4 towers (centres 4 and 132)
+ANWB_BEAM = (76, 85)                   # bottom and top chord of the truss
+ANWB_LANE_CENTRES = {"links": 36, "rechts": 68, "vluchtstrook": 100}
+
+
+def anwb_gantry(boards):
+    """Sign gantry over one motorway carriageway (verge, hard shoulder, two lanes, central
+    reservation: 5 cells), seen by the oncoming traffic on its front (y=0): the tower on the
+    left (low x) stands on the central reservation, the one on the right on the verge; both
+    are 16 m apart, centred on the model. ``boards``: [(centre x, rows)], hung from the truss
+    with their tops at the same height and at least 5.5 m clearance."""
+    m = V(ANWB_GANTRY_WIDTH, 6, ANWB_BEAM[1] + 1)
+    for x0 in ANWB_GANTRY_TOWERS:
+        for z in range(0, ANWB_BEAM[1] + 1):
+            for dx in range(4):
+                for dy in range(1, 5):
+                    corner = dx in (0, 3) and dy in (1, 4)
+                    brace = (dx in (0, 3) or dy in (1, 4)) and (z + dx + dy) % 8 == 0
+                    if corner or brace:
+                        m.set(x0 + dx, dy, z, "gegalvaniseerd")
+        m.box(x0 - 1, 0, 0, x0 + 5, 6, 1, "beton2")            # foot
+    for x in range(ANWB_GANTRY_TOWERS[0], ANWB_GANTRY_TOWERS[1] + 4):
+        for z in ANWB_BEAM:
+            for y in (1, 4):
+                m.set(x, y, z, "gegalvaniseerd")
+        # diagonals of the truss on the front and the back
+        offset = x % 9
+        if offset <= ANWB_BEAM[1] - ANWB_BEAM[0]:
+            for y in (1, 4):
+                m.set(x, y, ANWB_BEAM[0] + offset, "gegalvaniseerd")
+    board_top = ANWB_BEAM[1] - 2
+    for centre, rows in boards:
+        width, height = anwb_board_size(rows)
+        assert board_top - height + 1 >= 44, "board hangs below 5.5 m"
+        anwb_board(m, centre - width // 2, board_top, rows)
+    return m
+
+
+register("props/borden/snelweg_portaal_anwb_utrecht", lambda: anwb_gantry([
+    (ANWB_LANE_CENTRES["links"], [[("a", "A12"), ("e", "E30")], [("tekst", "UTRECHT")], [("pijl_omlaag",)]]),
+    (84, [[("afrit", "4")], [("tekst", "VOORBURG")], [("pijl_omlaag",)]]),
+]))
+register("props/borden/snelweg_portaal_anwb_den_haag", lambda: anwb_gantry([
+    (ANWB_LANE_CENTRES["links"], [[("a", "A12")], [("tekst", "DEN HAAG")], [("pijl_omlaag",)]]),
+    (84, [[("afrit", "3")], [("tekst", "CENTRUM")], [("tekst", "BEZUIDENHOUT")], [("pijl_omlaag",)]]),
+]))
+
+
+def anwb_roadside(rows, bottom=16):
+    """ANWB board on two galvanised posts beside the motorway, its bottom ``bottom`` voxels up;
+    front (y=0) towards the oncoming traffic, pivot under the middle of the board."""
+    width, height = anwb_board_size(rows)
+    m = V(width + 2, 4, bottom + height)
+    for x in (4, width - 4):
+        pole(m, x, 2, 0, bottom + height - 1, "gegalvaniseerd")
+    anwb_board(m, 1, bottom + height - 1, rows)
+    return m
+
+
+register("props/borden/snelweg_bord_anwb_den_haag_centrum", lambda: anwb_roadside(
+    [[("afrit", "3")], [("tekst", "DEN HAAG")], [("tekst", "CENTRUM")], [("pijl_schuin",)]]))
+register("props/borden/snelweg_bord_anwb_rotterdam_utrecht", lambda: anwb_roadside(
+    [[("a", "A4"), ("tekst", "ROTTERDAM")], [("a", "A12"), ("tekst", "UTRECHT")]]))
 
 
 @tile("props/borden/bord_afrit")

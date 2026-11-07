@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://ci8qyl7x6fvhg"
+path="res://.godot/imported/zendmast_klein.gox-3eab5dcffd250f3bc6f90043d8e248bd.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/details/dak/zendmast_klein.gox"
+dest_files=["res://.godot/imported/zendmast_klein.gox-3eab5dcffd250f3bc6f90043d8e248bd.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(0, 0, 0)

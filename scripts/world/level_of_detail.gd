@@ -87,6 +87,7 @@ var _culled := {}
 var _busy := 0
 var _screen: CanvasLayer
 var _screen_label: Label
+var _screen_bar: GameHud.SegmentBar
 var _progress := {}   # "<layer><suffix>" -> fraction done (0..1) of every merge job
 ## Counts setup()/clear(); a merge that finds it changed belongs to layers that are gone.
 var _generation := 0
@@ -148,6 +149,7 @@ func clear() -> void:
 		_screen.queue_free()
 		_screen = null
 		_screen_label = null
+		_screen_bar = null
 	if _busy > 0:
 		_busy = 0
 		merge_finished.emit()
@@ -187,26 +189,73 @@ func _lod_copy(gm: GridMap, copy_name: String, lib: MeshLibrary) -> GridMap:
 	return copy
 
 
-## Full-screen "Stad laden…" overlay with a percentage (_set_progress), faded out by
-## _layer_finished.
+## Segments of the progress bar on the loading screen, and the title over it.
+const LOADING_SEGMENTS := 30
+const LOADING_TITLE := "ZWERVR"
+
+
+## Full-screen loading screen in the style of the HUD (scripts/ui/hud.gd: ink blue, pixel
+## fonts, a bordered panel): the title, "STAD LADEN" and a segmented bar with the
+## percentage (_set_progress); faded out by _layer_finished.
 func _create_loading_screen() -> void:
 	_screen = CanvasLayer.new()
 	_screen.layer = 100
 	var panel := ColorRect.new()
-	panel.color = Color(0.08, 0.1, 0.13)
+	panel.color = GameHud.INK
 	panel.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_screen.add_child(panel)
-	var label := Label.new()
-	_screen_label = label
-	label.text = loading_text
-	label.add_theme_font_size_override("font_size", 28)
-	label.add_theme_color_override("font_color", Color(0.86, 0.9, 0.95))
-	label.set_anchors_preset(Control.PRESET_CENTER)
-	label.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	label.grow_vertical = Control.GROW_DIRECTION_BOTH
-	panel.add_child(label)
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 18)
+	column.alignment = BoxContainer.ALIGNMENT_CENTER
+	column.set_anchors_preset(Control.PRESET_CENTER)
+	column.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	column.grow_vertical = Control.GROW_DIRECTION_BOTH
+	panel.add_child(column)
+	var title := _loading_label(LOADING_TITLE, "res://assets/fonts/PixelifySans.ttf", 56, GameHud.TEXT, 4)
+	column.add_child(title)
+	var subtitle := _loading_label("— " + loading_text.trim_suffix("…").to_upper() + " —", "res://assets/fonts/Silkscreen-Regular.ttf", 14, GameHud.ACCENT, 2)
+	column.add_child(subtitle)
+	# the bar on a panel with a border, the percentage beside it
+	var box := PanelContainer.new()
+	var style := GameHud._box_style(GameHud.PANEL, GameHud.BORDER, 3)
+	style.set_content_margin_all(12)
+	box.add_theme_stylebox_override("panel", style)
+	box.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 12)
+	box.add_child(row)
+	_screen_bar = GameHud.SegmentBar.new()
+	_screen_bar.segments = LOADING_SEGMENTS
+	_screen_bar.segment_height = 14
+	_screen_bar.full_colour = GameHud.ACCENT
+	_screen_bar.empty_colour = GameHud.INK.lightened(0.08)
+	_screen_bar.fill = 0.0
+	_screen_bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(_screen_bar)
+	_screen_label = _loading_label("0%", "res://assets/fonts/Silkscreen-Regular.ttf", 14, GameHud.TEXT, 2)
+	_screen_label.custom_minimum_size = Vector2(48, 0)
+	_screen_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(_screen_label)
+	column.add_child(box)
 	add_child(_screen)
 	_set_progress("", 0.0)
+
+
+## A label of the loading screen: this font file (Rubik if it is missing), size and colour,
+## with the hard ink text shadow of the HUD (`shadow` pixels).
+static func _loading_label(text: String, font_path: String, font_size: int, colour: Color, shadow: int) -> Label:
+	var label := Label.new()
+	label.text = text
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	var font: Font = load(font_path) if ResourceLoader.exists(font_path) else load("res://assets/fonts/Rubik.ttf")
+	label.add_theme_font_override("font", font)
+	label.add_theme_font_size_override("font_size", font_size)
+	label.add_theme_color_override("font_color", colour)
+	label.add_theme_color_override("font_shadow_color", GameHud.INK.darkened(0.6))
+	label.add_theme_constant_override("shadow_offset_x", shadow)
+	label.add_theme_constant_override("shadow_offset_y", shadow)
+	label.add_theme_constant_override("shadow_outline_size", 0)
+	return label
 
 
 ## Records the progress of one merge job (key from _progress) and shows the average
@@ -219,7 +268,10 @@ func _set_progress(key: String, fraction: float) -> void:
 	var done := 0.0
 	for f in _progress.values():
 		done += f
-	_screen_label.text = "%s %d%%" % [loading_text, floori(100.0 * done / _progress.size())]
+	var share_done := done / _progress.size()
+	_screen_label.text = "%d%%" % floori(100.0 * share_done)
+	if _screen_bar:
+		_screen_bar.fill = share_done
 
 
 ## Called when one layer is merged; after the last one emits `merge_finished`
@@ -236,6 +288,7 @@ func _layer_finished() -> void:
 		t.tween_callback(_screen.queue_free)
 		_screen = null
 		_screen_label = null
+		_screen_bar = null
 
 
 ## Replaces the GridMap rendering of layer `index` (_pairs) with merged meshes for every

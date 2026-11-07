@@ -129,6 +129,7 @@ func _init() -> void:
 	_ministry_over_tram()
 	_a12_footbridge()
 	_paths_to_lonely_buildings()
+	_join_gravel_paths()
 	_roof_equipment()
 	_bins()
 	_grote_marktstraat_lanes()
@@ -140,8 +141,50 @@ func _init() -> void:
 	_report()
 	root.set_meta("districts", districts)
 	root.set_meta("places", places)
+	root.set_meta("wijken", WIJKEN)
+	root.set_meta("straten", STRATEN)
 	_save(root, "res://scenes/stad.tscn")
 	quit()
+
+
+## The neighbourhoods of the map for the HUD (where the player is): name and first and last
+## column and row (cells), the first that holds a spot wins (so the small ones come first).
+const WIJKEN := [
+	["Paleis Noordeinde", 15, 12, 20, 21], ["Lange Voorhout", 26, 7, 47, 28], ["Grote Markt", 10, 61, 22, 70],
+	["Centraal Station", 72, 61, 94, 77], ["De Resident", 75, 78, 97, 91], ["Malieveld", 72, 32, 87, 56],
+	["Koekamp", 88, 32, 97, 56], ["Bezuidenhout", 98, 18, 127, 57], ["Beatrixkwartier", 98, 58, 127, 91],
+	["Bezuidenhout-Oost", 128, 58, 175, 91], ["Prins Clauslaan", 128, 0, 175, 17], ["Schilderswijk", 0, 109, 68, 175],
+	["Laak", 69, 109, 127, 175], ["Binckhorst", 128, 109, 175, 175], ["A12", 176, 0, 189, 175],
+	["Voorburg", 190, 0, 215, 175], ["Centrum", 0, 0, 71, 108], ["Den Haag", 0, 0, 215, 175]]
+
+
+## The named streets for the HUD: name, "x" (a street along a column: its first and last
+## column, then its first and last row) or "z" (along a row: first and last row, then
+## first and last column), in cells, the lanes only (the HUD also counts the pavement
+## beside them). Streets without a real name are left out.
+const STRATEN := [
+	["Hogewal", "x", X1, X1 + 1, 0, 44], ["Prinsegracht", "x", X1, X1 + 1, 45, 90],
+	["Noordeinde", "x", X2, X2 + 1, 0, 28], ["Buitenhof", "x", X2, X2 + 1, 29, 59],
+	["Korte Vijverberg", "x", X3, X3 + 1, 0, 30], ["Lange Poten", "x", X3, X3 + 1, 31, 57], ["Spui", "x", X3, X3 + 1, 58, 90],
+	["Prinsessegracht", "x", X4, X4 + 1, 0, 90], ["Koningskade", "x", X5, X5 + 1, 0, 175],
+	["Juliana van Stolberglaan", "x", X6, X6 + 1, 0, 108], ["Laan van Nieuw Oost-Indië", "x", XC, XC + 1, 0, 175],
+	["Mauritskade", "z", Z1, Z1 + 1, 0, 68], ["Kneuterdijk", "z", Z2, Z2 + 1, 0, 23], ["Lange Vijverberg", "z", Z2, Z2 + 1, 24, 47],
+	["Korte Voorhout", "z", Z2, Z2 + 1, 48, 71], ["Zuid-Hollandlaan", "z", Z2, Z2 + 1, 72, 95],
+	["Theresiastraat", "z", ZB, ZB + 1, 129, 175], ["Grote Marktstraat", "z", Z3, Z3 + 1, 0, 47], ["Spui", "z", Z3, Z3 + 1, 48, 95],
+	["Bezuidenhoutseweg", "z", Z3, Z3 + 1, 96, 175], ["Zuidwal", "z", Z4, Z4 + 1, 0, 71], ["Schenkkade", "z", ZS, ZS + 1, 0, 175],
+	["Maanweg", "z", ZR2, ZR2 + 1, 128, 215], ["A12 (Utrechtsebaan)", "z", AZ, AZ + 8, 0, 189],
+	["A12", "x", A_BEND, A_BEND + 8, AZ, 175],
+	# the side streets, after streets of their part of town
+	["Koningin Marialaan", "z", Z2, Z2 + 1, 96, 175], ["Johannes Camphuysstraat", "z", ZB, ZB + 1, 98, 128],
+	["Van Hoytemastraat", "x", XB, XB + 1, 31, 57], ["Carel Reinierszkade", "x", XD, XD + 1, 29, 95],
+	["Binckhorstlaan", "x", XD, XD + 1, 96, 175], ["Calandstraat", "x", X6, X6 + 1, 109, 175],
+	["Vaillantlaan", "x", X2, X2 + 1, ZS + 2, 175], ["Delftselaan", "x", X3, X3 + 1, ZS + 2, 175],
+	["Rijswijkseweg", "x", XB, XB + 1, ZR1 + 2, 175], ["Hobbemastraat", "z", ZR1, ZR1 + 1, 0, 68],
+	["Laakkade", "z", ZR1, ZR1 + 1, 69, 127], ["Saturnusstraat", "z", ZR1, ZR1 + 1, 128, 175],
+	["Hoefkade", "z", ZR2, ZR2 + 1, 0, 68], ["Van der Vennestraat", "z", ZR2, ZR2 + 1, 69, 127],
+	["Jan Steenstraat", "z", ZR3, ZR3 + 1, 0, 68], ["Neherkade", "z", ZR3, ZR3 + 1, 69, 127],
+	["Regulusweg", "z", ZR3, ZR3 + 1, 128, 175], ["Herenstraat", "x", VOORBURG_STREET, VOORBURG_STREET + 1, 0, 175],
+	["Prinses Mariannelaan", "z", ZS, ZS + 1, 190, 215]]
 
 
 # ------------------------------------------------------------------ helpers
@@ -261,6 +304,25 @@ const SIGNS := {"bg_bakker": "tekst/bord_bakker", "bg_slager": "tekst/bord_slage
 	"bg_drogist": "tekst/tekst_apotheek", "bg_bar": "tekst/tekst_cafe", "bg_supermarkt": "tekst/bord_kaas"}
 
 
+## Height (m) of the bottom of a shop's name sign (tekst/naam_<kind>_<n>): just over the
+## shop window.
+const NAME_SIGN_HEIGHT := 2.7
+## Most name signs a kind of shop has (tekst/naam_<kind>_1 .. _3).
+const NAME_SIGNS_PER_KIND := 3
+
+
+## The name sign of a shop of this kind ("bg_bakker": tekst/naam_bakker_<n>), another one
+## for another `pick`; "" if the kind has none.
+func _name_sign(shop: String, pick: int) -> String:
+	var kind := shop.trim_prefix("bg_")
+	var names: Array[String] = []
+	for number in range(1, NAME_SIGNS_PER_KIND + 1):
+		var sign_name := "tekst/naam_%s_%d" % [kind, number]
+		if _has(sign_name, details):
+			names.append(sign_name)
+	return names[pick % names.size()] if not names.is_empty() else ""
+
+
 ## Gable types of the canal houses (tile gevel_<type>): stepped, spout, bell and neck.
 const GABLES := ["trap", "tuit", "klok", "hals"]
 
@@ -281,7 +343,7 @@ func _shops(start: Vector2i, step: Vector2i, n: int, front: String, seed: int, k
 	if gables:
 		styles[5] = "herenhuis_1600"   # the old centre has no modern white houses, but 17th-century ones
 	var upper := ["verd_raam", "verd_balkon", "verd_luiken", "verd_erker", "verd_raam_breed", "verd_drie_ramen"]
-	var roofs := ["dak_schuin", "dak_schuin_dakkapel", "dak_schuin", "dak_schuin_schoorsteen"]
+	var roofs := ["dak_schuin", "dak_schuin_dakkapel", "dak_schuin_schoorsteen", "dak_schuin", "dak_schuin_schoorsteen"]
 	for i in n:
 		var c: Vector2i = start + step * i
 		var bc: Vector2i = c - off
@@ -341,7 +403,12 @@ func _shops(start: Vector2i, step: Vector2i, n: int, front: String, seed: int, k
 		# details on the middle of the front face (a little to one side for signs)
 		var wx := c.x * 4.0 + 2.0 + off.x * 2.0
 		var wz := c.y * 4.0 + 2.0 + off.y * 2.0
-		if SIGNS.has(shop):
+		# every other shop its own name over the window (they are wider than a shop: never
+		# two side by side), else the sign of its trade or an awning
+		var name_sign := _name_sign(shop, i / 2 + seed) if (i + seed) % 2 == 0 else ""
+		if name_sign != "":
+			D(wx, wz, NAME_SIGN_HEIGHT, name_sign, front)
+		elif SIGNS.has(shop):
 			D(wx - step.x, wz - step.y, 3.5, SIGNS[shop], front)
 		elif (i + seed) % 2 == 0:
 			D(wx, wz, 2.5, awnings[(i + seed) % awnings.size()], front)
@@ -942,7 +1009,7 @@ func _plein() -> void:
 			_g(x, z, "stoep/stoep_boomrooster")
 	_trees(trees, ["bomen/linde"])
 	for c in [Vector2i(53, 38), Vector2i(56, 38), Vector2i(53, 46), Vector2i(56, 46)]:
-		_g(c.x, c.y, "natuur/bloemperk_tulpen")
+		_g(c.x, c.y, "natuur/gras")
 	for z in range(34, 50, 3):
 		Pr(57 * 4 + 2.0, z * 4 + 2.0, ["terras/terras_set_parasol_groen", "terras/terras_set_parasol", "terras/tafel_vierkant_stoelen"][z % 3], "W")
 		Pr(58 * 4 + 2.0, z * 4 + 1.0, "terras/bloembak_terras", "W")
@@ -1168,7 +1235,7 @@ func _haagse_bos() -> void:
 	B(hx + 3, 2, 7, "overheid/overheid_top_fronton", "S")
 	for x in [hx - 1, hx + 7]:
 		for z in [9, 10]:
-			_g(x, z, "natuur/bloemperk_tulpen")
+			_g(x, z, "natuur/gras")
 	for x in range(hx + 1, hx + 6):
 		_g(x, 10, "natuur/gras")
 	Pr((hx + 3) * 4 + 2.0, 10 * 4 + 2.0, "straat/fontein")
@@ -1237,7 +1304,7 @@ func _ministerie_van_financien() -> void:
 	var entrance := (x0 + 1) * 4 + 2.0
 	D(entrance, (z1 + 1) * 4.0, 0.0, "luifels/luifel_kantoor", "S")
 	D(entrance, (z1 + 1) * 4.0, 0.0, "deuren/draaideur", "S")
-	D(entrance + 4.0, (z1 + 1) * 4.0, 7.5, "tekst/tekst_ministerie", "S")
+	D(entrance + 4.0, (z1 + 1) * 4.0, 7.5, "tekst/tekst_ministerie_financien", "S")
 	D(entrance + 4.0, (z1 + 1) * 4.0, FINANCIEN_STOREYS * 3.0 - 4.0, "gevel/vlag_nl", "S")
 	places["ministerie_van_financien"] = Vector2((x0 + x1 + 1) * 2.0, (z0 + z1 + 1) * 2.0)
 
@@ -1328,8 +1395,6 @@ func _malieveld() -> void:
 		Pr(x * 4 + 2.0, 32 * 4 + 1.0, "verlichting/lantaarn_park", "S")
 	for x in range(74, KOEKAMP_COLUMN, 3):
 		Pr(x * 4 + 2.0, 56 * 4 + 3.0, "verlichting/lantaarn_park", "N")
-	for c in [Vector2i(77, 46), Vector2i(84, 36), Vector2i(84, 50)]:
-		_g(c.x, c.y, "natuur/bloemperk_tulpen")
 	for x in [79, 80, 81]:
 		Pr(x * 4 + 2.0, 44 * 4.0, ["straat/vlaggenmast_denhaag", "straat/vlaggenmast_nl", "straat/vlaggenmast_eu"][x - 79])
 	_kerb_path(X6 - 1, 44, "E")
@@ -1389,7 +1454,7 @@ func _centraal() -> void:
 	_tall_hall(74, 69, 19, 9, "hal_glas", CENTRAAL_HALL_STOREYS, Vector2i(83, 69), [Vector2i(77, 69), Vector2i(89, 69)])
 	block(80, 70, 7, 3, "kantoor_glas", 3, {"front": "N", "gf": ["verd_vliesgevel"], "gf_side": "verd_vliesgevel",
 		"gf_corner": "verd_vliesgevel_hoek", "upper": ["verd_vliesgevel"], "upper_corner": "verd_vliesgevel_hoek", "roof": "flat"})
-	D(83 * 4 + 2.0, 69 * 4.0, CENTRAAL_HALL_STOREYS * 3.0 - 3.5, "tekst/tekst_station", "N")
+	D(83 * 4 + 2.0, 69 * 4.0, CENTRAAL_HALL_STOREYS * 3.0 - 3.9, "tekst/tekst_den_haag_centraal", "N")
 	D(83 * 4 + 2.0, 69 * 4.0, 0.0, "luifels/luifel_glas", "N")
 	D(77 * 4 + 2.0, 69 * 4.0, 0.0, "luifels/luifel_glas", "N")
 	D(89 * 4 + 2.0, 69 * 4.0, 0.0, "luifels/luifel_glas", "N")
@@ -1429,13 +1494,13 @@ func _centraal() -> void:
 			"upper": ["verd_band", "verd_raam_groot"], "upper_corner": "verd_band_hoek", "roof": "flat"})
 		B(tx + 1, MINISTRY_TOWER_STOREYS, 81, "kantoor_beton/kantoor_beton_dak_installatie", "S")
 		B(tx + 1, MINISTRY_TOWER_STOREYS, 82, "kantoor_beton/kantoor_beton_dak_installatie", "S")
-		D(tx * 4 + 6.0, 80 * 4.0, 4.5, "tekst/tekst_ministerie", "N")
+		D(tx * 4 + 6.0, 80 * 4.0, 4.5, "tekst/tekst_ministerie_justitie_en_veiligheid" if tx == 79 else "tekst/tekst_ministerie_binnenlandse_zaken", "N")
 		D(tx * 4 + 6.0, 80 * 4.0, MINISTRY_TOWER_STOREYS * 3.0 - 4.0, "gevel/vlag_nl", "N")
 	for x in range(82, 86):
 		G(x, 81, "brug/loopbrug_overdekt", "E", 15)
 	places["ministerie_van_justitie"] = Vector2(80 * 4.0 + 2.0, 80 * 4.0)
 	block(90, 80, 3, 4, "luxe_appartement", 11, {"front": "N", "gf": ["bg_glas", "bg_lobby", "bg_glas"], "gf_side": "bg_glas",
-		"gf_corner": "bg_glas_hoek", "upper": ["verd_terras", "verd_glas"], "upper_corner": "verd_terras_hoek", "roof": "none"})
+		"gf_corner": "bg_glas_hoek", "upper": ["verd_terras", "verd_balkons", "verd_glas"], "upper_corner": "verd_balkons_hoek", "roof": "none"})
 	for x in range(90, 93):
 		for z in range(80, 84):
 			var e := _edge(_sides(x, z, 90, 80, 3, 4))
@@ -1479,7 +1544,7 @@ func _de_resident() -> void:
 			B(x, CASTALIA_STOREYS, 87, "klassiek_geel/klassiek_geel_dak_zadel", "E")
 			B(x, CASTALIA_STOREYS, 88, "klassiek_geel/klassiek_geel_gevel_tuit", "S")
 	_tall_hall(77, 86, 2, 3, "hal_glas", PARNASSUS_ATRIUM_STOREYS, Vector2i(77, 86))
-	D(77 * 4.0 + 4.0, 86 * 4.0, 4.5, "tekst/tekst_ministerie", "N")
+	D(77 * 4.0 + 4.0, 86 * 4.0, 4.5, "tekst/tekst_ministerie_vws", "N")
 	D(77 * 4.0 + 4.0, 86 * 4.0, PARNASSUS_ATRIUM_STOREYS * 3.0 + 1.0, "gevel/vlag_nl", "N")
 	places["de_resident"] = Vector2(78 * 4.0, 87 * 4.0)
 	places["castalia"] = Vector2(76 * 4.0, 86 * 4.0)
@@ -1548,6 +1613,7 @@ func _schenkkade() -> void:
 	_fill(X6 + 3, south, XC - 3, south + depth - 1, "plein/plein_tegels")
 	block(X6 + 4, south, 7, 5, "kantoor_modern", 7, {"front": "N", "gf": ["bg_entree", "bg_glas"], "gf_side": "bg_glas", "gf_corner": "bg_glas_hoek",
 		"upper": ["verd_lamellen", "verd_raam_groot"], "upper_corner": "verd_lamellen_hoek", "roof": "flat"})
+	_company_name(X6 + 4, 7, south, "N", 7, 1)
 	block(X6 + 13, south, 5, 5, "kantoor_beton", 11, {"front": "N", "gf": ["bg_entree", "bg_glas"], "gf_side": "bg_glas", "gf_corner": "bg_glas_hoek",
 		"upper": ["verd_band", "verd_raam_groot"], "upper_corner": "verd_band_hoek", "roof": "flat"})
 	block(X6 + 20, south + 1, 9, 3, "jaren60", 5, {"front": "N", "gf": ["bg_deur", "bg_berging", "bg_raam"], "gf_side": "bg_raam",
@@ -1560,6 +1626,9 @@ func _schenkkade() -> void:
 	_fill(XD + 3, south, X_END - 1, south + depth - 1, "natuur/gras")
 	block(XD + 5, south + 1, 7, 3, "appartement_modern", 9, {"front": "N", "gf": ["bg_entree", "bg_glas"], "gf_side": "bg_glas", "gf_corner": "bg_glas_hoek",
 		"upper": ["verd_balkon", "verd_loggia", "verd_glas"], "upper_corner": "verd_balkon_hoek", "roof": "flat"})
+	# a DERREK under the flats, its carts on the pavement before it
+	_fill(XD + 5, south, XD + 11, south, "plein/plein_tegels")
+	_supermarket(XD + 5, south + 1, 7, "appartement_modern", "derrek", "rood")
 	_trees([Vector2i(XD + 4, south + 5), Vector2i(XD + 13, south + 2), Vector2i(XD + 16, south + 5), Vector2i(XD + 19, south + 1)], ["bomen/eik", "bomen/linde", "bomen/kastanje"])
 	places["schenkkade"] = Vector2(112 * 4.0, ZS * 4.0)
 	_schenkkade_west(south, depth, flats, dark)
@@ -1714,6 +1783,7 @@ func _laakkwartier() -> void:
 	_fill(middle + 1, second + 1, middle + middle_width - 2, second + SOUTH_BLOCK_DEPTH - 2, "plein/plein_tegels")
 	block(middle + 2, second + 2, middle_width - 4, 7, "kantoor_modern", 8, {"front": "S", "gf": ["bg_entree", "bg_glas"], "gf_side": "bg_glas", "gf_corner": "bg_glas_hoek",
 		"upper": ["verd_lamellen", "verd_raam_groot"], "upper_corner": "verd_lamellen_hoek", "roof": "flat"})
+	_company_name(middle + 2, middle_width - 4, second + 9, "S", 8, 2)
 	# Het Strijkijzer stands free on the south half of the square
 	var iron := Vector2i(middle + middle_width / 2 - 1, second + 12)
 	_strijkijzer(iron.x, iron.y)
@@ -1727,7 +1797,10 @@ func _laakkwartier() -> void:
 	_fill(middle + 1, third + 1, middle + middle_width - 2, third + SOUTH_BLOCK_DEPTH - 2, "natuur/gras")
 	block(middle + 3, third + 6, middle_width - 6, 4, "appartement_modern", 11, {"front": "N", "gf": ["bg_entree", "bg_glas"], "gf_side": "bg_glas", "gf_corner": "bg_glas_hoek",
 		"upper": ["verd_balkon", "verd_loggia", "verd_glas"], "upper_corner": "verd_balkon_hoek", "roof": "flat"})
-	_trees([Vector2i(middle + 2, third + 2), Vector2i(middle + 11, third + 3), Vector2i(middle + 3, third + 15), Vector2i(middle + 10, third + 17)], ["bomen/eik", "bomen/linde", "bomen/kastanje"])
+	# an ALFRED STEYHN in its ground floor, a paved forecourt to the street
+	_fill(middle + 3, third + 1, middle + middle_width - 4, third + 5, "plein/plein_tegels")
+	_supermarket(middle + 3, third + 6, middle_width - 6, "appartement_modern", "alfred_steyhn", "blauw")
+	_trees([Vector2i(middle + 2, third + 2), Vector2i(middle + 2, third + 5), Vector2i(middle + 3, third + 15), Vector2i(middle + 10, third + 17)], ["bomen/eik", "bomen/linde", "bomen/kastanje"])
 	_housing_block(east, third, east_width, ["jaren30", "klassiek_rood"])
 
 
@@ -1801,8 +1874,17 @@ func _binckhorst() -> void:
 		"gf_side": "bg_dicht", "gf_corner": "bg_dicht_hoek", "upper": ["verd_raam_hoog"], "upper_corner": "verd_raam_hoog_hoek", "roof": "flat"})
 	block(west + 2, first + 8, 5, 8, "fabriek", SHED_STOREYS, {"front": "E", "gf": ["bg_roldeur", "bg_dock", "bg_loopdeur"],
 		"gf_side": "bg_dicht", "gf_corner": "bg_dicht_hoek", "upper": ["verd_raam_hoog", "verd_wand"], "upper_corner": "verd_raam_hoog_hoek", "roof": "flat"})
-	_car_park(west + 9, west + west_width - 3, first + 10)
-	_car_park(west + 9, west + west_width - 3, first + 14)
+	_car_park(west + 9, west + west_width - 5, first + 11)
+	# the Binckhorsthaven along its east and south side, with quays (the real factory lies
+	# on the water)
+	var harbour := {}
+	for z in range(first + 1, first + SOUTH_BLOCK_DEPTH - 2):
+		for x in [west + west_width - 3, west + west_width - 2]:
+			harbour[Vector2i(x, z)] = true
+	for x in range(west + 2, west + west_width - 1):
+		for z in [first + SOUTH_BLOCK_DEPTH - 4, first + SOUTH_BLOCK_DEPTH - 3]:
+			harbour[Vector2i(x, z)] = true
+	_water(harbour)
 	places["caballerofabriek"] = Vector2((west + 10) * 4.0, (first + 3) * 4.0)
 	# Haags Busmuseum and business units
 	_industrial_yard(east, first, east_width)
@@ -1876,12 +1958,16 @@ func _beatrixkwartier() -> void:
 	var t1 := glass.duplicate()
 	t1.merge({"upper": ["verd_vliesgevel", "verd_zonwering"], "upper_corner": "verd_vliesgevel_hoek"})
 	block(100, 62, 5, 5, "kantoor_2000", 14, t1)
+	_company_name(100, 5, 62, "N", 14, 4)
 	B(102, 14, 64, "kantoor_2000/kantoor_2000_dak_installatie", "S")
 	var t2 := glass.duplicate()
 	t2.merge({"upper": ["verd_lamellen", "verd_raam_groot"], "upper_corner": "verd_lamellen_hoek"})
 	block(108, 62, 6, 4, "kantoor_modern", 8, t2)
+	_company_name(108, 6, 62, "N", 8, 3)
 	var t3 := glass.duplicate()
-	t3.merge({"upper": ["verd_balkon", "verd_loggia", "verd_glas"], "upper_corner": "verd_balkon_hoek"})
+	# balconies that step from side to side, glass and steel (the towers round Centraal)
+	t3.merge({"upper": ["verd_balkon_glas_links", "verd_balkon_glas_rechts", "verd_balkon_metaal", "verd_glas"],
+		"upper_corner": "verd_balkon_glas_links_hoek"})
 	block(118, 62, 4, 4, "appartement_modern", 17, t3)
 	B(119, 17, 63, "appartement_modern/appartement_modern_dak_daktuin", "S")
 	var t4 := glass.duplicate()
@@ -2020,9 +2106,11 @@ func _a12() -> void:
 		if x % 2 == 0:
 			Pr(x * 4 + 2.0, AZ * 4 + 3.5, "hekken/hek_gaas_hoog", "S")
 			Pr(x * 4 + 2.0, (AZ + 8) * 4 + 0.5, "hekken/hek_gaas_hoog", "N")
-	Pr((X_END - 5) * 4.0, (AZ + 2) * 4 + 2.0, "borden/snelweg_portaal", "E")
-	Pr((A_FLAT + 10) * 4.0, (AZ + 6) * 4 + 2.0, "borden/snelweg_portaal", "W")
-	Pr((A_FLAT + 22) * 4.0, (AZ + 6) * 4 + 2.0, "borden/snelweg_portaal", "W")
+	# ANWB signs: a gantry over each carriageway (westbound into Den Haag, eastbound to
+	# Utrecht) and a big sign beside the eastbound one
+	Pr((X_END - 5) * 4.0, (AZ + 2) * 4 + 2.0, "borden/snelweg_portaal_anwb_den_haag", "E")
+	Pr((A_FLAT + 10) * 4.0, (AZ + 6) * 4 + 2.0, "borden/snelweg_portaal_anwb_utrecht", "W")
+	Pr((A_FLAT + 22) * 4.0, (AZ + 8) * 4 + 2.0, "borden/snelweg_bord_anwb_rotterdam_utrecht", "W")
 	Pr((A_FLAT + 3) * 4 + 2.0, AZ * 4 + 2.0, "borden/bord_max_80", "E")
 	Pr((A_FLAT + 14) * 4 + 2.0, AZ * 4 + 2.0, "borden/bord_file", "E")
 	Pr((A_FLAT + 8) * 4 + 2.0, (AZ + 8) * 4 + 2.0, "borden/bord_max_100", "W")
@@ -2157,8 +2245,9 @@ func _a12_east() -> void:
 			Pr(_a12_column(8) * 4 + 0.5, z * 4 + 2.0, "hekken/hek_gaas_hoog", "W")
 			Pr(_a12_column(0) * 4 + 3.5, z * 4 + 2.0, "hekken/hek_gaas_hoog", "E")
 	Pr(_a12_column(0) * 4 + 3.5, 62 * 4 + 2.0, "borden/bord_plaatsnaam_den_haag", "S")
-	Pr(_a12_column(2) * 4.0, 70 * 4 + 2.0, "borden/snelweg_portaal", "S")
-	Pr(_a12_column(6) * 4.0, 50 * 4 + 2.0, "borden/snelweg_portaal", "N")
+	Pr(_a12_column(2) * 4.0, 70 * 4 + 2.0, "borden/snelweg_portaal_anwb_den_haag", "S")
+	Pr(_a12_column(6) * 4.0, 50 * 4 + 2.0, "borden/snelweg_portaal_anwb_utrecht", "N")
+	Pr(_a12_column(0) * 4 + 2.0, 74 * 4 + 2.0, "borden/snelweg_bord_anwb_den_haag_centrum", "S")
 	places["a12_bocht"] = Vector2((A_BEND + 4) * 4.0, (AZ + 4) * 4.0)
 	places["a12_tunnelbak_voorburg"] = Vector2(_a12_column(4) * 4.0, (A_TROUGH + 10) * 4.0)
 
@@ -2433,6 +2522,7 @@ func _prins_clauslaan() -> void:
 	var t1 := glass.duplicate()
 	t1.merge({"upper": ["verd_vliesgevel"], "upper_corner": "verd_vliesgevel_hoek"})
 	block(x0 + 1, 3, 5, 5, "kantoor_glas", 16, t1)
+	_company_name(x0 + 1, 5, 8, "S", 16, 5)
 	B(x0 + 2, 16, 5, "kantoor_glas/kantoor_glas_dak_installatie", "S")
 	var t2 := glass.duplicate()
 	t2.merge({"upper": ["verd_band", "verd_raam_groot"], "upper_corner": "verd_band_hoek"})
@@ -2534,7 +2624,7 @@ func _bezuidenhout_oost() -> void:
 	ring(east, 79, 10, 11, "jaren30", 4, {"gf": ["bg_portiek", "bg_raam"], "upper": ["verd_raam", "verd_balkon"], "back": ["verd_raam"],
 		"roof_extra": ["dak_schuin_dakkapel"]})
 	block(east + 13, 79, 4, 4, "appartement_modern", 13, {"front": "W", "gf": ["bg_entree", "bg_glas"], "gf_side": "bg_glas", "gf_corner": "bg_glas_hoek",
-		"upper": ["verd_balkon", "verd_loggia", "verd_glas"], "upper_corner": "verd_balkon_hoek", "roof": "flat"})
+		"upper": ["verd_balkon_metaal", "verd_balkon_glas_rechts", "verd_loggia", "verd_balkon_glas_links"], "upper_corner": "verd_balkon_metaal_hoek", "roof": "flat"})
 	B(east + 14, 13, 80, "appartement_modern/appartement_modern_dak_daktuin", "S")
 	_fill(east + 12, 84, X_END - 1, 89, "plein/plein_tegels")
 	_trees([Vector2i(east + 13, 86), Vector2i(east + 17, 87), Vector2i(east + 19, 85)], ["bomen/jonge_boom", "bomen/plataan"])
@@ -2748,6 +2838,10 @@ const BARE_ROOF_STYLES := ["kerk_baksteen", "kerk_steen", "kerk_modern", "museum
 const OFFICE_STYLES := ["kantoor_2000", "kantoor_80", "kantoor_beton", "kantoor_glas", "kantoor_modern", "hogeschool", "school"]
 const FLAT_STYLES := ["galerijflat", "jaren60", "appartement_modern", "luxe_appartement", "modern_donker", "modern_hout", "modern_wit"]
 const INDUSTRY_STYLES := ["loods_staal", "loods_steen", "magazijn", "fabriek", "bedrijfspand"]
+## Antennas on the roofs of tall buildings (from this storey), metres between two of them.
+const ANTENNAS := ["dak/zendmast", "dak/telecom_antennes", "dak/zendmast_klein", "dak/telecom_antennes"]
+const ANTENNA_FROM_STOREY := 8
+const ANTENNA_SPACING := 60.0
 
 
 ## What stands on the roofs, where it makes sense: on offices installation roofs, air
@@ -2756,6 +2850,7 @@ const INDUSTRY_STYLES := ["loods_staal", "loods_steen", "magazijn", "fabriek", "
 ## and now and then an air conditioner. Churches, museums and monuments stay bare
 ## (BARE_ROOF_STYLES). Chosen per cell from its position, so a rebuild gives the same.
 func _roof_equipment() -> void:
+	var antennas: Array[Vector2] = []
 	for cell: Vector3i in buildings.get_used_cells():
 		if buildings.get_cell_item(cell + Vector3i.UP) >= 0:
 			continue
@@ -2772,6 +2867,12 @@ func _roof_equipment() -> void:
 		var roof_height := cell.y * 3.0
 		var spot := Vector2(cell.x * 4 + 2.0, cell.z * 4 + 2.0)
 		var turn: String = ["S", "E", "N", "W"][pick % 4]
+		# here and there a radio mast or telecom antennas on a tall flat roof
+		if flat_middle and cell.y >= ANTENNA_FROM_STOREY and pick == 11 \
+				and antennas.all(func(other: Vector2) -> bool: return other.distance_to(spot) > ANTENNA_SPACING):
+			D(spot.x, spot.y, roof_height, ANTENNAS[_r(cell.x, cell.z, ANTENNAS.size())], turn)
+			antennas.append(spot)
+			continue
 		if style in OFFICE_STYLES:
 			if flat_middle and pick < 3 and _has(prefix + "dak_installatie"):
 				B(cell.x, cell.y, cell.z, prefix + "dak_installatie", "S")
@@ -2806,6 +2907,68 @@ func _roof_equipment() -> void:
 const ACCESS_GROUND := ["stoep/", "plein/", "weg/", "tram/", "spoor/perron", "natuur/pad", "natuur/grindpad", "natuur/keienpad", "brug/", "parkeren/"]
 ## Ground-floor pieces that are a way in.
 const ENTRANCE_PIECES := ["bg_entree", "bg_deur", "bg_portiek", "bg_portaal", "bg_lobby"]
+
+
+## Gravel paths that join up (the parks): every straight gravel path cell is turned along
+## the paths beside it, and where a path turns a corner it gets the curve. A junction of
+## three or four keeps the straight piece of its through way; a lone piece turns towards
+## the pavement it leads onto.
+const GRAVEL_PATH := "natuur/pad_grind"
+const GRAVEL_PATH_CURVE := "natuur/pad_grind_bocht"
+
+
+func _join_gravel_paths() -> void:
+	var paths := {}
+	for cell in ground.get_used_cells():
+		if cell.y == 0 and _street_tile(Vector2i(cell.x, cell.z)) in [GRAVEL_PATH, GRAVEL_PATH_CURVE]:
+			paths[Vector2i(cell.x, cell.z)] = true
+	for cell: Vector2i in paths:
+		var ways: Array[String] = []
+		for direction: String in ORDER:
+			if paths.has(cell + DIR_OFFSET[direction]):
+				ways.append(direction)
+		if ways.is_empty():
+			for direction: String in ORDER:
+				var beside := _street_tile(cell + DIR_OFFSET[direction])
+				if beside.begins_with("stoep/") or beside.begins_with("plein/") or beside.begins_with("natuur/pad"):
+					ways.append(direction)
+		if ways.is_empty():
+			continue
+		if ways.size() == 2 and _ck(ways[0], ways[1]) != "":
+			_g(cell.x, cell.y, GRAVEL_PATH_CURVE, _ck(ways[0], ways[1]))
+			continue
+		var along_x := (ways.has("E") and ways.has("W")) or not (ways.has("N") or ways.has("S"))
+		if ways.has("N") and ways.has("S") and not (ways.has("E") and ways.has("W")):
+			along_x = false
+		_g(cell.x, cell.y, GRAVEL_PATH, "E" if along_x else "S")
+
+
+## The name of a (made-up) company, tekst/naam_kantoor_<number>, high on the front of an
+## office from column x0, `width` wide, whose front face lies on the edge z (metres z * 4)
+## and faces `front` ("N" or "S"), under the top of its `storeys`.
+func _company_name(x0: int, width: int, z: int, front: String, storeys: int, number: int) -> void:
+	D(x0 * 4 + width * 2.0, z * 4.0, storeys * 3.0 - 4.2, "tekst/naam_kantoor_%d" % number, front)
+
+
+## A supermarket of `brand` ("derrek", "alfred_steyhn") in the ground floor of the north
+## front (row z) of a block of `style` from column x0, `width` wide: shop windows in the
+## brand's colours between the corners, the sliding doors in the middle, the brand's sign
+## over them, and before it a cart shelter, a row of carts and a couple left standing
+## (handles in `cart_colour`: "rood", "blauw").
+func _supermarket(x0: int, z: int, width: int, style: String, brand: String, cart_colour: String) -> void:
+	var prefix := style + "/" + style + "_bg_" + brand + "_"
+	var door := x0 + width / 2
+	for x in range(x0 + 1, x0 + width - 1):
+		B(x, 0, z, prefix + ("ingang" if x == door else "raam"), "N")
+	D(door * 4 + 2.0, z * 4.0, 3.1, "tekst/tekst_" + brand, "N")
+	# the logo on the corner of the front, high up, and a pylon at the forecourt
+	D((x0 + width - 1) * 4 + 2.0, z * 4.0, 6.5, "tekst/logo_" + brand, "N")
+	Pr((x0 + width - 1) * 4 + 3.0, (z - 1) * 4 + 0.5, "winkel/reclamezuil_" + brand, "N")
+	Pr((x0 + 1) * 4 + 2.0, (z - 1) * 4 + 1.0, "winkel/winkelwagenstalling_" + cart_colour, "S")
+	Pr((x0 + width - 2) * 4 + 2.0, (z - 1) * 4 + 2.5, "winkel/winkelwagens_rij_" + cart_colour, "E")
+	Pr((door - 1) * 4 + 2.5, (z - 1) * 4 + 2.0, "winkel/winkelwagen_" + cart_colour, "W")
+	Pr((door + 1) * 4 + 1.0, (z - 1) * 4 + 1.0, "winkel/winkelwagen", "N")
+	places[brand] = Vector2(door * 4 + 2.0, z * 4.0)
 
 
 ## A paved path over the grass from the entrance of every building standing free in the

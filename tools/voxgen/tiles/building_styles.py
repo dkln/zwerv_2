@@ -589,6 +589,61 @@ def apt_up_large(b, face):
     b.interior(face, 1, 31, 1, 23, 2, 900)
 
 
+def _cantilever_balcony(b, face, u0, u1, depth, railing):
+    """Balcony slab of white concrete from u0 to u1 (exclusive), `depth` voxels out from the
+    facade, with a railing on its front and both sides: "glas" (clear glass with a steel
+    handrail) or "metaal" (dark steel bars every 2 voxels with a top and bottom rail)."""
+    b.rect(face, u0, u1, 0, 2, -depth, 0, "stuc1")
+    b.rect(face, u0, u1, 0, 1, -depth, -depth + 1, "beton2")      # darker front edge
+    if railing == "glas":
+        b.rect(face, u0, u1, 2, 9, -depth, -depth + 1, "glas_helder")
+        b.rect(face, u0, u0 + 1, 2, 9, -depth, 0, "glas_helder")
+        b.rect(face, u1 - 1, u1, 2, 9, -depth, 0, "glas_helder")
+        b.rect(face, u0, u1, 9, 10, -depth, -depth + 1, "rvs")
+        b.rect(face, u0, u0 + 1, 9, 10, -depth, 0, "rvs")
+        b.rect(face, u1 - 1, u1, 9, 10, -depth, 0, "rvs")
+    else:
+        b.railing(face, u0, u1, 2, 10, -depth, "antraciet1")
+        for d in range(-depth, 0):
+            for u in (u0, u1 - 1):
+                b.put(face, u, 9, d, "antraciet1")
+                if d % 2 == 0:
+                    for z in range(2, 9):
+                        b.put(face, u, z, d, "antraciet1")
+
+
+def _balcony_door(b, face, u0):
+    """Storey-high glass balcony door of 14 voxels with a frame bar in the middle."""
+    b.window(face, u0, 2, 14, 19, sill=False, lintel=False)
+    _mullions(b, face, (u0 + 7,), 2, 21)
+
+
+def apt_up_balcony_glass_left(b, face):
+    """Modern apartment upper floor: a 1 m deep balcony with a glass balustrade on the left
+    half in front of a balcony door, a tall window on the right half."""
+    _cantilever_balcony(b, face, 1, 17, 8, "glas")
+    _balcony_door(b, face, 2)
+    b.window(face, 19, 4, 11, 17, sill=False, lintel=False)
+
+
+def apt_up_balcony_glass_right(b, face):
+    """As apt_up_balcony_glass_left, mirrored: balcony on the right half (stack them in turn
+    for the staggered balconies of a modern apartment tower)."""
+    _cantilever_balcony(b, face, 15, 31, 8, "glas")
+    _balcony_door(b, face, 16)
+    b.window(face, 2, 4, 11, 17, sill=False, lintel=False)
+
+
+def apt_up_balcony_metal(b, face):
+    """Modern apartment upper floor: a full-width balcony 0.75 m deep with a dark steel bar
+    railing, two balcony doors and a planter."""
+    _cantilever_balcony(b, face, 0, S, 6, "metaal")
+    _balcony_door(b, face, 1)
+    _balcony_door(b, face, 17)
+    b.rect(face, 13, 18, 2, 4, -5, -3, "antraciet2")
+    b.rect(face, 13, 18, 4, 6, -5, -3, "blad2")
+
+
 # ------------------------------------------------------------------ townhouses
 
 def pilasters(b, face, z0=0, z1=24):
@@ -1484,8 +1539,12 @@ _r["dak_daktuin"] = flat_roof("appartement_modern", "v", x_roof_terrace_flat)
 reg_style("appartement_modern",
           {"bg_entree": apt_gf_entrance, "bg_glas": f_office_gf_glass, "verd_glas": apt_up_glass, "verd_loggia": apt_up_loggia,
            "verd_balkon": lambda b, f: b.balcony_modern(f), "verd_paneel": apt_up_panel, "verd_raam_groot": apt_up_large,
-           "verd_raam_klein": apt_up_small},
+           "verd_raam_klein": apt_up_small, "verd_balkon_glas_links": apt_up_balcony_glass_left,
+           "verd_balkon_glas_rechts": apt_up_balcony_glass_right, "verd_balkon_metaal": apt_up_balcony_metal},
           _corner("verd_glas") + [("verd_balkon_hoek", "verd_balkon", "verd_glas")]
+          + [("verd_balkon_glas_links_hoek", "verd_balkon_glas_links", "verd_glas"),
+             ("verd_balkon_glas_rechts_hoek", "verd_balkon_glas_rechts", "verd_balkon_glas_links"),
+             ("verd_balkon_metaal_hoek", "verd_balkon_metaal", "verd_balkon_metaal")]
           + _corner("bg_glas", "verd_raam_groot", "verd_raam_klein") + [("verd_loggia_hoek", "verd_loggia", "verd_paneel")],
           _r)
 

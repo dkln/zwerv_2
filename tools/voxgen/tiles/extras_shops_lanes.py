@@ -77,6 +77,126 @@ for _st in SHOP_STYLES:
         register(f"gebouwen/{_st}/{_st}_bg_{_k}", make_block(_st, [("v", shop(_k))]))
 
 
+# ------------------------------------------------------------------ supermarkets (parodies)
+# Two supermarket chains in their house colours, as ground floors of the shop styles: a
+# shop window with posters and the shop floor behind it (shelves, a gondola, light strips),
+# an entrance with sliding doors under a canopy, and a corner with windows on both faces.
+# Every piece carries the brand band over the windows; the big name is a Details tile
+# (details/tekst/tekst_derrek, tekst_alfred_steyhn).
+
+# brand -> (house colour, colour of the trim lines on the band)
+SUPERMARKETS = {
+    "derrek": ("winkel_rood", "bord_wit"),
+    "alfred_steyhn": ("winkel_lichtblauw", "bord_wit"),
+}
+SUPERMARKET_GOODS = ["bloem_oranje", "paneel_blauw", "bloem_geel", "bord_rood", "paneel_groen", "stuc1", "bord_wit",
+                     "hout2", "bloem_roze"]
+# styles that get the supermarket ground floors (modern blocks and the busier old streets)
+SUPERMARKET_STYLES = ("modern_wit", "modern_donker", "appartement_modern", "galerijflat", "jaren30", "klassiek_rood")
+SHOP_DEPTH = 14       # how deep (voxels) the shop floor behind the glass is cut into the block
+WINDOW_TOP = 17       # z of the top of the shop windows and doors; the band lies above
+
+
+def _supermarket_band(b, face, house):
+    """The brand band over the shop front: house colour, one voxel proud, with a white line
+    along its bottom and its top."""
+    colour, trim = SUPERMARKETS[house]
+    b.rect(face, 0, S, WINDOW_TOP, HGT, -1, 1, colour)
+    b.rect(face, 0, S, WINDOW_TOP, WINDOW_TOP + 1, -1, 0, trim)
+    b.rect(face, 0, S, HGT - 1, HGT, -1, 0, trim)
+
+
+def _supermarket_floor(b, face, house, u0, u1):
+    """The shop floor behind the glass from u0 to u1: a white tiled floor, a gondola of
+    shelves parallel to the window, the back wall full of shelves and products, and light
+    strips under a white ceiling."""
+    colour, _ = SUPERMARKETS[house]
+    b.rect(face, u0, u1, 0, WINDOW_TOP, 2, SHOP_DEPTH, 0)
+    b.rect(face, u0, u1, 0, 1, 2, SHOP_DEPTH, "tegel_wit")
+    b.rect(face, u0, u1, WINDOW_TOP - 1, WINDOW_TOP, 2, SHOP_DEPTH, "stuc1")
+    for d in range(4, SHOP_DEPTH, 4):
+        b.rect(face, u0, u1, WINDOW_TOP - 2, WINDOW_TOP - 1, d, d + 1, "licht_wit")
+    for u in range(u0, u1):
+        for z in range(1, WINDOW_TOP - 1):
+            if z % 4 == 1:
+                shade = "metaal3"                                    # shelf board
+            elif z < 13 and h(u, z, b.seed, 820) < 0.8:
+                shade = pick(SUPERMARKET_GOODS, u, z, b.seed, 821)
+            else:
+                shade = colour if z >= 13 else "stuc1"               # department signs above
+            b.put(face, u, z, SHOP_DEPTH - 1, shade)
+        if (u - u0) % 12 not in (0, 11):                             # gondolas with aisles between
+            for z in range(1, 9):
+                if z % 4 == 0:
+                    shade = "metaal3"
+                else:
+                    shade = pick(SUPERMARKET_GOODS, u, z, b.seed, 822)
+                b.put(face, u, z, 8, shade)
+                b.put(face, u, z, 9, "metaal3")
+
+
+def _supermarket_glass(b, face, house, u0, u1, posters=True):
+    """Storey-high shop window from u0 to u1 (exclusive): dark frame, mullions every 10
+    voxels, a plinth in the house colour and, with `posters`, offer posters in the glass."""
+    colour, _ = SUPERMARKETS[house]
+    st = b.st
+    frame = st["shop"]
+    b.rect(face, u0, u1, 0, WINDOW_TOP, 0, 2, 0)
+    b.rect(face, u0, u1, 0, 2, 0, 2, colour)                         # plinth
+    b.rect(face, u0, u1, 2, WINDOW_TOP - 1, 1, 2, "glas_helder")
+    b.rect(face, u0, u1, WINDOW_TOP - 1, WINDOW_TOP, 0, 2, frame)
+    for u in range(u0, u1):
+        if (u - u0) % 10 == 0 or u == u1 - 1:
+            for z in range(2, WINDOW_TOP):
+                b.put(face, u, z, 0, frame)
+    if posters:
+        for left in range(u0 + 3, u1 - 6, 10):
+            b.rect(face, left, left + 4, 9, 14, 1, 2, colour)
+            b.rect(face, left + 1, left + 3, 10, 12, 1, 2, "bord_geel")
+
+
+def supermarket_window(house):
+    """Facade function: supermarket shop window over the whole width."""
+    def f(b, face):
+        _supermarket_floor(b, face, house, 1, 31)
+        _supermarket_glass(b, face, house, 0, S)
+        _supermarket_band(b, face, house)
+    f.__name__ = "f_super_" + house + "_raam"   # seed name; must stay
+    return f
+
+
+def supermarket_entrance(house):
+    """Facade function: supermarket entrance: a pair of glass sliding doors in a steel frame
+    in the middle (1.75 m wide), a canopy in the house colour over them, a door mat, and
+    shop window on both sides."""
+    def f(b, face):
+        colour, trim = SUPERMARKETS[house]
+        _supermarket_floor(b, face, house, 1, 31)
+        _supermarket_glass(b, face, house, 0, 9, posters=False)
+        _supermarket_glass(b, face, house, 23, S, posters=False)
+        b.rect(face, 9, 23, 0, WINDOW_TOP, 0, 3, 0)
+        b.rect(face, 9, 23, 0, WINDOW_TOP, 1, 2, "glas_helder")     # the two door leaves
+        for u in (9, 15, 16, 22):
+            for z in range(0, WINDOW_TOP):
+                b.put(face, u, z, 1, "rvs")
+        b.rect(face, 9, 23, WINDOW_TOP - 2, WINDOW_TOP, 0, 2, "rvs")    # door rail box
+        b.rect(face, 10, 22, 0, 1, -3, 1, "rubber")                   # door mat
+        _supermarket_band(b, face, house)
+        b.rect(face, 7, 25, WINDOW_TOP, WINDOW_TOP + 1, -6, -1, colour)   # canopy
+        b.rect(face, 7, 25, WINDOW_TOP, WINDOW_TOP + 1, -7, -6, trim)
+        b.rect(face, 9, 23, WINDOW_TOP - 1, WINDOW_TOP, -5, -1, "licht_wit")
+    f.__name__ = "f_super_" + house + "_ingang"   # seed name; must stay
+    return f
+
+
+for _st in SUPERMARKET_STYLES:
+    for _house in SUPERMARKETS:
+        _window = supermarket_window(_house)
+        register(f"gebouwen/{_st}/{_st}_bg_{_house}_raam", make_block(_st, [("v", _window)]))
+        register(f"gebouwen/{_st}/{_st}_bg_{_house}_ingang", make_block(_st, [("v", supermarket_entrance(_house))]))
+        register(f"gebouwen/{_st}/{_st}_bg_{_house}_raam_hoek", make_block(_st, [("v", _window), ("r", _window)]))
+
+
 # ------------------------------------------------------------------ tunnel trough (open, sunken)
 
 def trough(d, kind, wall):
@@ -252,6 +372,21 @@ def lx_glass(b, face):
             b.put(face, u, z, 1, "antraciet3")
 
 
+def lx_balconies(b, face):
+    """Upper floor with two separate balconies (each 1.5 m wide, 0.9 m deep) on slim stone
+    slabs, frameless glass balustrades with a steel rail, each in front of a balcony door;
+    the glass facade between them."""
+    lx_glass(b, face)
+    for u0, u1 in ((2, 14), (18, 30)):
+        b.rect(face, u0, u1, 0, 2, -7, 0, "natuursteen1")
+        b.rect(face, u0, u1, 2, 9, -7, -6, "glas_helder")
+        b.rect(face, u0, u0 + 1, 2, 9, -7, 0, "glas_helder")
+        b.rect(face, u1 - 1, u1, 2, 9, -7, 0, "glas_helder")
+        b.rect(face, u0, u1, 9, 10, -7, -6, "rvs")
+        b.rect(face, u0, u0 + 1, 9, 10, -7, 0, "rvs")
+        b.rect(face, u1 - 1, u1, 9, 10, -7, 0, "rvs")
+
+
 def penthouse(edges):
     """Tile function for a penthouse storey: a glass volume set back 8 voxels from each
     facade in `edges` (letters v/r/a/l), wooden terrace deck, overhanging roof and glass
@@ -306,8 +441,10 @@ def x_roof_pool(b):
 
 
 reg_style("luxe_appartement",
-          {"bg_lobby": lx_lobby, "bg_glas": lx_glass, "verd_terras": lx_terrace, "verd_glas": lx_glass},
+          {"bg_lobby": lx_lobby, "bg_glas": lx_glass, "verd_terras": lx_terrace, "verd_glas": lx_glass,
+           "verd_balkons": lx_balconies},
           [("bg_glas_hoek", "bg_glas", "bg_glas"), ("verd_terras_hoek", "verd_terras", "verd_terras"),
+           ("verd_balkons_hoek", "verd_balkons", "verd_balkons"),
            ("verd_glas_hoek", "verd_glas", "verd_glas"), ("bg_lobby_hoek", "bg_lobby", "bg_glas")],
           dict(flat_roofs("luxe_appartement"),
                dak_terras=flat_roof("luxe_appartement", "v", x_roof_terrace_flat),

@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://btj0s42ggr7nu"
+path="res://.godot/imported/jaren30_bg_derrek_raam_hoek.gox-aa925fcfbb0615b7dd8c8daffd3511fa.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/gebouwen/jaren30/jaren30_bg_derrek_raam_hoek.gox"
+dest_files=["res://.godot/imported/jaren30_bg_derrek_raam_hoek.gox-aa925fcfbb0615b7dd8c8daffd3511fa.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(4, 3, 4)

@@ -197,6 +197,10 @@ func _make_scene(node_name: String) -> Node3D:
 	gb.name = "Grassprieten"
 	gb.set_script(load("res://scripts/effects/grass_blades.gd"))
 	root.add_child(gb)
+	var hud := CanvasLayer.new()
+	hud.name = "HUD"   # player stats, minimap, clock, quests, money (scripts/ui/hud.gd)
+	hud.set_script(load("res://scripts/ui/hud.gd"))
+	root.add_child(hud)
 	tint_map = tk
 	for n in root.get_children():
 		n.owner = root

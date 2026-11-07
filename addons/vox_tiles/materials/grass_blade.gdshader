@@ -21,6 +21,10 @@ uniform vec2 thin_centre = vec2(0.0);
 uniform float thin_from = 1e6;
 uniform float thin_to = 2e6;
 uniform float thin_keep = 1.0;
+// 0 = full contrast (up close), 1 = calm (zoomed out): grass_blades.gd raises it with the
+// view size, so a zoomed-out meadow doesn't speckle: the blades' sides get lit almost like
+// the ground, the shade per blade and the base-to-tip difference shrink
+uniform float calm = 0.0;
 
 varying float along;
 varying float shade;
@@ -61,7 +65,13 @@ void vertex() {
 }
 
 void fragment() {
-	vec3 c = mix(base_color, tip_color, tint) * (0.85 + 0.3 * shade);
+	float contrast = 1.0 - 0.65 * calm;
+	// calm: every blade towards one shade close to the grass tiles' colour (a sixth of the
+	// way from base to tip), so the tufts don't stand out as lighter dots
+	vec3 c = mix(base_color, tip_color, mix(0.15, tint, contrast)) * (1.0 + 0.3 * (shade - 0.5) * contrast);
+	// zoomed out: the normal leans towards up, so the shaded sides are not much darker than the tops
+	vec3 up = (VIEW_MATRIX * vec4(0.0, 1.0, 0.0, 0.0)).xyz;
+	NORMAL = normalize(mix(NORMAL, up, 0.7 * calm));
 	ALBEDO = c;
 	ROUGHNESS = 0.85;
 	SPECULAR = 0.25;

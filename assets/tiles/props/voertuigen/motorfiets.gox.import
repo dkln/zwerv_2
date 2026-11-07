@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://bua8kqwk7fnqe"
+path="res://.godot/imported/motorfiets.gox-53047b1e3a5bcc5cb0404b8101d1a8c7.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/props/voertuigen/motorfiets.gox"
+dest_files=["res://.godot/imported/motorfiets.gox-53047b1e3a5bcc5cb0404b8101d1a8c7.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(0, 0, 0)

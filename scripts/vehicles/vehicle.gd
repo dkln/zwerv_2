@@ -27,7 +27,7 @@ extends Node3D
 ## the map marks a cell to move over from (RoadNetwork MOVE_OVERS: an exit) it takes it as
 ## a turn, at straight_chance, or always where its own lane ends there.
 ## Emergency services (`emergency`: police, ambulance, fire service, ME): a siren
-## (siren.gd) and blue lights on the roof (`beacon_positions`), on and off by themselves
+## (no sound) and blue lights on the roof (`beacon_positions`), on and off by themselves
 ## (`siren_duty`) or with set_siren / toggle_siren. With the siren on it drives
 ## EMERGENCY_SPEED_FACTOR over the limit, through red lights and past zebras, and gives way
 ## only to another siren. The others make way for it: on a crossing they give way to it,
@@ -51,8 +51,9 @@ extends Node3D
 ## driving without looking; a scrape in a corner is not a crash), they crash: each becomes
 ## a RigidBody3D (a "Wrak") with its
 ## speed and mass, so they bounce off each other and off the colliders of the town (the
-## kerbs, medians and buildings of the GridMaps), spin and slide out, hazard lights
-## blinking; after WRECK_TIME seconds they are towed back onto the nearest lane and
+## kerbs, medians and buildings of the GridMaps), hop, tip over towards where they are
+## pushed, spin and slide out, hazard lights blinking; shards of paint, glass and plastic
+## and a puff of dust fly out (scripts/effects/crash_burst.gd) and the view shakes; after WRECK_TIME seconds they are towed back onto the nearest lane and
 ## drive on. drive_into() sends a vehicle the wrong way down another one's route, without
 ## looking (the demo crash, key B in the follow camera).
 ## Weight and torque: `mass_kg` and `wheel_torque` differ per type, and a heavy vehicle has
@@ -61,7 +62,10 @@ extends Node3D
 ## the spin, the heavy one hardly notices), and the heavy one keeps rolling on its wheels
 ## with its engine still pushing for longer (ROLL_ON_*), shoving the light one ahead of it.
 ## Gridlock: vehicles that wait for each other in a ring (not in a queue for a light or a
-## zebra) would stand there for ever, so after a while one squeezes past (SQUEEZE_TIME).
+## zebra) would stand there for ever, so after a while one squeezes past (SQUEEZE_TIME):
+## it ignores the cells the others claim, but still keeps behind the body right ahead of it;
+## only if it stands still all the same (the bodies themselves locked) does it drive
+## through them, the next time.
 ## Windows: the glass of the model gets dark tinted glass that mirrors the sky, more at a
 ## grazing angle, with a sharp sun glint and light streaks that lie on the car itself
 ## (voxel_glass.gdshader, streaks_on_object: world streaks would slide over its windows).
@@ -143,6 +147,10 @@ const CROSSING_LOOKAHEAD := 4
 @export var wheel_positions := PackedVector3Array()
 ## Radius the wheels roll with (metres).
 @export var wheel_radius := 0.375
+## Front wheels (z > 0) of another size (a tractor's small ones): their own props item and
+## radius, each rolling at its own rate; "" / 0 = the same as the others.
+@export var front_wheel_model := ""
+@export var front_wheel_radius := 0.0
 ## Largest steering angle of the front wheels (degrees); 0 = they don't steer.
 @export var max_steering_degrees := 40.0
 ## How quickly the steering follows the corner (1/s).
@@ -223,9 +231,21 @@ const CRASH_MARGIN := 0.25
 ## Speed (m/s) at which they must close for touching to be a crash.
 const CRASH_SPEED := 5.0
 ## How much of the closing speed comes back as bounce in a crash.
-const CRASH_BOUNCE := 0.15
+const CRASH_BOUNCE := 0.35
 ## Fastest a crash spins a wreck (rad/s).
-const MAX_CRASH_SPIN := 6.0
+const MAX_CRASH_SPIN := 9.0
+## The jolt of a crash: per m/s of the closing speed it takes (its share, the lighter one
+## most) it hops up (m/s) and tips over towards where it is pushed (rad/s), up to the most.
+const CRASH_HOP := 0.12
+const CRASH_HOP_MOST := 2.8
+const CRASH_TILT := 0.14
+const CRASH_TILT_MOST := 2.6
+## Closing speed (m/s) of a crash with the biggest bang (shards, dust, camera shake).
+const CRASH_FULL_SPEED := 20.0
+## Colour words in the model names and the paint they stand for (the shards of a crash).
+const PAINT_WORDS := {"wit": Color(0.92, 0.92, 0.9), "zilver": Color(0.72, 0.74, 0.76), "rood": Color(0.75, 0.12, 0.1),
+		"blauw": Color(0.15, 0.3, 0.7), "zwart": Color(0.1, 0.1, 0.11), "politie": Color(0.9, 0.9, 0.9),
+		"ambulance": Color(0.95, 0.85, 0.1), "brandweer": Color(0.8, 0.1, 0.08), "bus": Color(0.9, 0.85, 0.2)}
 ## After a crash a wreck rolls on on its wheels (little friction, its engine pushing) for
 ## this many seconds, plus this per kg: a bus goes on for much longer than a small car.
 const ROLL_ON_TIME := 0.6
@@ -243,6 +263,8 @@ const BODY_SIDE_ROOM := 0.2
 const RING_PATIENCE := 5.0
 const RING_PATIENCE_SPREAD := 8
 const SQUEEZE_TIME := 6.0
+## Metres a squeeze must get it on, else the next one drives through the bodies too.
+const SQUEEZE_IN_VAIN := 2.0
 const LOST_PATIENCE := 75.0
 ## Longest queue of vehicles it follows to see what they wait for.
 const QUEUE_CHECK := 24
@@ -260,7 +282,6 @@ const BRAKE_SLACK := 1.5
 const LIMIT_LEAD := 1.2
 ## With the siren on: how much over the speed limit it may drive.
 const EMERGENCY_SPEED_FACTOR := 1.4
-const SirenSound = preload("res://scripts/vehicles/siren.gd")
 ## Seconds the siren stays on, and off, when it switches by itself (from .. to).
 const SIREN_ON_SECONDS := Vector2(45.0, 100.0)
 const SIREN_OFF_SECONDS := Vector2(20.0, 50.0)
@@ -280,7 +301,7 @@ const YIELD_SPEED := 2.0
 const YIELD_STAND_DISTANCE := 15.0
 const YIELD_LONGEST := 20.0
 const YIELD_OFFSET := 1.1
-const PASS_OFFSET := 0.6
+const PASS_OFFSET := 0.9
 const OFFSET_RATE := 1.2
 ## On a crossing everyone gives way to a siren that will be there within these seconds.
 const PRIORITY_CLAIM_SECONDS := 6.0
@@ -308,9 +329,31 @@ const MAX_TRAILER_ANGLE := 1.4
 const WHEEL_DRAW_DISTANCE := 220.0
 ## Sideways and lengthways steps (metres) along a vehicle at which it claims the cell under it.
 const COVER_STEP := 2.0
+## Out of sight: a vehicle off the screen by more than UNSEEN_MARGIN (a share of the screen
+## size round it), or further than UNSEEN_DISTANCE from a perspective camera, steps half as
+## often (twice the time per step) and leaves its wheels and lamps alone; it looks every
+## SIGHT_CHECK_STEPS physics steps whether it is still out of sight.
+const UNSEEN_MARGIN := 0.3
+const UNSEEN_DISTANCE := 300.0
+const SIGHT_CHECK_STEPS := 15
+## Lost: it turned round in its own lane (no lane back beside it) this many times without
+## getting onto a crossing in between, so it only drives to and fro: once out of sight (or
+## after LOST_SECONDS all the same) it is put down on a free lane somewhere else.
+const LANE_REVERSALS_LOST := 2
+const LOST_SECONDS := 20.0
+const RELOCATE_TRIES := 40
 
 ## Every vehicle in the game (for keeping clear of each other and crashing).
 static var all_vehicles: Array[Vehicle] = []
+## The last crash: where, how hard (0..1) and when (seconds, Time); the camera shakes.
+static var last_crash := {"at": Vector3.ZERO, "strength": 0.0, "time": -100.0}
+
+## Out of sight of the camera (see UNSEEN_MARGIN): it takes less CPU time.
+var unseen := false
+var _sight_countdown := 0
+var _saved_delta := 0.0              # time of the step it skipped while out of sight
+var _lane_reversals := 0             # turns round in its own lane since the last crossing
+var _lost_clock := -1.0              # seconds it has been lost (driving to and fro); < 0 = not
 
 ## Crashed: a wreck under physics until it is towed back onto the road.
 var crashed := false
@@ -346,7 +389,10 @@ var _lights: Node
 var _random := RandomNumberGenerator.new()
 var _visits := {}                    # Vector3i cell -> times driven over (fades, VISIT_MEMORY)
 var _wheels: Array[Node3D] = []      # per wheel: the steering pivot, its child spins
+var _wheel_roll_ratios: Array[float] = []  # per wheel: wheel_radius over its own radius
 var _wheel_roll := 0.0               # radians the wheels have turned
+var _front_wheel_roll := 0.0         # and the front wheels of another size (front_wheel_model)
+var _front_roll_previous := 0.0
 var _steering := 0.0                 # current steering angle (radians)
 var _front_axle := 1.2               # where the axles are (metres forwards on the body)
 var _rear_axle := -1.2
@@ -386,7 +432,6 @@ var indicating := 0
 var siren_on := false
 var yielding := false
 
-var _siren: SirenSound
 var _beacons: Array[MeshInstance3D] = []
 var _beacon_light: OmniLight3D
 var _siren_clock := 0.0          # seconds until the siren switches by itself
@@ -400,7 +445,10 @@ var _brake_hold := 0.0                # seconds the brake lights stay on
 var _blocked_by: Vehicle             # the vehicle it is waiting for now, if any
 var _held_by_rule := false           # it is stopping for a light or a zebra
 var _blocked_clock := 0.0            # seconds it has been standing for another vehicle
-var _squeeze_clock := 0.0            # seconds it still ignores the others (gridlock)
+var _squeeze_clock := 0.0            # seconds it still ignores the others' claims (gridlock)
+var _squeeze_through := false        # and their bodies too (the last squeeze got it nowhere)
+var _squeeze_from := Vector3.ZERO    # where its last squeeze started
+var _squeezed_in_vain := false       # it hardly moved during its last squeeze
 
 
 func _ready() -> void:
@@ -438,6 +486,22 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	_sight_countdown -= 1
+	if _sight_countdown < 0:
+		_sight_countdown = SIGHT_CHECK_STEPS
+		unseen = _out_of_sight(global_position)
+	if _lost_clock >= 0.0:
+		_lost_clock += delta
+		if unseen or _lost_clock > LOST_SECONDS:
+			_relocate()
+			return
+	if unseen:
+		# every other step, with the time of both
+		_saved_delta += delta
+		if _saved_delta < delta * 1.5:
+			return
+		delta = _saved_delta
+	_saved_delta = 0.0
 	_tick_previous = _tick_current
 	var speed_before := speed
 	_plan()
@@ -467,7 +531,8 @@ func _physics_process(delta: float) -> void:
 	velocity = (global_position - before) / maxf(delta, 0.0001)
 	_tick_current = global_transform
 	_check_crash()
-	_turn_wheels(speed * delta, delta)
+	if not unseen:
+		_turn_wheels(speed * delta, delta)
 	_move_trailer()
 	indicating = _indicator_side()
 
@@ -486,18 +551,24 @@ func _process(delta: float) -> void:
 	_body.global_transform = _tick_previous.interpolate_with(_tick_current, fraction)
 	if _trailer:
 		_trailer.global_transform = _trailer_previous.interpolate_with(_trailer_current, fraction)
+	if unseen:
+		return
 	var roll := lerp_angle(_roll_previous, _wheel_roll, fraction)
+	var front_roll := lerp_angle(_front_roll_previous, _front_wheel_roll, fraction)
 	var steering := lerpf(_steering_previous, _steering, fraction)
 	# the spokes blur once the wheel turns more than about a quarter radian a frame (they
 	# would seem to stand still or run backwards); delta is this frame's time
 	var turn_per_frame := speed / maxf(wheel_radius, 0.01) * delta
 	var blur := smoothstep(0.25, 0.7, turn_per_frame)
-	for wheel in _wheels:
+	for wheel_index in _wheels.size():
+		var wheel := _wheels[wheel_index]
+		var ratio := _wheel_roll_ratios[wheel_index]
 		wheel.rotation.y = steering if wheel.position.z > 0.0 and max_steering_degrees > 0.0 else 0.0
 		var instance := wheel.get_child(0) as GeometryInstance3D
-		# the wheel model itself never turns: voxel_wheel.gdshader turns its spokes
-		instance.set_instance_shader_parameter("roll", -roll)
-		instance.set_instance_shader_parameter("spin_blur", blur)
+		# the wheel model itself never turns: voxel_wheel.gdshader turns its spokes (front
+		# wheels of another size roll at their own rate)
+		instance.set_instance_shader_parameter("roll", -(roll if ratio == 1.0 else front_roll))
+		instance.set_instance_shader_parameter("spin_blur", blur if ratio == 1.0 else smoothstep(0.25, 0.7, turn_per_frame * ratio))
 	_update_lamps()
 
 
@@ -643,8 +714,6 @@ func has_priority() -> bool:
 ## Switches siren and blue lights on or off (an emergency vehicle only).
 func set_siren(on: bool) -> void:
 	siren_on = on and emergency
-	if _siren:
-		_siren.sound(siren_on)
 	if _beacon_light:
 		_beacon_light.visible = siren_on
 
@@ -699,9 +768,6 @@ func _add_emergency() -> void:
 		_beacon_light.position = beacon_positions[0] * Vector3(0.0, 1.0, 1.0) + Vector3(0.0, 0.3, 0.0)
 		_beacon_light.visible = false
 		_body.add_child(_beacon_light)
-	_siren = SirenSound.new()
-	_siren.name = "Sirene"
-	_body.add_child(_siren)
 	_siren_clock = _random.randf_range(SIREN_OFF_SECONDS.x, SIREN_ON_SECONDS.y)
 	set_siren(_random.randf() < 0.6)
 
@@ -719,7 +785,8 @@ func _update_emergency(delta: float) -> void:
 	if has_priority():
 		yielding = false
 		_yielding_to = null
-		_left_free = not _oncoming_near()
+		# once beside one that pulled over it goes on past it (swinging back would run into it)
+		_left_free = _beside_yielder() or not _oncoming_near()
 		if _left_free and _passing_someone():
 			wanted_offset = -PASS_OFFSET
 	elif makes_way and avoids_others and not crashed:
@@ -790,6 +857,19 @@ func _passing_someone() -> bool:
 	return false
 
 
+## True if one that pulled over for it is right beside it (their bodies side by side).
+func _beside_yielder() -> bool:
+	var forward := Vector2(global_basis.z.x, global_basis.z.z).normalized()
+	var mine := Vector2(global_position.x, global_position.z)
+	for other in all_vehicles:
+		if other == self or not other.yielding:
+			continue
+		var relative := Vector2(other.global_position.x, other.global_position.z) - mine
+		if absf(relative.dot(forward)) < half_length + other.half_length and absf(relative.cross(forward)) < SIREN_BESIDE:
+			return true
+	return false
+
+
 ## Makes way for a siren by moving over into a free lane alongside going the same way, the
 ## right one first: plans that from the next cell on. False if there is none.
 func _moved_over_for_siren() -> bool:
@@ -804,6 +884,10 @@ func _moved_over_for_siren() -> bool:
 		var target: Vector2i = Vector2i(cell.x, cell.z) + heading * 2 + side
 		var beside := network.find(target.x, target.y, cell.y, cell, 2)
 		if beside == RoadNetwork.NONE or not network.lanes(beside).has(heading) or not _may_use(beside, heading):
+			continue
+		# really beside it (the search round the spot can find its own lane further on)
+		var sideways: Vector2i = Vector2i(beside.x - cell.x, beside.z - cell.z)
+		if sideways.x * side.x + sideways.y * side.y < 1:
 			continue
 		if network.is_crossing(beside) or network.step(beside, heading) == RoadNetwork.NONE:
 			continue
@@ -991,6 +1075,8 @@ func _plan() -> void:
 		var next_heading: Vector2i = options[0]
 		if options.size() > 1:
 			next_heading = _choose_heading(next_cell, heading, options)
+		if network.is_crossing(next_cell):
+			_lane_reversals = 0
 		_append(next_cell, next_heading)
 
 
@@ -1007,7 +1093,7 @@ func _takes_move_over(cell: Vector3i, heading: Vector2i) -> bool:
 
 
 ## True if leaving `cell` in `heading` leads into a cell it may use, across a crossing
-## to the first cell past it: not into a square for cyclists, a tram ramp or a bus lane,
+## to the first cell past it, straight on or turning off the crossing: not into a square for cyclists, a tram ramp or a bus lane,
 ## where it would only have to turn round (on a crossing it may not).
 func _leads_on(cell: Vector3i, heading: Vector2i) -> bool:
 	if network.move_over_target(cell) != RoadNetwork.NONE:
@@ -1018,6 +1104,13 @@ func _leads_on(cell: Vector3i, heading: Vector2i) -> bool:
 			return false
 		if not network.is_crossing(here):
 			return true
+		# a turn off the crossing leads on too (a T-junction where straight on ends)
+		for way in _ways_out(here):
+			if way == heading or way == -heading:
+				continue
+			var off := network.step(here, way)
+			if off != RoadNetwork.NONE and not network.is_crossing(off) and _may_use(off, way):
+				return true
 		here = network.step(here, heading)
 	return true
 
@@ -1091,8 +1184,12 @@ func _turn_round(cell: Vector3i, heading: Vector2i) -> void:
 			_append(across, -heading)
 			_turned_round_at = _route_headings.size() - 1
 			return
+	# no lane back beside it: back down its own lane
 	_append(cell - Vector3i(heading.x, 0, heading.y), -heading)
 	_turned_round_at = _route_headings.size() - 1
+	_lane_reversals += 1
+	if _lane_reversals >= LANE_REVERSALS_LOST and _lost_clock < 0.0:
+		_lost_clock = 0.0
 
 
 # ------------------------------------------------------------------ speed
@@ -1129,11 +1226,14 @@ func _target_speed(delta: float) -> float:
 		var tight := (corner_index < last and _route_headings[corner_index] != _route_headings[corner_index + 1]) \
 				or (corner_index >= 2 and _route_headings[corner_index - 2] != _route_headings[corner_index - 1])
 		target = minf(target, _approach_speed(tight_corner_speed if tight else corner_speed, corner_at - _corner_lead))
-	if avoids_others and _squeeze_clock <= 0.0:
+	if avoids_others and not (_squeeze_clock > 0.0 and _squeeze_through):
 		_look_countdown -= 1
 		if _look_countdown < 0:
 			_look_countdown = TRAFFIC_LOOK_STEPS - 1
-			_traffic_limit = minf(_traffic_speed(index, last), _body_ahead_speed())
+			# squeezing past it ignores the cells the others stand on or claim, but still
+			# keeps behind the body right ahead of it (no driving through a queue)
+			var claims_limit := INF if _squeeze_clock > 0.0 else _traffic_speed(index, last)
+			_traffic_limit = minf(claims_limit, _body_ahead_speed())
 			_traffic_blocker = _blocked_by
 		_blocked_by = _traffic_blocker
 		target = minf(target, _traffic_limit)
@@ -1406,11 +1506,34 @@ func _move_trailer(snap := false) -> void:
 func _add_wheels(props: GridMap) -> void:
 	if wheel_model == "" or props == null or props.mesh_library == null:
 		return
-	var library := props.mesh_library
-	var item := library.find_item_by_name(wheel_model)
-	if item < 0:
-		push_warning("vehicle: no item '%s' in the props library" % wheel_model)
+	var wheel := _wheel_kind(props.mesh_library, wheel_model, wheel_radius)
+	if wheel.is_empty():
 		return
+	var front := wheel
+	var front_radius := wheel_radius
+	if front_wheel_model != "":
+		front_radius = front_wheel_radius if front_wheel_radius > 0.0 else wheel_radius
+		var other := _wheel_kind(props.mesh_library, front_wheel_model, front_radius)
+		if not other.is_empty():
+			front = other
+		else:
+			front_radius = wheel_radius
+	for wheel_position in wheel_positions:
+		var kind: Dictionary = front if wheel_position.z > 0.0 else wheel
+		_add_wheel(_body, wheel_position, kind["mesh"], kind["material"], kind["transform"],
+				wheel_radius / maxf(front_radius if wheel_position.z > 0.0 else wheel_radius, 0.01))
+	if _trailer:
+		for wheel_position in trailer_wheel_positions:
+			_add_wheel(_trailer, wheel_position - Vector3(0.0, hitch_position.y, 0.0), wheel["mesh"], wheel["material"], wheel["transform"])
+
+
+## The mesh, wheel material and transform of one size of wheel (props item `item_name`,
+## rolling with `radius`); empty if the library lacks it.
+func _wheel_kind(library: MeshLibrary, item_name: String, radius: float) -> Dictionary:
+	var item := library.find_item_by_name(item_name)
+	if item < 0:
+		push_warning("vehicle: no item '%s' in the props library" % item_name)
+		return {}
 	var mesh := library.get_item_mesh(item)
 	var mesh_transform := library.get_item_mesh_transform(item)
 	var middle := (mesh_transform * mesh.get_aabb()).get_center()
@@ -1424,19 +1547,14 @@ func _add_wheels(props: GridMap) -> void:
 	axle[axle_index] = 1.0
 	material.set_shader_parameter("axle", axle)
 	# the rim and spokes of the shader are made for the car wheel (0.375 m)
-	var scale_of_wheel := wheel_radius / 0.375
+	var scale_of_wheel := radius / 0.375
 	material.set_shader_parameter("rim_radius", 0.24 * scale_of_wheel)
 	material.set_shader_parameter("hub_radius", 0.07 * scale_of_wheel)
 	material.set_shader_parameter("spoke_half_width", 0.05 * scale_of_wheel)
-	var wheel_transform := Transform3D(mesh_transform.basis, mesh_transform.origin - middle)
-	for wheel_position in wheel_positions:
-		_add_wheel(_body, wheel_position, mesh, material, wheel_transform)
-	if _trailer:
-		for wheel_position in trailer_wheel_positions:
-			_add_wheel(_trailer, wheel_position - Vector3(0.0, hitch_position.y, 0.0), mesh, material, wheel_transform)
+	return {"mesh": mesh, "material": material, "transform": Transform3D(mesh_transform.basis, mesh_transform.origin - middle)}
 
 
-func _add_wheel(parent: Node3D, at: Vector3, mesh: Mesh, material: Material, wheel_transform: Transform3D) -> void:
+func _add_wheel(parent: Node3D, at: Vector3, mesh: Mesh, material: Material, wheel_transform: Transform3D, roll_ratio := 1.0) -> void:
 	var pivot := Node3D.new()
 	pivot.name = "Wiel%d" % (_wheels.size() + 1)
 	pivot.position = at
@@ -1449,6 +1567,7 @@ func _add_wheel(parent: Node3D, at: Vector3, mesh: Mesh, material: Material, whe
 	pivot.add_child(instance)
 	parent.add_child(pivot)
 	_wheels.append(pivot)
+	_wheel_roll_ratios.append(roll_ratio)
 
 
 ## Rolls the wheels over the distance driven and steers the front ones the way the front
@@ -1457,8 +1576,11 @@ func _turn_wheels(distance_driven: float, delta: float) -> void:
 	if _wheels.is_empty():
 		return
 	_roll_previous = _wheel_roll
+	_front_roll_previous = _front_wheel_roll
 	_steering_previous = _steering
 	_wheel_roll = fmod(_wheel_roll + distance_driven / maxf(wheel_radius, 0.01), TAU)
+	if front_wheel_radius > 0.0:
+		_front_wheel_roll = fmod(_front_wheel_roll + distance_driven / front_wheel_radius, TAU)
 	var wanted := _steering
 	if distance_driven > 0.001 and _front_axle_motion.length_squared() > 0.0:
 		var seen_from_body := global_basis.inverse() * Vector3(_front_axle_motion.x, 0.0, _front_axle_motion.y)
@@ -1552,13 +1674,24 @@ func _body_ahead_speed() -> float:
 ## Standing still for other vehicles: if they wait for each other in a ring, one squeezes
 ## past after a while (a queue for a light or a zebra just waits).
 func _watch_for_gridlock(delta: float) -> void:
+	if _squeeze_clock > 0.0 and _squeeze_clock <= delta:
+		_squeezed_in_vain = global_position.distance_to(_squeeze_from) < SQUEEZE_IN_VAIN
 	_squeeze_clock = maxf(_squeeze_clock - delta, 0.0)
+	if _squeeze_clock <= 0.0:
+		_squeeze_through = false
+	elif _squeeze_through and global_position.distance_to(_squeeze_from) > SQUEEZE_IN_VAIN * 3.0:
+		_squeezed_in_vain = false
 	if _blocked_by == null or speed > STANDING_SPEED:
 		_blocked_clock = 0.0
 		return
 	_blocked_clock += delta
 	var patience := RING_PATIENCE + get_instance_id() % RING_PATIENCE_SPREAD
 	if _blocked_clock > LOST_PATIENCE or (_blocked_clock > patience and _waits_in_a_ring()):
+		# first it only ignores the claims; if the bodies themselves are locked (that
+		# squeeze got it nowhere, or it waited far too long) it drives through them
+		_squeeze_through = _squeezed_in_vain or _squeeze_clock > 0.0 or _blocked_clock > LOST_PATIENCE
+		_squeezed_in_vain = false
+		_squeeze_from = global_position
 		_squeeze_clock = SQUEEZE_TIME
 		_blocked_clock = 0.0
 
@@ -1642,8 +1775,21 @@ func _crash_with(other: Vehicle) -> void:
 	var their_speed := other.velocity + blow / their_mass
 	var my_spin := _spin_from(blow * -1.0, contact)
 	var their_spin := other._spin_from(blow, contact)
-	_become_wreck(my_speed, my_spin)
-	other._become_wreck(their_speed, their_spin)
+	# the light one takes most of the jolt
+	_become_wreck(my_speed, my_spin, -line, closing * their_mass / (my_mass + their_mass))
+	other._become_wreck(their_speed, their_spin, line, closing * my_mass / (my_mass + their_mass))
+	var strength := clampf(closing / CRASH_FULL_SPEED, 0.15, 1.0)
+	var paint := _paint() if my_mass < their_mass else other._paint()
+	CrashBurst.spawn(get_parent(), contact + Vector3.UP * 0.8, paint, strength)
+	last_crash = {"at": contact, "strength": strength, "time": Time.get_ticks_msec() / 1000.0}
+
+
+## The paint of its body, from the colour word in its model name (grey if none).
+func _paint() -> Color:
+	for word: String in PAINT_WORDS:
+		if model.contains(word):
+			return PAINT_WORDS[word]
+	return Color(0.55, 0.57, 0.6)
 
 
 ## Turning speed (rad/s) a blow at this point gives this vehicle: the moment of the blow
@@ -1718,7 +1864,7 @@ static func _rectangle(frame: Transform3D, middle: Vector3, width: float, length
 ## body, its mass and its speed, that hits the other wreck and the colliders of the town.
 ## A trailer gets a collider of its own: it is dragged along behind the wreck (_move_trailer)
 ## and pushes other wrecks out of the way.
-func _become_wreck(impact: Vector3, spin := 0.0) -> void:
+func _become_wreck(impact: Vector3, spin := 0.0, pushed := Vector3.ZERO, jolt := 0.0) -> void:
 	crashed = true
 	reckless = false
 	speed = 0.0
@@ -1744,8 +1890,9 @@ func _become_wreck(impact: Vector3, spin := 0.0) -> void:
 	_wreck.center_of_mass = Vector3(0.0, _body_size.y * 0.3, 0.0)
 	get_parent().add_child(_wreck)
 	_wreck.global_transform = global_transform
-	_wreck.linear_velocity = impact
-	_wreck.angular_velocity = Vector3.UP * spin
+	# a hop, and tipping over towards where it is pushed (its top goes that way)
+	_wreck.linear_velocity = impact + Vector3.UP * minf(jolt * CRASH_HOP, CRASH_HOP_MOST)
+	_wreck.angular_velocity = Vector3.UP * spin + Vector3.UP.cross(pushed) * minf(jolt * CRASH_TILT, CRASH_TILT_MOST)
 	if _trailer:
 		_add_trailer_collider()
 	_wreck_clock = 0.0
@@ -1808,12 +1955,21 @@ func _tow() -> void:
 		_trailer_collider.queue_free()
 		_trailer_collider = null
 	crashed = false
+	_restart_at(Vector2i(floori(spot.x / RoadNetwork.CELL), floori(spot.z / RoadNetwork.CELL)), heading)
+	set_physics_process(true)
+
+
+## Starts again, standing, on the first free lane from the road cell nearest `near`.
+func _restart_at(near: Vector2i, heading: Vector2i) -> void:
 	_route_cells.clear()
 	_route_headings.clear()
 	_route_distances.clear()
+	_route_ended = false
 	_turned_round_at = 0
 	_waited_at.clear()
-	var first := _free_lane(network.nearest(Vector2i(floori(spot.x / RoadNetwork.CELL), floori(spot.z / RoadNetwork.CELL)), heading, vehicle_kind), heading)
+	_lane_reversals = 0
+	_lost_clock = -1.0
+	var first := _free_lane(network.nearest(near, heading, vehicle_kind), heading)
 	_append(first - Vector3i(heading.x, 0, heading.y), heading)
 	_append(first, heading)
 	_distance = _route_distances[1]
@@ -1822,7 +1978,43 @@ func _tow() -> void:
 	_plan()
 	_place()
 	_snap_body()
-	set_physics_process(true)
+
+
+## Lost (driving to and fro): puts it down on a straight piece of road it may use, out of
+## sight if it can find one, else anywhere.
+func _relocate() -> void:
+	var cells: Array = network.cells()
+	var chosen := RoadNetwork.NONE
+	for try_index in RELOCATE_TRIES:
+		var cell: Vector3i = cells[_random.randi() % cells.size()]
+		if network.is_crossing(cell) or network.lanes(cell).size() != 1 or not _may_use(cell, network.lanes(cell)[0]):
+			continue
+		var heading: Vector2i = network.lanes(cell)[0]
+		if network.step(cell, heading) == RoadNetwork.NONE or network.step(cell, -heading) == RoadNetwork.NONE:
+			continue
+		chosen = cell
+		if _out_of_sight(network.centre(cell)):
+			break
+	if chosen == RoadNetwork.NONE:
+		_lost_clock = 0.0   # try again later
+		return
+	_restart_at(Vector2i(chosen.x, chosen.z), network.lanes(chosen)[0])
+
+
+## True if `spot` lies well off the screen of the current camera (or very far from it).
+func _out_of_sight(spot: Vector3) -> bool:
+	var viewport := get_viewport()
+	var camera := viewport.get_camera_3d() if viewport else null
+	if camera == null:
+		return false
+	if camera.is_position_behind(spot):
+		return true
+	if camera.projection == Camera3D.PROJECTION_PERSPECTIVE and camera.global_position.distance_to(spot) > UNSEEN_DISTANCE:
+		return true
+	var screen := viewport.get_visible_rect()
+	var on_screen := camera.unproject_position(spot)
+	return not screen.grow_individual(screen.size.x * UNSEEN_MARGIN, screen.size.y * UNSEEN_MARGIN,
+			screen.size.x * UNSEEN_MARGIN, screen.size.y * UNSEEN_MARGIN).has_point(on_screen)
 
 
 ## The first cell along the road from `cell` that no other vehicle stands on or next to.

@@ -20,28 +20,49 @@ const AMBULANCE = "res://scripts/vehicles/ambulance.gd"
 const FIRE_ENGINE = "res://scripts/vehicles/fire_engine.gd"
 const RIOT_VAN = "res://scripts/vehicles/riot_van.gd"
 const MINISTERS_CAR = "res://scripts/vehicles/ministers_car.gd"
+const CYCLIST = "res://scripts/vehicles/cyclist.gd"
+const FATBIKE = "res://scripts/vehicles/fatbike.gd"
+const MOPED = "res://scripts/vehicles/moped.gd"
+const SCOOTER = "res://scripts/vehicles/scooter.gd"
+const MOTORBIKE = "res://scripts/vehicles/motorbike.gd"
+const MICROCAR = "res://scripts/vehicles/microcar.gd"
+const TRACTOR = "res://scripts/vehicles/tractor.gd"
 ## The emergency services and the ministers' cars, added after the town traffic.
 const SERVICES := [POLICE_CAR, AMBULANCE, MINISTERS_CAR, FIRE_ENGINE, POLICE_CAR, RIOT_VAN, MINISTERS_CAR]
-## [script, model ("" = the one of the script)]: town traffic, so mostly cars.
+## [script, model ("" = the one of the script)]: town traffic, so mostly cars, with
+## bicycles (cyclists and a fatbike, also on the cycle paths), mopeds and scooters (also on
+## the cycle paths that allow them), a motorbike, a microcar and a tractor in between.
 const MIX := [
 	[HATCHBACK, ""],
+	[CYCLIST, ""],
 	[CAR, "voertuigen/auto_sedan_wit"],
+	[SCOOTER, ""],
 	[VAN, ""],
 	[HATCHBACK, "voertuigen/auto_hatchback_zilver"],
+	[CYCLIST, "voertuigen/fietser_rood"],
 	[CITY_BUS, ""],
+	[MOTORBIKE, ""],
 	[CAR, "voertuigen/auto_sedan_zilver"],
+	[FATBIKE, ""],
 	[TRUCK, ""],
+	[TRACTOR, ""],
+	[MOPED, ""],
 	[HATCHBACK, "voertuigen/auto_hatchback_groen"],
+	[MICROCAR, ""],
 	[TRAILER_CAR, ""],
+	[SCOOTER, "voertuigen/scooter_zwart"],
 	[CAR, ""],
+	[CYCLIST, ""],
 	[SUV, ""],
+	[TRACTOR, "voertuigen/trekker_rood"],
+	[MICROCAR, "voertuigen/gehandicaptenauto_blauw"],
 ]
 
 ## Road cells a start spot must lead to.
 const ROAD_CELLS_NEEDED := 60
 
 ## How many vehicles it adds to the ones in the scene.
-@export var vehicle_count := 24
+@export var vehicle_count := 30
 ## How many of the SERVICES it adds on top of those.
 @export var services_count := 7
 ## Fewest metres between the start spots (a bus is 10.5 m long).

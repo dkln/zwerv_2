@@ -146,6 +146,11 @@ _ENTRIES = [
     ("lak_wit1", (226, 228, 226)), ("lak_wit2", (186, 190, 190)),
     ("lak_geel1", (226, 170, 40)), ("lak_geel2", (186, 136, 32)),
     ("lak_zilver1", (152, 158, 164)), ("lak_zilver2", (116, 122, 128)),
+    # light bicycle frames for the bike racks, and a brown leather saddle
+    ("fiets_mint", (150, 214, 194)), ("fiets_lichtblauw", (128, 182, 232)), ("fiets_creme", (238, 226, 194)),
+    ("fiets_geel", (246, 206, 72)), ("fiets_koraal", (238, 112, 98)), ("fiets_zadel", (112, 70, 44)),
+    # house colours of the two parody supermarkets (DERREK red, ALFRED STEYHN light blue)
+    ("winkel_rood", (222, 24, 40)), ("winkel_lichtblauw", (44, 168, 228)),
 ]
 
 # Flag cloth colours: material "flag". vlag_wit and vlag_oranje are one step off the

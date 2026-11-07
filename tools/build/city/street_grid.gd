@@ -157,6 +157,9 @@ func _auto_kerbs() -> void:
 ## one-way with parking, old asphalt with speed tables, drains and manholes, other line
 ## types), dressed section by section between the intersections; one street carries a tram.
 const STREET_THEMES := ["standaard", "fietsstraat", "fietsstroken", "inhaalverbod", "eenrichting", "oud", "lijnen", "fietsstrook", "klinkers"]
+## Street themes paved with ordinary asphalt, which get the asphalt arrows and markings
+## before a crossing.
+const ASPHALT_THEMES := ["standaard", "fietsstroken", "inhaalverbod", "lijnen", "fietsstrook"]
 const ARROWS := ["rijstrook_pijl_rechtdoor", "rijstrook_pijl_links", "rijstrook_pijl_rechts", "rijstrook_pijl_rechtdoor_links", "rijstrook_pijl_rechtdoor_rechts"]
 
 
@@ -228,6 +231,12 @@ func _dress_streets() -> void:
 func _dress_section(run: Array, horizontal: bool, theme: String, inter: Dictionary, section: int) -> void:
 	var n := run.size()
 	var other := Vector2i(0, 1) if horizontal else Vector2i(1, 0)
+	# a one-way street must lead on to a road: one that ends at the edge of the grid (in
+	# grass) would leave its traffic nowhere to go but back through the queue behind it
+	# (its lane 1 drives east, or north)
+	var beyond: Vector2i = run[-1] + Vector2i(1, 0) if horizontal else run[0] - Vector2i(0, 1)
+	if theme == "eenrichting" and not (_street_h.has(beyond) or _street_v.has(beyond) or _special.has(beyond)):
+		theme = "standaard"
 	# lane 0: westbound (rotation E) or southbound (N); lane 1: eastbound (W) or northbound (S)
 	var rot0 := "E" if horizontal else "N"
 	var rot1 := "W" if horizontal else "S"
@@ -253,7 +262,9 @@ func _dress_section(run: Array, horizontal: bool, theme: String, inter: Dictiona
 				t1 = "weg/rijstrook_dubbel_kant"
 			"eenrichting":
 				t0 = "weg/parkeervak_gehandicapt" if mid else "weg/parkeerstrook"
-				t1 = "weg/straat_eenrichting" if i % 4 == 1 else "weg/weg_vlak"
+				# one arrow just past the crossing it starts at (lane 1 drives east or north),
+				# not a row of them all along the street
+				t1 = "weg/straat_eenrichting" if i == (1 if horizontal else n - 2) else "weg/weg_vlak"
 			"oud":
 				t0 = "weg/drempel_plateau" if mid else "weg/weg_vlak_oud"
 				t1 = "weg/drempel_plateau" if mid else "weg/weg_vlak_oud"
@@ -262,7 +273,7 @@ func _dress_section(run: Array, horizontal: bool, theme: String, inter: Dictiona
 				t1 = "weg/rijstrook_geen_kant_onderbroken"
 			"klinkers":
 				t0 = "weg/straat_klinkers_middengoot" if mid else "weg/straat_klinkers"
-				t1 = "weg/kruis_markering" if mid else "weg/straat_klinkers"
+				t1 = "weg/straat_klinkers"   # no asphalt marking in a clinker street
 			"tram":
 				var v := section % 3
 				t0 = ["tram/tram_rijstrook_onderbroken_kant", "tram/tram_rijstrook_dubbel_kant", "tram/tram_rijstrook_streep_kant"][v]
@@ -275,7 +286,9 @@ func _dress_section(run: Array, horizontal: bool, theme: String, inter: Dictiona
 			G(c0.x, c0.y, t0, rot0)
 		if t1 != "":
 			G(c1.x, c1.y, t1, rot1)
-	if theme in ["tram", "eenrichting", "fietsstraat"]:
+	# arrows and block markings before a crossing are asphalt tiles: only on asphalt streets
+	# (on clinkers, old asphalt or a bicycle street they would lie there as loose patches)
+	if not theme in ASPHALT_THEMES:
 		return
 	# approaches: lane 0 drives towards +x/+z... (west/south): its last cell in driving
 	# direction is run[0] - step for westbound, run[-1] for southbound; lane 1 the other way
@@ -311,8 +324,9 @@ func _dress_section(run: Array, horizontal: bool, theme: String, inter: Dictiona
 
 ## Signalised intersection centred on tiles (cx..cx+1, cz..cz+1) with 4-tile arms,
 ## kerbs, stop lines and zebra crossings. ns/ew = car light state per direction,
-## ov_ns/ov_ew = public-transport light state, mast_ns/mast_ew = mast light state ("" = none).
-func _intersection_with_lights(cx: int, cz: int, ns: String, ew: String, ov_ns: String, ov_ew: String, mast_ns: String, mast_ew: String) -> void:
+## ov_ns/ov_ew = public-transport light state (unused: no OV lights, see _light_corner),
+## _mast_ns/_mast_ew = mast light state (no masts any more: they crowded the corners).
+func _intersection_with_lights(cx: int, cz: int, ns: String, ew: String, ov_ns: String, ov_ew: String, _mast_ns: String, _mast_ew: String) -> void:
 	# roads: N-S at x = cx, cx+1; E-W at z = cz, cz+1; 4 tiles long per arm
 	for i in range(-4, 6):
 		if i == 0 or i == 1:
@@ -353,24 +367,19 @@ func _intersection_with_lights(cx: int, cz: int, ns: String, ew: String, ov_ns: 
 	var L := "verkeerslichten/"
 	# northbound traffic (coming from the south): lights on the southeast corner, facing south
 	_light_corner(Vector2((cx + 2) * 4 + 1.0, (cz + 2) * 4 + 1.0), Vector2(1.5, 0), Vector2(0, 1.5), "S", ns, ov_ns, ped_ew, "W")
-	if mast_ns != "":
-		Pr((cx + 1) * 4 + 2.0, (cz + 4) * 4 + 2.0, L + "mast_" + mast_ns, "S")
 	# southbound traffic: northwest corner
 	_light_corner(Vector2((cx - 1) * 4 + 3.0, (cz - 1) * 4 + 3.0), Vector2(-1.5, 0), Vector2(0, -1.5), "N", ns, ov_ns, ped_ew, "E")
 	# westbound traffic (coming from the east): northeast corner
 	_light_corner(Vector2((cx + 2) * 4 + 1.0, (cz - 1) * 4 + 3.0), Vector2(0, -1.5), Vector2(1.5, 0), "E", ew, ov_ew, ped_ns, "S")
-	if mast_ew != "":
-		Pr((cx + 4) * 4 + 2.0, cz * 4 + 2.0, L + "mast_" + mast_ew, "E")
 	# eastbound traffic: southwest corner
 	_light_corner(Vector2((cx - 1) * 4 + 3.0, (cz + 2) * 4 + 1.0), Vector2(0, 1.5), Vector2(-1.5, 0), "W", ew, ov_ew, ped_ns, "N")
 
 
-## One corner of a signalised intersection: car light at pos (metres), bicycle light at
-## pos + bike, public-transport light at pos + ov and the pedestrian light diagonally at
-## pos + bike + ov. phase / ov_phase / ped_phase are the light states in the tile names.
-func _light_corner(pos: Vector2, bike: Vector2, ov: Vector2, rot: String, phase: String, ov_phase: String, ped_phase: String, ped_rot: String) -> void:
+## One corner of a signalised intersection: car light at pos (metres) and the pedestrian
+## light diagonally at pos + bike + ov (the spots of the old bicycle and OV lights). phase / ped_phase are the light states in the tile names.
+func _light_corner(pos: Vector2, bike: Vector2, ov: Vector2, rot: String, phase: String, _ov_phase: String, ped_phase: String, ped_rot: String) -> void:
+	# a car light and a pedestrian light per corner: no tram crosses these intersections and
+	# the cyclists ride with the cars, so OV and bicycle lights would only crowd the corner
 	var L := "verkeerslichten/"
 	Pr(pos.x, pos.y, L + "auto_" + phase, rot)
-	Pr(pos.x + bike.x, pos.y + bike.y, L + "fiets_" + phase, rot)
-	Pr(pos.x + ov.x, pos.y + ov.y, L + "ov_" + ov_phase, rot)
 	Pr(pos.x + bike.x + ov.x, pos.y + bike.y + ov.y, L + "voetganger_" + ped_phase, ped_rot)

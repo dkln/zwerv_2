@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://d0nvt111gbh88"
+path="res://.godot/imported/modern_wit_bg_alfred_steyhn_raam_hoek.gox-20df7d35e60af39c90d6f1085acb0465.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/gebouwen/modern_wit/modern_wit_bg_alfred_steyhn_raam_hoek.gox"
+dest_files=["res://.godot/imported/modern_wit_bg_alfred_steyhn_raam_hoek.gox-20df7d35e60af39c90d6f1085acb0465.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(4, 3, 4)

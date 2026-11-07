@@ -14,6 +14,8 @@ front. Sizes are in voxels of 12.5 cm; z is up.
 Shared helpers used by other modules: ``att``, ``wd`` (details_extra, extras_business_paths, extras_shops_lanes) and
 ``pole_flag`` / ``striped_cloth`` (details_extra).
 """
+import math
+
 from common import register, tile
 from vox import V, pick, h
 
@@ -417,6 +419,120 @@ def antenna():
     for z in (12, 15, 18):
         m.box(1, 4, z, 8, 5, z + 1, "metaal2")
     return m
+
+
+def lattice_mast(model, centre_x, centre_y, z0, z1, half_bottom, half_top, colour):
+    """Square lattice mast from z0 to z1 around (centre_x, centre_y): four corner legs that
+    taper from `half_bottom` to `half_top` voxels off the centre, with a ring and a
+    diagonal brace on every face every 6 voxels."""
+    for z in range(z0, z1):
+        fraction = (z - z0) / max(1, z1 - z0 - 1)
+        half = round(half_bottom + (half_top - half_bottom) * fraction)
+        low_x, high_x = centre_x - half, centre_x + half
+        low_y, high_y = centre_y - half, centre_y + half
+        for x in (low_x, high_x):
+            for y in (low_y, high_y):
+                model.set(x, y, z, colour)
+        step = (z - z0) % 6
+        if step == 0:
+            for along in range(-half, half + 1):
+                for x, y in ((centre_x + along, low_y), (centre_x + along, high_y),
+                             (low_x, centre_y + along), (high_x, centre_y + along)):
+                    model.set(x, y, z, colour)
+        elif half >= 2:
+            along = round(-half + 2 * half * step / 6)
+            for x, y in ((centre_x + along, low_y), (centre_x - along, high_y),
+                         (low_x, centre_y - along), (high_x, centre_y + along)):
+                model.set(x, y, z, colour)
+
+
+@tile("details/dak/zendmast")
+def radio_mast():
+    """Slim lattice radio mast for a high roof, 10 m: a concrete foot, a galvanised lattice
+    tapering from 1 m to 0.5 m, two small panel antennas halfway, a whip on top and a red
+    aircraft warning light (glowing) at the top and halfway. Pivot: the foot of the mast."""
+    model = V(12, 12, 84)
+    model.box(2, 2, 0, 10, 10, 2, "beton2")
+    lattice_mast(model, 6, 6, 2, 72, 4, 2, "gegalvaniseerd")
+    for z in range(72, 82):
+        model.set(6, 6, z, "metaal3")
+    for x, y in ((6, 6),):
+        model.set(x, y, 82, "signaal_rood")
+        model.set(x, y, 83, "signaal_rood")
+    model.set(9, 6, 40, "signaal_rood")
+    model.set(3, 6, 40, "signaal_rood")
+    for x in (2, 10):        # panel antennas on two faces
+        for z in range(44, 52):
+            model.set(x, 6, z, "bord_wit")
+            model.set(x, 5, z, "bord_wit")
+    return model
+
+
+@tile("details/dak/zendmast_klein")
+def radio_mast_small():
+    """Short lattice mast (5 m) with a red warning light and three panel antennas around
+    its top. Pivot: the foot of the mast."""
+    model = V(12, 12, 44)
+    model.box(3, 3, 0, 9, 9, 2, "beton2")
+    lattice_mast(model, 6, 6, 2, 38, 3, 2, "gegalvaniseerd")
+    for z in range(38, 42):
+        model.set(6, 6, z, "metaal3")
+    model.set(6, 6, 42, "signaal_rood")
+    model.set(6, 6, 43, "signaal_rood")
+    for x, y in ((1, 6), (11, 6), (6, 1)):
+        for z in range(28, 37):
+            model.set(x, y, z, "bord_wit")
+    return model
+
+
+def _dish(model, centre_x, centre_y, centre_z, radius, facing):
+    """A round dish of `radius` voxels facing `facing` (+1 = towards y=0, -1 = away), its
+    rim one voxel further out than its middle, with a feed arm in front."""
+    for x in range(int(centre_x - radius - 1), int(centre_x + radius + 2)):
+        for z in range(int(centre_z - radius - 1), int(centre_z + radius + 2)):
+            distance = math.hypot(x + 0.5 - centre_x, z + 0.5 - centre_z)
+            if distance <= radius:
+                depth = 1 if distance > radius * 0.6 else 0
+                model.set(x, centre_y - depth * facing, z, "stuc1")
+    model.set(int(centre_x), centre_y + facing, int(centre_z), "metaal2")
+    model.set(int(centre_x), centre_y - 2 * facing, int(centre_z), "metaal2")
+    model.set(int(centre_x), centre_y - 3 * facing, int(centre_z), "metaal_donker")
+
+
+@tile("details/dak/telecom_antennes")
+def telecom_cluster():
+    """Telecom cluster for a flat roof (3 x 3 m): a low steel frame on concrete blocks with
+    three tall white sector antennas on poles (one per side), two microwave dishes on a
+    central mast, a grey equipment cabinet and a cable tray. Pivot: the middle of the frame."""
+    model = V(24, 24, 36)
+    for x, y in ((2, 2), (20, 2), (2, 20), (20, 20)):
+        model.box(x, y, 0, x + 2, y + 2, 2, "beton2")
+    for x in range(2, 22):                 # frame on the blocks
+        for y in (3, 20):
+            model.set(x, y, 2, "gegalvaniseerd")
+    for y in range(2, 22):
+        for x in (3, 20):
+            model.set(x, y, 2, "gegalvaniseerd")
+    # three sector antennas on poles: front, left and right
+    for pole_x, pole_y, panel_dx, panel_dy in ((12, 3, 0, -1), (3, 12, -1, 0), (20, 12, 1, 0)):
+        for z in range(2, 30):
+            model.set(pole_x, pole_y, z, "metaal3")
+        for z in range(18, 30):
+            for spread in (-1, 0, 1):
+                x = pole_x + panel_dx + (spread if panel_dx == 0 else 0)
+                y = pole_y + panel_dy + (spread if panel_dy == 0 else 0)
+                model.set(x, y, z, "bord_wit")
+    # central mast with two dishes, one to the front and one to the back
+    for z in range(2, 34):
+        model.set(12, 12, z, "metaal3")
+    _dish(model, 12.5, 9, 26.5, 3.2, 1)
+    _dish(model, 12.5, 15, 20.5, 2.6, -1)
+    # equipment cabinet and cable tray
+    model.box(14, 16, 3, 19, 20, 12, "metaal1")
+    model.box(14, 15, 4, 19, 16, 11, "metaal3")
+    for x in range(4, 20):
+        model.set(x, 18, 3, "metaal_donker")
+    return model
 
 
 # ------------------------------------------------------------------ small facade items

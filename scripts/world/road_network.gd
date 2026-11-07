@@ -68,8 +68,9 @@ const LOCAL_HEADINGS := {"N": Vector3(0, 0, -1), "S": Vector3(0, 0, 1), "E": Vec
 const LANE_CHOICES := &"lane_choices"
 ## Meta of the ground GridMap with the cells a vehicle can move over from (see above).
 const MOVE_OVERS := &"move_overs"
-## The kinds of road users a tile can allow (Vehicle.vehicle_kind). Only "auto" drives on
-## the network so far, with its buses; the others are for road users still to come.
+## The kinds of road users a tile can allow (Vehicle.vehicle_kind): "auto" (with its buses,
+## the motorbike and the microcar), "brommer" (mopeds, scooters), "fiets" (cyclists, the
+## fatbike) and "voetganger" (no walkers drive the network yet).
 const ROAD_USER_KINDS: Array[String] = ["auto", "brommer", "fiets", "voetganger"]
 
 const CELL := 4.0

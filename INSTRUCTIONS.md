@@ -116,7 +116,7 @@ van een licht volgt uit zijn draaiing; tijden zijn instelbaar op de node.
 
 Er rijdt verkeer door de stad: een sedan, node `Auto` (`scripts/vehicles/car.gd`), en een
 SUV, node `SUV` (`scripts/vehicles/suv.gd`), staan in de scène; de node `Verkeer`
-(`scripts/world/traffic.gd`) zet er bij het starten nog `vehicle_count` (24) voertuigen bij,
+(`scripts/world/traffic.gd`) zet er bij het starten nog `vehicle_count` (30) voertuigen bij,
 verspreid over het wegennet (`spacing`, `traffic_seed`, de mix in `MIX`), en daarna
 `services_count` (7) hulpdiensten en dienstauto's (`SERVICES`, nodes `Dienst1`..). Soorten:
 
@@ -134,11 +134,27 @@ verspreid over het wegennet (`spacing`, `traffic_seed`, de mix in `MIX`), en daa
 | `riot_van.gd` (ME-busje) | `auto_politie_busje` | 5 m | 3200 kg | 2300 Nm |
 | `ambulance.gd` | `auto_ambulance` | 5 m | 3500 kg | 2500 Nm |
 | `fire_engine.gd` (brandweer) | `auto_brandweer` | 7 m | 14000 kg | 11000 Nm |
+| `cyclist.gd` (fietser, 20 km/h, soort `fiets`) | `fietser`, `_rood` + `fiets_wiel` | 1,8 m | 95 kg | 36 Nm |
+| `fatbike.gd` (30 km/h, soort `fiets`) | `fatbike` + `auto_wiel` | 1,8 m | 110 kg | 62 Nm |
+| `moped.gd` (brommer, 45 km/h, soort `brommer`) | `brommer` + `brommer_wiel` | 1,8 m | 160 kg | 90 Nm |
+| `scooter.gd` (45 km/h, soort `brommer`) | `scooter`, `_zwart` + `klein_wiel` | 1,8 m | 170 kg | 76 Nm |
+| `motorbike.gd` (motorfiets, 130 km/h) | `motorfiets` + `auto_wiel` | 2 m | 300 kg | 450 Nm |
+| `microcar.gd` (gehandicaptenauto/brommobiel, 45 km/h) | `gehandicaptenauto`, `_blauw` + `klein_wiel` | 2,5 m | 450 kg | 135 Nm |
+| `tractor.gd` (trekker, 25 km/h) | `trekker`, `_rood` + `tractor_wiel` (achter) en `auto_wiel` (voor) | 3,75 m | 4500 kg | 2250 Nm |
+
+Fietsers, de fatbike, brommer en scooter (`tools/voxgen/tiles/small_vehicles.py`) zijn één model met
+de berijder erop (een eenvoudig voxelpoppetje, op brommer, scooter en motor met helm); de wielen
+zitten er los onder zoals bij de auto's. Ze hebben een andere `vehicle_kind`: `fiets` (fietser,
+fatbike) en `brommer` (brommer, scooter) mogen ook over de fietspaden die dat toestaan
+(`RoadNetwork.allows`); motor en brommobiel zijn `auto`. Het voorwiel stuurt maar weinig
+(`max_steering_degrees` 15), fietsen hebben geen remlicht en richtingaanwijzers.
+De trekker heeft grote achterwielen (`wheel_model`/`wheel_radius` van `Vehicle`) en kleinere
+voorwielen (`front_wheel_model`/`front_wheel_radius`: elk voertuig kan voorwielen van een andere maat
+krijgen; die rollen in hun eigen tempo).
 
 Hulpdiensten (`emergency`: politie, ME, ambulance, brandweer; modellen in
 `tools/voxgen/tiles/emergency_vehicles.py`, met de Nederlandse striping en een lichtbalk) hebben
-een sirene (`scripts/vehicles/siren.gd`: de tweetoon, gemaakt terwijl hij klinkt, als 3D-geluid
-met Doppler) en blauwe zwaailichten (`beacon_positions`: links en rechts om beurten, met een blauw
+een sirene (zonder geluid: de game heeft geen audio) en blauwe zwaailichten (`beacon_positions`: links en rechts om beurten, met een blauw
 licht op de omgeving). Ze gaan vanzelf aan en uit (`siren_duty`, `SIREN_ON_SECONDS`,
 `SIREN_OFF_SECONDS`), met `set_siren`/`toggle_siren`, of met S terwijl de volgcamera het voertuig
 volgt. Met de sirene aan (`has_priority`) rijdt het `EMERGENCY_SPEED_FACTOR` (1,4×) de limiet,
@@ -182,11 +198,28 @@ Allemaal zijn het een `Vehicle` (`scripts/vehicles/vehicle.gd`):
   zijn route (tot 40 m vooruit), en geeft op een kruising voorrang aan wie er eerder is.
 - Botsen: rijden twee auto's toch met minstens `CRASH_SPEED` (5 m/s) op elkaar in, dan worden
   het allebei een `RigidBody3D` (`Wrak`, met hun massa); een schampje in een bocht telt niet. Ze botsen met physics tegen elkaar en tegen de colliders van
-  de stad (stoepranden, middenbermen, gebouwen en props in de GridMaps), tollen en
-  schuiven uit, met de alarmlichten aan. Na 8 s worden ze weggesleept naar de dichtstbijzijnde
-  vrije plek op de rijstrook en rijden ze verder.
+  de stad (stoepranden, middenbermen, gebouwen en props in de GridMaps), maken een sprongetje,
+  kantelen naar de kant waar ze heen geduwd worden (`CRASH_HOP`, `CRASH_TILT`), tollen en
+  schuiven uit, met de alarmlichten aan. Er vliegen voxel-scherven (lak, glas, plastic) en een
+  stofwolk uit (`scripts/effects/crash_burst.gd`) en de volgcamera schudt (`crash_shake`). Na
+  8 s worden ze weggesleept naar de dichtstbijzijnde vrije plek op de rijstrook en rijden ze verder.
 - Vastlopen: wachten voertuigen in een kring op elkaar (niet in de rij voor een stoplicht of
-  zebra), dan wringt er na een tijdje één langs de ander (`SQUEEZE_TIME`).
+  zebra), dan wringt er na een tijdje één langs de ander (`SQUEEZE_TIME`): eerst negeert hij
+  alleen de cellen die de anderen claimen en blijft hij achter de carrosserie vóór hem. Kwam hij
+  zo niet verder (`SQUEEZE_IN_VAIN`), dan rijdt hij de volgende keer door de anderen heen.
+- Verdwaald: keert een voertuig twee keer in zijn eigen rijstrook om (er is geen rijstrook
+  terug ernaast) zonder tussendoor een kruising te halen, dan rijdt het alleen nog heen en weer.
+  Zodra het buiten beeld is (of na `LOST_SECONDS`) wordt het op een vrije rijstrook elders
+  neergezet. Over een kruising kijkt het ook naar afslagen (`_leads_on`): een T-splitsing
+  waar rechtdoor ophoudt, is geen doodlopende weg.
+- Buiten beeld (`unseen`: meer dan `UNSEEN_MARGIN` buiten het scherm, of verder dan
+  `UNSEEN_DISTANCE` van een perspectiefcamera) rekent een voertuig maar elke tweede physics-stap
+  (met de tijd van beide) en slaat het wielen en lampen over.
+- Een sirene die inhaalt, blijft naast de auto die voor hem opzij ging tot hij erlangs is
+  (`_beside_yielder`), ook als er tegenverkeer aankomt.
+- Test op door elkaar heen rijden: `tools/godot.sh --headless --script
+  tools/check/overlap_test.gd -- 300` meldt elke overlap van twee rijdende carrosserieën met de
+  situatie erbij (`TRACE=Verkeer4,Verkeer9` volgt ook voertuigen per halve seconde).
 - De voorwielen sturen hooguit 40° (`max_steering_degrees`): een wiel steekt dan wat uit de
   wielkast, net als bij een echte auto.
 Druk op F en de camera volgt de sedan (node `Volgcamera`, `scripts/camera/follow_camera.gd`). Die jaagt de
@@ -386,13 +419,14 @@ Projectstructuur
                            ground_map, tint_map, tint_area
       effects/             day_cycle, smoke, grass_blades, vignette
       vehicles/            vehicle en de voertuigen (auto's, RandstadRail, NS-trein)
+      ui/                  hud (spelersscherm: stats, kaartje, klok, opdrachten, geld)
     tools/                 command-line tools (start ze met tools/godot.sh)
       godot.sh             Godot met tijdslimiet en zonder stdin
       tool_common.gd       gedeelde helpers van de tools
       build/               build_city (+ city/: de bouwer in delen),
                            build_libraries, build_previews
       check/               coverage, corner_test, crash_test, drive_test, fps_test,
-                           axle_test, follow_switch_test, lane_choice_test, traffic_test,
+                           axle_test, follow_switch_test, hud_test, lane_choice_test, traffic_test,
                            triangle_count
       shots/               shot_tiles, shot_iso, shot_scene, shot_vehicles
       voxgen/              Python-generator van de tiles (zie "Tiles (opnieuw) genereren")
@@ -788,6 +822,8 @@ Generator-bestanden (`tools/voxgen/`):
   - `details.py`, `details_extra.py`   gevel- en dakonderdelen, zonwering, teksten, vlaggen
   - `props.py`, `props_extra.py`   straatmeubilair, borden (RVV), bomen, planten,
     hekken, muurtjes, speeltuin, terras, zwembad, containers, steigers
+  - `small_vehicles.py`   fietsers, fatbike, brommer, scooter, motorfiets, brommobiel en
+    trekker met hun wielen
   - `tram_tunnel.py`   tramtunnel, tramhelling naar de tunnel, ondergrondse halte, tram in
     een klinkerbocht en brugdekken met een opening voor trappen
   - `extras_business_paths.py`, `extras_shops_lanes.py`, `traffic_lights_industry.py`
@@ -881,7 +917,7 @@ Prestaties en uiterlijk
   hoogtekaart van brede glooiingen van ~18 en 40 m kantelt alleen de normaal, heel licht; sterk op gras, zwakker op plaveisel, nauwelijks op asfalt) en
   `zwervr_far_noise`. Bakstenen zijn in de shader 6 x 2 voxels (`brick_scale` = 2 in
   `voxel.gdshader`), klinkers en natuursteen 3 x 1,5 voxels in halfsteensverband
-  (`block_size`), stoeptegels 4 x 4 voxels (`tile_size`); kiezels ~12 cm. Asfalt heeft geen scheurtjes maar het patroon van
+  (`block_size`), stoeptegels 4 x 4 voxels (`tile_size`); grind: kiezels van ~4,5 cm (`pebble_size`). Asfalt heeft geen scheurtjes maar het patroon van
   echt asfalt: steentjes van ~4 cm in donkere bitumen (Voronoi), elk een eigen
   grijstint met een bolle bovenkant waarop de zon glinstert, plus zachte slijtplekken;
   dichtbij worden de voxelblokjes van 12,5 cm eerst verzacht (gemiddeld met de
@@ -935,8 +971,14 @@ Prestaties en uiterlijk
 - Gras en grind (`voxel.gdshader`, sterkte gras in de shader-global `zwervr_grass`,
   0 = uit): geen echt reliëf, alleen kleur die het gevoel van reliëf geeft, dus goedkoop
   en zonder flikkeren. Gras wordt aan zijn kleur herkend (duidelijk groen, bovenvlakken):
-  een korrel van 60 en 20 cm (geen vlekken van ver), en dichtbij lange, dunne grassprieten. Grind
-  krijgt per kiezel een lichte en een schaduwkant en vlekken van ~15 cm.
+  een korrel van 60 en 20 cm (geen vlekken van ver; uitgezoomd zachter), en dichtbij lange, dunne grassprieten. Grind
+  (`gravel()`) ligt in wereldcoördinaten (naadloos over tiles heen): losse kiezels van
+  ~4,5 cm in een onregelmatig patroon (geen raster), bemonsterd op een raster van een
+  kwart kiezel zodat elke steen een blokkerige voxelrand heeft; per kiezel een eigen tint
+  (iets warmer of koeler, een paar duidelijk lichter of donkerder), een bolle bovenkant
+  die de normaal kantelt en donkere spleten. Daaronder grovere stenen (~12 cm) in rustige
+  tinten en zachte vlekken van ~25 cm. Elke laag vervaagt zodra hij een pixel of twee
+  klein is, dus van ver is grind egaal, zonder flikkeren.
 - Echte grassprieten (node `Grassprieten`, `scripts/effects/grass_blades.gd`, shader
   `materials/grass_blade.gdshader`) in drie detailniveaus die in elkaar overgroeien:
   fijne sprieten tot `show_from` (36 m in beeld, helemaal vol tot `full_from`, 26 m), daarna dikkere plukken (`medium_*`, tot
@@ -948,7 +990,9 @@ Prestaties en uiterlijk
   op het grasdeel van een tile (`GrondKaart` houdt per grastile een masker bij), dus
   niet op paden, oevers onder water of waterlelies. Instelbaar: `density` (220 sprieten
   per m², vol en dicht), `blade_height`, `blade_width` (3 cm, dun), `show_from`/
-  `full_from`. Kost op 2560 x 1440 ongeveer 20% framerate zolang ze in beeld zijn; een
+  `full_from`. Uitgezoomd worden de sprieten rustiger (shader-parameter `calm`, van 30 tot 90 m
+  in beeld): de zijkanten worden bijna zo licht als de toppen en het verschil per spriet en
+  van voet tot top wordt kleiner, zodat een grasveld van ver niet spikkelt. Kost op 2560 x 1440 ongeveer 20% framerate zolang ze in beeld zijn; een
   lagere `density` is de snelste winst.
 - Randen tussen grondtiles (`zwervr_ground_edges`, 0 = uit): waar een grondtile een
   andere soort grond raakt (gras, weg, fietspad, stoep, grind, klinkers, ...), tekent de
@@ -991,6 +1035,33 @@ Prestaties en uiterlijk
   Dichtbij tekent de shader lange, dunne grassprieten van ~30 cm die in de windrichting overhellen
   en elk een beetje wiegen, en op elke afstand trekken windvlagen als lichtere stroken
   langzaam over het gras (de sprieten buigen daar verder door).
+- HUD (node `HUD`, een CanvasLayer met `scripts/ui/hud.gd`, door `tools/build/city/base.gd`
+  bij de hulpnodes gezet; ontwerp "HUD — open world", 1280 x 720, schaalt mee met het venster,
+  de hoeken blijven in de hoeken). Pixelstijl: inktblauwe panelen (#141831/#0B0D1A), randen
+  #343B70, harde schaduw van 5 px, geen ronde hoeken; lettertypen Silkscreen, Pixelify Sans en
+  JetBrains Mono (`assets/fonts`, OFL, licenties in `OFL_*.txt`; Rubik als er een ontbreekt).
+  - Linksboven: portret met niveau (`set_player(naam, niveau)`) en de stats als blokjesbalken
+    met eigen icoon en kleur: `gezondheid`, `uithoudingsvermogen`, `honger`,
+    `overprikkeldheid` (`set_stat(naam, waarde, maximum)`, `get_stat`; nieuwe stats in `STATS`).
+  - Midden boven: "nieuw gebied ontdekt" met de naam, in- en uitfaden (`show_area(naam)`).
+  - Rechtsboven: kaartje van 200 x 200, noord boven, pijl in het midden (de gevolgde auto van
+    de `Volgcamera`, anders het punt waar de camera naar kijkt). Geen extra camera: één
+    afbeelding, één pixel per cel van 4 m, gemaakt bij het starten uit `Grond` (kleur per soort
+    grond, `MINIMAP_KINDS`) en `Gebouwen` (donker); `minimap_metres` (160) in beeld. Daaronder
+    dag en tijd uit de `Dagcyclus` (de dag telt op na middernacht; zonder Dagcyclus `set_time`).
+  - Rechts: opdrachten (`set_quests([...])`, verborgen zolang de lijst leeg is; voorbeelden
+    alleen met `show_example_quests`).
+  - Rechtsonder: geld in euro (`set_money`).
+  - Waar je bent, in een vak even breed als het kaartje erboven (de gevolgde auto, anders het punt waar de camera naar
+    kijkt): de wijk, de straat en de dichtstbijzijnde bekende plek (binnen `place_near`, 45 m).
+    De bouwer zet de wijken (`WIJKEN`) en straten (`STRATEN`, in cellen, met de stoep ernaast)
+    als scènemetadata `wijken` en `straten` in `build_city.gd`; plekken komen uit `places`. Kom
+    je voor het eerst in een wijk, dan meldt de HUD die als nieuw gebied (`show_area`).
+  - CRT-beeld over de wereld (een eigen CanvasLayer `CRT` net onder de HUD; de HUD zelf blijft recht):
+    het beeld bolt als een beeldbuis en de randen buigen naar binnen naar zwarte, afgeronde
+    hoeken (`crt_curvature` 0,05, `crt_corner` 0,035; 0 = plat), met scanlijnen
+    (`scanlines`, standaard aan, `scanline_strength` 0,1) en de rand iets donkerder.
+  Test: `tools/godot.sh --headless --script tools/check/hud_test.gd`.
 - Lettertype: Rubik (`assets/fonts/Rubik.ttf`, OFL-licentie), ingesteld als
   projectfont.
 - Meten: `Godot --script tools/check/fps_test.gd -- 20 flyover` of

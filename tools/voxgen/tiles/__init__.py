@@ -13,7 +13,8 @@ Modules per category (later ones build on the helpers of earlier ones):
 - details: details, details_extra (facade and roof parts)
 - props: props, props_extra (street furniture, signs, trees, fences, playground, ...)
 - vehicles: rail_vehicles (trams and trains), emergency_vehicles (police, ambulance, fire
-  service, the ministers' car, the OV-chipkaart reader)
+  service, the ministers' car, the OV-chipkaart reader), small_vehicles (cyclists, fatbike,
+  moped, scooter, motorbike, microcar)
 - mixed later additions: extras_business_paths (business units, industrial fencing, paths,
   hills, verges, footbridges), extras_shops_lanes (themed shops, tunnel troughs, tram and
   bus lanes, luxury apartments, green roofs), traffic_lights_industry (traffic lights in
@@ -41,3 +42,4 @@ from . import ground_corners  # noqa: F401
 from . import tram_tunnel  # noqa: F401
 from . import rail_vehicles  # noqa: F401
 from . import emergency_vehicles  # noqa: F401
+from . import small_vehicles  # noqa: F401

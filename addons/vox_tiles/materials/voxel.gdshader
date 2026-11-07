@@ -24,7 +24,7 @@ uniform float asphalt_colour_check : hint_range(0.0, 1.0) = 1.0;
 // relief in the lighting (no extra geometry), on the voxel grid of the tile (UV2):
 // 0 = off, 1 = blocks (every voxel a stone), 2 = brick (walls: the generator's bond,
 // bricks of 3 x 1 voxels, every course shifted by 2; floors = blocks),
-// 3 = gravel (small round pebbles), 4 = tiles (floors: tiles of tile_size voxels),
+// 3 = gravel (loose pebbles in world coordinates, see gravel()), 4 = tiles (floors: tiles of tile_size voxels),
 // 5 = cobbles (floors: irregular flat stones of about cobble_size voxels in wandering rows,
 //     each its own shade, thin joints between them, no depth)
 uniform int relief_kind = 0;
@@ -40,6 +40,9 @@ uniform vec2 block_size = vec2(3.0, 1.5);
 uniform float tile_size = 4.0;
 // cobbles (relief_kind 5): about this many voxels per stone
 uniform float cobble_size = 1.6;
+// gravel (relief_kind 3): size of a pebble in metres; a coarser layer of stones is
+// GRAVEL_COARSE times this
+uniform float pebble_size = 0.045;
 // finer than a voxel, in world coordinates: hairline cracks and pits
 uniform float cracks : hint_range(0.0, 1.0) = 0.0;
 uniform float pits : hint_range(0.0, 1.0) = 0.0;
@@ -141,7 +144,9 @@ void grass_feel(vec2 p, float amount, float t, inout vec3 c) {
 	// a few pixels big, so it reads as texture without blotches, edges or flicker
 	float g1 = (noise(p / 0.6 + 3.1) - 0.5) * smoothstep(2.0, 4.0, 0.6 / fw);
 	float g2 = (noise(p / 0.2 + 7.9) - 0.5) * smoothstep(2.0, 4.0, 0.2 / fw);
-	c *= 1.0 + (g1 * 0.2 + g2 * 0.16) * amount;
+	// zoomed out the grain gets calmer (less light and dark), up close it keeps its detail
+	float calm = 1.0 - 0.6 * smoothstep(0.02, 0.08, fw);
+	c *= 1.0 + (g1 * 0.2 + g2 * 0.16) * amount * calm;
 	// gusts of wind: lighter bands (the grass bends and shows its lighter side) drifting
 	// slowly in the wind direction, at every distance
 	vec2 wind = normalize(vec2(1.0, -0.5));
@@ -172,11 +177,6 @@ float relief(vec2 uv, vec3 t, vec3 b, bool wall, inout vec3 n, inout vec3 c) {
 		size = vec2(3.0, 1.0) * brick_scale;
 		q.x += mod(floor(uv.y / brick_scale), 2.0) * 2.0 * brick_scale;
 		joint = 0.07;
-	} else if (kind == 3) {
-		// pebbles of ~12 cm; they stay visible until they are about a pixel small
-		size = vec2(1.0);
-		joint = 0.03;
-		fade_from = 1.2;
 	} else if (kind == 4) {
 		size = vec2(tile_size);
 		joint = 0.05;
@@ -193,16 +193,7 @@ float relief(vec2 uv, vec3 t, vec3 b, bool wall, inout vec3 n, inout vec3 c) {
 	float k = relief_strength * visible * (wall ? relief_walls : 1.0);
 	vec2 slope;
 	float edge = 1.0;   // distance to the joint (voxels)
-	if (kind == 3) {
-		vec2 o = vec2(hash_f(cell), hash_f(cell + 5.3)) * 0.3 - 0.15;
-		vec2 d = f - o;
-		slope = d * 2.0;
-		edge = (0.5 - length(d)) * size.x;
-		c *= 1.0 + (hash_f(cell + 9.1) - 0.5) * 0.3 * visible;
-		// a lit and a shaded side on every pebble, also where the tilted normal is too
-		// subtle to read
-		c *= 1.0 + dot(d, vec2(-0.7, -0.7)) * 0.8 * relief_strength * visible;
-	} else if (kind == 5) {
+	if (kind == 5) {
 		// irregular cobbles: the nearest of a jittered grid of stone centres, the rows
 		// wandering a little; flat, so only the joints and a shade per stone
 		vec2 p = uv / cobble_size;
@@ -280,6 +271,52 @@ vec4 chippings(vec2 q) {
 	}
 	float edge = (sqrt(d2) - sqrt(d1)) * 0.5;
 	return vec4(edge, near * 1.2, hash_f(id + 3.3));
+}
+
+// Gravel (relief_kind 3) on a face (p = position in the face in metres, t/b = its world
+// axes): loose pebbles of pebble_size in an irregular cell pattern (no grid, so no woven
+// look), sampled on a grid of a quarter pebble so every stone has the blocky outline of
+// the voxel style. Each pebble has its own shade and a touch of warm or cool, a domed top
+// that tilts the normal (the sun lights one side) and dark gaps around it. Under them a
+// coarser layer of stones (GRAVEL_COARSE x the size) in calm shades and soft patches of
+// ~25 cm (raked and trodden gravel). Every layer fades out once it is about a pixel or
+// two small, so from afar the gravel is its plain colour without shimmer.
+const float GRAVEL_COARSE = 2.6;
+void gravel(vec2 p, vec3 t, vec3 b, inout vec3 n, inout vec3 c, inout float rough) {
+	float fw = max(length(fwidth(p)), 1e-5);   // metres per pixel
+	float strength = relief_strength * zwervr_relief;
+	// soft patches, visible a little further out than the stones
+	float patches = 1.0 - smoothstep(0.06, 0.15, fw);
+	c *= 1.0 + (noise(p / 0.25 + 4.7) - 0.5) * 0.16 * patches * strength;
+	// coarse stones: a shade each and soft gaps, no relief
+	float coarse = pebble_size * GRAVEL_COARSE;
+	float coarse_visible = (1.0 - smoothstep(0.5, 1.1, fw / coarse)) * strength;
+	if (coarse_visible > 0.0) {
+		vec2 grid = (floor(p / (coarse * 0.25)) + 0.5) * 0.25;
+		vec4 stone = chippings(grid + 17.0);
+		float coarse_warmth = fract(stone.w * 7.3) - 0.5;
+		float coarse_gap = 1.0 - smoothstep(0.03, 0.12, stone.x);
+		c *= (1.0 + ((stone.w - 0.5) * 0.3 - coarse_gap * 0.18) * coarse_visible)
+			* (1.0 + vec3(coarse_warmth, 0.0, -coarse_warmth) * 0.1 * coarse_visible);
+	}
+	float visible = (1.0 - smoothstep(0.5, 1.0, fw / pebble_size)) * strength;
+	if (visible <= 0.0) {
+		return;
+	}
+	vec2 grid = (floor(p / (pebble_size * 0.25)) + 0.5) * 0.25;   // in pebbles
+	vec4 stone = chippings(grid);
+	float shade = stone.w - 0.5;
+	float warmth = fract(stone.w * 13.7) - 0.5;
+	// a few stones clearly lighter or darker, most close to the base colour
+	c *= 1.0 + (shade * 0.22 + sign(shade) * smoothstep(0.38, 0.5, abs(shade)) * 0.12) * visible;
+	c = mix(c, c * vec3(1.0 + warmth * 0.14, 1.0 + warmth * 0.02, 1.0 - warmth * 0.14), visible);
+	// the gap between stones: dark, the stone's rim a little darker (rounding off)
+	float gap = 1.0 - smoothstep(0.03, 0.09, stone.x);
+	float rim = 1.0 - smoothstep(0.09, 0.2, stone.x);
+	c *= 1.0 - (gap * 0.32 + rim * 0.08) * visible;
+	// domed top: the normal tilts away from the stone's centre
+	n = normalize(n + (t * stone.y + b * stone.z) * 0.55 * (1.0 - gap) * visible);
+	rough = min(1.0, rough + gap * 0.05 * visible) - (1.0 - gap) * (stone.w * 0.08) * visible;
 }
 
 // Distance (metres) to the nearest cell edge of an irregular cell pattern with cells
@@ -466,14 +503,13 @@ void fragment() {
 			}
 		}
 	}
-	if (relief_kind == 3 && !light) {
-		// gravel: patches of pebbles of a slightly different shade (~15 cm), visible
-		// further away than the pebbles themselves
-		float fw3 = length(fwidth(vpos.xz));
-		float patches = 1.0 - smoothstep(0.05, 0.15, fw3);
-		c *= 1.0 + (noise(vpos.xz * 7.0) - 0.5) * 0.18 * patches * relief_strength * zwervr_relief;
-	}
-	if (relief_kind > 0 && zwervr_relief > 0.0 && !light) {
+	if (relief_kind == 3 && zwervr_relief > 0.0 && !light) {
+		// gravel: in world coordinates of the face (seamless across tiles and rotations)
+		vec3 an = abs(wnorm);
+		vec3 t = an.x > 0.5 ? vec3(0.0, 0.0, 1.0) : vec3(1.0, 0.0, 0.0);
+		vec3 b = an.y > 0.5 ? vec3(0.0, 0.0, 1.0) : vec3(0.0, 1.0, 0.0);
+		gravel(vec2(dot(vpos, t), dot(vpos, b)), t, b, nw, c, rough);
+	} else if (relief_kind > 0 && zwervr_relief > 0.0 && !light) {
 		vec3 t;
 		vec3 b;
 		uv2_axes(vpos, UV2, t, b);

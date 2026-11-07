@@ -98,6 +98,10 @@ const JUMP_SPEED := 80.0
 @export var closeup_orbit := 70.0
 ## Downward angle of the view at the closest (degrees; the iso view looks 35 down).
 @export var closeup_pitch := -24.0
+## Shake of the view at a crash in view (Vehicle.last_crash): metres at the hardest crash,
+## and seconds it dies down over.
+@export var crash_shake := 0.6
+@export var crash_shake_time := 0.7
 
 var _cam: Camera3D
 var _car: Node3D
@@ -287,6 +291,22 @@ func _process(delta: float) -> void:
 		_cam.rotation_degrees = Vector3(lerpf(Iso.ROTATION.x, closeup_pitch, closeness), Iso.ROTATION.y + swing, 0.0)
 		_cam.global_position = _view_focus + _cam.global_basis.z * Iso.distance(view_size)
 	_place_in_tunnel(car_position, way_to_go, delta)
+	_shake_for_crash(view_size)
+
+
+## Shakes the view for a crash that just happened within it (harder the harder the crash,
+## dying down over crash_shake_time).
+func _shake_for_crash(view_size: float) -> void:
+	var age: float = Time.get_ticks_msec() / 1000.0 - Vehicle.last_crash["time"]
+	if age < 0.0 or age > crash_shake_time:
+		return
+	var crash_at: Vector3 = Vehicle.last_crash["at"]
+	if crash_at.distance_to(_view_focus) > view_size:
+		return
+	var fade := 1.0 - age / crash_shake_time
+	var amount: float = crash_shake * Vehicle.last_crash["strength"] * fade * fade * clampf(view_size / 40.0, 0.4, 1.5)
+	_cam.global_position += (_cam.global_basis.x * _random.randf_range(-1.0, 1.0)
+			+ _cam.global_basis.y * _random.randf_range(-1.0, 1.0)) * amount
 
 
 ## Blends the camera, just placed for the normal view, towards the chase camera as far

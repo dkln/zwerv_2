@@ -386,7 +386,7 @@ func _beside_platform(cell: Vector3i, direction: Vector3i) -> bool:
 # ------------------------------------------------------------------ the others
 
 ## It stays on the rails: a blow only stops it.
-func _become_wreck(_impact: Vector3, _spin := 0.0) -> void:
+func _become_wreck(_impact: Vector3, _spin := 0.0, _pushed := Vector3.ZERO, _jolt := 0.0) -> void:
 	speed = 0.0
 
 
