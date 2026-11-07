@@ -1,6 +1,6 @@
 extends Node3D
 ## A big fire now and then in the skyline behind the main menu (scripts/ui/main_menu.gd
-## adds one to the menu's map): after FIRST_WAIT seconds a roof somewhere round Centraal
+## adds one to the menu's map): after FIRST_WAIT (12) seconds a roof somewhere round Centraal
 ## catches fire, the flames (glowing cubes) and a thick column of smoke (dark cubes, drifting
 ## with the wind) grow, it burns for a while (BURN_SECONDS), dies down and the smoke thins
 ## out; after a pause (PAUSE_SECONDS) another roof elsewhere catches fire. Voxel-like, as the
@@ -12,7 +12,7 @@ extends Node3D
 ## The roofs: the tops of the Gebouwen GridMap of the map, in view of the camera, at least
 ## MIN_DISTANCE away (the background) and MIN_HEIGHT high.
 
-const FIRST_WAIT := 30.0
+const FIRST_WAIT := 12.0
 const BURN_SECONDS := Vector2(40.0, 70.0)
 const PAUSE_SECONDS := Vector2(12.0, 30.0)
 const GROW_SECONDS := 5.0

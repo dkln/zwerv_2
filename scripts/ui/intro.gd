@@ -32,7 +32,7 @@ const MUSIC := "res://assets/audio/muziek/intro.mp3"
 const MUSIC_VOLUME_DB := -4.0
 const MUSIC_FADE_OUT := 2.0
 ## Seconds the picture fades to black on the way to the menu.
-const FADE_TO_MENU := 1.4
+const FADE_TO_MENU := 2.4
 const DESIGN_SIZE := Vector2(1280, 720)
 const OPENING_LINE := "Niet zo lang geleden, kortgeleden, recent en laatst…"
 ## The story that rolls away after the logo, a paragraph per entry (each a sentence of its

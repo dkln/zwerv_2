@@ -25,7 +25,7 @@ const CITY_SCENE := "res://scenes/stad.tscn"
 const MAP_SCENE := "res://scenes/menu_kaart.scn"
 const MAP_FADE_SECONDS := 1.5
 ## Seconds the menu takes to come up out of the black of the intro.
-const UP_FROM_BLACK := 2.0
+const UP_FROM_BLACK := 3.5
 ## The music of the menu, played whole and looped, at full volume from the first moment
 ## the menu opens (no fade in: it starts with a bang); its volume (dB) and the seconds it
 ## fades out when the town opens.
@@ -171,12 +171,16 @@ func _start_music() -> void:
 	_music.play()
 
 
-## The menu comes in: the title slides in from the left as it fades in, the items follow one
-## by one (ENTRANCE_ITEM_DELAY apart), then the footer; the picture loses its tracking for a
-## moment as if the tape just started. The menu works at once (keys during it count).
+## The menu comes in, slowly, in two parts: first the logo (the title column) slides in from
+## the left as it fades in (TITLE_SECONDS); when it is nearly there (MENU_AFTER) the items
+## follow one by one (ENTRANCE_ITEM_DELAY apart), then the footer; the picture loses its
+## tracking for a moment as if the tape just started. The menu works at once (keys during it
+## count).
 const ENTRANCE_SLIDE := 40.0
-const ENTRANCE_SECONDS := 1.1
-const ENTRANCE_ITEM_DELAY := 0.14
+const TITLE_SECONDS := 2.4
+const MENU_AFTER := 1.8
+const ENTRANCE_SECONDS := 1.6
+const ENTRANCE_ITEM_DELAY := 0.22
 
 
 func _play_entrance() -> void:
@@ -184,17 +188,19 @@ func _play_entrance() -> void:
 	var title_at := _title_column.position
 	_title_column.position = title_at - Vector2(ENTRANCE_SLIDE, 0)
 	_title_column.modulate.a = 0.0
-	entrance.tween_property(_title_column, "position", title_at, ENTRANCE_SECONDS)
-	entrance.tween_property(_title_column, "modulate:a", 1.0, ENTRANCE_SECONDS)
+	entrance.tween_property(_title_column, "position", title_at, TITLE_SECONDS)
+	entrance.tween_property(_title_column, "modulate:a", 1.0, TITLE_SECONDS)
 	var menu_at := _menu_box.position
 	_menu_box.position = menu_at - Vector2(ENTRANCE_SLIDE, 0)
-	entrance.tween_property(_menu_box, "position", menu_at, ENTRANCE_SECONDS + ENTRANCE_ITEM_DELAY * _buttons.size()).set_delay(0.15)
+	_menu_box.modulate.a = 0.0
+	entrance.tween_property(_menu_box, "modulate:a", 1.0, 0.3).set_delay(MENU_AFTER)
+	entrance.tween_property(_menu_box, "position", menu_at, ENTRANCE_SECONDS + ENTRANCE_ITEM_DELAY * _buttons.size()).set_delay(MENU_AFTER)
 	for index in _buttons.size():
 		_buttons[index].modulate.a = 0.0
-		entrance.tween_property(_buttons[index], "modulate:a", 1.0, ENTRANCE_SECONDS * 0.8).set_delay(0.15 + ENTRANCE_ITEM_DELAY * index)
+		entrance.tween_property(_buttons[index], "modulate:a", 1.0, ENTRANCE_SECONDS * 0.8).set_delay(MENU_AFTER + ENTRANCE_ITEM_DELAY * index)
 	for footer_label: CanvasItem in _footer:
 		footer_label.modulate.a = 0.0
-		entrance.tween_property(footer_label, "modulate:a", 1.0, ENTRANCE_SECONDS).set_delay(0.3 + ENTRANCE_ITEM_DELAY * _buttons.size())
+		entrance.tween_property(footer_label, "modulate:a", 1.0, ENTRANCE_SECONDS).set_delay(MENU_AFTER + 0.3 + ENTRANCE_ITEM_DELAY * _buttons.size())
 	# the tape starting: a short loss of tracking that settles
 	var material := _crt.material as ShaderMaterial
 	material.set_shader_parameter("tracking", 0.8)
@@ -240,7 +246,7 @@ func _show_map(packed: PackedScene) -> void:
 		_lay_copies(map)
 	_add_moon(map)
 	_set_up_columns(map)
-	# now and then a big fire in the skyline round Centraal (the first after 30 s; more
+	# now and then a big fire in the skyline round Centraal (the first after 12 s; more
 	# as the chaos grows)
 	_fires.clear()
 	_menu_seconds = 0.0
@@ -325,7 +331,7 @@ func _drift(delta: float) -> void:
 ## first (from .. to), how many (from .. to), metres apart, speed (m/s), and whether they
 ## bob (tractors on the grass).
 const COLUMN_KINDS := {
-	"Hulpdiensten": {"every": Vector2(25.0, 45.0), "first": Vector2(38.0, 45.0), "count": Vector2i(1, 3), "spacing": 13.0, "speed": 15.0, "bob": false},
+	"Hulpdiensten": {"every": Vector2(25.0, 45.0), "first": Vector2(16.0, 20.0), "count": Vector2i(1, 3), "spacing": 13.0, "speed": 15.0, "bob": false},
 	"Trekkers": {"every": Vector2(20.0, 35.0), "first": Vector2(9.0, 11.0), "count": Vector2i(6, 12), "spacing": 9.0, "speed": 6.0, "bob": true},
 	"Politie": {"every": Vector2(15.0, 30.0), "first": Vector2(1.5, 2.0), "count": Vector2i(2, 5), "spacing": 11.0, "speed": 12.0, "bob": false},
 }
@@ -337,16 +343,23 @@ const COLUMN_REACH := 60.0
 ## chaos grows, when tractors are on their way) the police or the emergency services come
 ## the other way on the tractors' lane, and where they meet they crash (see _crash).
 const LANE_OFFSETS := {"Hulpdiensten": -3.5, "Politie": 0.0, "Trekkers": 4.0}
-const CRASH_CHANCE := {"Politie": Vector2(0.4, 0.95), "Hulpdiensten": Vector2(0.0, 0.6)}
+const CRASH_CHANCE := {"Politie": Vector2(0.65, 1.0), "Hulpdiensten": Vector2(0.15, 0.7)}
+## When the tractors set off, the police come soon after (in CHASE_WAIT seconds) as long as
+## the tractors are still on their way, so they meet them.
+const CHASE_WAIT := Vector2(3.0, 8.0)
+## The blue lights by day: bigger blocks (BEACON_SCALE), glowing BEACON_GLOW times and
+## unshaded, so they stand out in the sun too.
+const BEACON_SCALE := Vector3(1.8, 2.0, 1.6)
+const BEACON_GLOW := 14.0
 ## The longer the menu is open, the worse it gets behind it: the chaos grows from 0 to 1
 ## over CHAOS_SECONDS; with it the columns come up to CHAOS_PACE times as often and up to
 ## CHAOS_CROWD times as long, crashes are likelier, more fires burn at once (a new one at
 ## each of FIRE_AT) and they burn fiercer (MenuFire.fury up to CHAOS_FURY).
-const CHAOS_SECONDS := 240.0
+const CHAOS_SECONDS := 120.0
 const CHAOS_PACE := 3.0
 const CHAOS_CROWD := 1.8
 const CHAOS_FURY := 1.6
-const FIRE_AT := [0.3, 0.6, 0.85]
+const FIRE_AT := [0.2, 0.45, 0.7]
 ## A crash: vehicles become wrecks (RigidBody3D with a box collider their size, their mass
 ## and speed, a hop and a spin) that bump and slide over the grass (a floor collider), shards
 ## and dust fly (crash_burst.gd); whatever comes after and drives into a wreck crashes too;
@@ -381,6 +394,16 @@ func _set_up_columns(map: Node) -> void:
 		var kind: Dictionary = COLUMN_KINDS[holder_name]
 		_columns.append({"holder": holder, "kind": kind, "wait": randf_range(kind.first.x, kind.first.y),
 			"members": [], "from": Vector3.ZERO, "heading": Vector3.RIGHT, "travelled": 0.0})
+		# the blue lights well visible by day
+		for part in holder.find_children("Zwaailicht", "MeshInstance3D", true, false):
+			var beacon := part as MeshInstance3D
+			beacon.scale = BEACON_SCALE
+			var box := beacon.mesh as BoxMesh
+			var glow := box.material as StandardMaterial3D if box else null
+			if glow:
+				glow.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+				glow.albedo_color = Color(0.35, 0.6, 1.0)
+				glow.emission_energy_multiplier = BEACON_GLOW
 
 
 ## 0 .. 1: how bad it has got behind the menu (see CHAOS_SECONDS).
@@ -596,6 +619,11 @@ func _start_column(column: Dictionary) -> void:
 	var line := Vector3(_map_camera.global_position.x, 0.0, lane)
 	column.from = line - (column.heading as Vector3) * COLUMN_REACH
 	column.travelled = 0.0
+	# the tractors set off: the police follow soon, to meet them
+	if holder.name == "Trekkers":
+		for other: Dictionary in _columns:
+			if (other.holder as Node).name == "Politie" and (other.members as Array).is_empty():
+				other.wait = minf(other.wait, randf_range(CHASE_WAIT.x, CHASE_WAIT.y))
 	var count := roundi(randi_range(kind.count.x, kind.count.y) * lerpf(1.0, CHAOS_CROWD, _chaos()))
 	var burning := _fires.any(func(fire: Node3D) -> bool: return fire.call("is_burning"))
 	for index in count:

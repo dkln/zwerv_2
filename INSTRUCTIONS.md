@@ -412,8 +412,8 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
   het logo ZWERVR in grote amberkleurige omlijnde letters dat even blijft staan (`LOGO_HOLD`) en dan langzaam de diepte in krimpt, dan
   het verhaal (`STORY`) dat in amber schuin wegrolt de verte in (op de muziek, `CRAWL_CUES`; de tekst
   in een eigen SubViewport, door een shader in perspectief gelegd), dan het hoofdmenu
-  (al op de achtergrond geladen): het beeld fadet in 1,4 s naar zwart met een trackingstoring
-  (`FADE_TO_MENU`) en het menu komt daar in 2 s uit omhoog (`UP_FROM_BLACK`), terwijl de
+  (al op de achtergrond geladen): het beeld fadet in 2,4 s naar zwart met een trackingstoring
+  (`FADE_TO_MENU`) en het menu komt daar in 3,5 s uit omhoog (`UP_FROM_BLACK`), terwijl de
   muziek van intro naar menu overvloeit. Alleen de spatiebalk breekt hem af en gaat naar het
   hoofdmenu (andere toetsen, zoals de volumetoetsen, en de muis doen niets). Linksonder staat, zoals de actieknop in het ontwerp, "SPATIE · Intro
   overslaan". De sterren fonkelen. Muziek: `assets/audio/muziek/intro.mp3`; de intro loopt op die
@@ -455,14 +455,16 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
   `BURNING_SIZE`); ze branden `BURNING_WRECK_SECONDS`, het vuur dooft in de laatste
   `WRECK_DIE_SECONDS`, en de laatste rook drijft nog even na
 - Hoe langer het menu openstaat, hoe ellendiger het erachter wordt: de chaos groeit in
-  `CHAOS_SECONDS` (240 s) van 0 naar 1; de colonnes komen tot `CHAOS_PACE` (3×) zo vaak en
+  `CHAOS_SECONDS` (120 s) van 0 naar 1; de colonnes komen tot `CHAOS_PACE` (3×) zo vaak en
   tot `CHAOS_CROWD` (1,8×) zo lang, botsingen worden waarschijnlijker (`CRASH_CHANCE` per
   colonne, van/tot), er branden meer daken tegelijk (een extra brand bij elk van `FIRE_AT`)
   en ze branden heviger (`fury` tot `CHAOS_FURY`). Naast trekkers en politie/ME rijden er
-  ook hulpdiensten (`Hulpdiensten`: ambulances en brandweerauto's, de eerste na zo'n 40 s,
+  ook hulpdiensten (`Hulpdiensten`: ambulances en brandweerauto's, de eerste na zo'n 18 s,
   vooral brandweer als er iets brandt) op een eigen strook (`LANE_OFFSETS`); ook zij komen
-  bij meer chaos de trekkers tegemoet.
-- Brand in de skyline (`scripts/effects/menu_fire.gd`): na 30 s vat ergens rond Centraal een
+  bij meer chaos de trekkers tegemoet. Als de trekkers vertrekken, komt de politie snel
+  (`CHASE_WAIT`), zodat ze elkaar tegenkomen. De zwaailichten zijn ook overdag goed te zien:
+  grotere blokjes (`BEACON_SCALE`), onbelicht en fel gloeiend (`BEACON_GLOW`).
+- Brand in de skyline (`scripts/effects/menu_fire.gd`): na 12 s vat ergens rond Centraal een
   dak vlam (een dak van de Gebouwen-GridMap in beeld, op de achtergrond): vlammen van gloeiende
   blokjes, een dikke rookkolom van donkere blokjes die met de wind meedrijft en een flakkerend
   oranje licht. Hij wordt steeds groter: hij begint klein (`START_SHARE`) en breidt zich uit
@@ -493,8 +495,9 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
   reliëf en randen) rekent de tool bij het bakken uit en bewaart ze in het kaartje (node
   `Shaderkaarten`, `scripts/world/baked_shader_maps.gd`), want daar zijn geen GridMaps meer. Pauze in het spel: Esc (VERDER SPELEN,
   HOOFDMENU, AFSLUITEN; `GameHud.set_paused`).
-  Bij aankomst komt het menu binnen: de titel schuift met een fade van links in, de knoppen
-  volgen een voor een, dan de voettekst; het beeld verliest even zijn tracking alsof de band
+  Bij aankomst komt het menu langzaam binnen, in twee delen: eerst het logo (de titel schuift
+  met een fade van links in, `TITLE_SECONDS`), en als dat er bijna is (`MENU_AFTER`) volgen
+  de knoppen een voor een, dan de voettekst; het beeld verliest even zijn tracking alsof de band
   start (`_play_entrance`, `ENTRANCE_*`). Het menu werkt meteen. Bij NIEUW SPEL gaat het
   omgekeerd (`_play_exit`): de knoppen faden weg, de titel schuift naar links uit beeld, alles
   vervaagt naar inktblauw met een sterke trackingstoring, en het laadscherm van de stad (ook

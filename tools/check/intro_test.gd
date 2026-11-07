@@ -84,7 +84,7 @@ func _init() -> void:
 		for frame_index in 90:
 			await physics_frame
 		print("intro ok: wrak op %s" % wreck.global_position if wreck and is_instance_valid(wreck) else "FOUT: geen wrak")
-	# the fire: after 30 s (time four times as fast)
+	# the fire: after 12 s (time four times as fast)
 	Engine.time_scale = 4.0
 	var flames := menu.get_node_or_null("Menukaart/Brand/Vlammen") as GPUParticles3D
 	started = Time.get_ticks_msec()
@@ -116,5 +116,15 @@ func _init() -> void:
 		print("intro ok: trekker in de fik" if burning else "FOUT: trekkerwrak brandt niet")
 	else:
 		print("FOUT: geen trekker gezien")
+	# a crash by itself: the police meeting the tractors on their lane (time four times as fast)
+	var forced := menu.get_node("Menukaart").get_children().filter(func(node: Node) -> bool: return node.name.begins_with("Wrak"))
+	var natural := ""
+	started = Time.get_ticks_msec()
+	while natural == "" and Time.get_ticks_msec() - started < 60000:
+		await process_frame
+		for node in menu.get_node("Menukaart").get_children():
+			if node.name.begins_with("Wrak") and not forced.has(node):
+				natural = node.name
+	print("intro ok: vanzelf gebotst (%s)" % natural if natural != "" else "FOUT: geen botsing vanzelf in 4 min menutijd")
 	Engine.time_scale = 1.0
 	quit()

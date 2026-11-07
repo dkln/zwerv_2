@@ -58,7 +58,6 @@ cam_omlaag={
 
 [rendering]
 
-lights_and_shadows/directional_shadow/size=4096
 lights_and_shadows/directional_shadow/soft_shadow_filter_quality=1
 driver/depth_prepass/enable=false
 environment/ssao/quality=1
