@@ -201,7 +201,7 @@ func _dress_streets() -> void:
 	# two busy intersections get traffic lights (all light types; green and amber north-south)
 	var candidates := []
 	for c in inter:
-		if c.y == tram_row or c.y == tram_row + 1:
+		if c.y == tram_row or c.y == tram_row + 1 or c.x > lights_last_column:
 			continue
 		if not (inter.has(c + Vector2i(1, 0)) and inter.has(c + Vector2i(0, 1)) and inter.has(c + Vector2i(1, 1))):
 			continue

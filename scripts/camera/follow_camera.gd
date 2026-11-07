@@ -21,7 +21,8 @@ extends Node
 ## (also during the flight over the map, which it then ends); B, while following, sends
 ## another vehicle the wrong way into the followed one (the demo crash, Vehicle.drive_into);
 ## T, while following, runs the game `fast_forward` times as fast (and back), to see more
-## of the town and the traffic without waiting;
+## of the town and the traffic without waiting; S, while following a police car, ambulance,
+## fire engine or ME van, switches its siren and blue lights on or off;
 ## Tab follows the next vehicle and Shift+Tab the previous one (Vehicle.all_vehicles, so
 ## the trains and trams as well): the view glides over to it in `switch_time` seconds,
 ## zoomed out a little for a long way. A vehicle that jumps (a train changing ends, a wreck
@@ -244,6 +245,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		crash_demo()
 	elif event is InputEventKey and event.keycode == KEY_T and _following:
 		_set_time_scale(1.0 if Engine.time_scale > 1.0 else fast_forward)
+	elif event is InputEventKey and event.keycode == KEY_S and _following and _car is Vehicle and (_car as Vehicle).emergency:
+		(_car as Vehicle).toggle_siren()
 	elif _following:
 		stop()
 

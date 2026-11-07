@@ -19,5 +19,17 @@
 			"brommer",
 			"fiets"
 		]
+	},
+	"ramp_traffic": {
+		"lanes": [
+			"N",
+			"S"
+		],
+		"rise": 1.0,
+		"only": [
+			"auto",
+			"brommer",
+			"fiets"
+		]
 	}
 }

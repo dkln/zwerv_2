@@ -9,7 +9,7 @@ extends "res://tools/build/city/street_grid.gd"
 ## _dress_streets, kerbs by _auto_kerbs). Coordinates: x = east, z = south, ground tiles
 ## of 4 m; directions name the side a tile's front faces (see city/base.gd).
 ##
-## MAP (x 0..175, z 0..175, a full square)
+## MAP (x 0..215, z 0..175: the city x 0..175, the A12 and Voorburg east of it)
 ##   The Singelgracht rings the old centre (water x 2-3, x 66-67, z 2-3, z 88-89, quays
 ##   on both sides). Inside, on a grid of streets (x 5, 24, 48, 63 and z 5, 29, 58, 85):
 ##                x 7..23              x 26..47                  x 50..62
@@ -26,7 +26,7 @@ extends "res://tools/build/city/street_grid.gd"
 ##   East of the Prinsessegracht (street x 69, Koningskade), cut by the streets x 96
 ##   (Juliana van Stolberglaan) and x 128 (Laan van NOI): the Haagse Bos with Paleis Huis
 ##   ten Bosch (z 0..17) and the offices of the Prins Clauslaan east of it; the A12
-##   (Utrechtsebaan, z 19..27) coming in from the east edge, down into a trough, covered
+##   (Utrechtsebaan, z 19..27) coming in from the bend east of the city, down into a trough, covered
 ##   from x 95 to x 130 with the Malietoren, Snackbar De Vrijheid and offices on the deck
 ##   (_over_a12), up again to a junction with the Koningskade by the Ministerie van
 ##   Financien; the Malieveld, the Bezuidenhout and the Theresiastraat (z 31..57);
@@ -39,11 +39,17 @@ extends "res://tools/build/city/street_grid.gd"
 ##   Bezuidenhout-Oost; a ramp and tracks along x 72..73 join it to the line of street
 ##   z 58 (_schenkviaduct). Railway: two tracks from Centraal Station south and up to a
 ##   viaduct beside the tram (z 93..94), through elevated Station Laan van NOI over the
-##   street x 128 to the map edge (_railway). The trams of the Grote Marktstraat run through a tunnel with an
+##   street x 128 and Station Voorburg to the map edge (_railway). The trams of the Grote Marktstraat run through a tunnel with an
 ##   underground stops at the Grote Markt and the Spui between two ramps (x 26..55, _tram_tunnel). The tracks along
 ##   x 72..73 run under a wing of the Ministerie van VWS (De Resident) built over them (_ministry_over_tram). South of the viaducts the Schenkkade (z 96) and the
 ##   neighbourhood along it (_schenkkade). Road bridges over the east arm of the singel
 ##   at the Mauritskade (z 5), the two tram streets and the Zuidwal (z 85).
+##   East of the city (x 176..215): the A12 turns south in a square bend (x 181..189) and
+##   runs past the Binckhorst and Voorburg, with the half junctions 3 (Bezuidenhout, the
+##   Schenkkade) and 4 (Voorburg, the street z 130) whose streets cross it on bridges, and
+##   from z 148 in a trough to the map edge (_a12_east, _a12_bridges); the viaducts of
+##   RandstadRail and railway cross it to Station Voorburg (x 200..210); Voorburg on the
+##   street x 204 with the Oude Kerk (_voorburg).
 
 # streets: first lane (north or west) of the two
 const X1 := 5      # Hogewal / Prinsegracht
@@ -69,7 +75,8 @@ const ZR2 := 130   # second
 const ZR3 := 153   # third
 const SOUTH_BLOCK_DEPTH := 21  # rows of a block between those streets
 const Z_END := 175 # last row of the map
-const X_END := 175 # last column of the map
+const X_END := 175 # last column of the city west of the A12
+const MAP_END := 215 # last column of the map: the A12 turning south, and Voorburg east of it
 
 var _tram := {}    # Vector2i -> "h" / "v": tram cells (painted after the streets)
 var _bend_outsides := []   # the outside cell of every bend in a street, see _round_bend_kerbs
@@ -91,6 +98,7 @@ func _init() -> void:
 	_spui()
 	_haagse_bos()
 	_a12()
+	_a12_east()
 	_over_a12()
 	_prins_clauslaan()
 	_malieveld()
@@ -103,6 +111,7 @@ func _init() -> void:
 	_schilderswijk()
 	_laakkwartier()
 	_binckhorst()
+	_voorburg()
 	_tram_lines()
 	_paint_streets()
 	_dress_streets()
@@ -115,6 +124,7 @@ func _init() -> void:
 	_round_bend_kerbs()
 	_fill_grass_all()
 	_railway()
+	_a12_bridges()
 	_schenkviaduct()
 	_ministry_over_tram()
 	_a12_footbridge()
@@ -172,7 +182,7 @@ func _water(cells: Dictionary, water := "water/water_gracht") -> void:
 		for dx in [-1, 0, 1]:
 			for dz in [-1, 0, 1]:
 				var q: Vector2i = c + Vector2i(dx, dz)
-				if not cells.has(q) and q.x >= 0 and q.x <= X_END and q.y >= 0 and q.y <= Z_END:
+				if not cells.has(q) and q.x >= 0 and q.x <= MAP_END and q.y >= 0 and q.y <= Z_END:
 					quays[q] = true
 	for q in quays:
 		var orth := []
@@ -281,6 +291,13 @@ func _shops(start: Vector2i, step: Vector2i, n: int, front: String, seed: int, k
 		var fc := _ck(front, end) if end != "" else ""
 		var bk := _ck(back, end) if end != "" else ""
 		var shop: String = kinds[(i + seed) % kinds.size()]
+		if kinds == HORECA and fc == "" and not _has(p + shop):
+			# a cafe row stays a cafe row: another style that has this front, not a plain window
+			for other: String in styles:
+				if _has(other + "/" + other + "_" + shop):
+					style = other
+					p = style + "/" + style + "_"
+					break
 		if not _has(p + shop):
 			shop = _first(p, ["bg_winkel_luifel", "bg_winkel", "bg_raam"])
 		# now and then a house a storey higher than its neighbours (not on the corners, nor
@@ -336,7 +353,7 @@ func _shops(start: Vector2i, step: Vector2i, n: int, front: String, seed: int, k
 
 ## Cells of a 2-lane east-west street in rows z and z+1 from x0 to x1.
 func _hs(x0: int, x1: int, z: int) -> void:
-	for x in range(maxi(x0, 0), mini(x1, X_END) + 1):
+	for x in range(maxi(x0, 0), mini(x1, MAP_END) + 1):
 		_street_h[Vector2i(x, z)] = 0
 		_street_h[Vector2i(x, z + 1)] = 1
 
@@ -369,6 +386,16 @@ func _streets() -> void:
 	for z in [ZR1, ZR2, ZR3]:
 		_hs(0, X_END, z)
 	_vs(XB, ZR1, Z_END)
+	# Voorburg east of the A12: a street north-south and the two streets from the bridges
+	# of the junctions (_a12_bridges)
+	_vs(VOORBURG_STREET, 0, Z_END)
+	lights_last_column = X_END   # the traffic lights in the city, none in Voorburg
+	for junction: Array in A12_JUNCTIONS:
+		_hs(A12_BRIDGE_COLUMNS[1] + 7, MAP_END, junction[0])
+	for column: Array in [[A12_BRIDGE_COLUMNS[1] + 1, VOORBURG_STREET - A12_BRIDGE_COLUMNS[1] - 1], [VOORBURG_STREET + 2, MAP_END - VOORBURG_STREET - 1]]:
+		_kerb_block(column[0], 0, column[1], ZS)
+		_kerb_block(column[0], ZS + 2, column[1], ZR2 - ZS - 2)
+		_kerb_block(column[0], ZR2 + 2, column[1], Z_END - ZR2 - 1)
 	for col in [[7, 17], [26, 22], [50, 13]]:
 		_kerb_block(col[0], 7, col[1], 22)
 		_kerb_block(col[0], 31, col[1], 27)
@@ -919,6 +946,15 @@ func _plein() -> void:
 	for z in range(34, 50, 3):
 		Pr(57 * 4 + 2.0, z * 4 + 2.0, ["terras/terras_set_parasol_groen", "terras/terras_set_parasol", "terras/tafel_vierkant_stoelen"][z % 3], "W")
 		Pr(58 * 4 + 2.0, z * 4 + 1.0, "terras/bloembak_terras", "W")
+	# the terraces reach well out onto the square, round the statue too
+	for z in range(33, 51, 2):
+		if z >= 40 and z <= 43:
+			continue
+		Pr(56 * 4 + 1.0, z * 4 + 2.0, ["terras/terras_set_parasol", "terras/terras_set_parasol_groen"][(z / 2) % 2], "W")
+		if z % 4 == 1:
+			Pr(54 * 4 + 2.0, z * 4 + 2.0, ["terras/terras_set_parasol_groen", "terras/terras_set_parasol"][(z / 4) % 2], "W")
+	for z in [35, 44, 48]:
+		Pr(57 * 4 + 3.0, z * 4.0, "terras/stoepbord", "W")
 	for x in [52, 54, 56]:
 		Pr(x * 4 + 2.0, 51 * 4 + 2.0, ["straat/vlaggenmast_nl", "straat/vlaggenmast_denhaag", "straat/vlaggenmast_eu"][(x - 52) / 2])
 	Pr(52 * 4.0, 32 * 4 + 2.0, "verlichting/lantaarn_klassiek_dubbel")
@@ -1038,8 +1074,9 @@ func _grote_marktstraat() -> void:
 	places["passage"] = Vector2(36 * 4.0, 66 * 4.0)
 
 
-## Spuiplein with the Nieuwe Kerk, the white city hall (two slabs with the glass atrium
-## between them) and the Amare theatre.
+## Spuiplein with the Nieuwe Kerk and the white city hall (two slabs with the glass atrium
+## between them); south of the church cafes on the Spui and a little square beside the
+## city hall (Amare stands at the Dirigentplein by De Resident, _de_resident).
 func _spui() -> void:
 	_fill(51, 61, 61, 68, "plein/plein_tegels")
 	_fill(55, 69, 55, 83, "plein/plein_tegels")
@@ -1056,11 +1093,14 @@ func _spui() -> void:
 	D(59 * 4.0, 69 * 4.0, 4.5, "tekst/tekst_raadhuis", "N")
 	D(57 * 4.0, 69 * 4.0, 27.0, "gevel/vlag_denhaag", "N")
 	places["stadhuis"] = Vector2(59 * 4.0, 69 * 4.0)
-	# Amare
-	block(51, 76, 4, 8, "museum_modern", 4, {"front": "W", "gf": ["bg_entree", "bg_dicht"], "gf_side": "bg_dicht",
-		"gf_corner": "bg_entree_hoek", "upper": ["verd_lichtstrook", "verd_dicht"], "upper_corner": "verd_lichtstrook_hoek", "roof": "flat"})
-	D(51 * 4.0, 79 * 4.0, 3.5, "tekst/tekst_theater", "W")
-	D(51 * 4.0, 81 * 4.0, 8.0, "tekst/lichtreclame_theater", "W")
+	# cafes along the Spui, a square with trees between them and the city hall
+	_shops(Vector2i(51, 76), Vector2i(0, 1), 8, "W", 2, HORECA, AWNINGS, 3, true)
+	_fill(53, 76, 54, 83, "plein/plein_tegels")
+	_trees([Vector2i(53, 77), Vector2i(54, 80), Vector2i(53, 83)], ["bomen/plataan", "bomen/linde"])
+	for z in [78, 82]:
+		Pr(54 * 4 + 2.0, z * 4 + 2.0, "straat/bank_beton", "E")
+	for z in [76, 79, 81]:
+		Pr(50 * 4 + 1.5, z * 4 + 2.0, ["terras/terras_set_parasol", "terras/terras_set_parasol_groen"][z % 2], "W")
 	# the square
 	Pr(57 * 4.0, 64 * 4.0, "standbeelden/kunstwerk_modern", "S")
 	Pr(60 * 4 + 2.0, 66 * 4 + 2.0, "straat/afvalcontainer_ondergronds")
@@ -1402,7 +1442,7 @@ func _centraal() -> void:
 			B(x, 11, z, "luxe_appartement/luxe_appartement_penthouse_" + e[0], e[1])
 	B(91, 12, 81, "luxe_appartement/luxe_appartement_dak_terras", "N")
 	_de_resident()
-	_trees([Vector2i(78, 79), Vector2i(84, 85), Vector2i(89, 79), Vector2i(93, 86)], ["bomen/plataan", "bomen/linde"])
+	_trees([Vector2i(78, 79), Vector2i(89, 79)], ["bomen/plataan", "bomen/linde"])
 	for x in [76, 88]:
 		Pr(x * 4 + 2.0, 79 * 4 + 2.0, "straat/bank_beton", "S")
 	for x in [74, 79]:
@@ -1446,6 +1486,25 @@ func _de_resident() -> void:
 	block(81, 87, 2, 2, "klassiek_donker", MUZENTOREN_STOREYS, {"front": "N", "gf": ["bg_deur"], "gf_side": "bg_raam", "gf_corner": "bg_raam_hoek",
 		"upper": ["verd_raam"], "upper_corner": "verd_raam_hoek", "roof": "sloped"})
 	places["muzentoren"] = Vector2(82 * 4.0, 88 * 4.0)
+	_amare()
+
+
+## Amare, the theatre, concert hall and conservatory, at the Dirigentplein beside De
+## Resident (across the railway from the Muzentoren): a big modern block with bands of
+## light, its entrance and name on the square, which has trees, benches and a sculpture.
+func _amare() -> void:
+	block(89, 84, 6, 6, "museum_modern", 5, {"front": "W", "gf": ["bg_entree", "bg_dicht", "bg_entree"], "gf_side": "bg_dicht",
+		"gf_corner": "bg_entree_hoek", "upper": ["verd_lichtstrook", "verd_dicht"], "upper_corner": "verd_lichtstrook_hoek", "roof": "flat"})
+	D(89 * 4.0, 86 * 4 + 2.0, 3.5, "tekst/tekst_theater", "W")
+	D(89 * 4.0, 87 * 4.0, 9.0, "tekst/lichtreclame_theater", "W")
+	_fill(85, 84, 88, 89, "plein/plein_natuursteen")
+	_trees([Vector2i(85, 84), Vector2i(85, 89), Vector2i(88, 89)], ["bomen/plataan", "bomen/jonge_boom"])
+	Pr(86 * 4 + 2.0, 86 * 4 + 2.0, "standbeelden/kunstwerk_modern", "W")
+	for z in [85, 88]:
+		Pr(87 * 4 + 2.0, z * 4 + 2.0, "straat/bank_beton", "E")
+	Pr(88 * 4 + 2.0, 84 * 4 + 2.0, "verlichting/lantaarn_modern")
+	places["amare"] = Vector2(89 * 4.0, 87 * 4.0)
+	places["dirigentplein"] = Vector2(86 * 4.0 + 2.0, 87 * 4.0)
 
 
 ## A glass hall (style `hall` of the hallen group) of w x d cells and `storeys` storeys:
@@ -1850,10 +1909,12 @@ func _beatrixkwartier() -> void:
 
 # ------------------------------------------------------------------ the A12 (Utrechtsebaan)
 
-## Motorway profile across 9 rows (north verge to south verge): [tile, rotation].
-const MW_FLAT := [["snelweg/snelweg_berm_vangrail", "E"], ["snelweg/snelweg_vluchtstrook", "E"], ["weg/weg_vlak", "E"],
+## Motorway profile across 9 rows (north verge to south verge): [tile, rotation]. The
+## right lanes are plain asphalt of the motorway itself (its lines lie on the tiles beside
+## them), so they keep its speed limit instead of taking that of the tunnel ahead.
+const MW_FLAT := [["snelweg/snelweg_berm_vangrail", "E"], ["snelweg/snelweg_vluchtstrook", "E"], ["snelweg/snelweg_rijstrook_zonder_streep", "E"],
 	["snelweg/snelweg_rijstrook_links", "E"], ["snelweg/snelweg_middenberm_beton", "E"], ["snelweg/snelweg_rijstrook_links", "W"],
-	["weg/weg_vlak", "W"], ["snelweg/snelweg_vluchtstrook", "W"], ["snelweg/snelweg_berm_vangrail", "W"]]
+	["snelweg/snelweg_rijstrook_zonder_streep", "W"], ["snelweg/snelweg_vluchtstrook", "W"], ["snelweg/snelweg_berm_vangrail", "W"]]
 ## Columns of the A12 (it runs west from the map edge): flat motorway from A_FLAT on,
 ## a 6-step ramp down west of it, an open trough, a portal, the covered part from the
 ## street x 96 to the street x 128 (buildings on the deck between them, _over_a12), a
@@ -1883,7 +1944,7 @@ func _a12_street_col(x: int) -> bool:
 func _a12() -> void:
 	var tw: int = A_TUNNEL[0] - 1     # west portal
 	var te: int = A_TUNNEL[1] + 1     # east portal
-	for x in range(71, X_END + 1):
+	for x in range(71, A_BEND):
 		if _a12_street_col(x):
 			continue
 		if x < XC:
@@ -1942,11 +2003,11 @@ func _a12() -> void:
 			for k in 3:
 				Pr(x * 4 + (0.5 if x == A_TUNNEL[0] else 3.5), (AZ + t + k) * 4 + 2.0, "hekken/hek_ijzer", "E")
 	# the berm north of the flat motorway east of the Laan van NOI, along the offices
-	for x in range(XC + 3, X_END + 1):
+	for x in range(XC + 3, A_BEND + 9):
 		_g(x, AZ - 1, "natuur/gras", "S")
 	Pr((X6 - 1) * 4 + 1.0, (AZ - 1) * 4 + 2.0, "borden/bord_tunnel", "W")
 	# lights, signs and fences of the flat part
-	for x in range(A_FLAT, X_END + 1):
+	for x in range(A_FLAT, A_BEND):
 		if x % 6 == 2:
 			Pr(x * 4.0, (AZ + 4) * 4 + 2.0, "verlichting/lantaarn_middenberm", "E")
 		if x % 10 == 4:
@@ -1962,7 +2023,6 @@ func _a12() -> void:
 	Pr((X_END - 5) * 4.0, (AZ + 2) * 4 + 2.0, "borden/snelweg_portaal", "E")
 	Pr((A_FLAT + 10) * 4.0, (AZ + 6) * 4 + 2.0, "borden/snelweg_portaal", "W")
 	Pr((A_FLAT + 22) * 4.0, (AZ + 6) * 4 + 2.0, "borden/snelweg_portaal", "W")
-	Pr((X_END - 1) * 4 + 2.0, (AZ - 1) * 4 + 2.0, "borden/bord_plaatsnaam_den_haag", "E")
 	Pr((A_FLAT + 3) * 4 + 2.0, AZ * 4 + 2.0, "borden/bord_max_80", "E")
 	Pr((A_FLAT + 14) * 4 + 2.0, AZ * 4 + 2.0, "borden/bord_file", "E")
 	Pr((A_FLAT + 8) * 4 + 2.0, (AZ + 8) * 4 + 2.0, "borden/bord_max_100", "W")
@@ -2012,6 +2072,310 @@ func _a12_junction() -> void:
 	Pr(78 * 4 + 2.0, AZ * 4 + 1.0, "borden/bord_max_50", "E")
 	Pr(73 * 4 + 2.0, (AZ + 8) * 4 + 3.0, "borden/wegwijzer", "W")
 	places["a12_koningskade"] = Vector2(72 * 4.0, (AZ + 4) * 4.0)
+
+
+# ------------------------------------------------------------------ the A12 east of the city
+
+## The A12 east of the city: on east in its rows to the bend, a square bend of 9 x 9 cells
+## from column A_BEND (lane k from the inside turns in cell (k, k), see ground_corners.py),
+## then south in the columns A_BEND..A_BEND+8 past the Binckhorst and Voorburg, at grade
+## with the half junctions of the Schenkkade and of Voorburg (A12_JUNCTIONS), and from row
+## A_TROUGH down into a trough to the map edge.
+const A_BEND := X_END + 6
+## First row of the southward part, and of the ramp down into the trough past Voorburg.
+const A_SOUTH := AZ + 9
+const A_TROUGH := 148
+## The half junctions (as on the real A12: an exit for the traffic towards Den Haag, an
+## on-ramp for the traffic away from it): the first lane row of the street that crosses
+## the motorway on a bridge, and its name in `places`. 3: Bezuidenhout (the Schenkkade),
+## 4: Voorburg (the street ZR2 into the Binckhorst, as the Maanweg).
+const A12_JUNCTIONS := [[ZS, "a12_afslag_bezuidenhout"], [ZR2, "a12_afslag_voorburg"]]
+## First and last column of the bridges of the junctions (level VIADUCT_LEVEL); the
+## street rises to them over the 6 columns before and after.
+const A12_BRIDGE_COLUMNS := [A_BEND - 3, A_BEND + 10]
+## The street north-south through Voorburg.
+const VOORBURG_STREET := 204
+## Per profile row of MW_FLAT (north to south as it runs east): the tile in the bend and
+## its corner. The westbound side turns left (it comes north and turns west), the
+## eastbound side right; a line between two lanes bends in the inner of their two cells,
+## so the lanes beside it lose it there (the "_zonder_streep" tiles).
+const A12_BEND_TILES := [
+	["snelweg/snelweg_berm_vangrail", "snelweg/snelweg_berm_vangrail_hoek_links"],
+	["snelweg/snelweg_vluchtstrook", "snelweg/snelweg_vluchtstrook_hoek_links"],
+	["snelweg/snelweg_rijstrook_zonder_streep", "snelweg/snelweg_rijstrook_zonder_streep_hoek_links"],
+	["snelweg/snelweg_rijstrook_links", "snelweg/snelweg_rijstrook_links_hoek_links"],
+	["snelweg/snelweg_middenberm_beton", "snelweg/snelweg_middenberm_beton_hoek_links"],
+	["snelweg/snelweg_rijstrook_links_zonder_streep", "snelweg/snelweg_rijstrook_links_zonder_streep_hoek_rechts"],
+	["snelweg/snelweg_rijstrook", "snelweg/snelweg_rijstrook_hoek_rechts"],
+	["snelweg/snelweg_vluchtstrook", "snelweg/snelweg_vluchtstrook_hoek_rechts"],
+	["snelweg/snelweg_berm_vangrail", "snelweg/snelweg_berm_vangrail_hoek_rechts"]]
+## A rotation turned a quarter clockwise (seen from above): east-west tiles to north-south.
+const QUARTER_CLOCKWISE := {"E": "S", "S": "W", "W": "N", "N": "E"}
+
+
+## Column of profile row `row` (0..8 of MW_FLAT) on the southward part: the westbound
+## side of the east-west part lies on the outside of the bend, in the east.
+func _a12_column(row: int) -> int:
+	return A_BEND + 8 - row
+
+
+func _a12_east() -> void:
+	# the bend: cell (across, back) counted from its inside corner in the south-west
+	for across in 9:
+		for back in 9:
+			var lane: int = maxi(across, back)
+			var row: int = 8 - lane
+			var westbound: bool = row <= 4
+			var tiles: Array = A12_BEND_TILES[row]
+			var x: int = A_BEND + across
+			var z: int = AZ + 8 - back
+			if across == back:
+				_g(x, z, tiles[1], "S" if westbound else "W")
+			elif across < back:
+				_g(x, z, tiles[0], "E" if westbound else "W")
+			else:
+				_g(x, z, tiles[0], "S" if westbound else "N")
+	# south to the trough, then down into it
+	for z in range(A_SOUTH, Z_END + 1):
+		if z >= A_TROUGH:
+			_a12_trough_row(z)
+			continue
+		for row in 9:
+			_g(_a12_column(row), z, MW_FLAT[row][0], QUARTER_CLOCKWISE[MW_FLAT[row][1]])
+	for junction: Array in A12_JUNCTIONS:
+		_a12_ramp_designs(junction[0])
+	# lights on the median, hectometre posts and fences along the flat part, away from the
+	# bridges over it and from the ramps
+	for z in range(A_SOUTH, A_TROUGH):
+		if _a12_near_junction(z, -2, 17) or (z >= VIADUCT_ROWS[0] - 2 and z <= RAILWAY_ROWS[1] + 1):
+			continue
+		if z % 6 == 2:
+			Pr(_a12_column(4) * 4 + 2.0, z * 4.0, "verlichting/lantaarn_middenberm", "S")
+		if z % 10 == 4:
+			Pr(_a12_column(0) * 4 + 3.0, z * 4 + 2.0, "borden/hectometerpaal", "W")
+		if z % 2 == 0:
+			Pr(_a12_column(8) * 4 + 0.5, z * 4 + 2.0, "hekken/hek_gaas_hoog", "W")
+			Pr(_a12_column(0) * 4 + 3.5, z * 4 + 2.0, "hekken/hek_gaas_hoog", "E")
+	Pr(_a12_column(0) * 4 + 3.5, 62 * 4 + 2.0, "borden/bord_plaatsnaam_den_haag", "S")
+	Pr(_a12_column(2) * 4.0, 70 * 4 + 2.0, "borden/snelweg_portaal", "S")
+	Pr(_a12_column(6) * 4.0, 50 * 4 + 2.0, "borden/snelweg_portaal", "N")
+	places["a12_bocht"] = Vector2((A_BEND + 4) * 4.0, (AZ + 4) * 4.0)
+	places["a12_tunnelbak_voorburg"] = Vector2(_a12_column(4) * 4.0, (A_TROUGH + 10) * 4.0)
+
+
+## True if row z lies from `before` rows before to `after` rows after the street of a junction.
+func _a12_near_junction(z: int, before: int, after: int) -> bool:
+	for junction: Array in A12_JUNCTIONS:
+		if z >= junction[0] + before and z <= junction[0] + after:
+			return true
+	return false
+
+
+## One row of the trough past Voorburg: two 3-lane troughs on level -6 (a ramp down over
+## the first 6 rows), grass at street level on the verges and between them, with fences
+## along the edges and lights on the middle.
+func _a12_trough_row(z: int) -> void:
+	var depth: int = mini(z - A_TROUGH + 1, 6)
+	var ramp: bool = z < A_TROUGH + 6
+	if z >= Z_END - 1:
+		# at the map edge one wide trough, where traffic turns round into the other side
+		for x in range(_a12_column(7), _a12_column(1) + 1):
+			var k: int = 0 if x == _a12_column(7) else (2 if x == _a12_column(1) else 1)
+			_trench(x, z, TUNNEL_LANES[k] % ["tunnel/tunnelbak_rijstrook", "_d6"], 6, "S")
+		# the middle has no lanes of its own along the road: across it, both ways
+		_choose_lanes(_a12_column(4), z, [Vector2i(1, 0), Vector2i(-1, 0)], [], -6)
+		for row in [0, 8]:
+			_g(_a12_column(row), z, "natuur/gras", "S")
+		return
+	for row in [0, 4, 8]:
+		_g(_a12_column(row), z, "natuur/gras", "S")
+	for tube_first: int in [_a12_column(7), _a12_column(3)]:
+		for k in 3:
+			var tile_name: String = TUNNEL_LANES[k] % (["tunnel/tunnel_toerit", "_d%d" % depth] if ramp else ["tunnel/tunnelbak_rijstrook", "_d6"])
+			_trench(tube_first + k, z, tile_name, depth, "S")
+			_pavement.erase(Vector2i(tube_first + k, z))
+	if not ramp and z % 4 == 0:
+		Pr(_a12_column(4) * 4 + 2.0, z * 4 + 2.0, "verlichting/lantaarn_middenberm", "S")
+	if z % 2 == 0:
+		Pr(_a12_column(8) * 4 + 3.5, z * 4 + 2.0, "hekken/hek_gaas_hoog", "E")
+		Pr(_a12_column(0) * 4 + 0.5, z * 4 + 2.0, "hekken/hek_gaas_hoog", "W")
+
+
+## The ramps of the half junction at the street of row zc, at grade (the bridge over the
+## motorway and the slopes up to it: _a12_bridges). The exit for the northbound side (to
+## Den Haag) leaves its hard shoulder on the east side over the 8 x 4 tiles of the afrit
+## design and runs on north up to the bridge; the on-ramp for the southbound side comes down
+## from the bridge on the west side and joins its hard shoulder over the toerit design
+## (tile (i, j) of a design along the road and away from it, see ground_junction.py).
+func _a12_ramp_designs(zc: int) -> void:
+	for i in 8:
+		for j in 4:
+			_g(_a12_column(1) + j, zc + 9 + i, "snelweg/afrit_%d_%d" % [i, j], "W")
+			_g(_a12_column(7) - j, zc + 16 - i, "snelweg/toerit_%d_%d" % [i, j], "E")
+	Pr((_a12_column(0)) * 4 + 2.0, (zc + 12) * 4 + 2.0, "borden/bord_afrit", "S")
+	Pr((_a12_column(8) - 2) * 4 + 2.0, (zc + 10) * 4 + 2.0, "borden/bord_autosnelweg", "N")
+
+
+## The bridges of the junctions over the A12, at the level of the viaducts: the street
+## rises to them over 6 columns on each side on a solid concrete approach, crosses on a
+## deck with pavements and parapets on piers (on the verges and on the median barrier),
+## and the ramps come up to it beside the motorway, each in its own column, also on a
+## solid approach. Called after the grass fill.
+func _a12_bridges() -> void:
+	var level: int = VIADUCT_LEVEL
+	var west: int = A12_BRIDGE_COLUMNS[0]
+	var east: int = A12_BRIDGE_COLUMNS[1]
+	var ramp_columns := [_a12_column(8) - 1, _a12_column(0) + 1]
+	for junction: Array in A12_JUNCTIONS:
+		var zc: int = junction[0]
+		# the slopes of the street: rising east to the bridge on the west side, west on the east side
+		for step in level:
+			_a12_bridge_slope(west - level + step, zc, step, "W")
+			_a12_bridge_slope(east + level - step, zc, step, "E")
+		# the deck; where a ramp meets it its lanes become a crossing
+		for x in range(west, east + 1):
+			for z in range(zc - 1, zc + 3):
+				_clear_props(x, z)
+			G(x, zc - 1, "brug/brug_dek_stoep_rand", "W", level)
+			if x in ramp_columns:
+				G(x, zc, "weg/kruising_vlak", "S", level)
+				G(x, zc + 1, "weg/kruising_vlak", "S", level)
+				G(x, zc + 2, "snelweg/snelweg_aansluiting", "S", level)
+			else:
+				G(x, zc, "weg/rijstrook_onderbroken_kant", "E", level)
+				G(x, zc + 1, "weg/rijstrook_geen_kant", "W", level)
+				G(x, zc + 2, "brug/brug_dek_stoep_rand", "E", level)
+		for z in range(zc - 1, zc + 3):
+			_pier(west, z, "brug/brug_pijler_gras", 0, level - 1)
+			_pier(_a12_column(4), z, "snelweg/snelweg_middenberm_beton", 0, level - 1)
+			_pier(east, z, "brug/brug_pijler_gras", 0, level - 1)
+		# the ramps between the bridge and the designs, rising north to the deck
+		for step in level:
+			var z: int = zc + 3 + step
+			var ramp_level: int = level - 1 - step
+			for x: int in ramp_columns:
+				_clear_props(x, z)
+				_abutment(x, z, ramp_level)
+				G(x, z, "brug/helling/helling_snelweg_aansluiting_rand", "S", ramp_level)
+		_a12_ramp_lanes(zc)
+		var top := float(level)
+		Pr(ramp_columns[1] * 4 + 3.5, (zc + 3) * 4 + 0.5, "borden/bord_voorrang_verlenen", "S", top)
+		Pr(ramp_columns[0] * 4 + 0.5, (zc - 1) * 4 + 3.5, "borden/wegwijzer", "E", top)
+		places[junction[1]] = Vector2(_a12_column(4) * 4.0, (zc + 1) * 4.0)
+
+
+## The lanes of the ramps of the junction at the street of row zc, which their tiles do
+## not have themselves, and the cells where traffic moves over (RoadNetwork MOVE_OVERS).
+## Exit: from the right lane of the northbound side over into the exit lane where the hard
+## shoulder becomes one, then in two steps out along the design to the ramp, up it and
+## onto the crossing on the bridge. On-ramp: from the crossing down the ramp, in two steps
+## in along the design to the acceleration lane in the hard shoulder, and at its end over
+## into the right lane.
+func _a12_ramp_lanes(zc: int) -> void:
+	var north := [Vector2i(0, -1)]
+	var south := [Vector2i(0, 1)]
+	var level: int = VIADUCT_LEVEL
+	var shoulder: int = _a12_column(1)
+	var verge: int = _a12_column(0)
+	var ramp: int = _a12_column(0) + 1
+	for z in [zc + 15, zc + 14, zc + 13]:
+		_choose_lanes(shoulder, z, north)
+	_choose_lanes(verge, zc + 11, north)
+	_choose_lanes(ramp, zc + 9, north)
+	_move_over_link(Vector3i(_a12_column(2), 0, zc + 17), Vector3i(shoulder, 0, zc + 15))
+	_move_over_link(Vector3i(shoulder, 0, zc + 13), Vector3i(verge, 0, zc + 11))
+	_move_over_link(Vector3i(verge, 0, zc + 11), Vector3i(ramp, 0, zc + 9))
+	var west_shoulder: int = _a12_column(7)
+	var west_verge: int = _a12_column(8)
+	var west_ramp: int = _a12_column(8) - 1
+	_choose_lanes(west_ramp, zc + 9, south)
+	_choose_lanes(west_ramp, zc + 10, south)
+	_choose_lanes(west_verge, zc + 12, south)
+	for z in [zc + 14, zc + 15, zc + 16]:
+		_choose_lanes(west_shoulder, z, south)
+	_move_over_link(Vector3i(west_ramp, 0, zc + 10), Vector3i(west_verge, 0, zc + 12))
+	_move_over_link(Vector3i(west_verge, 0, zc + 12), Vector3i(west_shoulder, 0, zc + 14))
+	_move_over_link(Vector3i(west_shoulder, 0, zc + 16), Vector3i(_a12_column(6), 0, zc + 17))
+	# the ramps and where they meet the bridge
+	for step in level:
+		_choose_lanes(ramp, zc + 3 + step, north, [], level - 1 - step)
+		_choose_lanes(west_ramp, zc + 3 + step, south, [], level - 1 - step)
+	_choose_lanes(ramp, zc + 2, north, [], level)
+	_choose_lanes(west_ramp, zc + 2, south, [], level)
+	# the crossings on the bridge: from the exit right into the eastbound lane or left into
+	# the westbound one; onto the on-ramp right from the eastbound lane or left from the
+	# westbound one (the westbound cell over the exit is a plain lane, not a crossing, so
+	# the traffic coming up sees the road go on)
+	var west := Vector2i(-1, 0)
+	var east := Vector2i(1, 0)
+	_choose_lanes(ramp, zc, [west], [], level)
+	_choose_lanes(ramp, zc + 1, [north[0], east], [], level)
+	_choose_lanes(west_ramp, zc, [west, south[0]], [], level)
+	_choose_lanes(west_ramp, zc + 1, [east, south[0]], [], level)
+
+
+## Marks road cell `from_cell` as one traffic can move over from into `to_cell` (an exit).
+func _move_over_link(from_cell: Vector3i, to_cell: Vector3i) -> void:
+	var links: Dictionary = ground.get_meta(RoadNetwork.MOVE_OVERS, {})
+	links[from_cell] = to_cell
+	ground.set_meta(RoadNetwork.MOVE_OVERS, links)
+
+
+## One column of the slope of a junction street at `step` levels up: pavements with a
+## parapet on the outside, two lanes, on a solid concrete approach. `rot` "W" rises east,
+## "E" rises west; the centre line lies on the lane on the left of the way it rises.
+func _a12_bridge_slope(x: int, zc: int, step: int, rot: String) -> void:
+	var rises_east: bool = rot == "W"
+	var rows := {zc - 1: "brug/helling/helling_stoep_vol_rand" if rises_east else "brug/helling/helling_stoep_vol_rand_rechts",
+		zc: "brug/helling/helling_weg_vlak" if rises_east else "brug/helling/helling_rijstrook_onderbroken_kant",
+		zc + 1: "brug/helling/helling_rijstrook_onderbroken_kant" if rises_east else "brug/helling/helling_weg_vlak",
+		zc + 2: "brug/helling/helling_stoep_vol_rand_rechts" if rises_east else "brug/helling/helling_stoep_vol_rand"}
+	for z: int in rows:
+		_clear_props(x, z)
+		_abutment(x, z, step)
+		G(x, z, rows[z], rot, step)
+
+
+## Solid concrete under a slope or ramp tile at `level`: one abutment storey per level
+## below it (none at level 0, where the tile lies on the ground).
+func _abutment(x: int, z: int, level: int) -> void:
+	for storey in level:
+		G(x, z, "brug/brug_landhoofd", "S", storey)
+
+
+## Voorburg east of the A12 (x 192..215): closed blocks of houses of three storeys on both
+## sides of its street, the Oude Kerk with its tower west of it, grass under the viaducts
+## and Station Voorburg over the street (VIADUCT_STOPS).
+func _voorburg() -> void:
+	var styles := ["jaren30", "klassiek_rood", "klassiek_donker", "jaren30", "klassiek_geel", "jaren60"]
+	var west: int = A12_BRIDGE_COLUMNS[1] + 2
+	var west_width: int = VOORBURG_STREET - west - 1
+	var east: int = VOORBURG_STREET + 3
+	var east_width: int = MAP_END - east
+	var style_index := 0
+	# [first row, last row] of the blocks between the streets, leaving the rows under the viaducts free
+	for rows: Array in [[1, 76], [ZS + 3, ZR2 - 2], [ZR2 + 3, Z_END - 1]]:
+		var z: int = rows[0]
+		while z + 6 <= rows[1]:
+			var depth: int = mini(9, rows[1] - z + 1)
+			for column: Array in [[west, west_width], [east, east_width]]:
+				if column[0] == west and rows[0] == 1 and z >= 67:
+					continue   # the church
+				var style: String = styles[style_index % styles.size()]
+				style_index += 1
+				ring(column[0], z, column[1], depth, style, 3, _housing_options(style))
+			z += depth + 2
+	# the Oude Kerk: a brick church with its tower on the north side, on a green with trees
+	_fill(west, 67, west + west_width - 1, 86, "natuur/gras")
+	block(west + 2, 72, 5, 9, "kerk_baksteen", 2, {"front": "N", "gf": ["bg_spitsraam"], "gf_side": "bg_spitsraam", "gf_corner": "bg_spitsraam_hoek",
+		"upper": ["verd_spitsraam"], "upper_corner": "verd_spitsraam_hoek", "roof": "sloped"})
+	tower(west + 4, 71, "kerk_baksteen", ["toren_portaal", "toren_raam", "toren_galmgat", "toren_spits_onder", "toren_spits_boven"], "N")
+	_trees([Vector2i(west + 1, 68), Vector2i(west + 8, 69), Vector2i(west + 9, 78), Vector2i(west + 1, 84), Vector2i(west + 7, 85)],
+		["bomen/linde", "bomen/eik", "bomen/kastanje"])
+	_fill(east, 78, east + east_width - 1, 86, "natuur/gras")
+	_trees([Vector2i(east + 1, 79), Vector2i(east + 5, 81), Vector2i(east + 3, 85)], ["bomen/plataan", "bomen/linde"])
+	places["voorburg"] = Vector2(VOORBURG_STREET * 4.0, 50 * 4.0)
+	places["oude_kerk_voorburg"] = Vector2((west + 4) * 4.0, 76 * 4.0)
 
 
 ## The deck over the covered A12 between the Juliana van Stolberglaan (x 96) and the Laan
@@ -2211,6 +2575,9 @@ func _tram_lines() -> void:
 			stop_cells[c] = true
 		var mid: Vector2i = st[0] + st[1] * (TRAM_STOP_CELLS / 2)
 		Pr(mid.x * 4 + 2.0, mid.y * 4 + 2.0, "ov/abri", st[2], 0.5)
+		# an OV-chipkaart reader at both ends of the platform
+		for end: Vector2i in [st[0], st[0] + st[1] * (TRAM_STOP_CELLS - 1)]:
+			Pr(end.x * 4 + 2.0, end.y * 4 + 2.0, "ov/ov_incheckpaal", st[2], 0.5)
 		if st[3] != "":
 			places[st[3]] = Vector2(mid) * 4.0 + Vector2(2.0, 2.0)
 	# overhead line masts on the pavement, away from the stops, bridges and crossings
@@ -2344,6 +2711,10 @@ func _tram_tunnel() -> void:
 		var middle: int = (stop[0] + stop[1]) / 2
 		Pr(middle * 4 + 2.0, (Z3 - 1) * 4 + 2.0, "ov/tramtunnel_ingang", "S")
 		Pr(middle * 4 + 2.0, (Z3 + 2) * 4 + 2.0, "ov/tramtunnel_ingang", "N")
+		# OV-chipkaart readers on the platforms below (their surface 0.625 m up the floor)
+		for reader_x: int in [stop[0] + 1, stop[1] - 1]:
+			Pr(reader_x * 4 + 2.0, (Z3 - 1) * 4 + 2.0, "ov/ov_incheckpaal", "S", -6.0 + 0.625)
+			Pr(reader_x * 4 + 2.0, (Z3 + 2) * 4 + 2.0, "ov/ov_incheckpaal", "N", -6.0 + 0.625)
 		places[stop[2]] = Vector2(middle * 4.0 + 2.0, (Z3 + 1) * 4.0)
 
 
@@ -2534,7 +2905,7 @@ func _lay_path(start: Vector2i, footprint: Dictionary) -> void:
 ## Grass on every empty ground cell of the map (not water or a sunk cell); paving under a
 ## building whose floor can be seen (a glass hall, a canopy, pillars), never grass.
 func _fill_grass_all() -> void:
-	for x in range(0, X_END + 1):
+	for x in range(0, MAP_END + 1):
 		for z in range(0, Z_END + 1):
 			if ground.get_cell_item(Vector3i(x, 0, z)) != GridMap.INVALID_CELL_ITEM:
 				continue
@@ -2572,7 +2943,11 @@ const VIADUCT_STOPS := [
 	[88, 93, [92], "halte_centraal_viaduct", false],
 	[104, 109, [89, 92], "halte_beatrixkwartier", false],
 	[STATION_FIRST, STATION_LAST, [89, 92, 95], "station_laan_van_noi", true],
+	[VOORBURG_STATION_FIRST, VOORBURG_STATION_FIRST + 10, [89, 92, 95], "station_voorburg", true],
 ]
+## First column of Station Voorburg, over the street of Voorburg: the stairs at its west
+## end come down on the pavement of the street from the bridge of the junction.
+const VOORBURG_STATION_FIRST := 200
 ## Rows of the railway viaduct (north track, south track) and the column where its deck
 ## starts; the ramp up from street level lies in the 6 columns before it.
 const RAILWAY_ROWS := [93, 94]
@@ -2593,7 +2968,7 @@ const RAILWAY_PLATFORM_CELLS := 11
 ## Built after the grass fill, so the ground under it is final.
 func _schenkviaduct() -> void:
 	var foot_kinds := {"natuur": "brug/brug_pijler_gras", "stoep": "brug/brug_pijler_stoep", "plein": "brug/brug_pijler_stoep"}
-	for x in range(VIADUCT_START, X_END + 1):
+	for x in range(VIADUCT_START, MAP_END + 1):
 		var stop := _viaduct_stop(x)
 		# the deck: parapets on the outside, the north track turned to face north; open
 		# track along a platform, so nothing stands between the tram and the platform
@@ -2609,7 +2984,7 @@ func _schenkviaduct() -> void:
 	_viaduct_link(foot_kinds)
 	for stop: Array in VIADUCT_STOPS:
 		_viaduct_platforms(stop, foot_kinds)
-	for x in range(VIADUCT_START + 2, X_END, 5):
+	for x in range(VIADUCT_START + 2, MAP_END, 5):
 		if _viaduct_stop(x).is_empty():
 			Pr(x * 4 + 2.0, (VIADUCT_ROWS[1] + 1) * 4 - 0.5, "ov/tram_bovenleiding_mast", MAST_ARM_ROTATION["N"], VIADUCT_LEVEL + 0.5)
 	places["schenkviaduct"] = Vector2(112 * 4.0, VIADUCT_ROWS[0] * 4.0)
@@ -2619,7 +2994,7 @@ func _schenkviaduct() -> void:
 ## at the first column where all rows have a pavement or grass cell below.
 func _viaduct_piers(rows: Array, start: int, foot_kinds: Dictionary) -> void:
 	var since_pier := VIADUCT_SPAN
-	for x in range(start, X_END):
+	for x in range(start, MAP_END):
 		since_pier += 1
 		if since_pier < VIADUCT_SPAN:
 			continue
@@ -2650,6 +3025,10 @@ func _railway() -> void:
 		_clear_props(RAILWAY_COLUMNS[1] + 1, z)
 		G(RAILWAY_COLUMNS[0] - 1, z, "spoor/perron", "E")
 		G(RAILWAY_COLUMNS[1] + 1, z, "spoor/perron", "W")
+	# OV-chipkaart readers where the platforms start in the hall and at their far end
+	for z: int in [RAILWAY_HALL_END + 1, RAILWAY_HALL_END + RAILWAY_PLATFORM_CELLS - 2]:
+		Pr((RAILWAY_COLUMNS[0] - 1) * 4 + 2.0, z * 4 + 2.0, "ov/ov_incheckpaal", "E", 1.0)
+		Pr((RAILWAY_COLUMNS[1] + 1) * 4 + 2.0, z * 4 + 2.0, "ov/ov_incheckpaal", "W", 1.0)
 	# the corner to the east: one track inside the other
 	var outer_column: int = RAILWAY_COLUMNS[0]
 	var inner_column: int = RAILWAY_COLUMNS[1]
@@ -2681,8 +3060,8 @@ func _railway_viaduct(foot_kinds: Dictionary) -> void:
 				var foot := _pier_foot(x, z, foot_kinds)
 				if foot != "":
 					_pier(x, z, foot, 0, level - 1)
-	for x in range(RAILWAY_DECK_START, X_END + 1):
-		var at_station: bool = x >= STATION_FIRST and x <= STATION_LAST
+	for x in range(RAILWAY_DECK_START, MAP_END + 1):
+		var at_station: bool = _viaduct_stop(x).size() > 0 and _viaduct_stop(x)[4]
 		G(x, RAILWAY_ROWS[0], "brug/brug_dek_trein_kaal" if at_station else "brug/brug_dek_trein_rand", "W", VIADUCT_LEVEL)
 		G(x, RAILWAY_ROWS[1], "brug/brug_dek_trein_kaal" if at_station else "brug/brug_dek_trein_rand", "E", VIADUCT_LEVEL)
 		if not at_station and (x - RAILWAY_DECK_START) % 6 == 3:
@@ -2727,6 +3106,8 @@ func _viaduct_link(foot_kinds: Dictionary) -> void:
 	var middle_row: int = (STATION_TRAM_STOP_ROWS[0] + STATION_TRAM_STOP_ROWS[1]) / 2
 	for platform: Array in [[outer_column - 1, "E"], [inner_column + 1, "W"]]:
 		Pr(platform[0] * 4 + 2.0, middle_row * 4 + 2.0, "ov/abri", platform[1], 0.5)
+		for row: int in STATION_TRAM_STOP_ROWS:
+			Pr(platform[0] * 4 + 2.0, row * 4 + 2.0, "ov/ov_incheckpaal", platform[1], 0.5)
 	places["tram_centraal_station"] = Vector2(inner_column * 4.0, middle_row * 4.0)
 	var mast_cells := []
 	for z in range(Z3 + 4, VIADUCT_ROWS[0] - 2, 5):
@@ -2819,6 +3200,8 @@ func _viaduct_platforms(stop: Array, foot_kinds: Dictionary) -> void:
 		var middle := (first + last) / 2
 		var platform_height: float = 1.0 if high else 0.5
 		Pr(middle * 4 + 2.0, row * 4 + 2.0, "ov/abri", towards_track, VIADUCT_LEVEL + platform_height)
+		for reader_x: int in [first + 1, last - 1]:
+			Pr(reader_x * 4 + 2.0, row * 4 + 2.0, "ov/ov_incheckpaal", towards_track, VIADUCT_LEVEL + platform_height)
 		# two flights of 3 m (6 m long each) up to the west end of the platform: to deck
 		# level on a station (the stairs in the first cell go on), else to the low platform
 		var stairs_start: float = 0.0 if high else 0.5
@@ -2855,7 +3238,7 @@ func _ministry_over_tram() -> void:
 			_clear_lamps_and_trees(x, z)
 	block(MINISTRY_COLUMNS[0], MINISTRY_ROWS[0], MINISTRY_COLUMNS[1] - MINISTRY_COLUMNS[0] + 1, MINISTRY_ROWS[1] - MINISTRY_ROWS[0] + 1, "klassiek_geel", MINISTRY_WING_STOREYS,
 		{"front": "N", "y0": MINISTRY_FIRST_STOREY, "gf": ["verd_raam"], "gf_side": "verd_raam", "gf_corner": "verd_raam_hoek",
-		"upper": ["verd_raam", "verd_drie_ramen"], "upper_corner": "verd_raam_hoek", "roof": "flat"})
+		"upper": ["verd_raam", "verd_drie_ramen"], "upper_corner": "verd_raam_hoek", "roof": "sloped"})
 	for x: int in MINISTRY_COLUMNS:
 		for z in range(MINISTRY_ROWS[0], MINISTRY_ROWS[1] + 1, 3):
 			for storey in range(MINISTRY_FIRST_STOREY):

@@ -28,7 +28,7 @@ Gevangenpoort, het Plein met standbeeld en terrassen; de Grote Markt, Chinatown
 (Wagenstraat), de Grote Marktstraat met Bijenkorf en Passage, De Snoeptrommel (het
 snoeppaleis, met The Sting) aan de Dagelijkse Groenmarkt tegenover het Oude Raadhuis, de Tweede Kamer
 aan de zuidkant van het Plein, het Spuiplein met Nieuwe
-Kerk, wit stadhuis en Amare. De Grote Markt heeft cafés en terrassen aan drie kanten. Winkels
+Kerk, wit stadhuis en een rij cafés aan het Spui met een pleintje. De Grote Markt heeft cafés en terrassen aan drie kanten. Winkels
 staan langs de Grote Marktstraat (ook aan de noordkant), de Lange Poten (x 48, langs het Plein)
 en het Spui (x 48 ten zuiden van de Grote Marktstraat en de rij aan z 58 bij het Plein). Buiten de Prinsessegracht: het Haagse Bos met Paleis Huis
 ten Bosch, het Malieveld (één groot grasveld vanaf de Koningskade) met op de noordwesthoek,
@@ -45,9 +45,10 @@ stationsplein met korte rijen fietsenrekken) met de torens erachter (de Hoftoren
 een spits, de twee torens van de Ministeries van Justitie en Veiligheid en BZK met een
 loopbrug, 34 lagen, en De Kroon) en daarachter De Resident: Castalia, het Ministerie van
 VWS (twee lichte torens van 28 lagen, elk met twee grachtenpandgevels als top, met het
-overdekte Parnassusplein als glazen atrium ertussen) en de donkere Muzentoren (25 lagen), het
-Beatrixkwartier en de kantoren aan de Prins Clauslaan. De A12 (Utrechtsebaan) komt van
-de oostrand als snelweg binnen, zakt in twee tunnelbakken en gaat overkapt verder van
+overdekte Parnassusplein als glazen atrium ertussen) en de donkere Muzentoren (25 lagen), aan
+de overkant van het spoor Amare (theater, 5 lagen, x 89 tot 94) aan het Dirigentplein, het
+Beatrixkwartier en de kantoren aan de Prins Clauslaan. De A12 (Utrechtsebaan) komt uit
+de bocht oost van de stad als snelweg binnen, zakt in twee tunnelbakken en gaat overkapt verder van
 de Laan van NOI tot de Juliana van Stolberglaan; op het dek erboven staan de
 Malietoren, een rij winkels met Snackbar De Vrijheid en kantoren. Tussen Haagse Bos en
 Malieveld komt hij weer boven bij een kruispunt met stoplichten aan de Koningskade,
@@ -56,7 +57,7 @@ Grote Marktstraat - Spui - Centraal, verbonden met bogen via de Buitenhof) met h
 Vier bruggen gaan over de oostarm van de singel: Mauritskade, de twee tramstraten en
 Zuidwal. Het RandstadRail-viaduct (rijen z 90-91) begint met een helling naast Centraal
 Station en loopt naar het oosten, met haltes bij Centraal en het Beatrixkwartier, en verder
-tot de kaartrand. Twee sporen langs de westkant van het station (x 72-73) sluiten het aan op
+over de A12 en Station Voorburg tot de kaartrand. Twee sporen langs de westkant van het station (x 72-73) sluiten het aan op
 de tramlijn in straat z 58. De trams van de Grote Marktstraat rijden door een tunnel (helling x 26 tot 31, dicht
 van x 32 tot 49, ook onder de kruising met de Korte Vijverberg, helling op bij het Spui x 50 tot 55) met
 twee ondergrondse haltes (Grote Markt en Spui) en ingangen op straat. Boven de tunnel is de
@@ -72,7 +73,7 @@ kolommen aan beide kanten. Treinsporen lopen uit de stationshal
 een hal met zaagtanddak naast bedrijfsunits, de Fokker Terminal met zijn hangar van 9 m en
 een groot parkeerterrein, de Fokkerhaven met de oude verffabriek Paulussen en haar
 schoorsteen, een distributieloods met een betoncentrale en Kasteel Binckhorst op een eiland
-in zijn park; loodsen 9 m, bedrijfsunits 6 m hoog). De kaart is zo een vierkant van 176 x 176 cellen (x en z 0..175, 704 x 704 m). Over het vlakke deel van de A12 (x 160) gaat een voetbrug met trappen van de
+in zijn park; loodsen 9 m, bedrijfsunits 6 m hoog). Oost van de stad (x 176 tot 215) buigt de A12 in een haakse bocht (x 181 tot 189) naar het zuiden en loopt langs de Binckhorst en Voorburg, met de halve aansluitingen 3 (Bezuidenhout, aan de Schenkkade) en 4 (Voorburg, aan de straat z 130 de Binckhorst in), zoals in het echt: alleen een afrit voor het verkeer naar Den Haag en een toerit voor het verkeer weg van Den Haag. De straat van een aansluiting gaat met een viaduct over de A12 (6 m, met hellingen op betonnen landhoofden), de afrit en toerit lopen ernaast omhoog. Voorbij Voorburg zakt de A12 in een tunnelbak (vanaf z 148) tot de kaartrand. Het RandstadRail-viaduct en het spoorviaduct gaan over de A12 heen naar Station Voorburg (x 200 tot 210, boven de straat x 204). Voorburg heeft gesloten bouwblokken van drie lagen aan beide kanten van die straat en de Oude Kerk met toren. Het verkeer neemt de afritten en toeritten: de builder geeft de op- en afrittiles hun rijrichting (`_choose_lanes`) en zet uitvoegpunten van de rechterstrook naar de afrit en stapsgewijs langs het ontwerp (`_a12_ramp_lanes`); boven op het viaduct kan het links- en rechtsaf. Steile hellingen en brughellingen van wegtiles hebben rijstroken (`ramp_traffic` in `tools/voxgen/traffic.py`; flauwe hellingen niet, die beginnen een halve laag hoger). De kaart is zo 216 x 176 cellen (x 0..215, z 0..175, 864 x 704 m); `X_END` (175) is de rand van de stad, `MAP_END` (215) die van de kaart. Over het vlakke deel van de A12 (x 160) gaat een voetbrug met trappen van de
 kantoren aan de Prins Clauslaan naar de straat z 29. Opnieuw bouwen:
 `tools/godot.sh --headless --script tools/build/build_city.gd`.
 
@@ -90,7 +91,9 @@ scherptediepte (DOF) meer: het beeld is overal scherp.
 
 Op de rails rijden twee RandstadRails (`scripts/vehicles/randstadrail.gd`, twee wagons, 22,25 m) en
 twee NS-treinen (`ns_train.gd`, drie wagons, 40 m; elk blijft op zijn eigen spoor, `own_track`), beide op `rail_vehicle.gd`. Ze passen op hun perrons: een tramhalte
-is 6 cellen (24 m), een treinperron 11 cellen (44 m); `tools/check/rail_stop_test.gd` controleert dat. Wat erop mag rijden staat
+is 6 cellen (24 m), een treinperron 11 cellen (44 m); `tools/check/rail_stop_test.gd` controleert dat. Op elk perron
+staan OV-chipkaartpaaltjes (`ov/ov_incheckpaal`): aan beide uiteinden van een tramhalte en een viaducthalte, op
+de ondergrondse haltes en op de treinperrons van Centraal. Wat erop mag rijden staat
 op de tile: `"only": ["tram"]` of `["trein"]` in de `traffic`-metadata, en `"rails"` zegt welke
 zijden de rails verbinden (`SN`, `SE`), zodat een voertuig bij een splitsing alleen kan gaan
 waar de rails echt lopen. Ze stoppen bij perrons (een tile met `"platform": ["tram"]` of `["trein"]` in zijn metadata, `dwell_time`), openen dan de deuren aan de perronkant
@@ -114,7 +117,8 @@ van een licht volgt uit zijn draaiing; tijden zijn instelbaar op de node.
 Er rijdt verkeer door de stad: een sedan, node `Auto` (`scripts/vehicles/car.gd`), en een
 SUV, node `SUV` (`scripts/vehicles/suv.gd`), staan in de scène; de node `Verkeer`
 (`scripts/world/traffic.gd`) zet er bij het starten nog `vehicle_count` (24) voertuigen bij,
-verspreid over het wegennet (`spacing`, `traffic_seed`, de mix in `MIX`). Soorten:
+verspreid over het wegennet (`spacing`, `traffic_seed`, de mix in `MIX`), en daarna
+`services_count` (7) hulpdiensten en dienstauto's (`SERVICES`, nodes `Dienst1`..). Soorten:
 
 | Script | Model (`voertuigen/`) | Lengte | Massa | Koppel wielen |
 |---|---|---|---|---|
@@ -125,6 +129,26 @@ verspreid over het wegennet (`spacing`, `traffic_seed`, de mix in `MIX`). Soorte
 | `van.gd` (busje) | `auto_busje` | 5 m | 2400 kg | 1800 Nm |
 | `truck.gd` (vrachtwagen met laadbak) | `auto_vrachtwagen` | 7 m | 7500 kg | 4875 Nm |
 | `city_bus.gd` (stadsbus, mag op de busbaan) | `auto_stadsbus` | 10,5 m | 12000 kg | 6600 Nm |
+| `police_car.gd` (politie) | `auto_politie` | 4,5 m | 1300 kg | 1500 Nm |
+| `ministers_car.gd` (dienstauto kabinet) | `auto_dienstauto` | 4,5 m | 1900 kg | 1700 Nm |
+| `riot_van.gd` (ME-busje) | `auto_politie_busje` | 5 m | 3200 kg | 2300 Nm |
+| `ambulance.gd` | `auto_ambulance` | 5 m | 3500 kg | 2500 Nm |
+| `fire_engine.gd` (brandweer) | `auto_brandweer` | 7 m | 14000 kg | 11000 Nm |
+
+Hulpdiensten (`emergency`: politie, ME, ambulance, brandweer; modellen in
+`tools/voxgen/tiles/emergency_vehicles.py`, met de Nederlandse striping en een lichtbalk) hebben
+een sirene (`scripts/vehicles/siren.gd`: de tweetoon, gemaakt terwijl hij klinkt, als 3D-geluid
+met Doppler) en blauwe zwaailichten (`beacon_positions`: links en rechts om beurten, met een blauw
+licht op de omgeving). Ze gaan vanzelf aan en uit (`siren_duty`, `SIREN_ON_SECONDS`,
+`SIREN_OFF_SECONDS`), met `set_siren`/`toggle_siren`, of met S terwijl de volgcamera het voertuig
+volgt. Met de sirene aan (`has_priority`) rijdt het `EMERGENCY_SPEED_FACTOR` (1,4×) de limiet,
+door rood en langs zebra's, en geeft het alleen voorrang aan een andere sirene, een tram of trein,
+of wie al niet meer kan stoppen (`COMMITTED_SECONDS`). Het andere verkeer houdt er rekening mee:
+op een kruising geeft iedereen voorrang aan een sirene die er binnen `PRIORITY_CLAIM_SECONDS`
+is; wie ervoor rijdt (`SIREN_HEARD`) gaat naar een vrije strook ernaast met dezelfde richting,
+of gaat rechts aan de kant (`yielding`, `YIELD_OFFSET`) en staat stil als de sirene vlak achter
+hem is, tot die voorbij is (hooguit `YIELD_LONGEST` s). De sirene gaat er links langs
+(`PASS_OFFSET`) als er geen tegenligger aankomt. Trams en treinen wijken niet (`makes_way`).
 
 Allemaal zijn het een `Vehicle` (`scripts/vehicles/vehicle.gd`):
 - Gewicht en koppel (`mass_kg`, `wheel_torque`): een zwaar voertuig heeft van allebei meer.
@@ -318,8 +342,14 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
 - Voertuig (`scripts/vehicles/vehicle.gd`, `Vehicle`): de rijlogica voor elk
   voertuig. Het plant een paar cellen vooruit (minstens de remafstand), kiest op
   kruisingen willekeurig (`straight_chance`, `route_seed`) en remt af voor bochten
-  en een lagere maximumsnelheid. Het stopt voor zebrapaden en rode lichten, voegt
-  geleidelijk in waar een rijstrook ophoudt en keert op doodlopende wegen. Het rijdt
+  en een lagere maximumsnelheid (die het `LIMIT_LEAD` seconden rijden vóór het begin
+  ervan al haalt, omdat zijn snelheid de toegestane een halve seconde volgt). Het stopt voor zebrapaden en rode lichten, voegt
+  geleidelijk in waar een rijstrook ophoudt en keert op doodlopende wegen. Waar de
+  kaart een uitvoegpunt heeft (meta `move_overs` van Grond, `{van cel: naar cel}`,
+  `RoadNetwork.MOVE_OVERS`) schuift het geleidelijk naar de strook ernaast: als keuze
+  (zoals afslaan, `straight_chance`) waar zijn eigen strook doorloopt, altijd waar die
+  daar ophoudt. Zo nemen auto's de afritten van de A12. Het kiest geen vak waarna alleen
+  de weg terug overblijft (`_only_back_after`). Het rijdt
   over het wegdek, ook op hellingen, en kantelt mee. Wielen
   (`wheel_model`, `wheel_positions`) rollen mee en de voorste sturen in. Een nieuw
   voertuig maak je door van `Vehicle` af te leiden en in `_init` model, wielen,

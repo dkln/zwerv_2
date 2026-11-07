@@ -332,11 +332,13 @@ static func _traffic_of(root: String, files: PackedStringArray, alias_files: Pac
 		var data = metadata.get("traffic")
 		if data is Dictionary:
 			traffic[key] = data
-		# rail tiles say what rides on the ramps made of them
+		# straight tiles say what drives on the steep ramps made of them (1 m per tile); a
+		# gentle ramp starts half a level up, which the road network has no way to say
 		var for_ramps = metadata.get("ramp_traffic")
 		if for_ramps is Dictionary:
-			for shape in metadata.get("slopes", []):
-				traffic[Slopes.item_name(key, shape)] = for_ramps
+			for shape: String in metadata.get("slopes", []):
+				if shape in ["steil", "brug", "brug_rand", "brug_rand_rechts"]:
+					traffic[Slopes.item_name(key, shape)] = for_ramps
 	return traffic
 
 

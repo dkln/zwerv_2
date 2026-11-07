@@ -145,10 +145,20 @@ def _corner_traffic(folder, straight, turn):
     return traffic
 
 
-# Straight rail tiles: the traffic of the ramps the importer makes of them (common.slopes).
+# Straight tiles: the traffic of the steep ramps (1 m per tile: "steil", "brug", "brug_rand")
+# the importer makes of them (common.slopes); the gentle ones ("flauw_a", "flauw_b") start
+# half a level up and get none (library_builder.gd).
 _RAMP_TRAFFIC = {
     "grond/tram/tram_recht": {"lanes": ALONG, "rise": 1.0, "rails": RAIL_STRAIGHT, "only": ["tram"]},
     "grond/spoor/trein_recht": {"lanes": ALONG, "rise": 1.0, "rails": RAIL_STRAIGHT, "speed": 80, "only": ["trein"]},
+    # the streets up to the bridges of the motorway junctions, and the ramps beside them
+    "grond/weg/weg_vlak": {"lanes": ALONG, "rise": 1.0, "only": ROAD},
+    "grond/weg/rijstrook_onderbroken_kant": {"lanes": ONE_WAY, "road": "straat", "rise": 1.0, "only": ROAD},
+    "grond/weg/rijstrook_geen_kant": {"lanes": ONE_WAY, "road": "straat", "rise": 1.0, "only": ROAD},
+    "grond/weg/rijstrook_streep_kant": {"lanes": ONE_WAY, "road": "straat", "rise": 1.0, "only": ROAD},
+    "grond/weg/rijstrook_onderbroken_geen": {"lanes": ONE_WAY, "road": "straat", "rise": 1.0, "only": ROAD},
+    "grond/snelweg/snelweg_rijstrook": {"lanes": ONE_WAY, "road": "snelweg", "rise": 1.0, "only": MOTORWAY},
+    "grond/snelweg/snelweg_aansluiting": {"rise": 1.0, "only": MOTORWAY},
 }
 
 

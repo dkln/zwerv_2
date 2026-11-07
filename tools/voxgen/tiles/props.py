@@ -1795,14 +1795,19 @@ VAN_WHEEL_ALONG = (8.0, 31.0)
 
 @tile("props/voertuigen/auto_busje")
 def van():
-    """White delivery van of 5 x 2 x 2.13 m, without its wheels (auto_wiel, at
+    """White delivery van (van_body)."""
+    return van_body("lak_wit1", "lak_wit2")
+
+
+def van_body(paint, sill, height=17):
+    """Delivery van of 5 x 2 x 2.13 m in these colours, without its wheels (auto_wiel, at
     VAN_WHEEL_ALONG; placed and turned by scripts/vehicles/van.gd): x across (16 voxels),
     y along (40, the front at y=0), z up. A short sloping bonnet, a tall windscreen, windows
     in the cab only, a closed cargo box with a sliding door on the right (the pavement side)
     and two rear doors with windows, big mirrors, a ribbed roof."""
-    width, length, height = 16, 40, 17
+    width, length = 16, 40
     model = V(width, length, height)
-    paint, sill, inside = "lak_wit1", "lak_wit2", "auto_interieur"
+    inside = "auto_interieur"
     bonnet_top = {0: 7, 1: 7, 2: 8, 3: 8, 4: 9}
     roof_up = 16
     for along in range(length):
@@ -1892,7 +1897,12 @@ TRUCK_WHEEL_ALONG = (9.0, 44.0)
 
 @tile("props/voertuigen/auto_vrachtwagen")
 def truck():
-    """Small yellow truck with an open cargo bed, of 7 x 2.25 x 3 m, without its wheels
+    """Small yellow truck with an open cargo bed (truck_body)."""
+    return truck_body("lak_geel1", "lak_geel2")
+
+
+def truck_body(paint, sill):
+    """Small truck with an open cargo bed in these colours, of 7 x 2.25 x 3 m, without its wheels
     (auto_wiel_groot, at TRUCK_WHEEL_ALONG; placed and turned by
     scripts/vehicles/truck.gd): x across (18 voxels), y along (56, the front at y=0), z
     up. A boxy cab with a flat front, a tall exhaust stack behind it, a dark chassis with a
@@ -1900,7 +1910,7 @@ def truck():
     tailgate, loaded with a heap of sand."""
     width, length, height = 18, 56, 24
     model = V(width, length, height)
-    paint, sill, inside = "lak_geel1", "lak_geel2", "auto_interieur"
+    inside = "auto_interieur"
     cab_end = 13          # last row of the cab
     bed_start = 16        # first row of the cargo bed
     bed_floor = 9         # height of its floor

@@ -9,5 +9,11 @@
 		"only": [
 			"auto"
 		]
+	},
+	"ramp_traffic": {
+		"rise": 1.0,
+		"only": [
+			"auto"
+		]
 	}
 }

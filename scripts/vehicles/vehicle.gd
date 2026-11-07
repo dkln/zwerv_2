@@ -23,7 +23,16 @@ extends Node3D
 ## - at traffic lights (Verkeerslichten, scripts/world/traffic_lights.gd) until its
 ##   stream is green, before the zebra or the crossing, whichever comes first.
 ## Where its lane ends it moves over into the lane alongside, gradually over a few cells
-## (a motorway losing a lane); at a dead end it turns round into the opposite lane.
+## (a motorway losing a lane); at a dead end it turns round into the opposite lane. Where
+## the map marks a cell to move over from (RoadNetwork MOVE_OVERS: an exit) it takes it as
+## a turn, at straight_chance, or always where its own lane ends there.
+## Emergency services (`emergency`: police, ambulance, fire service, ME): a siren
+## (siren.gd) and blue lights on the roof (`beacon_positions`), on and off by themselves
+## (`siren_duty`) or with set_siren / toggle_siren. With the siren on it drives
+## EMERGENCY_SPEED_FACTOR over the limit, through red lights and past zebras, and gives way
+## only to another siren. The others make way for it: on a crossing they give way to it,
+## and in front of it they move over into a lane alongside if there is one, else they pull
+## over to the right and crawl (`yielding`) while it passes them on the left.
 ## Model: the props library item `model`, centred on the node, front along +Z, lifted by
 ## `model_lift`; its wheels (item `wheel_model`, at `wheel_positions`) roll with the
 ## distance driven, and the front ones (positions with z > 0) point the way the front axle
@@ -92,6 +101,17 @@ const CROSSING_LOOKAHEAD := 4
 @export var straight_chance := 0.6
 ## How strongly it avoids roads it has driven lately (0 = not at all).
 @export var variety := 4.0
+@export_group("Emergency")
+## A police car, ambulance, fire engine or ME van: a siren and blue lights.
+@export var emergency := false
+## Centres of the blue lights on the roof (metres on the vehicle, like the lamps), the
+## left half flashing in turn with the right.
+@export var beacon_positions := PackedVector3Array()
+@export var beacon_size := Vector3(0.5, 0.15, 0.3)
+## Switches the siren on and off by itself now and then (on a call, back again).
+@export var siren_duty := true
+## Pulls over for a siren behind it (a rail vehicle cannot).
+@export var makes_way := true
 @export_group("Traffic")
 ## Brakes for other vehicles ahead and gives way on crossings.
 @export var avoids_others := true
@@ -234,6 +254,38 @@ const RECKLESS_SPEED := 11.0
 const SPEED_SETTLE := 0.5
 ## Metres per second over the speed it may drive from which it brakes without easing in.
 const BRAKE_SLACK := 1.5
+## Seconds of driving before a lower speed limit at which it aims to be down to it: its
+## speed follows the speed it may drive SPEED_SETTLE behind (braking about
+## braking * SPEED_SETTLE over it), and this gives it the time to close that gap.
+const LIMIT_LEAD := 1.2
+## With the siren on: how much over the speed limit it may drive.
+const EMERGENCY_SPEED_FACTOR := 1.4
+const SirenSound = preload("res://scripts/vehicles/siren.gd")
+## Seconds the siren stays on, and off, when it switches by itself (from .. to).
+const SIREN_ON_SECONDS := Vector2(45.0, 100.0)
+const SIREN_OFF_SECONDS := Vector2(20.0, 50.0)
+## The flash of the blue lights: seconds per round (left, right) and their colour.
+const BEACON_CYCLE := 0.5
+const BEACON_COLOUR := Color(0.15, 0.4, 1.0)
+## Making way: how far behind a siren is heard (m), how far beside the line of the lane it
+## counts (m), physics steps between looks, the speed it crawls at while pulled over (m/s),
+## how far it moves over to the right and the siren to the left (m, the drawn body), and
+## how fast that goes (m/s).
+const SIREN_HEARD := 45.0
+const SIREN_BESIDE := 3.0
+const YIELD_LOOK_STEPS := 6
+const YIELD_SPEED := 2.0
+## Metres behind it from which a siren makes it stand still, pulled over, until it is past;
+## seconds after which it drives on all the same (the siren stuck elsewhere).
+const YIELD_STAND_DISTANCE := 15.0
+const YIELD_LONGEST := 20.0
+const YIELD_OFFSET := 1.1
+const PASS_OFFSET := 0.6
+const OFFSET_RATE := 1.2
+## On a crossing everyone gives way to a siren that will be there within these seconds.
+const PRIORITY_CLAIM_SECONDS := 6.0
+## A siren still gives way to one that reaches the crossing first within these seconds.
+const COMMITTED_SECONDS := 1.5
 ## Metres before and after a point of the route over which the front axle's path is
 ## averaged, which rounds off the corners: the wheelbase plus CORNER_ROUNDING_EXTRA, within
 ## these limits.
@@ -330,6 +382,20 @@ var _tail_material: StandardMaterial3D
 ## (-1 left, 1 right, 0 none).
 var braking_now := false
 var indicating := 0
+## Siren and blue lights on (an emergency vehicle); pulled over for a siren (the others).
+var siren_on := false
+var yielding := false
+
+var _siren: SirenSound
+var _beacons: Array[MeshInstance3D] = []
+var _beacon_light: OmniLight3D
+var _siren_clock := 0.0          # seconds until the siren switches by itself
+var _yield_countdown := 0
+var _yielding_to: Vehicle        # the siren it pulled over for, until it is past
+var _yield_clock := 0.0          # seconds it has been pulled over
+var _not_for: Vehicle            # the siren it gave up waiting for
+var _left_free := true           # a siren: no oncoming traffic close by, so it may pass on the left
+var _side_offset := 0.0          # metres the drawn vehicle stands right of its lane (left < 0)
 var _brake_hold := 0.0                # seconds the brake lights stay on
 var _blocked_by: Vehicle             # the vehicle it is waiting for now, if any
 var _held_by_rule := false           # it is stopping for a light or a zebra
@@ -351,6 +417,7 @@ func _ready() -> void:
 	_add_trailer(props)
 	_add_wheels(props)
 	_add_lamps()
+	_add_emergency()
 	_measure_length()
 	if wheel_torque > 0.0:
 		acceleration = wheel_torque / maxf(wheel_radius, 0.01) / total_mass()
@@ -374,6 +441,7 @@ func _physics_process(delta: float) -> void:
 	_tick_previous = _tick_current
 	var speed_before := speed
 	_plan()
+	_update_emergency(delta)
 	var target := _target_speed(delta)
 	_watch_for_gridlock(delta)
 	# the acceleration that brings it to the target speed in about SPEED_SETTLE seconds,
@@ -521,6 +589,7 @@ func _update_lamps() -> void:
 		lamp.visible = lamps_on or braking_shows
 	if _tail_material:
 		_tail_material.emission_energy_multiplier = BRAKE_ENERGY if braking_shows else TAIL_ENERGY
+	_flash_beacons()
 	var blink_on := fmod(Time.get_ticks_msec() / 1000.0, BLINK_TIME) < BLINK_TIME * 0.5
 	for lamp in _indicators:
 		var on_left := lamp.position.x > 0.0
@@ -562,6 +631,210 @@ func _indicator_side() -> int:
 ## Side of `towards` relative to `heading` (map x and z): 1 right, -1 left, 0 ahead or behind.
 static func _side_of(heading: Vector2i, towards: Vector2i) -> int:
 	return signi(heading.x * towards.y - heading.y * towards.x)
+
+
+# ------------------------------------------------------------------ emergency services
+
+## True while it has the right of way of a siren: an emergency vehicle with the siren on.
+func has_priority() -> bool:
+	return emergency and siren_on and not crashed
+
+
+## Switches siren and blue lights on or off (an emergency vehicle only).
+func set_siren(on: bool) -> void:
+	siren_on = on and emergency
+	if _siren:
+		_siren.sound(siren_on)
+	if _beacon_light:
+		_beacon_light.visible = siren_on
+
+
+func toggle_siren() -> void:
+	set_siren(not siren_on)
+
+
+## Speed limit on `cell` for it (m/s): over it with the siren on.
+func _limit_of(cell: Vector3i) -> float:
+	return network.speed_limit(cell) * (EMERGENCY_SPEED_FACTOR if has_priority() else 1.0)
+
+
+## True if it drives on past `other` as if it were not there: it has the siren on, the
+## other has pulled over for it and no oncoming traffic is in the way on the left.
+func _passes(other: Vehicle) -> bool:
+	return has_priority() and _left_free and other.yielding and not other.has_priority()
+
+
+## True if a vehicle comes towards it close ahead, beside its lane on the left or in it.
+func _oncoming_near() -> bool:
+	var forward := Vector2(global_basis.z.x, global_basis.z.z).normalized()
+	var mine := Vector2(global_position.x, global_position.z)
+	for other in all_vehicles:
+		if other == self or absf(other.global_position.y - global_position.y) > 2.5:
+			continue
+		var relative := Vector2(other.global_position.x, other.global_position.z) - mine
+		var ahead := relative.dot(forward)
+		if ahead < -half_length or ahead > 25.0 or absf(relative.cross(forward)) > 6.0:
+			continue
+		var their_forward := Vector2(other.global_basis.z.x, other.global_basis.z.z)
+		if their_forward.dot(forward) < -0.5:
+			return true
+	return false
+
+
+## The siren and the blue lights of an emergency vehicle: the lamp blocks, a blue light on
+## the surroundings, the siren sound; on or off to start with, by its own seed.
+func _add_emergency() -> void:
+	if not emergency:
+		return
+	var material := _glow(BEACON_COLOUR, 8.0)
+	for position in beacon_positions:
+		_beacons.append(_lamp(position, beacon_size, material))
+	if not beacon_positions.is_empty():
+		_beacon_light = OmniLight3D.new()
+		_beacon_light.name = "Zwaailicht"
+		_beacon_light.light_color = BEACON_COLOUR
+		_beacon_light.omni_range = 9.0
+		_beacon_light.light_energy = 0.0
+		_beacon_light.shadow_enabled = false
+		_beacon_light.position = beacon_positions[0] * Vector3(0.0, 1.0, 1.0) + Vector3(0.0, 0.3, 0.0)
+		_beacon_light.visible = false
+		_body.add_child(_beacon_light)
+	_siren = SirenSound.new()
+	_siren.name = "Sirene"
+	_body.add_child(_siren)
+	_siren_clock = _random.randf_range(SIREN_OFF_SECONDS.x, SIREN_ON_SECONDS.y)
+	set_siren(_random.randf() < 0.6)
+
+
+## Every physics step: an emergency vehicle switches its siren by itself now and then; the
+## others look behind them for a siren and make way for it; the drawn body moves over.
+func _update_emergency(delta: float) -> void:
+	if emergency and siren_duty and not crashed:
+		_siren_clock -= delta
+		if _siren_clock <= 0.0:
+			toggle_siren()
+			var seconds := SIREN_ON_SECONDS if siren_on else SIREN_OFF_SECONDS
+			_siren_clock = _random.randf_range(seconds.x, seconds.y)
+	var wanted_offset := 0.0
+	if has_priority():
+		yielding = false
+		_yielding_to = null
+		_left_free = not _oncoming_near()
+		if _left_free and _passing_someone():
+			wanted_offset = -PASS_OFFSET
+	elif makes_way and avoids_others and not crashed:
+		_yield_countdown -= 1
+		if _yield_countdown < 0:
+			_yield_countdown = YIELD_LOOK_STEPS
+			if yielding and _yield_clock > YIELD_LONGEST:
+				_not_for = _yielding_to   # waited long enough: drives on, and not again for this one
+				yielding = false
+				_yielding_to = null
+			elif yielding and _yielding_to and is_instance_valid(_yielding_to) and _yielding_to.has_priority() and not _is_past(_yielding_to):
+				pass   # stays pulled over until the siren is past it
+			else:
+				var siren := _siren_behind()
+				if siren != null and siren == _not_for:
+					siren = null
+				yielding = siren != null and (yielding or not _moved_over_for_siren())
+				_yielding_to = siren if yielding else null
+		_yield_clock = _yield_clock + delta if yielding else 0.0
+		if yielding:
+			wanted_offset = YIELD_OFFSET
+	else:
+		yielding = false
+	_side_offset = move_toward(_side_offset, wanted_offset, OFFSET_RATE * delta)
+
+
+## The nearest emergency vehicle with its siren on that comes up behind it in its lane
+## (going its way, not too far beside its line), or null.
+func _siren_behind() -> Vehicle:
+	var forward := Vector2(global_basis.z.x, global_basis.z.z).normalized()
+	var mine := Vector2(global_position.x, global_position.z)
+	var nearest: Vehicle = null
+	var nearest_distance := SIREN_HEARD
+	for other in all_vehicles:
+		if other == self or not other.has_priority() or absf(other.global_position.y - global_position.y) > 2.5:
+			continue
+		var theirs := Vector2(other.global_position.x, other.global_position.z)
+		var relative := mine - theirs
+		var their_forward := Vector2(other.global_basis.z.x, other.global_basis.z.z).normalized()
+		var behind := relative.dot(their_forward)
+		if behind <= 0.0 or behind > nearest_distance or their_forward.dot(forward) < 0.7:
+			continue
+		if absf(relative.cross(their_forward)) > SIREN_BESIDE:
+			continue
+		nearest = other
+		nearest_distance = behind
+	return nearest
+
+
+## True if `other` has gone by: its back is clear ahead of its front.
+func _is_past(other: Vehicle) -> bool:
+	var forward := Vector2(global_basis.z.x, global_basis.z.z).normalized()
+	var relative := Vector2(other.global_position.x - global_position.x, other.global_position.z - global_position.z)
+	return relative.dot(forward) > half_length + other.half_length + 2.0 or relative.length() > SIREN_HEARD
+
+
+## True if a vehicle that pulled over for it is just ahead of it (it swings out to pass).
+func _passing_someone() -> bool:
+	var forward := Vector2(global_basis.z.x, global_basis.z.z).normalized()
+	var mine := Vector2(global_position.x, global_position.z)
+	for other in all_vehicles:
+		if other == self or not other.yielding:
+			continue
+		var relative := Vector2(other.global_position.x, other.global_position.z) - mine
+		var ahead := relative.dot(forward)
+		if ahead > -half_length - other.half_length and ahead < 18.0 and absf(relative.cross(forward)) < SIREN_BESIDE:
+			return true
+	return false
+
+
+## Makes way for a siren by moving over into a free lane alongside going the same way, the
+## right one first: plans that from the next cell on. False if there is none.
+func _moved_over_for_siren() -> bool:
+	var index := _current_index()
+	if index + 1 >= _route_cells.size():
+		return false
+	var cell := _route_cells[index + 1]
+	var heading := _route_headings[index + 1]
+	if network.is_crossing(cell):
+		return false
+	for side in [Vector2i(-heading.y, heading.x), Vector2i(heading.y, -heading.x)]:
+		var target: Vector2i = Vector2i(cell.x, cell.z) + heading * 2 + side
+		var beside := network.find(target.x, target.y, cell.y, cell, 2)
+		if beside == RoadNetwork.NONE or not network.lanes(beside).has(heading) or not _may_use(beside, heading):
+			continue
+		if network.is_crossing(beside) or network.step(beside, heading) == RoadNetwork.NONE:
+			continue
+		var taken := false
+		for other in all_vehicles:
+			taken = taken or (other != self and other.covers(beside))
+		if taken:
+			continue
+		_route_cells.resize(index + 2)
+		_route_headings.resize(index + 2)
+		_route_distances.resize(index + 2)
+		_route_ended = false
+		_append(beside, heading)
+		return true
+	return false
+
+
+## The blue lights: the left and the right half in turn while the siren is on, and the
+## blue light they throw round them.
+func _flash_beacons() -> void:
+	if _beacons.is_empty():
+		return
+	var phase := fmod(Time.get_ticks_msec() / 1000.0, BEACON_CYCLE) / BEACON_CYCLE
+	var left_on := phase < 0.5
+	# a double flash per half
+	var flash := fmod(phase * 2.0, 1.0)
+	var lit := flash < 0.2 or (flash > 0.35 and flash < 0.55)
+	for lamp in _beacons:
+		lamp.visible = siren_on and lit and ((lamp.position.x > 0.0) == left_on)
+	if _beacon_light:
+		_beacon_light.light_energy = 2.5 if siren_on and lit else 0.0
 
 
 # ------------------------------------------------------------------ hooks
@@ -628,7 +901,7 @@ func _remember(cell: Vector3i) -> void:
 ## metres), "zebra" for a zebra crossing without lights it has not yet waited at.
 ## Never inside a crossing.
 func _must_stop(from_cell: Vector3i, to_cell: Vector3i, distance: float) -> String:
-	if reckless or network.is_crossing(from_cell):
+	if reckless or has_priority() or network.is_crossing(from_cell):
 		return ""
 	var zebra := network.is_zebra(to_cell)
 	if not zebra and not network.is_crossing(to_cell):
@@ -690,6 +963,9 @@ func _plan() -> void:
 	while _route_distances[-1] < reach and not _route_ended:
 		var cell: Vector3i = _route_cells[-1]
 		var heading: Vector2i = _route_headings[-1]
+		if _takes_move_over(cell, heading):
+			_append(network.move_over_target(cell), heading)
+			continue
 		var next_cell := network.step(cell, heading)
 		var options: Array[Vector2i] = []
 		if next_cell != RoadNetwork.NONE:
@@ -697,7 +973,7 @@ func _plan() -> void:
 			for option in _ways_out(next_cell):
 				if option == -heading or not _may_use(next_cell, option):
 					continue
-				if not _leads_on(next_cell, option):
+				if not _leads_on(next_cell, option) or _only_back_after(next_cell, option, heading):
 					continue
 				if not _may_continue(next_cell, heading, option):
 					continue
@@ -718,10 +994,24 @@ func _plan() -> void:
 		_append(next_cell, next_heading)
 
 
+## True if it moves over from `cell` into the lane the map marks beside it (an exit): always
+## where its own lane ends there, else as it would turn off (straight_chance).
+func _takes_move_over(cell: Vector3i, heading: Vector2i) -> bool:
+	var target := network.move_over_target(cell)
+	if target == RoadNetwork.NONE or not network.lanes(target).has(heading) or not _may_use(target, heading):
+		return false
+	var ahead := network.step(cell, heading)
+	if ahead == RoadNetwork.NONE or not network.lanes(ahead).has(heading):
+		return true
+	return _random.randf() >= straight_chance
+
+
 ## True if leaving `cell` in `heading` leads into a cell it may use, across a crossing
 ## to the first cell past it: not into a square for cyclists, a tram ramp or a bus lane,
 ## where it would only have to turn round (on a crossing it may not).
 func _leads_on(cell: Vector3i, heading: Vector2i) -> bool:
+	if network.move_over_target(cell) != RoadNetwork.NONE:
+		return true   # it goes on beside it (an exit lane leading off in steps)
 	var here := network.step(cell, heading)
 	for step in CROSSING_LOOKAHEAD:
 		if here == RoadNetwork.NONE or not _may_use(here, heading):
@@ -730,6 +1020,19 @@ func _leads_on(cell: Vector3i, heading: Vector2i) -> bool:
 			return true
 		here = network.step(here, heading)
 	return true
+
+
+## True if the cell after `cell` in `option` only leads back the way it came onto `cell`
+## (arriving in `heading`): a turn into the lane of the other way, such as off a through
+## road into the lane beside a junction.
+func _only_back_after(cell: Vector3i, option: Vector2i, heading: Vector2i) -> bool:
+	if option == heading:
+		return false
+	var after := network.step(cell, option)
+	if after == RoadNetwork.NONE:
+		return false
+	var ways := _ways_out(after)
+	return not ways.is_empty() and ways.all(func(way: Vector2i) -> bool: return way == -heading)
 
 
 ## The headings it may leave a cell in (RailVehicle: its rails, on a track of its own).
@@ -800,17 +1103,22 @@ func _target_speed(delta: float) -> float:
 	var index := _current_index()
 	var last := _route_cells.size() - 1
 	var top_speed := top_speed_kmh / 3.6
-	speed_limit = network.speed_limit(_cell_under())
+	speed_limit = _limit_of(_cell_under())
 	_blocked_by = null
 	_held_by_rule = false
 	var target := minf(top_speed, speed_limit)
 	if reckless:
 		return minf(target, RECKLESS_SPEED)
-	# a lower speed limit ahead: down to it where its cell starts
+	if yielding:
+		var close := _yielding_to != null and is_instance_valid(_yielding_to) \
+				and _yielding_to.global_position.distance_to(global_position) < YIELD_STAND_DISTANCE
+		target = minf(target, 0.0 if close else YIELD_SPEED)
+	# a lower speed limit ahead: down to it LIMIT_LEAD seconds before its cell starts
 	for ahead_index in range(index + 1, last + 1):
 		var cell_start := (_route_distances[ahead_index - 1] + _route_distances[ahead_index]) * 0.5
-		var limit := minf(top_speed, network.speed_limit(_route_cells[ahead_index]))
-		target = minf(target, _approach_speed(limit, cell_start))
+		var limit := minf(top_speed, _limit_of(_route_cells[ahead_index]))
+		if limit < speed:
+			target = minf(target, _approach_speed(limit, cell_start - speed * LIMIT_LEAD))
 	# corners: a change of heading in cell `corner_index`
 	for corner_index in range(maxi(index, 1), last + 1):
 		if _route_headings[corner_index - 1] == _route_headings[corner_index]:
@@ -934,6 +1242,9 @@ func _place(delta := 0.0) -> void:
 	var middle := front_spot - along_body * _front_axle
 	# the height of the road right under its middle (a line between the axles would cut
 	# through the top of a ramp)
+	# pulled over to the right for a siren, or passing those on their left (right of its
+	# heading is (-z, x) on the map)
+	middle += Vector2(-along_body.y, along_body.x) * _side_offset
 	global_position = Vector3(middle.x, _route_point(_distance).y, middle.y)
 	global_basis = Basis.looking_at(-Vector3(along_body.x * wheelbase, rise, along_body.y * wheelbase), Vector3.UP)
 
@@ -1176,6 +1487,8 @@ func _traffic_speed(index: int, last: int) -> float:
 			# measured to its middle: a long one (a train) reaches further than that
 			if other == self or other.global_position.distance_to(global_position) > NEAR_VEHICLES + other._reach():
 				continue
+			if _passes(other):
+				continue
 			if other.covers(cell):
 				blocked = true
 			elif crossing and not other.crashed and other.speed > 0.5:
@@ -1183,7 +1496,13 @@ func _traffic_speed(index: int, last: int) -> float:
 				if their_distance >= 0.0:
 					var their_time := their_distance / maxf(other.speed, 1.0)
 					var first := their_time < my_time - 0.2 or (absf(their_time - my_time) <= 0.2 and other.get_instance_id() < get_instance_id())
-					blocked = their_time < CLAIM_SECONDS and first
+					if other.has_priority() and not has_priority():
+						blocked = their_time < PRIORITY_CLAIM_SECONDS   # a siren: always give way
+					elif has_priority() and not other.has_priority() and other.makes_way:
+						# it gives way to nobody else, but to one that can no longer stop
+						blocked = their_time < COMMITTED_SECONDS and first
+					else:
+						blocked = their_time < CLAIM_SECONDS and first
 			if blocked:
 				_blocked_by = other
 				break
@@ -1205,7 +1524,7 @@ func _body_ahead_speed() -> float:
 	var side_room := _outer_box.size.x * 0.5 + BODY_SIDE_ROOM
 	var nearest_gap := INF
 	for other in all_vehicles:
-		if other == self or other.crashed or absf(other.global_position.y - global_position.y) > 2.5:
+		if other == self or other.crashed or absf(other.global_position.y - global_position.y) > 2.5 or _passes(other):
 			continue
 		var reach := nose + other._reach() + BODY_LOOKAHEAD
 		if other.global_position.distance_squared_to(global_position) > reach * reach:
@@ -1301,6 +1620,8 @@ func _check_crash() -> void:
 		# one on a viaduct or in a tunnel, the other above or under it: their bodies never touch
 		if absf(other.global_position.y - global_position.y) > CRASH_LEVEL_DIFFERENCE:
 			continue
+		if _passes(other) or other._passes(self):
+			continue   # a siren going by one that pulled over for it
 		if (reckless or other.reckless or (velocity - other.velocity).length() >= CRASH_SPEED) and _overlaps(other):
 			_crash_with(other)
 

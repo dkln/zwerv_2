@@ -14,6 +14,11 @@ const KINDS := [
 	["res://scripts/vehicles/trailer_car.gd", ""],
 	["res://scripts/vehicles/truck.gd", ""],
 	["res://scripts/vehicles/city_bus.gd", ""],
+	["res://scripts/vehicles/police_car.gd", ""],
+	["res://scripts/vehicles/ministers_car.gd", ""],
+	["res://scripts/vehicles/riot_van.gd", ""],
+	["res://scripts/vehicles/ambulance.gd", ""],
+	["res://scripts/vehicles/fire_engine.gd", ""],
 	["res://scripts/vehicles/randstadrail.gd", ""],
 	["res://scripts/vehicles/ns_train.gd", ""],
 ]

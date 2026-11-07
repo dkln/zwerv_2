@@ -78,6 +78,7 @@ var _door_amount := 0.0             # 0 = shut .. 1 = open
 func _ready() -> void:
 	lamps_always_on = true
 	brake_lights = false
+	makes_way = false   # on its rails: a siren waits behind it
 	super()
 	var props := get_parent().get_node_or_null("Props") as GridMap
 	if props == null or network.is_empty():

@@ -11,5 +11,15 @@
 		"only": [
 			"auto"
 		]
+	},
+	"ramp_traffic": {
+		"lanes": [
+			"N"
+		],
+		"road": "snelweg",
+		"rise": 1.0,
+		"only": [
+			"auto"
+		]
 	}
 }

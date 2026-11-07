@@ -91,7 +91,9 @@ SOURCES = {
         ("onderbroken", "geen"), ("geen", "geen"), ("dubbel", "kant"))],
     "grond/snelweg": ["snelweg_rijstrook", "snelweg_rijstrook_links", "snelweg_rijstrook_zonder_streep",
                       "snelweg_rijstrook_links_zonder_streep", "snelweg_vluchtstrook",
-                      "snelweg_blokmarkering", "snelweg_aansluiting"],
+                      "snelweg_blokmarkering", "snelweg_aansluiting",
+                      # the verges and the median barrier, for the bend of the A12 south
+                      "snelweg_berm_vangrail", "snelweg_middenberm_beton"],
     "grond/fietspad": ["fietspad_naast_weg"],
 }
 _SOURCE_MAKERS = {"grond/weg/busbaan_vrij": _bus_lane_without_text}

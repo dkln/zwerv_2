@@ -41,6 +41,13 @@ extends RefCounted
 ## - speed (km/h) replaces the limit of the tile.
 ## A choice no longer counts once another tile is in the cell.
 ##
+## Moving over (the meta MOVE_OVERS of the ground GridMap, {from cell: to cell}): from a
+## road cell a vehicle may move over gradually into the lane alongside, reaching it in
+## cell `to` (a cell or two forward, one to the side, the same heading): where an exit
+## leaves a motorway. Where the lane of `from` goes on, a vehicle chooses (vehicle.gd);
+## where it ends there, every vehicle moves over (a lane that leads off the motorway in
+## steps, or an on-ramp merging).
+##
 ## Headings are Vector2i on the map: x = east, y = south.
 
 enum Kind { STREET, MAIN_ROAD, TUNNEL, MOTORWAY }
@@ -59,6 +66,8 @@ const KIND_NAMES := {"straat": Kind.STREET, "hoofdweg": Kind.MAIN_ROAD, "tunnel"
 const LOCAL_HEADINGS := {"N": Vector3(0, 0, -1), "S": Vector3(0, 0, 1), "E": Vector3(1, 0, 0), "W": Vector3(-1, 0, 0)}
 ## Meta of the ground GridMap with the lanes chosen per placed tile (see above).
 const LANE_CHOICES := &"lane_choices"
+## Meta of the ground GridMap with the cells a vehicle can move over from (see above).
+const MOVE_OVERS := &"move_overs"
 ## The kinds of road users a tile can allow (Vehicle.vehicle_kind). Only "auto" drives on
 ## the network so far, with its buses; the others are for road users still to come.
 const ROAD_USER_KINDS: Array[String] = ["auto", "brommer", "fiets", "voetganger"]
@@ -85,6 +94,7 @@ var _chosen := {}         # road cell whose lanes were chosen for this placed ti
 var _chosen_kinds := {}   # road cell whose vehicle kinds were chosen for this placed tile -> true
 var _chosen_speeds := {}  # road cell whose speed limit was chosen for this placed tile -> true
 var _speeds := {}         # road cell -> speed limit (km/h)
+var _move_overs := {}     # road cell -> the road cell it moves over into (MOVE_OVERS)
 var _ground: GridMap
 
 
@@ -105,6 +115,10 @@ func _init(ground: GridMap) -> void:
 	_read_tiles()
 	_decide_two_way_lanes()
 	_decide_kinds()
+	var move_overs: Dictionary = _ground.get_meta(MOVE_OVERS, {})
+	for from_cell: Vector3i in move_overs:
+		if _lanes.has(from_cell) and _lanes.has(move_overs[from_cell]):
+			_move_overs[from_cell] = move_overs[from_cell]
 
 
 # ------------------------------------------------------------------ queries
@@ -208,6 +222,11 @@ func find(x: int, z: int, level: int, from_cell := NONE, max_level_change := 1) 
 			if _lanes.has(other) and (_rises.has(other) or _rises.has(from_cell)):
 				return other
 	return NONE
+
+
+## The road cell a vehicle on `cell` can move over into (MOVE_OVERS), or NONE.
+func move_over_target(cell: Vector3i) -> Vector3i:
+	return _move_overs.get(cell, NONE)
 
 
 ## The road cell one step from `cell` in `heading`, or NONE.

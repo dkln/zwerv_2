@@ -4,7 +4,9 @@ extends Node
 ## vehicles over the road network when the game starts, at random but repeatable spots at
 ## least `spacing` metres apart, keeping off crossings and zebras. Each is an ordinary
 ## Vehicle (scripts/vehicles/) under the scene root, next to the Auto and the SUV that
-## are in the scene itself. MIX says what drives: its entries take turns.
+## are in the scene itself. MIX says what drives: its entries take turns. After them come
+## the SERVICES: police, ambulance, fire service, an ME van and ministers' cars
+## (`services_count`, in that order and round again).
 
 const CAR = "res://scripts/vehicles/car.gd"
 const SUV = "res://scripts/vehicles/suv.gd"
@@ -13,6 +15,13 @@ const TRAILER_CAR = "res://scripts/vehicles/trailer_car.gd"
 const VAN = "res://scripts/vehicles/van.gd"
 const TRUCK = "res://scripts/vehicles/truck.gd"
 const CITY_BUS = "res://scripts/vehicles/city_bus.gd"
+const POLICE_CAR = "res://scripts/vehicles/police_car.gd"
+const AMBULANCE = "res://scripts/vehicles/ambulance.gd"
+const FIRE_ENGINE = "res://scripts/vehicles/fire_engine.gd"
+const RIOT_VAN = "res://scripts/vehicles/riot_van.gd"
+const MINISTERS_CAR = "res://scripts/vehicles/ministers_car.gd"
+## The emergency services and the ministers' cars, added after the town traffic.
+const SERVICES := [POLICE_CAR, AMBULANCE, MINISTERS_CAR, FIRE_ENGINE, POLICE_CAR, RIOT_VAN, MINISTERS_CAR]
 ## [script, model ("" = the one of the script)]: town traffic, so mostly cars.
 const MIX := [
 	[HATCHBACK, ""],
@@ -33,6 +42,8 @@ const ROAD_CELLS_NEEDED := 60
 
 ## How many vehicles it adds to the ones in the scene.
 @export var vehicle_count := 24
+## How many of the SERVICES it adds on top of those.
+@export var services_count := 7
 ## Fewest metres between the start spots (a bus is 10.5 m long).
 @export var spacing := 20.0
 ## Seed of the start spots and routes.
@@ -63,9 +74,10 @@ func _spawn() -> void:
 		taken.append(vehicle.global_position)
 	var added := 0
 	for cell: Vector3i in cells:
-		if added >= vehicle_count:
+		if added >= vehicle_count + services_count:
 			break
-		var entry: Array = MIX[added % MIX.size()]
+		var services := added >= vehicle_count
+		var entry: Array = [SERVICES[(added - vehicle_count) % SERVICES.size()], ""] if services else MIX[added % MIX.size()]
 		var vehicle: Vehicle = load(entry[0]).new()
 		if not _good_start(network, cell, vehicle.vehicle_kind, taken):
 			vehicle.free()
@@ -73,7 +85,7 @@ func _spawn() -> void:
 		if entry[1] != "":
 			vehicle.model = entry[1]
 		var heading: Vector2i = network.lanes(cell)[0]
-		vehicle.name = "Verkeer%d" % (added + 1)
+		vehicle.name = ("Dienst%d" % (added - vehicle_count + 1)) if services else ("Verkeer%d" % (added + 1))
 		vehicle.start_cell = Vector2i(cell.x, cell.z)
 		vehicle.start_heading = heading
 		vehicle.route_seed = random.randi()

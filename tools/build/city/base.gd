@@ -316,6 +316,7 @@ var _street_h := {}   # Vector2i -> lane (0 north, 1 south) of the east-west str
 var _street_v := {}   # Vector2i -> lane (0 west, 1 east) of the north-south streets
 var _pavement := {}   # Vector2i -> kerb variant ("", "goot_", "klinker_") of the pavement cells (_auto_kerbs)
 var _kerb_count := 0  # counter for the kerb variant of the next block
+var lights_last_column := 1 << 20   # traffic lights only at intersections up to this column
 var _special := {}    # street cells that are not ordinary lanes (roundabouts, avenues)
 var _h_rows := []     # z of the north lane of every full-width east-west street
 var districts := []  # {name, x, z, w, d} per demo district, saved as scene metadata
