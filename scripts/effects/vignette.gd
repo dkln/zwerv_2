@@ -13,17 +13,17 @@ const SHADER = preload("res://scripts/effects/vignette.gdshader")
 		if _rect:
 			_rect.visible = value
 ## Darkness at the very corners (0 = none, 1 = the full shade colour).
-@export_range(0.0, 1.0) var strength := 0.45:
+@export_range(0.0, 1.0) var strength := 0.7:
 	set(value):
 		strength = value
 		_apply()
 ## Distance from the middle (0) to the edge (1) where the darkening starts.
-@export_range(0.0, 1.5) var inner := 0.55:
+@export_range(0.0, 1.5) var inner := 0.4:
 	set(value):
 		inner = value
 		_apply()
 ## Distance over which it grows to full strength.
-@export_range(0.01, 1.5) var softness := 0.75:
+@export_range(0.01, 1.5) var softness := 0.8:
 	set(value):
 		softness = value
 		_apply()

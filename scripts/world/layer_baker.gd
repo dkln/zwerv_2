@@ -2,7 +2,9 @@ extends RefCounted
 ## Merges the tiles of a GridMap into large meshes ("baking"), used by
 ## level_of_detail.gd at startup for the Grond and Gebouwen layers.
 ##
-## Cells are grouped into CHUNK x CHUNK chunks; each chunk becomes one MeshInstance3D
+## Cells are grouped into chunks of `chunk_cells` x `chunk_cells` (CHUNK by default; the
+## finest LOD level uses smaller ones, so a close view does not draw a whole 32 m chunk for
+## the corner of it that is on screen); each chunk becomes one MeshInstance3D
 ## with one surface per material, so there are far fewer draw calls. Faces that lie
 ## against a solid face of a neighbour cell are left out, as are all bottom faces, so
 ## there are also fewer triangles. This relies on the importer grouping each
@@ -57,13 +59,13 @@ const UV2S := 4
 const OWNERS := 5
 const WAVE_CENTRES := 6
 
-## Chunk size in cells (along x and z).
+## Default chunk size in cells (along x and z).
 const CHUNK := 8
 ## Triangles lower than this (metres above the bottom of their tile, on the lowest row of
 ## cells) cast no shadow; the same height as SHADOW_MIN_HEIGHT in library_builder.gd.
 const LOW_SHADOW := 0.7
 ## Bump when the output changes (invalidates the cache in user://merged).
-const VERSION := 12
+const VERSION := 13
 ## Metres around an extra layer's cell centre searched for the main-layer cell it hangs on.
 const OWNER_REACH := 1.0
 ## Compute time per frame in microseconds; the rest continues in following frames.
@@ -79,6 +81,7 @@ const FACADE_DEPTH := 0.4
 class BakeJob:
 	var grid: GridMap
 	var library: MeshLibrary
+	var chunk_cells := CHUNK
 	var hide_tops: bool
 	var owners: bool
 	var filled_shadows: bool
@@ -102,11 +105,12 @@ class BakeJob:
 ## the fraction done (0..1) whenever the work pauses for a frame. extras: [GridMap,
 ## MeshLibrary] pairs of layers baked into the same chunks (see the top). Coroutine:
 ## await it. Returns null if `grid` is freed before it is done. owners, filled_shadows:
-## see the top.
-static func bake(grid: GridMap, library: MeshLibrary, output_name: String, hide_tops: bool, progress := Callable(), extras := [], owners := false, filled_shadows := false) -> Node3D:
+## see the top. chunk_cells: the chunk size in cells.
+static func bake(grid: GridMap, library: MeshLibrary, output_name: String, hide_tops: bool, progress := Callable(), extras := [], owners := false, filled_shadows := false, chunk_cells := CHUNK) -> Node3D:
 	var job := BakeJob.new()
 	job.grid = grid
 	job.library = library
+	job.chunk_cells = chunk_cells
 	job.hide_tops = hide_tops
 	job.owners = owners or not extras.is_empty()
 	job.filled_shadows = filled_shadows
@@ -165,9 +169,9 @@ static func _bake_main_cell(job: BakeJob, cell: Vector3i, ground_row: int) -> vo
 	if job.filled_shadows and cast != 0 and _add_filled_shadow(job, cell, cell_basis, mesh, placement):
 		cast = 0
 	# chunks are split by shadow setting too, as cast_shadow is per MeshInstance3D
-	var key := _chunk_key(cell, cast)
+	var key := _chunk_key(job, cell, cast)
 	# the low triangles of a shadow caster on the ground row cast none
-	var low_key := _chunk_key(cell, 0) if cell.y == ground_row else key
+	var low_key := _chunk_key(job, cell, 0) if cell.y == ground_row else key
 	var normal_rotation := Transform3D(placement.basis, Vector3.ZERO)
 	var owner = _owner_bytes(grid.transform * grid.map_to_local(Vector3i(cell.x, 0, cell.z))) if job.owners else null
 	for surface: Dictionary in surfaces:
@@ -222,7 +226,7 @@ static func _add_filled_shadow(job: BakeJob, cell: Vector3i, cell_basis: Basis, 
 	var block_key := [mesh, open_sides]
 	if not job.fill_blocks.has(block_key):
 		job.fill_blocks[block_key] = _fill_block(job.fill_grids[mesh], open_sides, job.grid.cell_size)
-	var chunk := Vector2i(floori(cell.x / float(CHUNK)), floori(cell.z / float(CHUNK)))
+	var chunk := Vector2i(floori(cell.x / float(job.chunk_cells)), floori(cell.z / float(job.chunk_cells)))
 	var triangles: PackedVector3Array = job.shadow_blocks.get(chunk, PackedVector3Array())
 	triangles.append_array(placement * (job.fill_blocks[block_key] as PackedVector3Array))
 	job.shadow_blocks[chunk] = triangles
@@ -263,7 +267,7 @@ static func _bake_extra_cell(job: BakeJob, extra_grid: GridMap, extra_library: M
 		return
 	var centre := to_main * extra_grid.map_to_local(cell)
 	var owner := _owner(job.grid, occupied_columns, centre) if rule.get("building_part", true) else PackedByteArray([0, 0, 0, 0])
-	var key := _chunk_key(job.grid.local_to_map(centre), cast)
+	var key := _chunk_key(job, job.grid.local_to_map(centre), cast)
 	var normal_rotation := Transform3D(placement.basis, Vector3.ZERO)
 	for surface: Dictionary in surfaces:
 		var is_flag := _is_flag(surface.material)
@@ -359,8 +363,8 @@ static func _next_frame(job: BakeJob) -> void:
 
 
 ## Chunk of a main-layer cell, for one shadow setting.
-static func _chunk_key(cell: Vector3i, cast: int) -> Vector3i:
-	return Vector3i(floori(cell.x / float(CHUNK)), floori(cell.z / float(CHUNK)), cast)
+static func _chunk_key(job: BakeJob, cell: Vector3i, cast: int) -> Vector3i:
+	return Vector3i(floori(cell.x / float(job.chunk_cells)), floori(cell.z / float(job.chunk_cells)), cast)
 
 
 static func _split_cached(job: BakeJob, mesh: ArrayMesh, bake_flags := false) -> Array:

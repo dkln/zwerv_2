@@ -3,7 +3,8 @@ extends Node3D
 ## around the point the camera looks at, and sway in the wind
 ## (addons/vox_tiles/materials/grass_blade.gdshader). One blade mesh is drawn many times
 ## with a MultiMesh per chunk of CHUNK x CHUNK metres; chunks are made around the camera
-## focus while zoomed in (and dropped again when out of range), only on grass cells
+## focus while zoomed in, only where the ground is on screen (the four screen corners cast
+## onto the ground, plus a margin), and dropped again when out of view; only on grass cells
 ## (scripts/world/ground_map.gd, the GrondKaart node). They cast no shadows. Not in the editor.
 ## Three levels of detail by the metres in view (scripts/camera/iso_camera.gd view size),
 ## growing into each other: the fine blades up close; further out `medium_*` and then
@@ -11,8 +12,9 @@ extends Node3D
 ## out meadow still has grass that moves, at about the same cost per screen.
 
 const Iso = preload("res://scripts/camera/iso_camera.gd")
-## Size of a chunk of fine blades in metres (a multiple of the 4 m ground cell).
-const CHUNK := 8.0
+## Size of a chunk of fine blades in metres (a multiple of the 4 m ground cell): small, so
+## the border between full and thin chunks (THIN_FROM) follows the focus closely.
+const CHUNK := 4.0
 ## Ground cell size in metres.
 const CELL := 4.0
 ## Height of the top of a grass tile above its cell (the grass voxels' top).
@@ -27,8 +29,8 @@ const GRASS_TOP := 0.375
 ## Fine blades are shown below this view size (metres in view), fully below `full_from`.
 ## Further out such a blade is narrower than a pixel or two and the grass sparkles as the
 ## view moves (and costs a lot of frame time): the medium and far tufts take over.
-@export var show_from := 24.0
-@export var full_from := 16.0
+@export var show_from := 36.0
+@export var full_from := 26.0
 ## Blade height (m); each blade gets 0.6 .. 1.3 x this, times the cell's grass height
 ## (short or tall grass, scripts/world/ground_map.gd).
 @export var blade_height := 0.32
@@ -51,11 +53,25 @@ const FAR_SEGMENTS := 1
 ## view holds many more square metres.
 const MEDIUM_CHUNK := 16.0
 const FAR_CHUNK := 32.0
-## How far from the focus the chunks of a level reach, as a part of the view size: the fine
-## blades only around the focus (they cost the most), the tufts as far as the screen goes, so
-## a meadow has no edge where they stop.
-const FINE_REACH := 0.6
-const LOW_DETAIL_REACH := 1.1
+## How far from the focus the chunks of a level reach at most, as a part of the view size.
+## The chunks follow the ground on screen; in the iso view its top corners lie about 1.5 x the
+## view size from the focus (perspective stretches the far side), so this limit only matters
+## for a view that looks far over the ground (a chase camera in a tunnel, a close-up).
+const FINE_REACH := 2.0
+const LOW_DETAIL_REACH := 2.5
+## Fine blades over the whole screen cost too much (twice the frame time of the middle part
+## alone), so they thin out away from the focus: from THIN_FROM to THIN_TO x the view size
+## the shader lets more and more of them shrink away (smoothly, by each blade's own random
+## value, as the view moves), down to EDGE_KEEP of them. The chunks that lie wholly beyond
+## THIN_TO (the edges and corners of the screen, where the vignette darkens the picture) are
+## built with only those blades, so they cost that much less and there is no seam. (Simpler
+## blades out there, one straight column instead of a staircase, showed as a seam.)
+const THIN_FROM := 0.3
+const THIN_TO := 0.5
+const EDGE_KEEP := 0.3
+## Metres around the ground on screen in which chunks are made too: blades just below the
+## bottom edge stick into view, and a chunk is ready before it scrolls in.
+const SCREEN_MARGIN := 3.0
 ## Where a level starts to fade out, as a part of the view size it ends at.
 const FADE_OUT_START := 0.75
 ## New chunks made per frame at most (so moving the camera doesn't hitch).
@@ -76,6 +92,7 @@ func _ready() -> void:
 	_cam = get_node_or_null(camera_path)
 	_map = get_node_or_null(ground_map_path)
 	_add_level(CHUNK, density, blade_width, FINE_SEGMENTS, FINE_REACH, 0.0, 0.0, full_from, show_from)
+	_levels[0].thins = true
 	if low_detail:
 		_add_level(MEDIUM_CHUNK, medium_density, medium_width, MEDIUM_SEGMENTS, LOW_DETAIL_REACH,
 				full_from, show_from, medium_until * FADE_OUT_START, medium_until)
@@ -96,7 +113,9 @@ func _add_level(chunk_size: float, blades_per_metre: float, width: float, segmen
 	add_child(level_node)
 	_levels.append({"node": level_node, "mesh": _blade_mesh(width, segments), "material": material, "chunks": {},
 		"chunk_size": chunk_size, "density": blades_per_metre, "reach": reach, "grow_in_from": grow_in_from, "grow_in_to": grow_in_to,
-		"fade_out_from": fade_out_from, "fade_out_to": fade_out_to})
+		"fade_out_from": fade_out_from, "fade_out_to": fade_out_to,
+		# only the fine level thins out (THIN_FROM); the chunks built thin (Vector2i -> true)
+		"thins": false, "edge_chunks": {}})
 
 
 ## Drops every chunk (the grass cells changed, e.g. another map part was loaded).
@@ -111,6 +130,7 @@ func _clear_level(level: Dictionary) -> void:
 		if chunks[chunk_key]:
 			chunks[chunk_key].queue_free()
 	chunks.clear()
+	(level.edge_chunks as Dictionary).clear()
 
 
 func _process(_delta: float) -> void:
@@ -121,7 +141,14 @@ func _process(_delta: float) -> void:
 		var grow := 1.0 - smoothstep(level.fade_out_from, level.fade_out_to, view)
 		if level.grow_in_to > 0.0:
 			grow *= smoothstep(level.grow_in_from, level.grow_in_to, view)
-		(level.material as ShaderMaterial).set_shader_parameter("grow", grow)
+		var material := level.material as ShaderMaterial
+		material.set_shader_parameter("grow", grow)
+		if level.thins:
+			var focus := Iso.ground_focus(_cam)
+			material.set_shader_parameter("thin_centre", Vector2(focus.x, focus.z))
+			material.set_shader_parameter("thin_from", view * THIN_FROM)
+			material.set_shader_parameter("thin_to", view * THIN_TO)
+			material.set_shader_parameter("thin_keep", EDGE_KEEP)
 		var shown: bool = enabled and grow > 0.0
 		(level.node as Node3D).visible = shown
 		if shown:
@@ -130,33 +157,121 @@ func _process(_delta: float) -> void:
 			_clear_level(level)
 
 
-## Makes the chunks of this level within the visible part of the ground (plus a margin),
-## around the focus, a few per frame, and drops the ones out of range.
+## Makes the chunks of this level that lie on screen (within the level's reach from the
+## focus), a few per frame, nearest to the focus first, and drops the ones out of view.
 func _update_chunks(level: Dictionary, view: float) -> void:
 	var focus := Iso.ground_focus(_cam)
 	var radius: float = view * level.reach
 	var chunk_size: float = level.chunk_size
 	var chunks: Dictionary = level.chunks
-	var low := Vector2i(floori((focus.x - radius) / chunk_size), floori((focus.z - radius) / chunk_size))
-	var high := Vector2i(floori((focus.x + radius) / chunk_size), floori((focus.z + radius) / chunk_size))
+	var screen_ground := _screen_ground(radius)
+	# the chunks under the ground on screen, within the reach
+	var bounds := Rect2(screen_ground[0], Vector2.ZERO)
+	for corner in screen_ground:
+		bounds = bounds.expand(corner)
+	bounds = bounds.grow(SCREEN_MARGIN).intersection(Rect2(focus.x - radius, focus.z - radius, radius * 2.0, radius * 2.0))
+	var low := Vector2i(floori(bounds.position.x / chunk_size), floori(bounds.position.y / chunk_size))
+	var high := Vector2i(floori(bounds.end.x / chunk_size), floori(bounds.end.y / chunk_size))
 	var wanted := {}
-	var made := 0
+	var missing: Array[Vector2i] = []
 	for chunk_z in range(low.y, high.y + 1):
 		for chunk_x in range(low.x, high.x + 1):
 			var chunk_key := Vector2i(chunk_x, chunk_z)
-			wanted[chunk_key] = true
-			if not chunks.has(chunk_key) and made < CHUNKS_PER_FRAME:
-				chunks[chunk_key] = _make_chunk(level, chunk_key)
-				made += 1
+			var chunk_rect := Rect2(Vector2(chunk_key) * chunk_size, Vector2.ONE * chunk_size).grow(SCREEN_MARGIN)
+			if not _rect_meets_polygon(chunk_rect, screen_ground):
+				continue
+			var distance := chunk_rect.get_center().distance_to(Vector2(focus.x, focus.z))
+			if distance > radius + chunk_size:
+				continue
+			wanted[chunk_key] = _is_edge_chunk(level, chunk_key, distance, view)
+			if not chunks.has(chunk_key) or wanted[chunk_key] != level.edge_chunks.has(chunk_key):
+				missing.append(chunk_key)
+	var focus_chunk := Vector2(focus.x, focus.z) / chunk_size - Vector2(0.5, 0.5)
+	# chunks still missing go first, then the ones that switch between full and thin; each
+	# nearest to the focus first
+	missing.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
+		if chunks.has(a) != chunks.has(b):
+			return chunks.has(b)
+		return Vector2(a).distance_squared_to(focus_chunk) < Vector2(b).distance_squared_to(focus_chunk))
+	for chunk_key in missing.slice(0, CHUNKS_PER_FRAME):
+		_drop_chunk(level, chunk_key)
+		chunks[chunk_key] = _make_chunk(level, chunk_key, wanted[chunk_key])
+		if wanted[chunk_key]:
+			level.edge_chunks[chunk_key] = true
 	for chunk_key in chunks.keys():
 		if not wanted.has(chunk_key):
-			if chunks[chunk_key]:
-				chunks[chunk_key].queue_free()
-			chunks.erase(chunk_key)
+			_drop_chunk(level, chunk_key)
+
+
+func _drop_chunk(level: Dictionary, chunk_key: Vector2i) -> void:
+	var chunks: Dictionary = level.chunks
+	if chunks.get(chunk_key):
+		chunks[chunk_key].queue_free()
+	chunks.erase(chunk_key)
+	(level.edge_chunks as Dictionary).erase(chunk_key)
+
+
+## Whether this chunk of the level is built thin (see THIN_FROM): when all of it lies beyond
+## THIN_TO (a chunk reaches 0.71 x its size from its centre); `distance` from the focus to
+## the chunk's centre. A thin chunk is built in full again a little closer in than where it
+## turned thin, so it is not rebuilt back and forth while the view moves along the border.
+func _is_edge_chunk(level: Dictionary, chunk_key: Vector2i, distance: float, view: float) -> bool:
+	if not level.thins:
+		return false
+	var border: float = view * THIN_TO + level.chunk_size * 0.75
+	if not (level.edge_chunks.has(chunk_key) and level.chunks.has(chunk_key)):
+		border += level.chunk_size * 0.5
+	return distance > border
+
+
+## The ground the camera sees, as the four screen corners cast onto the grass height (x, z
+## in world metres; a convex quad). A corner that looks above the horizon, or further than
+## `reach`, lands `reach` away from the camera along its direction over the ground.
+func _screen_ground(reach: float) -> PackedVector2Array:
+	var screen := _cam.get_viewport().get_visible_rect().size
+	var corners := PackedVector2Array()
+	for screen_corner: Vector2 in [Vector2.ZERO, Vector2(screen.x, 0.0), screen, Vector2(0.0, screen.y)]:
+		var origin := _cam.project_ray_origin(screen_corner)
+		var direction := _cam.project_ray_normal(screen_corner)
+		var ground_point: Vector3
+		var distance := (origin.y - GRASS_TOP) / -direction.y if direction.y < -0.01 else INF
+		var across := Vector2(direction.x, direction.z)
+		if distance * across.length() <= reach * 2.0:
+			ground_point = origin + direction * distance
+		else:
+			var flat := across.normalized() if across.length() > 0.001 else Vector2.ZERO
+			ground_point = origin + Vector3(flat.x, 0.0, flat.y) * reach * 2.0
+		corners.append(Vector2(ground_point.x, ground_point.z))
+	return corners
+
+
+## Whether the rectangle and the convex polygon overlap (separating axis test: the axes of
+## the rectangle and the normals of the polygon's edges).
+static func _rect_meets_polygon(rect: Rect2, polygon: PackedVector2Array) -> bool:
+	var rect_corners := PackedVector2Array([rect.position, Vector2(rect.end.x, rect.position.y), rect.end, Vector2(rect.position.x, rect.end.y)])
+	var axes: Array[Vector2] = [Vector2.RIGHT, Vector2.DOWN]
+	for corner_index in polygon.size():
+		var edge := polygon[(corner_index + 1) % polygon.size()] - polygon[corner_index]
+		axes.append(Vector2(-edge.y, edge.x))
+	for axis in axes:
+		var rect_low := INF
+		var rect_high := -INF
+		for point in rect_corners:
+			rect_low = minf(rect_low, point.dot(axis))
+			rect_high = maxf(rect_high, point.dot(axis))
+		var polygon_low := INF
+		var polygon_high := -INF
+		for point in polygon:
+			polygon_low = minf(polygon_low, point.dot(axis))
+			polygon_high = maxf(polygon_high, point.dot(axis))
+		if rect_high < polygon_low or polygon_high < rect_low:
+			return false
+	return true
 
 
 ## The blades of this chunk of the level (a MultiMeshInstance3D), or null if it has no grass.
-func _make_chunk(level: Dictionary, chunk_key: Vector2i) -> MultiMeshInstance3D:
+## edge: only the blades that are left where the level has thinned out (EDGE_KEEP).
+func _make_chunk(level: Dictionary, chunk_key: Vector2i, edge := false) -> MultiMeshInstance3D:
 	var cells: Dictionary = _map.get("grass_cells")
 	var chunk_size: float = level.chunk_size
 	var origin := Vector2(chunk_key) * chunk_size
@@ -176,9 +291,13 @@ func _make_chunk(level: Dictionary, chunk_key: Vector2i) -> MultiMeshInstance3D:
 			var height: float = cells[cell][2]
 			var rng := RandomNumberGenerator.new()
 			rng.seed = cell.x * 73856093 ^ cell.y * 19349663
+			# each blade's value for thinning out (its own sequence: the blades stay as they were)
+			var thin_rng := RandomNumberGenerator.new()
+			thin_rng.seed = cell.x * 83492791 ^ cell.y * 2971215073
 			for blade_index in per_cell:
 				var x := cell.x * CELL + rng.randf() * CELL
 				var z := cell.y * CELL + rng.randf() * CELL
+				var thin_value := thin_rng.randf()
 				# clumps: some places dense, some thin (the same noise for every frame)
 				if rng.randf() > _clump(x, z):
 					continue
@@ -192,10 +311,16 @@ func _make_chunk(level: Dictionary, chunk_key: Vector2i) -> MultiMeshInstance3D:
 				var basis := Basis(Vector3.UP, rng.randi_range(0, 3) * PI * 0.5)
 				var s := (0.6 + rng.randf() * 0.7) * height
 				basis = basis.scaled(Vector3(1.0, s, 1.0))
+				var shade := rng.randf()
+				var phase := rng.randf()
+				# after all draws of this blade, so a thin chunk has the same blades as a full one
+				# (the shader shrinks a blade away over 0.04 above the share left)
+				if edge and thin_value > EDGE_KEEP + 0.04:
+					continue
 				buf.append_array([basis.x.x, basis.y.x, basis.z.x, x,
 					basis.x.y, basis.y.y, basis.z.y, GRASS_TOP,
 					basis.x.z, basis.y.z, basis.z.z, z,
-					rng.randf(), rng.randf(), 0.0, 0.0])
+					shade, phase, thin_value, 0.0])
 	if buf.is_empty():
 		return null
 	var mm := MultiMesh.new()

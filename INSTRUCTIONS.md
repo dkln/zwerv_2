@@ -162,6 +162,9 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
   samengevoegde gebouwen dragen per vertex de cel waar ze bij horen (`layer_baker.gd`,
   CUSTOM0) en de shader kijkt die cel op in een fade-kaart (`voxel_fade.gdshaderinc`).
   Objecten op straat (props: bushokjes, lantaarnpalen, bomen) vervagen niet.
+  Viaducten vervagen ook: elke kolom van de laag Grond met een cel vanaf `deck_level` telt als
+  een eigen klein gebouw, dus alleen het stuk dek boven het voertuig gaat open. Een dek vervaagt
+  alleen als het minstens `deck_clearance` boven het voertuig ligt.
   Alleen wat vervaagt krijgt een shadervariant die pixels weglaat (`ZWERVR_FADE`): zo'n
   shader is op een Apple-GPU flink trager. Instelbaar: `fade_time`, `strongest_fade`,
   `test_reach`.
@@ -220,7 +223,9 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
   bussen), `brommer`, `fiets` en `voetganger`, voor een baan alleen `bus` of `tram`. `speed`
   is de limiet in km/u, in plaats van die van `road`. De regels per groep tiles staan in
   `tools/voxgen/traffic.py` (daarna `generate.py --meta` en `build_libraries.gd`). Een tile
-  zonder `traffic` (water, kademuur) is voor niemand.
+  zonder `traffic` (water, kademuur) is voor niemand. Parkeerstroken en parkeervakken langs
+  de weg (`parkeerstrook`, `parkeervak_gehandicapt`) hebben wel `traffic` maar geen `lanes`:
+  er staan auto's, er rijdt niemand overheen.
 - Per geplaatste tile kun je daarvan afwijken: in het Build-paneel, onder `Traffic`, zet je
   `Pick tile` aan en klik je een grondtile aan in de 3D-view (nog eens klikken = de tile
   eronder, bijvoorbeeld een tunnel; Esc stopt). Ctrl+Z werkt voor elke wijziging.
@@ -822,7 +827,7 @@ Prestaties en uiterlijk
   krijgt per kiezel een lichte en een schaduwkant en vlekken van ~15 cm.
 - Echte grassprieten (node `Grassprieten`, `scripts/effects/grass_blades.gd`, shader
   `materials/grass_blade.gdshader`) in drie detailniveaus die in elkaar overgroeien:
-  fijne sprieten tot `show_from` (24 m in beeld), daarna dikkere plukken (`medium_*`, tot
+  fijne sprieten tot `show_from` (36 m in beeld, helemaal vol tot `full_from`, 26 m), daarna dikkere plukken (`medium_*`, tot
   55 m) en nog grovere, schaarse plukken (`far_*`, tot 220 m, die twee over het hele beeld;
   uit met `low_detail`). Ingezoomd groeien hoekige sprieten in voxelstijl uit het gras (drie vierkante blokjes van 3 x 3 cm
   op elkaar, getrapt in de buigrichting, elk een eigen tint, alleen in kwartslagen gedraaid) rond het punt waar de camera

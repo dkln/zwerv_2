@@ -58,7 +58,10 @@ _RULES = {
         (["rijstrook_bus", "rijstrook_bus_leeg", "rijstrook_bus_leeg_zonder_streep", "busstrook_halte", "drempel_bus"],
          {"lanes": ONE_WAY, "road": "straat", "only": ["bus"]}),
         (["busbaan_vrij"], {"only": ["bus"]}),
-        (["rijstrook_*", "fietsstraat", "fietsstrook", "parkeerstrook", "parkeervak_gehandicapt",
+        # parking along the road: cars stand there, nobody drives lanes over it (the
+        # carriageway beside it gets its direction from its own tiles)
+        (["parkeerstrook", "parkeervak_gehandicapt"], {"road": "straat", "only": ROAD}),
+        (["rijstrook_*", "fietsstraat", "fietsstrook",
           "straat_eenrichting", "straat_klinkers*", "straat_keien*", "weg_vlak_oud"],
          {"lanes": ONE_WAY, "road": "straat", "only": ROAD}),
         (["uitritconstructie"], {"only": EVERYONE}),

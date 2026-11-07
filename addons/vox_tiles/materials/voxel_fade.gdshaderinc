@@ -14,6 +14,11 @@
 // CUSTOM0, so it fades with its own building, as a whole. Shaders decode it in vertex()
 // with fade_owner_from(CUSTOM0) into a varying; vec4(0.0) = none, then the cell the
 // pixel is in is used.
+// Nothing below this height fades: the street, and for the Grond layer (whose decks fade,
+// building_fade.gd compiles it with a higher floor) also the foundations under buildings.
+#ifndef ZWERVR_FADE_FLOOR
+#define ZWERVR_FADE_FLOOR 0.3
+#endif
 global uniform sampler2D zwervr_fade_map : filter_nearest, repeat_disable;
 global uniform vec4 zwervr_fade_area;   // x0, z0, width, depth (metres); width 0 = nothing fades
 
@@ -47,7 +52,7 @@ bool faded_out(vec3 view_position, vec3 view_normal, mat4 inv_view, mat4 project
 	}
 	// a little inwards, so a wall on a cell border belongs to its own cell
 	vec3 world = (inv_view * vec4(view_position - view_normal * 0.02, 1.0)).xyz;
-	if (world.y < 0.3) {
+	if (world.y < ZWERVR_FADE_FLOOR) {
 		return false;   // the ground and everything below it never fades
 	}
 	vec2 cell_point = owner.w > 0.5 ? owner.xz : world.xz;

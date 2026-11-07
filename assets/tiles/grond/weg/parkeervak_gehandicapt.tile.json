@@ -1,9 +1,6 @@
 {
 	"id": 154,
 	"traffic": {
-		"lanes": [
-			"N"
-		],
 		"road": "straat",
 		"only": [
 			"auto",

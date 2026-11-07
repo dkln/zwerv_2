@@ -23,6 +23,10 @@ const Iso = preload("res://scripts/camera/iso_camera.gd")
 const CACHE_DIR := "user://merged"
 ## File-name suffixes of the MeshLibraries per LOD level: normal, coarse, very coarse.
 const LEVEL_SUFFIXES := ["", "_lod", "_lod2"]
+## Chunk size in cells of the baked finest level: it is only shown up close (below
+## `coarse_from`), where a 32 m chunk is as big as the whole view and mostly drawn off
+## screen; the coarse levels keep the bigger Bakker.CHUNK (fewer draw calls far out).
+const FINE_CHUNK_CELLS := 4
 
 ## All layers have been merged (or there was nothing to merge).
 signal merge_finished
@@ -264,12 +268,13 @@ func _merge(index: int, layer_name: String, gm: GridMap) -> void:
 			extras.append([extra, load(extra_path)])
 			extras_key = hash([extras_key, extra.get("data").get("cells", PackedInt32Array()), extra.transform,
 				FileAccess.get_modified_time(extra_path)])
+		var chunk_cells: int = FINE_CHUNK_CELLS if suffix == "" else Bakker.CHUNK
 		# everything before "__" identifies scene + layer + level, the rest the content
 		var scene := root.scene_file_path.get_file().get_basename()
 		if gm.has_meta("part"):
 			scene += "_" + str(gm.get_meta("part"))
 		var key := "%s_%s%s__%x_%x_%x_%d" % [scene, layer_name, suffix,
-			hash(data.get("cells", PackedInt32Array())), hash(gm.transform), extras_key,
+			hash(data.get("cells", PackedInt32Array())), hash([gm.transform, chunk_cells]), extras_key,
 			FileAccess.get_modified_time(path) + Bakker.VERSION]
 		var cache := CACHE_DIR.path_join(key + ".scn")
 		var baked: Node3D
@@ -288,7 +293,7 @@ func _merge(index: int, layer_name: String, gm: GridMap) -> void:
 				baked = ps.instantiate()
 		if baked == null:
 			baked = await Bakker.bake(gm, load(path), layer_name + "_merged" + suffix, layer_name in hide_top_layers,
-				func(fraction: float): _set_progress(job, fraction), extras, layer_name in fade_layers, layer_name in filled_shadow_layers)
+				func(fraction: float): _set_progress(job, fraction), extras, layer_name in fade_layers, layer_name in filled_shadow_layers, chunk_cells)
 			if not is_inside_tree() or generation != _generation or baked == null:
 				if baked:
 					baked.free()

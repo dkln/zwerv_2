@@ -20,6 +20,13 @@ extends Node
 ## into those chunks too, each with the building cell it hangs on, so they fade with
 ## their own building (DetailNiveau, merge_with).
 ##
+## Viaducts fade the same way: every column of the Grond layer with a cell high above the
+## street (`deck_level`) counts as a small building of its own, so only the part of the deck
+## over the vehicle opens up and its shadow stays. A deck fades only when it lies at
+## least `deck_clearance` above the vehicle, so a vehicle on the deck keeps the road under it.
+## Only the Grond chunks under a fading deck get a fading material, and nothing in them fades
+## below `deck_level`: the street and the foundations under buildings stay.
+##
 ## Blocking is tested along the view direction of the camera (also while the follow
 ## camera swings round for a close-up) from a few points around the vehicle: the
 ## Gebouwen cells those lines pass through block it.
@@ -30,6 +37,12 @@ const Iso = preload("res://scripts/camera/iso_camera.gd")
 @export var follow_camera_path := NodePath("../Volgcamera")
 ## The Gebouwen GridMap whose buildings fade.
 @export var buildings_path := NodePath("../Gebouwen")
+## The Grond GridMap whose viaducts fade.
+@export var ground_path := NodePath("../Grond")
+## Lowest level of the Grond layer (metres) that counts as a deck over the street.
+@export var deck_level := 3
+## How far (metres) a deck has to lie above the vehicle to fade.
+@export var deck_clearance := 2.5
 ## Seconds a building takes to fade out or back in.
 @export var fade_time := 0.35
 ## How far a blocking building fades (1 = gone entirely; lower leaves a faint ghost of
@@ -50,13 +63,16 @@ const STEP := 1.0
 
 var _follow: Node
 var _buildings: GridMap
+var _ground: GridMap
 var _building_of := {}              # Vector2i cell (x, z) -> building index
 var _building_cells: Array = []     # building index -> Array[Vector2i] of its cells
 var _building_area: Array[Rect2] = []   # building index -> its ground area (x, z metres)
 var _chunks: Array = []             # [MeshInstance3D, Rect2 ground area] of the merged buildings
 var _chunk_users := {}              # MeshInstance3D -> number of fading buildings on it
 var _variants := {}                 # Material or Shader -> its copy with ZWERVR_FADE
+var _ground_variants := {}          # the same for the Grond chunks: fading only from deck height
 var _is_variant := {}               # the copies themselves (never copied again)
+var _with_deck := {}                # building index -> true if a deck fades with it
 var _fade := {}                     # building index -> current fade (0..1), only while > 0
 var _image: Image
 var _texture: ImageTexture
@@ -66,6 +82,7 @@ var _origin := Vector2i.ZERO        # cell at the texture's corner
 func _ready() -> void:
 	_follow = get_node_or_null(follow_camera_path)
 	_buildings = get_node_or_null(buildings_path) as GridMap
+	_ground = get_node_or_null(ground_path) as GridMap
 	if Engine.is_editor_hint() or _follow == null or _buildings == null or _buildings.get_used_cells().is_empty():
 		set_process(false)
 		return
@@ -103,13 +120,25 @@ func _find_buildings() -> void:
 					open.append(next)
 		_building_cells.append(cells)
 		_building_area.append(area)
+	if _ground:
+		for cell in _ground.get_used_cells():
+			if cell.y < deck_level:
+				continue
+			var flat := Vector2i(cell.x, cell.z)
+			lowest = Vector2i(mini(lowest.x, flat.x), mini(lowest.y, flat.y))
+			highest = Vector2i(maxi(highest.x, flat.x), maxi(highest.y, flat.y))
+			if not _building_of.has(flat):
+				_building_of[flat] = _building_cells.size()
+				_building_cells.append([flat] as Array[Vector2i])
+				_building_area.append(Rect2(Vector2(flat) * CELL, Vector2.ONE * CELL))
+			_with_deck[_building_of[flat]] = true
 	_origin = lowest
 	var size := highest - lowest + Vector2i.ONE
 	_image = Image.create(size.x, size.y, false, Image.FORMAT_R8)
 	_texture = ImageTexture.create_from_image(_image)
 
 
-## Buildings on the view lines from around the vehicle to the camera.
+## Buildings and decks on the view lines from around the vehicle to the camera.
 func _blocking() -> Dictionary:
 	var found := {}
 	var vehicle: Node3D = _follow.get("target_node")
@@ -117,6 +146,8 @@ func _blocking() -> Dictionary:
 		return found
 	var centre: Vector3 = vehicle.call("drawn_position") if vehicle.has_method("drawn_position") else vehicle.global_position
 	var to_map := _buildings.global_transform.affine_inverse()
+	var to_ground := _ground.global_transform.affine_inverse() if _ground else Transform3D.IDENTITY
+	var lowest_deck := centre.y + deck_clearance
 	var camera := get_viewport().get_camera_3d()
 	var towards_camera: Vector3 = camera.global_basis.z if camera else Iso.DIRECTION
 	var steps := int(test_height_limit / maxf(towards_camera.y, 0.1) / STEP)
@@ -132,6 +163,10 @@ func _blocking() -> Dictionary:
 				var cell := _buildings.local_to_map(to_map * point)
 				if _buildings.get_cell_item(cell) != GridMap.INVALID_CELL_ITEM:
 					found[_building_of[Vector2i(cell.x, cell.z)]] = true
+				if _ground and point.y > lowest_deck:
+					var ground_cell := _ground.local_to_map(to_ground * point)
+					if ground_cell.y >= deck_level and _ground.get_cell_item(ground_cell) != GridMap.INVALID_CELL_ITEM:
+						found[_building_of[Vector2i(ground_cell.x, ground_cell.z)]] = true
 	return found
 
 
@@ -172,7 +207,8 @@ func _use_fade_materials(index: int, on: bool) -> void:
 	var area := _building_area[index].grow(2.0)
 	for entry in _chunks:
 		var chunk: MeshInstance3D = entry[0]
-		if not is_instance_valid(chunk) or not (entry[1] as Rect2).intersects(area):
+		var is_ground: bool = entry[2]
+		if not is_instance_valid(chunk) or not (entry[1] as Rect2).intersects(area) or (is_ground and not _with_deck.has(index)):
 			continue
 		var users: int = _chunk_users.get(chunk, 0) + (1 if on else -1)
 		if users > 0:
@@ -181,46 +217,52 @@ func _use_fade_materials(index: int, on: bool) -> void:
 			_chunk_users.erase(chunk)
 		if on and users == 1:
 			for surface in chunk.mesh.get_surface_count():
-				chunk.set_surface_override_material(surface, _variant(chunk.mesh.surface_get_material(surface)))
+				chunk.set_surface_override_material(surface, _variant(chunk.mesh.surface_get_material(surface), is_ground))
 		elif not on and users <= 0:
 			for surface in chunk.mesh.get_surface_count():
 				chunk.set_surface_override_material(surface, null)
 
 
-## The chunk meshes of the merged Gebouwen layer (all LOD levels), with their ground area.
+## The chunk meshes of the merged Gebouwen and Grond layers (all LOD levels), with their ground area.
 func _find_chunks() -> void:
 	_chunks.clear()
 	_chunk_users.clear()
 	for layer in get_parent().get_children():
-		if not str(layer.name).begins_with(str(_buildings.name) + "_merged"):
+		var layer_name := str(layer.name)
+		var is_ground := _ground != null and layer_name.begins_with(str(_ground.name) + "_merged")
+		if not is_ground and not layer_name.begins_with(str(_buildings.name) + "_merged"):
 			continue
 		for chunk in layer.get_children():
 			# the shadow-only blocks (layer_baker.gd) are never seen, so they don't fade
 			if chunk is MeshInstance3D and chunk.mesh and chunk.cast_shadow != GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY:
 				var box: AABB = chunk.global_transform * chunk.get_aabb()
-				_chunks.append([chunk, Rect2(box.position.x, box.position.z, box.size.x, box.size.z)])
+				_chunks.append([chunk, Rect2(box.position.x, box.position.z, box.size.x, box.size.z), is_ground])
 
 
 ## Copy of `material` whose shader is compiled with ZWERVR_FADE, made once per material;
-## the material itself if its shader has no fading (not a voxel shader).
-func _variant(material: Material) -> Material:
+## the material itself if its shader has no fading (not a voxel shader). for_ground: it only
+## fades from deck height up.
+func _variant(material: Material, for_ground := false) -> Material:
 	if not material is ShaderMaterial or _is_variant.has(material):
 		return material
-	if _variants.has(material):
-		return _variants[material]
+	var variants := _ground_variants if for_ground else _variants
+	if variants.has(material):
+		return variants[material]
 	var shader: Shader = (material as ShaderMaterial).shader
 	var result: Material = material
 	if shader and "ZWERVR_FADE" in shader.code:
-		if not _variants.has(shader):
+		if not variants.has(shader):
 			var fading := Shader.new()
 			var lines := shader.code.split("\n")
 			lines.insert(1, "#define ZWERVR_FADE")
+			if for_ground:
+				lines.insert(2, "#define ZWERVR_FADE_FLOOR %.1f" % float(deck_level))
 			fading.code = "\n".join(lines)
-			_variants[shader] = fading
+			variants[shader] = fading
 		result = material.duplicate()
-		(result as ShaderMaterial).shader = _variants[shader]
+		(result as ShaderMaterial).shader = variants[shader]
 		_is_variant[result] = true
-	_variants[material] = result
+	variants[material] = result
 	return result
 
 

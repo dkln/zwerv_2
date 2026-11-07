@@ -40,7 +40,7 @@ extends "res://tools/build/city/street_grid.gd"
 ##   z 58 (_schenkviaduct). Railway: two tracks from Centraal Station south and up to a
 ##   viaduct beside the tram (z 93..94), through elevated Station Laan van NOI over the
 ##   street x 128 to the map edge (_railway). The trams of the Grote Marktstraat run through a tunnel with an
-##   underground stop between two ramps (x 27..47, _tram_tunnel); east of it they run under
+##   underground stops at the Grote Markt and the Spui between two ramps (x 26..55, _tram_tunnel); east of it they run under
 ##   a ministry built over the street (x 56..60, _ministry_over_tram). South of the viaducts the Schenkkade (z 96) and the
 ##   neighbourhood along it (_schenkkade). Road bridges over the east arm of the singel
 ##   at the Mauritskade (z 5), the two tram streets and the Zuidwal (z 85).
@@ -1870,7 +1870,6 @@ func _tram_lines() -> void:
 	var stops := [[Vector2i(26, 38), Vector2i(0, 1), "W", "buitenhof"], [Vector2i(23, 47), Vector2i(0, 1), "E", ""],
 		[Vector2i(56, Z2 - 1), Vector2i(1, 0), "S", "korte_voorhout"], [Vector2i(51, Z2 + 2), Vector2i(1, 0), "N", ""],
 		[Vector2i(77, Z2 + 2), Vector2i(1, 0), "N", "tram_malieveld"], [Vector2i(84, Z2 - 1), Vector2i(1, 0), "S", ""],
-		[Vector2i(50, Z3 - 1), Vector2i(1, 0), "S", "tram_spui"], [Vector2i(50, Z3 + 2), Vector2i(1, 0), "N", ""],
 		[Vector2i(77, Z3 + 2), Vector2i(1, 0), "N", "tram_centraal"], [Vector2i(86, Z3 - 1), Vector2i(1, 0), "S", ""]]
 	var stop_cells := {}
 	for st in stops:
@@ -1892,7 +1891,7 @@ func _tram_lines() -> void:
 	for zr in [Z2, Z3]:
 		for x in range(X2 + 4, X_END, 5):
 			var c := Vector2i(x, zr + 2)
-			if stop_cells.has(c) or (zr == Z3 and x > X2 + 2 and x < X3) or (x >= X3 - 1 and x <= X3 + 2) or (x >= X4 - 1 and x <= X5 + 2) or (x >= X6 - 1 and x <= X6 + 2) or (x >= XB - 1 and x <= XB + 2) \
+			if stop_cells.has(c) or (zr == Z3 and x > X2 + 1 and x <= TRAM_TUNNEL_PORTALS[1] + 6) or (x >= X3 - 1 and x <= X3 + 2) or (x >= X4 - 1 and x <= X5 + 2) or (x >= X6 - 1 and x <= X6 + 2) or (x >= XB - 1 and x <= XB + 2) \
 						or (x >= XC - 1 and x <= XC + 2) or (x >= XD - 1 and x <= XD + 2):
 				continue
 			Pr(c.x * 4 + 2.0, c.y * 4 + 1.5, "ov/tram_bovenleiding_mast", "N")
@@ -1944,15 +1943,26 @@ func _paint_trams() -> void:
 
 
 ## Columns of the tram tunnel under the Grote Marktstraat: the portals (ramps of 6 columns
-## lie outside them) and the underground stop.
-const TRAM_TUNNEL_PORTALS := [33, 41]
-const TRAM_TUNNEL_STOP := [35, 40]
+## lie outside them, the west one right after the curve from the Buitenhof, the east one
+## coming up at the Spui by the ministry) and the underground stops: first column, last
+## column, name in `places`.
+const TRAM_TUNNEL_PORTALS := [32, 49]
+const TRAM_TUNNEL_STOPS := [[33, 38, "tram_grote_marktstraat"], [42, 47, "tram_spui"]]
+
+
+## The underground stop of TRAM_TUNNEL_STOPS at column x, or an empty array.
+func _tram_tunnel_stop(x: int) -> Array:
+	for stop: Array in TRAM_TUNNEL_STOPS:
+		if x >= stop[0] and x <= stop[1]:
+			return stop
+	return []
 
 
 ## The tram tunnel under the Grote Marktstraat: two ramps, two portals and a covered part
-## with an underground stop (platforms under the pavements, entrances on the street); the
-## pedestrian street runs on above it. Called after _paint_trams. Rows Z3 and Z3 + 1 hold
-## the tracks; the side of a tile's wall follows from its rotation (front side W: wall north).
+## with two underground stops (platforms under the pavements, entrances on the street); the
+## pedestrian street and the crossing with the Korte Vijverberg run on above it, so the
+## whole Grote Marktstraat is closed on top. Called after _paint_trams. Rows Z3 and Z3 + 1
+## hold the tracks; the side of a tile's wall follows from its rotation (front side W: wall north).
 func _tram_tunnel() -> void:
 	var tunnel_prefix := "tunnel/tramtunnel"
 	for x in range(TRAM_TUNNEL_PORTALS[0] - 6, TRAM_TUNNEL_PORTALS[1] + 7):
@@ -1969,19 +1979,24 @@ func _tram_tunnel() -> void:
 			_pavement.erase(Vector2i(west, z))
 			_pavement.erase(Vector2i(east, z))
 	for x in range(TRAM_TUNNEL_PORTALS[0], TRAM_TUNNEL_PORTALS[1] + 1):
-		_fill(x, Z3, x, Z3 + 1, "plein/plein_klinkers")
+		var stop := _tram_tunnel_stop(x)
+		if x >= X3:
+			for z in [Z3, Z3 + 1]:
+				G(x, z, "weg/kruising_vlak")
+		else:
+			_fill(x, Z3, x, Z3 + 1, "plein/plein_klinkers")
 		if x == TRAM_TUNNEL_PORTALS[0]:
 			G(x, Z3, tunnel_prefix + "_wand_portaal", "W", -6)
 			G(x, Z3 + 1, tunnel_prefix + "_wand_rechts_portaal", "W", -6)
 		elif x == TRAM_TUNNEL_PORTALS[1]:
 			G(x, Z3 + 1, tunnel_prefix + "_wand_portaal", "E", -6)
 			G(x, Z3, tunnel_prefix + "_wand_rechts_portaal", "E", -6)
-		elif x >= TRAM_TUNNEL_STOP[0] and x <= TRAM_TUNNEL_STOP[1]:
+		elif not stop.is_empty():
 			G(x, Z3, tunnel_prefix + "_kaal", "E", -6)
 			G(x, Z3 + 1, tunnel_prefix + "_kaal", "E", -6)
 			# closed at both ends; a tile's front lies west on the north side, east on the south
-			var north_platform := "_perron_begin" if x == TRAM_TUNNEL_STOP[0] else ("_perron_eind" if x == TRAM_TUNNEL_STOP[1] else "_perron")
-			var south_platform := "_perron_eind" if x == TRAM_TUNNEL_STOP[0] else ("_perron_begin" if x == TRAM_TUNNEL_STOP[1] else "_perron")
+			var north_platform := "_perron_begin" if x == stop[0] else ("_perron_eind" if x == stop[1] else "_perron")
+			var south_platform := "_perron_eind" if x == stop[0] else ("_perron_begin" if x == stop[1] else "_perron")
 			G(x, Z3 - 1, tunnel_prefix + north_platform, "W", -6)
 			G(x, Z3 + 2, tunnel_prefix + south_platform, "E", -6)
 		else:
@@ -1991,10 +2006,11 @@ func _tram_tunnel() -> void:
 	for z in [Z3, Z3 + 1]:
 		Pr(TRAM_TUNNEL_PORTALS[0] * 4 + 0.5, z * 4 + 2.0, "hekken/hek_ijzer", "E")
 		Pr(TRAM_TUNNEL_PORTALS[1] * 4 + 3.5, z * 4 + 2.0, "hekken/hek_ijzer", "E")
-	var middle: int = (TRAM_TUNNEL_STOP[0] + TRAM_TUNNEL_STOP[1]) / 2
-	Pr(middle * 4 + 2.0, (Z3 - 1) * 4 + 2.0, "ov/tramtunnel_ingang", "S")
-	Pr(middle * 4 + 2.0, (Z3 + 2) * 4 + 2.0, "ov/tramtunnel_ingang", "N")
-	places["tram_grote_marktstraat"] = Vector2(middle * 4.0 + 2.0, (Z3 + 1) * 4.0)
+	for stop: Array in TRAM_TUNNEL_STOPS:
+		var middle: int = (stop[0] + stop[1]) / 2
+		Pr(middle * 4 + 2.0, (Z3 - 1) * 4 + 2.0, "ov/tramtunnel_ingang", "S")
+		Pr(middle * 4 + 2.0, (Z3 + 2) * 4 + 2.0, "ov/tramtunnel_ingang", "N")
+		places[stop[2]] = Vector2(middle * 4.0 + 2.0, (Z3 + 1) * 4.0)
 
 
 # ------------------------------------------------------------------ finishing

@@ -10,7 +10,8 @@ extends Vehicle
 ## two bogies on the track, so the train bends through a curve car by car. A car is a
 ## Node3D of its own that is drawn between the last two physics steps, like the body.
 ## At a platform (a tile beside the track whose metadata "platform" names its kind) it stops
-## with its nose at the end of the platform for `dwell_time` seconds. At the end of the
+## with its nose at the end of the platform for `dwell_time` seconds, counted from when it
+## stands there: waiting further back (behind another tram, at a red light) is no stop. At the end of the
 ## track it stops and goes back and forth: the driver changes ends, so the last car leads
 ## (the train looks the same from both ends, so nothing jumps), and it moves over to the
 ## track beside it, the one that goes the other way, gradually on its way back.
@@ -48,6 +49,8 @@ extends Vehicle
 const NO_CELL := Vector3i(0, -1000, 0)
 const STOP_MARGIN := 0.5
 const END_MARGIN := 1.5
+## Metres before its stopping spot at which it counts as arrived at a platform.
+const PLATFORM_MARGIN := 1.5
 const VOXEL := 0.125
 ## Voxels under the floor of a car, and of a door leaf along it (rail_vehicles.py).
 const DOOR_SILL_VOXELS := 4
@@ -166,8 +169,8 @@ func _add_doors(props: GridMap, car: Node3D, turned_round: bool) -> void:
 				instance.transform = closed
 				doors.add_child(instance, true)
 				_door_leaves.append({"node": instance, "closed": closed.origin, "centre": wanted,
-					# towards the back of the car for a leaf behind the middle of its door
-					"slide": Vector3(0.0, 0.0, -slide_direction), "outward": Vector3(outward, 0.0, 0.0)})
+					# away from the middle of its door
+					"slide": Vector3(0.0, 0.0, slide_direction), "outward": Vector3(outward, 0.0, 0.0)})
 
 
 ## The leaves on the platform side beside a platform, at `level` of the ground layer.
@@ -185,7 +188,7 @@ func _leaves_beside_platform(level: int) -> Array[Dictionary]:
 func _move_doors(delta: float) -> void:
 	if _door_leaves.is_empty():
 		return
-	var at_platform := _waiting_before != NO_CELL and speed < STANDING_SPEED
+	var at_platform := _stands_at_stopping_spot()
 	var at_end := _route_ended and speed < STANDING_SPEED and _distance > _end_of_track() - END_MARGIN
 	var open := (at_platform or at_end) and _dwell_clock > door_delay and _dwell_clock < dwell_time - door_time - door_delay
 	if open and _door_amount == 0.0:
@@ -199,6 +202,18 @@ func _move_doors(delta: float) -> void:
 	for leaf in _opening_leaves:
 		(leaf.node as Node3D).position = leaf.closed + leaf.outward * DOOR_STEP_OUT * smoothstep(0.0, 1.0, stepped) \
 			+ leaf.slide * DOOR_LEAF_VOXELS * VOXEL * smoothstep(0.0, 1.0, slid)
+
+
+## The route distances start again from the first cell it keeps: so does its stopping spot.
+func _drop_passed_cells() -> void:
+	var distance_before := _distance
+	super()
+	_stop_at -= distance_before - _distance
+
+
+## True once it stands still at the spot it brakes for at a platform.
+func _stands_at_stopping_spot() -> bool:
+	return _waiting_before != NO_CELL and speed < STANDING_SPEED and _distance > _stop_at - PLATFORM_MARGIN
 
 
 ## Where car `index` of _cars rides: between its two bogies on the route.
@@ -230,7 +245,7 @@ func _measure_length() -> void:
 
 
 func _physics_process(delta: float) -> void:
-	if _waiting_before != NO_CELL and speed < STANDING_SPEED:
+	if _stands_at_stopping_spot():
 		_dwell_clock += delta
 		if _dwell_clock >= dwell_time:
 			_served = _waiting_before
