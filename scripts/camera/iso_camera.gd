@@ -23,20 +23,27 @@ static func distance(view_size: float) -> float:
 	return view_size * 0.5 / tan(deg_to_rad(FOV * 0.5))
 
 
-## Camera position that looks at `focus` (world, metres) with `view_size` metres in view.
-static func position(focus: Vector3, view_size: float) -> Vector3:
-	return focus + DIRECTION * distance(view_size)
+## Unit vector from the focus point to the camera when the view is turned to `yaw`
+## (degrees round the vertical; ROTATION.y is the standard view).
+static func direction(yaw := ROTATION.y) -> Vector3:
+	return Basis(Vector3.UP, deg_to_rad(yaw - ROTATION.y)) * DIRECTION
+
+
+## Camera position that looks at `focus` (world, metres) with `view_size` metres in view,
+## the view turned to `yaw` degrees.
+static func position(focus: Vector3, view_size: float, yaw := ROTATION.y) -> Vector3:
+	return focus + direction(yaw) * distance(view_size)
 
 
 ## Configures `cam` as the iso camera (projection, FOV, clip planes, rotation) and
-## places it looking at `focus` with `view_size` metres in view.
-static func place(cam: Camera3D, focus: Vector3, view_size: float) -> void:
+## places it looking at `focus` with `view_size` metres in view, turned to `yaw` degrees.
+static func place(cam: Camera3D, focus: Vector3, view_size: float, yaw := ROTATION.y) -> void:
 	cam.projection = Camera3D.PROJECTION_PERSPECTIVE
 	cam.fov = FOV
 	cam.near = 2.0
 	cam.far = 6000.0
-	cam.rotation_degrees = ROTATION
-	cam.global_position = position(focus, view_size)
+	cam.rotation_degrees = Vector3(ROTATION.x, yaw, ROTATION.z)
+	cam.global_position = position(focus, view_size, yaw)
 
 
 ## Distance (metres) from the camera to the ground plane (y = 0) along the view direction.

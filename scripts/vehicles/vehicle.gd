@@ -66,6 +66,8 @@ extends Node3D
 @export_group("Speed")
 ## Top speed of the vehicle itself (km/h); it never goes faster than the speed limit.
 @export var top_speed_kmh := 130.0
+## Cells it looks ahead over a crossing for whether a heading leads on (see _leads_on).
+const CROSSING_LOOKAHEAD := 4
 ## Speed through a corner (m/s).
 @export var corner_speed := 4.5
 ## Speed through two corners right after each other: turning round, an S-bend (m/s).
@@ -693,7 +695,9 @@ func _plan() -> void:
 		if next_cell != RoadNetwork.NONE:
 			var entered := _crossing_entry_heading()
 			for option in _ways_out(next_cell):
-				if option == -heading or not _may_use(next_cell, option) or network.step(next_cell, option) == RoadNetwork.NONE:
+				if option == -heading or not _may_use(next_cell, option):
+					continue
+				if not _leads_on(next_cell, option):
 					continue
 				if not _may_continue(next_cell, heading, option):
 					continue
@@ -712,6 +716,20 @@ func _plan() -> void:
 		if options.size() > 1:
 			next_heading = _choose_heading(next_cell, heading, options)
 		_append(next_cell, next_heading)
+
+
+## True if leaving `cell` in `heading` leads into a cell it may use, across a crossing
+## to the first cell past it: not into a square for cyclists, a tram ramp or a bus lane,
+## where it would only have to turn round (on a crossing it may not).
+func _leads_on(cell: Vector3i, heading: Vector2i) -> bool:
+	var here := network.step(cell, heading)
+	for step in CROSSING_LOOKAHEAD:
+		if here == RoadNetwork.NONE or not _may_use(here, heading):
+			return false
+		if not network.is_crossing(here):
+			return true
+		here = network.step(here, heading)
+	return true
 
 
 ## The headings it may leave a cell in (RailVehicle: its rails, on a track of its own).

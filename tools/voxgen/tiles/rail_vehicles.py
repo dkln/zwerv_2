@@ -3,7 +3,10 @@ by scripts/vehicles/randstadrail.gd and ns_train.gd). x across, y along with the
 at y=0, z up. A cab car has a driver's cab at the front: a narrowing nose with a windscreen
 that leans back, a sign above it, lamps and a bumper under it and a side window for the
 driver; every car has bogies under it, a band of windows, doors on both sides and something
-on its roof. The last car of a train is a cab car turned round, so that end looks the same.
+on its roof, some cars a pantograph whose contact strip reaches up to the contact wire of
+scripts/world/overhead_lines.gd (`pantograph_top`: the voxel of the strip, counted from
+the wheels; the car stands `model_lift` above the rails). The last car of a train is a cab
+car turned round, so that end looks the same.
 The door leaves are models of their own (props/voertuigen/*_deur): the car has an opening
 for them, scripts/vehicles/rail_vehicle.gd slides them open at a platform."""
 from common import tile
@@ -16,6 +19,13 @@ CAB_LENGTH = 16
 # Voxels of the floor under a car, and of one door leaf along the car (a door has two).
 FLOOR_HEIGHT = 4
 DOOR_LEAF_LENGTH = 5
+# A pantograph: voxels along the car its base takes, and half the width of its head.
+PANTOGRAPH_LENGTH = 14
+PANTOGRAPH_HALF_WIDTH = 6
+# The voxel of the contact strip: the tram's wire hangs 5.5 m above the rails, the train's
+# 5.6 m (the train's model stands 0.375 m higher, model_lift in ns_train.gd).
+TRAM_PANTOGRAPH_TOP = 43
+TRAIN_PANTOGRAPH_TOP = 41
 
 
 def nose_narrowing(along):
@@ -55,9 +65,47 @@ def cab_colour(along, across, up, width, front, window_low, window_high, lower, 
     return None
 
 
-def rail_car(width, length, height, body, lower, band, door, cab, roof_box):
-    """A car: `body` above, `lower` below the windows, a `band` under them, `door` panels."""
-    model = V(width, length, height)
+def voxel_line(model, start, end, colour):
+    """Voxels on the straight line from `start` to `end` ((across, along, up) each)."""
+    steps = max(abs(end[index] - start[index]) for index in range(3))
+    for step in range(steps + 1):
+        share = step / steps if steps else 0.0
+        model.set(*(round(start[index] + (end[index] - start[index]) * share) for index in range(3)), colour)
+
+
+def pantograph(model, width, start, roof, top):
+    """A single-arm pantograph on the roof voxel layer `roof`, its base from `start` along
+    the car: a frame on four insulators, a lower arm rising to the knee at the back, an
+    upper arm leaning forward again to the head, whose contact strip lies in voxel `top`
+    with a horn bent down at each end."""
+    middle = width // 2
+    base = roof + 1
+    for along in range(start, start + PANTOGRAPH_LENGTH):
+        for across in (middle - 3, middle + 3):
+            model.set(across, along, base + 1, "metaal_donker")
+    for along in (start + 1, start + PANTOGRAPH_LENGTH - 2):
+        for across in (middle - 3, middle + 3):
+            model.set(across, along, base, "rubber")
+    hinge = (start + 2, base + 2)
+    knee = (start + PANTOGRAPH_LENGTH - 1, base + 2 + (top - base - 2) * 3 // 5)
+    head = (start + 3, top - 1)
+    for across in (middle - 1, middle + 1):
+        voxel_line(model, (across, hinge[0], hinge[1]), (across, knee[0], knee[1]), "metaal2")
+    voxel_line(model, (middle, knee[0], knee[1]), (middle, head[0], head[1]), "metaal2")
+    # the head: two contact strips across the car, horns bent down at the ends
+    for along in (head[0] - 1, head[0] + 1):
+        for across in range(middle - PANTOGRAPH_HALF_WIDTH, middle + PANTOGRAPH_HALF_WIDTH + 1):
+            model.set(across, along, top, "metaal_donker")
+        for across in (middle - PANTOGRAPH_HALF_WIDTH - 1, middle + PANTOGRAPH_HALF_WIDTH + 1):
+            model.set(across, along, top - 1, "metaal_donker")
+    for across in range(middle - 2, middle + 3):
+        model.set(across, head[0], top - 1, "metaal3")
+
+
+def rail_car(width, length, height, body, lower, band, door, cab, roof_box, pantograph_at=None, pantograph_top=0):
+    """A car: `body` above, `lower` below the windows, a `band` under them, `door` panels;
+    a pantograph from `pantograph_at` along the car, if given, its strip in voxel `pantograph_top`."""
+    model = V(width, length, max(height, pantograph_top + 1))
     floor = FLOOR_HEIGHT
     window_low = floor + 8
     window_high = height - 7
@@ -108,6 +156,8 @@ def rail_car(width, length, height, body, lower, band, door, cab, roof_box):
             for across in (2, width - 3):
                 if abs(along - centre) in (5, 6) or abs(along - centre) in (4, 7):
                     model.set(across, along, 0, "rubber")
+    if pantograph_at is not None:
+        pantograph(model, width, pantograph_at, height - 1, pantograph_top)
     if cab:
         # white headlights on the front, under the windscreen, and red tail lights between
         # them (they burn on the last car, scripts/vehicles/rail_vehicle.gd)
@@ -146,8 +196,9 @@ def ns_door():
 
 @tile("props/voertuigen/randstadrail_kop")
 def randstadrail_cab():
-    """RandstadRail cab car, 11 x 2.625 x 3.5 m: red and grey, with a sloping nose."""
-    return rail_car(21, 88, 29, "lak_zilver1", "lak_rood1", "lak_rood2", "lak_rood1", True, 22)
+    """RandstadRail cab car, 11 x 2.625 x 3.5 m: red and grey, with a sloping nose and a
+    pantograph at its rear end (the middle of the tram, the second car is turned round)."""
+    return rail_car(21, 88, 29, "lak_zilver1", "lak_rood1", "lak_rood2", "lak_rood1", True, 22, 62, TRAM_PANTOGRAPH_TOP)
 
 
 @tile("props/voertuigen/randstadrail_midden")
@@ -164,5 +215,5 @@ def ns_cab():
 
 @tile("props/voertuigen/ns_midden")
 def ns_middle():
-    """NS middle car."""
-    return rail_car(22, 104, 30, "lak_geel1", "lak_geel1", "bord_blauw", "bord_blauw", False, 18)
+    """NS middle car, with the train's pantograph."""
+    return rail_car(22, 104, 30, "lak_geel1", "lak_geel1", "bord_blauw", "bord_blauw", False, 18, 66, TRAIN_PANTOGRAPH_TOP)

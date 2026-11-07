@@ -1493,6 +1493,7 @@ reg_style("appartement_modern",
 _r = pitched_roofs("herenhuis_1600")
 _r.update({"top_lijstgevel": cornice_facade_top("herenhuis_1600", False), "top_lijstgevel_fronton": cornice_facade_top("herenhuis_1600", True),
            "gevel_klok": gable_top("herenhuis_1600", "klok"), "gevel_hals": gable_top("herenhuis_1600", "hals"),
+           "gevel_trap": gable_top("herenhuis_1600", "trap"), "gevel_tuit": gable_top("herenhuis_1600", "tuit"),
            "dak_plat_midden": flat_roof("herenhuis_1600", "")})
 reg_style("herenhuis_1600",
           {"bg_deur": h1600_gf_door, "bg_raam": h1600_gf_window, "verd_raam": h1600_up_window, "verd_balkon": h1600_up_balcony},

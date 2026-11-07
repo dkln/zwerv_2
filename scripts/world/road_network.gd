@@ -226,6 +226,16 @@ func rail_connects(cell: Vector3i, arriving: Vector2i, leaving: Vector2i) -> boo
 	return false
 
 
+## Every cell with rails.
+func rail_cells() -> Array:
+	return _rails.keys()
+
+
+## The rails of `cell`: each a pair of headings out of the cell that it joins.
+func rails(cell: Vector3i) -> Array:
+	return _rails.get(cell, [])
+
+
 ## The headings in which the rails of `cell` leave it, both ways along them.
 func rail_headings(cell: Vector3i) -> Array[Vector2i]:
 	var headings: Array[Vector2i] = []

@@ -321,6 +321,12 @@ func _change_ends() -> void:
 		_cars[index].global_transform = _car_current[index]
 
 
+## It follows its rails to their end (a buffer stop, a platform where it changes ends),
+## so any heading with a cell beyond leads on.
+func _leads_on(cell: Vector3i, heading: Vector2i) -> bool:
+	return network.step(cell, heading) != RoadNetwork.NONE
+
+
 ## On a track of its own it may ride the rails both ways.
 func _ways_out(cell: Vector3i) -> Array[Vector2i]:
 	return network.rail_headings(cell) if own_track else super(cell)

@@ -189,6 +189,10 @@ func _make_scene(node_name: String) -> Node3D:
 	gk.name = "GrondKaart"
 	gk.set_script(load("res://scripts/world/ground_map.gd"))
 	root.add_child(gk)
+	var overhead := Node3D.new()
+	overhead.name = "Bovenleiding"   # contact wires over the tram and train tracks
+	overhead.set_script(load("res://scripts/world/overhead_lines.gd"))
+	root.add_child(overhead)
 	var gb := Node3D.new()
 	gb.name = "Grassprieten"
 	gb.set_script(load("res://scripts/effects/grass_blades.gd"))
@@ -222,8 +226,10 @@ func _save(root: Node3D, scene_path: String) -> void:
 
 
 ## Copies the lanes chosen by hand in the editor (RoadNetwork.LANE_CHOICES on Grond) from
-## the scene about to be overwritten, so building again does not lose them. A choice only
-## counts while the same tile is in its cell (road_network.gd).
+## the scene about to be overwritten, so building again does not lose them; the choices
+## the builder made itself (kit.gd, _choose_lanes, marked "by_builder") are made anew and go
+## over them. A choice only counts
+## while the same tile is in its cell (road_network.gd).
 static func keep_lane_choices(root: Node3D, scene_path: String) -> void:
 	var ground := root.get_node_or_null("Grond")
 	if ground == null or not ResourceLoader.exists(scene_path):
@@ -235,7 +241,13 @@ static func keep_lane_choices(root: Node3D, scene_path: String) -> void:
 			continue
 		for property_index in state.get_node_property_count(node_index):
 			if state.get_node_property_name(node_index, property_index) == property:
-				ground.set_meta(RoadNetwork.LANE_CHOICES, state.get_node_property_value(node_index, property_index))
+				var kept := {}
+				var old_choices: Dictionary = state.get_node_property_value(node_index, property_index)
+				for cell: Vector3i in old_choices:
+					if not old_choices[cell].get("by_builder", false):
+						kept[cell] = old_choices[cell]   # chosen by hand
+				kept.merge(ground.get_meta(RoadNetwork.LANE_CHOICES, {}), true)
+				ground.set_meta(RoadNetwork.LANE_CHOICES, kept)
 
 
 ## Library item id of tile_name in gm, or -1 (then recorded in `missing`).

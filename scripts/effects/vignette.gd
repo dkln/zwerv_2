@@ -18,12 +18,12 @@ const SHADER = preload("res://scripts/effects/vignette.gdshader")
 		strength = value
 		_apply()
 ## Distance from the middle (0) to the edge (1) where the darkening starts.
-@export_range(0.0, 1.5) var inner := 0.4:
+@export_range(0.0, 1.5) var inner := 0.75:
 	set(value):
 		inner = value
 		_apply()
 ## Distance over which it grows to full strength.
-@export_range(0.01, 1.5) var softness := 0.8:
+@export_range(0.01, 1.5) var softness := 0.55:
 	set(value):
 		softness = value
 		_apply()

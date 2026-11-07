@@ -22,6 +22,8 @@ Thumbs.db
 # *.tile.json door de editor-plugin (bij het openen) of tools/build/build_libraries.gd. De item-ID's
 # staan vast in de .tile.json van elke tile, dus opnieuw opbouwen geeft dezelfde ID's.
 assets/libraries/*.res
+# Tijdelijke bestanden die Godot tijdens het opslaan schrijft (bv. gebouwen.res-SsfzfY)
+assets/libraries/*.res-*
 
 # De samengevoegde meshes (scripts/world/layer_baker.gd) staan in user://merged/,
 # buiten het project; die hoeven hier niet genegeerd te worden.

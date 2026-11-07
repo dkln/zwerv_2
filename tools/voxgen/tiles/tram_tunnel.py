@@ -126,7 +126,7 @@ def tram_pavers_curve():
 @tile("props/ov/tramtunnel_ingang")
 def tram_tunnel_entrance():
     """Street entrance of an underground tram stop, 4 x 2 m: a low concrete surround round
-    a dark stairwell (open at the front), under a glass canopy with a blue TRAM sign."""
+    a dark stairwell (open at the front), under a glass canopy."""
     m = V(32, 16, 28)
     for x in range(32):
         for y in range(16):
@@ -146,12 +146,6 @@ def tram_tunnel_entrance():
     for x in range(32):
         for y in range(16):
             m.set(x, y, 22, "metaal_donker" if x in (0, 31) or y in (0, 15) else "glas_helder")
-    for x in range(8, 24):
-        for z in range(23, 28):
-            m.set(x, 0, z, "bord_blauw")
-    pixels, (text_width, _) = text_pixels("TRAM")
-    for (column_index, row_index) in pixels:
-        m.set(16 - text_width // 2 + column_index, 0, 27 - row_index if 27 - row_index >= 23 else 23, "bord_wit")
     return m
 
 

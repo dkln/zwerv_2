@@ -82,6 +82,8 @@ func block(x0: int, z0: int, w: int, d: int, style: String, floors: int, opts :=
 					var s: String = front if sides.has(front) else sides[0]
 					if v == 0:
 						tile_name = gf[_r(x, z, gf.size())] if s == front else gf_side
+						if y0 == 0 and _faces_building(x, z, s):
+							tile_name = _closed_ground_floor(p, tile_name)
 					else:
 						tile_name = upper[_r(x * 7 + v, z, upper.size())]
 					rot = s
@@ -134,10 +136,37 @@ func block(x0: int, z0: int, w: int, d: int, style: String, floors: int, opts :=
 						else: B(x, yd, z, p + "dak_zadel", "E")
 
 
+## Cells of one building along a side of a closed block: each such stretch gets its own
+## height (_ring_floors).
+const RING_SEGMENT := 4
+## Storeys a stretch of a closed block differs from the block's own height, by chance.
+const RING_HEIGHT_STEPS := [0, 1, 0, -1, 0, 1]
+
+
+## Storeys of the closed-block cell (x, z): along each side the block is a row of
+## buildings of RING_SEGMENT cells, each a storey higher or lower now and then (never
+## under 3), the courtyard side as high as the street side; the corners keep the block's
+## height so the roofs turn the corner.
+func _ring_floors(x: int, z: int, x0: int, z0: int, x1: int, z1: int, floors: int) -> int:
+	if floors < 3:
+		return floors
+	var north := z <= z0 + 1
+	var south := z >= z1 - 1
+	var west := x <= x0 + 1
+	var east := x >= x1 - 1
+	if (north or south) and (west or east):
+		return floors
+	var band := 0 if north else (1 if south else (2 if west else 3))
+	var along := (x - x0) if (north or south) else (z - z0)
+	var step: int = RING_HEIGHT_STEPS[_r(x0 * 13 + band * 7 + along / RING_SEGMENT, z0 * 5 + floors, RING_HEIGHT_STEPS.size())]
+	return maxi(floors + step, 3)
+
+
 ## Closed city block (ring 2 deep) at tile (x0, z0), w x d tiles, with sloped roofs that
 ## wrap around the corners. The outer ring faces the street, the inner ring the courtyard.
+## The height varies a little along the sides (_ring_floors; opts "vary": false keeps it even).
 ## opts: gf, upper (street facades), back (courtyard facades), roof_extra (roof variants).
-func ring(x0: int, z0: int, w: int, d: int, style: String, floors: int, opts := {}) -> void:
+func ring(x0: int, z0: int, w: int, d: int, style: String, base_floors: int, opts := {}) -> void:
 	var p := style + "/" + style + "_"
 	var gf: Array = opts.get("gf", ["bg_raam"])
 	var upper: Array = opts.get("upper", ["verd_raam"])
@@ -151,6 +180,7 @@ func ring(x0: int, z0: int, w: int, d: int, style: String, floors: int, opts := 
 			var inner := not outer and (x == x0 + 1 or x == x1 - 1 or z == z0 + 1 or z == z1 - 1)
 			if not outer and not inner:
 				continue
+			var floors := _ring_floors(x, z, x0, z0, x1, z1, base_floors) if opts.get("vary", true) else base_floors
 			if outer:
 				var sides := _sides(x, z, x0, z0, w, d)
 				var key := _corner_pair(sides, "") if sides.size() == 2 else ""
@@ -159,6 +189,8 @@ func ring(x0: int, z0: int, w: int, d: int, style: String, floors: int, opts := 
 						B(x, v, z, p + ("bg_raam_hoek" if v == 0 else "verd_raam_hoek"), CORNER[key])
 					else:
 						var nm: String = gf[_r(x, z, gf.size())] if v == 0 else upper[_r(x + v, z, upper.size())]
+						if v == 0 and _faces_building(x, z, sides[0]):
+							nm = _closed_ground_floor(p, nm)
 						B(x, v, z, p + nm, sides[0])
 				if key != "":
 					B(x, floors, z, p + "dak_schuin_hoek_buiten", CORNER[key])
@@ -262,11 +294,50 @@ func _parking_decks(x0: int, z0: int, w: int, d: int, levels: int) -> void:
 
 const DIR_OFFSET := {"N": Vector2i(0, -1), "S": Vector2i(0, 1), "W": Vector2i(-1, 0), "E": Vector2i(1, 0)}
 
+
+## True if a building already stands on the ground in front of side `side` of cell (x, z):
+## a facade there lies against its wall.
+func _faces_building(x: int, z: int, side: String) -> bool:
+	var offset: Vector2i = DIR_OFFSET[side]
+	return buildings.get_cell_item(Vector3i(x + offset.x, 0, z + offset.y)) >= 0
+
+
+## The ground-floor piece for a facade against another building's wall: no door, porch or
+## shop front there, but plain windows (the first of them the style has), else `wanted`.
+func _closed_ground_floor(p: String, wanted: String) -> String:
+	for option: String in ["bg_raam", "bg_raam_boog", "bg_glas", "bg_dicht"]:
+		if _has(p + option):
+			return option
+	return wanted
+
 ## Sunk ground tile: empties level 0 at (x, z) and places tile_name on level -depth.
 func _trench(x: int, z: int, tile_name: String, depth: int, rot = "S") -> void:
 	ground.set_cell_item(Vector3i(x, 0, z), GridMap.INVALID_CELL_ITEM)
 	G(x, z, tile_name, rot, -depth)
 	occupied[Vector2i(x, z)] = true
+
+
+## Chooses lanes (world headings) and, if given, the road users for the tile in ground
+## cell (x, level, z), as the Build dock does (RoadNetwork.LANE_CHOICES): the headings are
+## turned into the sides of the tile as it is placed. A choice counts while that tile stays.
+func _choose_lanes(x: int, z: int, headings: Array, kinds := [], level := 0) -> void:
+	var cell := Vector3i(x, level, z)
+	var item := ground.get_cell_item(cell)
+	if item < 0:
+		return
+	var turn := ground.get_basis_with_orthogonal_index(ground.get_cell_item_orientation(cell))
+	var sides := []
+	for heading: Vector2i in headings:
+		for side: String in RoadNetwork.LOCAL_HEADINGS:
+			var world: Vector3 = turn * RoadNetwork.LOCAL_HEADINGS[side]
+			if Vector2i(roundi(world.x), roundi(world.z)) == heading:
+				sides.append(side)
+	var choice := {"tile": ground.mesh_library.get_item_name(item), "lanes": sides, "by_builder": true}
+	if not kinds.is_empty():
+		choice["kinds"] = kinds
+	var choices: Dictionary = ground.get_meta(RoadNetwork.LANE_CHOICES, {})
+	choices[cell] = choice
+	ground.set_meta(RoadNetwork.LANE_CHOICES, choices)
 
 
 ## One narrow canal house at tile (x, z) facing front: a ground floor picked by rnd,

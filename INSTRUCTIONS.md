@@ -11,20 +11,41 @@ Er zijn ongeveer 2000 tiles. De kaart van het spel is `scenes/stad.tscn`. Niet e
 ligt daarin: `tools/check/coverage.gd` telt welke wel.
 
 Daarnaast is er het centrum van Den Haag in één scène: `scenes/stad.tscn`, ingedikt op
-een stratengrid en alleen met de bestaande tiles. De Singelgracht loopt er rondom
+een stratengrid en alleen met de bestaande tiles. De herkenbare gebouwen hebben een naam in de
+scene-metadata `places` (bijvoorbeeld `hoftoren`, `de_resident`, `strijkijzer`, `tweede_kamer`,
+`bijenkorf`, `snoeptrommel`, `stadhuis`, `castalia`, `muzentoren`, `provinciehuis`, `koekamp`, `bezuidenhoutseweg`,
+`caballerofabriek`, `busmuseum`, `fokker_terminal`, `fokkerhaven`, `kasteel_binckhorst`). In de oude binnenstad (Noordeinde, Denneweg, Hoogstraat,
+Grote Markt en de noordkant van de Grote Marktstraat) krijgen de winkelhuizen van de klassieke
+stijlen en `herenhuis_1600` meestal een trap-, tuit-, klok- of halsgevel (`_shops` met `gables`,
+`gevel_<soort>` met een zadeldak erachter). De Singelgracht loopt er rondom
 (kades aan beide kanten). Binnen de singel liggen de buurten ongeveer op hun echte
 plek: Paleis Noordeinde met de Paleistuin, het Lange Voorhout met Kloosterkerk en Hotel
-Des Indes, de Denneweg; de Grote Kerk met Hoogstraat en Oude Raadhuis, de Hofvijver
+Des Indes, de Denneweg met aan de zuidkant, op de hoek van het Korte Voorhout en de
+Prinsessegracht, het Ministerie van Financien (vleugels in een glazen huid rond een atrium
+met glazen dak, een wintertuin op de hoek); de Grote Kerk met Hoogstraat en Oude Raadhuis, de Hofvijver
 (met eilandje) met Binnenhof, Ridderzaal, Torentje, Mauritshuis, Buitenhof en
 Gevangenpoort, het Plein met standbeeld en terrassen; de Grote Markt, Chinatown
-(Wagenstraat), de Grote Marktstraat met Bijenkorf en Passage, het Spuiplein met Nieuwe
+(Wagenstraat), de Grote Marktstraat met Bijenkorf en Passage, De Snoeptrommel (het
+snoeppaleis, met The Sting) aan de Dagelijkse Groenmarkt tegenover het Oude Raadhuis, de Tweede Kamer
+aan de zuidkant van het Plein, het Spuiplein met Nieuwe
 Kerk, wit stadhuis en Amare. De Grote Markt heeft cafés en terrassen aan drie kanten. Winkels
 staan langs de Grote Marktstraat (ook aan de noordkant), de Lange Poten (x 48, langs het Plein)
 en het Spui (x 48 ten zuiden van de Grote Marktstraat en de rij aan z 58 bij het Plein). Buiten de Prinsessegracht: het Haagse Bos met Paleis Huis
-ten Bosch, het Malieveld met de Koekamp en het Ministerie van Financien, het
+ten Bosch, het Malieveld (één groot grasveld vanaf de Koningskade) met op de noordwesthoek,
+waar de A12 uitkomt op de Zuid-Hollandlaan (de straat z 29 oost van de Koningskade), het
+Provinciehuis van Zuid-Holland (een strakke schijf uit de jaren zestig met betonbanden aan de
+Zuid-Hollandlaan, een lagere vleugel aan de Koningskade en de Statenzaal achter glas aan het
+Zuid-Hollandplein, met uitzicht over het veld) en ten oosten ervan de Koekamp (bos met paden, het
+hertenkamp achter een hoog hek en een vijver bij de Bezuidenhoutseweg, de straat z 58 langs
+het station), het
 Bezuidenhout met daarachter de Theresiastraat (winkelstraat met portiekflats en een
 kerk) en de Bezuidenhout-Oost (galerijflats, park met vijver, woontoren), Centraal
-Station (stationshal en stationsplein, zonder spoor) met de torens erachter, het
+Station (een hoge glazen stationshal van 5 lagen over de hal en de perrons, en het
+stationsplein met korte rijen fietsenrekken) met de torens erachter (de Hoftoren, 40 lagen met
+een spits, de twee torens van de Ministeries van Justitie en Veiligheid en BZK met een
+loopbrug, 34 lagen, en De Kroon) en daarachter De Resident: Castalia, het Ministerie van
+VWS (twee lichte torens van 28 lagen, elk met twee grachtenpandgevels als top, met het
+overdekte Parnassusplein als glazen atrium ertussen) en de donkere Muzentoren (25 lagen), het
 Beatrixkwartier en de kantoren aan de Prins Clauslaan. De A12 (Utrechtsebaan) komt van
 de oostrand als snelweg binnen, zakt in twee tunnelbakken en gaat overkapt verder van
 de Laan van NOI tot de Juliana van Stolberglaan; op het dek erboven staan de
@@ -36,13 +57,22 @@ Vier bruggen gaan over de oostarm van de singel: Mauritskade, de twee tramstrate
 Zuidwal. Het RandstadRail-viaduct (rijen z 90-91) begint met een helling naast Centraal
 Station en loopt naar het oosten, met haltes bij Centraal en het Beatrixkwartier, en verder
 tot de kaartrand. Twee sporen langs de westkant van het station (x 72-73) sluiten het aan op
-de tramlijn in straat z 58. De trams van de Grote Marktstraat rijden door een tunnel (x 27 tot
-47) met een ondergrondse halte en ingangen op straat; oost daarvan rijden ze onder een ministerie
-door dat over de straat gebouwd is (x 56 tot 60). Treinsporen lopen uit de stationshal
+de tramlijn in straat z 58. De trams van de Grote Marktstraat rijden door een tunnel (helling x 26 tot 31, dicht
+van x 32 tot 49, ook onder de kruising met de Korte Vijverberg, helling op bij het Spui x 50 tot 55) met
+twee ondergrondse haltes (Grote Markt en Spui) en ingangen op straat. Boven de tunnel is de
+Grote Marktstraat voor voetgangers, fietsers en brommers (een strook elke kant op, langs de
+westhelling over de stoep, gekozen per tile in `_grote_marktstraat_lanes`); auto's rijden er
+niet. Oost van de helling rijden alleen trams. De twee sporen langs Centraal (x 72-73) lopen onder
+een lage vleugel van het Ministerie van VWS (De Resident, x 71 tot 74, z 86 tot 89) door, op
+kolommen aan beide kanten. Treinsporen lopen uit de stationshal
 (x 83-84) naar het zuiden, onder het tramviaduct door, en een helling op naar een eigen viaduct
 (z 93-94) tot de kaartrand. Station Laan van NOI (x 119 tot 129) ligt 6 m boven de straat x
 128: trein en tram naast elkaar met drie perrons, elk met een trap. Daaronder de Schenkkade
-(z 96) en een nieuwe strook stad (z 98 tot 106). Ook west van de Koningskade, ten zuiden van de singel, loopt de Schenkkade door, met galerijflats aan de kade, gesloten bouwblokken en een pleintje met kerk en grasveld, Daaronder het zuiden van de stad op drie straten (z 107, 130, 153): de Schilderswijk (west, bouwblokken, marktplein, school, kerk, park met vijver), Laak (midden, galerijflats, hogeschool, kantoren, woontoren) en de Binckhorst (oost, loodsen en fabrieken met containers en tanks). De kaart is zo een vierkant van 176 x 176 cellen (x en z 0..175, 704 x 704 m). Over het vlakke deel van de A12 (x 160) gaat een voetbrug met trappen van de
+(z 96) en een nieuwe strook stad (z 98 tot 106). Ook west van de Koningskade, ten zuiden van de singel, loopt de Schenkkade door, met galerijflats aan de kade, gesloten bouwblokken en een pleintje met kerk en grasveld, Daaronder het zuiden van de stad op drie straten (z 107, 130, 153): de Schilderswijk (west, bouwblokken, marktplein, school, kerk, park met vijver), Laak (midden, galerijflats, hogeschool, kantoren met Het Strijkijzer vrij op het plein, woontoren) en de Binckhorst (oost, naar wat er echt staat: de CaballeroFabriek, het Haags Busmuseum in
+een hal met zaagtanddak naast bedrijfsunits, de Fokker Terminal met zijn hangar van 9 m en
+een groot parkeerterrein, de Fokkerhaven met de oude verffabriek Paulussen en haar
+schoorsteen, een distributieloods met een betoncentrale en Kasteel Binckhorst op een eiland
+in zijn park; loodsen 9 m, bedrijfsunits 6 m hoog). De kaart is zo een vierkant van 176 x 176 cellen (x en z 0..175, 704 x 704 m). Over het vlakke deel van de A12 (x 160) gaat een voetbrug met trappen van de
 kantoren aan de Prins Clauslaan naar de straat z 29. Opnieuw bouwen:
 `tools/godot.sh --headless --script tools/build/build_city.gd`.
 
@@ -52,7 +82,8 @@ langs alle buurten glijden: boven elke buurt zoomt hij in, onderweg weer uit
 (instelbaar: `speed`, `zoom_near`, `zoom_far`, `route`).
 Een toets, muisklik of scroll geeft de camera aan jou (vrije camera); `active` uit =
 meteen zelf rondkijken. Over het beeld ligt een vignet (node `Vignet`,
-`scripts/effects/vignette.gd` + `vignette.gdshader`) dat de randen wat afdonkert
+`scripts/effects/vignette.gd` + `vignette.gdshader`) dat alleen de randen wat afdonkert
+(het begint op 75% van het midden, `inner`; het midden blijft schoon)
 (`strength`, `inner`, `softness`, uit met `enabled`): een laag die over het beeld wordt
 gemengd, zonder schermkopie of blur, dus vrijwel gratis. Er is geen tilt-shift en geen
 scherptediepte (DOF) meer: het beeld is overal scherp.
@@ -212,12 +243,35 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
   (busbaan, trambaan). De generator schrijft deze blokken (`tools/voxgen/traffic.py`,
   één regel per groep tiles; `generate.py --meta` werkt ze bij, ook voor aliassen). De
   bibliotheekbouwer zet ze per item op de MeshLibrary (meta `traffic`).
+- Bovenleiding (node `Bovenleiding`, `scripts/world/overhead_lines.gd`): een rijdraad boven
+  elk tram- en treinspoor, gemaakt uit de `rails` van de grondtiles, dus ook op een kaart die
+  je met de hand bouwt. Hij volgt het spoor door bochten, over kruisingen en wissels en
+  hellingen op en af. Vanaf elke bovenleidingmast in de props (`ov/tram_bovenleiding_mast`,
+  `ov/tram_bovenleiding_dubbel`, `spoor/bovenleidingmast`) loopt een dwarsdraad over de
+  sporen aan de kant waar ze liggen, met een hanger naar elke rijdraad. Zoals bij een echte
+  bovenleiding blijft de rijdraad zelf waterpas, zodat de pantografen hem overal raken;
+  erboven hangt een draagkabel (`carrier_rise` boven de rijdraad bij een dwarsdraad) die
+  tussen de dwarsdraden doorhangt (`sag` over `typical_span`, dieper bij een langere
+  overspanning), met elke 3 m een hanger naar de rijdraad. Onder een gebouw over het spoor
+  loopt alleen de rijdraad door. In tunnels komt geen draad, op de open hellingen ervoor wel.
+  De trams en treinen hebben een eenarmige pantograaf (`tools/voxgen/tiles/rail_vehicles.py`,
+  `pantograph`): de RandstadRail op het achtereind van elke kopwagen (samen in het midden
+  van de tram), de NS-trein op de middelste wagen. Het sleepstuk ligt precies onder de
+  rijdraad (`TRAM_PANTOGRAPH_TOP`, `TRAIN_PANTOGRAPH_TOP`); verander je de draadhoogte, pas
+  die dan mee aan. Ver uitgezoomd
+  (`shown_until`) verdwijnen de draden. In de editor werken ze zich binnen een seconde bij.
+  De arm van een masttile ligt langs zijn x-as: in de bouwer zet `MAST_ARM_ROTATION` de
+  kant waar de arm heen wijst om in een draaiing.
 - Rijrichtingen in de editor: de node `Rijrichtingen` (`scripts/world/lane_arrows.gd`)
   tekent in de editor een pijl per rijstrook op het wegdek. Geel is de richting van de
   tile zelf, lichtblauw is afgeleid uit de omgeving, magenta betekent nog beide kanten
   op (niet te bepalen), groen is met de hand gekozen voor deze tile (richtingen, wie er mag komen of de snelheid). Na het plaatsen of
   draaien van tiles of het kiezen van richtingen werkt hij zich binnen een seconde bij. In het spel verwijdert de node zichzelf. Instelbaar: `show_arrows`,
   `through_walls`, de kleuren.
+- Auto's, busjes, vrachtwagens en bussen kiezen nooit een richting die naar een cel leidt
+  waar ze niet mogen komen (ook niet over een kruising heen: `_leads_on` in `vehicle.gd`),
+  zoals het plein van de Grote Marktstraat of een tramhelling: anders zouden ze op de
+  kruising moeten keren en elkaar vastzetten. Trams en treinen volgen hun rails tot het eind.
 - Verkeer per tile: elke grondtile zegt zelf wie erop mag komen en hoe hard, in `traffic`
   van zijn `.tile.json`: `only` is een lijst van `auto` (ook busjes, vrachtwagens en
   bussen), `brommer`, `fiets` en `voetganger`, voor een baan alleen `bus` of `tram`. `speed`
@@ -326,9 +380,15 @@ Snel starten
    isometrische stand: een perspectiefcamera met een smalle kijkhoek (20°),
    45 graden gedraaid en ~35 graden naar beneden (`scripts/camera/iso_camera.gd`).
    Een echte perspectiefcamera, omdat Godot schaduwsplits en SSR alleen daarmee
-   goed berekent; zoomen = de afstand veranderen. Zet `isometric`
+   goed berekent; zoomen = de afstand veranderen. In de iso-stand: WASD of de
+   pijltjestoetsen = over de kaart schuiven, muiswiel = in- en uitzoomen, Q/E = vloeiend
+   uit- en inzoomen, rechtermuisknop ingedrukt = de kaart verslepen, Z/X = het beeld een
+   kwartslag naar links/rechts draaien, middelste muisknop ingedrukt = vrij draaien, Shift =
+   sneller (`iso_pan_speed`, `iso_zoom_step`, `iso_zoom_speed`, `iso_turn_speed`,
+   `iso_turn_sensitivity`; 6 tot 600 m in beeld). Draaien gaat om het punt midden in beeld;
+   de iso-helpers (`iso_camera.gd`: `direction`, `position`, `place`) nemen een draaiing mee. Zet `isometric`
    op de Camera-node uit voor een vrije perspectief-camera (rechtermuisknop =
-   kijken, WASD = bewegen, Q/E = omlaag/omhoog, Shift = sneller).
+   kijken, WASD = bewegen, Q/E = omlaag/omhoog, Shift = sneller, muiswiel = snelheid).
    `iso_size` bepaalt hoeveel meter van de kaart in beeld is.
 
 Vox Tiles-scene en editor-weergave: bovenaan het Build-paneel staat het vinkje
@@ -601,7 +661,9 @@ modelbestand niet kent:
 - `materials`: alleen voor uitzonderingen in deze tile: per `#rrggbb`-kleur
   een materiaal: `opaque`, `metal`, `panel` (glanzend, zonnepanelen), `glass`,
   `emit` (licht), `water`, `flag` (wapperend), `asphalt`, `stone`, `brick`,
-  `gravel`, `painted`, `paving`, `cobble` of `plaster`. Gaat voor op
+  `gravel`, `painted`, `paving`, `cobble` of `plaster` (`cobble`: kinderkopjes, de tile is
+vlak en de shader tekent onregelmatige keien van ~`cobble_size` voxels in licht slingerende
+rijen, elk een eigen tint met dunne voegen, zonder diepte). Gaat voor op
   materiaallagen en de kleurentabel.
 - `bake` (geschreven door `tools/voxgen/bake.py`): `shadow` (wel of geen schaduw, weg = naar
   hoogte), `merge` (`false`: blijft een losse mesh; `true`: ook een vlag meebaken) en
@@ -750,6 +812,26 @@ Hoe het werkt (techniek)
   tile per laag, `base.gd`), `block()` (rechthoekig gebouw met automatisch de juiste
   hoek-, gevel- en dakstukken), `ring()` (gesloten bouwblok met kappen om de hoek),
   `tower()` (alle in `kit.gd`).
+  Een paar regels houden de stad logisch: een begane grond die tegen de muur van een ander
+  gebouw ligt, krijgt geen deur, portiek of winkelpui maar ramen (`_faces_building` in
+  `kit.gd`, voor `block()` en `ring()`; de achterkant van een rij winkelhuizen heeft altijd
+  ramen); een gebouw dat los in het gras staat, krijgt een pad van zijn ingang naar de
+  dichtstbijzijnde stoep (`_paths_to_lonely_buildings`). Onder een gebouw komt nooit gras:
+  waar je de vloer ziet (glazen hallen, overkappingen, pilaren) ligt bestrating. Hoge glazen
+  hallen (`_tall_hall`) hebben op de begane grond glazen deuren met een eigen afdakje (de
+  stationshal, het atrium van Castalia, de wintertuin, de Statenzaal). Kades hebben overal
+  dezelfde kadebestrating. Het Binnenhof heeft poorten op straatniveau (Stadhouderspoort naar
+  het Buitenhof, naar het Plein, naar de Hofvijver en naar de Grote Marktstraat). Een straat
+  krijgt één thema over zijn hele lengte (`_dress_streets`), zodat strepen en stroken van
+  kruising tot kruising doorlopen. Naast Centraal Station ligt een tramhalte aan de sporen
+  langs het stationsplein (`STATION_TRAM_STOP_ROWS`). Gesloten bouwblokken (`ring()`)
+  zijn langs elke kant een rij panden van 4 cellen die soms een laag hoger of lager zijn
+  (`_ring_floors`, nooit onder 3, de hoeken op de blokhoogte; `"vary": false` houdt het
+  blok vlak); in een winkelrij is af en toe een pand een laag hoger. Daken krijgen waar het
+  klopt installaties (`_roof_equipment`): kantoren luchtbehandeling, koelunits en
+  installatiedaken, flats zonnepanelen en ventilatiekappen, loodsen en fabrieken grote
+  zonnepanelenvelden, huizen zonnepanelen op het zuid- of westdakvlak en soms een airco;
+  kerken, musea en monumenten (`BARE_ROOF_STYLES`) blijven kaal.
 - `tools/check/coverage.gd`: telt welke tiles in de stad liggen.
 - `tools/shots/shot_tiles.gd` / `tools/shots/shot_scene.gd` / `tools/shots/shot_iso.gd`: maken
   screenshots van tiles of scenes, ook isometrisch (voor controle).

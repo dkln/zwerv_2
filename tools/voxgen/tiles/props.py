@@ -317,16 +317,24 @@ def bike_rack():
     return m
 
 
+# Slots of a full bike rack (voxels along the rack) that hold a bicycle, and their colours:
+# one slot stays empty, so the row reads as separate bicycles.
+RACK_BIKES = [(2, "fiets_zwart"), (7, "fiets_rood"), (12, "fiets_zwart"), (17, "fiets_blauw"), (27, "fiets_zwart"), (32, "fiets_zwart")]
+# How far every other bicycle stands further forward (a Dutch high-low rack): so the
+# handlebars of neighbours never touch.
+RACK_STAGGER = 4
+
+
 @tile("props/fietsen/fietsenrek_vol")
 def bike_rack_full():
-    """Bike rack filled with eight bicycles parked front-to-back."""
-    m = V(32, 18, 10)
-    m.paste(bike_rack(), 0, 7, 0)
-    colors = ["fiets_zwart", "fiets_rood", "fiets_blauw", "fiets_zwart",
-              "fiets_zwart", "fiets_blauw", "fiets_rood", "fiets_zwart"]
-    for i, c in enumerate(colors):
-        # rotated bicycle: 6 wide, 16 deep
-        m.paste(bicycle(c).rot90(1), i * 4 - 1, 1, 0)
+    """Bike rack with six bicycles parked front-to-back, one slot free: every other bicycle
+    stands further forward (a high-low rack), so the handlebars of neighbours lie apart."""
+    m = V(36, 22, 10)
+    m.paste(bike_rack(), 2, 9, 0)
+    for index, (slot, colour) in enumerate(RACK_BIKES):
+        forward = RACK_STAGGER if index % 2 else 0
+        # rotated bicycle: 6 wide, 16 deep; its frame lies in the middle of the 6
+        m.paste(bicycle(colour).rot90(1), slot - 3, 1 + forward, 0)
     return m
 
 

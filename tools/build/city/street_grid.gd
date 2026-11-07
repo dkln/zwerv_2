@@ -153,9 +153,9 @@ func _auto_kerbs() -> void:
 ## Dresses the lanes of the demo city streets: every intersection gets a control on its
 ## north-south approaches (stop line with STOP, give-way teeth, zebra crossing with piano
 ## stripes) and turn arrows with block markings on its east-west approaches; every
-## street section between two intersections gets a theme (bicycle street, cycle lanes,
-## no overtaking, one-way with parking, old asphalt with a speed table, drains and
-## manholes, other line types); one street carries a tram.
+## street gets a theme for its whole length (bicycle street, cycle lanes, no overtaking,
+## one-way with parking, old asphalt with speed tables, drains and manholes, other line
+## types), dressed section by section between the intersections; one street carries a tram.
 const STREET_THEMES := ["standaard", "fietsstraat", "fietsstroken", "inhaalverbod", "eenrichting", "oud", "lijnen", "fietsstrook", "klinkers"]
 const ARROWS := ["rijstrook_pijl_rechtdoor", "rijstrook_pijl_links", "rijstrook_pijl_rechts", "rijstrook_pijl_rechtdoor_links", "rijstrook_pijl_rechtdoor_rechts"]
 
@@ -184,10 +184,10 @@ func _dress_streets() -> void:
 			var prev: Vector2i = run[-1] if not run.is_empty() else Vector2i(-9999, -9999)
 			var step := Vector2i(1, 0) if horizontal else Vector2i(0, 1)
 			if not run.is_empty() and c != prev + step:
-				var theme: String = "tram" if horizontal and run[0].y == tram_row else STREET_THEMES[section % STREET_THEMES.size()]
-				# bike lanes and bike streets only on sections long enough to read as such
-				if run.size() < 6 and theme in ["fietsstraat", "fietsstroken", "fietsstrook"]:
-					theme = "standaard"
+				# one theme for the whole street (its row or column), so its lines and lanes
+				# run on from crossing to crossing instead of changing at every one
+				var street_line: int = run[0].y if horizontal else run[0].x
+				var theme: String = "tram" if horizontal and run[0].y == tram_row else STREET_THEMES[(street_line * 7 + (0 if horizontal else 4)) % STREET_THEMES.size()]
 				_dress_section(run, horizontal, theme, inter, section)
 				section += 1
 				run = []

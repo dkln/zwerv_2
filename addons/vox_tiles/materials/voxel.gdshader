@@ -25,7 +25,8 @@ uniform float asphalt_colour_check : hint_range(0.0, 1.0) = 1.0;
 // 0 = off, 1 = blocks (every voxel a stone), 2 = brick (walls: the generator's bond,
 // bricks of 3 x 1 voxels, every course shifted by 2; floors = blocks),
 // 3 = gravel (small round pebbles), 4 = tiles (floors: tiles of tile_size voxels),
-// 5 = cobbles (floors: domed stones of 2 x 2 voxels with joints between them)
+// 5 = cobbles (floors: irregular flat stones of about cobble_size voxels in wandering rows,
+//     each its own shade, thin joints between them, no depth)
 uniform int relief_kind = 0;
 uniform float relief_strength : hint_range(0.0, 1.0) = 0.5;   // how far the edges round off
 uniform float relief_joint : hint_range(0.0, 1.0) = 0.35;     // how dark the joints are
@@ -37,6 +38,8 @@ uniform float brick_scale = 2.0;
 uniform vec2 block_size = vec2(3.0, 1.5);
 // tiles (relief_kind 4, pavement): square tiles of this many voxels
 uniform float tile_size = 4.0;
+// cobbles (relief_kind 5): about this many voxels per stone
+uniform float cobble_size = 1.6;
 // finer than a voxel, in world coordinates: hairline cracks and pits
 uniform float cracks : hint_range(0.0, 1.0) = 0.0;
 uniform float pits : hint_range(0.0, 1.0) = 0.0;
@@ -178,10 +181,7 @@ float relief(vec2 uv, vec3 t, vec3 b, bool wall, inout vec3 n, inout vec3 c) {
 		size = vec2(tile_size);
 		joint = 0.05;
 	} else if (kind == 5) {
-		// cobbles of 2 x 2 voxels on a grid of 3, every row shifted by 2 (the joint is
-		// already sunk in the geometry)
-		q.x += mod(floor(uv.y / 3.0), 2.0) * 2.0;
-		size = vec2(3.0);
+		size = vec2(cobble_size);
 	}
 	vec2 cell = floor(q / size);
 	vec2 f = fract(q / size) - 0.5;   // -0.5 .. 0.5 within the stone
@@ -203,14 +203,33 @@ float relief(vec2 uv, vec3 t, vec3 b, bool wall, inout vec3 n, inout vec3 c) {
 		// subtle to read
 		c *= 1.0 + dot(d, vec2(-0.7, -0.7)) * 0.8 * relief_strength * visible;
 	} else if (kind == 5) {
-		vec2 s = fract(q / 3.0) * 3.0;          // 0..3, the stone lies on 0..2
-		vec2 d = (s - 1.0) * 0.5;               // -0.5 .. 0.5 across the stone
-		bool stone = s.x < 2.0 && s.y < 2.0;
-		slope = stone ? d * 1.6 : vec2(0.0);
-		edge = stone ? (0.5 - max(abs(d.x), abs(d.y))) * 2.0 : 0.0;
-		joint = 0.12;
-		// every cobble its own shade (the tiles are flat colours)
-		c *= 1.0 + (hash_f(floor(q / 3.0)) - 0.5) * 0.28 * visible;
+		// irregular cobbles: the nearest of a jittered grid of stone centres, the rows
+		// wandering a little; flat, so only the joints and a shade per stone
+		vec2 p = uv / cobble_size;
+		p.x += sin(p.y * 0.9) * 0.35;
+		vec2 ip = floor(p);
+		vec2 fp = fract(p);
+		float nearest = 8.0;
+		float second = 8.0;
+		vec2 stone_cell = ip;
+		for (int j = -1; j <= 1; j++) {
+			for (int i = -1; i <= 1; i++) {
+				vec2 g = vec2(float(i), float(j));
+				vec2 centre = g + vec2(hash_f(ip + g), hash_f(ip + g + 3.7)) * 0.8 + 0.1;
+				float d = length(centre - fp);
+				if (d < nearest) {
+					second = nearest;
+					nearest = d;
+					stone_cell = ip + g;
+				} else if (d < second) {
+					second = d;
+				}
+			}
+		}
+		slope = vec2(0.0);
+		edge = (second - nearest) * 0.5 * cobble_size;   // voxels to the joint
+		joint = 0.08;
+		c *= 1.0 + (hash_f(stone_cell) - 0.5) * 0.34 * visible;
 	} else {
 		vec2 e = (0.5 - abs(f)) * size;
 		vec2 af = 1.0 - smoothstep(vec2(0.0), vec2(joint * 3.0), e);

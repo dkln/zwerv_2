@@ -394,20 +394,14 @@ def street_pavers_gutter():
 
 
 def cobble_tile(top=ROAD):
-    """Cobblestone surface with recessed joints; 3x3-voxel stones, rows offset by 2 voxels."""
+    """Cobblestone surface (kinderkopjes), flat: the stones, their shades and the joints
+    between them are drawn by the voxel shader (relief kind 5, materials of the cobble
+    class), irregular and without depth. A few shades of stone per voxel keep some
+    texture from far away, where the shader's pattern fades out."""
     m = new()
     for y in range(T):
         for x in range(T):
-            row = y // 3
-            xx = x + (row % 2) * 2
-            joint = (y % 3 == 2) or (xx % 3 == 2)
-            if joint:
-                column(m, x, y, top - 1, "kei_voeg")
-                if top - 1 <= 0:
-                    m.set(x, y, 0, "kei_voeg")
-            else:
-                c = pick(["kei1", "kei2", "kei3", "kei4"], xx // 3, row, 0, 22)
-                column(m, x, y, top, c)
+            column(m, x, y, top, pick(["kei2", "kei2", "kei3", "kei1"], x, y, 0, 22))
     return m
 
 
