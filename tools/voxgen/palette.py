@@ -151,6 +151,8 @@ _ENTRIES = [
     ("fiets_geel", (246, 206, 72)), ("fiets_koraal", (238, 112, 98)), ("fiets_zadel", (112, 70, 44)),
     # house colours of the two parody supermarkets (DERREK red, ALFRED STEYHN light blue)
     ("winkel_rood", (222, 24, 40)), ("winkel_lichtblauw", (44, 168, 228)),
+    # the dark blue of the ME's vans, with its darker sill
+    ("lak_blauw1", (24, 36, 78)), ("lak_blauw2", (16, 24, 56)),
 ]
 
 # Lit letters and emblems of the facade signs (details/tekst): for each colour below a
@@ -302,7 +304,7 @@ _SURFACE_GROUPS = {
     "plaster": ("stuc",),
     # painted metal: lamp posts, bollards, road signs
     "painted": ("amsterdamgroen", "bord_blauw", "bord_geel", "bord_groen", "bord_oranje", "bord_rood",
-                "bord_wit", "bord_zwart", "autolak", "lak_rood", "lak_wit", "lak_geel", "lak_zilver"),
+                "bord_wit", "bord_zwart", "autolak", "lak_rood", "lak_wit", "lak_geel", "lak_zilver", "lak_blauw"),
 }
 
 

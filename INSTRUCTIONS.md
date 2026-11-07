@@ -161,7 +161,8 @@ voorwielen (`front_wheel_model`/`front_wheel_radius`: elk voertuig kan voorwiele
 krijgen; die rollen in hun eigen tempo).
 
 Hulpdiensten (`emergency`: politie, ME, ambulance, brandweer; modellen in
-`tools/voxgen/tiles/emergency_vehicles.py`, met de Nederlandse striping en een lichtbalk) hebben
+`tools/voxgen/tiles/emergency_vehicles.py`, met de Nederlandse striping en een lichtbalk; de ME-busjes donkerblauw (`lak_blauw`) met
+wit-oranje striping tussen witte lijnen) hebben
 een sirene (zonder geluid; de enige audio is de muziek van intro en menu en de menugeluiden) en blauwe zwaailichten (`beacon_positions`: links en rechts om beurten, met een blauw
 licht op de omgeving). Ze gaan vanzelf aan en uit (`siren_duty`, `SIREN_ON_SECONDS`,
 `SIREN_OFF_SECONDS`), met `set_siren`/`toggle_siren`, of met S terwijl de volgcamera het voertuig
@@ -418,11 +419,13 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
   overslaan". De sterren fonkelen. Muziek: `assets/audio/muziek/intro.mp3`; de intro loopt op die
   muziek (de klok is waar de muziek is): het logo fadet in van 6 tot 8 s, heel groot, bijna buiten
   beeld, en krimpt langzaam naar zijn normale formaat tot de eerste grote inzet (16,0 s):
-  daar wijkt het in 2,5 s de diepte in en fadet het daarbij uit (`LOGO_SECONDS`), en komt de
-  tekst op, de
+  daar wijkt het in 2,5 s de diepte in en fadet het daarbij uit (`LOGO_SECONDS`), met een
+  plop (`UiSounds` "plop") als het verdwijnt, en komt de tekst op, de
   zwerver op de tweede (63,9 s), zijn vragen direct na de stilte (111,5 s), de slotzin op het
   rustige slot (142,2 s), het menu waar de muziek uitfadet (172,5 s; `LINE_IN_AT` …
-  `END_AT`, `CRAWL_CUES`). Bij het einde of overslaan loopt de muziek door in het menu en
+  `END_AT`, `CRAWL_CUES`). Zo traag als de muziek toelaat: weinig ruimte tussen de alinea's
+  (`PARAGRAPH_GAP`), en de laatste alinea rolt niet van boven weg maar komt in de verte tot
+  rust (`CRAWL_REST`) terwijl het verhaal de laatste `CRAWL_FADE` s uitfadet. Bij het einde of overslaan loopt de muziek door in het menu en
   fadet daar in 2 s uit, terwijl de menumuziek infadet. Met het CRT-beeld en dezelfde storingen als het menu
   (rollende band, VHS-tracking; `CrtDisturbance`). De hele intro duurt zo lang als de muziek: 172,5 s. Test: `tools/check/intro_test.gd` (met `-- volledig`:
   de hele intro, met de gemeten duur).
@@ -447,7 +450,25 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
   strook en botsen ze: de voertuigen worden wrakken (RigidBody3D met een box-collider ter grootte
   van het voertuig, hun massa en snelheid, een sprong en een draai) die over het gras (een
   vloer-collider) stuiteren, met scherven en stof; wat erachter rijdt en een wrak raakt,
-  botst ook; na `WRECK_SECONDS` verdwijnen ze (`Trekkers` en `Politie` in het kaartje). De voorgrond tot Centraal is grasland
+  botst ook; na `WRECK_SECONDS` verdwijnen ze. Trekkers vliegen bij een botsing in de fik: vlammen van gloeiende
+  blokjes, een rookkolom en een flakkerend oranje licht op het wrak (`menu_fire.gd` op
+  `BURNING_SIZE`); ze branden `BURNING_WRECK_SECONDS`, het vuur dooft in de laatste
+  `WRECK_DIE_SECONDS`, en de laatste rook drijft nog even na
+- Hoe langer het menu openstaat, hoe ellendiger het erachter wordt: de chaos groeit in
+  `CHAOS_SECONDS` (240 s) van 0 naar 1; de colonnes komen tot `CHAOS_PACE` (3×) zo vaak en
+  tot `CHAOS_CROWD` (1,8×) zo lang, botsingen worden waarschijnlijker (`CRASH_CHANCE` per
+  colonne, van/tot), er branden meer daken tegelijk (een extra brand bij elk van `FIRE_AT`)
+  en ze branden heviger (`fury` tot `CHAOS_FURY`). Naast trekkers en politie/ME rijden er
+  ook hulpdiensten (`Hulpdiensten`: ambulances en brandweerauto's, de eerste na zo'n 40 s,
+  vooral brandweer als er iets brandt) op een eigen strook (`LANE_OFFSETS`); ook zij komen
+  bij meer chaos de trekkers tegemoet.
+- Brand in de skyline (`scripts/effects/menu_fire.gd`): na 30 s vat ergens rond Centraal een
+  dak vlam (een dak van de Gebouwen-GridMap in beeld, op de achtergrond): vlammen van gloeiende
+  blokjes, een dikke rookkolom van donkere blokjes die met de wind meedrijft en een flakkerend
+  oranje licht. Hij wordt steeds groter: hij begint klein (`START_SHARE`) en breidt zich uit
+  tot `FULL_SIZE` keer een dak, met meer vlammen, meer rook en een feller, verder licht; na
+  45 tot 75 s dooft hij, de rook trekt langzaam weg, en na een pauze breekt
+  er ergens anders brand uit (`Trekkers` en `Politie` in het kaartje). De voorgrond tot Centraal is grasland
   (grastiles in de grove `_lod2`-versie, met wuivende grasplukjes van de grassprieten-shader in
   drie banden naar afstand, over de hele strook; de voorste strook, van de camera tot zo'n
   65 m, is water met reflectie en een oever aan de overkant, `DITCH_ROWS`; alleen gewoon water,
@@ -478,9 +499,9 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
   omgekeerd (`_play_exit`): de knoppen faden weg, de titel schuift naar links uit beeld, alles
   vervaagt naar inktblauw met een sterke trackingstoring, en het laadscherm van de stad (ook
   inktblauw) neemt het over.
-  Muziek: `assets/audio/muziek/menu.mp3`, heel en in een lus, die bij het openen in 2,5 s infadet en
-  bij het verlaten (NIEUW SPEL, AFSLUITEN) in 2 s uitfadet, ook als de stad al opent
-  (`MUSIC`, `MUSIC_VOLUME_DB`, `MUSIC_FADE_IN`, `MUSIC_FADE_OUT`).
+  Muziek: `assets/audio/muziek/menu.mp3`, heel en in een lus, die bij het openen meteen op vol volume
+  begint (geen infade) en bij het verlaten (NIEUW SPEL, AFSLUITEN) in 2 s uitfadet, ook als de
+  stad al opent (`MUSIC`, `MUSIC_VOLUME_DB`, `MUSIC_FADE_OUT`).
   Geluidseffecten (`scripts/ui/ui_sounds.gd`, `UiSounds.play(node, naam)`, in code gemaakt in
   de stijl van de FM-geluidschip van een 16-bit console: twee-operator-FM, snelle
   toonhoogtesweeps, 6-bit korrel; geen samples): `kies` (ander item kiezen: twee snelle heldere

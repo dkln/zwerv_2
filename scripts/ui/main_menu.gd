@@ -26,11 +26,11 @@ const MAP_SCENE := "res://scenes/menu_kaart.scn"
 const MAP_FADE_SECONDS := 1.5
 ## Seconds the menu takes to come up out of the black of the intro.
 const UP_FROM_BLACK := 2.0
-## The music of the menu, played whole and looped; its volume (dB), the seconds it fades in
-## when the menu opens and out when the town opens.
+## The music of the menu, played whole and looped, at full volume from the first moment
+## the menu opens (no fade in: it starts with a bang); its volume (dB) and the seconds it
+## fades out when the town opens.
 const MUSIC := "res://assets/audio/muziek/menu.mp3"
-const MUSIC_VOLUME_DB := -6.0
-const MUSIC_FADE_IN := 2.5
+const MUSIC_VOLUME_DB := 0.0
 const MUSIC_FADE_OUT := 2.0
 const DESIGN_SIZE := Vector2(1280, 720)
 const VERSION := "v0.1.0"
@@ -149,7 +149,7 @@ func _fade_out_music() -> void:
 	fade.tween_callback(music.queue_free)
 
 
-## Plays the menu music, looped as a whole, fading in (imported by the editor; if it has not
+## Plays the menu music, looped as a whole, at once at full volume (imported by the editor; if it has not
 ## been imported yet, read straight from the file).
 func _start_music() -> void:
 	var stream: AudioStream = null
@@ -166,10 +166,9 @@ func _start_music() -> void:
 	_music = AudioStreamPlayer.new()
 	_music.name = "Muziek"
 	_music.stream = stream
-	_music.volume_db = -60.0
+	_music.volume_db = MUSIC_VOLUME_DB
 	add_child(_music)
 	_music.play()
-	create_tween().tween_property(_music, "volume_db", MUSIC_VOLUME_DB, MUSIC_FADE_IN)
 
 
 ## The menu comes in: the title slides in from the left as it fades in, the items follow one
@@ -241,6 +240,11 @@ func _show_map(packed: PackedScene) -> void:
 		_lay_copies(map)
 	_add_moon(map)
 	_set_up_columns(map)
+	# now and then a big fire in the skyline round Centraal (the first after 30 s; more
+	# as the chaos grows)
+	_fires.clear()
+	_menu_seconds = 0.0
+	_fires.append(_make_fire(map, -1.0))
 	# a floor on the grass for the wrecks of a crash
 	var floor_body := StaticBody3D.new()
 	floor_body.name = "Vloer"
@@ -321,30 +325,51 @@ func _drift(delta: float) -> void:
 ## first (from .. to), how many (from .. to), metres apart, speed (m/s), and whether they
 ## bob (tractors on the grass).
 const COLUMN_KINDS := {
+	"Hulpdiensten": {"every": Vector2(25.0, 45.0), "first": Vector2(38.0, 45.0), "count": Vector2i(1, 3), "spacing": 13.0, "speed": 15.0, "bob": false},
 	"Trekkers": {"every": Vector2(20.0, 35.0), "first": Vector2(9.0, 11.0), "count": Vector2i(6, 12), "spacing": 9.0, "speed": 6.0, "bob": true},
 	"Politie": {"every": Vector2(15.0, 30.0), "first": Vector2(1.5, 2.0), "count": Vector2i(2, 5), "spacing": 11.0, "speed": 12.0, "bob": false},
 }
 ## Metres to each side of the camera a column starts and ends (just out of view), and the
 ## height of the grass they drive on.
 const COLUMN_REACH := 60.0
-## Lanes: the police drive on the line of the map ("z"), the tractors this many metres
-## further; now and then (CRASH_CHANCE, when tractors are on their way) the police come the
-## other way on the tractors' lane, and where they meet they crash (see _crash).
-const TRACTOR_LANE_OFFSET := 4.0
-const CRASH_CHANCE := 0.4
+## Lanes: metres from the line of the map ("z") per column (the ambulances and fire engines
+## nearest, then the police, then the tractors); now and then (CRASH_CHANCE, more as the
+## chaos grows, when tractors are on their way) the police or the emergency services come
+## the other way on the tractors' lane, and where they meet they crash (see _crash).
+const LANE_OFFSETS := {"Hulpdiensten": -3.5, "Politie": 0.0, "Trekkers": 4.0}
+const CRASH_CHANCE := {"Politie": Vector2(0.4, 0.95), "Hulpdiensten": Vector2(0.0, 0.6)}
+## The longer the menu is open, the worse it gets behind it: the chaos grows from 0 to 1
+## over CHAOS_SECONDS; with it the columns come up to CHAOS_PACE times as often and up to
+## CHAOS_CROWD times as long, crashes are likelier, more fires burn at once (a new one at
+## each of FIRE_AT) and they burn fiercer (MenuFire.fury up to CHAOS_FURY).
+const CHAOS_SECONDS := 240.0
+const CHAOS_PACE := 3.0
+const CHAOS_CROWD := 1.8
+const CHAOS_FURY := 1.6
+const FIRE_AT := [0.3, 0.6, 0.85]
 ## A crash: vehicles become wrecks (RigidBody3D with a box collider their size, their mass
 ## and speed, a hop and a spin) that bump and slide over the grass (a floor collider), shards
 ## and dust fly (crash_burst.gd); whatever comes after and drives into a wreck crashes too;
 ## the wrecks go after WRECK_SECONDS. Masses (kg) by vehicle.
 const WRECK_SECONDS := 9.0
-const MASSES := {"trekker": 4500.0, "trekker_rood": 4500.0, "politie": 1300.0, "me_busje": 2500.0}
+## Tractors go up in flames when they crash (an angry farmer's diesel): a fire of glowing
+## cubes and a column of smoke on the wreck (menu_fire.gd, at BURNING_SIZE), with a
+## flickering orange light; they burn BURNING_WRECK_SECONDS, the fire dying down over the
+## last WRECK_DIE_SECONDS, and the smoke drifts on after the wreck has gone.
+const BURNING_SIZE := 0.4
+const BURNING_WRECK_SECONDS := 18.0
+const WRECK_DIE_SECONDS := 5.0
+const MASSES := {"trekker": 4500.0, "trekker_rood": 4500.0, "politie": 1300.0, "me_busje": 2500.0, "ambulance": 3000.0, "brandweer": 14000.0}
 const CrashBurst = preload("res://scripts/effects/crash_burst.gd")
+const MenuFire = preload("res://scripts/effects/menu_fire.gd")
 const COLUMN_GROUND := 0.375
 ## The blue lights: seconds a round of the flashing takes (the left and the right in turn).
 const BEACON_CYCLE := 0.5
 
 var _columns: Array[Dictionary] = []
-var _wrecks: Array[Dictionary] = []   # per wreck: body, age (s)
+var _wrecks: Array[Dictionary] = []   # per wreck: body, age (s), lasts (s); burning: flames, smoke, light
+var _menu_seconds := 0.0
+var _fires: Array[Node3D] = []
 
 
 func _set_up_columns(map: Node) -> void:
@@ -358,7 +383,38 @@ func _set_up_columns(map: Node) -> void:
 			"members": [], "from": Vector3.ZERO, "heading": Vector3.RIGHT, "travelled": 0.0})
 
 
+## 0 .. 1: how bad it has got behind the menu (see CHAOS_SECONDS).
+func _chaos() -> float:
+	return clampf(_menu_seconds / CHAOS_SECONDS, 0.0, 1.0)
+
+
+## More fires as the chaos grows (one more at each of FIRE_AT), all burning fiercer.
+func _spread_fires() -> void:
+	if _fires.is_empty():
+		return
+	var chaos := _chaos()
+	var wanted := 1 + FIRE_AT.filter(func(share: float) -> bool: return chaos >= share).size()
+	if _fires.size() < wanted:
+		var fire := _make_fire(_fires[0].get_parent(), 0.0)
+		_fires.append(fire)
+	for fire in _fires:
+		fire.set("fury", lerpf(1.0, CHAOS_FURY, chaos))
+
+
+func _make_fire(map: Node, first_wait: float) -> Node3D:
+	var fire := MenuFire.new()
+	fire.name = "Brand" if _fires.is_empty() else "Brand%d" % (_fires.size() + 1)
+	fire.grid = map.get_node_or_null("Gebouwen") as GridMap
+	fire.camera = _map_camera
+	if first_wait >= 0.0:
+		fire.set("first_wait", first_wait)
+	map.add_child(fire)
+	return fire
+
+
 func _drive_columns(delta: float) -> void:
+	_menu_seconds += delta
+	_spread_fires()
 	if _map_camera == null:
 		return
 	var time := Time.get_ticks_msec() / 1000.0
@@ -400,7 +456,7 @@ func _drive_columns(delta: float) -> void:
 				if vehicle != null:
 					(vehicle as Node).queue_free()
 			members.clear()
-			column.wait = randf_range(kind.every.x, kind.every.y)
+			column.wait = randf_range(kind.every.x, kind.every.y) / lerpf(1.0, CHAOS_PACE, _chaos())
 	_check_crashes()
 	_age_wrecks(delta, beacon_left)
 
@@ -466,18 +522,52 @@ func _crash(vehicle: Node3D) -> void:
 	var velocity: Vector3 = vehicle.get_meta("snelheid", Vector3.ZERO)
 	body.linear_velocity = velocity * randf_range(0.6, 1.0) + Vector3(0, randf_range(1.5, 3.5), 0)
 	body.angular_velocity = Vector3(randf_range(-1.5, 1.5), randf_range(-4.0, 4.0), randf_range(-1.5, 1.5))
-	_wrecks.append({"body": body, "age": 0.0})
+	var wreck := {"body": body, "age": 0.0, "lasts": WRECK_SECONDS}
+	if String(vehicle.get_meta("model", "")).begins_with("trekker"):
+		_set_on_fire(wreck, size)
+	_wrecks.append(wreck)
 	CrashBurst.spawn(map, body.global_position + Vector3(0, 1.0, 0), Color(0.8, 0.8, 0.82), 0.8)
 	UiSounds.play(self, "terug")
 
 
-## Wrecks keep flashing their blue lights and go after WRECK_SECONDS.
+## A burning tractor wreck: flames and smoke on top of it, an orange flickering light.
+func _set_on_fire(wreck: Dictionary, size: Vector3) -> void:
+	var body: RigidBody3D = wreck.body
+	var flames := MenuFire.make_flames(BURNING_SIZE)
+	var smoke := MenuFire.make_smoke(BURNING_SIZE)
+	var light := OmniLight3D.new()
+	light.name = "Brandgloed"
+	light.light_color = Color(1.0, 0.5, 0.15)
+	light.omni_range = 16.0
+	for part: Node3D in [flames, smoke, light]:
+		body.add_child(part)
+		part.position = Vector3(0, size.y * 0.8, 0)
+	wreck.lasts = BURNING_WRECK_SECONDS
+	wreck.flames = flames
+	wreck.smoke = smoke
+	wreck.light = light
+
+
+## Wrecks keep flashing their blue lights (and burning) and go after their time; the smoke
+## of a burnt-out tractor stays a while, drifting off.
 func _age_wrecks(delta: float, beacon_left: bool) -> void:
 	for wreck: Dictionary in _wrecks.duplicate():
 		wreck.age += delta
 		var body: RigidBody3D = wreck.body
-		if wreck.age > WRECK_SECONDS or not is_instance_valid(body):
+		if wreck.has("flames") and is_instance_valid(body):
+			var burning := clampf((float(wreck.lasts) - float(wreck.age)) / WRECK_DIE_SECONDS, 0.0, 1.0)
+			(wreck.flames as GPUParticles3D).amount_ratio = burning
+			(wreck.smoke as GPUParticles3D).amount_ratio = maxf(burning, 0.3)
+			var flicker := 0.75 + 0.25 * sin(float(wreck.age) * 19.0) * sin(float(wreck.age) * 6.1)
+			(wreck.light as OmniLight3D).light_energy = 4.0 * burning * flicker
+		if wreck.age > wreck.lasts or not is_instance_valid(body):
 			if is_instance_valid(body):
+				if wreck.has("smoke"):
+					# the last smoke drifts off where the wreck was
+					var smoke := wreck.smoke as GPUParticles3D
+					smoke.reparent(body.get_parent())
+					smoke.emitting = false
+					get_tree().create_timer(smoke.lifetime).timeout.connect(smoke.queue_free)
 				body.queue_free()
 			_wrecks.erase(wreck)
 			continue
@@ -493,21 +583,30 @@ func _start_column(column: Dictionary) -> void:
 	var models := holder.get_children().filter(func(child: Node) -> bool: return not child.has_meta("rijdt"))
 	if models.is_empty():
 		return
-	var lane := float(holder.get_meta("z")) + (TRACTOR_LANE_OFFSET if holder.name == "Trekkers" else 0.0)
+	var lane := float(holder.get_meta("z")) + float(LANE_OFFSETS.get(holder.name, 0.0))
 	column.heading = Vector3.RIGHT if randf() < 0.5 else Vector3.LEFT
-	# now and then the police come the other way on the tractors' lane: a crash
-	if holder.name == "Politie" and randf() < CRASH_CHANCE:
+	# now and then the police (or the emergency services) come the other way on the
+	# tractors' lane: a crash
+	var chance: Vector2 = CRASH_CHANCE.get(holder.name, Vector2.ZERO)
+	if randf() < lerpf(chance.x, chance.y, _chaos()):
 		for other: Dictionary in _columns:
 			if other != column and (other.holder as Node).name == "Trekkers" and not (other.members as Array).is_empty():
-				lane = float((other.holder as Node3D).get_meta("z")) + TRACTOR_LANE_OFFSET
+				lane = float((other.holder as Node3D).get_meta("z")) + float(LANE_OFFSETS.Trekkers)
 				column.heading = -(other.heading as Vector3)
 	var line := Vector3(_map_camera.global_position.x, 0.0, lane)
 	column.from = line - (column.heading as Vector3) * COLUMN_REACH
 	column.travelled = 0.0
-	var count := randi_range(kind.count.x, kind.count.y)
+	var count := roundi(randi_range(kind.count.x, kind.count.y) * lerpf(1.0, CHAOS_CROWD, _chaos()))
+	var burning := _fires.any(func(fire: Node3D) -> bool: return fire.call("is_burning"))
 	for index in count:
-		# the police: a car in front, the vans behind; the farmers: green and red at random
-		var model: Node3D = models[0 if index == 0 else 1] if models.size() == 2 and holder.name == "Politie" else models[randi() % models.size()]
+		# the police: a car in front, the vans behind; the farmers: green and red at random;
+		# the emergency services: ambulances and fire engines (mostly fire engines when
+		# something burns)
+		var model: Node3D = models[randi() % models.size()]
+		if models.size() == 2 and holder.name == "Politie":
+			model = models[0 if index == 0 else 1]
+		elif models.size() == 2 and holder.name == "Hulpdiensten":
+			model = models[1 if randf() < (0.75 if burning else 0.3) else 0]
 		var vehicle := model.duplicate() as Node3D
 		vehicle.set_meta("rijdt", true)
 		vehicle.set_meta("model", String(model.name))

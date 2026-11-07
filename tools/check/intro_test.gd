@@ -68,4 +68,53 @@ func _init() -> void:
 					if vehicle.has_meta("rijdt") and (vehicle as Node3D).visible:
 						column_seen = "%s (%s)" % [holder_name, vehicle.name]
 	print("intro ok: colonne rijdt: %s" % column_seen if column_seen != "" else "FOUT: geen colonne gezien")
+	# a crash (forced): the vehicle becomes a wreck that falls on the floor and goes
+	var menu := current_scene
+	var driving: Node3D = null
+	for holder_name in ["Trekkers", "Politie"]:
+		var holder := menu.get_node_or_null("Menukaart/" + holder_name)
+		for vehicle in holder.get_children() if holder else []:
+			if vehicle.has_meta("rijdt") and (vehicle as Node3D).visible:
+				driving = vehicle
+	if driving:
+		var menu_script: Node = menu if menu.has_method("_crash") else menu.find_children("*", "", true, false).filter(
+				func(node: Node) -> bool: return node.has_method("_crash")).front()
+		menu_script.call("_crash", driving)
+		var wreck := driving.get_parent() as RigidBody3D
+		for frame_index in 90:
+			await physics_frame
+		print("intro ok: wrak op %s" % wreck.global_position if wreck and is_instance_valid(wreck) else "FOUT: geen wrak")
+	# the fire: after 30 s (time four times as fast)
+	Engine.time_scale = 4.0
+	var flames := menu.get_node_or_null("Menukaart/Brand/Vlammen") as GPUParticles3D
+	started = Time.get_ticks_msec()
+	while flames and not flames.visible and Time.get_ticks_msec() - started < 20000:
+		await process_frame
+	var fire := menu.get_node_or_null("Menukaart/Brand") as Node3D
+	print("intro ok: brand op %s" % fire.global_position if flames and flames.visible else "FOUT: geen brand")
+	# it grows: wider and more flames after a while
+	var box_at_start := (flames.process_material as ParticleProcessMaterial).emission_box_extents if flames else Vector3.ZERO
+	started = Time.get_ticks_msec()
+	while Time.get_ticks_msec() - started < 5000:
+		await process_frame
+	if flames:
+		var box_later := (flames.process_material as ParticleProcessMaterial).emission_box_extents
+		print("intro ok: brand groeit (%s -> %s)" % [box_at_start, box_later] if box_later.x > box_at_start.x else "FOUT: brand groeit niet")
+	# a tractor that crashes goes up in flames
+	var tractor: Node3D = null
+	started = Time.get_ticks_msec()
+	while tractor == null and Time.get_ticks_msec() - started < 20000:
+		await process_frame
+		for vehicle in menu.get_node("Menukaart/Trekkers").get_children():
+			if vehicle.has_meta("rijdt") and (vehicle as Node3D).visible:
+				tractor = vehicle
+	if tractor:
+		var crasher: Node = menu if menu.has_method("_crash") else menu.find_children("*", "", true, false).filter(
+				func(node: Node) -> bool: return node.has_method("_crash")).front()
+		crasher.call("_crash", tractor)
+		var burning := tractor.get_parent().get_node_or_null("Vlammen") as GPUParticles3D
+		print("intro ok: trekker in de fik" if burning else "FOUT: trekkerwrak brandt niet")
+	else:
+		print("FOUT: geen trekker gezien")
+	Engine.time_scale = 1.0
 	quit()

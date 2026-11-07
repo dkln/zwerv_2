@@ -84,8 +84,15 @@ const LOGO_FADE_IN_AT := 6.0
 const LINE_FADE := 1.2
 const LOGO_AT := 8.0
 const CRAWL_AT := 16.0
-const CRAWL_GONE_AT := 170.0
+## The story rolls to END_AT (where the music fades): the last paragraph does not roll off
+## the top but comes to rest far off at CRAWL_REST (share of the picture's height from the
+## top) and the story fades out over the last CRAWL_FADE seconds; no travel wasted, so it
+## rolls as slowly as the music allows.
 const END_AT := 172.5
+const CRAWL_REST := 0.35
+const CRAWL_FADE := 4.0
+## Pixels between the paragraphs of the story (in its picture).
+const PARAGRAPH_GAP := 26
 ## Paragraphs of STORY and the moment each comes in at the bottom of the screen: the
 ## zwerver on the second big entry, his questions right after the silence, the last
 ## sentence on the calm end. Between them the story rolls evenly.
@@ -116,6 +123,7 @@ var _logo_holder: Control
 var _crawl_text: VBoxContainer   # the story in its picture, rolled up by _play
 var _crawl_screen: ColorRect     # that picture laid on the screen in perspective
 var _leaving := false
+var _plopped := false   # the plop of the vanishing logo has sounded
 var _music: AudioStreamPlayer
 var _twinkles: Array[Vector3] = []   # per star: pace (rad/s), phase, how deep it dims
 var _clock := 0.0
@@ -210,16 +218,22 @@ func _play(time: float) -> void:
 		# fading out the whole way as it goes
 		_logo_holder.modulate.a = fading_in * (1.0 - going)
 	# the story, its paragraphs coming in on their cues
-	_crawl_screen.visible = time >= CRAWL_AT and time < CRAWL_GONE_AT
+	_crawl_screen.visible = time >= CRAWL_AT and time < END_AT
 	if _crawl_screen.visible:
 		_crawl_text.position.y = _crawl_position(time)
+		_crawl_screen.modulate.a = clampf((END_AT - time) / CRAWL_FADE, 0.0, 1.0)
+	# a plop as the logo vanishes in the distance
+	if not _plopped and time >= LOGO_AT + LOGO_HOLD + LOGO_SECONDS * 0.92:
+		_plopped = true
+		if time < LOGO_AT + LOGO_HOLD + LOGO_SECONDS + 0.5:
+			UiSounds.play(self, "plop")
 	if time >= END_AT:
 		_to_menu()
 
 
 ## Where the story stands at `time`: rolled evenly between the cues, each cue a paragraph
 ## of STORY coming in at the bottom of the picture (its top there), from the whole text
-## under the picture at CRAWL_AT to all of it gone over the top at CRAWL_GONE_AT.
+## under the picture at CRAWL_AT to the last paragraph at rest far off (CRAWL_REST) at END_AT.
 func _crawl_position(time: float) -> float:
 	var stops: Array = [[CRAWL_AT, float(CRAWL_PICTURE.y)]]
 	var paragraphs := _crawl_text.get_children()
@@ -229,7 +243,7 @@ func _crawl_position(time: float) -> float:
 		if paragraph_index < paragraphs.size():
 			var paragraph_top: float = (paragraphs[paragraph_index] as Control).position.y
 			stops.append([CRAWL_CUES[paragraph_index], CRAWL_PICTURE.y - paragraph_top])
-	stops.append([CRAWL_GONE_AT, -_crawl_text.size.y])
+	stops.append([END_AT, CRAWL_PICTURE.y * CRAWL_REST - _crawl_text.size.y])
 	for stop_index in range(1, stops.size()):
 		var earlier: Array = stops[stop_index - 1]
 		var later: Array = stops[stop_index]
@@ -403,7 +417,7 @@ func _build_crawl() -> void:
 	picture.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	add_child(picture)
 	_crawl_text = VBoxContainer.new()
-	_crawl_text.add_theme_constant_override("separation", 56)
+	_crawl_text.add_theme_constant_override("separation", PARAGRAPH_GAP)
 	_crawl_text.size = Vector2(CRAWL_PICTURE.x, 0)
 	_crawl_text.position = Vector2(0, CRAWL_PICTURE.y)
 	picture.add_child(_crawl_text)
@@ -415,9 +429,9 @@ func _build_crawl() -> void:
 		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		label.custom_minimum_size = Vector2(CRAWL_PICTURE.x, 0)
 		label.add_theme_font_override("font", font)
-		label.add_theme_font_size_override("font_size", 54)
+		label.add_theme_font_size_override("font_size", 46)
 		label.add_theme_color_override("font_color", GameHud.ACCENT)
-		label.add_theme_constant_override("line_spacing", 6)
+		label.add_theme_constant_override("line_spacing", 4)
 		_crawl_text.add_child(label)
 	_crawl_screen = ColorRect.new()
 	_crawl_screen.name = "Verhaal"

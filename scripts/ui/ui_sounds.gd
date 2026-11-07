@@ -6,7 +6,9 @@ extends RefCounted
 ## - "kies": choosing another item: two quick bright notes going up;
 ## - "doe": doing what an item says, going into a menu (and skipping the intro): a quick
 ##   rising arpeggio of a major chord, the last note ringing on;
-## - "terug": going back or leaving a menu: two softer notes going down.
+## - "terug": going back or leaving a menu: two softer notes going down;
+## - "plop": the ZWERVR logo of the intro vanishing in the distance: a short round tone
+##   whose pitch drops fast, like a cork.
 ## Play one with UiSounds.play(node, "kies"); the sounds are made once and kept.
 
 const MIX_RATE := 22050
@@ -46,9 +48,37 @@ static func _sound(sound_name: String) -> AudioStreamWAV:
 			"terug":
 				# two softer notes going down (a fourth)
 				_sounds[sound_name] = _notes([[880.0, 0.045], [659.3, 0.09]], 1.0, 0.9)
+			"plop":
+				_sounds[sound_name] = _plop()
 			_:
 				return null
 	return _sounds[sound_name]
+
+
+## A plop: a round FM tone (low index) whose pitch drops from 1100 to 180 Hz in a tenth of
+## a second, a sharp attack and a quick decay; held to 6 bits like the others.
+static func _plop() -> AudioStreamWAV:
+	var seconds := 0.12
+	var count := int(seconds * MIX_RATE)
+	var data := PackedByteArray()
+	data.resize(count * 2)
+	var carrier_phase := 0.0
+	var modulator_phase := 0.0
+	for sample_index in count:
+		var share := float(sample_index) / count
+		var pitch := 180.0 + 920.0 * exp(-share * 7.0)
+		carrier_phase += TAU * pitch / MIX_RATE
+		modulator_phase += TAU * pitch / MIX_RATE
+		var value := sin(carrier_phase + 0.8 * exp(-share * 5.0) * sin(modulator_phase))
+		var envelope := clampf(share / 0.04, 0.0, 1.0) * pow(1.0 - share, 2.0)
+		value = roundf(value * envelope * 32.0) / 32.0
+		data.encode_s16(sample_index * 2, int(clampf(value, -1.0, 1.0) * 30000.0))
+	var stream := AudioStreamWAV.new()
+	stream.format = AudioStreamWAV.FORMAT_16_BITS
+	stream.mix_rate = MIX_RATE
+	stream.stereo = false
+	stream.data = data
+	return stream
 
 
 ## Notes one after the other ([pitch Hz, seconds] each), each a short FM tone with the

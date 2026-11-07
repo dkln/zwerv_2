@@ -426,7 +426,8 @@ var _car_meshes := {}   # props item -> its mesh copy, shared by the trams and t
 ## scripts/ui/main_menu.gd): holders with vehicles to copy from (body, wheels, blue lights;
 ## hidden) and metadata "z" (the line they drive along, COLUMN_TRACK_AHEAD metres ahead of
 ## the camera): "Trekkers", angry farmers with their tractors on the way to the Malieveld,
-## and "Politie", a police car and the ME's vans. Per vehicle: [name, props item, lift,
+## "Politie", a police car and the ME's vans, and "Hulpdiensten", ambulances and fire
+## engines. Per vehicle: [name, props item, lift,
 ## wheels ([props item, position] each), blue lights (positions)], after the vehicle scripts.
 const COLUMN_TRACK_AHEAD := 76.0
 const TRACTOR_WHEELS := [
@@ -438,6 +439,9 @@ const CAR_WHEELS := [
 const VAN_WHEELS := [
 	["voertuigen/auto_wiel", Vector3(-0.875, 0.375, 1.5)], ["voertuigen/auto_wiel", Vector3(0.875, 0.375, 1.5)],
 	["voertuigen/auto_wiel", Vector3(-0.875, 0.375, -1.375)], ["voertuigen/auto_wiel", Vector3(0.875, 0.375, -1.375)]]
+const TRUCK_WHEELS := [
+	["voertuigen/auto_wiel_groot", Vector3(-0.9375, 0.5, 2.375)], ["voertuigen/auto_wiel_groot", Vector3(0.9375, 0.5, 2.375)],
+	["voertuigen/auto_wiel_groot", Vector3(-0.9375, 0.5, -2.0)], ["voertuigen/auto_wiel_groot", Vector3(0.9375, 0.5, -2.0)]]
 const COLUMNS := {
 	"Trekkers": [
 		["trekker", "voertuigen/trekker", 0.25, TRACTOR_WHEELS, []],
@@ -445,6 +449,9 @@ const COLUMNS := {
 	"Politie": [
 		["politie", "voertuigen/auto_politie", 0.125, CAR_WHEELS, [Vector3(-0.375, 1.4375, 0.0), Vector3(0.375, 1.4375, 0.0)]],
 		["me_busje", "voertuigen/auto_politie_busje", 0.125, VAN_WHEELS, [Vector3(-0.4375, 2.1875, 1.3125), Vector3(0.4375, 2.1875, 1.3125)]]],
+	"Hulpdiensten": [
+		["ambulance", "voertuigen/auto_ambulance", 0.125, VAN_WHEELS, [Vector3(-0.4375, 2.1875, 1.3125), Vector3(0.4375, 2.1875, 1.3125)]],
+		["brandweer", "voertuigen/auto_brandweer", 0.25, TRUCK_WHEELS, [Vector3(-0.4375, 2.8125, 2.9375), Vector3(0.4375, 2.8125, 2.9375)]]],
 }
 const BEACON_SIZE := Vector3(0.5, 0.15, 0.3)
 const BEACON_COLOUR := Color(0.15, 0.4, 1.0)

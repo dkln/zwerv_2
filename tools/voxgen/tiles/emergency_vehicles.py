@@ -4,7 +4,7 @@ bodies of the sedan, the van and the truck (props.py), and the OV-chipkaart read
 stops (props/ov/ov_incheckpaal).
 
 The emergency vehicles have the Dutch striping on their sides, without lettering: diagonal
-bands (police: blue and orange on white, ambulance: red and blue on yellow, fire service:
+bands (police: blue and orange on white, the ME's dark blue vans: white and orange, ambulance: red and blue on yellow, fire service:
 yellow and white on red), and a light bar of blue glass on the roof. The blue flashing and the siren are not in
 the model: scripts/vehicles/vehicle.gd lights glowing blocks over the light bar
 (`beacon_positions` of the vehicle script) while the siren is on. x across, y along with
@@ -69,10 +69,16 @@ def ministers_car():
 
 @tile("props/voertuigen/auto_politie_busje")
 def riot_van():
-    """ME van: the van in police white with striping, a light bar and
+    """ME van: the van in the ME's dark blue with the police striping on it (diagonal
+    bands of white and orange, edged by a white line above and below), a light bar and
     grilles over the windscreen and the windows."""
-    model = van_body("lak_wit1", "lak_wit2", 18)
-    striping(model, (1, model.sy - 2), (4, 5, 6, 7), ("bord_blauw", "bord_oranje"), "lak_wit1")
+    model = van_body("lak_blauw1", "lak_blauw2", 18)
+    striping(model, (1, model.sy - 2), (4, 5, 6, 7), ("bord_wit", "bord_oranje"), "lak_blauw1")
+    for across in (0, model.sx - 1):
+        for along in range(1, model.sy - 1):
+            for up in (3, 8):
+                if model.get(across, along, up) == P["lak_blauw1"]:
+                    model.set(across, along, up, "bord_wit")
     for across in range(1, model.sx - 1):
         for along in range(5, 9):
             for up in range(10, 16):
