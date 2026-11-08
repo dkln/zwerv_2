@@ -59,7 +59,7 @@ const SEARCHLIGHT_FROM := 0.35
 @export var circle_speed := 22.0
 ## Anticlockwise seen from above (else clockwise).
 @export var anticlockwise := true
-## The node with the time of day (scripts/effects/day_cycle.gd), for the search light.
+## The node with the time of day (scripts/world/day_cycle.gd), for the search light.
 @export var day_cycle: Node
 
 var _main_rotor: MeshInstance3D

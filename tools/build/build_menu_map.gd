@@ -69,7 +69,7 @@ const TRANSPLANTS := [
 ## beside Centraal, which from the menu's camera seemed to float.
 const LEFT_OUT_AREAS := [[Vector2i(71, 86), Vector2i(74, 89)]]
 ## The hour the map shows (night: lit windows and signs).
-const NIGHT_HOUR := 21.5   # a summer night (scripts/effects/day_cycle.gd: dark from about 23:30)
+const NIGHT_HOUR := 21.5   # a summer night (scripts/world/day_cycle.gd: dark from about 23:30)
 ## The camera, as the skyline of the design: low and far off to the north, a narrow lens
 ## looking almost level over the town, so the towers stand flat against the sky low in the
 ## picture, on its right (the menu is on the left); the horizon lies about a quarter of the

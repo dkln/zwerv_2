@@ -1,9 +1,9 @@
 [gd_scene format=3]
 
-[ext_resource type="Script" path="res://scripts/effects/day_cycle.gd" id="1_tiycx"]
+[ext_resource type="Script" path="res://scripts/world/day_cycle.gd" id="1_tiycx"]
 [ext_resource type="Script" path="res://scripts/world/tint_map.gd" id="2_ww54h"]
 [ext_resource type="Script" path="res://scripts/world/ground_map.gd" id="3_l5nmq"]
-[ext_resource type="Script" path="res://scripts/world/traffic_lights.gd" id="4_oadsa"]
+[ext_resource type="Script" path="res://scripts/traffic/traffic_lights.gd" id="4_oadsa"]
 [ext_resource type="Script" path="res://scripts/effects/smoke.gd" id="5_ymlby"]
 [ext_resource type="Script" path="res://scripts/world/overhead_lines.gd" id="6_426qk"]
 [ext_resource type="Script" path="res://scripts/world/tunnel_lights.gd" id="7_sc43j"]

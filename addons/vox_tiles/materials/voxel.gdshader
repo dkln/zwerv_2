@@ -137,7 +137,7 @@ float is_grass(vec3 k) {
 // only the colour. An even grain (60 and 20 cm), each layer only while it is a few
 // pixels big, so there is texture at the usual zoom and no patches from afar; up close,
 // gusts drifting over the grass as lighter bands (t = TIME). The blades themselves are
-// real geometry (scripts/effects/grass_blades.gd).
+// real geometry (scripts/world/grass_blades.gd).
 void grass_feel(vec2 p, float amount, float t, inout vec3 c) {
 	float fw = max(length(fwidth(p)), 1e-4);   // metres per pixel
 	// even grain (no patches): soft noise of 60 and 20 cm, each only while it is at least

@@ -9,9 +9,7 @@ extends VBoxContainer
 ##   var prompts := ActionPrompts.new()
 ##   prompts.set_actions([["SPATIE", "Overslaan"], ["ENTER", "Sneller"]])
 
-const FONT_KEY := "res://assets/fonts/Silkscreen-Bold.ttf"
-const FONT_TEXT := "res://assets/fonts/JetBrainsMono.ttf"
-const FONT_FALLBACK := "res://assets/fonts/Rubik.ttf"
+const UiStyle = preload("res://scripts/ui/ui_style.gd")
 ## Pixels between the panels, and between a key cap and its text.
 const PANEL_GAP := 8
 const KEY_GAP := 10
@@ -68,7 +66,7 @@ func actions() -> Array:
 ## wide as the widest).
 static func _panel(key_text: String, action_text: String) -> PanelContainer:
 	var panel := PanelContainer.new()
-	var style := GameHud._box_style(GameHud.TRANSLUCENT_INK, GameHud.BORDER, 2)
+	var style := UiStyle.box_style(UiStyle.TRANSLUCENT_INK, UiStyle.BORDER, 2)
 	style.content_margin_left = 10
 	style.content_margin_right = 14
 	style.content_margin_top = 10
@@ -88,12 +86,12 @@ static func _panel(key_text: String, action_text: String) -> PanelContainer:
 ## A key cap: the key's name in ink on a light cap with a hard shadow under it.
 static func _key_cap(key_text: String) -> PanelContainer:
 	var key := PanelContainer.new()
-	var key_style := GameHud._box_style(GameHud.TEXT, GameHud.TEXT, 0)
+	var key_style := UiStyle.box_style(UiStyle.TEXT, UiStyle.TEXT, 0)
 	key_style.content_margin_left = 8
 	key_style.content_margin_right = 8
 	key_style.content_margin_top = 4
 	key_style.content_margin_bottom = 4
-	key_style.shadow_color = GameHud.MUTED
+	key_style.shadow_color = UiStyle.MUTED
 	key_style.shadow_offset = Vector2(0, 3)
 	key.add_theme_stylebox_override("panel", key_style)
 	key.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -101,9 +99,9 @@ static func _key_cap(key_text: String) -> PanelContainer:
 	var key_label := Label.new()
 	key_label.text = key_text
 	key_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	key_label.add_theme_font_override("font", _font(FONT_KEY))
+	key_label.add_theme_font_override("font", UiStyle.font(UiStyle.FONT_PIXEL_BOLD))
 	key_label.add_theme_font_size_override("font_size", 14)
-	key_label.add_theme_color_override("font_color", GameHud.INK)
+	key_label.add_theme_color_override("font_color", UiStyle.INK)
 	key.add_child(key_label)
 	return key
 
@@ -111,12 +109,8 @@ static func _key_cap(key_text: String) -> PanelContainer:
 static func _action_label(action_text: String) -> Label:
 	var action := Label.new()
 	action.text = action_text
-	action.add_theme_font_override("font", GameHud._weighted(_font(FONT_TEXT), 400))
+	action.add_theme_font_override("font", UiStyle.weighted(UiStyle.font(UiStyle.FONT_BODY), 400))
 	action.add_theme_font_size_override("font_size", 14)
-	action.add_theme_color_override("font_color", GameHud.TEXT)
+	action.add_theme_color_override("font_color", UiStyle.TEXT)
 	action.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	return action
-
-
-static func _font(path: String) -> Font:
-	return load(path) if ResourceLoader.exists(path) else load(FONT_FALLBACK)

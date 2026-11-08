@@ -148,10 +148,6 @@ func set_floor_text(text: String) -> void:
 	_floor_label.text = text if text != "" else "Select a layer"
 
 
-func set_solo(on: bool) -> void:
-	_solo.set_pressed_no_signal(on)
-
-
 ## The Grond library, used to list the deck tiles.
 func set_library(lib: MeshLibrary) -> void:
 	if lib != _library:

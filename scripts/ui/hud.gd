@@ -1,6 +1,5 @@
 class_name GameHud
 extends CanvasLayer
-const UiSounds = preload("res://scripts/ui/ui_sounds.gd")
 ## The game HUD (the "HUD" node of the city scene), in the pixel style of the design
 ## "HUD — open world" (1280 x 720; everything scales with the window, the corners stay in
 ## the corners):
@@ -32,20 +31,16 @@ const UiSounds = preload("res://scripts/ui/ui_sounds.gd")
 ## one is missing.
 
 const Iso = preload("res://scripts/camera/iso_camera.gd")
+const UiStyle = preload("res://scripts/ui/ui_style.gd")
+const UiSounds = preload("res://scripts/ui/ui_sounds.gd")
+const PixelIcon = preload("res://scripts/ui/widgets/pixel_icon.gd")
+const SegmentBar = preload("res://scripts/ui/widgets/segment_bar.gd")
+const CheckSquare = preload("res://scripts/ui/widgets/check_square.gd")
+const PlayerArrow = preload("res://scripts/ui/widgets/player_arrow.gd")
 
 ## Size of the design; the HUD is laid out at this size and scaled to the window.
 const DESIGN_SIZE := Vector2(1280.0, 720.0)
 const MARGIN := 24.0
-
-const INK := Color("#0B0D1A")
-const PANEL := Color("#141831")
-const BORDER := Color("#343B70")
-const TEXT := Color("#E8E6F0")
-const MUTED := Color("#9AA0C8")
-const ACCENT := Color("#FFB547")
-const SIDE_ACCENT := Color("#47D6C2")
-const TRANSLUCENT_INK := Color(11.0 / 255.0, 13.0 / 255.0, 26.0 / 255.0, 0.82)
-const SHADOW_OFFSET := 5.0
 
 ## The stats in the order they are shown: label (for the value text), colour of a full and of
 ## an empty segment, number of segments, segment height and the icon (PIXEL_ICONS).
@@ -311,12 +306,12 @@ func set_time(hour: float, day := -1) -> void:
 # ------------------------------------------------------------------ building
 
 func _load_fonts() -> void:
-	var fallback: Font = load("res://assets/fonts/Rubik.ttf")
-	var body := _font_file("res://assets/fonts/JetBrainsMono.ttf", fallback)
-	_font_body = _weighted(body, 400)
-	var pixel := _font_file("res://assets/fonts/Silkscreen-Regular.ttf", fallback)
-	var pixel_bold := _font_file("res://assets/fonts/Silkscreen-Bold.ttf", fallback)
-	var title := _font_file("res://assets/fonts/PixelifySans.ttf", fallback)
+	var fallback: Font = load(UiStyle.FONT_FALLBACK)
+	var body := UiStyle.font(UiStyle.FONT_BODY)
+	_font_body = UiStyle.weighted(body, 400)
+	var pixel := UiStyle.font(UiStyle.FONT_PIXEL)
+	var pixel_bold := UiStyle.font(UiStyle.FONT_PIXEL_BOLD)
+	var title := UiStyle.font(UiStyle.FONT_TITLE)
 	# glyphs the pixel fonts lack (◆, €) come from JetBrains Mono
 	if body != fallback:
 		var fallback_fonts: Array[Font] = [body]
@@ -325,41 +320,18 @@ func _load_fonts() -> void:
 				font.fallbacks = fallback_fonts
 	_font_pixel = pixel
 	_font_pixel_bold = pixel_bold
-	_font_title = _weighted(title, 700)
-	_font_title_medium = _weighted(title, 600)
+	_font_title = UiStyle.weighted(title, 700)
+	_font_title_medium = UiStyle.weighted(title, 600)
 
 
-static func _font_file(path: String, fallback: Font) -> Font:
-	if ResourceLoader.exists(path):
-		return load(path)
-	push_warning("hud: font %s missing, using Rubik" % path)
-	return fallback
-
-
-## A variable font at this weight.
-## Extra space between letters (pixels), as letter-spacing in the design.
-static func _spaced(font: Font, spacing: int) -> Font:
-	var variation := FontVariation.new()
-	variation.base_font = font
-	variation.spacing_glyph = spacing
-	return variation
-
-
-static func _weighted(font: Font, weight: int) -> Font:
-	var variation := FontVariation.new()
-	variation.base_font = font
-	variation.variation_opentype = {TextServerManager.get_primary_interface().name_to_tag("wght"): weight}
-	return variation
-
-
-func _label(text: String, font: Font, size: int, colour := TEXT, shadow := 2) -> Label:
+func _label(text: String, font: Font, size: int, colour := UiStyle.TEXT, shadow := 2) -> Label:
 	var label := Label.new()
 	label.text = text
 	label.add_theme_font_override("font", font)
 	label.add_theme_font_size_override("font_size", size)
 	label.add_theme_color_override("font_color", colour)
 	if shadow > 0:
-		label.add_theme_color_override("font_shadow_color", INK)
+		label.add_theme_color_override("font_shadow_color", UiStyle.INK)
 		label.add_theme_constant_override("shadow_offset_x", shadow)
 		label.add_theme_constant_override("shadow_offset_y", shadow)
 		label.add_theme_constant_override("shadow_outline_size", 0)
@@ -367,32 +339,20 @@ func _label(text: String, font: Font, size: int, colour := TEXT, shadow := 2) ->
 	return label
 
 
-static func _box_style(background: Color, border: Color, border_width: int, left_only := false) -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = background
-	style.border_color = border
-	if left_only:
-		style.border_width_left = border_width
-	else:
-		style.set_border_width_all(border_width)
-	style.anti_aliasing = false
-	return style
-
-
 ## A panel of `size` with a border and a hard shadow SHADOW_OFFSET down and to the right.
-func _shadowed_panel(size: Vector2, border: Color, border_width: int, shadow := SHADOW_OFFSET) -> Control:
+func _shadowed_panel(size: Vector2, border: Color, border_width: int, shadow := UiStyle.SHADOW_OFFSET) -> Control:
 	var holder := Control.new()
 	holder.size = size
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var shadow_rect := ColorRect.new()
-	shadow_rect.color = INK
+	shadow_rect.color = UiStyle.INK
 	shadow_rect.position = Vector2(shadow, shadow)
 	shadow_rect.size = size
 	shadow_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	holder.add_child(shadow_rect)
 	var panel := Panel.new()
 	panel.size = size
-	panel.add_theme_stylebox_override("panel", _box_style(PANEL, border, border_width))
+	panel.add_theme_stylebox_override("panel", UiStyle.box_style(UiStyle.PANEL, border, border_width))
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	holder.add_child(panel)
 	return holder
@@ -404,27 +364,27 @@ func _build_player_frame() -> void:
 	_player_frame.position = Vector2(MARGIN, MARGIN)
 	_player_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(_player_frame)
-	var portrait := _shadowed_panel(Vector2(76, 76), ACCENT, 3)
+	var portrait := _shadowed_panel(Vector2(76, 76), UiStyle.ACCENT, 3)
 	_player_frame.add_child(portrait)
 	var person := PixelIcon.new()
 	person.bitmap = PIXEL_ICONS["person"]
-	person.colour = TEXT
+	person.colour = UiStyle.TEXT
 	person.pixel = 6.0
 	person.position = Vector2(17, 17)
 	portrait.add_child(person)
 	var badge_shadow := ColorRect.new()
-	badge_shadow.color = INK
+	badge_shadow.color = UiStyle.INK
 	badge_shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	portrait.add_child(badge_shadow)
 	var badge := PanelContainer.new()
-	var badge_style := _box_style(ACCENT, ACCENT, 0)
+	var badge_style := UiStyle.box_style(UiStyle.ACCENT, UiStyle.ACCENT, 0)
 	badge_style.content_margin_left = 6
 	badge_style.content_margin_right = 6
 	badge_style.content_margin_top = 3
 	badge_style.content_margin_bottom = 3
 	badge.add_theme_stylebox_override("panel", badge_style)
 	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_level_badge = _label("NIV 1", _font_pixel_bold, 12, INK, 0)
+	_level_badge = _label("NIV 1", _font_pixel_bold, 12, UiStyle.INK, 0)
 	badge.add_child(_level_badge)
 	portrait.add_child(badge)
 	# right and bottom edge 10 px outside the portrait, with a 3 px shadow
@@ -516,10 +476,10 @@ func _build_area_banner() -> void:
 	_area_banner.add_theme_constant_override("separation", 4)
 	_area_banner.size = Vector2(400, 0)
 	_area_banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var heading := _label("— NIEUW GEBIED ONTDEKT —", _spaced(_font_pixel, 3), 12, ACCENT)
+	var heading := _label("— NIEUW GEBIED ONTDEKT —", UiStyle.spaced(_font_pixel, 3), 12, UiStyle.ACCENT)
 	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_area_banner.add_child(heading)
-	_area_name = _label("", _font_title, 34, TEXT, 3)
+	_area_name = _label("", _font_title, 34, UiStyle.TEXT, 3)
 	_area_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_area_banner.add_child(_area_name)
 	_area_banner.visible = false
@@ -532,7 +492,7 @@ func _build_minimap() -> void:
 	_minimap_box.size = Vector2(200, MAP_TOP + 240)
 	_minimap_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(_minimap_box)
-	var frame := _shadowed_panel(Vector2(200, 200), BORDER, 3)
+	var frame := _shadowed_panel(Vector2(200, 200), UiStyle.BORDER, 3)
 	frame.position = Vector2(0, MAP_TOP)
 	_minimap_box.add_child(frame)
 	var clip := Control.new()
@@ -550,21 +510,21 @@ func _build_minimap() -> void:
 	_minimap_arrow = PlayerArrow.new()
 	_minimap_arrow.position = clip.size * 0.5
 	clip.add_child(_minimap_arrow)
-	var north := _label("N", _font_pixel_bold, 12, TEXT, 1)
+	var north := _label("N", _font_pixel_bold, 12, UiStyle.TEXT, 1)
 	north.position = Vector2(90, 4)
 	frame.add_child(north)
 	var chips := HBoxContainer.new()
 	chips.add_theme_constant_override("separation", 8)
 	chips.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_minimap_box.add_child(chips)
-	_day_label = _label("DAG 1", _font_pixel, 11, TEXT, 0)
+	_day_label = _label("DAG 1", _font_pixel, 11, UiStyle.TEXT, 0)
 	chips.add_child(_chip([_day_label]))
 	_time_icon = PixelIcon.new()
 	_time_icon.bitmap = ["..###..", ".#####.", "#######", "#######", "#######", ".#####.", "..###.."]
-	_time_icon.colour = ACCENT
+	_time_icon.colour = UiStyle.ACCENT
 	_time_icon.pixel = 12.0 / 7.0
 	_time_icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	_time_label = _label("12:00", _font_pixel, 11, TEXT, 0)
+	_time_label = _label("12:00", _font_pixel, 11, UiStyle.TEXT, 0)
 	chips.add_child(_chip([_time_icon, _time_label]))
 	# right-aligned under the map, 8 px below it
 	chips.resized.connect(func() -> void: chips.position = Vector2(200 - chips.size.x, MAP_TOP + 200 + 8))
@@ -572,16 +532,16 @@ func _build_minimap() -> void:
 	# in an ellipsis)
 	var pin := PixelIcon.new()
 	pin.bitmap = [".###.", "#####", "##.##", "#####", ".###.", "..#..", "..#.."]
-	pin.colour = SIDE_ACCENT
+	pin.colour = UiStyle.SIDE_ACCENT
 	pin.pixel = 14.0 / 7.0
 	pin.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	var lines := VBoxContainer.new()
 	lines.add_theme_constant_override("separation", 2)
 	lines.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_location_wijk = _label("DEN HAAG", _font_pixel, 11, SIDE_ACCENT, 0)
-	_location_street = _label("", _font_body, 12, TEXT, 0)
+	_location_wijk = _label("DEN HAAG", _font_pixel, 11, UiStyle.SIDE_ACCENT, 0)
+	_location_street = _label("", _font_body, 12, UiStyle.TEXT, 0)
 	_location_street.visible = false
-	_location_place = _label("", _font_body, 11, MUTED, 0)
+	_location_place = _label("", _font_body, 11, UiStyle.MUTED, 0)
 	_location_place.visible = false
 	lines.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	lines.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -598,7 +558,7 @@ func _build_minimap() -> void:
 
 func _chip(contents: Array) -> PanelContainer:
 	var chip := PanelContainer.new()
-	var style := _box_style(PANEL, BORDER, 2)
+	var style := UiStyle.box_style(UiStyle.PANEL, UiStyle.BORDER, 2)
 	style.content_margin_left = 8
 	style.content_margin_right = 8
 	style.content_margin_top = 4
@@ -626,7 +586,7 @@ func _build_quest_tracker() -> void:
 
 func _quest_panel(accent: Color, background_alpha: float, vertical_margin: int, separation: int) -> Array:
 	var panel := PanelContainer.new()
-	var style := _box_style(Color(INK, background_alpha), accent, 4, true)
+	var style := UiStyle.box_style(Color(UiStyle.INK, background_alpha), accent, 4, true)
 	style.content_margin_left = 14
 	style.content_margin_right = 14
 	style.content_margin_top = vertical_margin
@@ -641,16 +601,16 @@ func _quest_panel(accent: Color, background_alpha: float, vertical_margin: int, 
 
 
 func _main_quest_panel(quest: Dictionary) -> Control:
-	var parts := _quest_panel(ACCENT, 0.82, 12, 8)
+	var parts := _quest_panel(UiStyle.ACCENT, 0.82, 12, 8)
 	var column: VBoxContainer = parts[1]
 	var header := HBoxContainer.new()
 	header.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var label := _label("◆ " + str(quest.get("label", "VERHAAL")), _spaced(_font_pixel, 2), 11, ACCENT, 0)
+	var label := _label("◆ " + str(quest.get("label", "VERHAAL")), UiStyle.spaced(_font_pixel, 2), 11, UiStyle.ACCENT, 0)
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(label)
-	header.add_child(_label(str(quest.get("distance", "")), _font_pixel, 11, MUTED, 0))
+	header.add_child(_label(str(quest.get("distance", "")), _font_pixel, 11, UiStyle.MUTED, 0))
 	column.add_child(header)
-	var title := _label(str(quest.get("title", "")), _font_title_medium, 19, TEXT, 0)
+	var title := _label(str(quest.get("title", "")), _font_title_medium, 19, UiStyle.TEXT, 0)
 	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	column.add_child(title)
 	var steps := VBoxContainer.new()
@@ -673,7 +633,7 @@ func _main_quest_panel(quest: Dictionary) -> Control:
 		text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		text.add_theme_font_override("normal_font", _font_body)
 		text.add_theme_font_size_override("normal_font_size", 13)
-		text.add_theme_color_override("default_color", MUTED if done else TEXT)
+		text.add_theme_color_override("default_color", UiStyle.MUTED if done else UiStyle.TEXT)
 		text.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		var escaped := str(step.get("text", "")).replace("[", "[lb]")
 		text.text = "[s]%s[/s]" % escaped if done else escaped
@@ -684,11 +644,11 @@ func _main_quest_panel(quest: Dictionary) -> Control:
 
 
 func _side_quest_panel(quest: Dictionary) -> Control:
-	var parts := _quest_panel(SIDE_ACCENT, 0.7, 10, 4)
+	var parts := _quest_panel(UiStyle.SIDE_ACCENT, 0.7, 10, 4)
 	var column: VBoxContainer = parts[1]
-	var label := _label("! " + str(quest.get("label", "ZIJMISSIE")), _spaced(_font_pixel, 2), 11, SIDE_ACCENT, 0)
+	var label := _label("! " + str(quest.get("label", "ZIJMISSIE")), UiStyle.spaced(_font_pixel, 2), 11, UiStyle.SIDE_ACCENT, 0)
 	column.add_child(label)
-	var title := _label(str(quest.get("title", "")), _font_body, 13, TEXT, 0)
+	var title := _label(str(quest.get("title", "")), _font_body, 13, UiStyle.TEXT, 0)
 	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	column.add_child(title)
 	return parts[0]
@@ -697,7 +657,7 @@ func _side_quest_panel(quest: Dictionary) -> Control:
 func _build_money() -> void:
 	_money_panel = PanelContainer.new()
 	_money_panel.name = "Geld"
-	var style := _box_style(TRANSLUCENT_INK, BORDER, 2)
+	var style := UiStyle.box_style(UiStyle.TRANSLUCENT_INK, UiStyle.BORDER, 2)
 	style.content_margin_left = 12
 	style.content_margin_right = 12
 	style.content_margin_top = 8
@@ -710,11 +670,11 @@ func _build_money() -> void:
 	var coin := PixelIcon.new()
 	# a euro sign: a C open to the right with two bars through it
 	coin.bitmap = ["...####", "..#....", "######.", ".#.....", "######.", "..#....", "...####"]
-	coin.colour = ACCENT
+	coin.colour = UiStyle.ACCENT
 	coin.pixel = 16.0 / 7.0
 	coin.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(coin)
-	_money_label = _label("0", _font_pixel, 14, TEXT, 0)
+	_money_label = _label("0", _font_pixel, 14, UiStyle.TEXT, 0)
 	row.add_child(_money_label)
 	_money_panel.add_child(row)
 	_money_panel.resized.connect(_place_corners)
@@ -742,12 +702,12 @@ func _build_pause_menu() -> void:
 	_pause_layer.visible = false
 	_root.add_child(_pause_layer)
 	var dim := ColorRect.new()
-	dim.color = Color(INK, 0.55)
+	dim.color = Color(UiStyle.INK, 0.55)
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
 	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_pause_layer.add_child(dim)
 	var box := PanelContainer.new()
-	var style := _box_style(Color(INK, 0.94), BORDER, 3)
+	var style := UiStyle.box_style(Color(UiStyle.INK, 0.94), UiStyle.BORDER, 3)
 	style.content_margin_left = 18
 	style.content_margin_right = 18
 	style.content_margin_top = 16
@@ -760,7 +720,7 @@ func _build_pause_menu() -> void:
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 6)
 	box.add_child(column)
-	var title := _label("— PAUZE —", _font_pixel, 12, ACCENT, 2)
+	var title := _label("— PAUZE —", _font_pixel, 12, UiStyle.ACCENT, 2)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(title)
 	for index in PAUSE_ITEMS.size():
@@ -774,7 +734,7 @@ func _build_pause_menu() -> void:
 		button.pressed.connect(func() -> void: _choose_pause_item(index))
 		column.add_child(button)
 		_pause_buttons.append(button)
-	var keys := _label("[↑↓] KIEZEN   [ENTER] KIES   [ESC] TERUG", _font_pixel, 10, MUTED, 0)
+	var keys := _label("[↑↓] KIEZEN   [ENTER] KIES   [ESC] TERUG", _font_pixel, 10, UiStyle.MUTED, 0)
 	keys.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(keys)
 	_select_pause_item(0)
@@ -824,7 +784,7 @@ func _select_pause_item(index: int) -> void:
 		var on := button_index == index
 		var button := _pause_buttons[button_index]
 		var style := StyleBoxFlat.new()
-		style.bg_color = ACCENT if on else Color(0, 0, 0, 0)
+		style.bg_color = UiStyle.ACCENT if on else Color(0, 0, 0, 0)
 		style.shadow_color = Color.BLACK if on else Color(0, 0, 0, 0)
 		style.shadow_offset = Vector2(4, 4) if on else Vector2.ZERO
 		style.anti_aliasing = false
@@ -832,7 +792,7 @@ func _select_pause_item(index: int) -> void:
 		for state in ["normal", "hover", "pressed", "focus"]:
 			button.add_theme_stylebox_override(state, style)
 		for colour_name in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
-			button.add_theme_color_override(colour_name, INK if on else TEXT)
+			button.add_theme_color_override(colour_name, UiStyle.INK if on else UiStyle.TEXT)
 		button.text = ("▶  " if on else "    ") + PAUSE_ITEMS[button_index][0]
 
 
@@ -851,101 +811,12 @@ func _choose_pause_item(index: int) -> void:
 			get_tree().quit()
 
 
-## The CRT overlay: it takes the picture so far (the world, the vignette) and draws it
-## again bent like the glass of a tube, with black rounded corners, lays the HUD's own
-## picture (_ui_viewport) over it bent less (ui_curvature), and puts scanlines over both.
-const CRT_SHADER := """shader_type canvas_item;
-uniform sampler2D screen_texture : hint_screen_texture, filter_linear, repeat_disable;
-uniform sampler2D ui_texture : filter_linear, repeat_disable, hint_default_transparent;
-uniform float curvature = 0.05;
-uniform float ui_curvature = 0.02;
-uniform float corner = 0.035;
-uniform float scanline_strength = 0.1;
-uniform vec2 screen_size = vec2(1280.0, 720.0);
-uniform float opacity = 1.0;
-// a rolling disturbance: a band at this height of the screen (0 top .. 1 bottom; off when
-// outside), shifting the picture sideways a little and lighting it, a dark line above it
-uniform float glitch_y = -1.0;
-uniform float glitch_strength = 1.0;
-// VHS tracking trouble (0 = none .. 1): the lines jump sideways at random, most in a frayed
-// strip at the bottom, the whole picture wobbles, the colours slip apart, noise
-uniform float tracking = 0.0;
-
-void fragment() {
-	// from the middle (-1..1); further out the picture is taken from further out, so the
-	// edges bend in, most at the corners
-	float band = 1.0 - smoothstep(0.0, 0.035, abs(SCREEN_UV.y - glitch_y));
-	float leading_line = 1.0 - smoothstep(0.0, 0.004, abs(SCREEN_UV.y - glitch_y + 0.04));
-	vec2 screen_uv = SCREEN_UV;
-	screen_uv.x += band * glitch_strength * 0.006 * sin(SCREEN_UV.y * 900.0 + TIME * 40.0);
-	// tracking: per pair of screen lines a jump that changes 24 times a second
-	float line_pair = floor(SCREEN_UV.y * screen_size.y * 0.5);
-	float jump = fract(sin(line_pair * 12.9898 + floor(TIME * 24.0) * 78.233) * 43758.5453) - 0.5;
-	float frayed = smoothstep(0.78, 0.97, SCREEN_UV.y) + 0.25 * band;
-	screen_uv.x += tracking * (jump * 0.03 * frayed + 0.0025 * sin(SCREEN_UV.y * 24.0 + TIME * 6.0));
-	vec2 centred = screen_uv * 2.0 - 1.0;
-	vec2 bent = centred * (1.0 + curvature * centred.yx * centred.yx);
-	vec2 uv = bent * 0.5 + 0.5;
-	// the black edge of the tube with rounded corners (in pixels, so round on any window)
-	vec2 pixels = (abs(bent) - 1.0) * 0.5 * screen_size;
-	float radius = corner * screen_size.y;
-	vec2 into_corner = max(pixels + radius, 0.0);
-	float outside = length(into_corner) - radius;
-	float glass = 1.0 - smoothstep(-1.5, 0.5, outside);
-	vec3 picture = texture(screen_texture, clamp(uv, 0.0, 1.0)).rgb * glass;
-	// the colours slipping apart in tracking trouble (red one way, blue the other)
-	vec2 slip = vec2(0.004 * tracking, 0.0);
-	picture.r = mix(picture.r, texture(screen_texture, clamp(uv + slip, 0.0, 1.0)).r * glass, step(0.001, tracking));
-	picture.b = mix(picture.b, texture(screen_texture, clamp(uv - slip, 0.0, 1.0)).b * glass, step(0.001, tracking));
-	// the HUD over it, bent less (and never cut off by the black corners)
-	vec2 ui_uv = centred * (1.0 + ui_curvature * centred.yx * centred.yx) * 0.5 + 0.5;
-	vec4 ui = texture(ui_texture, clamp(ui_uv, 0.0, 1.0));
-	float ui_inside = step(0.0, ui_uv.x) * step(ui_uv.x, 1.0) * step(0.0, ui_uv.y) * step(ui_uv.y, 1.0);
-	picture = mix(picture, ui.rgb, ui.a * ui_inside);
-	// one darker line in every three, on the bent picture
-	float line = step(mod(uv.y * screen_size.y, 3.0), 1.0);
-	picture *= 1.0 - scanline_strength * line;
-	// tracking noise, most in the frayed strip
-	float speck = fract(sin(dot(floor(SCREEN_UV * screen_size * 0.5), vec2(12.9898, 78.233)) + floor(TIME * 30.0)) * 43758.5453);
-	picture += vec3(speck - 0.5) * 0.22 * tracking * (0.25 + frayed);
-	// the disturbance: lighter in its band, a dark line running ahead of it
-	picture += vec3(0.07, 0.08, 0.09) * band * glitch_strength;
-	picture *= 1.0 - 0.35 * leading_line * glitch_strength;
-	// a little darker towards the rim, as the glass curves away
-	picture *= 1.0 - 0.18 * smoothstep(0.55, 1.4, length(centred * vec2(0.9, 1.0)));
-	COLOR = vec4(picture, opacity);
-}
-"""
-
-
-## A full-window CRT overlay of its own (the loading screen): the CRT shader with these
-## settings, without a HUD picture over it; it bends what is drawn before it.
-static func make_crt_overlay(curvature: float, corner: float, scanline_strength: float, screen_size: Vector2) -> ColorRect:
-	var overlay := ColorRect.new()
-	overlay.name = "CRT"
-	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var shader := Shader.new()
-	shader.code = CRT_SHADER
-	var material := ShaderMaterial.new()
-	material.shader = shader
-	material.set_shader_parameter("curvature", curvature)
-	material.set_shader_parameter("ui_curvature", 0.0)
-	material.set_shader_parameter("corner", corner)
-	material.set_shader_parameter("scanline_strength", scanline_strength)
-	material.set_shader_parameter("screen_size", screen_size)
-	overlay.material = material
-	overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
-	return overlay
-
-
 func _build_crt() -> void:
 	_crt_overlay = ColorRect.new()
 	_crt_overlay.name = "CRT"
 	_crt_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var shader := Shader.new()
-	shader.code = CRT_SHADER
 	var material := ShaderMaterial.new()
-	material.shader = shader
+	material.shader = UiStyle.CRT_SHADER
 	_crt_overlay.material = material
 	# outside the scaled design: always the whole window, in real screen lines
 	_crt_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -1032,7 +903,7 @@ func _show_clock() -> void:
 	_time_label.text = "%02d:%02d" % [minutes / 60, minutes % 60]
 	_day_label.text = "DAG %d" % _day
 	var night := _hour < 6.5 or _hour > 21.0
-	_time_icon.colour = MUTED if night else ACCENT
+	_time_icon.colour = UiStyle.MUTED if night else UiStyle.ACCENT
 
 
 # ------------------------------------------------------------------ minimap
@@ -1202,109 +1073,3 @@ static func _place_name(place_key: String) -> String:
 			continue
 		words[index] = word.substr(0, 1).to_upper() + word.substr(1)
 	return " ".join(words)
-
-
-# ------------------------------------------------------------------ small controls
-
-## A pixel icon: a bitmap of rows ("#" = coloured), `pixel` screen pixels per pixel.
-class PixelIcon extends Control:
-	var bitmap: Array = []:
-		set(value):
-			bitmap = value
-			_resize()
-	var colour := Color.WHITE:
-		set(value):
-			colour = value
-			queue_redraw()
-	var pixel := 2.0:
-		set(value):
-			pixel = value
-			_resize()
-
-	func _init() -> void:
-		mouse_filter = Control.MOUSE_FILTER_IGNORE
-
-	func _resize() -> void:
-		var rows := bitmap.size()
-		var columns: int = (bitmap[0] as String).length() if rows > 0 else 0
-		custom_minimum_size = Vector2(columns, rows) * pixel
-		size = custom_minimum_size
-		queue_redraw()
-
-	func _draw() -> void:
-		for row_index in bitmap.size():
-			var row: String = bitmap[row_index]
-			for column_index in row.length():
-				if row[column_index] == "#":
-					draw_rect(Rect2(Vector2(column_index, row_index) * pixel, Vector2(pixel, pixel)), colour)
-
-
-## A segmented bar: `segments` blocks of 9 px wide and `segment_height` high, 2 px apart, on
-## ink with a 2 px border; the first `fill` share of them in `full_colour`.
-class SegmentBar extends Control:
-	const SEGMENT_WIDTH := 9.0
-	const GAP := 2.0
-	const PADDING := 3.0
-	const BORDER_WIDTH := 2.0
-	var segments := 20:
-		set(value):
-			segments = value
-			_resize()
-	var segment_height := 12:
-		set(value):
-			segment_height = value
-			_resize()
-	var full_colour := Color.WHITE
-	var empty_colour := Color.BLACK
-	var fill := 1.0:
-		set(value):
-			fill = clampf(value, 0.0, 1.0)
-			queue_redraw()
-
-	func _init() -> void:
-		mouse_filter = Control.MOUSE_FILTER_IGNORE
-
-	func _resize() -> void:
-		var inner := Vector2(segments * SEGMENT_WIDTH + (segments - 1) * GAP, segment_height)
-		custom_minimum_size = inner + Vector2.ONE * 2.0 * (PADDING + BORDER_WIDTH)
-		size = custom_minimum_size
-		queue_redraw()
-
-	func _draw() -> void:
-		draw_rect(Rect2(Vector2.ZERO, size), GameHud.BORDER)
-		draw_rect(Rect2(Vector2.ONE * BORDER_WIDTH, size - Vector2.ONE * 2.0 * BORDER_WIDTH), GameHud.INK)
-		var full := roundi(fill * segments)
-		var start := Vector2.ONE * (BORDER_WIDTH + PADDING)
-		for segment_index in segments:
-			var at := start + Vector2(segment_index * (SEGMENT_WIDTH + GAP), 0.0)
-			draw_rect(Rect2(at, Vector2(SEGMENT_WIDTH, segment_height)), full_colour if segment_index < full else empty_colour)
-
-
-## A quest step's box: filled grey when done, else an open square.
-class CheckSquare extends Control:
-	var done := false
-
-	func _init() -> void:
-		custom_minimum_size = Vector2(10, 10)
-		mouse_filter = Control.MOUSE_FILTER_IGNORE
-
-	func _draw() -> void:
-		if done:
-			draw_rect(Rect2(Vector2.ZERO, Vector2(10, 10)), GameHud.MUTED)
-		else:
-			# an open square: a 2 px border
-			for edge in [Rect2(0, 0, 10, 2), Rect2(0, 8, 10, 2), Rect2(0, 2, 2, 6), Rect2(8, 2, 2, 6)]:
-				draw_rect(edge, GameHud.TEXT)
-
-
-## The player on the minimap: a white triangle pointing up (north) when unturned, with an
-## ink outline, turned round its middle.
-class PlayerArrow extends Control:
-	func _init() -> void:
-		mouse_filter = Control.MOUSE_FILTER_IGNORE
-
-	func _draw() -> void:
-		var outline := PackedVector2Array([Vector2(0, -10), Vector2(10, 10), Vector2(-10, 10)])
-		draw_colored_polygon(outline, GameHud.INK)
-		var arrow := PackedVector2Array([Vector2(0, -8), Vector2(8, 8), Vector2(-8, 8)])
-		draw_colored_polygon(arrow, Color.WHITE)

@@ -20,6 +20,7 @@ extends Node
 
 const Bakker = preload("res://scripts/world/layer_baker.gd")
 const Iso = preload("res://scripts/camera/iso_camera.gd")
+const LoadingScreen = preload("res://scripts/ui/loading_screen.gd")
 const CACHE_DIR := "user://merged"
 ## File-name suffixes of the MeshLibraries per LOD level: normal, coarse, very coarse.
 const LEVEL_SUFFIXES := ["", "_lod", "_lod2"]
@@ -74,6 +75,9 @@ const MAX_FIRST_SPLIT := 0.6
 @export var loading_screen := true
 ## Text of the loading screen.
 @export var loading_text := "Stad laden…"
+## Only fill the cache (tools/build/bake_maps.gd): a level whose cache file exists is not
+## loaded, a missing one is baked and saved; nothing is shown.
+var bake_only := false
 
 var _cam: Camera3D
 var _sun: DirectionalLight3D
@@ -88,14 +92,14 @@ var _level := -1
 var _culled := {}
 ## Number of layers still being merged.
 var _busy := 0
-var _screen: CanvasLayer
-var _screen_label: Label
-var _screen_bar: GameHud.SegmentBar
-var _screen_crt: ColorRect
+var _screen: LoadingScreen
+## Libraries of every level, loaded before any merge starts (see setup).
+var _libraries: Array[MeshLibrary] = []
+## A cache file is loading in a thread (headless only one at a time, see _merge).
+var _threaded_load_busy := false
 var _progress := {}   # "<layer><suffix>" -> fraction done (0..1) of every merge job
 ## Counts setup()/clear(); a merge that finds it changed belongs to layers that are gone.
 var _generation := 0
-## Blur amount of the camera attributes as set in the scene (faded by the zoom).
 ## Extra layers baked into another layer's meshes (merge_with): name -> that layer.
 var _baked_into := {}
 
@@ -112,6 +116,7 @@ func _ready() -> void:
 ## (asynchronously). Call clear() first when the layers were set up before.
 func setup() -> void:
 	var root := get_parent()
+	var merges := []   # [index in _pairs, layer name, GridMap]
 	for layer_name in layers:
 		var gm := root.get_node_or_null(layer_name) as GridMap
 		if gm == null or gm.mesh_library == null:
@@ -130,9 +135,32 @@ func setup() -> void:
 			for suffix in LEVEL_SUFFIXES:
 				if ResourceLoader.exists(_library_path(gm, suffix)):
 					_progress[layer_name + suffix] = 0.0
-			_merge(_pairs.size() - 1, layer_name, gm)
-	if _busy > 0 and loading_screen:
-		_create_loading_screen()
+			merges.append([_pairs.size() - 1, layer_name, gm])
+	# every library a merge needs is loaded before the first merge starts: a library loaded
+	# on the main thread while a cached bake loads in a thread clashes over resource ids
+	# in the headless rendering server (a crash in the checks)
+	for merge in merges:
+		_load_libraries(merge[2])
+		for extra_name in merge_with.get(merge[1], []):
+			var extra := root.get_node_or_null(str(extra_name)) as GridMap
+			if extra and extra.mesh_library:
+				_load_libraries(extra)
+	for merge in merges:
+		_merge(merge[0], merge[1], merge[2])
+	if _busy > 0 and loading_screen and not bake_only:
+		_screen = LoadingScreen.new()
+		_screen.text = loading_text
+		_screen.hud = root.get_node_or_null("HUD")
+		add_child(_screen)
+		_set_progress("", 0.0)
+
+
+## Loads the libraries of every LOD level of `gm` (kept in _libraries).
+func _load_libraries(gm: GridMap) -> void:
+	for suffix in LEVEL_SUFFIXES:
+		var path := _library_path(gm, suffix)
+		if ResourceLoader.exists(path):
+			_libraries.append(load(path))
 
 
 ## Frees the LOD copies and merged meshes of the current layers and stops their merges
@@ -149,12 +177,10 @@ func clear() -> void:
 	_baked_into.clear()
 	_progress.clear()
 	_level = -1
+	_libraries.clear()
 	if _screen:
 		_screen.queue_free()
 		_screen = null
-		_screen_label = null
-		_screen_bar = null
-		_screen_crt = null
 	if _busy > 0:
 		_busy = 0
 		merge_finished.emit()
@@ -194,99 +220,17 @@ func _lod_copy(gm: GridMap, copy_name: String, lib: MeshLibrary) -> GridMap:
 	return copy
 
 
-## Segments of the progress bar on the loading screen, and the title over it.
-const LOADING_SEGMENTS := 30
-const LOADING_TITLE := "ZWERVR"
-
-
-## Full-screen loading screen in the style of the HUD (scripts/ui/hud.gd: ink blue, pixel
-## fonts, a bordered panel): the title, "STAD LADEN" and a segmented bar with the
-## percentage (_set_progress); faded out by _layer_finished.
-func _create_loading_screen() -> void:
-	_screen = CanvasLayer.new()
-	_screen.layer = 100
-	var panel := ColorRect.new()
-	panel.color = GameHud.INK
-	panel.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_screen.add_child(panel)
-	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 18)
-	column.alignment = BoxContainer.ALIGNMENT_CENTER
-	column.set_anchors_preset(Control.PRESET_CENTER)
-	column.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	column.grow_vertical = Control.GROW_DIRECTION_BOTH
-	panel.add_child(column)
-	var title := _loading_label(LOADING_TITLE, "res://assets/fonts/PixelifySans.ttf", 56, GameHud.TEXT, 4)
-	column.add_child(title)
-	var subtitle := _loading_label("— " + loading_text.trim_suffix("…").to_upper() + " —", "res://assets/fonts/Silkscreen-Regular.ttf", 14, GameHud.ACCENT, 2)
-	column.add_child(subtitle)
-	# the bar on a panel with a border, the percentage beside it
-	var box := PanelContainer.new()
-	var style := GameHud._box_style(GameHud.PANEL, GameHud.BORDER, 3)
-	style.set_content_margin_all(12)
-	box.add_theme_stylebox_override("panel", style)
-	box.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 12)
-	box.add_child(row)
-	_screen_bar = GameHud.SegmentBar.new()
-	_screen_bar.segments = LOADING_SEGMENTS
-	_screen_bar.segment_height = 14
-	_screen_bar.full_colour = GameHud.ACCENT
-	_screen_bar.empty_colour = GameHud.INK.lightened(0.08)
-	_screen_bar.fill = 0.0
-	_screen_bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	row.add_child(_screen_bar)
-	_screen_label = _loading_label("0%", "res://assets/fonts/Silkscreen-Regular.ttf", 14, GameHud.TEXT, 2)
-	_screen_label.custom_minimum_size = Vector2(48, 0)
-	_screen_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	row.add_child(_screen_label)
-	column.add_child(box)
-	# the CRT look of the HUD (scripts/ui/hud.gd) over the loading screen too, with the
-	# HUD's settings when there is one
-	var hud := get_parent().get_node_or_null("HUD")
-	var curvature: float = hud.get("crt_curvature") if hud and hud.get("crt_curvature") != null else 0.05
-	var corner: float = hud.get("crt_corner") if hud and hud.get("crt_corner") != null else 0.035
-	var scanline_strength: float = hud.get("scanline_strength") if hud and hud.get("scanline_strength") != null else 0.1
-	if hud and hud.get("scanlines") == false:
-		scanline_strength = 0.0
-	_screen_crt = GameHud.make_crt_overlay(curvature, corner, scanline_strength, get_viewport().get_visible_rect().size)
-	_screen.add_child(_screen_crt)
-	add_child(_screen)
-	_set_progress("", 0.0)
-
-
-## A label of the loading screen: this font file (Rubik if it is missing), size and colour,
-## with the hard ink text shadow of the HUD (`shadow` pixels).
-static func _loading_label(text: String, font_path: String, font_size: int, colour: Color, shadow: int) -> Label:
-	var label := Label.new()
-	label.text = text
-	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	var font: Font = load(font_path) if ResourceLoader.exists(font_path) else load("res://assets/fonts/Rubik.ttf")
-	label.add_theme_font_override("font", font)
-	label.add_theme_font_size_override("font_size", font_size)
-	label.add_theme_color_override("font_color", colour)
-	label.add_theme_color_override("font_shadow_color", GameHud.INK.darkened(0.6))
-	label.add_theme_constant_override("shadow_offset_x", shadow)
-	label.add_theme_constant_override("shadow_offset_y", shadow)
-	label.add_theme_constant_override("shadow_outline_size", 0)
-	return label
-
-
 ## Records the progress of one merge job (key from _progress) and shows the average
 ## of all jobs on the loading screen.
 func _set_progress(key: String, fraction: float) -> void:
 	if key != "":
 		_progress[key] = clampf(fraction, 0.0, 1.0)
-	if _screen_label == null or _progress.is_empty():
+	if _screen == null or _progress.is_empty():
 		return
 	var done := 0.0
 	for f in _progress.values():
 		done += f
-	var share_done := done / _progress.size()
-	_screen_label.text = "%d%%" % floori(100.0 * share_done)
-	if _screen_bar:
-		_screen_bar.fill = share_done
+	_screen.set_progress(done / _progress.size())
 
 
 ## Called when one layer is merged; after the last one emits `merge_finished`
@@ -297,18 +241,8 @@ func _layer_finished() -> void:
 		return
 	merge_finished.emit()
 	if _screen:
-		var panel := _screen.get_child(0) as ColorRect
-		var t := create_tween()
-		t.set_parallel(true)
-		t.tween_property(panel, "modulate:a", 0.0, 0.6)
-		if _screen_crt:
-			var crt_material := _screen_crt.material as ShaderMaterial
-			t.tween_method(func(value: float) -> void: crt_material.set_shader_parameter("opacity", value), 1.0, 0.0, 0.6)
-		t.chain().tween_callback(_screen.queue_free)
+		_screen.fade_out()
 		_screen = null
-		_screen_label = null
-		_screen_bar = null
-		_screen_crt = null
 
 
 ## Replaces the GridMap rendering of layer `index` (_pairs) with merged meshes for every
@@ -352,7 +286,16 @@ func _merge(index: int, layer_name: String, gm: GridMap) -> void:
 		var cache := CACHE_DIR.path_join(key + ".scn")
 		var baked: Node3D
 		var job: String = layer_name + suffix
+		if bake_only and ResourceLoader.exists(cache):
+			result.append(null)
+			_set_progress(job, 1.0)
+			continue
 		if ResourceLoader.exists(cache):
+			# headless the dummy rendering server is not thread-safe: one cache at a time
+			var one_at_a_time := DisplayServer.get_name() == "headless"
+			while one_at_a_time and _threaded_load_busy and is_inside_tree():
+				await get_tree().process_frame
+			_threaded_load_busy = one_at_a_time
 			ResourceLoader.load_threaded_request(cache)
 			var loaded := []
 			while ResourceLoader.load_threaded_get_status(cache, loaded) == ResourceLoader.THREAD_LOAD_IN_PROGRESS:
@@ -361,6 +304,7 @@ func _merge(index: int, layer_name: String, gm: GridMap) -> void:
 					break   # the town was left while loading (back to the main menu)
 				await get_tree().process_frame
 			var ps := ResourceLoader.load_threaded_get(cache) as PackedScene
+			_threaded_load_busy = false
 			if not is_inside_tree() or generation != _generation:
 				_drop(result)
 				return
@@ -375,6 +319,11 @@ func _merge(index: int, layer_name: String, gm: GridMap) -> void:
 				_drop(result)
 				return
 			_save(baked, cache)
+		if bake_only:
+			baked.free()
+			result.append(null)
+			_set_progress(job, 1.0)
+			continue
 		baked.visible = false
 		root.add_child(baked)
 		result.append(baked)

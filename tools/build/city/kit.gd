@@ -1,5 +1,5 @@
 extends "res://tools/build/city/base.gd"
-## City builder, part 2 of 3 (see base.gd for the chain): reusable build helpers: building
+## City builder, part 2 (see base.gd for the chain): reusable build helpers: building
 ## blocks and rings with facades and roofs, towers, halls, parking decks and style helpers.
 
 

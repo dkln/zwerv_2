@@ -1,7 +1,8 @@
 class_name CrtDisturbance
 extends Node
+const UiStyle = preload("res://scripts/ui/ui_style.gd")
 ## Now and then disturbs the CRT picture it hangs under (a child of a CRT overlay made by
-## GameHud.make_crt_overlay): a lighter band rolls down the screen (the shader's glitch_y,
+## UiStyle.make_crt_overlay): a lighter band rolls down the screen (the shader's glitch_y,
 ## glitch_strength) in `roll_seconds`, every `every` seconds (from .. to); at
 ## `tracking_chance` of those the tape loses its tracking as well (the shader's tracking:
 ## lines jumping sideways, the picture wobbling, the colours slipping, noise), which comes

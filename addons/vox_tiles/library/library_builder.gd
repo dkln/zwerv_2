@@ -233,7 +233,7 @@ static func build_category(cat: String, changed: Dictionary, previews: bool, for
 			lib.remove_item(by_name[k])
 			dirty = true
 	# the lanes of every item (metadata "traffic", tile_metadata.gd), for the road network
-	# (scripts/world/road_network.gd); on the coarse libraries as well, without rebuilding them
+	# (scripts/traffic/road_network.gd); on the coarse libraries as well, without rebuilding them
 	var traffic := _traffic_of(root, files, alias_files)
 	if traffic != lib.get_meta("traffic", {}):
 		lib.set_meta("traffic", traffic)

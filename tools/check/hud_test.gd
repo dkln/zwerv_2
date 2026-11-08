@@ -38,13 +38,14 @@ func _init() -> void:
 	if hud._money_label.text != "1.284":
 		problems.append("geld: " + hud._money_label.text)
 	# the XP bar in line with the stat bars (same start, same width), its points under it
-	var stat_bar: Control = hud._stat_bars["gezondheid"]
+	var stat_bar: Control = hud._stat_bars["uithoudingsvermogen"]
 	var xp_bar: Control = hud._xp_bar
-	if absf(xp_bar.global_position.x - stat_bar.global_position.x) > 0.5 or absf(xp_bar.size.x - stat_bar.size.x) > 0.5:
+	if absf(xp_bar.global_position.x - stat_bar.global_position.x) > 0.5 or absf(xp_bar.size.x - stat_bar.size.x) > 0.5 \
+			or absf(xp_bar.size.y - stat_bar.size.y) > 0.5:
 		problems.append("XP-balk niet in lijn: %s %s, metertje %s %s" % [xp_bar.global_position.x, xp_bar.size.x, stat_bar.global_position.x, stat_bar.size.x])
 	if absf((hud._xp_text as Control).global_position.x - xp_bar.global_position.x) > 0.5:
 		problems.append("XP-punten niet onder de balk")
-	print("XP-balk op x %.0f, %.0f breed (metertjes %.0f, %.0f)" % [xp_bar.global_position.x, xp_bar.size.x, stat_bar.global_position.x, stat_bar.size.x])
+	print("XP-balk op x %.0f, %s (metertje %.0f, %s)" % [xp_bar.global_position.x, xp_bar.size, stat_bar.global_position.x, stat_bar.size])
 	print("tijd: ", hud._day_label.text, " ", hud._time_label.text)
 	print("HUD ok" if problems.is_empty() else "HUD problemen: " + str(problems))
 	quit(0 if problems.is_empty() else 1)

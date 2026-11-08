@@ -2,7 +2,7 @@
 extends Node3D
 ## Arrows on the road showing the driving direction of every lane, only in the editor
 ## (the "Rijrichtingen" node the builders add; in the game it removes itself). One arrow
-## per lane heading of the road network (scripts/world/road_network.gd), on the road
+## per lane heading of the road network (scripts/traffic/road_network.gd), on the road
 ## surface, tilted with a ramp:
 ## - `fixed_color`: the direction the tile itself gives (a lane tile, turned as placed);
 ## - `context_color`: a tile without a direction of its own (a crossing, plain asphalt,

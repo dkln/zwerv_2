@@ -108,7 +108,7 @@ De verkeerslichten zijn Nederlands: zwarte kasten met een witte rand, fietslicht
 elke lens en voor bus en tram een negenoog (negen witte lampjes: stop horizontaal, rijden verticaal,
 attentie een driehoek).
 
-Stoplichten werken: de node `Verkeerslichten` (`scripts/world/traffic_lights.gd`, in
+Stoplichten werken: de node `Verkeerslichten` (`scripts/traffic/traffic_lights.gd`, in
 elke scène die de bouwers maken) laat de stoplichtprops (`verkeerslichten/auto_*`,
 `fiets_*`, `ov_*`, `voetganger_*`, `mast_*`) per kruispunt een vaste cyclus doorlopen:
 noord-zuid groen, oranje, alles rood, oost-west groen, oranje, alles rood. De richting
@@ -116,7 +116,7 @@ van een licht volgt uit zijn draaiing; tijden zijn instelbaar op de node.
 
 Er rijdt verkeer door de stad: een sedan, node `Auto` (`scripts/vehicles/car.gd`), en een
 SUV, node `SUV` (`scripts/vehicles/suv.gd`), staan in de scène; de node `Verkeer`
-(`scripts/world/traffic.gd`) zet er bij het starten nog `vehicle_count` (30) voertuigen bij,
+(`scripts/traffic/traffic.gd`) zet er bij het starten nog `vehicle_count` (30) voertuigen bij,
 verspreid over het wegennet (`spacing`, `traffic_seed`, de mix in `MIX`), en daarna
 `services_count` (7) hulpdiensten en dienstauto's (`SERVICES`, nodes `Dienst1`..). Soorten:
 
@@ -293,7 +293,7 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
   Gevels met ramen werpen een gevuld blok als schaduw, iets achter de gevel, dus zonder
   schaduwen van ramen en kozijnen (`filled_shadow_layers`, `layer_baker.gd`). Platte
   gevelonderdelen werpen niets; balkons, luifels, dakdetails en vlaggen wel (`SHADOW_DETAILS`).
-- Wegennet (`scripts/world/road_network.gd`, `RoadNetwork`): het wegennet leest de
+- Wegennet (`scripts/traffic/road_network.gd`, `RoadNetwork`): het wegennet leest de
   rijstroken uit de grondtiles zelf. Dat werkt op elke kaart, ook als je hem met de hand
   bouwt. Elke tile waarop gereden wordt, heeft in zijn `.tile.json` een blok `traffic`,
   naast `id` en `materials`:
@@ -333,7 +333,7 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
   (`shown_until`) verdwijnen de draden. In de editor werken ze zich binnen een seconde bij.
   De arm van een masttile ligt langs zijn x-as: in de bouwer zet `MAST_ARM_ROTATION` de
   kant waar de arm heen wijst om in een draaiing.
-- Rijrichtingen in de editor: de node `Rijrichtingen` (`scripts/world/lane_arrows.gd`)
+- Rijrichtingen in de editor: de node `Rijrichtingen` (`scripts/traffic/lane_arrows.gd`)
   tekent in de editor een pijl per rijstrook op het wegdek. Geel is de richting van de
   tile zelf, lichtblauw is afgeleid uit de omgeving, magenta betekent nog beide kanten
   op (niet te bepalen), groen is met de hand gekozen voor deze tile (richtingen, wie er mag komen of de snelheid). Na het plaatsen of
@@ -384,7 +384,7 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
   De middenstreep buigt in de binnenste cel, dus de rechte tiles ernaast hebben die streep
   niet. Heeft een strook geen versie zonder streep, dan is er een `_zonder_streep`
   (busbaan, snelweg). De stadsbouwer legt ze zelf waar een tweestrookstraat de hoek omgaat
-  (`_square_corners` in `build_city.gd`). Test: `tools/godot.sh --headless --script
+  (`_square_corners` in `city/streets.gd`). Test: `tools/godot.sh --headless --script
   tools/check/corner_test.gd`.
 - Voertuig (`scripts/vehicles/vehicle.gd`, `Vehicle`): de rijlogica voor elk
   voertuig. Het plant een paar cellen vooruit (minstens de remafstand), kiest op
@@ -416,7 +416,7 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
   (`FADE_TO_MENU`) en het menu komt daar in 3,5 s uit omhoog (`UP_FROM_BLACK`), terwijl de
   muziek van intro naar menu overvloeit. Alleen de spatiebalk breekt hem af en gaat naar het
   hoofdmenu (andere toetsen, zoals de volumetoetsen, en de muis doen niets). Linksonder staat, zoals de actieknop in het ontwerp, "SPATIE · Intro
-  overslaan". De sterren fonkelen. Muziek: `assets/audio/muziek/intro.mp3`; de intro loopt op die
+  overslaan". De sterren fonkelen. Muziek: `assets/audio/muziek/approach_vector_intro.ogg`; de intro loopt op die
   muziek (de klok is waar de muziek is): het logo fadet in van 6 tot 8 s, heel groot, bijna buiten
   beeld, en krimpt langzaam naar zijn normale formaat tot de eerste grote inzet (16,0 s):
   daar wijkt het in 2,5 s de diepte in en fadet het daarbij uit (`LOGO_SECONDS`), met een
@@ -502,7 +502,7 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
   omgekeerd (`_play_exit`): de knoppen faden weg, de titel schuift naar links uit beeld, alles
   vervaagt naar inktblauw met een sterke trackingstoring, en het laadscherm van de stad (ook
   inktblauw) neemt het over.
-  Muziek: `assets/audio/muziek/menu.mp3`, heel en in een lus, die bij het openen meteen op vol volume
+  Muziek: `assets/audio/muziek/approach_vector_menu_loop.ogg`, heel en in een lus, die bij het openen meteen op vol volume
   begint (geen infade) en bij het verlaten (NIEUW SPEL, AFSLUITEN) in 2 s uitfadet, ook als de
   stad al opent (`MUSIC`, `MUSIC_VOLUME_DB`, `MUSIC_FADE_OUT`).
   Geluidseffecten (`scripts/ui/ui_sounds.gd`, `UiSounds.play(node, naam)`, in code gemaakt in
@@ -547,24 +547,35 @@ Projectstructuur
       materials/           shaders en materialen van de voxels
     assets/                tiles (.gox + .tile.json, kleurentabel materialen.json),
                            libraries (gemaakt), fonts
-    scenes/                stad.tscn, nieuwe_kaart.tscn
+    scenes/                stad.tscn (de kaart), intro, hoofdmenu, menu_kaart(_bron)
     scripts/               spelcode
-      camera/              free_camera, iso_camera
-      world/               level_of_detail, layer_baker,
-                           ground_map, tint_map, tint_area
-      effects/             day_cycle, smoke, grass_blades, vignette
-      vehicles/            vehicle en de voertuigen (auto's, RandstadRail, NS-trein)
-      ui/                  hud (spelersscherm: stats, kaartje, klok, opdrachten, geld)
+      camera/              iso_camera, free_camera, follow_camera, fly_over
+      world/               de kaart zelf: level_of_detail, layer_baker, building_fade,
+                           ground_map, grass_blades, tint_map, tint_area, day_cycle,
+                           overhead_lines, tunnel_lights, zebra_clock
+      traffic/             wegennet en verkeer: road_network, traffic, traffic_lights,
+                           lane_arrows, helicopter_flights
+      vehicles/            vehicle, rail_vehicle en de
+                           voertuigsoorten (auto's, RandstadRail, NS-trein, helikopter, ...)
+      effects/             crash_burst, vehicle_fire, menu_fire, death_blink, smoke, vignette
+      ui/                  hud, intro, main_menu (+ menu/: de 3D-kaart erachter),
+                           loading_screen, action_prompts, warp_transition, crt_disturbance,
+                           ui_sounds, ui_style (kleuren, fonts, panelen, CRT) + crt.gdshader,
+                           widgets/ (pixel_icon, segment_bar, check_square, player_arrow)
     tools/                 command-line tools (start ze met tools/godot.sh)
       godot.sh             Godot met tijdslimiet en zonder stdin
+      bake.sh              de kaart vooraf baken (zie "Baken en thumbnails")
+      thumbnails.sh        de thumbnails van de tiles maken (idem)
       tool_common.gd       gedeelde helpers van de tools
-      build/               build_city (+ city/: de bouwer in delen),
-                           build_libraries, build_previews
+      build/               build_city (+ city/: de bouwer in delen), build_menu_map,
+                           build_libraries, build_previews, bake_maps
       check/               coverage, corner_test, crash_test, drive_test, fps_test,
                            axle_test, follow_switch_test, hud_test, lane_choice_test, traffic_test,
-                           triangle_count
+                           clash_test, intro_test, menu_test, mesh_audit, offscreen_audit,
+                           overlap_test, rail_stop_test, triangle_count
       shots/               shot_tiles, shot_iso, shot_scene, shot_vehicles
       voxgen/              Python-generator van de tiles (zie "Tiles (opnieuw) genereren")
+      music/               generator van de muziek
     docs/                  Goxel-handleiding (GOXEL.md -> handleiding_goxel.html)
 
 
@@ -572,7 +583,7 @@ Snel starten
 ------------
 1. Open de map in Godot 4.7 (`project.godot`). De eerste keer importeert Godot
    alle tiles en maakt de plugin de palet-previews (dat duurt even).
-2. Open `scenes/stad.tscn` of `scenes/nieuwe_kaart.tscn` (leeg).
+2. Open `scenes/stad.tscn`.
 3. Selecteer een GridMap-node (Grond / Gebouwen / Details / Props); onderin
    verschijnt het tile-palet. Zoek op naam, klik een tile, en klik in de 3D-view.
 4. F5 start de stad (`scenes/stad.tscn`, zie boven). De camera staat standaard in
@@ -974,17 +985,44 @@ Na het genereren (vanuit de projectmap):
     tools/godot.sh --headless --import
     # 2. bibliotheken bijwerken (zonder previews)
     tools/godot.sh --headless --script tools/build/build_libraries.gd [-- force]
-    # 2b. palet-previews renderen (met venster, ~1,5 min voor alles; daarna hoeft de
-    #     editor bij het openen geen "Creating mesh previews" meer te doen)
-    tools/godot.sh --script tools/build/build_previews.gd [-- all]
+    # 2b. thumbnails (palet-previews) renderen (met venster, ~1,5 min voor alles)
+    tools/thumbnails.sh [alles]
     # 3. de stad opnieuw bouwen (overschrijft scenes/stad.tscn, behalve de keuzes per tile)
     tools/godot.sh --headless --script tools/build/build_city.gd
+    # 4. de kaart vooraf baken, zodat het spel snel laadt
+    tools/bake.sh
 
 Previews worden bewaard in `.godot/vox_tiles_previews/` (per tile en importtijd); een
 bibliotheek die opnieuw gebouwd wordt, krijgt ze daar direct uit terug.
 `tools/godot.sh` start Godot met een tijdslimiet (`GODOT_TIMEOUT`, standaard 600 s)
 en zonder invoer, zodat een run nooit blijft hangen; de tools in `tools/` stoppen
 bovendien zelf na een script-fout (`Common.watchdog`).
+
+Baken en thumbnails
+-------------------
+Twee scripts die je zelf draait (vanuit de projectmap), wanneer je wilt:
+
+    tools/bake.sh                    # de kaart vooraf baken
+    tools/bake.sh opnieuw            # alles opnieuw baken (eerst de cache leeg)
+    tools/bake.sh scenes/stad.tscn   # alleen deze kaart
+
+Het spel voegt bij het starten de lagen Gebouwen en Grond samen tot grote meshes
+(`DetailNiveau`, zie "Hoe het werkt") en bewaart dat in `user://merged/`. Zonder cache duurt
+dat minuten; `bake.sh` doet het vooraf, headless (zonder venster, de editor mag open blijven),
+zodat het spel alleen hoeft te laden. Een kaart waarvan de cache klopt wordt overgeslagen, dus
+het kan geen kwaad om het vaak te draaien. Draai het na het bouwen van de stad, na het
+opnieuw opbouwen van de tiles en na een wijziging aan `layer_baker.gd`. Het ruimt ook de
+cache van kaarten op die niet meer bestaan.
+
+    tools/thumbnails.sh              # thumbnails van tiles die er nog geen (actuele) hebben
+    tools/thumbnails.sh alles        # alle thumbnails opnieuw
+    tools/thumbnails.sh bouwen       # eerst de bibliotheken bijwerken (build_libraries.gd)
+
+`thumbnails.sh` rendert de palet-previews van alle tiles (`tools/build/build_previews.gd`)
+in een klein venster rechtsonder (renderen kan niet headless), zodat de editor bij het
+openen van een scène geen "Creating mesh previews" meer hoeft te doen. Doe het liefst met
+de editor dicht: die schrijft dezelfde bibliotheken. De beide scripts gebruiken
+`tools/godot.sh` (tijdslimiet `GODOT_TIMEOUT`, de Godot-app in `GODOT`).
 
 In de editor staat ook: Project > Tools > "Vox Tiles: bibliotheken volledig
 herbouwen" (maakt collision en alle previews opnieuw; handig als een preview
@@ -1008,9 +1046,14 @@ Hoe het werkt (techniek)
   `scripts/world/tint_area.gd`: tint-systeem.
 - `tools/build/build_city.gd`: bouwt de stad via code. De bouwer staat in
   `tools/build/city/`, een keten van
-  scripts die elk het vorige uitbreiden: `base` (toestand, scene, `G/B/D/Pr`) -> `kit`
-  (herbruikbare helpers) -> `street_grid`. Een deel kan alleen functies uit zichzelf of een
-  eerder deel aanroepen. Handige helpers om zelf kaarten te scripten: `G/B/D/Pr` (één
+  scripts die elk het vorige uitbreiden. Eerst de algemene delen: `base` (toestand, scene,
+  `G/B/D/Pr`) -> `kit` (herbruikbare helpers) -> `street_grid` (straten, kruisingen,
+  stoepranden); dan die van Den Haag: `map` (het stratengrid, namen van wijken en straten,
+  gedeelde posities en kleine helpers) -> `streets` (straten, singel, bruggen) ->
+  `old_centre` -> `east` -> `south` -> `a12` (met Voorburg) -> `rail` (trams, tramtunnel,
+  viaducten, spoor) -> `finishing` (rondes over de hele stad, camera en hulpnodes).
+  `build_city.gd` zelf is alleen de volgorde van de bouw. Een deel kan alleen functies uit
+  zichzelf of een eerder deel aanroepen (de keten staat in `base.gd`). Handige helpers om zelf kaarten te scripten: `G/B/D/Pr` (één
   tile per laag, `base.gd`), `block()` (rechthoekig gebouw met automatisch de juiste
   hoek-, gevel- en dakstukken), `ring()` (gesloten bouwblok met kappen om de hoek),
   `tower()` (alle in `kit.gd`).
@@ -1090,12 +1133,13 @@ Prestaties en uiterlijk
   groepeert de driehoeken daarvoor per celzijde (import-optie `cell_block`: 4x3x4 voor
   gebouwen, 4x1,5x4 voor grond). Tot het samenvoegen klaar is, staat er een laadscherm
   (export `loading_screen`; in de stijl van de HUD: inktblauw, "ZWERVR", een blokjesbalk met
-  percentage, en hetzelfde CRT-beeld met de instellingen van de HUD, `GameHud.make_crt_overlay`,
-  dat met het scherm mee uitfadet); het resultaat wordt bewaard in `user://merged/`, zodat de
-  volgende keer direct klaar is (zolang de kaart en de tiles niet veranderen).
+  percentage, en hetzelfde CRT-beeld met de instellingen van de HUD, `UiStyle.make_crt_overlay`,
+  dat met het scherm mee uitfadet; `scripts/ui/loading_screen.gd`); het resultaat wordt
+  bewaard in `user://merged/`, zodat de volgende keer direct klaar is (zolang de kaart en de
+  tiles niet veranderen). `tools/bake.sh` vult die cache vooraf (zie "Baken en thumbnails").
   Je bewerkt gewoon de GridMaps; botsingen blijven daar ook. Tiles met een vlag
   blijven losse meshes (de vlag-shader rekent in lokale coördinaten).
-- `Dagcyclus` (`scripts/effects/day_cycle.gd`): basis voor dag en nacht (`time_of_day`,
+- `Dagcyclus` (`scripts/world/day_cycle.gd`): basis voor dag en nacht (`time_of_day`,
   start 13:00; `speed` 0,08 uur per seconde: een dag duurt 5 minuten, 0 = stilstaan; een
   Nederlandse zomerdag: zon op `SUNRISE` 5:30, onder `SUNSET` 22:00, blauw uur tot ruim tien,
   pas rond half twaalf echt donker). De tijd
@@ -1124,7 +1168,7 @@ Prestaties en uiterlijk
   die de normaal kantelt en donkere spleten. Daaronder grovere stenen (~12 cm) in rustige
   tinten en zachte vlekken van ~25 cm. Elke laag vervaagt zodra hij een pixel of twee
   klein is, dus van ver is grind egaal, zonder flikkeren.
-- Echte grassprieten (node `Grassprieten`, `scripts/effects/grass_blades.gd`, shader
+- Echte grassprieten (node `Grassprieten`, `scripts/world/grass_blades.gd`, shader
   `materials/grass_blade.gdshader`) in drie detailniveaus die in elkaar overgroeien:
   fijne sprieten tot `show_from` (36 m in beeld, helemaal vol tot `full_from`, 26 m), daarna dikkere plukken (`medium_*`, tot
   55 m) en nog grovere, schaarse plukken (`far_*`, tot 220 m, die twee over het hele beeld;
@@ -1201,7 +1245,7 @@ Prestaties en uiterlijk
   - Waar je bent, in een vak even breed als het kaartje erboven (de gevolgde auto, anders het punt waar de camera naar
     kijkt): de wijk, de straat en de dichtstbijzijnde bekende plek (binnen `place_near`, 45 m).
     De bouwer zet de wijken (`WIJKEN`) en straten (`STRATEN`, in cellen, met de stoep ernaast)
-    als scènemetadata `wijken` en `straten` in `build_city.gd`; plekken komen uit `places`. Kom
+    als scènemetadata `wijken` en `straten` in `city/map.gd`; plekken komen uit `places`. Kom
     je voor het eerst in een wijk, dan meldt de HUD die als nieuw gebied (`show_area`).
   - CRT-beeld over het hele beeld: de wereld bolt als een beeldbuis en de randen buigen naar
     zwarte, afgeronde hoeken (`crt_curvature` 0,05, `crt_corner` 0,035). De HUD wordt eerst in
@@ -1224,5 +1268,4 @@ In `grond/bocht/` staan bochten voor hele straatprofielen (straat,
 klinkerstraat, weg, hoofdweg, tramweg, laan, fietspad). Elke bocht bestaat uit
 (n x n) tiles: `<profiel>_<i>_<j>`, met n = 1 + aantal delen van het profiel.
 De weg komt van het zuiden en buigt af naar het westen; leg cel (i, j) op
-(x + i, z - j) en draai alles samen. In `tools/build/city/situations.gd` doet
-`curve(x, z, profiel, draaiing)` dit inclusief de rechte stukken.
+(x + i, z - j) en draai alles samen.

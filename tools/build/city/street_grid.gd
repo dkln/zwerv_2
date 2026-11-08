@@ -1,5 +1,5 @@
 extends "res://tools/build/city/kit.gd"
-## City builder, part 3 of 3 (see base.gd for the chain): the streets with their markings,
+## City builder, part 3 (see base.gd for the chain): the streets with their markings,
 ## signalised intersections and kerbs.
 
 

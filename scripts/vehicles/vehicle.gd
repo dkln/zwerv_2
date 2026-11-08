@@ -1,6 +1,6 @@
 class_name Vehicle
 extends Node3D
-## A vehicle that drives round the road network on its own (scripts/world/road_network.gd,
+## A vehicle that drives round the road network on its own (scripts/traffic/road_network.gd,
 ## made from the lanes in the metadata of the ground tiles):
 ## the base of the car (car.gd), the bus (city_bus.gd), the van, the truck, ... (a tram
 ## on its own lanes could be one too). A vehicle type extends this script, sets its own speeds and model in
@@ -21,7 +21,7 @@ extends Node3D
 ## corners, and stops:
 ## - before a zebra crossing (weg/zebrapad), for `zebra_wait` seconds, then drives on, when
 ##   someone crosses there (_someone_crossing; no one yet: there are no pedestrians);
-## - at traffic lights (Verkeerslichten, scripts/world/traffic_lights.gd) until its
+## - at traffic lights (Verkeerslichten, scripts/traffic/traffic_lights.gd) until its
 ##   stream is green, before the zebra or the crossing, whichever comes first (the lights
 ##   of the whole crossing, found from its middle; a zebra right before it goes with it).
 ## Where its lane ends it moves over into the lane alongside, gradually over a few cells
@@ -92,8 +92,8 @@ const CROSSING_LOOKAHEAD := 4
 @export var corner_speed := 4.5
 ## Speed through two corners right after each other: turning round, an S-bend (m/s).
 @export var tight_corner_speed := 2.8
-## Acceleration and braking (m/s²).
-## Acceleration (m/s²) of a vehicle without a `wheel_torque`; else that sets it.
+## Acceleration (m/s²) of a vehicle without a `wheel_torque` (else that sets it), and
+## braking (m/s²).
 @export var acceleration := 2.5
 @export var braking := 4.0
 ## How quickly the acceleration may change (m/s³): a driver eases onto the throttle and
@@ -132,6 +132,8 @@ const CROSSING_LOOKAHEAD := 4
 ## `wheel_radius`, which over the mass (with a trailer) gives the acceleration, and pushes on
 ## in a crash. 0 = it has none: `acceleration` is what it is.
 @export var wheel_torque := 0.0
+## Health it starts with and is towed back with (see `health`).
+@export var max_health := 100.0
 @export_group("Start")
 ## Start cell (on the map, x and z) and heading; if that is not a lane in that heading the
 ## nearest one that is is taken.
@@ -406,7 +408,6 @@ var _progress_clock := 0.0           # seconds it has driven since _progress_fro
 var _progress_from := Vector3.ZERO
 
 ## Its health: hits take it (DAMAGE_PER_SPEED); when it runs out it crashes and burns.
-@export var max_health := 100.0
 var health := 100.0
 var _bump_clock := 0.0               # seconds before it can be hit again after a bump
 var _fire: Node3D                    # its fire while it burns as a wreck (vehicle_fire.gd)

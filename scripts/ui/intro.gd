@@ -1,8 +1,5 @@
 class_name Intro
 extends Control
-const UiSounds = preload("res://scripts/ui/ui_sounds.gd")
-const ProtestFlag = preload("res://scripts/vehicles/protest_flag.gd")
-
 ## The intro before the main menu (scenes/intro.tscn, the main scene), in the style of the
 ## HUD and the menu (scripts/ui/hud.gd, main_menu.gd), opening the way a space saga does:
 ## 1. on black a line in teal fades in and out (OPENING_LINE);
@@ -16,7 +13,7 @@ const ProtestFlag = preload("res://scripts/vehicles/protest_flag.gd")
 ##    at the top, fading out there;
 ## 4. the main menu (scenes/hoofdmenu.tscn and its 3D map, loaded in the background
 ##    meanwhile, so it opens complete).
-## It all goes by the music (assets/audio/muziek/intro.mp3, MUSIC): the clock of the intro is where
+## It all goes by the music (assets/audio/muziek/approach_vector_intro.ogg, MUSIC): the clock of the intro is where
 ## the music is, and the moments are set on its beats (CUES, measured in the mp3): the logo
 ## goes away on its first big entry, paragraphs of the story enter at its turns
 ## (CRAWL_CUES), and the intro ends where it fades. Without the music a clock of its own
@@ -25,13 +22,17 @@ const ProtestFlag = preload("res://scripts/vehicles/protest_flag.gd")
 ## any moment and goes to the main menu; holding Enter (or the down arrow) rolls the story
 ## faster (CRAWL_FAST); bottom left the actions say so, one under the other
 ## (ActionPrompts: "SPATIE  Overslaan", "ENTER  Sneller"). The stars twinkle, and now and then a tractor drifts through space.
-## The CRT look of the HUD lies over it (GameHud.make_crt_overlay, with the settings of the
+## The CRT look of the HUD lies over it (UiStyle.make_crt_overlay, with the settings of the
 ## main menu).
+
+const UiSounds = preload("res://scripts/ui/ui_sounds.gd")
+const ProtestFlag = preload("res://scripts/vehicles/protest_flag.gd")
+const UiStyle = preload("res://scripts/ui/ui_style.gd")
 
 const MENU_SCENE := "res://scenes/hoofdmenu.tscn"
 ## The music of the intro, its volume (dB), and the seconds it fades out in when the intro
 ## ends or is broken off.
-const MUSIC := "res://assets/audio/muziek/intro.mp3"
+const MUSIC := "res://assets/audio/muziek/approach_vector_intro.ogg"
 const MUSIC_VOLUME_DB := -4.0
 const MUSIC_FADE_OUT := 2.0
 ## Seconds of the wave on the way to the menu (WarpTransition).
@@ -55,26 +56,25 @@ const STORY := [
 	"Hij pakt zijn winkelwagen, trekt zijn jas recht\nen duwt de regen in.",
 	"Zo begint zijn zwerftocht door Den Haag.",
 ]
-## The moments of the intro (seconds into intro.mp3, which is 181 s: the soft theme begins
-## at 0.1, its first big entry at 12.1, the full band at 23.2, a lighter turn at 48.1, a
-## hit back to full at 90.1, the climax from 124.5, a last hit and the calm end from 156.1,
-## fading out from 168.4, then silence and a short coda from 174 that the intro does not
-## wait for): the opening line fading in and out, the logo, the start of the crawl, the end
-## of the crawl and of the intro.
+## The moments of the intro (seconds into approach_vector_intro.ogg, 142 BPM, a bar is
+## 1.69 s, 56 bars, 94.6 s: the swell of the 8-bit motif from 0, the drop at bar 8 (13.5),
+## the breakdown at bar 24 (40.6), the riser at bar 40 (67.6), the climax at bar 48 (81.1)
+## and the end at bar 56 (94.6), which runs on into the menu loop): the opening line fading
+## in and out, the logo, the start of the crawl, the end of the crawl and of the intro.
 const LINE_IN_AT := 0.4
 const LINE_OUT_AT := 3.6    # gone at 4.8, before the logo fades in
 ## The logo and the stars fade in from LOGO_FADE_IN_AT, stand there whole from LOGO_AT, and
-## the logo stands big (LOGO_HOLD) until the music's first big entry (12.1): there it starts
+## the logo stands big (LOGO_HOLD) until the drop of the music (13.5): there it starts
 ## to go away and the story comes in.
 const LOGO_FADE_IN_AT := 5.0
 const LINE_FADE := 1.2
 const LOGO_AT := 6.5
-const CRAWL_AT := 12.1
+const CRAWL_AT := 13.5
 ## The story rolls to END_AT (where the music fades): the last paragraph does not roll off
 ## the top but comes to rest far off at CRAWL_REST (share of the picture's height from the
 ## top) and the story fades out over the last CRAWL_FADE seconds; no travel wasted, so it
 ## rolls as slowly as the music allows.
-const END_AT := 168.5
+const END_AT := 94.6
 const CRAWL_REST := 0.35
 const CRAWL_FADE := 4.0
 ## Holding Enter (or the down arrow) rolls the story this many times as fast; it then
@@ -170,7 +170,7 @@ func _ready() -> void:
 	_build_crawl()
 	_build_prompts()
 	var settings := MainMenu._read_settings()
-	var crt := GameHud.make_crt_overlay(0.05 if settings.crt else 0.0, 0.035 if settings.crt else 0.0,
+	var crt := UiStyle.make_crt_overlay(0.05 if settings.crt else 0.0, 0.035 if settings.crt else 0.0,
 			0.1 if settings.scanlines else 0.0, get_viewport().get_visible_rect().size)
 	add_child(crt)
 	# the disturbances of the menu too: a rolling band, now and then VHS tracking
@@ -335,7 +335,7 @@ func _start_music() -> void:
 	if ResourceLoader.exists(MUSIC):
 		stream = load(MUSIC)
 	elif FileAccess.file_exists(MUSIC):
-		stream = AudioStreamMP3.load_from_file(MUSIC)
+		stream = AudioStreamOggVorbis.load_from_file(MUSIC)
 	if stream == null:
 		push_warning("intro: no music at %s" % MUSIC)
 		return
@@ -405,9 +405,9 @@ func _build_line() -> void:
 	_line.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART   # too wide for the picture: two lines
 	_line.size = DESIGN_SIZE
-	_line.add_theme_font_override("font", _font("res://assets/fonts/PixelifySans.ttf", 500))
+	_line.add_theme_font_override("font", _font(UiStyle.FONT_TITLE, 500))
 	_line.add_theme_font_size_override("font_size", 30)
-	_line.add_theme_color_override("font_color", GameHud.SIDE_ACCENT)
+	_line.add_theme_color_override("font_color", UiStyle.SIDE_ACCENT)
 	_line.modulate.a = 0.0
 	_line.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_design.add_child(_line)
@@ -427,12 +427,12 @@ func _build_logo() -> void:
 	logo.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	logo.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	logo.size = DESIGN_SIZE
-	logo.add_theme_font_override("font", GameHud._spaced(_font("res://assets/fonts/PixelifySans.ttf", 700), 8))
+	logo.add_theme_font_override("font", UiStyle.spaced(_font(UiStyle.FONT_TITLE, 700), 8))
 	logo.add_theme_font_size_override("font_size", 230)
 	logo.add_theme_color_override("font_color", Color.BLACK)
-	logo.add_theme_color_override("font_outline_color", GameHud.ACCENT)
+	logo.add_theme_color_override("font_outline_color", UiStyle.ACCENT)
 	logo.add_theme_constant_override("outline_size", 14)
-	logo.add_theme_color_override("font_shadow_color", GameHud.INK)
+	logo.add_theme_color_override("font_shadow_color", UiStyle.INK)
 	logo.add_theme_constant_override("shadow_offset_x", 10)
 	logo.add_theme_constant_override("shadow_offset_y", 10)
 	logo.add_theme_constant_override("shadow_outline_size", 14)
@@ -443,9 +443,9 @@ func _build_logo() -> void:
 	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	subtitle.size = Vector2(DESIGN_SIZE.x, 40)
 	subtitle.position = Vector2(0, DESIGN_SIZE.y * 0.5 + 130)
-	subtitle.add_theme_font_override("font", GameHud._spaced(load("res://assets/fonts/Silkscreen-Regular.ttf") if ResourceLoader.exists("res://assets/fonts/Silkscreen-Regular.ttf") else _fallback(), 8))
+	subtitle.add_theme_font_override("font", UiStyle.spaced(UiStyle.font(UiStyle.FONT_PIXEL), 8))
 	subtitle.add_theme_font_size_override("font_size", 22)
-	subtitle.add_theme_color_override("font_color", GameHud.ACCENT)
+	subtitle.add_theme_color_override("font_color", UiStyle.ACCENT)
 	subtitle.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_logo_holder.add_child(subtitle)
 
@@ -489,7 +489,7 @@ func _build_crawl() -> void:
 	_crawl_text.size = Vector2(CRAWL_PICTURE.x, 0)
 	_crawl_text.position = Vector2(0, CRAWL_PICTURE.y)
 	picture.add_child(_crawl_text)
-	var font := _font("res://assets/fonts/PixelifySans.ttf", 700)
+	var font := _font(UiStyle.FONT_TITLE, 700)
 	for paragraph: String in STORY:
 		var label := Label.new()
 		label.text = paragraph
@@ -498,7 +498,7 @@ func _build_crawl() -> void:
 		label.custom_minimum_size = Vector2(CRAWL_PICTURE.x, 0)
 		label.add_theme_font_override("font", font)
 		label.add_theme_font_size_override("font_size", 46)
-		label.add_theme_color_override("font_color", GameHud.ACCENT)
+		label.add_theme_color_override("font_color", UiStyle.ACCENT)
 		label.add_theme_constant_override("line_spacing", 4)
 		_crawl_text.add_child(label)
 	_crawl_screen = ColorRect.new()
@@ -657,13 +657,9 @@ func _fly_tractor() -> void:
 	_tractor_spinner.basis = Basis(_tractor_flight.axis as Vector3, float(_tractor_flight.spin) * get_process_delta_time()) * _tractor_spinner.basis
 
 
+## The font at `path` (Rubik when it is missing) at this weight.
 static func _font(path: String, weight: int) -> Font:
-	var font: Font = load(path) if ResourceLoader.exists(path) else _fallback()
-	return GameHud._weighted(font, weight)
-
-
-static func _fallback() -> Font:
-	return load("res://assets/fonts/Rubik.ttf")
+	return UiStyle.weighted(UiStyle.font(path), weight)
 
 
 func _fit_to_window() -> void:

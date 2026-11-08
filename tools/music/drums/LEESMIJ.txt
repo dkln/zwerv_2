@@ -1,0 +1,7 @@
+Zet hier je eigen drumsamples (one-shots) neer, dan gebruikt alle muziek die in plaats van de
+gesynthetiseerde drums:
+
+  kick.wav  snare.wav  clap.wav  hat.wav  open_hat.wav  tom.wav
+
+(.ogg, .flac en .aif mogen ook.) Wat ontbreekt, wordt aangevuld met de klassieke synth-kit.
+Daarna opnieuw renderen: tools/music/render.sh

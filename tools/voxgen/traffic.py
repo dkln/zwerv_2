@@ -1,5 +1,5 @@
 """Who may use each ground tile and which way, written as "traffic" into each tile's .tile.json
-(vox.write_metadata) and read by Godot's road network (scripts/world/road_network.gd,
+(vox.write_metadata) and read by Godot's road network (scripts/traffic/road_network.gd,
 through the "traffic" metadata of the ground MeshLibrary, library_builder.gd).
 
     "traffic": {"lanes": ["N"], "road": "straat", "speed": 50, "rise": 1.0, "only": ["auto", "fiets"]}

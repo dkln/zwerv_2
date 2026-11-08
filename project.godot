@@ -64,7 +64,7 @@ environment/ssao/quality=1
 anti_aliasing/quality/use_debanding=true
 scaling_3d/mode=2
 scaling_3d/mode.macos=4
-scaling_3d/scale=0.7
+scaling_3d/scale=0.85
 
 [shader_globals]
 
@@ -132,3 +132,7 @@ zwervr_sky_horizon={
 "type": "color",
 "value": Color(0.78, 0.85, 0.92, 1)
 }
+
+[debug]
+
+file_logging/max_log_files=40

@@ -1,10 +1,23 @@
 extends SceneTree
-## City builder, part 1 of 3: shared constants, the build state, the scene setup
+## City builder, part 1: shared constants, the build state, the scene setup
 ## (_make_scene, _save) and the placement primitives G/B/D/Pr.
 ##
-## The builder is a chain of scripts, each extending the previous one:
-## base -> kit -> street_grid -> tools/build/build_city.gd (the entry point). A part may only call what is defined in
-## itself or an earlier part.
+## The builder is a chain of scripts, each extending the previous one. A part may only use
+## what is defined in itself or an earlier part.
+##   General, for any town:
+##     1 base         this file
+##     2 kit          building blocks, rings, towers, halls, parking decks, styles
+##     3 street_grid  streets with markings, signalised crossings and kerbs
+##   This town (The Hague):
+##     4 map          the plan: street grid, names, shared structures, small helpers
+##     5 streets      its streets, the singel with quays and bridges
+##     6 old_centre   inside the singel
+##     7 east         east of the singel
+##     8 south        south of the viaducts
+##     9 a12          the motorway and Voorburg
+##    10 rail         trams, tram tunnel, viaducts, railway
+##    11 finishing    passes over the whole town, scene nodes
+##   tools/build/build_city.gd: the entry point (the order of the build).
 ##
 ## HOW IT WORKS
 ## The scene gets its root setup from _make_scene: environment, sun and fill light,
@@ -167,15 +180,15 @@ func _make_scene(node_name: String) -> Node3D:
 	root.add_child(dn)
 	var dc := Node.new()
 	dc.name = "Dagcyclus"
-	dc.set_script(load("res://scripts/effects/day_cycle.gd"))
+	dc.set_script(load("res://scripts/world/day_cycle.gd"))
 	root.add_child(dc)
 	var tl := Node.new()
 	tl.name = "Verkeerslichten"
-	tl.set_script(load("res://scripts/world/traffic_lights.gd"))
+	tl.set_script(load("res://scripts/traffic/traffic_lights.gd"))
 	root.add_child(tl)
 	var arrows := Node3D.new()
 	arrows.name = "Rijrichtingen"   # editor only: the driving direction of every lane
-	arrows.set_script(load("res://scripts/world/lane_arrows.gd"))
+	arrows.set_script(load("res://scripts/traffic/lane_arrows.gd"))
 	root.add_child(arrows)
 	var smoke := Node3D.new()
 	smoke.name = "Rook"
@@ -195,7 +208,7 @@ func _make_scene(node_name: String) -> Node3D:
 	root.add_child(overhead)
 	var gb := Node3D.new()
 	gb.name = "Grassprieten"
-	gb.set_script(load("res://scripts/effects/grass_blades.gd"))
+	gb.set_script(load("res://scripts/world/grass_blades.gd"))
 	root.add_child(gb)
 	var hud := CanvasLayer.new()
 	hud.name = "HUD"   # player stats, minimap, clock, quests, money (scripts/ui/hud.gd)
