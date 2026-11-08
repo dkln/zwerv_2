@@ -20,8 +20,8 @@ extends Control
 ## does the same. Where the logo vanishes a star twinkles.
 ## The space bar (only that: not other keys, the mouse or the volume keys) breaks it off at
 ## any moment and goes to the main menu; holding Enter (or the down arrow) rolls the story
-## faster (CRAWL_FAST); bottom left the actions say so, one under the other
-## (ActionPrompts: "SPATIE  Overslaan", "ENTER  Sneller"). The stars twinkle, and now and then a tractor drifts through space.
+## faster (CRAWL_FAST); bottom right the keys say so, as in the menu ("[SPATIE] OVERSLAAN
+## [ENTER] SNELLER"). The stars twinkle, and now and then a tractor drifts through space.
 ## The CRT look of the HUD lies over it (UiStyle.make_crt_overlay, with the settings of the
 ## main menu).
 
@@ -517,22 +517,25 @@ func _build_crawl() -> void:
 	_design.add_child(_crawl_screen)
 
 
-## Bottom left, the actions that can be done now (ActionPrompts, one under the other):
-## skipping ("SPATIE  Overslaan") and rolling the story faster ("ENTER  Sneller").
+## Bottom right, the keys and what they do, as the footer of the main menu and the
+## character creation screen: one line of small pixel text ("[SPATIE] OVERSLAAN",
+## "[ENTER] SNELLER"), 48 px in from the right, 48 px up.
+const PROMPT_TEXT := "[SPATIE] OVERSLAAN      [ENTER] SNELLER"
+const PROMPT_COLOUR := Color("#C9CCE6")
+
+
 func _build_prompts() -> void:
-	var prompts := ActionPrompts.new()
-	prompts.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	prompts.size_flags_vertical = Control.SIZE_SHRINK_END
-	prompts.set_actions([["SPATIE", "Overslaan"], ["ENTER", "Sneller"]])
-	# bottom left of the design (24 px in, 28 px up), whatever size the prompts take: a
-	# margin container the size of the design with them at its end
-	var corner := MarginContainer.new()
-	corner.size = DESIGN_SIZE
-	corner.add_theme_constant_override("margin_left", 24)
-	corner.add_theme_constant_override("margin_bottom", 28)
-	corner.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	corner.add_child(prompts)
-	_design.add_child(corner)
+	var keys := Label.new()
+	keys.name = "Toetsen"
+	keys.text = PROMPT_TEXT
+	keys.add_theme_font_override("font", UiStyle.font(UiStyle.FONT_PIXEL))
+	keys.add_theme_font_size_override("font_size", 11)
+	keys.add_theme_color_override("font_color", PROMPT_COLOUR)
+	keys.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	keys.size = Vector2(600, 16)
+	keys.position = Vector2(DESIGN_SIZE.x - 48 - 600, DESIGN_SIZE.y - 48)
+	keys.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_design.add_child(keys)
 
 
 ## The drifting tractor: a small 3D world of its own (a camera, a sun and some ambient

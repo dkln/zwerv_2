@@ -7,10 +7,9 @@ Sections can be placed at any bar, so two arrangements share the material; each 
 which effect leads into the next section (stutter, tape stop, filter build):
 
   intro track (56 bars, ~1:35): intro swell 8 | drop 16 | breakdown 16 | riser 8 | climax 8
-  menu loop   (64 bars, ~1:48): drop 16 | breakdown 16 | drop B 16 | riser 8 | climax 8
 
-The intro track ends on the climax turnaround, which leads straight into bar 1 of the menu
-loop; the menu loop is rendered seamless (its end flows into its own start).
+The main menu has a piece of its own (songs/menu.py, "Nachtstad"), so it does not sound like
+the intro going on.
 """
 import instruments as inst
 from patterns import play_melody, play_repeated
@@ -178,15 +177,9 @@ def section_climax(song, tracks, first_bar):
         tracks.chip.add(inst.chip_arp(note, beat * 0.1), song.at(last_bar, 3 + step * 0.125))
 
 
-def section_drop_b(song, tracks, first_bar):
-    section_drop(song, tracks, first_bar, variant=True)
-
-
 # (section, bars, effect leading into the next section)
 INTRO_ARRANGEMENT = [(section_intro, 8, None), (section_drop, 16, "stutter"), (section_breakdown, 16, "stutter"),
                      (section_riser, 8, "build"), (section_climax, 8, None)]
-MENU_ARRANGEMENT = [(section_drop, 16, "stutter"), (section_breakdown, 16, "build"), (section_drop_b, 16, "tape"),
-                    (section_riser, 8, "build"), (section_climax, 8, None)]
 
 
 def transition(song, tracks, next_bar, kind):
@@ -218,6 +211,4 @@ def bar_count(arrangement):
 RENDERS = [
     {"file": "approach_vector_intro.ogg", "bpm": BPM, "bars": bar_count(INTRO_ARRANGEMENT),
      "compose": arrangement_composer(INTRO_ARRANGEMENT)},
-    {"file": "approach_vector_menu_loop.ogg", "bpm": BPM, "bars": bar_count(MENU_ARRANGEMENT),
-     "compose": arrangement_composer(MENU_ARRANGEMENT), "loop": True},
 ]

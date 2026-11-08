@@ -1,0 +1,612 @@
+extends Control
+## The character creation screen (scenes/karakter.tscn), its own step between the main
+## menu (NIEUW SPEL) and the town, in the style of the menu and the HUD: the night sky
+## with stars (no town behind it) and the title, then
+## - left: the archetypes (PlayerCharacter.ARCHETYPES) in a list that scrolls vertically,
+##   each a thumbnail of the face (PlayerPortrait, zoomed in), the name (a nickname), what
+##   they are good at under it and the level they start on; the chosen one in amber;
+## - right: the chosen one large: the whole figure in 3D, turning slowly round its axis, the name, what they are good at, the level, what only they
+##   have (the perk, in teal, if any), their story and the stats (leven, stamina,
+##   honger) as the HUD's segment bars, a share of
+##   PlayerCharacter.STAT_CEILING, with the number.
+## Keys: up/down (or left/right, or 1 to 9) choose, Enter begins, Escape goes back to the
+## main menu; the mouse: a click chooses, a click on the chosen one or on BEGIN begins,
+## the wheel scrolls the list.
+## Beginning stores the choice (PlayerCharacter.choose) and opens the town through the
+## warp; its own loading screen takes over from there.
+## Music: a soft loop of its own (karakterkeuze_loop.ogg), fading in.
+## Laid out at 1280 x 720, scaled with the window.
+
+const UiStyle = preload("res://scripts/ui/ui_style.gd")
+const UiSounds = preload("res://scripts/ui/ui_sounds.gd")
+const SegmentBar = preload("res://scripts/ui/widgets/segment_bar.gd")
+const PixelIcon = preload("res://scripts/ui/widgets/pixel_icon.gd")
+const PlayerPortrait = preload("res://scripts/ui/widgets/player_portrait.gd")
+const PlayerCharacter = preload("res://scripts/player/player_character.gd")
+
+const CITY_SCENE := "res://scenes/stad.tscn"
+const MENU_SCENE := "res://scenes/hoofdmenu.tscn"
+const MUSIC := "res://assets/audio/muziek/karakterkeuze_loop.ogg"
+## Soft, in the background; it fades in over MUSIC_FADE_IN seconds.
+const MUSIC_VOLUME_DB := -19.0
+const MUSIC_FADE_IN := 2.5
+const MUSIC_FADE_OUT := 1.6
+const DESIGN_SIZE := Vector2(1280, 720)
+const SKY := Color("#0E1130")
+const SOFT_TEXT := Color("#C9CCE6")
+
+## Where the list and the detail panel lie, both from TOP to TOP + HEIGHT.
+const LEFT := 48.0
+const TOP := 128.0
+const HEIGHT := 488.0
+const LIST_WIDTH := 372.0
+const ENTRY_HEIGHT := 96.0
+const THUMBNAIL := 76.0
+const DETAIL_LEFT := 444.0
+const DETAIL_WIDTH := 788.0
+## The whole figure in the detail panel.
+const FIGURE_SIZE := Vector2(300, 456)
+const STAT_SEGMENTS := 20
+## Degrees a second the figure in the detail panel turns round its axis.
+const SPIN := 40.0
+const WARP_SECONDS := 1.6
+
+var _design: Control
+var _scroll: ScrollContainer
+var _entries: Array[Control] = []
+var _entry_panels: Array[Panel] = []
+var _detail: Control
+var _detail_figure
+var _detail_name: Label
+var _detail_subtitle: Label
+var _detail_level: PanelContainer
+var _detail_story: Label
+var _detail_perk: Label
+var _detail_bars := {}       # stat name -> SegmentBar
+var _detail_numbers := {}    # stat name -> Label
+var _begin_button: Button
+var _selected := -1
+var _leaving := false
+var _crt: ColorRect
+var _music: AudioStreamPlayer
+var _font_title: Font
+var _font_title_medium: Font
+var _font_pixel: Font
+var _font_pixel_bold: Font
+var _font_body: Font
+
+
+func _ready() -> void:
+	set_anchors_preset(Control.PRESET_FULL_RECT)
+	_load_fonts()
+	var sky := ColorRect.new()
+	sky.color = SKY
+	sky.set_anchors_preset(Control.PRESET_FULL_RECT)
+	sky.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(sky)
+	var stars := StarField.new()
+	stars.set_anchors_preset(Control.PRESET_FULL_RECT)
+	add_child(stars)
+	_design = Control.new()
+	_design.name = "Ontwerp"
+	_design.size = DESIGN_SIZE
+	_design.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_design)
+	_build_title()
+	_build_list()
+	_build_detail()
+	_build_begin()
+	_build_footer()
+	var settings := MainMenu._read_settings()
+	_crt = UiStyle.make_crt_overlay(0.05 if settings.crt else 0.0, 0.035 if settings.crt else 0.0,
+			0.1 if settings.scanlines else 0.0, get_viewport().get_visible_rect().size)
+	add_child(_crt)
+	_crt.add_child(load("res://scripts/ui/crt_disturbance.gd").new())
+	get_viewport().size_changed.connect(_fit_to_window)
+	_fit_to_window()
+	var earlier := PlayerCharacter.ORDER.find(PlayerCharacter.chosen_id)
+	_select(earlier if earlier >= 0 else 0, false)
+	_play_entrance()
+	_start_music()
+
+
+# ------------------------------------------------------------------ choosing
+
+func _unhandled_input(event: InputEvent) -> void:
+	if _leaving:
+		return
+	if event.is_action_pressed("ui_cancel"):
+		_back_to_menu()
+	elif event.is_action_pressed("ui_down") or event.is_action_pressed("ui_right"):
+		_select(posmod(_selected + 1, _entries.size()))
+	elif event.is_action_pressed("ui_up") or event.is_action_pressed("ui_left"):
+		_select(posmod(_selected - 1, _entries.size()))
+	elif event.is_action_pressed("ui_accept"):
+		begin()
+	elif event is InputEventKey and event.pressed and not event.echo \
+			and event.keycode >= KEY_1 and event.keycode < KEY_1 + mini(_entries.size(), 9):
+		_select(event.keycode - KEY_1)
+	else:
+		return
+	get_viewport().set_input_as_handled()
+
+
+func _select(index: int, audible := true) -> void:
+	if index == _selected:
+		return
+	if audible:
+		UiSounds.play(self, "kies")
+	_selected = index
+	for entry_index in _entries.size():
+		var on := entry_index == index
+		var style := UiStyle.box_style(UiStyle.PANEL if on else UiStyle.TRANSLUCENT_INK, UiStyle.ACCENT if on else UiStyle.BORDER, 3 if on else 2)
+		_entry_panels[entry_index].add_theme_stylebox_override("panel", style)
+		_entries[entry_index].modulate = Color.WHITE if on else Color(0.75, 0.75, 0.75)
+	_scroll.ensure_control_visible(_entries[index])
+	_show_detail(index)
+	var archetype: Dictionary = PlayerCharacter.ARCHETYPES[PlayerCharacter.ORDER[index]]
+	_begin_button.text = "▶  BEGIN ALS %s" % String(archetype.name).to_upper()
+
+
+## The chosen one in the detail panel: the figure, the texts and the stats, fading in.
+func _show_detail(index: int) -> void:
+	var archetype_id: String = PlayerCharacter.ORDER[index]
+	var archetype: Dictionary = PlayerCharacter.ARCHETYPES[archetype_id]
+	_detail_figure.archetype_id = archetype_id
+	_detail_name.text = archetype.name
+	_detail_subtitle.text = archetype.subtitle
+	_set_level_chip(_detail_level, int(archetype.level))
+	_detail_story.text = archetype.story
+	_detail_perk.text = "EXTRA: " + String(archetype.get("perk", "")).to_upper()
+	_detail_perk.visible = archetype.has("perk")
+	for stat_name: String in PlayerCharacter.STAT_LABELS:
+		var value := float(archetype.stats[stat_name])
+		(_detail_bars[stat_name] as SegmentBar).fill = value / PlayerCharacter.STAT_CEILING
+		var number: Label = _detail_numbers[stat_name]
+		number.text = "%d%s" % [roundi(value), "+" if value > 100.0 else ("-" if value < 100.0 else "")]
+		number.add_theme_color_override("font_color", UiStyle.TEXT if value >= 100.0 else UiStyle.MUTED)
+	_detail.modulate.a = 0.4
+	create_tween().tween_property(_detail, "modulate:a", 1.0, 0.25)
+
+
+## Begins as the chosen archetype: the choice is stored and the town opens.
+func begin() -> void:
+	if _leaving:
+		return
+	_leaving = true
+	UiSounds.play(self, "doe")
+	PlayerCharacter.choose(PlayerCharacter.ORDER[_selected])
+	_begin_button.text = "▶  LADEN…"
+	await _leave()
+	get_tree().change_scene_to_file(CITY_SCENE)
+
+
+func _back_to_menu() -> void:
+	_leaving = true
+	UiSounds.play(self, "terug")
+	await _leave()
+	get_tree().change_scene_to_file(MENU_SCENE)
+
+
+## The list and the detail fade away, the music fades, the picture goes into the warp.
+func _leave() -> void:
+	var exit := create_tween().set_parallel(true).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+	for index in _entries.size():
+		exit.tween_property(_entries[index], "modulate:a", 0.0, 0.4).set_delay(0.06 * index)
+	exit.tween_property(_detail, "modulate:a", 0.0, 0.5)
+	exit.tween_property(_detail, "position:x", _detail.position.x + 30.0, 0.5)
+	_fade_out_music()
+	await WarpTransition.leave(get_tree(), WARP_SECONDS).covered
+
+
+# ------------------------------------------------------------------ building
+
+func _build_title() -> void:
+	var column := VBoxContainer.new()
+	column.position = Vector2(LEFT, 30)
+	column.add_theme_constant_override("separation", 6)
+	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_design.add_child(column)
+	column.add_child(_small("NIEUW SPEL", UiStyle.ACCENT, 13, 6))
+	column.add_child(_label("KIES JE ZWERVER", _font_title, 46, Color("#F4EEDD"), 5))
+
+
+## The list on the left: a vertical scroll of entries (a slim amber scroll bar on ink).
+func _build_list() -> void:
+	_scroll = ScrollContainer.new()
+	_scroll.name = "Lijst"
+	_scroll.position = Vector2(LEFT, TOP)
+	_scroll.size = Vector2(LIST_WIDTH, HEIGHT)
+	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	var bar := _scroll.get_v_scroll_bar()
+	var track := UiStyle.box_style(UiStyle.INK, UiStyle.BORDER, 1)
+	track.content_margin_left = 6
+	var grabber := UiStyle.box_style(UiStyle.ACCENT, UiStyle.ACCENT, 0)
+	bar.add_theme_stylebox_override("scroll", track)
+	bar.add_theme_stylebox_override("grabber", grabber)
+	bar.add_theme_stylebox_override("grabber_highlight", grabber)
+	bar.add_theme_stylebox_override("grabber_pressed", grabber)
+	_design.add_child(_scroll)
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 10)
+	column.custom_minimum_size = Vector2(LIST_WIDTH - 20, 0)
+	column.mouse_filter = Control.MOUSE_FILTER_PASS
+	_scroll.add_child(column)
+	for index in PlayerCharacter.ORDER.size():
+		column.add_child(_list_entry(index))
+
+
+## An entry of the list: the face as a thumbnail, the name, what they are good at and the
+## level. A click chooses it (the wheel goes through to the scroll).
+func _list_entry(index: int) -> Control:
+	var archetype_id: String = PlayerCharacter.ORDER[index]
+	var archetype: Dictionary = PlayerCharacter.ARCHETYPES[archetype_id]
+	var entry := Control.new()
+	entry.name = "Keuze_" + archetype_id
+	entry.custom_minimum_size = Vector2(LIST_WIDTH - 24, ENTRY_HEIGHT)
+	entry.mouse_filter = Control.MOUSE_FILTER_PASS
+	entry.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	entry.gui_input.connect(func(event: InputEvent) -> void:
+		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT and not _leaving:
+			if _selected == index:
+				begin()
+			else:
+				_select(index))
+	var panel := Panel.new()
+	panel.size = entry.custom_minimum_size
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	entry.add_child(panel)
+	var frame := Panel.new()
+	frame.position = Vector2(10, 10)
+	frame.size = Vector2(THUMBNAIL, THUMBNAIL)
+	frame.add_theme_stylebox_override("panel", UiStyle.box_style(UiStyle.INK, UiStyle.BORDER, 2))
+	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	entry.add_child(frame)
+	var thumbnail := PlayerPortrait.new()
+	thumbnail.archetype_id = archetype_id
+	thumbnail.zoom = 1.0
+	thumbnail.face_view = 1.0
+	thumbnail.position = Vector2(12, 12)
+	thumbnail.size = Vector2(THUMBNAIL - 4, THUMBNAIL - 4)
+	entry.add_child(thumbnail)
+	var texts := VBoxContainer.new()
+	texts.position = Vector2(THUMBNAIL + 24, 14)
+	texts.add_theme_constant_override("separation", 4)
+	texts.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	entry.add_child(texts)
+	texts.add_child(_label(archetype.name, _font_title, 24, UiStyle.TEXT, 2))
+	texts.add_child(_small(archetype.subtitle, UiStyle.ACCENT, 11, 2))
+	var level_row := HBoxContainer.new()
+	level_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var level := _chip("", UiStyle.BORDER, UiStyle.TEXT)
+	_set_level_chip(level, int(archetype.level))
+	level_row.add_child(level)
+	texts.add_child(level_row)
+	var number := _small(str(index + 1), UiStyle.MUTED, 11)
+	number.position = Vector2(LIST_WIDTH - 24 - 22, 10)
+	entry.add_child(number)
+	_entries.append(entry)
+	_entry_panels.append(panel)
+	return entry
+
+
+## The detail panel on the right: the figure large, and beside it the name, what they are good at, the level, the story and the stats.
+func _build_detail() -> void:
+	_detail = Control.new()
+	_detail.name = "Detail"
+	_detail.position = Vector2(DETAIL_LEFT, TOP)
+	_detail.size = Vector2(DETAIL_WIDTH, HEIGHT)
+	_detail.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_design.add_child(_detail)
+	var shadow := ColorRect.new()
+	shadow.color = UiStyle.INK
+	shadow.position = Vector2.ONE * UiStyle.SHADOW_OFFSET
+	shadow.size = _detail.size
+	shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_detail.add_child(shadow)
+	var panel := Panel.new()
+	panel.size = _detail.size
+	panel.add_theme_stylebox_override("panel", UiStyle.box_style(UiStyle.PANEL, UiStyle.ACCENT, 3))
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_detail.add_child(panel)
+	# the whole figure in an ink window with a faint floor
+	var window := Panel.new()
+	window.position = Vector2(16, 16)
+	window.size = FIGURE_SIZE
+	window.add_theme_stylebox_override("panel", UiStyle.box_style(UiStyle.INK, UiStyle.BORDER, 2))
+	window.clip_contents = true
+	window.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_detail.add_child(window)
+	var floor_glow := ColorRect.new()
+	floor_glow.color = Color(1, 1, 1, 0.04)
+	floor_glow.position = Vector2(2, FIGURE_SIZE.y - 60)
+	floor_glow.size = Vector2(FIGURE_SIZE.x - 4, 58)
+	floor_glow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	window.add_child(floor_glow)
+	_detail_figure = PlayerPortrait.new()
+	_detail_figure.spin = SPIN
+	_detail_figure.position = Vector2(2, 2)
+	_detail_figure.size = FIGURE_SIZE - Vector2(4, 4)
+	window.add_child(_detail_figure)
+	# the texts and the stats beside it
+	var column_width := DETAIL_WIDTH - FIGURE_SIZE.x - 16 * 3 - 8
+	var column := VBoxContainer.new()
+	column.position = Vector2(16 + FIGURE_SIZE.x + 24, 22)
+	column.custom_minimum_size = Vector2(column_width, 0)
+	column.add_theme_constant_override("separation", 10)
+	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_detail.add_child(column)
+	_detail_name = _label("", _font_title, 38, Color("#F4EEDD"), 3)
+	column.add_child(_detail_name)
+	_detail_subtitle = _small("", UiStyle.ACCENT, 13, 3)
+	column.add_child(_detail_subtitle)
+	var level_row := HBoxContainer.new()
+	level_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_detail_level = _chip("", UiStyle.BORDER, UiStyle.TEXT)
+	level_row.add_child(_detail_level)
+	column.add_child(level_row)
+	_detail_perk = _label("", _font_pixel_bold, 11, UiStyle.SIDE_ACCENT, 0)
+	_detail_perk.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_detail_perk.custom_minimum_size = Vector2(column_width, 0)
+	column.add_child(_detail_perk)
+	column.add_child(_divider(column_width))
+	_detail_story = _label("", _font_body, 14, SOFT_TEXT, 0)
+	_detail_story.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_detail_story.custom_minimum_size = Vector2(column_width, 136)
+	_detail_story.add_theme_constant_override("line_spacing", 3)
+	column.add_child(_detail_story)
+	column.add_child(_divider(column_width))
+	column.add_child(_small("STATS", SOFT_TEXT, 11, 4))
+	for stat_name: String in PlayerCharacter.STAT_LABELS:
+		column.add_child(_stat_row(stat_name))
+
+
+## A stat as in the HUD: its icon and colour (GameHud.STATS), the label, a segment bar and
+## the number (set by _show_detail; ordinary is 100, marked + or - beside it).
+func _stat_row(stat_name: String) -> Control:
+	var stat: Dictionary = GameHud.STATS[stat_name]
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var icon := PixelIcon.new()
+	icon.bitmap = GameHud.PIXEL_ICONS[stat.icon]
+	icon.colour = stat.colour
+	icon.pixel = 2.0
+	var icon_holder := CenterContainer.new()
+	icon_holder.custom_minimum_size = Vector2(18, 0)
+	icon_holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	icon_holder.add_child(icon)
+	row.add_child(icon_holder)
+	var name_label := _small(PlayerCharacter.STAT_LABELS[stat_name], SOFT_TEXT, 12)
+	name_label.custom_minimum_size = Vector2(84, 0)
+	name_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(name_label)
+	var bar := SegmentBar.new()
+	bar.segments = STAT_SEGMENTS
+	bar.segment_height = 10
+	bar.full_colour = stat.colour
+	bar.empty_colour = stat.empty
+	bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(bar)
+	var number := _label("", _font_pixel_bold, 13, UiStyle.TEXT, 0)
+	number.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(number)
+	_detail_bars[stat_name] = bar
+	_detail_numbers[stat_name] = number
+	return row
+
+
+func _divider(width: float) -> ColorRect:
+	var line := ColorRect.new()
+	line.color = UiStyle.BORDER
+	line.custom_minimum_size = Vector2(width, 2)
+	line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return line
+
+
+func _build_begin() -> void:
+	_begin_button = Button.new()
+	_begin_button.name = "Begin"
+	_begin_button.position = Vector2(DETAIL_LEFT, TOP + HEIGHT + 18)
+	_begin_button.custom_minimum_size = Vector2(420, 40)
+	_begin_button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_begin_button.focus_mode = Control.FOCUS_NONE
+	_begin_button.add_theme_font_override("font", _font_title_medium)
+	_begin_button.add_theme_font_size_override("font_size", 22)
+	var style := StyleBoxFlat.new()
+	style.bg_color = UiStyle.ACCENT
+	style.shadow_color = Color.BLACK
+	style.shadow_offset = Vector2(4, 4)
+	style.shadow_size = 0
+	style.anti_aliasing = false
+	style.content_margin_left = 12
+	style.content_margin_right = 16
+	for state in ["normal", "hover", "pressed", "focus", "disabled"]:
+		_begin_button.add_theme_stylebox_override(state, style)
+	for colour_name in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color", "font_disabled_color"]:
+		_begin_button.add_theme_color_override(colour_name, UiStyle.INK)
+	_begin_button.pressed.connect(begin)
+	_design.add_child(_begin_button)
+
+
+func _build_footer() -> void:
+	var keys := _small("[↑↓] KIEZEN      [ENTER] BEGIN      [ESC] TERUG", SOFT_TEXT)
+	keys.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	keys.size = Vector2(600, 16)
+	keys.position = Vector2(1280 - LEFT - 600, TOP + HEIGHT + 30)
+	_design.add_child(keys)
+
+
+## A small block of colour with pixel text on it (the level).
+func _chip(text: String, background: Color, colour: Color) -> PanelContainer:
+	var chip := PanelContainer.new()
+	var style := UiStyle.box_style(background, background, 0)
+	style.content_margin_left = 6
+	style.content_margin_right = 6
+	style.content_margin_top = 3
+	style.content_margin_bottom = 3
+	chip.add_theme_stylebox_override("panel", style)
+	chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	chip.add_child(_label(text, _font_pixel_bold, 11, colour, 0))
+	return chip
+
+
+## "LEVEL n" on a chip: amber (as the HUD's badge) above level 1, else plain.
+func _set_level_chip(chip: PanelContainer, level: int) -> void:
+	var background := UiStyle.ACCENT if level > 1 else UiStyle.BORDER
+	var style := UiStyle.box_style(background, background, 0)
+	style.content_margin_left = 6
+	style.content_margin_right = 6
+	style.content_margin_top = 3
+	style.content_margin_bottom = 3
+	chip.add_theme_stylebox_override("panel", style)
+	var label := chip.get_child(0) as Label
+	label.text = "LEVEL %d" % level
+	label.add_theme_color_override("font_color", UiStyle.INK if level > 1 else UiStyle.TEXT)
+
+
+# ------------------------------------------------------------------ the entrance
+
+func _play_entrance() -> void:
+	var entrance := create_tween().set_parallel(true).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	for index in _entries.size():
+		var entry := _entries[index]
+		var shown := entry.modulate.a
+		entry.modulate.a = 0.0
+		entrance.tween_property(entry, "modulate:a", shown, 0.6).set_delay(0.25 + 0.12 * index)
+	var detail_at := _detail.position
+	_detail.position = detail_at + Vector2(40, 0)
+	_detail.modulate.a = 0.0
+	entrance.tween_property(_detail, "position", detail_at, 1.0).set_delay(0.4)
+	entrance.tween_property(_detail, "modulate:a", 1.0, 0.8).set_delay(0.4)
+	_begin_button.modulate.a = 0.0
+	entrance.tween_property(_begin_button, "modulate:a", 1.0, 0.6).set_delay(1.0)
+	var material := _crt.material as ShaderMaterial
+	material.set_shader_parameter("tracking", 0.6)
+	entrance.tween_method(func(amount: float) -> void: material.set_shader_parameter("tracking", amount), 0.6, 0.0, 1.2)
+
+
+# ------------------------------------------------------------------ music
+
+## The soft loop, fading in from silence (imported by the editor, or read from the file
+## when it has not been imported yet).
+func _start_music() -> void:
+	var stream: AudioStream = null
+	if ResourceLoader.exists(MUSIC):
+		stream = load(MUSIC)
+	elif FileAccess.file_exists(MUSIC):
+		stream = AudioStreamOggVorbis.load_from_file(MUSIC)
+	if stream == null:
+		push_warning("character creation: no music at %s" % MUSIC)
+		return
+	if stream is AudioStreamOggVorbis:
+		(stream as AudioStreamOggVorbis).loop = true
+		(stream as AudioStreamOggVorbis).loop_offset = 0.0
+	_music = AudioStreamPlayer.new()
+	_music.name = "Muziek"
+	_music.stream = stream
+	_music.volume_db = -60.0
+	add_child(_music)
+	_music.play()
+	create_tween().tween_property(_music, "volume_db", MUSIC_VOLUME_DB, MUSIC_FADE_IN).set_trans(Tween.TRANS_SINE)
+
+
+## Fades the music out as the screen is left (it moves to the root so it outlives the scene).
+func _fade_out_music() -> void:
+	if _music == null or not _music.playing:
+		return
+	var music := _music
+	_music = null
+	music.reparent(get_tree().root)
+	var fade := get_tree().create_tween()
+	fade.tween_property(music, "volume_db", -60.0, MUSIC_FADE_OUT)
+	fade.tween_callback(music.queue_free)
+
+
+# ------------------------------------------------------------------ helpers
+
+func _label(text: String, font: Font, size: int, colour := UiStyle.TEXT, shadow := 2) -> Label:
+	var label := Label.new()
+	label.text = text
+	label.add_theme_font_override("font", font)
+	label.add_theme_font_size_override("font_size", size)
+	label.add_theme_color_override("font_color", colour)
+	if shadow > 0:
+		label.add_theme_color_override("font_shadow_color", UiStyle.INK)
+		label.add_theme_constant_override("shadow_offset_x", shadow)
+		label.add_theme_constant_override("shadow_offset_y", shadow)
+		label.add_theme_constant_override("shadow_outline_size", 0)
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return label
+
+
+func _small(text: String, colour: Color, size := 11, spacing := 0) -> Label:
+	var label := _label(text, UiStyle.spaced(_font_pixel, spacing) if spacing > 0 else _font_pixel, size, colour, 0)
+	return label
+
+
+func _fit_to_window() -> void:
+	var window := get_viewport().get_visible_rect().size
+	var factor := minf(window.x / DESIGN_SIZE.x, window.y / DESIGN_SIZE.y)
+	_design.scale = Vector2(factor, factor)
+	_design.position = (window - DESIGN_SIZE * factor) * 0.5
+	if _crt:
+		(_crt.material as ShaderMaterial).set_shader_parameter("screen_size", window)
+
+
+func _load_fonts() -> void:
+	var fallback: Font = load(UiStyle.FONT_FALLBACK)
+	var title := UiStyle.font(UiStyle.FONT_TITLE)
+	_font_title = UiStyle.weighted(title, 700)
+	_font_title_medium = UiStyle.weighted(title, 600)
+	_font_pixel = UiStyle.font(UiStyle.FONT_PIXEL)
+	_font_pixel_bold = UiStyle.font(UiStyle.FONT_PIXEL_BOLD)
+	var body := UiStyle.font(UiStyle.FONT_BODY)
+	_font_body = UiStyle.weighted(body, 400)
+	# the ▶, · and arrows the pixel fonts may lack come from JetBrains Mono
+	if body != fallback:
+		var fallbacks: Array[Font] = [body]
+		for font: Font in [title, _font_pixel, _font_pixel_bold]:
+			if font != fallback:
+				font.fallbacks = fallbacks
+
+
+## The night behind the screen: still stars in two colours (the menu's), some twinkling,
+## the same every time, and a faint violet glow along the bottom.
+class StarField:
+	extends Control
+
+	const STAR_BRIGHT := Color("#F2E8C9")
+	const STAR_DIM := Color("#8A90C0")
+	const STAR_COUNT := 140
+
+	var _stars: Array = []
+	var _clock := 0.0
+
+	func _init() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var random := RandomNumberGenerator.new()
+		random.seed = 1707
+		for star_index in STAR_COUNT:
+			_stars.append({"at": Vector2(random.randf(), random.randf() * 0.9), "bright": random.randf() < 0.25,
+					"size": 2.0 if random.randf() < 0.2 else 1.0, "phase": random.randf() * TAU,
+					"twinkles": random.randf() < 0.3})
+
+	func _process(delta: float) -> void:
+		_clock += delta
+		queue_redraw()
+
+	func _draw() -> void:
+		var pixel := maxf(1.0, roundf(size.y / 360.0))
+		var bands := 12
+		for band_index in bands:
+			var share := float(band_index) / bands
+			var alpha := 0.10 * share * share
+			draw_rect(Rect2(0, size.y * (0.7 + 0.3 * share), size.x, size.y * 0.3 / bands + 1.0), Color(0.45, 0.28, 0.75, alpha))
+		for star: Dictionary in _stars:
+			var colour: Color = STAR_BRIGHT if star.bright else STAR_DIM
+			if star.twinkles:
+				colour.a = 0.45 + 0.55 * (0.5 + 0.5 * sin(_clock * 1.7 + star.phase))
+			var at: Vector2 = (star.at as Vector2) * size
+			draw_rect(Rect2(at.snapped(Vector2.ONE * pixel), Vector2.ONE * pixel * star.size), colour)

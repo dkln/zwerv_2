@@ -17,10 +17,11 @@ scipy, soundfile). Die map staat in `.gitignore`.
 
 | Bestand | Wat | Lengte |
 |---|---|---|
-| `approach_vector_intro.ogg` | hele track met de aanzwellende intro; het einde loopt door in de menu-loop | 1:35 |
-| `approach_vector_menu_loop.ogg` | menu-loop: drop, breakdown, drop B, riser, climax | 1:48, loop |
+| `approach_vector_intro.ogg` | hele track met de aanzwellende intro | 1:35 |
+| `nachtstad_menu_loop.ogg` | hoofdmenu, een eigen stuk (niet de intro die doorgaat): 134 BPM, energiek, Am F C G, groove en four-on-the-floor, brass en e-piano, lichte chugs, 8-bit en synthlead om beurten | 1:26, loop |
 | `gevecht_loop.ogg` | RPG-gevechtsscherm, 168 BPM | 0:46, loop |
 | `handelaar_loop.ogg` | bij een merchant, 130 BPM, alleen synths | 0:59, loop |
+| `karakterkeuze_loop.ogg` | zacht onder het karakterscherm, 92 BPM, pad, e-piano, doffe arpeggio | 0:42, loop |
 | `deuntje_gewonnen.ogg` | gewonnen | 4 s |
 | `deuntje_verloren.ogg` | verloren | 4 s |
 | `deuntje_dood.ogg` | dood | 4 s |

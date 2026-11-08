@@ -1,6 +1,7 @@
 extends SceneTree
 ## Opens the main menu (scenes/hoofdmenu.tscn), checks it is built (the menu, the 3D map
-## behind it), chooses NIEUW SPEL and waits until the town (scenes/stad.tscn) is the
+## behind it), chooses NIEUW SPEL, begins on the character creation screen
+## (scenes/karakter.tscn) as soon as it is there and waits until the town (scenes/stad.tscn) is the
 ## current scene, then pauses it (the HUD's pause menu) and goes back to the main menu.
 ## Prints "menu ok" for each step that went well.
 ## usage: Godot --headless --script tools/check/menu_test.gd
@@ -19,9 +20,15 @@ func _init() -> void:
 	print("menukaart: ", menu_scene.has_node("Menukaart"), ", knoppen: ", menu._buttons.size())
 	menu._choose(1)
 	var waited := 0.0
+	var began := false
 	while waited < 200.0:
 		await process_frame
 		waited += 0.05
+		if not began and current_scene != null and current_scene.name == "Karakterkeuze":
+			print("menu ok: karakterkeuze geopend")
+			began = true
+			await process_frame
+			current_scene.get_node("Scherm").begin()
 		if current_scene != null and current_scene.name == "Stad":
 			print("menu ok: stad geopend")
 			await _back_to_menu()

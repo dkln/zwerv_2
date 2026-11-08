@@ -3,7 +3,8 @@ extends CanvasLayer
 ## The game HUD (the "HUD" node of the city scene), in the pixel style of the design
 ## "HUD — open world" (1280 x 720; everything scales with the window, the corners stay in
 ## the corners):
-## - top left: the player frame (portrait with level badge, name) and the stats as
+## - top left: the player frame (the chosen figure's head in 3D, PlayerCharacter and
+##   PlayerModel, with level badge, its name) and the stats as
 ##   segmented pixel bars with an icon each (STATS: gezondheid, uithoudingsvermogen,
 ##   honger, overprikkeldheid), set with set_stat(name, value, maximum), and under them the
 ##   experience: "XP" and a segment bar as the stats, "6.420 / 10.000" under the bar
@@ -37,6 +38,8 @@ const PixelIcon = preload("res://scripts/ui/widgets/pixel_icon.gd")
 const SegmentBar = preload("res://scripts/ui/widgets/segment_bar.gd")
 const CheckSquare = preload("res://scripts/ui/widgets/check_square.gd")
 const PlayerArrow = preload("res://scripts/ui/widgets/player_arrow.gd")
+const PlayerPortrait = preload("res://scripts/ui/widgets/player_portrait.gd")
+const PlayerCharacter = preload("res://scripts/player/player_character.gd")
 
 ## Size of the design; the HUD is laid out at this size and scaled to the window.
 const DESIGN_SIZE := Vector2(1280.0, 720.0)
@@ -151,6 +154,7 @@ var _font_body: Font         # JetBrains Mono
 var _root: Control
 var _ui_viewport: SubViewport   # the HUD's own picture (see _build_crt)
 var _player_frame: Control
+var _portrait: PlayerPortrait
 var _level_badge: Label
 var _xp_bar: SegmentBar
 var _xp_text: Label
@@ -207,11 +211,17 @@ func _ready() -> void:
 	_build_money()
 	_build_pause_menu()
 	_build_crt()
+	# the archetype chosen on the character creation screen (PlayerCharacter): its name,
+	# its portrait and the maximum of its stats (hunger and overstimulation start empty)
+	var archetype := PlayerCharacter.chosen_archetype()
+	player_name = archetype.name
+	player_level = archetype.get("level", player_level)
 	for stat_name in STATS:
-		set_stat(stat_name, 0.0 if stat_name in ["honger", "overprikkeldheid"] else 100.0, 100.0)
+		var maximum := float(archetype.stats.get(stat_name, 100))
+		set_stat(stat_name, 0.0 if stat_name in ["honger", "overprikkeldheid"] else maximum, maximum)
 	set_player(player_name, player_level)
 	set_xp(0.0, 1000.0)
-	set_money(0.0)
+	set_money(float(archetype.get("start_money", 0)))
 	set_quests(EXAMPLE_QUESTS if show_example_quests else [])
 	get_viewport().size_changed.connect(_fit_to_window)
 	_fit_to_window()
@@ -261,7 +271,7 @@ func set_player(new_name: String, level: int) -> void:
 	player_name = new_name
 	player_level = level
 	_name_label.text = new_name
-	_level_badge.text = "NIV %d" % level
+	_level_badge.text = "LEVEL %d" % level
 
 
 ## Shows "nieuw gebied ontdekt" with the name of the area for a few seconds.
@@ -366,12 +376,21 @@ func _build_player_frame() -> void:
 	_root.add_child(_player_frame)
 	var portrait := _shadowed_panel(Vector2(76, 76), UiStyle.ACCENT, 3)
 	_player_frame.add_child(portrait)
-	var person := PixelIcon.new()
-	person.bitmap = PIXEL_ICONS["person"]
-	person.colour = UiStyle.TEXT
-	person.pixel = 6.0
-	person.position = Vector2(17, 17)
-	portrait.add_child(person)
+	# the head and shoulders of the chosen figure (PlayerModel), in 3D, on ink
+	var portrait_back := ColorRect.new()
+	portrait_back.color = UiStyle.INK
+	portrait_back.position = Vector2(3, 3)
+	portrait_back.size = Vector2(70, 70)
+	portrait_back.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	portrait.add_child(portrait_back)
+	_portrait = PlayerPortrait.new()
+	_portrait.name = "Portret"
+	_portrait.archetype_id = PlayerCharacter.current_id()
+	_portrait.zoom = 1.0
+	_portrait.face_view = 1.15
+	_portrait.position = Vector2(3, 3)
+	_portrait.size = Vector2(70, 70)
+	portrait.add_child(_portrait)
 	var badge_shadow := ColorRect.new()
 	badge_shadow.color = UiStyle.INK
 	badge_shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -384,7 +403,7 @@ func _build_player_frame() -> void:
 	badge_style.content_margin_bottom = 3
 	badge.add_theme_stylebox_override("panel", badge_style)
 	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_level_badge = _label("NIV 1", _font_pixel_bold, 12, UiStyle.INK, 0)
+	_level_badge = _label("LEVEL 1", _font_pixel_bold, 12, UiStyle.INK, 0)
 	badge.add_child(_level_badge)
 	portrait.add_child(badge)
 	# right and bottom edge 10 px outside the portrait, with a 3 px shadow

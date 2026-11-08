@@ -9,8 +9,8 @@ extends "res://scripts/ui/menu/menu_map.gd"
 ## version, and the CRT look over all of it (UiStyle.make_crt_overlay).
 ## The menu (keys up/down, Enter, Escape; or the mouse):
 ## - VERDERGAAN and LADEN: greyed out and skipped until there are saved games;
-## - NIEUW SPEL: opens the town (scenes/stad.tscn; "LADEN…" while it loads, then the town's
-##   own loading screen);
+## - NIEUW SPEL: opens the character creation screen (scenes/karakter.tscn, its own step:
+##   choose the archetype there, then the town opens);
 ## - INSTELLINGEN: the CRT effect and the scanlines on or off (user://instellingen.cfg, read
 ##   by the HUD);
 ## - CREDITS: who made it, rolling (every role, the same name);
@@ -21,11 +21,12 @@ extends "res://scripts/ui/menu/menu_map.gd"
 
 const UiSounds = preload("res://scripts/ui/ui_sounds.gd")
 
-const CITY_SCENE := "res://scenes/stad.tscn"
-## The music of the menu, played whole and looped, at full volume from the first moment
+const CHARACTER_SCENE := "res://scenes/karakter.tscn"
+## The music of the menu (its own piece, "Nachtstad", not the intro's theme going on),
+## played whole and looped, at full volume from the first moment
 ## the menu opens (no fade in: it starts with a bang); its volume (dB) and the seconds it
 ## fades out when the town opens.
-const MUSIC := "res://assets/audio/muziek/approach_vector_menu_loop.ogg"
+const MUSIC := "res://assets/audio/muziek/nachtstad_menu_loop.ogg"
 const MUSIC_VOLUME_DB := -9.5
 const MUSIC_FADE_OUT := 2.0
 const DESIGN_SIZE := Vector2(1280, 720)
@@ -261,7 +262,7 @@ func _choose(index: int) -> void:
 	UiSounds.play(self, "doe")
 	match ITEMS[index][2]:
 		"new_game":
-			_open_city()
+			_open_character_creation()
 		"settings":
 			_open_settings()
 		"credits":
@@ -273,11 +274,11 @@ func _choose(index: int) -> void:
 			get_tree().quit()
 
 
-## Opens the town: "LADEN…" on the item, two frames so it shows, then the town; its own
-## loading screen takes over from there. (The 3D map is baked, scenes/menu_kaart.scn, and
-## shares nothing with the town: with the town's tile libraries in the menu, starting the
-## town crashed Godot.)
-func _open_city() -> void:
+## Opens the character creation screen (the town opens after it): "LADEN…" on the item,
+## the 3D map freed first, then the screen. (The 3D map is baked, scenes/menu_kaart.scn,
+## and shares nothing with the town: with the town's tile libraries in the menu, starting
+## the town crashed Godot; it is gone before the town loads.)
+func _open_character_creation() -> void:
 	_loading = true
 	_buttons[1].text = _caret(true) + "LADEN…"
 	if _map_loading:
@@ -291,7 +292,7 @@ func _open_city() -> void:
 	_free_map()
 	for frame_index in 3:
 		await get_tree().process_frame
-	get_tree().change_scene_to_file(CITY_SCENE)
+	get_tree().change_scene_to_file(CHARACTER_SCENE)
 
 
 ## Frees the 3D map and everything that holds on to it (camera, sun and moon, trams).

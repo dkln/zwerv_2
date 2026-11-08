@@ -3,7 +3,7 @@
 
 Meant to compare a reference track with our own renders, since nobody can 'listen' in a script:
   tools/music/analyze.sh voorbeeld.mp3
-  tools/music/analyze.sh voorbeeld.mp3 assets/audio/muziek/approach_vector_menu_loop.ogg
+  tools/music/analyze.sh voorbeeld.mp3 assets/audio/muziek/nachtstad_menu_loop.ogg
 
 Decoding uses ffmpeg (any format ffmpeg reads).
 """

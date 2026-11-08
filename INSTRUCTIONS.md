@@ -415,8 +415,8 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
   (al op de achtergrond geladen): het beeld fadet in 2,4 s naar zwart met een trackingstoring
   (`FADE_TO_MENU`) en het menu komt daar in 3,5 s uit omhoog (`UP_FROM_BLACK`), terwijl de
   muziek van intro naar menu overvloeit. Alleen de spatiebalk breekt hem af en gaat naar het
-  hoofdmenu (andere toetsen, zoals de volumetoetsen, en de muis doen niets). Linksonder staat, zoals de actieknop in het ontwerp, "SPATIE · Intro
-  overslaan". De sterren fonkelen. Muziek: `assets/audio/muziek/approach_vector_intro.ogg`; de intro loopt op die
+  hoofdmenu (andere toetsen, zoals de volumetoetsen, en de muis doen niets). Rechtsonder staan, zoals in het hoofdmenu en het karakterscherm, de toetsen
+  op één regel: "[SPATIE] OVERSLAAN  [ENTER] SNELLER". De sterren fonkelen. Muziek: `assets/audio/muziek/approach_vector_intro.ogg`; de intro loopt op die
   muziek (de klok is waar de muziek is): het logo fadet in van 6 tot 8 s, heel groot, bijna buiten
   beeld, en krimpt langzaam naar zijn normale formaat tot de eerste grote inzet (16,0 s):
   daar wijkt het in 2,5 s de diepte in en fadet het daarbij uit (`LOGO_SECONDS`), met een
@@ -429,9 +429,35 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
   fadet daar in 2 s uit, terwijl de menumuziek infadet. Met het CRT-beeld en dezelfde storingen als het menu
   (rollende band, VHS-tracking; `CrtDisturbance`). De hele intro duurt zo lang als de muziek: 172,5 s. Test: `tools/check/intro_test.gd` (met `-- volledig`:
   de hele intro, met de gemeten duur).
+- Karakterscherm (`scenes/karakter.tscn`, `scripts/ui/character_creation.gd`): een eigen stap
+  tussen NIEUW SPEL en de stad, in dezelfde stijl (nachtlucht met sterren, geen stad erachter,
+  CRT-beeld). Links een lijst die verticaal scrollt met de archetypes uit `scripts/player/player_character.gd`
+  (`ARCHETYPES`: bijnaam, ondertitel met hun kracht, startlevel, een kort verhaal en de stats;
+  100 is gewoon; de verslaving staat erin voor het spel maar niet op het scherm):
+  Jos ("de ijzeren maag": leven 70, stamina 60, honger 140), Martin ("de renner": 100, 150, 70),
+  Ufo Piloot ("de onverwoestbare": 150, 60, 70) en Willem ("de oude rat": overal 80, maar
+  level 3 in plaats van 1) en Sjaan ("de straatmuzikant": 90, 110, 90; als enige begint ze met
+  € 25 in de pet, `start_money`, die de HUD als geld zet, en haar hond Bobbie zit bij haar;
+  zo'n eigenschap staat als "EXTRA" in het detail, `perk`). Per regel een thumbnail van het gezicht, de naam, de ondertitel en het
+  level; de gekozen regel in amber, de andere grijs gedimd. Rechts de gekozen in het groot: het
+  hele poppetje in 3D, langzaam om zijn as draaiend (`SPIN`; na elke keuze staat het eerst
+  `FRONT_HOLD` s recht van voren, zodat het gezicht te zien is), de naam, de ondertitel, het level, het
+  verhaal en de stats als segmentbalken van de HUD (aandeel van `STAT_CEILING`). Pijltjes of 1-9
+  kiezen, Enter of BEGIN begint, Esc gaat terug naar het hoofdmenu; de muis: klikken kiest,
+  nog eens klikken op de gekozen begint, het wiel scrollt de lijst. De keuze blijft bewaard in `PlayerCharacter.chosen_id` (een statische variabele) en de
+  HUD neemt die over: het portret linksboven (het gezicht in 3D), de naam, het level en het
+  maximum van de stats.
+  De poppetjes (`scripts/player/player_model.gd`) zijn alle vier zwervers (versleten kleren,
+  gaten en lappen, hun spullen bij zich) en worden in code uit voxels van 0,0625 m gebouwd (geen
+  geïmporteerde tile): elke voxel één vlakke kleur (sRGB, `vertex_color_is_srgb`), weinig en
+  duidelijk verschillende kleuren per poppetje. Ze bewegen een beetje (Jos zwaait, Martin
+  trilt, Sjaan wiegt mee met haar muziek, Willem ademt). `scripts/ui/widgets/player_portrait.gd`
+  toont er een in een eigen SubViewport met neutraal licht. Muziek: `karakterkeuze_loop.ogg`
+  (`tools/music/songs/character.py`), zacht (-19 dB) en infadend.
+  Test: `tools/check/character_test.gd` (`-- figures`: alleen de poppetjes).
 - Hoofdmenu (`scenes/hoofdmenu.tscn`, `scripts/ui/main_menu.gd`), naar het ontwerp
   "Titelscherm" in de HUD-stijl: titel ZWERVR, menu (VERDERGAAN en LADEN uitgegrijsd tot er
-  opslag is; NIEUW SPEL toont "LADEN…" en opent de stad (op de hoofdthread: op een achtergrondthread crashte het met het LOD-systeem; daarna het laadscherm van de stad);
+  opslag is; NIEUW SPEL toont "LADEN…" en opent het karakterscherm (hieronder), dat daarna de stad opent (op de hoofdthread: op een achtergrondthread crashte het met het LOD-systeem; daarna het laadscherm van de stad);
   INSTELLINGEN: CRT-beeld en scanlijnen aan/uit in `user://instellingen.cfg`, die de HUD ook
   leest; CREDITS; AFSLUITEN), pijltjes/Enter/Esc of de muis, en het CRT-beeld. Erachter het
   kleine 3D-kaartje (meteen staat er de nachtkleur; het kaartje laadt op de achtergrond en
@@ -502,7 +528,7 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
   omgekeerd (`_play_exit`): de knoppen faden weg, de titel schuift naar links uit beeld, alles
   vervaagt naar inktblauw met een sterke trackingstoring, en het laadscherm van de stad (ook
   inktblauw) neemt het over.
-  Muziek: `assets/audio/muziek/approach_vector_menu_loop.ogg`, heel en in een lus, die bij het openen meteen op vol volume
+  Muziek: `assets/audio/muziek/nachtstad_menu_loop.ogg` (een eigen stuk, `tools/music/songs/menu.py`: 124 BPM, andere akkoorden en groove dan de intro, zodat het niet als de intro die doorgaat klinkt), heel en in een lus, die bij het openen meteen op vol volume
   begint (geen infade) en bij het verlaten (NIEUW SPEL, AFSLUITEN) in 2 s uitfadet, ook als de
   stad al opent (`MUSIC`, `MUSIC_VOLUME_DB`, `MUSIC_FADE_OUT`).
   Geluidseffecten (`scripts/ui/ui_sounds.gd`, `UiSounds.play(node, naam)`, in code gemaakt in
@@ -547,9 +573,10 @@ Projectstructuur
       materials/           shaders en materialen van de voxels
     assets/                tiles (.gox + .tile.json, kleurentabel materialen.json),
                            libraries (gemaakt), fonts
-    scenes/                stad.tscn (de kaart), intro, hoofdmenu, menu_kaart(_bron)
+    scenes/                stad.tscn (de kaart), intro, hoofdmenu, karakter, menu_kaart(_bron)
     scripts/               spelcode
       camera/              iso_camera, free_camera, follow_camera, fly_over
+      player/              player_character (archetypes en keuze), player_model (voxelpoppetjes)
       world/               de kaart zelf: level_of_detail, layer_baker, building_fade,
                            ground_map, grass_blades, tint_map, tint_area, day_cycle,
                            overhead_lines, tunnel_lights, zebra_clock
