@@ -28,8 +28,8 @@ extends Node
 ## below `deck_level`: the street and the foundations under buildings stay.
 ##
 ## Blocking is tested along the view direction of the camera (also while the follow
-## camera swings round for a close-up) from a few points around the vehicle: the
-## Gebouwen cells those lines pass through block it.
+## camera swings round for a close-up) from a few points around the vehicle as seen in
+## the picture, up to the camera: the Gebouwen cells those lines pass through block it.
 
 const Iso = preload("res://scripts/camera/iso_camera.gd")
 
@@ -48,12 +48,13 @@ const Iso = preload("res://scripts/camera/iso_camera.gd")
 ## How far a blocking building fades (1 = gone entirely; lower leaves a faint ghost of
 ## it, drawn as a screen-door pattern that crawls over the picture as the view moves).
 @export_range(0.0, 1.0) var strongest_fade := 1.0
-## Half the size (metres) of the square of test points around the vehicle, and the
-## heights (metres above it) of the test points: the vehicle and a little room around it
-## should stay in sight.
-@export var test_reach := 4.0
+## Half the size (metres) of the square of test points around the vehicle (across the
+## picture: the camera's right and up), and the heights (metres above it) of the test
+## points: the vehicle and a little room around it should stay in sight.
+@export var test_reach := 3.0
 @export var test_heights := PackedFloat32Array([0.3, 1.6])
-## Highest point (metres above the vehicle) up to which the view lines are followed.
+## Highest point (metres above the vehicle) up to which the view lines are followed (and
+## never past the camera).
 @export var test_height_limit := 90.0
 
 ## Size of a map cell in metres (the Gebouwen cell, one texture pixel).
@@ -150,14 +151,23 @@ func _blocking() -> Dictionary:
 	var lowest_deck := centre.y + deck_clearance
 	var camera := get_viewport().get_camera_3d()
 	var towards_camera: Vector3 = camera.global_basis.z if camera else Iso.DIRECTION
+	# across the picture: the camera's own right and up (else the iso camera's)
+	var across: Vector3 = camera.global_basis.x if camera else Vector3.RIGHT
+	var upwards: Vector3 = camera.global_basis.y if camera else Vector3.UP
 	var steps := int(test_height_limit / maxf(towards_camera.y, 0.1) / STEP)
+	if camera:
+		# no further than the camera: what lies behind it is not in view
+		steps = mini(steps, int(centre.distance_to(camera.global_position) / STEP))
 	var corners: Array[Vector2] = []
 	for row in 3:
 		for column in 3:
 			corners.append(Vector2(column - 1, row - 1))
 	for corner in corners:
 		for height in test_heights:
-			var start := centre + Vector3(corner.x * test_reach, height, corner.y * test_reach)
+			# the test points lie round the vehicle as seen in the picture (across the view,
+			# not on the ground): only what covers the vehicle and the room round it on the
+			# screen blocks it, not the facades beside a narrow street
+			var start := centre + Vector3.UP * height + (across * corner.x + upwards * corner.y) * test_reach
 			for step in range(1, steps + 1):
 				var point := start + towards_camera * (step * STEP)
 				var cell := _buildings.local_to_map(to_map * point)

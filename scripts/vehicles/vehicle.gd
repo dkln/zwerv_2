@@ -19,9 +19,11 @@ extends Node3D
 ## the line between them. It keeps to the speed
 ## limit of the road it is on (and brakes in time for a lower one ahead), slows down for
 ## corners, and stops:
-## - before a zebra crossing (weg/zebrapad), for `zebra_wait` seconds, then drives on;
+## - before a zebra crossing (weg/zebrapad), for `zebra_wait` seconds, then drives on, when
+##   someone crosses there (_someone_crossing; no one yet: there are no pedestrians);
 ## - at traffic lights (Verkeerslichten, scripts/world/traffic_lights.gd) until its
-##   stream is green, before the zebra or the crossing, whichever comes first.
+##   stream is green, before the zebra or the crossing, whichever comes first (the lights
+##   of the whole crossing, found from its middle; a zebra right before it goes with it).
 ## Where its lane ends it moves over into the lane alongside, gradually over a few cells
 ## (a motorway losing a lane); at a dead end it turns round into the opposite lane. Where
 ## the map marks a cell to move over from (RoadNetwork MOVE_OVERS: an exit) it takes it as
@@ -1080,11 +1082,22 @@ func _must_stop(from_cell: Vector3i, to_cell: Vector3i, distance: float) -> Stri
 	if reckless or has_priority() or network.is_crossing(from_cell):
 		return ""
 	var zebra := network.is_zebra(to_cell)
-	if not zebra and not network.is_crossing(to_cell):
+	var heading := Vector2i(to_cell.x - from_cell.x, to_cell.z - from_cell.z)
+	# just off a crossing, between it and the next: on, to clear the crossing behind (not
+	# waiting there with its back end still on it)
+	var behind := network.step(from_cell, -heading)
+	if behind != RoadNetwork.NONE and network.is_crossing(behind) and (network.is_crossing(to_cell) or zebra):
+		return ""
+	# the crossing it comes onto: this cell, or the one right behind the zebra(s) before it
+	# (so it stops before the zebra for a red light, never on it)
+	var crossing := _crossing_onto(to_cell, heading)
+	if not zebra and crossing == RoadNetwork.NONE:
 		return ""
 	var phase := -1
-	if _lights and _lights.has_method("car_phase"):
-		phase = _lights.car_phase(network.centre(to_cell), to_cell.x == from_cell.x)
+	if crossing != RoadNetwork.NONE and _lights and _lights.has_method("car_phase"):
+		# the lights of the whole crossing, looked up from its middle: on a wide crossing
+		# its first cell lies too far from the lights to find them
+		phase = _lights.car_phase(_crossing_middle(crossing), heading.x == 0)
 	if phase == 2:
 		return "light"
 	if phase == 1:
@@ -1092,9 +1105,77 @@ func _must_stop(from_cell: Vector3i, to_cell: Vector3i, distance: float) -> Stri
 		return "light" if distance > braking_distance - 0.5 else ""
 	if phase == 0:
 		return ""
-	if zebra and not _waited_at.has(to_cell):
+	if zebra and not _waited_at.has(to_cell) and _someone_crossing(to_cell):
 		return "zebra"
 	return ""
+
+
+## True if someone is on or about to step onto zebra `cell`. There are no pedestrians in
+## the town yet, so a zebra without lights never stops anyone; this is where they will
+## be looked for.
+func _someone_crossing(_cell: Vector3i) -> bool:
+	return false
+
+
+## Metres between its front and the line it stops at (a zebra, a crossing), and how far
+## over the line its front may have come braking late (a vehicle out of view moves in
+## bigger steps) and still stop there, instead of driving on.
+const STOP_LINE_GAP := 1.0
+const STOP_OVERSHOOT := 1.0
+
+
+## How far its front sticks out ahead of its middle (metres): the front of what is drawn
+## on it, or half_length if that is further.
+func _front_reach() -> float:
+	return maxf(half_length, _outer_box.end.z)
+
+
+## Zebra cells before a crossing that still count as part of it (for its lights).
+const ZEBRAS_BEFORE_CROSSING := 2
+## Most cells of a crossing taken for its middle (a big square of them is a few dozen).
+const CROSSING_CELLS_MAX := 80
+## The middle of each crossing, by every cell of it (per road network).
+static var _crossing_middles := {}
+
+
+## The crossing a vehicle comes onto by entering `cell` in `heading`: `cell` itself if it
+## is one, the crossing right behind it if `cell` is a zebra before it (up to
+## ZEBRAS_BEFORE_CROSSING zebra cells), else RoadNetwork.NONE.
+func _crossing_onto(cell: Vector3i, heading: Vector2i) -> Vector3i:
+	var looked_at := cell
+	for _zebra_index in ZEBRAS_BEFORE_CROSSING + 1:
+		if looked_at == RoadNetwork.NONE:
+			return RoadNetwork.NONE
+		if network.is_crossing(looked_at):
+			return looked_at
+		if not network.is_zebra(looked_at):
+			return RoadNetwork.NONE
+		looked_at = network.step(looked_at, heading)
+	return RoadNetwork.NONE
+
+
+## The middle (metres) of the crossing that `cell` is part of: the mean of its touching
+## crossing cells; found once per crossing and kept for all its cells.
+func _crossing_middle(cell: Vector3i) -> Vector3:
+	var key := [network.get_instance_id(), cell]
+	if _crossing_middles.has(key):
+		return _crossing_middles[key]
+	var found := {cell: true}
+	var open: Array[Vector3i] = [cell]
+	var sum := Vector3.ZERO
+	while not open.is_empty() and found.size() <= CROSSING_CELLS_MAX:
+		var crossing_cell: Vector3i = open.pop_back()
+		sum += network.centre(crossing_cell)
+		for side: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			var next := network.step(crossing_cell, side)
+			if next != RoadNetwork.NONE and not found.has(next) and network.is_crossing(next):
+				found[next] = true
+				open.append(next)
+	var counted := found.size() - open.size()
+	var middle := sum / maxf(counted, 1.0)
+	for crossing_cell: Vector3i in found:
+		_crossing_middles[[network.get_instance_id(), crossing_cell]] = middle
+	return middle
 
 
 # ------------------------------------------------------------------ route
@@ -1342,9 +1423,13 @@ func _target_speed(delta: float) -> float:
 		target = minf(target, _traffic_limit)
 	# the first cell boundary it has to stop at
 	for ahead_index in range(index + 1, last + 1):
-		var stop_at := (_route_distances[ahead_index - 1] + _route_distances[ahead_index]) * 0.5 - half_length
-		if _distance > stop_at + 0.5:
-			continue           # already past this boundary
+		# its front STOP_LINE_GAP before the line between the cells (the start of the zebra
+		# or the crossing): before the traffic light, not beside it
+		var line_at := (_route_distances[ahead_index - 1] + _route_distances[ahead_index]) * 0.5 - _front_reach()
+		if _distance > line_at + STOP_OVERSHOOT:
+			continue           # its front is well over the line already
+		# (braking a little past the stop point, even to just over the line, it still stops)
+		var stop_at := line_at - STOP_LINE_GAP
 		var reason := _must_stop(_route_cells[ahead_index - 1], _route_cells[ahead_index], stop_at - _distance)
 		if reason == "":
 			continue

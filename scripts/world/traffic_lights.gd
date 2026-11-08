@@ -11,7 +11,7 @@ extends Node
 ## lights the same way: they face the people crossing alongside that stream). Every
 ## intersection then runs the cycle
 ##   north-south green -> amber -> all red -> east-west green -> amber -> all red
-## with its own time offset. Cars, bicycles and masts show groen / oranje / rood, public
+## with its own time offset (intersections close together in step, `in_step_within`). Cars, bicycles and masts show groen / oranje / rood, public
 ## transport rijden / attentie / stop, pedestrians groen during the first part of their
 ## stream's green and rood otherwise.
 ##
@@ -29,6 +29,11 @@ extends Node
 @export var pedestrian_time := 5.0
 ## Lights closer than this (metres) belong to the same intersection.
 @export var cluster := 14.0
+## Intersections closer than this (metres, between their middles) run in step (the same
+## time offset): with crossings close after each other a stream that has green at one has
+## it at the next too, so no one gets green there and red a few metres on (and stops on
+## the crossing it just came over).
+@export var in_step_within := 40.0
 ## Name of the layer with the light props.
 @export var layer := "Props"
 
@@ -95,6 +100,7 @@ func _ready() -> void:
 				sum += l.pos
 				n += 1
 		_centres.append(sum / maxi(n, 1))
+	_put_in_step()
 	if _lights.is_empty():
 		set_process(false)
 		return
@@ -154,6 +160,27 @@ func car_phase(pos: Vector3, north_south: bool, radius := 14.0) -> int:
 	if own < green_time + amber_time:
 		return 1
 	return 2
+
+
+## Intersections within `in_step_within` of each other (and on, chained) take the time
+## offset of the first of them.
+func _put_in_step() -> void:
+	var done := {}
+	for first in _centres.size():
+		if done.has(first):
+			continue
+		done[first] = true
+		var todo := [first]
+		while not todo.is_empty():
+			var group: int = todo.pop_back()
+			for other in _centres.size():
+				if done.has(other):
+					continue
+				var away := Vector2(_centres[group].x - _centres[other].x, _centres[group].z - _centres[other].z).length()
+				if away <= in_step_within:
+					done[other] = true
+					_groups[other] = _groups[first]
+					todo.append(other)
 
 
 ## Repeatable time offset of an intersection from its position, so they don't all switch together.

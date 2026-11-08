@@ -7,7 +7,7 @@ const UiSounds = preload("res://scripts/ui/ui_sounds.gd")
 ## - top left: the player frame (portrait with level badge, name) and the stats as
 ##   segmented pixel bars with an icon each (STATS: gezondheid, uithoudingsvermogen,
 ##   honger, overprikkeldheid), set with set_stat(name, value, maximum), and under them the
-##   experience: "XP" and a thin bar in line with the stats, "6.420 / 10.000" under the bar
+##   experience: "XP" and a segment bar as the stats, "6.420 / 10.000" under the bar
 ##   (set_xp(points, points_for_level));
 ## - top centre: "nieuw gebied ontdekt" with the name of the area, fading in and out
 ##   (show_area);
@@ -55,10 +55,12 @@ const STATS := {
 	"honger": {"colour": Color("#FFB547"), "empty": Color("#3D2E14"), "segments": 20, "height": 8, "icon": "chomp"},
 	"overprikkeldheid": {"colour": Color("#C08BFF"), "empty": Color("#2E2340"), "segments": 20, "height": 8, "icon": "burst"},
 }
-## The experience bar: its colour (teal: the purple of the design is taken by
-## overprikkeldheid) and width when there are no stat bars to match (else theirs).
+## The experience bar: a segment bar as the stats (their segments, the height of the
+## slimmer ones), its colours (teal: the purple of the design is taken by overprikkeldheid).
 const XP_COLOUR := Color("#47D6C2")
-const XP_BAR_WIDTH := 240.0
+const XP_EMPTY_COLOUR := Color("#173733")
+const XP_SEGMENTS := 20
+const XP_SEGMENT_HEIGHT := 8
 ## Icons of 7 x 7 pixels ("#" = coloured), drawn at 2 x 2 screen pixels per pixel.
 const PIXEL_ICONS := {
 	"heart": [".##.##.", "#######", "#######", ".#####.", "..###..", "...#...", "......."],
@@ -155,7 +157,7 @@ var _root: Control
 var _ui_viewport: SubViewport   # the HUD's own picture (see _build_crt)
 var _player_frame: Control
 var _level_badge: Label
-var _xp_bar: ThinBar
+var _xp_bar: SegmentBar
 var _xp_text: Label
 var _name_label: Label
 var _stat_bars := {}         # stat name -> SegmentBar
@@ -462,9 +464,8 @@ func _build_player_frame() -> void:
 		column.add_child(row)
 		_stat_bars[stat_name] = bar
 		_stat_texts[stat_name] = value_text
-	# experience: a row as the stats, "XP" where they have their icon and a thin bar as wide
-	# as theirs, and the points under the bar, starting where it starts
-	var bar_width: float = (_stat_bars.values()[0] as Control).custom_minimum_size.x if not _stat_bars.is_empty() else XP_BAR_WIDTH
+	# experience: a row as the stats, "XP" where they have their icon and a segment bar as
+	# theirs, and the points under the bar, starting where it starts
 	var experience := VBoxContainer.new()
 	experience.add_theme_constant_override("separation", 5)
 	experience.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -472,9 +473,13 @@ func _build_player_frame() -> void:
 	xp_row.add_theme_constant_override("separation", 8)
 	xp_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	xp_row.add_child(_in_icon_column(_label("XP", _font_pixel_bold, 11, XP_COLOUR, 0)))
-	_xp_bar = ThinBar.new()
-	_xp_bar.custom_minimum_size = Vector2(bar_width, 10)
-	_xp_bar.fill_colour = XP_COLOUR
+	# a segment bar as the stats', as wide and as high as the slimmer of them
+	_xp_bar = SegmentBar.new()
+	_xp_bar.segments = XP_SEGMENTS
+	_xp_bar.segment_height = XP_SEGMENT_HEIGHT
+	_xp_bar.full_colour = XP_COLOUR
+	_xp_bar.empty_colour = XP_EMPTY_COLOUR
+	_xp_bar.fill = 0.0
 	_xp_bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	xp_row.add_child(_xp_bar)
 	experience.add_child(xp_row)
@@ -1273,25 +1278,6 @@ class SegmentBar extends Control:
 		for segment_index in segments:
 			var at := start + Vector2(segment_index * (SEGMENT_WIDTH + GAP), 0.0)
 			draw_rect(Rect2(at, Vector2(SEGMENT_WIDTH, segment_height)), full_colour if segment_index < full else empty_colour)
-
-
-## A thin bar with a border (the experience): filled to `fill` (0..1) in `fill_colour`.
-class ThinBar extends Control:
-	const BORDER_WIDTH := 2.0
-	var fill_colour := Color.WHITE
-	var fill := 0.0:
-		set(value):
-			fill = clampf(value, 0.0, 1.0)
-			queue_redraw()
-
-	func _init() -> void:
-		mouse_filter = Control.MOUSE_FILTER_IGNORE
-
-	func _draw() -> void:
-		draw_rect(Rect2(Vector2.ZERO, size), GameHud.BORDER)
-		var inner := Rect2(Vector2.ONE * BORDER_WIDTH, size - Vector2.ONE * 2.0 * BORDER_WIDTH)
-		draw_rect(inner, GameHud.INK)
-		draw_rect(Rect2(inner.position, Vector2(inner.size.x * fill, inner.size.y)), fill_colour)
 
 
 ## A quest step's box: filled grey when done, else an open square.
