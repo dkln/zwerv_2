@@ -5,6 +5,12 @@ extends Vehicle
 ## big rear wheels (tractor_wiel, 1.25 m) and small steering front wheels (auto_wiel, 0.75
 ## m). Heavy and slow: 25 km/h, slow off the mark. Drives where cars drive ("auto").
 ## The front wheels are the smaller car wheel (front_wheel_model), rolling at their own rate.
+## Some fly the upside-down Dutch flag of the protesting farmers (FLAG_CHANCE, by their seed;
+## protest_flag.gd).
+
+const ProtestFlag = preload("res://scripts/vehicles/protest_flag.gd")
+## The share of tractors with the upside-down flag on the cab.
+const FLAG_CHANCE := 0.5
 
 func _init() -> void:
 	model = "voertuigen/trekker"
@@ -30,3 +36,9 @@ func _init() -> void:
 	braking = 3.0
 	half_length = 1.9
 	mass_kg = 4500.0
+
+
+func _ready() -> void:
+	super()
+	if _body and posmod(route_seed * 7919 + 13, 100) < roundi(FLAG_CHANCE * 100.0):
+		_body.add_child(ProtestFlag.new())

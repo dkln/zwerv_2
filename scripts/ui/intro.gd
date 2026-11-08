@@ -17,11 +17,14 @@ const UiSounds = preload("res://scripts/ui/ui_sounds.gd")
 ##    meanwhile, so it opens complete).
 ## It all goes by the music (assets/audio/muziek/intro.mp3, MUSIC): the clock of the intro is where
 ## the music is, and the moments are set on its beats (CUES, measured in the mp3): the logo
-## comes on its first big entry, paragraphs of the story enter at its turns (CRAWL_CUES),
-## and the intro ends where it fades. Without the music a clock of its own does the same.
+## goes away on its first big entry, paragraphs of the story enter at its turns
+## (CRAWL_CUES), and the intro ends where it fades. Without the music a clock of its own
+## does the same. Where the logo vanishes a star twinkles, with a twinkle of a sound
+## (UiSounds "twinkel").
 ## The space bar (only that: not other keys, the mouse or the volume keys) breaks it off at
-## any moment and goes to the main menu; bottom left a prompt says so ("SPATIE  Intro
-## overslaan"). The stars twinkle.
+## any moment and goes to the main menu; holding Enter (or the down arrow) rolls the story
+## faster (CRAWL_FAST); bottom left the actions say so, one under the other
+## (ActionPrompts: "SPATIE  Overslaan", "ENTER  Sneller"). The stars twinkle, and now and then a tractor drifts through space.
 ## The CRT look of the HUD lies over it (GameHud.make_crt_overlay, with the settings of the
 ## main menu).
 
@@ -34,69 +37,69 @@ const MUSIC_FADE_OUT := 2.0
 ## Seconds the picture fades to black on the way to the menu.
 const FADE_TO_MENU := 2.4
 const DESIGN_SIZE := Vector2(1280, 720)
-const OPENING_LINE := "Niet zo lang geleden, kortgeleden, recent en laatst…"
-## The story that rolls away after the logo, a paragraph per entry (each a sentence of its
-## own; the lines wrap by themselves).
+const OPENING_LINE := "Niet zo lang geleden, in een stad hier niet ver vandaan…"
+## The story that rolls away after the logo, a paragraph per entry (an optional "\n"
+## splits a paragraph into lines; a line too long for the picture wraps by itself).
+## The count and order matter: CRAWL_CUES points at paragraphs by index.
 const STORY := [
-	"Den Haag, een stad achter de duinen, waar de zee 's nachts komt luisteren aan de deuren van de macht.",
-	"Vies, lelijk en ambtelijk: de stad van de gele hesjes, die in de mist branden als verdwaalde zonnen.",
-	"Een centrum zo klein dat het past in één zucht, en toch mooier dan Zoetermeer ooit zal dromen.",
-	"Hier staat de wind altijd tegen, welke kant je ook op fietst; hij kent je naam en fluistert hem verkeerd.",
-	"Meeuwen cirkelen boven het Plein als ministers zonder portefeuille, en de ministers cirkelen eronder als meeuwen.",
-	"Het Binnenhof slaapt al jaren onder zijn steigers, en de steigers dromen inmiddels dat zij het Binnenhof zijn.",
-	"De tram komt nooit op tijd, behalve als jij te laat bent: dan is hij al vertrokken, als een herinnering.",
-	"In de Hofvijver drijft een eend die zweert dat hij ooit staatssecretaris was, en niemand durft hem tegen te spreken.",
-	"Parkeren kost er meer dan een leven in Zoetermeer, en op Scheveningen draag je in juli een jas tegen de zomer.",
-	"Hier zijn de dagen grijs als oud papier, de kroketten heet als beloften en de vergaderingen eeuwig als de zee.",
-	"Op de Grote Markt drinken werkloze kunstacademiestudenten speciaalbier in de schemering, en noemen hun dorst een installatie.",
-	"Ambtenaren dragen hun dossiers als heilige boeken van de vergadering naar de lunch en weer terug, en dat heet daar werk.",
-	"Op het Malieveld staat altijd iets: een kermis, een circus, of een boze menigte die vergeten is waartegen.",
-	"Op zondag stromen de supporters zingend door de straten, en de tokkies op de stoep zingen mee, zonder te weten waarom, met heel hun hart.",
-	"En als het jaar verbrandt, staat op Scheveningen een toren van pallets in vuur, zo hoog dat de sterren er even van schrikken.",
-	"Daar leefde eens een zwerver, van dag tot dag, en soms, als het meezat, van dag tot middag.",
-	"Zijn adres was een bankje aan het Malieveld, zijn tweede huis de wachtkamer van Centraal, zijn zomerhuis een portiek aan het Spui.",
-	"Hij kende elke duif bij naam, en de duiven kenden hem nog beter: zij wisten waar zijn korsten sliepen.",
-	"Hij sprak met lantaarnpalen, want die bleven tenminste staan als hij iets zei, en gaven licht als hij zweeg.",
-	"Maar niets haatte hij zo hartgrondig als het draaiorgel: elke zaterdag datzelfde deuntje, en een man met een bakje centen die rammelt tot je betaalt voor de stilte.",
-	"Of de boeren die het Malieveld kwamen bezetten met hun tractoren, toeterend, hooi in het haar, een spandoek tegen alles, ook tegen spandoeken.",
-	"Of de fatbikes, die geluidloos achter hem opdoken op de stoep, haaien op wielen, met een jongen van twaalf erop die nooit remt.",
-	"Hij had geen huis, geen haast en geen OV-chipkaart, maar wel een winkelwagen van de DERREK, een halve kroket en een plattegrond van een stad die niet meer bestaat.",
-	"In die wagen lag zijn hele wereld: een paraplu zonder doek, een radio die alleen het weer van gisteren ontving, en een foto van de zee.",
-	"Want de zee, zei hij, is het enige in Den Haag dat nooit een vergunning heeft aangevraagd.",
-	"Op een ochtend, overprikkeld door de toeters, hongerig naar een broodje bal en moe van de regen die van opzij komt, ontwaakt hij op Centraal Station.",
-	"De klok in de hal wijst een uur aan dat niemand ooit heeft geleefd.",
-	"Waar ben ik nu?\nWaar ga ik heen?",
-	"De meeuwen weten het niet. De tram weet het niet. Zelfs het ministerie heeft er nog geen standpunt over ingenomen.",
-	"Maar ergens tussen de duinen en de stoeptegels ligt een dag te wachten die nog niemand heeft gebruikt.",
-	"De stad wacht niet op hem. Toch gaat hij op weg: met zijn winkelwagen, zijn halve kroket en het beetje trots dat hem nog rest.",
-	"Dit is het verhaal van zijn zwerftocht door Den Haag.",
+	"Den Haag. Hofstad, regeringsstad,\nstad van vrede en recht.",
+	"Hier worden de grote besluiten genomen.\nMeestal na de lunch, en altijd pas na een tweede overleg.",
+	"Ambtenaren fietsen van vergadering naar vergadering.\nLobbyisten kennen de weg naar binnen beter dan de bodes.",
+	"Op het Malieveld staan de trekkers alweer te toeteren.\nWaartegen weet niemand precies, maar het klinkt boos.",
+	"En op Scheveningen heersen de meeuwen.\nGeen patatje is er veilig.",
+	"Midden in die stad woont een zwerver.\nGeen vast adres, wel een vaste bank aan het Lange Voorhout.",
+	"Hij leeft van statiegeld. Twintig blikjes is een broodje bal,\ndertig is een broodje bal met mosterd.",
+	"Als het regent zit hij in de bibliotheek\nen leest hij heel langzaam de krant van gisteren.",
+	"Hij kent de rondes van elke handhaver,\nontwijkt elke fatbike en kijkt meeuwen nooit recht aan.",
+	"Maar vandaag is alles anders. Zijn bank is weg.\nEr staat een hek omheen, met een bordje: Hier komt iets moois.",
+	"Hij pakt zijn winkelwagen, trekt zijn jas recht\nen duwt de regen in.",
+	"Zo begint zijn zwerftocht door Den Haag.",
 ]
-## The moments of the intro (seconds into intro.mp3, which is 177 s: the theme begins at
-## 1.1, its first big entry at 15.8, a second at 63.9, a near silence 109.8-111.4, the calm
-## end from 142.2, fading out from 172.5): the opening line fading in and out, the logo,
-## the start of the crawl, the end of the crawl and of the intro.
-const LINE_IN_AT := 1.1
-const LINE_OUT_AT := 4.4    # gone at 5.6, before the logo fades in
+## The moments of the intro (seconds into intro.mp3, which is 181 s: the soft theme begins
+## at 0.1, its first big entry at 12.1, the full band at 23.2, a lighter turn at 48.1, a
+## hit back to full at 90.1, the climax from 124.5, a last hit and the calm end from 156.1,
+## fading out from 168.4, then silence and a short coda from 174 that the intro does not
+## wait for): the opening line fading in and out, the logo, the start of the crawl, the end
+## of the crawl and of the intro.
+const LINE_IN_AT := 0.4
+const LINE_OUT_AT := 3.6    # gone at 4.8, before the logo fades in
 ## The logo and the stars fade in from LOGO_FADE_IN_AT, stand there whole from LOGO_AT, and
-## the logo stands big (LOGO_HOLD) until the music's first big entry (16.0): there it starts
+## the logo stands big (LOGO_HOLD) until the music's first big entry (12.1): there it starts
 ## to go away and the story comes in.
-const LOGO_FADE_IN_AT := 6.0
+const LOGO_FADE_IN_AT := 5.0
 const LINE_FADE := 1.2
-const LOGO_AT := 8.0
-const CRAWL_AT := 16.0
+const LOGO_AT := 6.5
+const CRAWL_AT := 12.1
 ## The story rolls to END_AT (where the music fades): the last paragraph does not roll off
 ## the top but comes to rest far off at CRAWL_REST (share of the picture's height from the
 ## top) and the story fades out over the last CRAWL_FADE seconds; no travel wasted, so it
 ## rolls as slowly as the music allows.
-const END_AT := 172.5
+const END_AT := 168.5
 const CRAWL_REST := 0.35
 const CRAWL_FADE := 4.0
+## Holding Enter (or the down arrow) rolls the story this many times as fast; it then
+## reaches its end, and the intro the main menu, sooner (the music goes on into the menu).
+const CRAWL_FAST := 4.0
+## How much softer than the other effects the twinkle sounds (dB).
+const TWINKLE_VOLUME_DB := -9.0
+const FAST_KEYS: Array[Key] = [KEY_ENTER, KEY_KP_ENTER, KEY_DOWN]
+## Now and then a tractor drifts through space behind the story, tumbling slowly (drawn in
+## 3D into a small picture of its own, TRACTOR_PICTURE pixels, shown TRACTOR_SIZE big on
+## the screen at most): the first TRACTOR_FIRST seconds after the stars come, then every
+## TRACTOR_EVERY (from .. to) seconds, each crossing the screen in TRACTOR_SECONDS (from .. to).
+const TRACTOR_FIRST := 14.0
+const TRACTOR_EVERY := Vector2(18.0, 32.0)
+const TRACTOR_SECONDS := Vector2(14.0, 20.0)
+const TRACTOR_PICTURE := 96
+const TRACTOR_SIZE := 190.0
+const TRACTOR_MODELS := ["trekker", "trekker_rood"]
 ## Pixels between the paragraphs of the story (in its picture).
 const PARAGRAPH_GAP := 26
 ## Paragraphs of STORY and the moment each comes in at the bottom of the screen: the
-## zwerver on the second big entry, his questions right after the silence, the last
-## sentence on the calm end. Between them the story rolls evenly.
-const CRAWL_CUES := {15: 63.9, 27: 111.5, 31: 142.2}
+## zwerver on the lighter turn, the handhavers on the hit back to full, the way out into
+## the rain on the climax (the last sentence then comes to rest over the calm end).
+## Between them the story rolls evenly, at much the same pace throughout.
+const CRAWL_CUES := {5: 48.1, 8: 90.1, 10: 124.5}
 ## The crawl picture: the size the text is drawn in (pixels), the
 ## width of its far top edge on the screen (share of the bottom edge) and how much of the
 ## screen it takes from the bottom up.
@@ -104,8 +107,9 @@ const CRAWL_PICTURE := Vector2i(900, 1400)
 const CRAWL_FAR_WIDTH := 0.22
 const CRAWL_SCREEN_TOP := 0.08
 const TITLE := "ZWERVR"
-## Seconds the logo stands big before it goes, and that it takes to go away.
-const LOGO_HOLD := 8.0
+## Seconds the logo stands big before it goes (to the first big entry, CRAWL_AT), and that
+## it takes to go away.
+const LOGO_HOLD := CRAWL_AT - LOGO_AT
 const LOGO_SECONDS := 2.5
 ## The logo: its size at the start (1.3: big, about nine tenths of the width of the screen)
 ## and at the end, far off.
@@ -114,6 +118,15 @@ const LOGO_START_SCALE := 1.3
 ## LOGO_START_SCALE until it starts to go.
 const LOGO_HUGE_SCALE := 5.0
 const LOGO_END_SCALE := 0.02
+## Where the logo vanishes in the distance a star twinkles: a four-pointed flash of pixels
+## (SPARKLE_ARM long) that flares up, turns an eighth round and dies out, sparks flying
+## off it (SPARKLE_SPARKS, out to SPARKLE_REACH pixels); from SPARKLE_AT for SPARKLE_SECONDS.
+const SPARKLE_AT := LOGO_AT + LOGO_HOLD + LOGO_SECONDS * 0.92
+const SPARKLE_SECONDS := 0.9
+const SPARKLE_FLARE := 0.18   # share of it in which it flares up
+const SPARKLE_ARM := 34.0
+const SPARKLE_SPARKS := 8
+const SPARKLE_REACH := 90.0
 const STAR_COUNT := 140
 
 var _design: Control
@@ -123,10 +136,20 @@ var _logo_holder: Control
 var _crawl_text: VBoxContainer   # the story in its picture, rolled up by _play
 var _crawl_screen: ColorRect     # that picture laid on the screen in perspective
 var _leaving := false
-var _plopped := false   # the plop of the vanishing logo has sounded
+var _sparkle: Control   # the twinkle where the logo vanishes
+var _sparks: Array[ColorRect] = []
 var _music: AudioStreamPlayer
 var _twinkles: Array[Vector3] = []   # per star: pace (rad/s), phase, how deep it dims
 var _clock := 0.0
+var _crawl_ahead := 0.0   # seconds the story is ahead of the music (Enter held: CRAWL_FAST)
+var _twinkle_heard := false
+var _tractor_view: TextureRect   # the drifting tractor's picture on the screen
+var _tractor_picture: SubViewport
+var _tractor_spinner: Node3D     # turned as it tumbles
+var _tractor_model: Node3D       # the tractor itself (one of TRACTOR_MODELS, swapped per flight)
+var _tractor_flight := {}        # the flight under way: from, to, start, seconds, axis, spin; empty when none
+var _next_tractor_at := LOGO_FADE_IN_AT + TRACTOR_FIRST
+var _tractor_random := RandomNumberGenerator.new()
 ## Stars twinkle: each dims and brightens at its own pace (from .. to, radians a second).
 const TWINKLE_PACE := Vector2(1.2, 4.5)
 
@@ -145,8 +168,10 @@ func _ready() -> void:
 	_build_stars()
 	_build_line()
 	_build_logo()
+	_build_sparkle()
+	_build_tractor()
 	_build_crawl()
-	_build_skip_hint()
+	_build_prompts()
 	var settings := MainMenu._read_settings()
 	var crt := GameHud.make_crt_overlay(0.05 if settings.crt else 0.0, 0.035 if settings.crt else 0.0,
 			0.1 if settings.scanlines else 0.0, get_viewport().get_visible_rect().size)
@@ -165,7 +190,11 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	_clock += delta
 	if not _leaving:
-		_play(_music_time())
+		var time := _music_time()
+		if time >= CRAWL_AT and _fast_held():
+			_crawl_ahead += delta * (CRAWL_FAST - 1.0)
+		_play(time)
+	_fly_tractor()
 	if not _stars.visible:
 		return
 	for star_index in _twinkles.size():
@@ -184,6 +213,13 @@ func _input(event: InputEvent) -> void:
 		if not _leaving:
 			UiSounds.play(self, "doe")
 		_to_menu()
+
+
+static func _fast_held() -> bool:
+	for key in FAST_KEYS:
+		if Input.is_key_pressed(key):
+			return true
+	return false
 
 
 ## Seconds into the music (where it is now heard; the intro's own clock without it).
@@ -218,16 +254,34 @@ func _play(time: float) -> void:
 		# fading out the whole way as it goes
 		_logo_holder.modulate.a = fading_in * (1.0 - going)
 	# the story, its paragraphs coming in on their cues
-	_crawl_screen.visible = time >= CRAWL_AT and time < END_AT
+	# (ahead of the music while Enter is held)
+	var crawl_time := time + _crawl_ahead
+	_crawl_screen.visible = time >= CRAWL_AT and crawl_time < END_AT
 	if _crawl_screen.visible:
-		_crawl_text.position.y = _crawl_position(time)
-		_crawl_screen.modulate.a = clampf((END_AT - time) / CRAWL_FADE, 0.0, 1.0)
-	# a plop as the logo vanishes in the distance
-	if not _plopped and time >= LOGO_AT + LOGO_HOLD + LOGO_SECONDS * 0.92:
-		_plopped = true
-		if time < LOGO_AT + LOGO_HOLD + LOGO_SECONDS + 0.5:
-			UiSounds.play(self, "plop")
-	if time >= END_AT:
+		_crawl_text.position.y = _crawl_position(crawl_time)
+		_crawl_screen.modulate.a = clampf((END_AT - crawl_time) / CRAWL_FADE, 0.0, 1.0)
+	# a star twinkles where the logo vanishes in the distance
+	var twinkling := (time - SPARKLE_AT) / SPARKLE_SECONDS
+	_sparkle.visible = twinkling >= 0.0 and twinkling < 1.0
+	if _sparkle.visible and not _twinkle_heard:
+		_twinkle_heard = true
+		UiSounds.play(self, "twinkel", TWINKLE_VOLUME_DB)
+	if _sparkle.visible:
+		var flare := twinkling / SPARKLE_FLARE if twinkling < SPARKLE_FLARE \
+				else 1.0 - (twinkling - SPARKLE_FLARE) / (1.0 - SPARKLE_FLARE)
+		_sparkle.scale = Vector2.ONE * (0.2 + 0.8 * sqrt(flare))
+		_sparkle.rotation = twinkling * PI * 0.25
+		_sparkle.modulate.a = flare
+		for spark_index in _sparks.size():
+			var direction := Vector2.RIGHT.rotated(TAU * (spark_index + 0.5) / _sparks.size())
+			var spark := _sparks[spark_index]
+			spark.position = DESIGN_SIZE * 0.5 + direction * SPARKLE_REACH * (1.0 - pow(1.0 - twinkling, 2.0)) - spark.size * 0.5
+			spark.modulate.a = 1.0 - twinkling
+			spark.visible = true
+	else:
+		for spark in _sparks:
+			spark.visible = false
+	if crawl_time >= END_AT:
 		_to_menu()
 
 
@@ -312,6 +366,38 @@ func _start_music() -> void:
 	_music.play()
 
 
+## The twinkle where the logo vanishes: two crossing bars of pixels (long and thin, as the
+## rays of a star), a bright core, and the sparks round it.
+func _build_sparkle() -> void:
+	_sparkle = Control.new()
+	_sparkle.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_sparkle.position = DESIGN_SIZE * 0.5
+	_sparkle.visible = false
+	_design.add_child(_sparkle)
+	for ray: Vector2 in [Vector2(4.0, SPARKLE_ARM * 2.0), Vector2(SPARKLE_ARM * 2.0, 4.0),
+			Vector2(8.0, SPARKLE_ARM), Vector2(SPARKLE_ARM, 8.0)]:
+		var bar := ColorRect.new()
+		bar.size = ray
+		bar.position = -ray * 0.5
+		bar.color = MainMenu.STAR_BRIGHT
+		bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_sparkle.add_child(bar)
+	var core := ColorRect.new()
+	core.size = Vector2.ONE * 10.0
+	core.position = -core.size * 0.5
+	core.color = Color.WHITE
+	core.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_sparkle.add_child(core)
+	for _spark_index in SPARKLE_SPARKS:
+		var spark := ColorRect.new()
+		spark.size = Vector2.ONE * 3.0
+		spark.color = MainMenu.STAR_BRIGHT
+		spark.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		spark.visible = false
+		_design.add_child(spark)
+		_sparks.append(spark)
+
+
 func _build_stars() -> void:
 	_stars = Control.new()
 	_stars.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -336,6 +422,7 @@ func _build_line() -> void:
 	_line.text = OPENING_LINE
 	_line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_line.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART   # too wide for the picture: two lines
 	_line.size = DESIGN_SIZE
 	_line.add_theme_font_override("font", _font("res://assets/fonts/PixelifySans.ttf", 500))
 	_line.add_theme_font_size_override("font_size", 30)
@@ -449,60 +536,142 @@ func _build_crawl() -> void:
 	_design.add_child(_crawl_screen)
 
 
-## Bottom left, as the action prompt of the design: a key cap and "Intro overslaan" on an
-## ink panel with a border (any key, click or touch skips; this says so).
-func _build_skip_hint() -> void:
-	var panel := PanelContainer.new()
-	var style := GameHud._box_style(GameHud.TRANSLUCENT_INK, GameHud.BORDER, 2)
-	style.content_margin_left = 10
-	style.content_margin_right = 14
-	style.content_margin_top = 10
-	style.content_margin_bottom = 10
-	panel.add_theme_stylebox_override("panel", style)
-	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 10)
-	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	panel.add_child(row)
-	var key := PanelContainer.new()
-	var key_style := GameHud._box_style(GameHud.TEXT, GameHud.TEXT, 0)
-	key_style.content_margin_left = 8
-	key_style.content_margin_right = 8
-	key_style.content_margin_top = 4
-	key_style.content_margin_bottom = 4
-	key_style.shadow_color = GameHud.MUTED
-	key_style.shadow_offset = Vector2(0, 3)
-	key.add_theme_stylebox_override("panel", key_style)
-	key.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var key_label := Label.new()
-	key_label.text = "SPATIE"
-	key_label.add_theme_font_override("font", _font_or_fallback("res://assets/fonts/Silkscreen-Bold.ttf"))
-	key_label.add_theme_font_size_override("font_size", 14)
-	key_label.add_theme_color_override("font_color", GameHud.INK)
-	key.add_child(key_label)
-	row.add_child(key)
-	var text := Label.new()
-	text.text = "Intro overslaan"
-	text.add_theme_font_override("font", _font("res://assets/fonts/JetBrainsMono.ttf", 400))
-	text.add_theme_font_size_override("font_size", 14)
-	text.add_theme_color_override("font_color", GameHud.TEXT)
-	text.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	row.add_child(text)
-	# bottom left of the design (24 px in, 28 px up), whatever size the panel takes: a
-	# margin container the size of the design with the panel at its end
+## Bottom left, the actions that can be done now (ActionPrompts, one under the other):
+## skipping ("SPATIE  Overslaan") and rolling the story faster ("ENTER  Sneller").
+func _build_prompts() -> void:
+	var prompts := ActionPrompts.new()
+	prompts.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	prompts.size_flags_vertical = Control.SIZE_SHRINK_END
+	prompts.set_actions([["SPATIE", "Overslaan"], ["ENTER", "Sneller"]])
+	# bottom left of the design (24 px in, 28 px up), whatever size the prompts take: a
+	# margin container the size of the design with them at its end
 	var corner := MarginContainer.new()
 	corner.size = DESIGN_SIZE
 	corner.add_theme_constant_override("margin_left", 24)
 	corner.add_theme_constant_override("margin_bottom", 28)
 	corner.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	panel.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	panel.size_flags_vertical = Control.SIZE_SHRINK_END
-	corner.add_child(panel)
+	corner.add_child(prompts)
 	_design.add_child(corner)
 
 
-static func _font_or_fallback(path: String) -> Font:
-	return load(path) if ResourceLoader.exists(path) else _fallback()
+## The drifting tractor: a small 3D world of its own (a camera, a sun and some ambient
+## light, the tractor tumbling in the middle) drawn into a picture with a clear background,
+## laid over the stars and under the story, pixel-sharp like the rest.
+func _build_tractor() -> void:
+	_tractor_random.randomize()
+	_tractor_picture = SubViewport.new()
+	_tractor_picture.name = "Trekkerbeeld"
+	_tractor_picture.size = Vector2i(TRACTOR_PICTURE, TRACTOR_PICTURE)
+	_tractor_picture.transparent_bg = true
+	_tractor_picture.own_world_3d = true
+	_tractor_picture.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	add_child(_tractor_picture)
+	var camera := Camera3D.new()
+	camera.position = Vector3(0.0, 0.0, 7.5)
+	camera.fov = 40.0
+	_tractor_picture.add_child(camera)
+	var sun := DirectionalLight3D.new()
+	sun.rotation_degrees = Vector3(-35.0, 40.0, 0.0)
+	sun.light_energy = 1.2
+	_tractor_picture.add_child(sun)
+	var environment := Environment.new()
+	environment.background_mode = Environment.BG_CLEAR_COLOR
+	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	environment.ambient_light_color = Color(0.55, 0.6, 0.8)
+	environment.ambient_light_energy = 0.7
+	var world_environment := WorldEnvironment.new()
+	world_environment.environment = environment
+	_tractor_picture.add_child(world_environment)
+	_tractor_spinner = Node3D.new()
+	_tractor_picture.add_child(_tractor_spinner)
+	_tractor_view = TextureRect.new()
+	_tractor_view.name = "Trekker"
+	_tractor_view.texture = _tractor_picture.get_texture()
+	_tractor_view.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_tractor_view.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_tractor_view.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_tractor_view.visible = false
+	_design.add_child(_tractor_view)
+
+
+## A tractor of model `model_name` (assets/tiles/props/voertuigen) with its wheels, as
+## scripts/vehicles/tractor.gd puts them (the hubs, the big rear and small front wheels),
+## its middle at the origin; null if the model is missing.
+static func _make_tractor(model_name: String) -> Node3D:
+	var body_path := "res://assets/tiles/props/voertuigen/%s.gox" % model_name
+	if not ResourceLoader.exists(body_path):
+		return null
+	var tractor := Node3D.new()
+	var body := MeshInstance3D.new()
+	body.mesh = load(body_path)
+	body.position = Vector3(0.0, 0.25, 0.0)   # model_lift of the tractor
+	tractor.add_child(body)
+	# [hub, wheel model, radius]: the small front wheels, the big rear ones
+	var wheels := [
+		[Vector3(-0.5625, 0.375, 1.25), "auto_wiel", 0.375], [Vector3(0.5625, 0.375, 1.25), "auto_wiel", 0.375],
+		[Vector3(-0.75, 0.625, -0.875), "tractor_wiel", 0.625], [Vector3(0.75, 0.625, -0.875), "tractor_wiel", 0.625]]
+	for wheel: Array in wheels:
+		var wheel_path := "res://assets/tiles/props/voertuigen/%s.gox" % wheel[1]
+		if not ResourceLoader.exists(wheel_path):
+			continue
+		var wheel_instance := MeshInstance3D.new()
+		wheel_instance.mesh = load(wheel_path)
+		# the wheel meshes stand on their lowest point, round the axle
+		wheel_instance.position = (wheel[0] as Vector3) - Vector3(0.0, float(wheel[2]), 0.0)
+		tractor.add_child(wheel_instance)
+	# its middle (about 1.4 m up) at the origin, so it tumbles round itself
+	var holder := Node3D.new()
+	tractor.position = Vector3(0.0, -1.4, 0.0)
+	holder.add_child(tractor)
+	return holder
+
+
+## Starts a tractor drifting across now and then, and moves the one under way: in a
+## straight line from one side of the screen to the other (a little up or down), smaller
+## or bigger as it is further or nearer, tumbling round an axis of its own.
+func _fly_tractor() -> void:
+	if _tractor_view == null or not _stars.visible:
+		return
+	if _tractor_flight.is_empty():
+		if _clock < _next_tractor_at or _clock > END_AT - 6.0:
+			return
+		var model_name: String = TRACTOR_MODELS[_tractor_random.randi() % TRACTOR_MODELS.size()]
+		if _tractor_model:
+			_tractor_model.queue_free()
+		_tractor_model = _make_tractor(model_name)
+		if _tractor_model == null:
+			_next_tractor_at = INF
+			return
+		_tractor_spinner.add_child(_tractor_model)
+		var shown := TRACTOR_SIZE * _tractor_random.randf_range(0.45, 1.0)
+		var from_left := _tractor_random.randf() < 0.5
+		var start_height := _tractor_random.randf_range(0.1, 0.75) * DESIGN_SIZE.y
+		var end_height := clampf(start_height + _tractor_random.randf_range(-160.0, 160.0), 0.0, DESIGN_SIZE.y - shown)
+		var left := Vector2(-shown, start_height)
+		var right := Vector2(DESIGN_SIZE.x, end_height)
+		_tractor_flight = {
+			"from": left if from_left else right,
+			"to": right if from_left else left,
+			"start": _clock,
+			"seconds": _tractor_random.randf_range(TRACTOR_SECONDS.x, TRACTOR_SECONDS.y),
+			"axis": Vector3(_tractor_random.randf_range(-1.0, 1.0), _tractor_random.randf_range(-1.0, 1.0), _tractor_random.randf_range(-0.5, 0.5)).normalized(),
+			"spin": deg_to_rad(_tractor_random.randf_range(18.0, 45.0)) * (1.0 if _tractor_random.randf() < 0.5 else -1.0),
+		}
+		_tractor_spinner.basis = Basis.from_euler(Vector3(_tractor_random.randf_range(0.0, TAU), _tractor_random.randf_range(0.0, TAU), 0.0))
+		_tractor_view.size = Vector2.ONE * shown
+		# the nearer ones (bigger) a little brighter, the far ones dimmer
+		_tractor_view.modulate = Color(1, 1, 1).lerp(Color(0.55, 0.6, 0.75), 1.0 - shown / TRACTOR_SIZE)
+		_tractor_picture.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+		_tractor_view.visible = true
+	var flown := (_clock - float(_tractor_flight.start)) / float(_tractor_flight.seconds)
+	if flown >= 1.0:
+		_tractor_flight = {}
+		_tractor_view.visible = false
+		_tractor_picture.render_target_update_mode = SubViewport.UPDATE_DISABLED
+		_next_tractor_at = _clock + _tractor_random.randf_range(TRACTOR_EVERY.x, TRACTOR_EVERY.y)
+		return
+	_tractor_view.position = (_tractor_flight.from as Vector2).lerp(_tractor_flight.to as Vector2, flown)
+	_tractor_spinner.basis = Basis(_tractor_flight.axis as Vector3, float(_tractor_flight.spin) * get_process_delta_time()) * _tractor_spinner.basis
 
 
 static func _font(path: String, weight: int) -> Font:

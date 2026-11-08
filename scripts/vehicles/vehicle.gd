@@ -48,13 +48,18 @@ extends Node3D
 ## Other vehicles: it keeps behind a vehicle on the cells ahead of it (brakes and stops
 ## behind it) and gives way on a crossing to a vehicle that will be there first. If two
 ## vehicles run into each other all the same (at CRASH_SPEED or faster, or one of them
-## driving without looking; a scrape in a corner is not a crash), they crash: each becomes
+## driving without looking; a scrape in a corner is not a crash), they hit each other: each
+## loses health (`health`, from `max_health`) by the change of speed it takes (DAMAGE_PER_SPEED
+## per m/s; the lighter one takes most). A small hit is only a bump: both brake hard
+## (BUMP_SLOWDOWN), a few shards fly, and they drive on. Only a vehicle whose health runs
+## out crashes and catches fire (scripts/effects/vehicle_fire.gd): it becomes
 ## a RigidBody3D (a "Wrak") with its
 ## speed and mass, so they bounce off each other and off the colliders of the town (the
 ## kerbs, medians and buildings of the GridMaps), hop, tip over towards where they are
 ## pushed, spin and slide out, hazard lights blinking; shards of paint, glass and plastic
-## and a puff of dust fly out (scripts/effects/crash_burst.gd) and the view shakes; after WRECK_TIME seconds they are towed back onto the nearest lane and
-## drive on. drive_into() sends a vehicle the wrong way down another one's route, without
+## and a puff of dust fly out (scripts/effects/crash_burst.gd) and the view shakes; it burns
+## (VehicleFire.BURN_SECONDS), blinks away ever faster (death_blink.gd) and is towed back
+## onto the nearest lane, as good as new, and drives on. drive_into() sends a vehicle the wrong way down another one's route, without
 ## looking (the demo crash, key B in the follow camera).
 ## Weight and torque: `mass_kg` and `wheel_torque` differ per type, and a heavy vehicle has
 ## more of both. The torque over the mass gives its acceleration. In a crash the masses
@@ -195,6 +200,19 @@ const CROSSING_LOOKAHEAD := 4
 
 ## Material of the wheels: draws and turns the spokes (the wheel model stays still).
 const WHEEL_SHADER = preload("res://addons/vox_tiles/materials/voxel_wheel.gdshader")
+const DeathBlink = preload("res://scripts/effects/death_blink.gd")
+const VehicleFire = preload("res://scripts/effects/vehicle_fire.gd")
+## Health lost per m/s of the change of speed a vehicle takes in a hit (a head-on crash of
+## two cars at 50 km/h each takes about 14 m/s: more than all of it; a bump in a queue at
+## walking pace a few points).
+const DAMAGE_PER_SPEED := 8.0
+## A bump (its health not run out): its speed is cut to this share, and for BUMP_COOLDOWN
+## seconds it does not hit the same again (they still touch).
+const BUMP_SLOWDOWN := 0.2
+const BUMP_COOLDOWN := 1.2
+## The worst case: a hit that drives its health this far below nought blows it up
+## (VehicleFire.explode) before it burns.
+const EXPLODE_HEALTH := -80.0
 ## Metres before a turn, a moving over or a turning round from which it indicates.
 const INDICATE_AHEAD := 30.0
 ## Seconds of one blink of the indicators (on and off).
@@ -264,8 +282,10 @@ const BODY_SIDE_ROOM := 0.2
 ## Seconds it waits for others in a ring before it squeezes past (and up to this much more,
 ## different per vehicle, so they don't all go at once), seconds that it ignores them then,
 ## and the seconds after which it does that anyway, ring or no ring.
-const RING_PATIENCE := 5.0
-const RING_PATIENCE_SPREAD := 8
+const RING_PATIENCE := 3.0
+const RING_PATIENCE_SPREAD := 5
+## Seconds it waits in a ring with a siren in it before it squeezes out of the way.
+const SIREN_RING_PATIENCE := 1.5
 const SQUEEZE_TIME := 6.0
 ## Metres a squeeze must get it on, else the next one drives through the bodies too.
 const SQUEEZE_IN_VAIN := 2.0
@@ -292,6 +312,12 @@ const SIREN_OFF_SECONDS := Vector2(20.0, 50.0)
 ## The flash of the blue lights: seconds per round (left, right) and their colour.
 const BEACON_CYCLE := 0.5
 const BEACON_COLOUR := Color(0.15, 0.4, 1.0)
+## The blue lights by day too: unshaded in a light blue, glowing BEACON_GLOW times, the
+## blocks BEACON_SCALE their size, and a stronger blue light round them.
+const BEACON_LAMP_COLOUR := Color(0.35, 0.6, 1.0)
+const BEACON_GLOW := 14.0
+const BEACON_SCALE := Vector3(1.3, 1.5, 1.2)
+const BEACON_LIGHT_ENERGY := 4.0
 ## Making way: how far behind a siren is heard (m), how far beside the line of the lane it
 ## counts (m), physics steps between looks, the speed it crawls at while pulled over (m/s),
 ## how far it moves over to the right and the siren to the left (m, the drawn body), and
@@ -303,6 +329,9 @@ const YIELD_SPEED := 2.0
 ## Metres behind it from which a siren makes it stand still, pulled over, until it is past;
 ## seconds after which it drives on all the same (the siren stuck elsewhere).
 const YIELD_STAND_DISTANCE := 15.0
+## A siren coming towards it: how far ahead it is seen (m) and how far beside its line.
+const ONCOMING_SIREN_HEARD := 30.0
+const ONCOMING_BESIDE := 6.0
 const YIELD_LONGEST := 20.0
 const YIELD_OFFSET := 1.1
 const PASS_OFFSET := 0.9
@@ -351,6 +380,13 @@ const SIGHT_CHECK_STEPS := 15
 ## after LOST_SECONDS all the same) it is put down on a free lane somewhere else.
 const LANE_REVERSALS_LOST := 2
 const LOST_SECONDS := 20.0
+## Driving in circles (to and fro over a crossing, where the turns round are not counted):
+## after PROGRESS_CHECK seconds of driving (over PROGRESS_SPEED m/s) it should be at least
+## PROGRESS_LEAST metres from where it was; else it is lost, and is moved in LOST_SOON seconds.
+const PROGRESS_CHECK := 12.0
+const PROGRESS_SPEED := 1.0
+const PROGRESS_LEAST := 8.0
+const LOST_SOON := 3.0
 const RELOCATE_TRIES := 40
 
 ## Every vehicle in the game (for keeping clear of each other and crashing).
@@ -364,7 +400,14 @@ var _sight_countdown := 0
 var _saved_delta := 0.0              # time of the step it skipped while out of sight
 var _lane_reversals := 0             # turns round in its own lane since the last crossing
 var _lost_clock := -1.0              # seconds it has been lost (driving to and fro); < 0 = not
+var _progress_clock := 0.0           # seconds it has driven since _progress_from
+var _progress_from := Vector3.ZERO
 
+## Its health: hits take it (DAMAGE_PER_SPEED); when it runs out it crashes and burns.
+@export var max_health := 100.0
+var health := 100.0
+var _bump_clock := 0.0               # seconds before it can be hit again after a bump
+var _fire: Node3D                    # its fire while it burns as a wreck (vehicle_fire.gd)
 ## Crashed: a wreck under physics until it is towed back onto the road.
 var crashed := false
 ## Drives without looking: no lights, no other vehicles (drive_into).
@@ -469,6 +512,7 @@ func _ready() -> void:
 	_lights = root.get_node_or_null("Verkeerslichten") if obeys_lights else null
 	_random.seed = route_seed
 	var props := root.get_node_or_null("Props") as GridMap
+	health = max_health
 	_body = Node3D.new()
 	_body.name = "Carrosserie"
 	_body.top_level = true
@@ -502,6 +546,7 @@ func _physics_process(delta: float) -> void:
 	if _sight_countdown < 0:
 		_sight_countdown = SIGHT_CHECK_STEPS
 		unseen = _out_of_sight(global_position)
+	_watch_progress(delta)
 	if _lost_clock >= 0.0:
 		_lost_clock += delta
 		if unseen or _lost_clock > LOST_SECONDS:
@@ -542,6 +587,7 @@ func _physics_process(delta: float) -> void:
 	_place(delta)
 	velocity = (global_position - before) / maxf(delta, 0.0001)
 	_tick_current = global_transform
+	_bump_clock = maxf(_bump_clock - delta, 0.0)
 	_check_crash()
 	if not unseen:
 		_turn_wheels(speed * delta, delta)
@@ -758,6 +804,8 @@ func _oncoming_near() -> bool:
 			continue
 		var their_forward := Vector2(other.global_basis.z.x, other.global_basis.z.z)
 		if their_forward.dot(forward) < -0.5:
+			if other.yielding and other._yielding_to == self and other.speed <= YIELD_SPEED + 0.1:
+				continue   # pulled over for it: room to pass
 			return true
 	return false
 
@@ -767,9 +815,11 @@ func _oncoming_near() -> bool:
 func _add_emergency() -> void:
 	if not emergency:
 		return
-	var material := _glow(BEACON_COLOUR, 8.0)
+	var material := _glow(BEACON_COLOUR, BEACON_GLOW)
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.albedo_color = BEACON_LAMP_COLOUR
 	for position in beacon_positions:
-		_beacons.append(_lamp(position, beacon_size, material))
+		_beacons.append(_lamp(position, beacon_size * BEACON_SCALE, material))
 	if not beacon_positions.is_empty():
 		_beacon_light = OmniLight3D.new()
 		_beacon_light.name = "Zwaailicht"
@@ -812,7 +862,11 @@ func _update_emergency(delta: float) -> void:
 			elif yielding and _yielding_to and is_instance_valid(_yielding_to) and _yielding_to.has_priority() and not _is_past(_yielding_to):
 				pass   # stays pulled over until the siren is past it
 			else:
+				# a siren behind it, or one coming towards it (that one has to pass on the left,
+				# where it drives: it moves over and waits too)
 				var siren := _siren_behind()
+				if siren == null:
+					siren = _siren_oncoming()
 				if siren != null and siren == _not_for:
 					siren = null
 				yielding = siren != null and (yielding or not _moved_over_for_siren())
@@ -848,10 +902,36 @@ func _siren_behind() -> Vehicle:
 	return nearest
 
 
-## True if `other` has gone by: its back is clear ahead of its front.
+## The nearest emergency vehicle with its siren on that comes towards it close ahead,
+## beside its lane on the left or in it (as _oncoming_near looks for it), or null.
+func _siren_oncoming() -> Vehicle:
+	var forward := Vector2(global_basis.z.x, global_basis.z.z).normalized()
+	var mine := Vector2(global_position.x, global_position.z)
+	var nearest: Vehicle = null
+	var nearest_distance := ONCOMING_SIREN_HEARD
+	for other in all_vehicles:
+		if other == self or not other.has_priority() or absf(other.global_position.y - global_position.y) > 2.5:
+			continue
+		var relative := Vector2(other.global_position.x, other.global_position.z) - mine
+		var ahead := relative.dot(forward)
+		if ahead <= 0.0 or ahead > nearest_distance or absf(relative.cross(forward)) > ONCOMING_BESIDE:
+			continue
+		var their_forward := Vector2(other.global_basis.z.x, other.global_basis.z.z).normalized()
+		if their_forward.dot(forward) > -0.7:
+			continue
+		nearest = other
+		nearest_distance = ahead
+	return nearest
+
+
+## True if `other` has gone by: its back is clear ahead of its front (one coming towards
+## it: behind its back).
 func _is_past(other: Vehicle) -> bool:
 	var forward := Vector2(global_basis.z.x, global_basis.z.z).normalized()
 	var relative := Vector2(other.global_position.x - global_position.x, other.global_position.z - global_position.z)
+	var their_forward := Vector2(other.global_basis.z.x, other.global_basis.z.z).normalized()
+	if their_forward.dot(forward) < -0.7:
+		return relative.dot(forward) < -(half_length + other.half_length + 2.0) or relative.length() > SIREN_HEARD
 	return relative.dot(forward) > half_length + other.half_length + 2.0 or relative.length() > SIREN_HEARD
 
 
@@ -930,7 +1010,7 @@ func _flash_beacons() -> void:
 	for lamp in _beacons:
 		lamp.visible = siren_on and lit and ((lamp.position.x > 0.0) == left_on)
 	if _beacon_light:
-		_beacon_light.light_energy = 2.5 if siren_on and lit else 0.0
+		_beacon_light.light_energy = BEACON_LIGHT_ENERGY if siren_on and lit else 0.0
 
 
 # ------------------------------------------------------------------ hooks
@@ -1069,7 +1149,9 @@ func _plan() -> void:
 			for option in _ways_out(next_cell):
 				if option == -heading or not _may_use(next_cell, option):
 					continue
-				if not _leads_on(next_cell, option) or _only_back_after(next_cell, option, heading):
+				# on a crossing: the heading it drove onto it with (the turn here counts)
+				var onto_crossing := (entered if entered != Vector2i.ZERO else heading) if network.is_crossing(next_cell) else Vector2i.ZERO
+				if not _leads_on(next_cell, option, onto_crossing) or _only_back_after(next_cell, option, heading):
 					continue
 				if not _may_continue(next_cell, heading, option):
 					continue
@@ -1106,19 +1188,27 @@ func _takes_move_over(cell: Vector3i, heading: Vector2i) -> bool:
 
 ## True if leaving `cell` in `heading` leads into a cell it may use, across a crossing
 ## to the first cell past it, straight on or turning off the crossing: not into a square for cyclists, a tram ramp or a bus lane,
-## where it would only have to turn round (on a crossing it may not).
-func _leads_on(cell: Vector3i, heading: Vector2i) -> bool:
+## where it would only have to turn round (on a crossing it may not). Turning off a crossing
+## keeps to its rules (once at most, never back the way it came: `entered`, the heading it
+## drove onto it with), else a turn it may not take there would seem to lead on, and it
+## would end up going to and fro over the crossing.
+func _leads_on(cell: Vector3i, heading: Vector2i, entered := Vector2i.ZERO) -> bool:
 	if network.move_over_target(cell) != RoadNetwork.NONE:
 		return true   # it goes on beside it (an exit lane leading off in steps)
+	# the heading it drove onto this crossing with (`entered`, on a crossing it is on already),
+	# else the one it drives onto the next with: the rules of a crossing hold for the turns
+	# off it too (turning once at most, never back where it came from)
+	var onto := entered if entered != Vector2i.ZERO else heading
 	var here := network.step(cell, heading)
 	for step in CROSSING_LOOKAHEAD:
 		if here == RoadNetwork.NONE or not _may_use(here, heading):
 			return false
 		if not network.is_crossing(here):
 			return true
-		# a turn off the crossing leads on too (a T-junction where straight on ends)
+		# a turn off the crossing leads on too (a T-junction where straight on ends), if it
+		# has not turned on it already, and not back the way it came onto it
 		for way in _ways_out(here):
-			if way == heading or way == -heading:
+			if way == heading or way == -heading or heading != onto or way == -onto:
 				continue
 			var off := network.step(here, way)
 			if off != RoadNetwork.NONE and not network.is_crossing(off) and _may_use(off, way):
@@ -1246,7 +1336,7 @@ func _target_speed(delta: float) -> float:
 			# squeezing past it ignores the cells the others stand on or claim, but still
 			# keeps behind the body right ahead of it (no driving through a queue)
 			var claims_limit := INF if _squeeze_clock > 0.0 else _traffic_speed(index, last)
-			_traffic_limit = minf(claims_limit, _body_ahead_speed())
+			_traffic_limit = minf(claims_limit, _body_ahead_speed(claims_limit))
 			_traffic_blocker = _blocked_by
 		_blocked_by = _traffic_blocker
 		target = minf(target, _traffic_limit)
@@ -1647,7 +1737,9 @@ func _traffic_speed(index: int, last: int) -> float:
 					var their_time := their_distance / maxf(other.speed, 1.0)
 					var first := their_time < my_time - 0.2 or (absf(their_time - my_time) <= 0.2 and other.get_instance_id() < get_instance_id())
 					if other.has_priority() and not has_priority():
-						blocked = their_time < PRIORITY_CLAIM_SECONDS   # a siren: always give way
+						# a siren: always give way, but not to one that comes up behind it (that
+						# one waits for it to get out of the way: it drives on, clearing the road)
+						blocked = their_time < PRIORITY_CLAIM_SECONDS and not _clears_way_for(other, at - _distance, their_distance)
 					elif has_priority() and not other.has_priority() and other.makes_way:
 						# it gives way to nobody else, but to one that can no longer stop
 						blocked = their_time < COMMITTED_SECONDS and first
@@ -1665,14 +1757,26 @@ func _traffic_speed(index: int, last: int) -> float:
 	return target
 
 
+## True if the siren `other` comes up behind it on the way to the same cell (it is nearer
+## to it, the siren going its way) or waits for it: then it does not give way to it there
+## but drives on, out of its way, instead of both waiting for each other.
+func _clears_way_for(other: Vehicle, my_distance: float, their_distance: float) -> bool:
+	if other._blocked_by == self:
+		return true
+	var forward := Vector2(global_basis.z.x, global_basis.z.z).normalized()
+	var their_forward := Vector2(other.global_basis.z.x, other.global_basis.z.z).normalized()
+	return their_distance > my_distance and their_forward.dot(forward) > 0.7
+
+
 ## Highest speed for the body of another vehicle right ahead of its nose: the cells of
 ## _traffic_speed are 4 m, this keeps it behind the vehicle itself, in a lane or a corner.
-func _body_ahead_speed() -> float:
+func _body_ahead_speed(claims_limit := INF) -> float:
 	var forward := Vector2(global_basis.z.x, global_basis.z.z).normalized()
 	var mine := Vector2(global_position.x, global_position.z)
 	var nose := _outer_box.end.z
 	var side_room := _outer_box.size.x * 0.5 + BODY_SIDE_ROOM
 	var nearest_gap := INF
+	var nearest_body: Vehicle = null
 	for other in all_vehicles:
 		if other == self or other.crashed or absf(other.global_position.y - global_position.y) > 2.5 or _passes(other):
 			continue
@@ -1693,10 +1797,30 @@ func _body_ahead_speed() -> float:
 				continue         # beside it, or already next to or behind its middle
 			if ahead.x - nose < nearest_gap:
 				nearest_gap = ahead.x - nose
-				_blocked_by = other
+				nearest_body = other
 	if nearest_gap > BODY_LOOKAHEAD:
-		return INF
-	return sqrt(2.0 * braking * maxf(nearest_gap - BODY_GAP, 0.0))
+		return INF   # nothing close enough to hold it: who it waits for stays as it was
+	var limit := sqrt(2.0 * braking * maxf(nearest_gap - BODY_GAP, 0.0))
+	if limit < claims_limit:
+		_blocked_by = nearest_body   # this body holds it back more than the cells do
+	return limit
+
+
+## Driving but getting nowhere (to and fro between two cells, round in a loop): it counts as
+## lost, and is moved soon (a rail vehicle changes ends at the end of its track: not that).
+func _watch_progress(delta: float) -> void:
+	if crashed or self is RailVehicle or _lost_clock >= 0.0:
+		_progress_clock = 0.0
+		_progress_from = global_position
+		return
+	if absf(speed) > PROGRESS_SPEED:
+		_progress_clock += delta
+	if _progress_clock < PROGRESS_CHECK:
+		return
+	if global_position.distance_to(_progress_from) < PROGRESS_LEAST:
+		_lost_clock = LOST_SECONDS - LOST_SOON
+	_progress_clock = 0.0
+	_progress_from = global_position
 
 
 ## Standing still for other vehicles: if they wait for each other in a ring, one squeezes
@@ -1714,14 +1838,46 @@ func _watch_for_gridlock(delta: float) -> void:
 		return
 	_blocked_clock += delta
 	var patience := RING_PATIENCE + get_instance_id() % RING_PATIENCE_SPREAD
+	# a ring with a siren in it: not the siren (it may not wait), the other gets out of the way
+	if _blocked_clock > SIREN_RING_PATIENCE and not has_priority() and _waits_in_a_ring_with_siren():
+		patience = SIREN_RING_PATIENCE
 	if _blocked_clock > LOST_PATIENCE or (_blocked_clock > patience and _waits_in_a_ring()):
 		# first it only ignores the claims; if the bodies themselves are locked (that
 		# squeeze got it nowhere, or it waited far too long) it drives through them
-		_squeeze_through = _squeezed_in_vain or _squeeze_clock > 0.0 or _blocked_clock > LOST_PATIENCE
+		_squeeze_through = _squeezed_in_vain or _squeeze_clock > 0.0 or _blocked_clock > LOST_PATIENCE \
+				or _head_on_with(_blocked_by)
 		_squeezed_in_vain = false
 		_squeeze_from = global_position
 		_squeeze_clock = SQUEEZE_TIME
 		_blocked_clock = 0.0
+
+
+## True if `other` faces it and waits for it too: their bodies hold each other, so ignoring
+## the claimed cells alone would get neither of them on.
+func _head_on_with(other: Vehicle) -> bool:
+	if other == null or other._blocked_by != self:
+		return false
+	var forward := Vector2(global_basis.z.x, global_basis.z.z).normalized()
+	var their_forward := Vector2(other.global_basis.z.x, other.global_basis.z.z).normalized()
+	return their_forward.dot(forward) < -0.5
+
+
+## True if it waits for a siren that, round the ring, waits for it.
+func _waits_in_a_ring_with_siren() -> bool:
+	var seen := {}
+	var vehicle := _blocked_by
+	var siren_seen := false
+	for step_index in QUEUE_CHECK:
+		if vehicle == null or vehicle.crashed:
+			return false
+		if vehicle == self:
+			return siren_seen
+		if seen.has(vehicle):
+			return false
+		seen[vehicle] = true
+		siren_seen = siren_seen or vehicle.has_priority()
+		vehicle = vehicle._blocked_by
+	return false
 
 
 ## True if following who waits for whom comes back round to someone it has seen already.
@@ -1729,7 +1885,9 @@ func _waits_in_a_ring() -> bool:
 	var seen := {}
 	var vehicle := self as Vehicle
 	for step_index in QUEUE_CHECK:
-		if vehicle == null or vehicle._held_by_rule or vehicle.crashed:
+		# one that waits only for a light or a zebra: a queue, no ring (one that waits for
+		# a vehicle as well is in the ring all the same: the light turning green won't free it)
+		if vehicle == null or (vehicle._held_by_rule and vehicle._blocked_by == null) or vehicle.crashed:
 			return false
 		if seen.has(vehicle):
 			return true
@@ -1774,7 +1932,7 @@ func distance_to(cell: Vector3i) -> float:
 ## Crashes into every vehicle whose body touches this one's (within CRASH_MARGIN).
 func _check_crash() -> void:
 	for other in all_vehicles:
-		if other == self or other.crashed or crashed:
+		if other == self or other.crashed or crashed or _bump_clock > 0.0 or other._bump_clock > 0.0:
 			continue
 		if global_position.distance_to(other.global_position) > _reach() + other._reach() + 1.0:
 			continue
@@ -1787,9 +1945,10 @@ func _check_crash() -> void:
 			_crash_with(other)
 
 
-## The blow: both become a wreck with the speed and spin the masses give them. The change
-## of speed along the line between them is shared as momentum does, so the lighter one takes
-## most of it; the blow lands off-centre, which spins the lighter one most too.
+## The blow: the change of speed along the line between them is shared as momentum does,
+## so the lighter one takes most of it, and costs each its health by what it takes. One
+## whose health runs out becomes a burning wreck with the speed and spin the masses give it
+## (the blow lands off-centre, which spins the lighter one most too); the other is bumped.
 func _crash_with(other: Vehicle) -> void:
 	var line := other.global_position - global_position
 	line.y = 0.0
@@ -1803,13 +1962,48 @@ func _crash_with(other: Vehicle) -> void:
 	var their_speed := other.velocity + blow / their_mass
 	var my_spin := _spin_from(blow * -1.0, contact)
 	var their_spin := other._spin_from(blow, contact)
-	# the light one takes most of the jolt
-	_become_wreck(my_speed, my_spin, -line, closing * their_mass / (my_mass + their_mass))
-	other._become_wreck(their_speed, their_spin, line, closing * my_mass / (my_mass + their_mass))
+	# the light one takes most of the jolt, and of the damage
+	var my_jolt := closing * their_mass / (my_mass + their_mass)
+	var their_jolt := closing * my_mass / (my_mass + their_mass)
+	if _take_hit(my_jolt):
+		_become_wreck(my_speed, my_spin, -line, my_jolt)
+		_catch_fire()
+	if other._take_hit(their_jolt):
+		other._become_wreck(their_speed, their_spin, line, their_jolt)
+		other._catch_fire()
 	var strength := clampf(closing / CRASH_FULL_SPEED, 0.15, 1.0)
+	if _explodes() or other._explodes():
+		strength = 1.0   # the biggest bang and shake
 	var paint := _paint() if my_mass < their_mass else other._paint()
 	CrashBurst.spawn(get_parent(), contact + Vector3.UP * 0.8, paint, strength)
 	last_crash = {"at": contact, "strength": strength, "time": Time.get_ticks_msec() / 1000.0}
+
+
+## Takes a hit that changes its speed by `jolt` m/s: loses health by it; true if its health
+## ran out (it crashes), else it is only bumped: it brakes hard and drives on.
+func _take_hit(jolt: float) -> bool:
+	health -= jolt * DAMAGE_PER_SPEED
+	reckless = false
+	if health <= 0.0:
+		return true
+	speed *= BUMP_SLOWDOWN
+	_bump_clock = BUMP_COOLDOWN
+	return false
+
+
+## Its wreck catches fire (no fire without a wreck: a rail vehicle only stops); in the worst
+## case (EXPLODE_HEALTH) it blows up first.
+func _catch_fire() -> void:
+	if _wreck == null or _fire != null:
+		return
+	if health <= EXPLODE_HEALTH:
+		VehicleFire.explode(_wreck, _body_size.y * 0.5, get_parent())
+	_fire = VehicleFire.ignite(_wreck, _body_size.y * 0.8)
+
+
+## True if it blew up in the hit just now.
+func _explodes() -> bool:
+	return crashed and _fire != null and health <= EXPLODE_HEALTH
 
 
 ## The paint of its body, from the colour word in its model name (grey if none).
@@ -1942,7 +2136,9 @@ func _add_trailer_collider() -> void:
 	_wreck.add_collision_exception_with(_trailer_collider)
 
 
-## While crashed: the body sits on the wreck; after WRECK_TIME it is towed back.
+## While crashed: the body sits on the wreck; once it has burnt out (or after WRECK_TIME
+## without a fire) it is towed back, blinking ever faster in its last seconds
+## (death_blink.gd).
 func _follow_wreck(delta: float) -> void:
 	_body.global_transform = _wreck.global_transform
 	_roll_on(delta)
@@ -1952,7 +2148,16 @@ func _follow_wreck(delta: float) -> void:
 		_trailer_collider.global_transform = _trailer_current
 	_update_lamps()
 	_wreck_clock += delta
-	if _wreck_clock >= WRECK_TIME:
+	var lasts := VehicleFire.BURN_SECONDS if _fire else WRECK_TIME
+	# about to be towed: it blinks, ever faster, as in old games
+	var shown := DeathBlink.shown(lasts - _wreck_clock)
+	_body.visible = shown
+	if _trailer:
+		_trailer.visible = shown
+	if _wreck_clock >= lasts:
+		_body.visible = true
+		if _trailer:
+			_trailer.visible = true
 		_tow()
 
 
@@ -1977,8 +2182,12 @@ func _tow() -> void:
 	var heading := Vector2i(signi(roundi(facing.x)), 0) if absf(facing.x) > absf(facing.z) else Vector2i(0, signi(roundi(facing.z)))
 	if heading == Vector2i.ZERO:
 		heading = Vector2i(0, 1)
+	if _fire:
+		_fire.call("leave_smoke", get_parent())   # the last smoke drifts off where it burnt
+		_fire = null
 	_wreck.queue_free()
 	_wreck = null
+	health = max_health
 	if _trailer_collider:
 		_trailer_collider.queue_free()
 		_trailer_collider = null

@@ -5,11 +5,13 @@ extends SceneTree
 ##    Beatrixkwartier; cells MAP_FIRST..MAP_LAST) with the town's GridMaps, its light, the
 ##    Dagcyclus standing still at NIGHT_HOUR, a dark ground plane and the camera. Made only
 ##    when it does not exist yet (your edits stay), or anew with "overschrijf".
-## 2. scenes/menu_kaart.scn, what the menu shows: the source's GridMaps (the town's ground
-##    and the grass field together) on small libraries of their own
-##    (assets/libraries/menu/*.res: only the tiles the map uses, copies, in the coarser
-##    versions of the town's tiles that look the same from this far off), the trams and the
-##    helpers (TintKaart, GrondKaart) working live on those GridMaps.
+## 2. scenes/menu_kaart.scn, what the menu shows: a small derivative of the town, set up as
+##    the town is: its four GridMaps (the ground with the grass field, buildings, details and
+##    props, in the full tiles) on small libraries of their own (assets/libraries/menu/*.res:
+##    only the tiles the map uses, copies) and the town's own helpers working live on them
+##    (TintKaart, GrondKaart, Verkeerslichten, Rook, Bovenleiding, Tunnelverlichting), the
+##    trams and the columns. Left out, to keep baking and loading short: the DetailNiveau
+##    (its merging takes long) and the grass blades (they follow the iso camera).
 ##    So the menu shares nothing with the town and stays small (a baked map, every
 ##    triangle written out, was hundreds of MB and ran the memory out when the town
 ##    loaded). Made every time; after editing the source, run the tool again.
@@ -21,7 +23,10 @@ const SOURCE := "res://scenes/menu_kaart_bron.tscn"
 const MENU_MAP := "res://scenes/menu_kaart.scn"
 ## First and last cell (x, z) of the piece of town that is copied.
 const MAP_FIRST := Vector2i(66, 56)
-const MAP_LAST := Vector2i(130, 96)
+const MAP_LAST := Vector2i(130, 120)
+## More of the town round the piece (first and last cell): the streets left of it, up to
+## the landmarks put in view there (TRANSPLANTS, from row 98).
+const MORE_AREAS := [[Vector2i(42, 56), Vector2i(65, 96)]]
 ## Landmarks beyond the piece that stand out over the skyline from the camera (first and
 ## last cell): the Strijkijzer, the apartment tower in Laak.
 const LANDMARK_AREAS := [[Vector2i(100, 140), Vector2i(110, 152)], [Vector2i(99, 158), Vector2i(111, 167)]]
@@ -69,14 +74,30 @@ const NIGHT_HOUR := 21.5   # a summer night (scripts/effects/day_cycle.gd: dark 
 ## looking almost level over the town, so the towers stand flat against the sky low in the
 ## picture, on its right (the menu is on the left); the horizon lies about a quarter of the
 ## picture from the bottom. Where it stands and what it looks at (metres), and the lens.
-const CAMERA_AT := Vector3(300.0, 6.0, -100.0)
+const CAMERA_AT := Vector3(300.0, 4.5, -100.0)   # low: close to the grass and the columns
 const CAMERA_LOOKS_AT := Vector3(330.0, 30.0, 300.0)
 const CAMERA_FOV := 18.0
 ## A dark plane under it all (the land beyond the piece of town), its colour and size.
 const GROUND_COLOUR := Color("#141A44")
 const GROUND_SIZE := 6000.0
 ## Nodes of the town copied as they are.
-const COPIED := ["Omgeving", "Zon", "Vullicht", "Dagcyclus", "TintKaart", "GrondKaart"]
+const COPIED := ["Omgeving", "Zon", "Vullicht", "Dagcyclus", "TintKaart", "GrondKaart",
+	"Verkeerslichten", "Rook", "Bovenleiding", "Tunnelverlichting"]
+## The Bovenleiding hides its wires when the view is wide (overhead_lines.gd, by the iso
+## camera's view size); the menu's camera looks level over the town, so always shown.
+const WIRES_SHOWN_UNTIL := 100000.0
+## The menu's own furniture on the grass, as the town's props: a tram on grass on each tram
+## line (TRAM_TILE, along x), an overhead line mast (MAST_TILE, its arm towards the camera)
+## every MAST_SPACING metres MAST_BEHIND metres beyond each track, and street lamps
+## (LAMP_TILE) every LAMP_SPACING metres along the road of the columns, LAMP_AHEAD metres in
+## front of the camera (just beyond the tractors' lane).
+const TRAM_TILE := "tram/tram_gras_recht"
+const MAST_TILE := "ov/tram_bovenleiding_mast"
+const MAST_SPACING := 24.0
+const MAST_BEHIND := 2.5
+const LAMP_TILE := "verlichting/lantaarn_klassiek"
+const LAMP_SPACING := 16.0
+const LAMP_AHEAD := 84.0
 
 const GRIDS := ["Grond", "Gebouwen", "Details", "Props"]
 ## A tram that now and then rides through the picture in front of the skyline (the menu
@@ -89,11 +110,8 @@ const TRAM_CAR_GAP := 0.25
 ## Its tracks: metres ahead of the camera (one in the foreground, one just in front of the
 ## buildings at the back), along the whole strip.
 const TRAM_TRACKS_AHEAD := [110.0, 318.0]
-const RAIL_GAUGE := 1.435
-const RAIL_COLOUR := Color("#3A3F5A")
-## Layers left out of the baked map: from that far off the trees, lamps and street
-## furniture of the props are not to be seen, and they made the map heavy (slow to load).
-const LEFT_OUT_OF_BAKE := ["Props"]
+## Layers left out of the baked map (none: the props are the town's lamps, masts and lights).
+const LEFT_OUT_OF_BAKE := []
 ## The source GridMaps that are baked (the grass field of the foreground too).
 
 
@@ -127,8 +145,15 @@ func _make_source() -> void:
 	var town_ground := root.get_node_or_null("Grond") as GridMap
 	if town_ground:
 		root.add_child(_grass_field(town_ground))
+	_menu_props(root.get_node_or_null("Props") as GridMap)
+	var overhead_lines := root.get_node_or_null("Bovenleiding")
+	if overhead_lines:
+		overhead_lines.set("shown_until", WIRES_SHOWN_UNTIL)
 	var sun := root.get_node_or_null("Zon") as DirectionalLight3D
 	if sun:
+		# four cascades: the near ones sharp on the grass, the far one over the skyline
+		sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
+		sun.shadow_enabled = true
 		sun.directional_shadow_max_distance = SHADOW_DISTANCE
 		sun.directional_shadow_split_1 = SHADOW_SPLITS.x
 		sun.directional_shadow_split_2 = SHADOW_SPLITS.y
@@ -213,7 +238,7 @@ func _transplant(city: Node, root: Node, transplant: Array) -> void:
 
 ## True if the town cell lies in the piece or in one of the landmark areas.
 static func _kept(town_cell: Vector2i) -> bool:
-	for area: Array in [[MAP_FIRST, MAP_LAST]] + LANDMARK_AREAS:
+	for area: Array in [[MAP_FIRST, MAP_LAST]] + MORE_AREAS + LANDMARK_AREAS:
 		var first: Vector2i = area[0]
 		var last: Vector2i = area[1]
 		if town_cell.x >= first.x and town_cell.x <= last.x and town_cell.y >= first.y and town_cell.y <= last.y:
@@ -239,6 +264,8 @@ func _grass_field(town_ground: GridMap) -> GridMap:
 	var camera_row := floori(CAMERA_AT.z / 4.0)
 	var ditch_first: int = camera_row + DITCH_ROWS[0]
 	var ditch_last: int = camera_row + DITCH_ROWS[1]
+	var tram := library.find_item_by_name(TRAM_TILE)
+	var tram_rows := TRAM_TRACKS_AHEAD.map(func(ahead: float) -> int: return floori((CAMERA_AT.z + ahead) / 4.0))
 	var count := 0
 	for z in range(camera_row - 2, last_row + 1):
 		for x in range(STRIP_FIRST_COLUMN, STRIP_LAST_COLUMN + 1):
@@ -251,6 +278,8 @@ func _grass_field(town_ground: GridMap) -> GridMap:
 				field.set_cell_item(cell, library.find_item_by_name("water/water_oever"), _orientation(field, "N"))
 			elif z > ditch_first and z < ditch_last:
 				field.set_cell_item(cell, library.find_item_by_name(WATER_TILES[(x * 3 + z) % WATER_TILES.size()]))
+			elif z in tram_rows and tram >= 0:
+				field.set_cell_item(cell, tram, _orientation(field, "E"))   # the track along x
 			else:
 				field.set_cell_item(cell, grass)
 			count += 1
@@ -263,6 +292,38 @@ func _grass_field(town_ground: GridMap) -> GridMap:
 static func _orientation(grid: GridMap, side: String) -> int:
 	var turns: int = ["S", "E", "N", "W"].find(side)
 	return grid.get_orthogonal_index_from_basis(Basis(Vector3.UP, turns * PI / 2.0))
+
+
+## The menu's furniture in the town's Props layer (0.5 m cells): the masts along the tram
+## tracks and the street lamps along the road of the columns, over the whole strip.
+func _menu_props(props: GridMap) -> void:
+	if props == null or props.mesh_library == null:
+		return
+	var library := props.mesh_library
+	var per_metre := 1.0 / props.cell_size.x
+	var strip_from := STRIP_FIRST_COLUMN * 4.0
+	var strip_to := (STRIP_LAST_COLUMN + 1) * 4.0
+	var placed := 0
+	var mast := library.find_item_by_name(MAST_TILE)
+	if mast >= 0:
+		# the arm (the tile's +x) towards the camera (-z)
+		var arm_to_camera := props.get_orthogonal_index_from_basis(Basis(Vector3.UP, PI / 2.0))
+		for ahead: float in TRAM_TRACKS_AHEAD:
+			var along := strip_from + MAST_SPACING * 0.5
+			while along < strip_to:
+				var at := Vector3(along, 0.0, CAMERA_AT.z + ahead + MAST_BEHIND)
+				props.set_cell_item(Vector3i(floori(at.x * per_metre), 0, floori(at.z * per_metre)), mast, arm_to_camera)
+				placed += 1
+				along += MAST_SPACING
+	var lamp := library.find_item_by_name(LAMP_TILE)
+	if lamp >= 0:
+		var along := strip_from + LAMP_SPACING * 0.5
+		while along < strip_to:
+			var at := Vector3(along, 0.0, CAMERA_AT.z + LAMP_AHEAD)
+			props.set_cell_item(Vector3i(floori(at.x * per_metre), 0, floori(at.z * per_metre)), lamp)
+			placed += 1
+			along += LAMP_SPACING
+	print("Props van het menu: %d (masten, lantaarns)" % placed)
 
 
 # ------------------------------------------------------------------ 2. the baked map
@@ -287,7 +348,11 @@ func _bake_source() -> void:
 				layers.append([field, FIELD_DETAIL])
 			output.add_child(_own_grid(String(grid.name), layers))
 		else:
-			output.add_child(child.duplicate())
+			# the town's helpers as they are saved: what they made while running here (not
+			# owned: their wires, plumes, lamps) they make again in the menu
+			var helper := child.duplicate()
+			_drop_made(helper, child)
+			output.add_child(helper)
 	var props := source.get_node_or_null("Props") as GridMap
 	if props:
 		# the coarser version of the tram cars (from this far off the same), one copy of each
@@ -309,9 +374,19 @@ func _bake_source() -> void:
 
 ## Which version of the town's tiles each layer uses in the menu (the suffix of its library:
 ## "_lod" = 25 cm .. the coarser "_lod2"; "" = the full tiles): from this far off the coarse
-## ones look the same and weigh much less.
-const LAYER_DETAIL := {"Grond": "_lod2", "Gebouwen": "_lod2", "Details": "_lod"}
-const FIELD_DETAIL := "_lod2"
+## ones look the same and weigh much less; the menu now shows the full tiles, as the town
+## does up close.
+const LAYER_DETAIL := {"Grond": "", "Gebouwen": "", "Details": "", "Props": ""}
+const FIELD_DETAIL := ""
+
+
+## Frees the children of `copy` whose originals (in `original`) are not saved with the scene.
+static func _drop_made(copy: Node, original: Node) -> void:
+	for original_child in original.get_children():
+		if original_child.owner == null:
+			var made := copy.get_node_or_null(NodePath(String(original_child.name)))
+			if made:
+				made.free()
 ## Where the small libraries of the menu's map go.
 const MENU_LIBRARIES := "res://assets/libraries/menu/"
 
@@ -529,8 +604,6 @@ func _shared_mesh(library: MeshLibrary, item: int) -> Mesh:
 
 
 func _make_tram(library: MeshLibrary, track_index: int) -> Node3D:
-	var across := Vector3(1.0, 0.0, 0.0)
-	var forward := Vector3(0.0, 0.0, 1.0)
 	var strip_width := (STRIP_LAST_COLUMN - STRIP_FIRST_COLUMN + 1) * 4.0
 	var middle := Vector3(STRIP_FIRST_COLUMN * 4.0 + strip_width * 0.5, 0.0, CAMERA_AT.z + TRAM_TRACKS_AHEAD[track_index])
 	var holder := Node3D.new()
@@ -556,19 +629,7 @@ func _make_tram(library: MeshLibrary, track_index: int) -> Node3D:
 		var turn := Basis.IDENTITY if car_index < count - 1 else Basis(Vector3.UP, PI)
 		car.transform = Transform3D(turn, Vector3(0.0, 0.0, along)) * library.get_item_mesh_transform(item)
 		tram.add_child(car)
-	for side in [-1.0, 1.0]:
-		var rail := MeshInstance3D.new()
-		rail.name = "Spoorstaaf"
-		var bar := BoxMesh.new()
-		bar.size = Vector3(0.12, 0.15, strip_width)
-		var material := StandardMaterial3D.new()
-		material.albedo_color = RAIL_COLOUR
-		material.metallic = 0.6
-		material.roughness = 0.4
-		bar.material = material
-		rail.mesh = bar
-		rail.transform = Transform3D(Basis.looking_at(across, Vector3.UP), middle + forward * side * RAIL_GAUGE * 0.5 + Vector3.UP * 0.07)
-		holder.add_child(rail)
+	# its track: the town's tram tiles in the grass field (_grass_field), wired by the Bovenleiding
 	return holder
 
 

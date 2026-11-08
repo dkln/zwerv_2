@@ -1,5 +1,8 @@
 class_name MainMenu
 extends Control
+const ProtestFlag = preload("res://scripts/vehicles/protest_flag.gd")
+const DeathBlink = preload("res://scripts/effects/death_blink.gd")
+const VehicleFire = preload("res://scripts/effects/vehicle_fire.gd")
 const UiSounds = preload("res://scripts/ui/ui_sounds.gd")
 
 ## The title screen before the town opens (scenes/hoofdmenu.tscn, the main scene), after
@@ -15,7 +18,7 @@ const UiSounds = preload("res://scripts/ui/ui_sounds.gd")
 ##   own loading screen);
 ## - INSTELLINGEN: the CRT effect and the scanlines on or off (user://instellingen.cfg, read
 ##   by the HUD);
-## - CREDITS: who made it;
+## - CREDITS: who made it, rolling (every role, the same name);
 ## - AFSLUITEN: quits.
 ## The design is laid out at 1280 x 720 and scales with the window.
 
@@ -66,7 +69,11 @@ const COPIES_LEFT := 2
 const COPIES_RIGHT := 1
 ## Nodes of the map that are not copied (there once: light, sky, time, camera, the ground
 ## plane under it all, the moon, the trams themselves).
-const NOT_COPIED := ["Omgeving", "Zon", "Vullicht", "Dagcyclus", "Camera", "Grondvlak", "Maan"]
+const NOT_COPIED := ["Omgeving", "Zon", "Vullicht", "Dagcyclus", "Camera", "Grondvlak", "Maan",
+	"Rook", "Tunnelverlichting", "Bovenleiding"]
+## The town's helpers that draw in world positions (not by their parent): a copy gets only
+## what they made, shared (the wires of the Bovenleiding, overhead_lines.gd).
+const COPIED_MADE := {"Bovenleiding": "Draden"}
 const MENU_ITEM_HEIGHT := 44.0
 const MENU_WIDTH := 360.0
 
@@ -211,6 +218,7 @@ func _process(delta: float) -> void:
 	_drift(delta)
 	_drive_columns(delta)
 	_ride_tram(delta)
+	_place_helicopter_circle()
 	if _map_loading:
 		var status := ResourceLoader.load_threaded_get_status(MAP_SCENE)
 		if status == ResourceLoader.THREAD_LOAD_LOADED:
@@ -245,6 +253,14 @@ func _show_map(packed: PackedScene) -> void:
 	if _period > 0.0:
 		_lay_copies(map)
 	_add_moon(map)
+	# a police helicopter circling over the skyline (after the copies: there is one)
+	_helicopter = PoliceHelicopter.new()
+	_helicopter.set("day_cycle", _day_cycle)
+	_helicopter.set("circle_radius", HELICOPTER_CIRCLE.x)
+	_helicopter.set("circle_height", HELICOPTER_CIRCLE.y)
+	_helicopter.set("circle_speed", HELICOPTER_CIRCLE.z)
+	map.add_child(_helicopter)
+	_place_helicopter_circle()
 	_set_up_columns(map)
 	# now and then a big fire in the skyline round Centraal (the first after 12 s; more
 	# as the chaos grows)
@@ -297,6 +313,14 @@ func _lay_copies(map: Node) -> void:
 		copy.position = Vector3(offset * _period, 0.0, 0.0)
 		copies.add_child(copy)
 		for child in map.get_children():
+			var made := child.get_node_or_null(NodePath(String(COPIED_MADE.get(String(child.name), "")))) as MeshInstance3D \
+				if COPIED_MADE.has(String(child.name)) else null
+			if made and made.mesh:
+				var shared := MeshInstance3D.new()
+				shared.name = String(child.name)
+				shared.mesh = made.mesh
+				shared.cast_shadow = made.cast_shadow
+				copy.add_child(shared)
 			if child == copies or String(child.name) in NOT_COPIED:
 				continue
 			var duplicate := child.duplicate()   # the meshes are shared, not copied
@@ -332,21 +356,27 @@ func _drift(delta: float) -> void:
 ## bob (tractors on the grass).
 const COLUMN_KINDS := {
 	"Hulpdiensten": {"every": Vector2(25.0, 45.0), "first": Vector2(16.0, 20.0), "count": Vector2i(1, 3), "spacing": 13.0, "speed": 15.0, "bob": false},
-	"Trekkers": {"every": Vector2(20.0, 35.0), "first": Vector2(9.0, 11.0), "count": Vector2i(6, 12), "spacing": 9.0, "speed": 6.0, "bob": true},
+	"Trekkers": {"every": Vector2(20.0, 35.0), "first": Vector2(0.5, 1.0), "count": Vector2i(6, 12), "spacing": 9.0, "speed": 6.0, "bob": true},
 	"Politie": {"every": Vector2(15.0, 30.0), "first": Vector2(1.5, 2.0), "count": Vector2i(2, 5), "spacing": 11.0, "speed": 12.0, "bob": false},
 }
 ## Metres to each side of the camera a column starts and ends (just out of view), and the
 ## height of the grass they drive on.
 const COLUMN_REACH := 60.0
+## The first tractors of the menu start this many metres on (of COLUMN_REACH), so the one
+## in front comes into view at once (the view is about 21 m to each side on their lane).
+const TRACTOR_HEAD_START := 34.0
 ## Lanes: metres from the line of the map ("z") per column (the ambulances and fire engines
 ## nearest, then the police, then the tractors); now and then (CRASH_CHANCE, more as the
 ## chaos grows, when tractors are on their way) the police or the emergency services come
 ## the other way on the tractors' lane, and where they meet they crash (see _crash).
 const LANE_OFFSETS := {"Hulpdiensten": -3.5, "Politie": 0.0, "Trekkers": 4.0}
-const CRASH_CHANCE := {"Politie": Vector2(0.65, 1.0), "Hulpdiensten": Vector2(0.15, 0.7)}
-## When the tractors set off, the police come soon after (in CHASE_WAIT seconds) as long as
-## the tractors are still on their way, so they meet them.
-const CHASE_WAIT := Vector2(3.0, 8.0)
+const CRASH_CHANCE := {"Politie": Vector2(0.65, 1.0), "Hulpdiensten": Vector2(1.0, 1.0)}
+## When the tractors set off, the police and the emergency services come soon after (in
+## CHASE_WAIT seconds per holder) as long as the tractors are still on their way, so they
+## meet them.
+## The emergency services come first (they meet the tractors about 7 s after these set
+## off), the police after them.
+const CHASE_WAIT := {"Politie": Vector2(6.0, 9.0), "Hulpdiensten": Vector2(1.0, 2.5)}
 ## The blue lights by day: bigger blocks (BEACON_SCALE), glowing BEACON_GLOW times and
 ## unshaded, so they stand out in the sun too.
 const BEACON_SCALE := Vector3(1.8, 2.0, 1.6)
@@ -365,13 +395,9 @@ const FIRE_AT := [0.2, 0.45, 0.7]
 ## and dust fly (crash_burst.gd); whatever comes after and drives into a wreck crashes too;
 ## the wrecks go after WRECK_SECONDS. Masses (kg) by vehicle.
 const WRECK_SECONDS := 9.0
-## Tractors go up in flames when they crash (an angry farmer's diesel): a fire of glowing
-## cubes and a column of smoke on the wreck (menu_fire.gd, at BURNING_SIZE), with a
-## flickering orange light; they burn BURNING_WRECK_SECONDS, the fire dying down over the
-## last WRECK_DIE_SECONDS, and the smoke drifts on after the wreck has gone.
-const BURNING_SIZE := 0.4
-const BURNING_WRECK_SECONDS := 18.0
-const WRECK_DIE_SECONDS := 5.0
+## A crash that is too hard sets the vehicles on fire, as in the town (vehicle_fire.gd: by
+## the closing speed); they burn a while, the fire dying down, and the smoke drifts on after
+## the wreck has gone.
 const MASSES := {"trekker": 4500.0, "trekker_rood": 4500.0, "politie": 1300.0, "me_busje": 2500.0, "ambulance": 3000.0, "brandweer": 14000.0}
 const CrashBurst = preload("res://scripts/effects/crash_burst.gd")
 const MenuFire = preload("res://scripts/effects/menu_fire.gd")
@@ -394,6 +420,11 @@ func _set_up_columns(map: Node) -> void:
 		var kind: Dictionary = COLUMN_KINDS[holder_name]
 		_columns.append({"holder": holder, "kind": kind, "wait": randf_range(kind.first.x, kind.first.y),
 			"members": [], "from": Vector3.ZERO, "heading": Vector3.RIGHT, "travelled": 0.0})
+		# the protesting farmers fly the upside-down flag
+		if holder_name == "Trekkers":
+			for model in holder.get_children():
+				if model is Node3D and model.get_node_or_null("Protestvlag") == null:
+					model.add_child(ProtestFlag.new())
 		# the blue lights well visible by day
 		for part in holder.find_children("Zwaailicht", "MeshInstance3D", true, false):
 			var beacon := part as MeshInstance3D
@@ -499,8 +530,9 @@ func _check_crashes() -> void:
 			if first == null or second == null or first.get_parent() == second.get_parent():
 				continue   # one column: they keep their distance
 			if _touch(first, second):
-				_crash(first)
-				_crash(second)
+				var closing := (_speed_of(first) - _speed_of(second)).length()
+				_crash(first, closing)
+				_crash(second, closing)
 				moving[first_index] = null
 				moving[second_index] = null
 	for vehicle in moving:
@@ -508,7 +540,7 @@ func _check_crashes() -> void:
 			continue
 		for wreck: Dictionary in _wrecks:
 			if _touch(vehicle, wreck.body):
-				_crash(vehicle)
+				_crash(vehicle, (_speed_of(vehicle) - (wreck.body as RigidBody3D).linear_velocity).length())
 				break
 
 
@@ -520,9 +552,15 @@ func _touch(first: Node3D, second: Node3D) -> bool:
 	return absf(gap.z) < 2.2 and absf(gap.x) < lengths * 0.5
 
 
+## The speed (m/s, world) of a vehicle of a column.
+func _speed_of(vehicle: Node3D) -> Vector3:
+	return vehicle.get_meta("snelheid", Vector3.ZERO)
+
+
 ## Turns a driving vehicle into a wreck: a RigidBody3D with a box the size of its body, its
-## mass and speed, a hop and a spin, shards and dust where it hit.
-func _crash(vehicle: Node3D) -> void:
+## mass and speed, a hop and a spin, shards and dust where it hit; on fire if the crash, at
+## `closing` m/s, was too hard (vehicle_fire.gd).
+func _crash(vehicle: Node3D, closing: float) -> void:
 	for column: Dictionary in _columns:
 		var at: int = (column.members as Array).find(vehicle)
 		if at >= 0:
@@ -546,54 +584,32 @@ func _crash(vehicle: Node3D) -> void:
 	body.linear_velocity = velocity * randf_range(0.6, 1.0) + Vector3(0, randf_range(1.5, 3.5), 0)
 	body.angular_velocity = Vector3(randf_range(-1.5, 1.5), randf_range(-4.0, 4.0), randf_range(-1.5, 1.5))
 	var wreck := {"body": body, "age": 0.0, "lasts": WRECK_SECONDS}
-	if String(vehicle.get_meta("model", "")).begins_with("trekker"):
-		_set_on_fire(wreck, size)
+	if VehicleFire.catches_fire(closing):
+		if VehicleFire.explodes(closing):
+			VehicleFire.explode(body, size.y * 0.5, map)
+		wreck.fire = VehicleFire.ignite(body, size.y * 0.8)
+		wreck.lasts = VehicleFire.BURN_SECONDS
 	_wrecks.append(wreck)
 	CrashBurst.spawn(map, body.global_position + Vector3(0, 1.0, 0), Color(0.8, 0.8, 0.82), 0.8)
-	UiSounds.play(self, "terug")
 
 
-## A burning tractor wreck: flames and smoke on top of it, an orange flickering light.
-func _set_on_fire(wreck: Dictionary, size: Vector3) -> void:
-	var body: RigidBody3D = wreck.body
-	var flames := MenuFire.make_flames(BURNING_SIZE)
-	var smoke := MenuFire.make_smoke(BURNING_SIZE)
-	var light := OmniLight3D.new()
-	light.name = "Brandgloed"
-	light.light_color = Color(1.0, 0.5, 0.15)
-	light.omni_range = 16.0
-	for part: Node3D in [flames, smoke, light]:
-		body.add_child(part)
-		part.position = Vector3(0, size.y * 0.8, 0)
-	wreck.lasts = BURNING_WRECK_SECONDS
-	wreck.flames = flames
-	wreck.smoke = smoke
-	wreck.light = light
-
-
-## Wrecks keep flashing their blue lights (and burning) and go after their time; the smoke
-## of a burnt-out tractor stays a while, drifting off.
+## Wrecks keep flashing their blue lights (and burning) and go after their time, blinking
+## ever faster in their last seconds (death_blink.gd); the smoke of a burnt-out wreck stays
+## a while, drifting off.
 func _age_wrecks(delta: float, beacon_left: bool) -> void:
 	for wreck: Dictionary in _wrecks.duplicate():
 		wreck.age += delta
 		var body: RigidBody3D = wreck.body
-		if wreck.has("flames") and is_instance_valid(body):
-			var burning := clampf((float(wreck.lasts) - float(wreck.age)) / WRECK_DIE_SECONDS, 0.0, 1.0)
-			(wreck.flames as GPUParticles3D).amount_ratio = burning
-			(wreck.smoke as GPUParticles3D).amount_ratio = maxf(burning, 0.3)
-			var flicker := 0.75 + 0.25 * sin(float(wreck.age) * 19.0) * sin(float(wreck.age) * 6.1)
-			(wreck.light as OmniLight3D).light_energy = 4.0 * burning * flicker
 		if wreck.age > wreck.lasts or not is_instance_valid(body):
 			if is_instance_valid(body):
-				if wreck.has("smoke"):
+				if wreck.has("fire") and is_instance_valid(wreck.fire):
 					# the last smoke drifts off where the wreck was
-					var smoke := wreck.smoke as GPUParticles3D
-					smoke.reparent(body.get_parent())
-					smoke.emitting = false
-					get_tree().create_timer(smoke.lifetime).timeout.connect(smoke.queue_free)
+					(wreck.fire as Node).call("leave_smoke", body.get_parent())
 				body.queue_free()
 			_wrecks.erase(wreck)
 			continue
+		# about to go: it blinks, ever faster
+		body.visible = DeathBlink.shown(float(wreck.lasts) - float(wreck.age))
 		var beacon_index := 0
 		for part in body.find_children("Zwaailicht*", "", true, false):
 			(part as Node3D).visible = (beacon_index % 2 == 0) == beacon_left
@@ -619,11 +635,15 @@ func _start_column(column: Dictionary) -> void:
 	var line := Vector3(_map_camera.global_position.x, 0.0, lane)
 	column.from = line - (column.heading as Vector3) * COLUMN_REACH
 	column.travelled = 0.0
-	# the tractors set off: the police follow soon, to meet them
+	if holder.name == "Trekkers" and not column.get("been_out", false):
+		column.travelled = TRACTOR_HEAD_START   # the first ones: in view at once
+	column.been_out = true
+	# the tractors set off: the police and the emergency services follow soon, to meet them
 	if holder.name == "Trekkers":
 		for other: Dictionary in _columns:
-			if (other.holder as Node).name == "Politie" and (other.members as Array).is_empty():
-				other.wait = minf(other.wait, randf_range(CHASE_WAIT.x, CHASE_WAIT.y))
+			var chase: Vector2 = CHASE_WAIT.get((other.holder as Node).name, Vector2.ZERO)
+			if chase != Vector2.ZERO and (other.members as Array).is_empty():
+				other.wait = minf(other.wait, randf_range(chase.x, chase.y))
 	var count := roundi(randi_range(kind.count.x, kind.count.y) * lerpf(1.0, CHAOS_CROWD, _chaos()))
 	var burning := _fires.any(func(fire: Node3D) -> bool: return fire.call("is_burning"))
 	for index in count:
@@ -659,6 +679,8 @@ const TRAM_FIRST_WAIT := Vector2(3.0, 8.0)
 const TRAM_EVERY := Vector2(20.0, 40.0)
 const TRAM_SPEED := 12.0
 const TRAM_REACH := 260.0
+## Its wheels on the rails of the tram tiles in the grass (the top of the grass).
+const TRAM_RIDE_HEIGHT := 0.375
 
 var _trams: Array[Dictionary] = []   # per line: tram, wait, travelled (< 0 = waiting), from, to
 
@@ -673,7 +695,7 @@ func _ride_tram(delta: float) -> void:
 			if ride.wait > 0.0:
 				continue
 			# a new ride past the camera, from one side or the other
-			var line := Vector3(_map_camera.global_position.x, 0.0, float(tram.get_meta("z")))
+			var line := Vector3(_map_camera.global_position.x, TRAM_RIDE_HEIGHT, float(tram.get_meta("z")))
 			var ends: Array = [line - Vector3(TRAM_REACH, 0, 0), line + Vector3(TRAM_REACH, 0, 0)]
 			if randf() < 0.5:
 				ends.reverse()
@@ -691,6 +713,27 @@ func _ride_tram(delta: float) -> void:
 			continue
 		var heading := (to - from).normalized()
 		tram.global_transform = Transform3D(Basis.looking_at(-heading, Vector3.UP), from + heading * ride.travelled)
+
+
+# ------------------------------------------------------------------ the helicopter
+
+## The police helicopter (police_helicopter.gd) circles over the skyline, the middle of its
+## circle HELICOPTER_AHEAD metres in front of the camera and HELICOPTER_RIGHT to its right
+## (the menu is on the left), going along as the camera glides; its circle: radius, height
+## and speed (m, m, m/s).
+const HELICOPTER_AHEAD := 150.0
+const HELICOPTER_RIGHT := 18.0
+const HELICOPTER_CIRCLE := Vector3(35.0, 26.0, 18.0)   # in view all round, from 115 to 185 m off
+const PoliceHelicopter = preload("res://scripts/vehicles/police_helicopter.gd")
+
+var _helicopter: Node3D
+
+
+func _place_helicopter_circle() -> void:
+	if _helicopter == null or not is_instance_valid(_helicopter) or _map_camera == null:
+		return
+	var camera_at := _map_camera.global_position
+	_helicopter.set("circle_centre", Vector3(camera_at.x + HELICOPTER_RIGHT, 0.0, camera_at.z + HELICOPTER_AHEAD))
 
 
 # ------------------------------------------------------------------ the sun and the moon
@@ -1012,18 +1055,70 @@ func _open_settings() -> void:
 	_select_in_panel(0, false)
 
 
+## The credits roll: every role in the making of the game, each with the same name under
+## it, rolling up through a window of the panel (CREDITS_HEIGHT high) at CREDITS_SPEED
+## pixels a second, over and over; the fonts and the engine at the end.
+const CREDITS_NAME := "Diederick Lawson"
+const CREDITS_ROLES := [
+	"Bedacht door", "Geschreven door", "Regie", "Spelontwerp", "Programmering",
+	"Voxelkunst", "Stadsplanning", "Tramdienstregeling", "Verkeerslichten",
+	"Trekkerchoreografie", "Politie-inzet", "Brandweer en blusmiddelen", "Meeuwengedrag",
+	"Muziekkeuze", "Geluidseffecten", "Plat Haags", "Statiegeldadministratie",
+	"Winkelwagenonderhoud", "Stuntzwerver", "Catering (broodjes bal)", "Kwaliteitscontrole",
+	"Koffie", "Met dank aan",
+]
+const CREDITS_HEIGHT := 240.0
+const CREDITS_SPEED := 28.0
+
+
 func _open_credits() -> void:
 	var column := _open_panel("CREDITS")
-	for line in ["Zwervr", "Gemaakt door Diederick Lawson", "Met Godot Engine",
-			"Lettertypen: Silkscreen, Pixelify Sans,", "JetBrains Mono (SIL Open Font License)"]:
-		var label := Label.new()
-		label.text = line
-		label.add_theme_font_override("font", _font_body)
-		label.add_theme_font_size_override("font_size", 14)
-		label.add_theme_color_override("font_color", SOFT_TEXT)
-		column.add_child(label)
+	_panel.position.y = 250   # higher than the settings: the roll is tall
+	var window := Control.new()
+	window.custom_minimum_size = Vector2(PANEL_WIDTH, CREDITS_HEIGHT)
+	window.clip_contents = true
+	window.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	column.add_child(window)
+	var roll := VBoxContainer.new()
+	roll.add_theme_constant_override("separation", 4)
+	roll.position = Vector2(0, CREDITS_HEIGHT)
+	roll.size = Vector2(PANEL_WIDTH, 0)
+	window.add_child(roll)
+	for role: String in CREDITS_ROLES:
+		roll.add_child(_credits_line(role.to_upper(), _font_pixel, 11, MUTED_TEXT))
+		roll.add_child(_credits_line(CREDITS_NAME, _font_body, 15, SOFT_TEXT))
+		roll.add_child(_credits_gap(14))
+	for line in ["Lettertypen: Silkscreen, Pixelify Sans,", "JetBrains Mono (SIL Open Font License)",
+			"Engine: Godot (MIT-licentie)"]:
+		roll.add_child(_credits_line(line, _font_body, 12, MUTED_TEXT))
 	_add_panel_item(column, func() -> String: return "TERUG", _close_panel)
 	_select_in_panel(0, false)
+	# once laid out (its height known): roll it from under the window to above it, again
+	# and again, as long as the panel is open (the tween goes with the roll)
+	await get_tree().process_frame
+	if not is_instance_valid(roll):
+		return
+	var travel := CREDITS_HEIGHT + roll.get_combined_minimum_size().y
+	var rolling := roll.create_tween().set_loops()
+	rolling.tween_property(roll, "position:y", -roll.get_combined_minimum_size().y, travel / CREDITS_SPEED).from(CREDITS_HEIGHT)
+
+
+func _credits_line(line: String, font: Font, size: int, colour: Color) -> Label:
+	var label := Label.new()
+	label.text = line
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.custom_minimum_size = Vector2(PANEL_WIDTH, 0)
+	label.add_theme_font_override("font", font)
+	label.add_theme_font_size_override("font_size", size)
+	label.add_theme_color_override("font_color", colour)
+	return label
+
+
+func _credits_gap(height: float) -> Control:
+	var gap := Control.new()
+	gap.custom_minimum_size = Vector2(0, height)
+	return gap
 
 
 ## A panel beside the menu (as the save preview of the design): a bordered ink box with a
@@ -1172,7 +1267,7 @@ func _build_title() -> void:
 	column.add_theme_constant_override("separation", 10)
 	_design.add_child(column)
 	_title_column = column
-	column.add_child(_small("EEN HAAGSE ZWERFTOCHT", GameHud.ACCENT, 13, 6))
+	column.add_child(_small("EEN ZWERFTOCHT", GameHud.ACCENT, 13, 6))
 	var title := Label.new()
 	title.text = "ZWERVR"
 	title.add_theme_font_override("font", _font_title)
@@ -1189,7 +1284,7 @@ func _build_footer() -> void:
 	var keys := _small("[↑↓] KIEZEN      [ENTER] KIES      [ESC] TERUG", SOFT_TEXT)
 	keys.position = Vector2(96, 720 - 32 - 16)
 	_design.add_child(keys)
-	var version := _small("%s · GEMAAKT MET GODOT" % VERSION, MUTED_TEXT)
+	var version := _small("%s - ZWERVR" % VERSION, MUTED_TEXT)
 	version.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	version.size = Vector2(400, 16)
 	version.position = Vector2(1280 - 32 - 400, 720 - 32 - 16)

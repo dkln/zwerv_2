@@ -79,7 +79,7 @@ func _init() -> void:
 	if driving:
 		var menu_script: Node = menu if menu.has_method("_crash") else menu.find_children("*", "", true, false).filter(
 				func(node: Node) -> bool: return node.has_method("_crash")).front()
-		menu_script.call("_crash", driving)
+		menu_script.call("_crash", driving, 25.0)   # hard: it blows up and burns
 		var wreck := driving.get_parent() as RigidBody3D
 		for frame_index in 90:
 			await physics_frame
@@ -100,7 +100,7 @@ func _init() -> void:
 	if flames:
 		var box_later := (flames.process_material as ParticleProcessMaterial).emission_box_extents
 		print("intro ok: brand groeit (%s -> %s)" % [box_at_start, box_later] if box_later.x > box_at_start.x else "FOUT: brand groeit niet")
-	# a tractor that crashes goes up in flames
+	# a tractor that crashes hard goes up in flames
 	var tractor: Node3D = null
 	started = Time.get_ticks_msec()
 	while tractor == null and Time.get_ticks_msec() - started < 20000:
@@ -111,8 +111,8 @@ func _init() -> void:
 	if tractor:
 		var crasher: Node = menu if menu.has_method("_crash") else menu.find_children("*", "", true, false).filter(
 				func(node: Node) -> bool: return node.has_method("_crash")).front()
-		crasher.call("_crash", tractor)
-		var burning := tractor.get_parent().get_node_or_null("Vlammen") as GPUParticles3D
+		crasher.call("_crash", tractor, 15.0)   # hard enough for a fire (vehicle_fire.gd), not to explode
+		var burning := tractor.get_parent().get_node_or_null("Brand")
 		print("intro ok: trekker in de fik" if burning else "FOUT: trekkerwrak brandt niet")
 	else:
 		print("FOUT: geen trekker gezien")

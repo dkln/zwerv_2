@@ -1,9 +1,12 @@
 extends SceneTree
+
 ## Lets a heavy and a light vehicle run head on into each other on an empty stretch of the
-## A12 (no other traffic) and prints what the weights and the torque do: the speeds before
-## and after, and how far each went in the seconds after.
+## A12 (no other traffic) and prints what the hit does by their weights: the health each
+## loses, which one is only bumped and which one becomes a wreck (on fire, or blown up), and
+## that the wreck is towed back, as good as new, once it has burnt out.
 ## usage: Godot --headless --script tools/check/crash_test.gd -- [who is sent: heavy|light]
 
+const VehicleFireTime: float = preload("res://scripts/effects/vehicle_fire.gd").BURN_SECONDS
 const Common = preload("res://tools/tool_common.gd")
 const START_CELL := Vector2i(150, 20)
 
@@ -36,25 +39,31 @@ func _init() -> void:
 		await physics_frame
 		elapsed += 1.0 / 60.0
 	sent.drive_into(target)
-	while not heavy.crashed and elapsed < 40.0:
+	var heavy_health := heavy.health
+	var light_health := light.health
+	while not heavy.crashed and not light.crashed and elapsed < 40.0:
 		await physics_frame
 		elapsed += 1.0 / 60.0
-	if not heavy.crashed:
-		print("geen botsing")
+		if heavy.health < heavy_health or light.health < light_health:
+			print("klap: zwaar %.0f -> %.0f HP, licht %.0f -> %.0f HP" % [heavy_health, heavy.health, light_health, light.health])
+			heavy_health = heavy.health
+			light_health = light.health
+	if not heavy.crashed and not light.crashed:
+		print("geen wrak (alleen tikken, of geen botsing)")
 		quit()
 		return
-	print("op %s (%s): zwaar %.0f kg %.1f m/s -> %.1f, licht %.0f kg %.1f m/s -> %.1f, draaiing %.2f / %.2f rad/s" % [heavy.global_position, sent.name,
-			heavy.total_mass(), heavy.velocity.length(), heavy._wreck.linear_velocity.length(),
-			light.total_mass(), light.velocity.length(), light._wreck.linear_velocity.length(),
-			heavy._wreck.angular_velocity.y, light._wreck.angular_velocity.y])
-	var heavy_start := heavy._wreck.global_position
-	var light_start := light._wreck.global_position
-	for second in range(1, 7):
-		var until := elapsed + 1.0
-		while elapsed < until and heavy.crashed:
-			await physics_frame
-			elapsed += 1.0 / 60.0
-		if heavy.crashed:
-			print("+%d s: zwaar %.1f m, %.1f m/s; licht %.1f m, %.1f m/s" % [second, (heavy._wreck.global_position - heavy_start).length(), heavy._wreck.linear_velocity.length(),
-					(light._wreck.global_position - light_start).length(), light._wreck.linear_velocity.length()])
+	# the one whose health ran out is a wreck (on fire, or blown up); the other was bumped
+	for vehicle: Vehicle in [heavy, light]:
+		var role := "zwaar" if vehicle == heavy else "licht"
+		if vehicle.crashed:
+			print("%s %.0f kg: wrak, %.0f HP, brand: %s, ontploft: %s, wrak %.1f m/s" % [role, vehicle.total_mass(), vehicle.health,
+					vehicle._fire != null, vehicle.health <= Vehicle.EXPLODE_HEALTH, vehicle._wreck.linear_velocity.length()])
+		else:
+			print("%s %.0f kg: getikt, %.0f HP, %.1f m/s" % [role, vehicle.total_mass(), vehicle.health, vehicle.velocity.length()])
+	var burning: Vehicle = heavy if heavy.crashed else light
+	var burnt_out := elapsed + VehicleFireTime + 1.0
+	while elapsed < burnt_out and burning.crashed:
+		await physics_frame
+		elapsed += 1.0 / 60.0
+	print("na de brand: %s" % ("weggesleept, %.0f HP" % burning.health if not burning.crashed else "FOUT: nog een wrak"))
 	quit()

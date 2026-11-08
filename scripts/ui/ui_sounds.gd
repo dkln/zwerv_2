@@ -8,7 +8,9 @@ extends RefCounted
 ##   rising arpeggio of a major chord, the last note ringing on;
 ## - "terug": going back or leaving a menu: two softer notes going down;
 ## - "plop": the ZWERVR logo of the intro vanishing in the distance: a short round tone
-##   whose pitch drops fast, like a cork.
+##   whose pitch drops fast, like a cork;
+## - "twinkel": the star twinkling where that logo vanishes: five high bell-like notes
+##   rising quickly and ringing on into each other, shimmering.
 ## Play one with UiSounds.play(node, "kies"); the sounds are made once and kept.
 
 const MIX_RATE := 22050
@@ -18,8 +20,9 @@ const VOLUME_DB := -8.0
 static var _sounds := {}
 
 
-## Plays sound `sound_name` (see the top) from a player under `node` that frees itself.
-static func play(node: Node, sound_name: String) -> void:
+## Plays sound `sound_name` (see the top) from a player under `node` that frees itself,
+## `softer_db` softer (or louder) than VOLUME_DB.
+static func play(node: Node, sound_name: String, softer_db := 0.0) -> void:
 	if node == null or not node.is_inside_tree():
 		return
 	var stream := _sound(sound_name)
@@ -27,7 +30,7 @@ static func play(node: Node, sound_name: String) -> void:
 		return
 	var player := AudioStreamPlayer.new()
 	player.stream = stream
-	player.volume_db = VOLUME_DB
+	player.volume_db = VOLUME_DB + softer_db
 	# it keeps sounding while the game is paused, and after a scene change
 	player.process_mode = Node.PROCESS_MODE_ALWAYS
 	node.get_tree().root.add_child(player)
@@ -50,9 +53,46 @@ static func _sound(sound_name: String) -> AudioStreamWAV:
 				_sounds[sound_name] = _notes([[880.0, 0.045], [659.3, 0.09]], 1.0, 0.9)
 			"plop":
 				_sounds[sound_name] = _plop()
+			"twinkel":
+				_sounds[sound_name] = _twinkle()
 			_:
 				return null
 	return _sounds[sound_name]
+
+
+## A twinkle: five high bell-like FM notes (the modulator at 3.5 x, a strong index dying
+## away fast: a bright ping that turns pure) rising quickly over an E major chord, each
+## ringing on (dying away in about a second) into the next, the whole shimmering (a fast
+## wobble in volume); held to 6 bits like the others.
+static func _twinkle() -> AudioStreamWAV:
+	var seconds := 1.2
+	var count := int(seconds * MIX_RATE)
+	# [pitch Hz, seconds in]: E6 G#6 B6 E7 G#7
+	var notes := [[1318.5, 0.0], [1661.2, 0.055], [1975.5, 0.11], [2637.0, 0.165], [3322.4, 0.22]]
+	var mix := PackedFloat32Array()
+	mix.resize(count)
+	for note: Array in notes:
+		var pitch := float(note[0])
+		var first_sample := int(float(note[1]) * MIX_RATE)
+		for sample_index in range(first_sample, count):
+			var since := float(sample_index - first_sample) / MIX_RATE
+			var envelope := clampf(since / 0.003, 0.0, 1.0) * exp(-since * 4.0)
+			var modulation := 1.8 * exp(-since * 10.0) * sin(TAU * pitch * 3.5 * since)
+			mix[sample_index] += sin(TAU * pitch * since + modulation) * envelope * 0.3
+	var data := PackedByteArray()
+	data.resize(count * 2)
+	for sample_index in count:
+		var share := float(sample_index) / count
+		var shimmer := 0.8 + 0.2 * sin(TAU * 13.0 * share * seconds)
+		var tail := clampf((1.0 - share) / 0.08, 0.0, 1.0)
+		var value := roundf(mix[sample_index] * shimmer * tail * 32.0) / 32.0
+		data.encode_s16(sample_index * 2, int(clampf(value, -1.0, 1.0) * 30000.0))
+	var stream := AudioStreamWAV.new()
+	stream.format = AudioStreamWAV.FORMAT_16_BITS
+	stream.mix_rate = MIX_RATE
+	stream.stereo = false
+	stream.data = data
+	return stream
 
 
 ## A plop: a round FM tone (low index) whose pitch drops from 1100 to 180 Hz in a tenth of

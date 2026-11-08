@@ -324,7 +324,7 @@ func _change_ends() -> void:
 
 ## It follows its rails to their end (a buffer stop, a platform where it changes ends),
 ## so any heading with a cell beyond leads on.
-func _leads_on(cell: Vector3i, heading: Vector2i) -> bool:
+func _leads_on(cell: Vector3i, heading: Vector2i, _entered := Vector2i.ZERO) -> bool:
 	return network.step(cell, heading) != RoadNetwork.NONE
 
 
@@ -385,9 +385,10 @@ func _beside_platform(cell: Vector3i, direction: Vector3i) -> bool:
 
 # ------------------------------------------------------------------ the others
 
-## It stays on the rails: a blow only stops it.
+## It stays on the rails: a blow only stops it (and it is as good as new again).
 func _become_wreck(_impact: Vector3, _spin := 0.0, _pushed := Vector3.ZERO, _jolt := 0.0) -> void:
 	speed = 0.0
+	health = max_health
 
 
 ## It cannot be sent off its rails (the demo crash takes another vehicle).
