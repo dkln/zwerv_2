@@ -43,15 +43,18 @@ def compose(song, first_bar):
     backing(song, tracks, first_bar, A_CHORDS)
     lead_line(song, tracks, first_bar, theme_from_chords(A_CHORDS))
 
-    filter_dip(song, first_bar + 6, down_beats=4, hold_beats=2, up_beats=2, lowest=700)
+    filter_dip(song, first_bar + 3, beat=2, down_beats=1, up_beats=1, lowest=1000)
+    filter_dip(song, first_bar + 5, down_beats=6, hold_beats=2, up_beats=4, lowest=350)  # slow and deep
     backing(song, tracks, first_bar + 8, B_CHORDS)
     lead_line(song, tracks, first_bar + 8, theme_from_chords(B_CHORDS))
+    filter_dip(song, first_bar + 11, beat=2, down_beats=2, up_beats=2, lowest=800)
 
     build_into(song, tracks, first_bar + 16, bars=1, lowest_cutoff=1200)
     backing(song, tracks, first_bar + 16, A_CHORDS, brass=True, rolling=True)
     lead_line(song, tracks, first_bar + 16, theme_from_chords(A_CHORDS), harmony_chords=A_CHORDS)
+    filter_dip(song, first_bar + 20, down_beats=2, up_beats=2, lowest=900)
 
-    filter_open_up(song, first_bar + 24, bars=4, lowest=500)
+    filter_open_up(song, first_bar + 24, bars=6, lowest=280)
     backing(song, tracks, first_bar + 24, A_CHORDS[:4], kit="halftime", runs_gain=1.3)
     backing(song, tracks, first_bar + 28, A_CHORDS[4:], runs_gain=1.15, rolling=True)
     for offset, phrase in enumerate(motif_calls(A_CHORDS)):

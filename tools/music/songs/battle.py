@@ -31,6 +31,7 @@ def section_a(song, tracks, first_bar, with_harmony=False):
         rolling_bass(song, tracks, bar, chord_name)
         gallop(song, tracks, bar, chord_name)
         arp_run(song, tracks, bar, chord_name, gain=0.8)
+    filter_dip(song, first_bar + 3, beat=2, down_beats=1, up_beats=1, lowest=900)
     for offset, phrase in enumerate(motif_calls(A_CHORDS)):
         lead_line(song, tracks, first_bar + offset, phrase, echo=offset % 2 == 1,
                   harmony_chords=[A_CHORDS[offset]] if with_harmony else None)
@@ -49,14 +50,16 @@ def section_b(song, tracks, first_bar):
         arp_run(song, tracks, bar, chord_name, gain=0.8)
     crash(song, tracks, song.at(first_bar))
     crash(song, tracks, song.at(first_bar + 4))
-    filter_dip(song, first_bar + 6, down_beats=2, hold_beats=2, up_beats=4, lowest=800)
+    filter_dip(song, first_bar + 2, beat=2, down_beats=1, up_beats=1, lowest=1000)
+    filter_dip(song, first_bar + 5, down_beats=4, hold_beats=2, up_beats=6, lowest=350)  # slow and deep
     theme = theme_from_chords(B_CHORDS)
     lead_line(song, tracks, first_bar, theme)
     guitar_line(song, tracks, first_bar, theme, semitones=-12, gain=0.8)
 
 
 def section_c(song, tracks, first_bar):
-    filter_open_up(song, first_bar, bars=4, lowest=500)
+    filter_open_up(song, first_bar, bars=4, lowest=300)
+    filter_dip(song, first_bar + 5, beat=2, down_beats=2, up_beats=2, lowest=700)
     pads(song, tracks, first_bar, C_CHORDS)
     for offset, chord_name in enumerate(C_CHORDS):
         bar = first_bar + offset

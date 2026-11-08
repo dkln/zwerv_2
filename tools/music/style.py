@@ -12,7 +12,7 @@ Ingredients of the style (modelled on the reference track voorbeeld.mp3, see ana
   - energetic, not triumphant: drive from drums, rolling 16th bass, chugs and arps
   - bright: supersaw pad + chorus, ping-pong pluck arp in the motif rhythm, polysynth brass,
     DX7 e-piano, chorused saw lead; 8-bit square lead as signature voice
-  - drum machine kit up front (style.KIT): 909-style kick and snare, 808 clap and metallic hats,
+  - drum machine kit up front (style.KIT): 909-style kick, open warm snare, 808 clap and metallic hats,
     ghost notes, off-beat open hats, tom fills; own samples in tools/music/drums/ replace them
   - effects at section changes: reverse crash + closing filter into drops, impacts, tape stops,
     beat-repeat stutters
@@ -213,17 +213,28 @@ def sample_kit(folder):
     def pick(name, fallback_sound):
         return (lambda *arguments: loaded[name]) if name in loaded else fallback_sound
 
+    def pitched_tom(pitch=110.0):
+        """The tom sample played at another pitch (110 Hz = as recorded), for the tom fills."""
+        recorded = loaded["tom"]
+        positions = np.arange(0, len(recorded), pitch / 110.0)
+        return np.interp(positions, np.arange(len(recorded)), recorded)
+
     kit = DrumKit(pick("kick", fallback.kick), pick("snare", fallback.snare), pick("clap", fallback.clap),
-                  pick("hat", fallback.hat), pick("tom", fallback.tom))
+                  pick("hat", fallback.hat), pitched_tom if "tom" in loaded else fallback.tom)
+    if "snare" in loaded:  # the synthwave snare: the sample through a gated room (see inst.gated_room)
+        gated = inst.gated_room(loaded["snare"])
+        loaded["snare"] = gated / max(np.max(np.abs(gated)), 1e-9) * 0.9
     if "open_hat" in loaded:
         kit.open_hat = lambda: loaded["open_hat"]
     return kit
 
 
-CLASSIC_KIT = DrumKit(inst.classic_kick, inst.classic_snare, inst.classic_clap, inst.classic_hat, inst.classic_tom)
+CLASSIC_KIT = DrumKit(inst.classic_kick, inst.open_warm_snare, inst.classic_clap, inst.classic_hat, inst.classic_tom)
 HARD_KIT = DrumKit(inst.kick, inst.gated_snare, inst.analog_clap, inst.analog_hat, inst.gated_tom)
 WARM_KIT = DrumKit(inst.warm_kick, inst.warm_snare, inst.warm_clap, inst.warm_hat, inst.warm_tom)
-# Own samples in tools/music/drums/ (kick.wav, snare.wav, ...) win; otherwise the classic kit.
+# Own samples in tools/music/drums/ (kick.wav, snare.wav, ...) win (now: the Roland TR-707); otherwise the classic kit.
+# The classic kit plays the warm snare without its low-pass filters (inst.open_warm_snare);
+# inst.classic_snare is the 909 one, inst.gated_snare the big gated one.
 # Swap CLASSIC_KIT for HARD_KIT or WARM_KIT to hear the other synthesized kits.
 KIT = sample_kit(pathlib.Path(__file__).parent / "drums") or CLASSIC_KIT
 

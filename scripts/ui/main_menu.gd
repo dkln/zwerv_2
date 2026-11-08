@@ -26,7 +26,7 @@ const CITY_SCENE := "res://scenes/stad.tscn"
 ## the menu opens (no fade in: it starts with a bang); its volume (dB) and the seconds it
 ## fades out when the town opens.
 const MUSIC := "res://assets/audio/muziek/approach_vector_menu_loop.ogg"
-const MUSIC_VOLUME_DB := -3.5
+const MUSIC_VOLUME_DB := -9.5
 const MUSIC_FADE_OUT := 2.0
 const DESIGN_SIZE := Vector2(1280, 720)
 const VERSION := "v0.1.0"

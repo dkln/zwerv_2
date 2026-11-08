@@ -52,7 +52,7 @@ stuk kan per spoor afwijken met `StyleTracks(song, levels={"synth_lead": 0.65})`
 
 ## Drums
 
-Standaard speelt de klassieke synth-kit (909-kick en -snare, 808-clap en -hi-hats). Liever echte
+Nu speelt de Roland TR-707 (public domain samples in `tools/music/drums/`, zie de LEESMIJ daar). Zonder samples speelt de klassieke synth-kit (909-kick, warme snare zonder filter, 808-clap en -hi-hats; de 909-snare is `inst.classic_snare`, de gated snare `inst.gated_snare`). Liever echte
 drums? Zet one-shots in `tools/music/drums/` met de namen `kick`, `snare`, `clap`, `hat`,
 `open_hat` en `tom` (.wav, .ogg, .flac of .aif) en render opnieuw: die samples worden dan overal
 gebruikt, en wat ontbreekt wordt aangevuld met de synth-kit. De andere synth-kits (`HARD_KIT`,

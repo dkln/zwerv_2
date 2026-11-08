@@ -84,10 +84,13 @@ def section_drop(song, tracks, first_bar, variant=False):
         arp_run(song, tracks, bar, chord_name, gain=0.7 if offset < 8 else 0.85)
     snare_fill(song, tracks, first_bar + 15)
     crash(song, tracks, song.at(first_bar + 8))
-    # Filter move: dull at the end of the first half, bright again for the second half.
-    filter_dip(song, first_bar + 6, down_beats=4, hold_beats=2, up_beats=2, lowest=380)
+    # Filter moves: a quick 'wah' early on, dull at the end of the first half, bright again for
+    # the second half, and a dip again towards the fill.
+    filter_dip(song, first_bar + 3, beat=2, down_beats=1, up_beats=1, lowest=1000)
+    filter_dip(song, first_bar + 6, down_beats=6, hold_beats=2, up_beats=4, lowest=220)  # slow and deep
     if variant:
-        filter_dip(song, first_bar + 12, beat=2, down_beats=2, up_beats=4, lowest=900)
+        filter_dip(song, first_bar + 10, down_beats=2, up_beats=2, lowest=600)
+    filter_dip(song, first_bar + 12, beat=2, down_beats=2, up_beats=4, lowest=900 if variant else 700)
     theme = theme_from_chords(DROP_CHORDS)
     lead_line(song, tracks, first_bar, theme, harmony_chords=DROP_CHORDS if variant else None,
               semitones=12 if variant else 0, gain=0.8 if variant else 1.0)
@@ -100,8 +103,9 @@ def section_drop(song, tracks, first_bar, variant=False):
 def section_breakdown(song, tracks, first_bar):
     """16 bars: e-piano, pad and the motif arp in front; halftime with octave bass, then the full
     groove with rolling bass; in the second half the 8-bit lead calls the motif on every chord.
-    Starts dull and opens up over the first four bars."""
-    filter_open_up(song, first_bar, bars=4, lowest=320)
+    Starts dull and opens up over the first six bars."""
+    filter_open_up(song, first_bar, bars=6, lowest=200)
+    filter_dip(song, first_bar + 9, down_beats=8, hold_beats=2, up_beats=6, lowest=250)  # slow and deep
     pads(song, tracks, first_bar, BREAKDOWN_CHORDS)
     for offset, chord_name in enumerate(BREAKDOWN_CHORDS):
         bar = first_bar + offset
@@ -121,7 +125,9 @@ def section_breakdown(song, tracks, first_bar):
 
 
 def section_riser(song, tracks, first_bar):
-    """8 bars: a tight build: four-on-the-floor, arps and chugs getting louder, motif calls."""
+    """8 bars: a tight build: four-on-the-floor, arps and chugs getting louder, motif calls.
+    The music starts closed and opens up slowly over the first six bars."""
+    filter_open_up(song, first_bar, bars=6, lowest=250)
     pads(song, tracks, first_bar, RISER_CHORDS)
     for offset, chord_name in enumerate(RISER_CHORDS):
         bar = first_bar + offset
@@ -141,6 +147,7 @@ def section_climax(song, tracks, first_bar):
     beat = song.beat
     drop_hit(song, tracks, first_bar)
     filter_dip(song, first_bar + 3, beat=2, down_beats=2, up_beats=2, lowest=1200)
+    filter_dip(song, first_bar + 5, beat=2, down_beats=1, up_beats=1, lowest=900)
     pads(song, tracks, first_bar, CLIMAX_CHORDS[:7])
     for offset, chord_name in enumerate(CLIMAX_CHORDS[:7]):
         bar = first_bar + offset

@@ -264,6 +264,24 @@ def gated_snare(gate_seconds=0.28):
     return soft_clip((dry + room * gate_window(sample_count, gate_seconds)) * 1.9) * 0.8
 
 
+def gated_room(dry, gate_seconds=0.3, wet=1.0, length=0.55):
+    """The 80s gated reverb for any hit (a sample, say): a dense, bright room that swells under
+    the hit and is cut off hard after `gate_seconds`. No filter: the room keeps all its top.
+    `wet` scales the room level (GATED_ROOM_LEVEL) against the dry hit."""
+    sample_count = max(len(dry), seconds_to_samples(length))
+    padded = np.zeros(sample_count)
+    padded[:len(dry)] = dry
+    room_length = seconds_to_samples(0.35)
+    room_impulse = white_noise(room_length, RNG) * np.exp(-time_axis(room_length) / 0.2)
+    room = convolve(padded, room_impulse / np.sqrt(np.sum(room_impulse ** 2)))[:sample_count]
+    room *= GATED_ROOM_LEVEL * wet
+    mixed = padded + room * gate_window(sample_count, gate_seconds)
+    return soft_clip(mixed / max(np.max(np.abs(mixed)), 1e-9) * 1.2)  # a little glue, no squashing
+
+
+GATED_ROOM_LEVEL = 1.4  # room peak about 75% of the dry hit: big, but the crack stays in front
+
+
 @functools.lru_cache(maxsize=None)
 def gated_tom(pitch=110.0):
     """80s tom with pitch drop and gated room, for fills."""
@@ -398,19 +416,30 @@ def warm_kick(length=0.55):
 
 
 @functools.lru_cache(maxsize=None)
-def warm_snare(gate_seconds=0.3):
-    """Fat, dark 80s snare: a thick 'thwack' with body and a warm gated room, no sharp crack."""
+def warm_snare(gate_seconds=0.3, dark=True):
+    """Fat, dark 80s snare: a thick 'thwack' with body and a warm gated room, no sharp crack.
+    dark=False leaves out the low-pass filters (noise, room and output): the same snare, open."""
     sample_count = seconds_to_samples(0.55)
     times = time_axis(sample_count)
     body = (0.9 * sine(175 + 60 * np.exp(-times / 0.012)) * np.exp(-times / 0.09)
             + 0.45 * sine(260 + 30 * np.exp(-times / 0.01)) * np.exp(-times / 0.06))
-    noise = lowpass(bandpass(white_noise(sample_count, RNG), 300, 4000), 3500) * np.exp(-times / 0.17)
+    noise = bandpass(white_noise(sample_count, RNG), 300, 4000 if dark else 9000)
+    if dark:
+        noise = lowpass(noise, 3500)
+    noise = noise * np.exp(-times / 0.17)
     snap = bandpass(white_noise(sample_count, RNG), 1800, 5000) * np.exp(-times / 0.02)  # pit without fizz
     dry = body + 0.8 * noise + 0.55 * snap
     room_length = seconds_to_samples(0.35)
-    room_impulse = lowpass(white_noise(room_length, RNG), 3000) * np.exp(-time_axis(room_length) / 0.22)
-    room = convolve(dry, room_impulse) / 18
-    return lowpass(soft_clip((dry + room * gate_window(sample_count, gate_seconds)) * 1.4), 7500) * 0.85
+    room_noise = white_noise(room_length, RNG)
+    room_impulse = (lowpass(room_noise, 3000) if dark else room_noise) * np.exp(-time_axis(room_length) / 0.22)
+    room = convolve(dry, room_impulse) / (18 if dark else 26)
+    snare = soft_clip((dry + room * gate_window(sample_count, gate_seconds)) * 1.4)
+    return (lowpass(snare, 7500) if dark else snare) * 0.85
+
+
+def open_warm_snare(gate_seconds=0.3):
+    """The warm snare without its low-pass filters (see warm_snare)."""
+    return warm_snare(gate_seconds, dark=False)
 
 
 @functools.lru_cache(maxsize=None)
