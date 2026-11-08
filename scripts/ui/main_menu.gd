@@ -33,7 +33,7 @@ const UP_FROM_BLACK := 3.5
 ## the menu opens (no fade in: it starts with a bang); its volume (dB) and the seconds it
 ## fades out when the town opens.
 const MUSIC := "res://assets/audio/muziek/menu.mp3"
-const MUSIC_VOLUME_DB := 0.0
+const MUSIC_VOLUME_DB := -3.5
 const MUSIC_FADE_OUT := 2.0
 const DESIGN_SIZE := Vector2(1280, 720)
 const VERSION := "v0.1.0"
@@ -219,6 +219,7 @@ func _process(delta: float) -> void:
 	_drive_columns(delta)
 	_ride_tram(delta)
 	_place_helicopter_circle()
+	_fly_helicopter_entry(delta)
 	if _map_loading:
 		var status := ResourceLoader.load_threaded_get_status(MAP_SCENE)
 		if status == ResourceLoader.THREAD_LOAD_LOADED:
@@ -261,6 +262,10 @@ func _show_map(packed: PackedScene) -> void:
 	_helicopter.set("circle_speed", HELICOPTER_CIRCLE.z)
 	map.add_child(_helicopter)
 	_place_helicopter_circle()
+	# it opens the menu flying in close past the camera (_fly_helicopter_entry)
+	_helicopter.set("circling", false)
+	_helicopter_entry = 0.0
+	_fly_helicopter_entry(0.0)
 	_set_up_columns(map)
 	# now and then a big fire in the skyline round Centraal (the first after 12 s; more
 	# as the chaos grows)
@@ -727,6 +732,68 @@ const HELICOPTER_CIRCLE := Vector3(35.0, 26.0, 18.0)   # in view all round, from
 const PoliceHelicopter = preload("res://scripts/vehicles/police_helicopter.gd")
 
 var _helicopter: Node3D
+## The opening: the helicopter starts close before the camera (HELICOPTER_ENTRY_FROM:
+## metres right, up and ahead in the camera's own frame; the camera's lens is narrow, 18
+## degrees, so at 45 m it fills a good part of the picture), hangs there a moment flying
+## slowly away, and swoops off into its circle, joining it at the point nearest the
+## camera, in HELICOPTER_ENTRY_SECONDS; then it circles. Its bank follows the swoop.
+const HELICOPTER_ENTRY_FROM := Vector3(4.0, 1.0, 45.0)   # right, up, ahead
+const HELICOPTER_ENTRY_SECONDS := 11.0
+const HELICOPTER_ENTRY_BANK := 22.0   # degrees at most
+var _helicopter_entry := -1.0   # seconds into the opening (below 0: none under way)
+
+
+## On along the opening swoop: a curve (cubic Hermite) from close by the camera, going
+## away from it, to the nearest point of the circle, going along it; slow at the start
+## (it fills the picture), faster as it goes.
+func _fly_helicopter_entry(delta: float) -> void:
+	if _helicopter_entry < 0.0 or _helicopter == null or not is_instance_valid(_helicopter) or _map_camera == null:
+		return
+	_helicopter_entry += delta
+	var progress := clampf(_helicopter_entry / HELICOPTER_ENTRY_SECONDS, 0.0, 1.0)
+	var along := progress * progress * (3.0 - 2.0 * progress)   # slow off, slow into the circle
+	var camera := _map_camera.global_transform
+	var start := camera.origin + camera.basis.x * HELICOPTER_ENTRY_FROM.x + camera.basis.y * HELICOPTER_ENTRY_FROM.y \
+			- camera.basis.z * HELICOPTER_ENTRY_FROM.z
+	var away := -camera.basis.z
+	away.y = 0.0
+	away = away.normalized()
+	# the circle's point nearest the camera, and the way it goes round there
+	var centre: Vector3 = _helicopter.get("circle_centre")
+	var to_camera := Vector3(camera.origin.x - centre.x, 0.0, camera.origin.z - centre.z).normalized()
+	var join_angle := atan2(to_camera.z, to_camera.x)
+	var turning := -1.0 if _helicopter.get("anticlockwise") else 1.0
+	var join := centre + to_camera * HELICOPTER_CIRCLE.x + Vector3.UP * HELICOPTER_CIRCLE.y
+	var join_ahead := Vector3(-to_camera.z, 0.0, to_camera.x) * turning
+	var reach := start.distance_to(join)
+	var start_tangent := away * reach * 0.6
+	var join_tangent := join_ahead * reach * 0.5
+	var position_now := _hermite(start, start_tangent, join, join_tangent, along)
+	var heading := _hermite(start, start_tangent, join, join_tangent, minf(along + 0.01, 1.0)) - position_now
+	if progress >= 1.0 or heading.length() < 0.001:
+		heading = join_ahead
+	heading.y = 0.0
+	# banked into the swoop: by how fast the heading turns
+	var heading_later := _hermite(start, start_tangent, join, join_tangent, minf(along + 0.05, 1.0)) \
+			- _hermite(start, start_tangent, join, join_tangent, minf(along + 0.04, 1.0))
+	heading_later.y = 0.0
+	var turn := heading.normalized().cross(heading_later.normalized() if heading_later.length() > 0.001 else heading.normalized()).y
+	var bank := Basis(heading.normalized(), clampf(-turn * 20.0, -1.0, 1.0) * deg_to_rad(HELICOPTER_ENTRY_BANK))
+	var facing := Basis.looking_at(-heading.normalized(), Vector3.UP)   # its front is +Z
+	var nose_down := Basis(Vector3.RIGHT, deg_to_rad(8.0))
+	_helicopter.global_position = position_now
+	_helicopter.global_basis = bank * facing * nose_down
+	if progress >= 1.0:
+		_helicopter_entry = -1.0
+		_helicopter.set("_circle_angle", join_angle)
+		_helicopter.set("circling", true)
+
+
+static func _hermite(from: Vector3, from_tangent: Vector3, to: Vector3, to_tangent: Vector3, share: float) -> Vector3:
+	var share_squared := share * share
+	var share_cubed := share_squared * share
+	return from * (2.0 * share_cubed - 3.0 * share_squared + 1.0) + from_tangent * (share_cubed - 2.0 * share_squared + share) \
+			+ to * (-2.0 * share_cubed + 3.0 * share_squared) + to_tangent * (share_cubed - share_squared)
 
 
 func _place_helicopter_circle() -> void:
@@ -961,10 +1028,11 @@ func _free_map() -> void:
 		map.queue_free()
 
 
-## The menu goes: the items fade out one by one, the title slides off to the left, then all
-## fades to ink (the colour of the town's loading screen, which takes over) while the
-## picture loses its tracking. Awaited before the town is opened.
+## The menu goes: the items fade out one by one, the title slides off to the left, and the
+## picture goes into a wave (WarpTransition, ending in ink, the colour of the town's loading
+## screen, which comes out of it). Awaited before the town is opened.
 const EXIT_SECONDS := 0.9
+const WARP_SECONDS := 1.6
 
 
 func _play_exit() -> void:
@@ -976,13 +1044,7 @@ func _play_exit() -> void:
 	exit.tween_property(_title_column, "modulate:a", 0.0, EXIT_SECONDS)
 	for footer_label: CanvasItem in _footer:
 		exit.tween_property(footer_label, "modulate:a", 0.0, EXIT_SECONDS * 0.6)
-	# to ink over everything (the night colour of the start, now in front)
-	_sky.color = GameHud.INK
-	move_child(_sky, get_child_count() - 2)   # under the CRT overlay, over the rest
-	exit.tween_property(_sky, "modulate:a", 1.0, EXIT_SECONDS).set_delay(EXIT_SECONDS * 0.6)
-	var material := _crt.material as ShaderMaterial
-	exit.tween_method(func(amount: float) -> void: material.set_shader_parameter("tracking", amount), 0.0, 1.0, EXIT_SECONDS * 1.6)
-	await exit.finished
+	await WarpTransition.leave(get_tree(), WARP_SECONDS).covered
 
 
 static func _caret(on: bool) -> String:

@@ -1,6 +1,7 @@
 class_name Intro
 extends Control
 const UiSounds = preload("res://scripts/ui/ui_sounds.gd")
+const ProtestFlag = preload("res://scripts/vehicles/protest_flag.gd")
 
 ## The intro before the main menu (scenes/intro.tscn, the main scene), in the style of the
 ## HUD and the menu (scripts/ui/hud.gd, main_menu.gd), opening the way a space saga does:
@@ -19,8 +20,7 @@ const UiSounds = preload("res://scripts/ui/ui_sounds.gd")
 ## the music is, and the moments are set on its beats (CUES, measured in the mp3): the logo
 ## goes away on its first big entry, paragraphs of the story enter at its turns
 ## (CRAWL_CUES), and the intro ends where it fades. Without the music a clock of its own
-## does the same. Where the logo vanishes a star twinkles, with a twinkle of a sound
-## (UiSounds "twinkel").
+## does the same. Where the logo vanishes a star twinkles.
 ## The space bar (only that: not other keys, the mouse or the volume keys) breaks it off at
 ## any moment and goes to the main menu; holding Enter (or the down arrow) rolls the story
 ## faster (CRAWL_FAST); bottom left the actions say so, one under the other
@@ -34,8 +34,8 @@ const MENU_SCENE := "res://scenes/hoofdmenu.tscn"
 const MUSIC := "res://assets/audio/muziek/intro.mp3"
 const MUSIC_VOLUME_DB := -4.0
 const MUSIC_FADE_OUT := 2.0
-## Seconds the picture fades to black on the way to the menu.
-const FADE_TO_MENU := 2.4
+## Seconds of the wave on the way to the menu (WarpTransition).
+const FADE_TO_MENU := 1.8
 const DESIGN_SIZE := Vector2(1280, 720)
 const OPENING_LINE := "Niet zo lang geleden, in een stad hier niet ver vandaan…"
 ## The story that rolls away after the logo, a paragraph per entry (an optional "\n"
@@ -79,9 +79,7 @@ const CRAWL_REST := 0.35
 const CRAWL_FADE := 4.0
 ## Holding Enter (or the down arrow) rolls the story this many times as fast; it then
 ## reaches its end, and the intro the main menu, sooner (the music goes on into the menu).
-const CRAWL_FAST := 4.0
-## How much softer than the other effects the twinkle sounds (dB).
-const TWINKLE_VOLUME_DB := -9.0
+const CRAWL_FAST := 12.0
 const FAST_KEYS: Array[Key] = [KEY_ENTER, KEY_KP_ENTER, KEY_DOWN]
 ## Now and then a tractor drifts through space behind the story, tumbling slowly (drawn in
 ## 3D into a small picture of its own, TRACTOR_PICTURE pixels, shown TRACTOR_SIZE big on
@@ -142,7 +140,6 @@ var _music: AudioStreamPlayer
 var _twinkles: Array[Vector3] = []   # per star: pace (rad/s), phase, how deep it dims
 var _clock := 0.0
 var _crawl_ahead := 0.0   # seconds the story is ahead of the music (Enter held: CRAWL_FAST)
-var _twinkle_heard := false
 var _tractor_view: TextureRect   # the drifting tractor's picture on the screen
 var _tractor_picture: SubViewport
 var _tractor_spinner: Node3D     # turned as it tumbles
@@ -263,9 +260,6 @@ func _play(time: float) -> void:
 	# a star twinkles where the logo vanishes in the distance
 	var twinkling := (time - SPARKLE_AT) / SPARKLE_SECONDS
 	_sparkle.visible = twinkling >= 0.0 and twinkling < 1.0
-	if _sparkle.visible and not _twinkle_heard:
-		_twinkle_heard = true
-		UiSounds.play(self, "twinkel", TWINKLE_VOLUME_DB)
 	if _sparkle.visible:
 		var flare := twinkling / SPARKLE_FLARE if twinkling < SPARKLE_FLARE \
 				else 1.0 - (twinkling - SPARKLE_FLARE) / (1.0 - SPARKLE_FLARE)
@@ -322,21 +316,8 @@ func _to_menu() -> void:
 		var fade := get_tree().create_tween()
 		fade.tween_property(music, "volume_db", -60.0, MUSIC_FADE_OUT)
 		fade.tween_callback(music.queue_free)
-	# the picture fades to black (the menu comes up out of it), the tape losing its tracking
-	var black := ColorRect.new()
-	black.color = Color.BLACK
-	black.modulate.a = 0.0
-	black.set_anchors_preset(Control.PRESET_FULL_RECT)
-	black.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(black)
-	move_child(black, get_child_count() - 2)   # under the CRT overlay, over the rest
-	var out := create_tween().set_parallel(true)
-	out.tween_property(black, "modulate:a", 1.0, FADE_TO_MENU)
-	var crt := get_child(get_child_count() - 1) as CanvasItem
-	if crt and crt.material is ShaderMaterial:
-		var material := crt.material as ShaderMaterial
-		out.tween_method(func(amount: float) -> void: material.set_shader_parameter("tracking", amount), 0.0, 0.7, FADE_TO_MENU)
-	await out.finished
+	# into the wave (the menu comes out of it)
+	await WarpTransition.leave(get_tree(), FADE_TO_MENU).covered
 	while ResourceLoader.exists(MainMenu.MAP_SCENE) \
 			and ResourceLoader.load_threaded_get_status(MainMenu.MAP_SCENE) == ResourceLoader.THREAD_LOAD_IN_PROGRESS:
 		await get_tree().process_frame
@@ -458,7 +439,7 @@ func _build_logo() -> void:
 	logo.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_logo_holder.add_child(logo)
 	var subtitle := Label.new()
-	subtitle.text = "EEN HAAGSE ZWERFTOCHT"
+	subtitle.text = "EEN ZWERFTOCHT"
 	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	subtitle.size = Vector2(DESIGN_SIZE.x, 40)
 	subtitle.position = Vector2(0, DESIGN_SIZE.y * 0.5 + 130)
@@ -567,7 +548,7 @@ func _build_tractor() -> void:
 	_tractor_picture.render_target_update_mode = SubViewport.UPDATE_DISABLED
 	add_child(_tractor_picture)
 	var camera := Camera3D.new()
-	camera.position = Vector3(0.0, 0.0, 7.5)
+	camera.position = Vector3(0.0, 0.0, 8.5)   # room for the flag as it tumbles
 	camera.fov = 40.0
 	_tractor_picture.add_child(camera)
 	var sun := DirectionalLight3D.new()
@@ -594,8 +575,8 @@ func _build_tractor() -> void:
 	_design.add_child(_tractor_view)
 
 
-## A tractor of model `model_name` (assets/tiles/props/voertuigen) with its wheels, as
-## scripts/vehicles/tractor.gd puts them (the hubs, the big rear and small front wheels),
+## A tractor of model `model_name` (assets/tiles/props/voertuigen) with its wheels and the
+## upside-down protest flag, as scripts/vehicles/tractor.gd puts them (the hubs, the big rear and small front wheels),
 ## its middle at the origin; null if the model is missing.
 static func _make_tractor(model_name: String) -> Node3D:
 	var body_path := "res://assets/tiles/props/voertuigen/%s.gox" % model_name
@@ -619,6 +600,8 @@ static func _make_tractor(model_name: String) -> Node3D:
 		# the wheel meshes stand on their lowest point, round the axle
 		wheel_instance.position = (wheel[0] as Vector3) - Vector3(0.0, float(wheel[2]), 0.0)
 		tractor.add_child(wheel_instance)
+	# the upside-down flag of the protesting farmers on the cab roof, as in the menu
+	tractor.add_child(ProtestFlag.new())
 	# its middle (about 1.4 m up) at the origin, so it tumbles round itself
 	var holder := Node3D.new()
 	tractor.position = Vector3(0.0, -1.4, 0.0)

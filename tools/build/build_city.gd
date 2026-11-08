@@ -140,6 +140,7 @@ func _init() -> void:
 	_bins()
 	_grote_marktstraat_lanes()
 	_camera(root)
+	_zebra_clock(root)
 	_car(root)
 	_own_tints(root)
 	if missing.size() > 0:
@@ -1484,7 +1485,8 @@ func _centraal() -> void:
 	for x in range(80, 87):
 		_g(x, 64, "parkeren/parkeerstrook_langs", "E")
 	Pr(80 * 4 + 1.0, 64 * 4 + 1.0, "borden/bord_parkeren", "E")
-	Pr(84 * 4.0, 62 * 4 + 2.0, "standbeelden/kunstwerk_modern", "S")
+	# the Zebraklok (a node of its own: scripts/world/zebra_clock.gd, placed by _zebra_clock)
+	_taken[Vector2i(floori(ZEBRA_CLOCK_AT.x / 4.0), floori(ZEBRA_CLOCK_AT.y / 4.0))] = true
 	Pr(90 * 4.0, 63 * 4.0, "straat/kiosk")
 	Pr(76 * 4.0, 63 * 4.0, "ov/reclamezuil")
 	for x in [75, 81, 87, 93]:
@@ -1526,6 +1528,24 @@ func _centraal() -> void:
 		D(x * 4 + 6.0, 80 * 4.0, 0.0, "luifels/luifel_kantoor", "N")
 		D(x * 4 + 6.0, 80 * 4.0, 0.0, "deuren/draaideur", "N")
 	places["centraal"] = Vector2(83 * 4.0, 64 * 4.0)
+
+
+## Where the Zebraklok stands on the square before Centraal Station (world metres x, z)
+## and its turn (degrees round the vertical: one face looks along the square).
+const ZEBRA_CLOCK_AT := Vector2(84 * 4.0, 62 * 4 + 2.0)
+const ZEBRA_CLOCK_TURN := 0.0
+
+
+## The Zebraklok on the square before Centraal Station (Jaap Karman, 1977): a node with
+## scripts/world/zebra_clock.gd, which builds the clock and sets its hands to the time.
+func _zebra_clock(root: Node3D) -> void:
+	var clock := Node3D.new()
+	clock.name = "Zebraklok"
+	clock.set_script(load("res://scripts/world/zebra_clock.gd"))
+	clock.position = Vector3(ZEBRA_CLOCK_AT.x, 0.0, ZEBRA_CLOCK_AT.y)
+	clock.rotation_degrees.y = ZEBRA_CLOCK_TURN
+	root.add_child(clock)
+	clock.owner = root
 
 
 ## Storeys of the glass hall of Centraal Station (3 m each).

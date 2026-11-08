@@ -35,8 +35,16 @@ func _init() -> void:
 		problems.append("geen kaartje")
 	else:
 		print("kaartje: ", hud._minimap_map.texture.get_size(), " pixels")
-	if hud._money_label.text != "€ 1.284":
+	if hud._money_label.text != "1.284":
 		problems.append("geld: " + hud._money_label.text)
+	# the XP bar in line with the stat bars (same start, same width), its points under it
+	var stat_bar: Control = hud._stat_bars["gezondheid"]
+	var xp_bar: Control = hud._xp_bar
+	if absf(xp_bar.global_position.x - stat_bar.global_position.x) > 0.5 or absf(xp_bar.size.x - stat_bar.size.x) > 0.5:
+		problems.append("XP-balk niet in lijn: %s %s, metertje %s %s" % [xp_bar.global_position.x, xp_bar.size.x, stat_bar.global_position.x, stat_bar.size.x])
+	if absf((hud._xp_text as Control).global_position.x - xp_bar.global_position.x) > 0.5:
+		problems.append("XP-punten niet onder de balk")
+	print("XP-balk op x %.0f, %.0f breed (metertjes %.0f, %.0f)" % [xp_bar.global_position.x, xp_bar.size.x, stat_bar.global_position.x, stat_bar.size.x])
 	print("tijd: ", hud._day_label.text, " ", hud._time_label.text)
 	print("HUD ok" if problems.is_empty() else "HUD problemen: " + str(problems))
 	quit(0 if problems.is_empty() else 1)

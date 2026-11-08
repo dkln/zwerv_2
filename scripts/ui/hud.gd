@@ -7,7 +7,8 @@ const UiSounds = preload("res://scripts/ui/ui_sounds.gd")
 ## - top left: the player frame (portrait with level badge, name) and the stats as
 ##   segmented pixel bars with an icon each (STATS: gezondheid, uithoudingsvermogen,
 ##   honger, overprikkeldheid), set with set_stat(name, value, maximum), and under them the
-##   experience: a thin bar and "XP 6.420 / 10.000" (set_xp(points, points_for_level));
+##   experience: "XP" and a thin bar in line with the stats, "6.420 / 10.000" under the bar
+##   (set_xp(points, points_for_level));
 ## - top centre: "nieuw gebied ontdekt" with the name of the area, fading in and out
 ##   (show_area);
 ## - top right: a minimap of 200 x 200 (north up, the player arrow in the middle) with the
@@ -55,7 +56,7 @@ const STATS := {
 	"overprikkeldheid": {"colour": Color("#C08BFF"), "empty": Color("#2E2340"), "segments": 20, "height": 8, "icon": "burst"},
 }
 ## The experience bar: its colour (teal: the purple of the design is taken by
-## overprikkeldheid) and width (that of the stat rows).
+## overprikkeldheid) and width when there are no stat bars to match (else theirs).
 const XP_COLOUR := Color("#47D6C2")
 const XP_BAR_WIDTH := 240.0
 ## Icons of 7 x 7 pixels ("#" = coloured), drawn at 2 x 2 screen pixels per pixel.
@@ -256,7 +257,7 @@ func set_xp(points: float, points_for_level: float) -> void:
 	var top := maxf(points_for_level, 1.0)
 	var clamped := clampf(points, 0.0, top)
 	_xp_bar.fill = clamped / top
-	_xp_text.text = "XP %s / %s" % [_thousands(roundi(clamped)), _thousands(roundi(top))]
+	_xp_text.text = "%s / %s" % [_thousands(roundi(clamped)), _thousands(roundi(top))]
 
 
 func set_player(new_name: String, level: int) -> void:
@@ -293,7 +294,7 @@ func set_quests(quests: Array) -> void:
 
 ## The money in the bottom right corner (whole euros, Dutch thousands separator).
 func set_money(euros: float) -> void:
-	_money_label.text = "€ " + _thousands(roundi(euros))
+	_money_label.text = _thousands(roundi(euros))   # the euro sign is the icon before it
 
 
 ## The clock, when there is no Dagcyclus (or to override it): hour 0..24, and the day if >= 1.
@@ -446,9 +447,8 @@ func _build_player_frame() -> void:
 		icon.bitmap = PIXEL_ICONS[stat.icon]
 		icon.colour = stat.colour
 		icon.pixel = 2.0
-		icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		icon.tooltip_text = stat_name
-		row.add_child(icon)
+		row.add_child(_in_icon_column(icon))
 		var bar := SegmentBar.new()
 		bar.segments = stat.segments
 		bar.segment_height = stat.height
@@ -462,17 +462,47 @@ func _build_player_frame() -> void:
 		column.add_child(row)
 		_stat_bars[stat_name] = bar
 		_stat_texts[stat_name] = value_text
-	# experience: a thin bar the width of the stats and the points under it, as in the design
+	# experience: a row as the stats, "XP" where they have their icon and a thin bar as wide
+	# as theirs, and the points under the bar, starting where it starts
+	var bar_width: float = (_stat_bars.values()[0] as Control).custom_minimum_size.x if not _stat_bars.is_empty() else XP_BAR_WIDTH
 	var experience := VBoxContainer.new()
 	experience.add_theme_constant_override("separation", 5)
 	experience.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var xp_row := HBoxContainer.new()
+	xp_row.add_theme_constant_override("separation", 8)
+	xp_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	xp_row.add_child(_in_icon_column(_label("XP", _font_pixel_bold, 11, XP_COLOUR, 0)))
 	_xp_bar = ThinBar.new()
-	_xp_bar.custom_minimum_size = Vector2(XP_BAR_WIDTH, 10)
+	_xp_bar.custom_minimum_size = Vector2(bar_width, 10)
 	_xp_bar.fill_colour = XP_COLOUR
-	experience.add_child(_xp_bar)
-	_xp_text = _label("XP 0 / 0", _font_pixel, 11)
-	experience.add_child(_xp_text)
+	_xp_bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	xp_row.add_child(_xp_bar)
+	experience.add_child(xp_row)
+	var points_row := HBoxContainer.new()
+	points_row.add_theme_constant_override("separation", 8)
+	points_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var under_icon := Control.new()
+	under_icon.custom_minimum_size = Vector2(ICON_COLUMN_WIDTH, 0)
+	under_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	points_row.add_child(under_icon)
+	_xp_text = _label("0 / 0", _font_pixel, 11)
+	points_row.add_child(_xp_text)
+	experience.add_child(points_row)
 	column.add_child(experience)
+
+
+## The column of the stat icons (and "XP"): this wide, the thing in it in the middle, so
+## the bars after it all start at the same place.
+const ICON_COLUMN_WIDTH := 18.0
+
+
+func _in_icon_column(item: Control) -> CenterContainer:
+	var holder := CenterContainer.new()
+	holder.custom_minimum_size = Vector2(ICON_COLUMN_WIDTH, 0)
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	holder.add_child(item)
+	return holder
 
 
 func _build_area_banner() -> void:
@@ -673,12 +703,13 @@ func _build_money() -> void:
 	row.add_theme_constant_override("separation", 8)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var coin := PixelIcon.new()
-	coin.bitmap = [".#####.", "##...##", "#.###.#", "#.#####", "#.###.#", "##...##", ".#####."]
+	# a euro sign: a C open to the right with two bars through it
+	coin.bitmap = ["...####", "..#....", "######.", ".#.....", "######.", "..#....", "...####"]
 	coin.colour = ACCENT
 	coin.pixel = 16.0 / 7.0
 	coin.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(coin)
-	_money_label = _label("€ 0", _font_pixel, 14, TEXT, 0)
+	_money_label = _label("0", _font_pixel, 14, TEXT, 0)
 	row.add_child(_money_label)
 	_money_panel.add_child(row)
 	_money_panel.resized.connect(_place_corners)
@@ -807,6 +838,8 @@ func _choose_pause_item(index: int) -> void:
 		"resume":
 			set_paused(false)
 		"menu":
+			# into the wave (the menu comes out of it), then the menu
+			await WarpTransition.leave(get_tree(), 1.2).covered
 			get_tree().paused = false
 			get_tree().change_scene_to_file(MAIN_MENU_SCENE)
 		"quit":
