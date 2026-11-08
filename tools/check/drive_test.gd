@@ -20,7 +20,7 @@ func _init() -> void:
 	Common.watchdog(self, 900)
 	var seconds := Common.arg_float(0, 300.0)
 	var scene := Common.instantiate("res://scenes/stad.tscn")
-	for node_name in ["DetailNiveau", "Rook", "Grassprieten", "Rondvlucht"]:
+	for node_name in ["DetailNiveau", "Rook", "Grassprieten"]:
 		if scene.has_node(node_name):
 			scene.get_node(node_name).free()
 	var car: Vehicle = scene.get_node("Auto")

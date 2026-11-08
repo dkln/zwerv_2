@@ -31,5 +31,3 @@ assets/libraries/*.res-*
 # Screenshots van tools/shots/screenshots.gd (lokaal, niet in git)
 docs/screenshots/
 
-# Python-omgeving van de muziekgenerator (tools/music/render.sh)
-tools/music/.venv/

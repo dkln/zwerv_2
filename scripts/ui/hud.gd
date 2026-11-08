@@ -25,12 +25,45 @@ extends CanvasLayer
 ##   neighbourhood for the first time shows it as a new area (show_area);
 ## - bottom right: the money in euros (set_money);
 ## - the pause menu (Escape: the game stands still; VERDER SPELEN, HOOFDMENU, AFSLUITEN);
+## - the game menu as a child (Spelmenu, scripts/ui/game_menu.gd: inventory, quests, map);
+## - the death screen (show_death, when the player dies);
+## - the story box (show_story, scripts/ui/story_box.gd): story, thoughts and missions
+##   appearing word by word, with the player's portrait;
 ## - a CRT look over the whole picture: the world bulges like a tube, its edges bending in
 ##   to black rounded corners (`crt_curvature`); the HUD bends with it, but less
 ##   (`crt_ui_curvature`), so its corners stay readable; faint scanlines (`scanlines`).
 ## Fonts: Silkscreen, Pixelify Sans and JetBrains Mono (assets/fonts, OFL); Rubik when
 ## one is missing.
 
+## The tune that opens the map when the game starts (max 6 s), and how loud.
+const MAP_JINGLE := "res://assets/audio/muziek/deuntje_kaart_start.ogg"
+const MAP_JINGLE_VOLUME_DB := -8.0
+## The music while roaming the city (tools/megadrive/): a loop per kind of neighbourhood
+## (CITY_MUSIC_BY_AREA, the names of the "wijken" metadata; others play CITY_MUSIC_DEFAULT).
+## It starts when the jingle ends, fading in; going into a neighbourhood with other music
+## crossfades to it (`CITY_MUSIC_CROSSFADE` s), starting at the same point in the bar (all
+## loops share one tempo); it plays softer while the pause menu is open.
+const MUSIC_FOLDER := "res://assets/audio/muziek/"
+const CITY_MUSIC_DEFAULT := "stad_centrum_loop.ogg"
+const CITY_MUSIC_BY_AREA := {
+	"Centrum": "stad_centrum_loop.ogg", "Grote Markt": "stad_centrum_loop.ogg",
+	"Paleis Noordeinde": "stad_centrum_loop.ogg", "Lange Voorhout": "stad_centrum_loop.ogg",
+	"Centraal Station": "stad_torens_loop.ogg", "De Resident": "stad_torens_loop.ogg",
+	"Beatrixkwartier": "stad_torens_loop.ogg", "Prins Clauslaan": "stad_torens_loop.ogg",
+	"Malieveld": "stad_groen_loop.ogg", "Koekamp": "stad_groen_loop.ogg",
+	"Bezuidenhout": "stad_woonwijk_loop.ogg", "Bezuidenhout-Oost": "stad_woonwijk_loop.ogg",
+	"Schilderswijk": "stad_woonwijk_loop.ogg", "Laak": "stad_woonwijk_loop.ogg",
+	"Voorburg": "stad_woonwijk_loop.ogg",
+	"Binckhorst": "stad_industrie_loop.ogg", "A12": "stad_industrie_loop.ogg",
+}
+## Played when a neighbourhood's own loop is not there (yet).
+const CITY_MUSIC_FALLBACK := "stad_verkennen_loop.ogg"
+const CITY_MUSIC_CROSSFADE := 2.5
+const CITY_MUSIC_VOLUME_DB := -13.0
+const CITY_MUSIC_PAUSED_DB := -24.0
+const CITY_MUSIC_FADE_IN := 3.0
+## The DetailNiveau of the city scene: the jingle waits until it has merged the map.
+const DETAIL_PATH := NodePath("../DetailNiveau")
 const Iso = preload("res://scripts/camera/iso_camera.gd")
 const UiStyle = preload("res://scripts/ui/ui_style.gd")
 const UiSounds = preload("res://scripts/ui/ui_sounds.gd")
@@ -141,10 +174,16 @@ var _location_place: Label
 var _location_street: Label
 var _location_box: Control
 var _location_clock := 0.0
+var _city_music: AudioStreamPlayer
+var _city_music_file := ""
+var _city_music_on := false   # the jingle is over: the city music plays
 var _focus := Vector3.ZERO       # where the player is, from the last minimap update
 var _has_focus := false
 var _current_wijk := ""
 var _visited_wijken := {}
+var _quests: Array = []
+var _stat_rows := {}      # stat name -> its row (icon, bar, value), shaken on a change
+var _stat_shakes := {}    # stat name -> the running shake tween
 var _font_title: Font        # Pixelify Sans, bold
 var _font_title_medium: Font # Pixelify Sans, semibold
 var _font_pixel: Font        # Silkscreen
@@ -210,15 +249,22 @@ func _ready() -> void:
 	_build_quest_tracker()
 	_build_money()
 	_build_pause_menu()
+	_build_death_screen()
+	_build_story_box()
 	_build_crt()
+	# the game menu (Tab/I inventory, J quests, M map; scripts/ui/game_menu.gd)
+	var game_menu: CanvasLayer = preload("res://scripts/ui/game_menu.gd").new()
+	game_menu.name = "Spelmenu"
+	add_child(game_menu)
 	# the archetype chosen on the character creation screen (PlayerCharacter): its name,
-	# its portrait and the maximum of its stats (hunger and overstimulation start empty)
+	# its portrait and the maximum of its stats (hunger starts full, overstimulation empty;
+	# the player, scripts/player/player_controller.gd, keeps them up to date)
 	var archetype := PlayerCharacter.chosen_archetype()
 	player_name = archetype.name
 	player_level = archetype.get("level", player_level)
 	for stat_name in STATS:
 		var maximum := float(archetype.stats.get(stat_name, 100))
-		set_stat(stat_name, 0.0 if stat_name in ["honger", "overprikkeldheid"] else maximum, maximum)
+		set_stat(stat_name, 0.0 if stat_name == "overprikkeldheid" else maximum, maximum)
 	set_player(player_name, player_level)
 	set_xp(0.0, 1000.0)
 	set_money(float(archetype.get("start_money", 0)))
@@ -226,6 +272,86 @@ func _ready() -> void:
 	get_viewport().size_changed.connect(_fit_to_window)
 	_fit_to_window()
 	_build_minimap_image.call_deferred()
+	_play_map_jingle_when_ready.call_deferred()
+
+
+## The short tune that opens the map (MAP_JINGLE): once, as soon as
+## the map is there; while the DetailNiveau is still merging (the loading screen) it waits for that.
+func _play_map_jingle_when_ready() -> void:
+	var level_of_detail := get_node_or_null(DETAIL_PATH)
+	if level_of_detail and level_of_detail.has_method("is_merging") and level_of_detail.is_merging():
+		await level_of_detail.merge_finished
+	var stream: AudioStream = null
+	if ResourceLoader.exists(MAP_JINGLE):
+		stream = load(MAP_JINGLE)
+	elif FileAccess.file_exists(MAP_JINGLE):
+		stream = AudioStreamOggVorbis.load_from_file(MAP_JINGLE)
+	if stream == null:
+		push_warning("hud: no map jingle at %s" % MAP_JINGLE)
+		_play_city_music()
+		return
+	if stream is AudioStreamOggVorbis:
+		(stream as AudioStreamOggVorbis).loop = false
+	var player := AudioStreamPlayer.new()
+	player.name = "KaartDeuntje"
+	player.stream = stream
+	player.volume_db = MAP_JINGLE_VOLUME_DB
+	add_child(player)
+	player.play()
+	player.finished.connect(player.queue_free)
+	player.finished.connect(_play_city_music)
+
+
+## Starts the city music (after the jingle): the loop of the neighbourhood the player is in.
+func _play_city_music() -> void:
+	if _city_music_on:
+		return
+	_city_music_on = true
+	_switch_city_music(_current_wijk, CITY_MUSIC_FADE_IN)
+
+
+## Crossfades to the loop of neighbourhood `wijk` (nothing if it is already playing).
+func _switch_city_music(wijk: String, fade := CITY_MUSIC_CROSSFADE) -> void:
+	if not _city_music_on:
+		return
+	var file: String = CITY_MUSIC_BY_AREA.get(wijk, CITY_MUSIC_DEFAULT)
+	var stream := _load_loop(file)
+	if stream == null:
+		file = CITY_MUSIC_FALLBACK
+		stream = _load_loop(file)
+	if stream == null:
+		push_warning("hud: no city music for %s" % wijk)
+		return
+	if file == _city_music_file:
+		return
+	var playback_at := 0.0
+	if _city_music:
+		var old := _city_music
+		playback_at = old.get_playback_position()
+		var out := create_tween()
+		out.tween_property(old, "volume_db", -60.0, fade).set_trans(Tween.TRANS_SINE)
+		out.tween_callback(old.queue_free)
+	_city_music_file = file
+	_city_music = AudioStreamPlayer.new()
+	_city_music.name = "StadMuziek"
+	_city_music.stream = stream
+	_city_music.volume_db = -60.0
+	add_child(_city_music)
+	_city_music.play(fmod(playback_at, maxf(stream.get_length(), 0.01)))
+	var target := CITY_MUSIC_PAUSED_DB if get_tree().paused else CITY_MUSIC_VOLUME_DB
+	create_tween().tween_property(_city_music, "volume_db", target, fade).set_trans(Tween.TRANS_SINE)
+
+
+static func _load_loop(file: String) -> AudioStream:
+	var path := MUSIC_FOLDER + file
+	var stream: AudioStream = null
+	if ResourceLoader.exists(path):
+		stream = load(path)
+	elif FileAccess.file_exists(path):
+		stream = AudioStreamOggVorbis.load_from_file(path)
+	if stream is AudioStreamOggVorbis:
+		(stream as AudioStreamOggVorbis).loop = true
+	return stream
 
 
 func _process(delta: float) -> void:
@@ -249,8 +375,41 @@ func set_stat(stat_name: String, value: float, maximum := -1.0) -> void:
 	var top := maximum if maximum > 0.0 else previous.y
 	var clamped := clampf(value, 0.0, top)
 	_stat_values[stat_name] = Vector2(clamped, top)
+	if _stat_values_set.has(stat_name) and absf(clamped - previous.x) >= STAT_SHAKE_FROM:
+		_shake_stat(stat_name, clamped > previous.x)
+	_stat_values_set[stat_name] = true
 	(_stat_bars[stat_name] as SegmentBar).fill = clamped / top
 	(_stat_texts[stat_name] as Label).text = "%d/%d" % [roundi(clamped), roundi(top)]
+
+
+## A change of a stat of at least this many points in one go shakes its row (a hit, eating,
+## hunger biting); the slow running down and filling up of the meters does not.
+const STAT_SHAKE_FROM := 1.5
+const STAT_SHAKE_SECONDS := 0.35
+const STAT_SHAKE_PIXELS := 4.0
+var _stat_values_set := {}
+
+
+## Shakes the row of a stat side to side for a moment and lights it up: brighter when it
+## went up, reddish when it went down, so you see it did something to you.
+func _shake_stat(stat_name: String, gained: bool) -> void:
+	var row: Control = _stat_rows.get(stat_name)
+	if row == null:
+		return
+	var running: Tween = _stat_shakes.get(stat_name)
+	if running and running.is_valid():
+		running.kill()
+	var rest_x := 0.0   # the column lays its rows out at x = 0
+	var shake := create_tween()
+	var steps := 6
+	for step_index in steps:
+		var side := -1.0 if step_index % 2 == 0 else 1.0
+		var fade := 1.0 - float(step_index) / steps
+		shake.tween_property(row, "position:x", rest_x + side * STAT_SHAKE_PIXELS * fade, STAT_SHAKE_SECONDS / (steps + 1))
+	shake.tween_property(row, "position:x", rest_x, STAT_SHAKE_SECONDS / (steps + 1))
+	row.modulate = Color(1.7, 1.7, 1.7) if gained else Color(1.6, 0.55, 0.6)
+	create_tween().tween_property(row, "modulate", Color.WHITE, STAT_SHAKE_SECONDS)
+	_stat_shakes[stat_name] = shake
 
 
 ## The value and maximum of a stat (Vector2).
@@ -292,11 +451,36 @@ func show_area(area_name: String, seconds := 4.0) -> void:
 ## "kind": "verhaal" (a main quest: "label", "title", "distance", "steps" = [{"text",
 ## "done"}]) or "zij" (a side quest: "label" and "title" on one line).
 func set_quests(quests: Array) -> void:
+	_quests = quests.duplicate(true)
 	for child in _quest_list.get_children():
 		child.queue_free()
 	for quest: Dictionary in quests:
 		_quest_list.add_child(_main_quest_panel(quest) if quest.get("kind", "verhaal") == "verhaal" else _side_quest_panel(quest))
 	_quest_list.visible = not quests.is_empty()
+
+
+## The quests as last given to set_quests (for the game menu, scripts/ui/game_menu.gd).
+func quests() -> Array:
+	return _quests
+
+
+## The neighbourhoods the player has been in (names as in the "wijken" metadata).
+func visited_areas() -> Array:
+	return _visited_wijken.keys()
+
+
+## The minimap's picture of the whole map (one pixel per `minimap_metres_per_pixel()`
+## metres, its corner at world x, z `minimap_origin()`), or null while it is not built yet.
+func minimap_texture() -> Texture2D:
+	return _minimap_map.texture if _minimap_map else null
+
+
+func minimap_origin() -> Vector2:
+	return _minimap_origin
+
+
+func minimap_metres_per_pixel() -> float:
+	return _minimap_cell
 
 
 ## The money in the bottom right corner (whole euros, Dutch thousands separator).
@@ -443,6 +627,7 @@ func _build_player_frame() -> void:
 		column.add_child(row)
 		_stat_bars[stat_name] = bar
 		_stat_texts[stat_name] = value_text
+		_stat_rows[stat_name] = row
 	# experience: a row as the stats, "XP" where they have their icon and a segment bar as
 	# theirs, and the points under the bar, starting where it starts
 	var experience := VBoxContainer.new()
@@ -767,6 +952,13 @@ func _input(event: InputEvent) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if _story_box and _story_box.is_showing():
+		if _story_box.handle_input(event):
+			get_viewport().set_input_as_handled()
+		return
+	if _death_layer and _death_layer.visible:
+		_death_input(event)
+		return
 	if event.is_action_pressed("ui_cancel"):
 		set_paused(not _pause_layer.visible)
 	elif not _pause_layer.visible:
@@ -791,6 +983,9 @@ func set_paused(on: bool) -> void:
 	_pause_layer.visible = on
 	_ui_viewport.gui_disable_input = not on
 	get_tree().paused = on
+	if _city_music:
+		create_tween().tween_property(_city_music, "volume_db",
+				CITY_MUSIC_PAUSED_DB if on else CITY_MUSIC_VOLUME_DB, 0.4)
 	if on:
 		_select_pause_item(0)
 
@@ -823,11 +1018,140 @@ func _choose_pause_item(index: int) -> void:
 			set_paused(false)
 		"menu":
 			# into the wave (the menu comes out of it), then the menu
-			await WarpTransition.leave(get_tree(), 1.2).covered
+			await WarpTransition.leave(get_tree(), 0.8).covered
 			get_tree().paused = false
 			get_tree().change_scene_to_file(MAIN_MENU_SCENE)
 		"quit":
 			get_tree().quit()
+
+
+# ------------------------------------------------------------------ story box
+
+const StoryBox = preload("res://scripts/ui/story_box.gd")
+
+var _story_box: Control
+
+
+func _build_story_box() -> void:
+	_story_box = StoryBox.new()
+	_story_box.name = "Verhaalvak"
+	_story_box.font_title = _font_title
+	_story_box.font_pixel = _font_pixel
+	_story_box.font_body = _font_body
+	_story_box.player_name = player_name if player_name != "" else PlayerCharacter.chosen_archetype().name
+	_root.add_child(_story_box)
+
+
+## Shows story pages, thoughts or a mission in the story box (pages: see story_box.gd);
+## the game is paused meanwhile; `done` is called when the last page is closed.
+func show_story(pages: Array, done := Callable()) -> void:
+	_story_box.player_name = player_name
+	_story_box.show_pages(pages, done)
+
+
+func is_showing_story() -> bool:
+	return _story_box != null and _story_box.is_showing()
+
+
+# ------------------------------------------------------------------ death screen
+
+## When the player dies (show_death, from player_controller.gd): the town goes on behind a
+## dark red veil, "JE BENT DOOD" big in the middle with how it happened, the city music
+## fades out and the death tune plays once. Enter starts again with the same zwerver
+## (the scene reloaded), Escape goes to the main menu.
+const DEATH_JINGLE := "res://assets/audio/muziek/deuntje_dood.ogg"
+const DEATH_JINGLE_VOLUME_DB := -6.0
+const DEATH_CAUSES := {
+	"honger": "%s is van de honger omgekomen.",
+	"aangereden": "%s is aangereden en niet meer opgestaan.",
+}
+## Seconds before the keys work (so a key held while dying does not skip it).
+const DEATH_KEYS_AFTER := 1.2
+
+var _death_layer: Control
+var _death_reason: Label
+var _death_keys: Label
+var _death_since := 0.0
+
+
+func _build_death_screen() -> void:
+	_death_layer = Control.new()
+	_death_layer.name = "Dood"
+	_death_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_death_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_death_layer.visible = false
+	_root.add_child(_death_layer)
+	var veil := ColorRect.new()
+	veil.color = Color(0.25, 0.02, 0.06, 0.55)
+	veil.set_anchors_preset(Control.PRESET_FULL_RECT)
+	veil.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_death_layer.add_child(veil)
+	var column := VBoxContainer.new()
+	column.set_anchors_preset(Control.PRESET_CENTER)
+	column.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	column.grow_vertical = Control.GROW_DIRECTION_BOTH
+	column.alignment = BoxContainer.ALIGNMENT_CENTER
+	column.add_theme_constant_override("separation", 14)
+	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_death_layer.add_child(column)
+	var title := _label("JE BENT DOOD", _font_title, 72, Color("#FF5D73"), 5)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	column.add_child(title)
+	_death_reason = _label("", _font_body, 18, UiStyle.TEXT, 2)
+	_death_reason.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	column.add_child(_death_reason)
+	_death_keys = _label("[ENTER] OPNIEUW   [ESC] HOOFDMENU", _font_pixel, 12, UiStyle.MUTED, 2)
+	_death_keys.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	column.add_child(_death_keys)
+
+
+## Shows the death screen; `cause` is a key of DEATH_CAUSES (else a general line).
+func show_death(cause := "") -> void:
+	if _death_layer.visible:
+		return
+	if _pause_layer.visible:
+		set_paused(false)
+	_death_reason.text = String(DEATH_CAUSES.get(cause, "%s heeft het niet gered.")) % player_name
+	_death_layer.visible = true
+	_death_layer.modulate.a = 0.0
+	_death_keys.modulate.a = 0.0
+	_death_since = Time.get_ticks_msec() / 1000.0
+	var fade := create_tween()
+	fade.tween_property(_death_layer, "modulate:a", 1.0, 0.6)
+	fade.tween_property(_death_keys, "modulate:a", 1.0, 0.4).set_delay(DEATH_KEYS_AFTER - 0.6)
+	_city_music_on = false
+	if _city_music:
+		var music := _city_music
+		_city_music = null
+		var out := create_tween()
+		out.tween_property(music, "volume_db", -60.0, 0.8)
+		out.tween_callback(music.queue_free)
+	var stream: AudioStream = load(DEATH_JINGLE) if ResourceLoader.exists(DEATH_JINGLE) else null
+	if stream:
+		if stream is AudioStreamOggVorbis:
+			(stream as AudioStreamOggVorbis).loop = false
+		var jingle := AudioStreamPlayer.new()
+		jingle.name = "DoodDeuntje"
+		jingle.stream = stream
+		jingle.volume_db = DEATH_JINGLE_VOLUME_DB
+		add_child(jingle)
+		jingle.play()
+		jingle.finished.connect(jingle.queue_free)
+
+
+func _death_input(event: InputEvent) -> void:
+	if Time.get_ticks_msec() / 1000.0 - _death_since < DEATH_KEYS_AFTER:
+		return
+	if event.is_action_pressed("ui_accept"):
+		get_viewport().set_input_as_handled()
+		UiSounds.play(self, "doe")
+		await WarpTransition.leave(get_tree(), 0.5).covered
+		get_tree().reload_current_scene()
+	elif event.is_action_pressed("ui_cancel"):
+		get_viewport().set_input_as_handled()
+		UiSounds.play(self, "doe")
+		await WarpTransition.leave(get_tree(), 0.5).covered
+		get_tree().change_scene_to_file(MAIN_MENU_SCENE)
 
 
 func _build_crt() -> void:
@@ -1057,6 +1381,7 @@ func _update_location() -> void:
 			show_area(wijk)
 		_current_wijk = wijk
 		_visited_wijken[wijk] = true
+		_switch_city_music(wijk)
 
 
 ## Cells beside a street that still count as on it (the pavement).

@@ -16,7 +16,7 @@ const SegmentBar = preload("res://scripts/ui/widgets/segment_bar.gd")
 const SEGMENTS := 30
 const TITLE := "ZWERVR"
 ## Seconds of the fade when it is done.
-const FADE_SECONDS := 0.6
+const FADE_SECONDS := 0.35
 
 ## What is loading (shown in capitals, without the ellipsis).
 var text := "Stad laden…"

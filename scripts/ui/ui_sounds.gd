@@ -8,7 +8,9 @@ extends RefCounted
 ##   rising arpeggio of a major chord, the last note ringing on;
 ## - "terug": going back or leaving a menu: two softer notes going down;
 ## - "plop": the ZWERVR logo of the intro vanishing in the distance: a short round tone
-##   whose pitch drops fast, like a cork.
+##   whose pitch drops fast, like a cork;
+## - "woord": a word appearing in the story box (story_box.gd): a tiny soft tick;
+## - "munt": picking up a coin: a quick bright two-note chime going up (a fourth).
 ## Play one with UiSounds.play(node, "kies"); the sounds are made once and kept.
 
 const MIX_RATE := 22050
@@ -51,6 +53,10 @@ static func _sound(sound_name: String) -> AudioStreamWAV:
 				_sounds[sound_name] = _notes([[880.0, 0.045], [659.3, 0.09]], 1.0, 0.9)
 			"plop":
 				_sounds[sound_name] = _plop()
+			"woord":
+				_sounds[sound_name] = _notes([[1318.5, 0.022]], 1.0, 0.5)
+			"munt":
+				_sounds[sound_name] = _notes([[1975.5, 0.06], [2637.0, 0.2]], 1.0, 1.0)
 			_:
 				return null
 	return _sounds[sound_name]

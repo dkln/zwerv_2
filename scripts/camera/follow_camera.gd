@@ -1,34 +1,24 @@
 extends Node
-## Iso camera that follows a vehicle (the "Volgcamera" node of scenes/stad.tscn, following
-## the car): it keeps the vehicle in view, a little ahead of it in its driving direction
-## and at the height it drives at (down into the tunnel trough), and zooms with its
-## speed: close in when it stands still, further out the faster it goes.
-## It does not chase the vehicle itself (every bump, corner and stop would show in the
-## view): it follows a point ahead of it, where the vehicle will be in `lead_time`
+## Iso camera that follows the player (the "Volgcamera" node of scenes/stad.tscn, following
+## the node Speler, scripts/player/player_controller.gd; any node with a position works): it
+## keeps the target in view, a little ahead of it in the direction it moves and at the height
+## it is at (down into the tunnel trough), and zooms with its speed: close in when it stands
+## still, a little further out the faster it goes. The camera is the game's only view: it
+## takes over at the start and is never handed back (no free camera, no keys).
+## It does not chase the target itself (every bump, corner and stop would show in the
+## view): it follows a point ahead of it, where the target will be in `lead_time`
 ## seconds at its velocity smoothed over `velocity_smoothing` seconds, on a critically
 ## damped spring (`glide_time`). That point moves on continuously, so at a steady speed
-## the view moves at that same steady speed (no surges), and when the vehicle speeds up
-## or brakes the view follows gradually. The spring lags `glide_time` times the speed
+## the view moves at that same steady speed (no surges), and when the target speeds up
+## or stops the view follows gradually. The spring lags `glide_time` times the speed
 ## behind a moving point, so the point lies that much further ahead.
-## Now and then (every `closeup_every` seconds) it moves in for a close-up: it zooms in
-## on the vehicle, drops a little lower and swings round it, then glides back to the
-## iso view (`closeup_*`, off with `closeups`).
-## Under the ground the iso view would only show the roof of the tunnel. So when the vehicle
-## is about to drive into a covered tunnel tile (on layer -6 of the ground layer), the camera
-## comes down into the open trough behind it and follows it through the tunnel as a chase
-## camera; once the vehicle and the camera are out in the open again it glides back up
-## (`tunnel_*`). F follows the car
-## (also during the flight over the map, which it then ends); B, while following, sends
-## another vehicle the wrong way into the followed one (the demo crash, Vehicle.drive_into);
-## T, while following, runs the game `fast_forward` times as fast (and back), to see more
-## of the town and the traffic without waiting; S, while following a police car, ambulance,
-## fire engine or ME van, switches its siren and blue lights on or off;
-## Tab follows the next vehicle and Shift+Tab the previous one (Vehicle.all_vehicles, so
-## the trains and trams as well): the view glides over to it in `switch_time` seconds,
-## zoomed out a little for a long way. A vehicle that jumps (a train changing ends, a wreck
-## that is towed back) gets the same glide. Without following, Tab does what F does;
-## F follows the vehicle it followed last;
-## any other key or mouse click hands the camera to the free camera (free_camera.gd).
+## Optionally (`closeups`, off by default) it moves in for a close-up now and then: it zooms
+## in, drops a little lower and swings round the target, then glides back (`closeup_*`).
+## Under the ground the iso view would only show the roof of the tunnel. So when the target
+## is about to go into a covered tunnel tile (on layer -6 of the ground layer), the camera
+## comes down into the open trough behind it and follows it as a chase camera; once out
+## in the open again it glides back up (`tunnel_*`). A target that jumps (a respawn) gets a
+## glide over (`switch_time`).
 
 const Iso = preload("res://scripts/camera/iso_camera.gd")
 const TunnelLights = preload("res://scripts/world/tunnel_lights.gd")
@@ -37,18 +27,18 @@ const TUNNEL_LEVEL := -6
 ## Above this speed (m/s) between two frames the vehicle did not drive but jumped.
 const JUMP_SPEED := 80.0
 
-## Follow at startup (instead of the flight over the map, node Rondvlucht).
-@export var active := false
-## The vehicle (a node with `speed` and `velocity`, scripts/vehicles/vehicle.gd).
-@export var target: NodePath = ^"../Auto"
-## Metres in view when the vehicle stands still.
-@export var zoom_still := 16.0
+## Follow at startup.
+@export var active := true
+## What the camera follows (the player).
+@export var target: NodePath = ^"../Speler"
+## Metres in view when the target stands still.
+@export var zoom_still := 18.0
 ## Metres in view at `fast_speed` and above.
-@export var zoom_fast := 55.0
-## Speed (m/s) at which the view is zoomed out furthest (100 km/h).
-@export var fast_speed := 28.0
-## Seconds the view looks ahead of the car (times its average velocity), at most
-## `max_lead` times the view size: the car should stay near the middle of the view.
+@export var zoom_fast := 24.0
+## Speed (m/s) at which the view is zoomed out furthest (running).
+@export var fast_speed := 7.0
+## Seconds the view looks ahead of the target (times its average velocity), at most
+## `max_lead` times the view size: the target should stay near the middle of the view.
 @export var lead_time := 0.8
 @export var max_lead := 0.12
 ## Seconds over which the vehicle's velocity is smoothed (for the point ahead and the zoom).
@@ -56,11 +46,8 @@ const JUMP_SPEED := 80.0
 ## Seconds the view takes to catch up (about); the zoom takes `zoom_glide_time`.
 @export var glide_time := 0.6
 @export var zoom_glide_time := 2.0
-## Speed-up of the game with T while following (the physics steps scale with it, so the
-## driving and the crashes stay as precise).
-@export var fast_forward := 4.0
-@export_group("Switching vehicles")
-## Seconds the view takes to glide over to the next vehicle.
+@export_group("Gliding over")
+## Seconds the view takes to glide over to the target after it jumped.
 @export var switch_time := 2.0
 ## Metres of extra view per metre to go, at most `switch_zoom_out_most`: on a long way
 ## over you still see where you are going.
@@ -86,7 +73,7 @@ const JUMP_SPEED := 80.0
 @export var tunnel_fov := 62.0
 @export var tunnel_near := 0.2
 @export_group("Close-ups")
-@export var closeups := true
+@export var closeups := false
 ## Seconds between close-ups (a random time between the two).
 @export var closeup_every := Vector2(20.0, 35.0)
 ## Seconds a close-up lasts, gliding in and out included.
@@ -104,14 +91,14 @@ const JUMP_SPEED := 80.0
 @export var crash_shake_time := 0.7
 
 var _cam: Camera3D
-var _car: Node3D
+var _followed: Node3D
 var _focus := Vector3.ZERO
 var _zoom := 40.0
 var _following := false
 var _focus_velocity := Vector3.ZERO
 var _zoom_velocity := 0.0
-var _car_velocity := Vector3.ZERO    # the vehicle's velocity, smoothed (velocity_smoothing)
-var _car_last := Vector3.ZERO        # where it was drawn last frame
+var _target_velocity := Vector3.ZERO    # the vehicle's velocity, smoothed (velocity_smoothing)
+var _target_last := Vector3.ZERO        # where it was drawn last frame
 var _closeup_wait := 0.0             # seconds until the next close-up
 var _closeup_clock := -1.0           # seconds into the current close-up (< 0: none)
 var _closeup_side := 1.0             # which way it swings round
@@ -121,27 +108,25 @@ var _underground := 0.0              # 0 = the iso view .. 1 = the chase camera 
 var _underground_velocity := 0.0
 var _chase_heading := Vector3.FORWARD  # last driving direction of the vehicle, for the chase camera
 var _covered_items := {}             # ground item -> is it a covered tunnel tile
-var _base_physics_ticks := 0         # physics steps per second at normal speed
 var _view_focus := Vector3.ZERO      # the point the view was placed around last frame
 var _glide_over_left := 0.0          # seconds left of gliding over to the vehicle
 var _glide_over_from := Vector3.ZERO # where the view started, as seen from the vehicle
 var _glide_over_zoom := 0.0          # extra metres in view while gliding over
 
-## The followed vehicle (for scripts/world/building_fade.gd).
+## The followed node (for scripts/world/building_fade.gd and the HUD).
 var target_node: Node3D:
 	get:
-		return _car
+		return _followed
 
 
 func _ready() -> void:
 	_cam = get_viewport().get_camera_3d()
-	_car = get_node_or_null(target) as Node3D
-	if _cam == null or _car == null:
+	_followed = get_node_or_null(target) as Node3D
+	if _cam == null or _followed == null:
 		set_process(false)
-		set_process_unhandled_input(false)
 		return
 	_ground = get_node_or_null(ground_path) as GridMap
-	_focus = _car.global_position
+	_focus = _followed.global_position
 	_zoom = zoom_still
 	if active:
 		start.call_deferred()
@@ -149,126 +134,56 @@ func _ready() -> void:
 		set_process(false)
 
 
-## Takes over the camera and follows the car; ends the flight over the map.
+## Takes over the camera (the free camera's own moving and input stay off) and follows.
 func start() -> void:
-	var flight := get_node_or_null(^"../Rondvlucht")
-	if flight and flight.is_processing() and flight.has_method("stop"):
-		flight.call("stop")
 	_following = true
 	set_process(true)
 	_cam.set_process(false)
 	_cam.set_process_unhandled_input(false)
-	_focus = _car_position()
+	_focus = _target_position()
 	_focus_velocity = Vector3.ZERO
 	_zoom_velocity = 0.0
 	_closeup_clock = -1.0
 	_closeup_wait = _random.randf_range(closeup_every.x, closeup_every.y)
-	_car_last = _focus
-	_car_velocity = Vector3.ZERO
+	_target_last = _focus
+	_target_velocity = Vector3.ZERO
 	_underground = 0.0
 	_underground_velocity = 0.0
 	_view_focus = _focus
 	_glide_over_left = 0.0
 
 
-## Follows the vehicle `steps` further on in the list of all vehicles (negative: back).
-func switch_vehicle(steps: int) -> void:
-	var vehicles := Vehicle.all_vehicles
-	if vehicles.is_empty():
-		return
-	_car = vehicles[posmod(vehicles.find(_car) + steps, vehicles.size())]
-	_glide_over(_car_position())
-
-
-## The view leaves from where it is now and glides to the vehicle, at `car_position`. The
+## The view leaves from where it is now and glides to the vehicle, at `target_position`. The
 ## spring starts at the vehicle again, so what it does stays apart from the glide.
-func _glide_over(car_position: Vector3) -> void:
-	_glide_over_from = _view_focus - car_position
+func _glide_over(target_position: Vector3) -> void:
+	_glide_over_from = _view_focus - target_position
 	_glide_over_left = switch_time
 	_glide_over_zoom = minf(_glide_over_from.length() * switch_zoom_out, switch_zoom_out_most)
-	_focus = car_position
+	_focus = target_position
 	_focus_velocity = Vector3.ZERO
-	_car_velocity = Vector3.ZERO
-	_car_last = car_position
+	_target_velocity = Vector3.ZERO
+	_target_last = target_position
 
 
-## Runs the game `scale` times as fast, with as many more physics steps per second.
-func _set_time_scale(scale: float) -> void:
-	if not _base_physics_ticks:
-		_base_physics_ticks = Engine.physics_ticks_per_second
-	Engine.time_scale = scale
-	Engine.physics_ticks_per_second = roundi(_base_physics_ticks * scale)
-	Engine.max_physics_steps_per_frame = maxi(8, roundi(8 * scale))
-
-
-## The demo crash: the nearest other vehicle drives the wrong way into the followed one.
-func crash_demo() -> void:
-	var nearest: Node3D = null
-	for vehicle in Vehicle.all_vehicles:
-		if vehicle != _car and not vehicle.crashed and not vehicle is RailVehicle and (nearest == null
-				or vehicle.global_position.distance_to(_car.global_position) < nearest.global_position.distance_to(_car.global_position)):
-			nearest = vehicle
-	if nearest:
-		nearest.call("drive_into", _car)
-
-
-## True while the camera follows the vehicle.
+## True while the camera follows its target.
 func is_following() -> bool:
 	return _following
 
 
-## Hands the camera to the free camera.
-func stop() -> void:
-	if Engine.time_scale > 1.0:
-		_set_time_scale(1.0)
-	_following = false
-	set_process(false)
-	_underground = 0.0
-	_underground_velocity = 0.0
-	_glide_over_left = 0.0
-	_cam.set_process(true)
-	_cam.set_process_unhandled_input(true)
-	if _cam.has_method("_ready"):
-		_cam.call("_ready")
-
-
-func _unhandled_input(event: InputEvent) -> void:
-	if not ((event is InputEventKey or event is InputEventMouseButton) and event.is_pressed()):
-		return
-	if event is InputEventKey and event.keycode == KEY_SHIFT:
-		return   # on its way to Shift+Tab
-	if event is InputEventKey and event.keycode == KEY_TAB:
-		if not _following:
-			start.call_deferred()   # after the flight has handled this key press too
-		elif not event.is_echo():
-			switch_vehicle(-1 if event.shift_pressed else 1)
-	elif event is InputEventKey and event.keycode == KEY_F:
-		if not _following:
-			start.call_deferred()   # after the flight has handled this key press too
-	elif event is InputEventKey and event.keycode == KEY_B and _following:
-		crash_demo()
-	elif event is InputEventKey and event.keycode == KEY_T and _following:
-		_set_time_scale(1.0 if Engine.time_scale > 1.0 else fast_forward)
-	elif event is InputEventKey and event.keycode == KEY_S and _following and _car is Vehicle and (_car as Vehicle).emergency:
-		(_car as Vehicle).toggle_siren()
-	elif _following:
-		stop()
-
-
 func _process(delta: float) -> void:
-	var car_position := _car_position()
-	if delta > 0.0 and car_position.distance_to(_car_last) / delta > JUMP_SPEED:
-		_glide_over(car_position)
+	var target_position := _target_position()
+	if delta > 0.0 and target_position.distance_to(_target_last) / delta > JUMP_SPEED:
+		_glide_over(target_position)
 	var closeness := _advance_closeup(delta) * (1.0 - _underground)   # 0 = iso view .. 1 = closest
 	if delta > 0.0:
-		var frame_velocity := (car_position - _car_last) / delta
-		_car_velocity = _car_velocity.lerp(frame_velocity, 1.0 - exp(-delta / maxf(velocity_smoothing, 0.01)))
-	_car_last = car_position
-	# the point ahead; close by it only makes up for the spring's lag (the car in the middle)
-	var lead := (_car_velocity * lead_time).limit_length(_zoom * max_lead)
-	var goal := car_position + lead.lerp(Vector3.ZERO, closeness) + _car_velocity * glide_time
-	goal.y = car_position.y + _car_velocity.y * glide_time   # up and down ramps without lag
-	var speed := Vector2(_car_velocity.x, _car_velocity.z).length()
+		var frame_velocity := (target_position - _target_last) / delta
+		_target_velocity = _target_velocity.lerp(frame_velocity, 1.0 - exp(-delta / maxf(velocity_smoothing, 0.01)))
+	_target_last = target_position
+	# the point ahead; close by it only makes up for the spring's lag (the target in the middle)
+	var lead := (_target_velocity * lead_time).limit_length(_zoom * max_lead)
+	var goal := target_position + lead.lerp(Vector3.ZERO, closeness) + _target_velocity * glide_time
+	goal.y = target_position.y + _target_velocity.y * glide_time   # up and down ramps without lag
+	var speed := Vector2(_target_velocity.x, _target_velocity.z).length()
 	var goal_zoom := lerpf(zoom_still, zoom_fast, clampf(speed / fast_speed, 0.0, 1.0))
 	_glide_over_left = maxf(_glide_over_left - delta, 0.0)
 	if _glide_over_left > 0.0:
@@ -290,7 +205,7 @@ func _process(delta: float) -> void:
 		var swing := closeup_orbit * (progress - 0.5) * _closeup_side * closeness
 		_cam.rotation_degrees = Vector3(lerpf(Iso.ROTATION.x, closeup_pitch, closeness), Iso.ROTATION.y + swing, 0.0)
 		_cam.global_position = _view_focus + _cam.global_basis.z * Iso.distance(view_size)
-	_place_in_tunnel(car_position, way_to_go, delta)
+	_place_in_tunnel(target_position, way_to_go, delta)
 	_shake_for_crash(view_size)
 
 
@@ -312,19 +227,19 @@ func _shake_for_crash(view_size: float) -> void:
 ## Blends the camera, just placed for the normal view, towards the chase camera as far
 ## as the vehicle is under the ground. While gliding over to a vehicle it leaves the tunnel
 ## (it may have to go down again at the other end), still looking the way it did.
-func _place_in_tunnel(car_position: Vector3, way_to_go: Vector3, delta: float) -> void:
-	var flat_velocity := Vector3(_car_velocity.x, 0.0, _car_velocity.z)
+func _place_in_tunnel(target_position: Vector3, way_to_go: Vector3, delta: float) -> void:
+	var flat_velocity := Vector3(_target_velocity.x, 0.0, _target_velocity.z)
 	var gliding_over := _glide_over_left > 0.0
 	if flat_velocity.length() > 1.0 and not gliding_over:
 		_chase_heading = flat_velocity.normalized()
-	var goal := 1.0 if not gliding_over and _wants_chase_view(car_position, flat_velocity) else 0.0
+	var goal := 1.0 if not gliding_over and _wants_chase_view(target_position, flat_velocity) else 0.0
 	var glided := _glide(_underground, goal, _underground_velocity, tunnel_glide_time, delta)
 	_underground = clampf(glided.x, 0.0, 1.0)
 	_underground_velocity = glided.y
 	if _underground < 0.001:
 		return
 	var blend := smoothstep(0.0, 1.0, _underground)
-	var chased := car_position + way_to_go
+	var chased := target_position + way_to_go
 	var chase := Transform3D.IDENTITY.translated(
 		chased - _chase_heading * tunnel_chase_distance + Vector3.UP * tunnel_chase_height)
 	chase = chase.looking_at(chased + _chase_heading * tunnel_look_ahead + Vector3.UP * tunnel_look_height, Vector3.UP)
@@ -336,11 +251,11 @@ func _place_in_tunnel(car_position: Vector3, way_to_go: Vector3, delta: float) -
 
 ## True while the chase camera is wanted: the vehicle is low and it, the point it reaches
 ## soon or the spot of the chase camera behind it lies under cover.
-func _wants_chase_view(car_position: Vector3, flat_velocity: Vector3) -> bool:
-	if car_position.y >= tunnel_below_height:
+func _wants_chase_view(target_position: Vector3, flat_velocity: Vector3) -> bool:
+	if target_position.y >= tunnel_below_height:
 		return false
-	return _is_covered(car_position) or _is_covered(car_position + flat_velocity * tunnel_anticipation) \
-		or _is_covered(car_position - _chase_heading * tunnel_chase_distance)
+	return _is_covered(target_position) or _is_covered(target_position + flat_velocity * tunnel_anticipation) \
+		or _is_covered(target_position - _chase_heading * tunnel_chase_distance)
 
 
 ## True if a covered tunnel tile (not an open trough or a ramp) lies at this spot.
@@ -377,8 +292,8 @@ func _advance_closeup(delta: float) -> float:
 
 
 ## Where the vehicle is drawn this frame (between physics steps, see vehicle.gd).
-func _car_position() -> Vector3:
-	return _car.call("drawn_position") if _car.has_method("drawn_position") else _car.global_position
+func _target_position() -> Vector3:
+	return _followed.call("drawn_position") if _followed.has_method("drawn_position") else _followed.global_position
 
 
 ## One frame of a critically damped spring from `value` (moving at `velocity`) towards

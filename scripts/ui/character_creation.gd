@@ -2,16 +2,17 @@ extends Control
 ## The character creation screen (scenes/karakter.tscn), its own step between the main
 ## menu (NIEUW SPEL) and the town, in the style of the menu and the HUD: the night sky
 ## with stars (no town behind it) and the title, then
-## - left: the archetypes (PlayerCharacter.ARCHETYPES) in a list that scrolls vertically,
-##   each a thumbnail of the face (PlayerPortrait, zoomed in), the name (a nickname), what
+## - left: the archetypes (PlayerCharacter.ARCHETYPES) in a list, sharing the height of
+##   the detail panel exactly (it scrolls only when there are too many to fit), each a thumbnail of the face (PlayerPortrait, zoomed in), the name (a nickname), what
 ##   they are good at under it and the level they start on; the chosen one in amber;
-## - right: the chosen one large: the whole figure in 3D, turning slowly round its axis, the name, what they are good at, the level, what only they
+## - right: the chosen one large: the whole figure in 3D, walking on the spot and turning
+##   slowly round its axis (from the front each time it is chosen), the difficulty in the top right
+##   corner (MOEILIJKHEID, five blocks green to red, its name), the name, what they are good at, the level, what only they
 ##   have (the perk, in teal, if any), their story and the stats (leven, stamina,
 ##   honger) as the HUD's segment bars, a share of
 ##   PlayerCharacter.STAT_CEILING, with the number.
 ## Keys: up/down (or left/right, or 1 to 9) choose, Enter begins, Escape goes back to the
-## main menu; the mouse: a click chooses, a click on the chosen one or on BEGIN begins,
-## the wheel scrolls the list.
+## main menu; the mouse: a click chooses, a click on the chosen one or on BEGIN begins.
 ## Beginning stores the choice (PlayerCharacter.choose) and opens the town through the
 ## warp; its own loading screen takes over from there.
 ## Music: a soft loop of its own (karakterkeuze_loop.ogg), fading in.
@@ -40,16 +41,24 @@ const LEFT := 48.0
 const TOP := 128.0
 const HEIGHT := 488.0
 const LIST_WIDTH := 372.0
-const ENTRY_HEIGHT := 96.0
-const THUMBNAIL := 76.0
+## The entries share the height of the detail panel exactly (ENTRY_GAP between them); only
+## when they would get lower than ENTRY_LOWEST the list scrolls.
+const ENTRY_GAP := 10.0
+const ENTRY_LOWEST := 70.0
+const THUMBNAIL_LARGEST := 76.0
 const DETAIL_LEFT := 444.0
 const DETAIL_WIDTH := 788.0
 ## The whole figure in the detail panel.
 const FIGURE_SIZE := Vector2(300, 456)
 const STAT_SEGMENTS := 20
-## Degrees a second the figure in the detail panel turns round its axis.
+## Degrees a second the figure in the detail panel turns round its axis, and the seconds it
+## takes to start walking when chosen.
 const SPIN := 40.0
-const WARP_SECONDS := 1.6
+const WALK_IN := 0.6
+## The difficulty in the top right corner: a block per step, green to red.
+const DIFFICULTY_COLOURS := [Color("#8BE36B"), Color("#C8E35A"), Color("#FFB547"), Color("#FF8A4A"), Color("#FF5D73")]
+const DIFFICULTY_EMPTY := Color("#2A2E4A")
+const WARP_SECONDS := 0.9
 
 var _design: Control
 var _scroll: ScrollContainer
@@ -62,6 +71,8 @@ var _detail_subtitle: Label
 var _detail_level: PanelContainer
 var _detail_story: Label
 var _detail_perk: Label
+var _difficulty_blocks: Array[ColorRect] = []
+var _difficulty_name: Label
 var _detail_bars := {}       # stat name -> SegmentBar
 var _detail_numbers := {}    # stat name -> Label
 var _begin_button: Button
@@ -153,6 +164,15 @@ func _show_detail(index: int) -> void:
 	var archetype_id: String = PlayerCharacter.ORDER[index]
 	var archetype: Dictionary = PlayerCharacter.ARCHETYPES[archetype_id]
 	_detail_figure.archetype_id = archetype_id
+	# it walks on the spot while it turns
+	_detail_figure.walking = 0.0
+	create_tween().set_trans(Tween.TRANS_SINE).tween_property(_detail_figure, "walking", 1.0, WALK_IN)
+	var difficulty := int(archetype.get("difficulty", 1))
+	for block_index in _difficulty_blocks.size():
+		_difficulty_blocks[block_index].color = DIFFICULTY_COLOURS[mini(difficulty - 1, DIFFICULTY_COLOURS.size() - 1)] \
+				if block_index < difficulty else DIFFICULTY_EMPTY
+	_difficulty_name.text = PlayerCharacter.DIFFICULTY_NAMES[clampi(difficulty, 1, PlayerCharacter.DIFFICULTY_CEILING)]
+	_difficulty_name.add_theme_color_override("font_color", DIFFICULTY_COLOURS[clampi(difficulty, 1, 5) - 1])
 	_detail_name.text = archetype.name
 	_detail_subtitle.text = archetype.subtitle
 	_set_level_chip(_detail_level, int(archetype.level))
@@ -208,7 +228,7 @@ func _build_title() -> void:
 	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_design.add_child(column)
 	column.add_child(_small("NIEUW SPEL", UiStyle.ACCENT, 13, 6))
-	column.add_child(_label("KIES JE ZWERVER", _font_title, 46, Color("#F4EEDD"), 5))
+	column.add_child(_label("KIES JE KARAKTER", _font_title, 46, Color("#F4EEDD"), 5))
 
 
 ## The list on the left: a vertical scroll of entries (a slim amber scroll bar on ink).
@@ -228,23 +248,34 @@ func _build_list() -> void:
 	bar.add_theme_stylebox_override("grabber_highlight", grabber)
 	bar.add_theme_stylebox_override("grabber_pressed", grabber)
 	_design.add_child(_scroll)
+	var count := PlayerCharacter.ORDER.size()
+	# whole pixels: the first entries a pixel higher until the heights add up exactly
+	var room := int(HEIGHT - ENTRY_GAP * (count - 1))
+	var shared := room / count
+	var left_over := room - shared * count
+	var scrolls := shared < ENTRY_LOWEST
+	var entry_width := LIST_WIDTH - (20.0 if scrolls else 0.0)
+	# all fit (as now with six): no scrolling at all
+	_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO if scrolls else ScrollContainer.SCROLL_MODE_DISABLED
 	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 10)
-	column.custom_minimum_size = Vector2(LIST_WIDTH - 20, 0)
+	column.add_theme_constant_override("separation", int(ENTRY_GAP))
+	column.custom_minimum_size = Vector2(entry_width, 0)
 	column.mouse_filter = Control.MOUSE_FILTER_PASS
 	_scroll.add_child(column)
-	for index in PlayerCharacter.ORDER.size():
-		column.add_child(_list_entry(index))
+	for index in count:
+		var entry_height := ENTRY_LOWEST if scrolls else float(shared + (1 if index < left_over else 0))
+		column.add_child(_list_entry(index, Vector2(entry_width, entry_height)))
 
 
-## An entry of the list: the face as a thumbnail, the name, what they are good at and the
-## level. A click chooses it (the wheel goes through to the scroll).
-func _list_entry(index: int) -> Control:
+## An entry of the list, `entry_size`: the face as a thumbnail, the name, what they are
+## good at and the level, in the middle of its height. A click chooses it (the wheel goes
+## through to the scroll).
+func _list_entry(index: int, entry_size: Vector2) -> Control:
 	var archetype_id: String = PlayerCharacter.ORDER[index]
 	var archetype: Dictionary = PlayerCharacter.ARCHETYPES[archetype_id]
 	var entry := Control.new()
 	entry.name = "Keuze_" + archetype_id
-	entry.custom_minimum_size = Vector2(LIST_WIDTH - 24, ENTRY_HEIGHT)
+	entry.custom_minimum_size = entry_size
 	entry.mouse_filter = Control.MOUSE_FILTER_PASS
 	entry.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	entry.gui_input.connect(func(event: InputEvent) -> void:
@@ -257,9 +288,11 @@ func _list_entry(index: int) -> Control:
 	panel.size = entry.custom_minimum_size
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	entry.add_child(panel)
+	var thumbnail_size := minf(THUMBNAIL_LARGEST, entry_size.y - 16.0)
+	var thumbnail_top := (entry_size.y - thumbnail_size) * 0.5
 	var frame := Panel.new()
-	frame.position = Vector2(10, 10)
-	frame.size = Vector2(THUMBNAIL, THUMBNAIL)
+	frame.position = Vector2(10, thumbnail_top)
+	frame.size = Vector2(thumbnail_size, thumbnail_size)
 	frame.add_theme_stylebox_override("panel", UiStyle.box_style(UiStyle.INK, UiStyle.BORDER, 2))
 	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	entry.add_child(frame)
@@ -267,25 +300,22 @@ func _list_entry(index: int) -> Control:
 	thumbnail.archetype_id = archetype_id
 	thumbnail.zoom = 1.0
 	thumbnail.face_view = 1.0
-	thumbnail.position = Vector2(12, 12)
-	thumbnail.size = Vector2(THUMBNAIL - 4, THUMBNAIL - 4)
+	thumbnail.position = Vector2(12, thumbnail_top + 2)
+	thumbnail.size = Vector2(thumbnail_size - 4, thumbnail_size - 4)
 	entry.add_child(thumbnail)
 	var texts := VBoxContainer.new()
-	texts.position = Vector2(THUMBNAIL + 24, 14)
+	texts.position = Vector2(thumbnail_size + 24, (entry_size.y - 44.0) * 0.5)
 	texts.add_theme_constant_override("separation", 4)
 	texts.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	entry.add_child(texts)
 	texts.add_child(_label(archetype.name, _font_title, 24, UiStyle.TEXT, 2))
 	texts.add_child(_small(archetype.subtitle, UiStyle.ACCENT, 11, 2))
-	var level_row := HBoxContainer.new()
-	level_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# the level on the right, just in from the edge, in the middle of the height
 	var level := _chip("", UiStyle.BORDER, UiStyle.TEXT)
 	_set_level_chip(level, int(archetype.level))
-	level_row.add_child(level)
-	texts.add_child(level_row)
-	var number := _small(str(index + 1), UiStyle.MUTED, 11)
-	number.position = Vector2(LIST_WIDTH - 24 - 22, 10)
-	entry.add_child(number)
+	entry.add_child(level)
+	level.resized.connect(func() -> void:
+		level.position = Vector2(entry_size.x - 12.0 - level.size.x, (entry_size.y - level.size.y) * 0.5))
 	_entries.append(entry)
 	_entry_panels.append(panel)
 	return entry
@@ -329,6 +359,35 @@ func _build_detail() -> void:
 	_detail_figure.position = Vector2(2, 2)
 	_detail_figure.size = FIGURE_SIZE - Vector2(4, 4)
 	window.add_child(_detail_figure)
+	# the difficulty in the top right corner: its name over a row of blocks
+	var difficulty := VBoxContainer.new()
+	difficulty.name = "Moeilijkheid"
+	difficulty.add_theme_constant_override("separation", 6)
+	difficulty.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	difficulty.alignment = BoxContainer.ALIGNMENT_BEGIN
+	difficulty.position = Vector2(DETAIL_WIDTH - 20 - 140, 20)
+	difficulty.custom_minimum_size = Vector2(140, 0)
+	_detail.add_child(difficulty)
+	var difficulty_title := _small("MOEILIJKHEID", SOFT_TEXT, 11, 2)
+	difficulty_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	difficulty_title.custom_minimum_size = Vector2(140, 0)
+	difficulty.add_child(difficulty_title)
+	var blocks := HBoxContainer.new()
+	blocks.alignment = BoxContainer.ALIGNMENT_END
+	blocks.add_theme_constant_override("separation", 4)
+	blocks.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	blocks.custom_minimum_size = Vector2(140, 14)
+	for block_index in PlayerCharacter.DIFFICULTY_CEILING:
+		var block := ColorRect.new()
+		block.custom_minimum_size = Vector2(14, 14)
+		block.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		blocks.add_child(block)
+		_difficulty_blocks.append(block)
+	difficulty.add_child(blocks)
+	_difficulty_name = _label("", _font_pixel_bold, 12, UiStyle.TEXT, 0)
+	_difficulty_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_difficulty_name.custom_minimum_size = Vector2(140, 0)
+	difficulty.add_child(_difficulty_name)
 	# the texts and the stats beside it
 	var column_width := DETAIL_WIDTH - FIGURE_SIZE.x - 16 * 3 - 8
 	var column := VBoxContainer.new()

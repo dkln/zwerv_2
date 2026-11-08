@@ -62,7 +62,7 @@ extends Node3D
 ## and a puff of dust fly out (scripts/effects/crash_burst.gd) and the view shakes; it burns
 ## (VehicleFire.BURN_SECONDS), blinks away ever faster (death_blink.gd) and is towed back
 ## onto the nearest lane, as good as new, and drives on. drive_into() sends a vehicle the wrong way down another one's route, without
-## looking (the demo crash, key B in the follow camera).
+## looking (the demo crash of tools/check/crash_test.gd).
 ## Weight and torque: `mass_kg` and `wheel_torque` differ per type, and a heavy vehicle has
 ## more of both. The torque over the mass gives its acceleration. In a crash the masses
 ## share the blow as momentum does (the light one takes most of the change of speed and
@@ -2145,6 +2145,26 @@ static func _rectangles_overlap(first: Array[Vector2], second: Array[Vector2]) -
 		if first_range.y < second_range.x or second_range.y < first_range.x:
 			return false
 	return true
+
+
+## What it takes up seen from above (rectangles of four corners x, z), for others than
+## vehicles: the player (scripts/player/player_controller.gd) tests being hit with it.
+func footprints(margin := 0.0) -> Array:
+	return _footprints(margin)
+
+
+## The four corners (x, z) of a rectangle round `middle`, turned like `frame` (see _rectangle).
+static func rectangle(frame: Transform3D, middle: Vector3, width: float, length: float, margin: float) -> Array[Vector2]:
+	return _rectangle(frame, middle, width, length, margin)
+
+
+## True if two rectangles of four corners (footprints, rectangle) overlap.
+static func rectangles_overlap(first: Array, second: Array) -> bool:
+	var first_corners: Array[Vector2] = []
+	first_corners.assign(first)
+	var second_corners: Array[Vector2] = []
+	second_corners.assign(second)
+	return _rectangles_overlap(first_corners, second_corners)
 
 
 ## What it takes up on the road seen from above: its body, and its trailer if it has one.

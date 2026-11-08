@@ -133,7 +133,7 @@ func _start_music() -> void:
 	if stream == null:
 		push_warning("main menu: no music at %s" % MUSIC)
 		return
-	# the loop is seamless over the whole file (tools/music/README.md)
+	# the loop is seamless over the whole file
 	if stream is AudioStreamOggVorbis:
 		(stream as AudioStreamOggVorbis).loop = true
 		(stream as AudioStreamOggVorbis).loop_offset = 0.0
@@ -312,10 +312,10 @@ func _free_map() -> void:
 ## The menu goes: the items fade out one by one, the title slides off to the left, and the
 ## picture goes into a wave (WarpTransition, ending in ink, the colour of the town's loading
 ## screen, which comes out of it). Awaited before the town is opened.
-const EXIT_SECONDS := 0.9
+const EXIT_SECONDS := 0.5
 
 
-const WARP_SECONDS := 1.6
+const WARP_SECONDS := 0.9
 
 
 func _play_exit() -> void:

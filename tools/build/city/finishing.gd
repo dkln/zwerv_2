@@ -571,9 +571,8 @@ func _fill_grass_all() -> void:
 				G(x, z, "natuur/gras")
 
 
-## The camera over the old centre, the slow flight over the map that starts the game
-## (node Rondvlucht, scripts/camera/fly_over.gd) and the vignette (node Vignet,
-## scripts/effects/vignette.gd).
+## The camera over the old centre (the follow camera takes it over at the start, see _car)
+## and the vignette (node Vignet, scripts/effects/vignette.gd).
 func _camera(root: Node3D) -> void:
 	# two shadow cascades instead of four: the game looks at the town from close by
 	# (following a car), where two are as sharp, and it saves the GPU most of a millisecond
@@ -581,11 +580,6 @@ func _camera(root: Node3D) -> void:
 	var cam: Camera3D = root.get_node("Camera")
 	var Iso = load("res://scripts/camera/iso_camera.gd")
 	cam.position = Iso.position(Vector3(40 * 4.0, 0, 42 * 4.0), 160.0)
-	var fly := Node.new()
-	fly.name = "Rondvlucht"
-	fly.set_script(load("res://scripts/camera/fly_over.gd"))
-	root.add_child(fly)
-	fly.owner = root
 	# the rail traffic: each on its own kind of rails, a tile knows who rides on it
 	for rail_start: Array in [["RandstadRail1", "res://scripts/vehicles/randstadrail.gd", Vector2i(VIADUCT_LINK_COLUMNS[1], 70), Vector2i(0, -1)],
 			["RandstadRail2", "res://scripts/vehicles/randstadrail.gd", Vector2i(VIADUCT_LINK_COLUMNS[0], 74), Vector2i(0, 1)],
@@ -612,9 +606,10 @@ func _camera(root: Node3D) -> void:
 
 
 ## The car (node Auto, scripts/vehicles/car.gd), an SUV that drives round too (node
-## SUV, scripts/vehicles/suv.gd, starting in the Bezuidenhout), the camera that follows
-## the car (node Volgcamera, F in the game; B sends the SUV into it, the demo crash), the
-## rest of the traffic (node Verkeer, scripts/traffic/traffic.gd, spreads it at the start) and
+## SUV, scripts/vehicles/suv.gd, starting in the Bezuidenhout), the player (node Speler,
+## scripts/player/player_controller.gd: the chosen zwerver walking round), the camera that
+## follows it (node Volgcamera), the rest of the traffic (node Verkeer,
+## scripts/traffic/traffic.gd, spreads it at the start) and
 ## the see-through buildings while it follows (node Doorkijk,
 ## scripts/world/building_fade.gd). The car finds its lanes in the ground tiles themselves
 ## (their "traffic" metadata, scripts/traffic/road_network.gd).
@@ -637,6 +632,21 @@ func _car(root: Node3D) -> void:
 	traffic.set_script(load("res://scripts/traffic/traffic.gd"))
 	root.add_child(traffic)
 	traffic.owner = root
+	var player := Node3D.new()
+	player.name = "Speler"
+	player.set_script(load("res://scripts/player/player_controller.gd"))
+	root.add_child(player)
+	player.owner = root
+	var loose_change := Node3D.new()
+	loose_change.name = "Kleingeld"   # coins on the streets (scripts/world/loose_change.gd)
+	loose_change.set_script(load("res://scripts/world/loose_change.gd"))
+	root.add_child(loose_change)
+	loose_change.owner = root
+	var story := Node.new()
+	story.name = "Verhaal"   # the prologue and the missions (scripts/story/story.gd)
+	story.set_script(load("res://scripts/story/story.gd"))
+	root.add_child(story)
+	story.owner = root
 	var follow := Node.new()
 	follow.name = "Volgcamera"
 	follow.set_script(load("res://scripts/camera/follow_camera.gd"))

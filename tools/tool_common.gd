@@ -35,14 +35,14 @@ static func arg_count() -> int:
 
 
 ## Instantiates the scene at `path` without adding it to the tree. still_camera: the
-## camera ("Camera") loses its free-camera script and the fly-over ("Rondvlucht", if any)
-## is removed, so the tool positions the camera itself.
+## camera ("Camera") loses its free-camera script and the camera that follows the player
+## ("Volgcamera", if any) is removed, so the tool positions the camera itself.
 static func instantiate(path: String, still_camera := true) -> Node:
 	var sc: Node = load(path).instantiate()
 	if still_camera:
 		(sc.get_node("Camera") as Camera3D).set_script(null)
-		if sc.has_node("Rondvlucht"):
-			sc.get_node("Rondvlucht").free()
+		if sc.has_node("Volgcamera"):
+			sc.get_node("Volgcamera").free()
 	return sc
 
 

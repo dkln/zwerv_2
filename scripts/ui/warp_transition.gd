@@ -14,7 +14,7 @@ signal covered
 
 const NODE_NAME := "Warp"
 ## Seconds the new scene takes to come out of the wave.
-const ARRIVE_SECONDS := 1.4
+const ARRIVE_SECONDS := 0.8
 ## Share of the leaving in which the ink covers the picture (at its end).
 const COVER_SHARE := 0.45
 

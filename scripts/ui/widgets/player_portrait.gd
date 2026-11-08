@@ -42,6 +42,13 @@ var spin := 0.0:
 			if value == 0.0:
 				_model.face_front()
 
+## How much the figure walks (0 = stands, 1 = walks on the spot); tween it.
+var walking := 0.0:
+	set(value):
+		walking = value
+		if _model:
+			_model.walking = value
+
 var _viewport: SubViewport
 var _camera: Camera3D
 var _model: Node3D
@@ -66,6 +73,16 @@ func _init() -> void:
 	environment.environment.ambient_light_color = Color("#8C8C94")
 	environment.environment.ambient_light_energy = 0.35
 	environment.environment.tonemap_mode = Environment.TONE_MAPPER_LINEAR
+	# a plain sky only for what metal and glass reflect (the background stays clear)
+	var sky := Sky.new()
+	var sky_material := ProceduralSkyMaterial.new()
+	sky_material.sky_top_color = Color("#5A6A9A")
+	sky_material.sky_horizon_color = Color("#C8C8D0")
+	sky_material.ground_bottom_color = Color("#2A2A30")
+	sky_material.ground_horizon_color = Color("#8A8A90")
+	sky.sky_material = sky_material
+	environment.environment.sky = sky
+	environment.environment.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
 	_viewport.add_child(environment)
 	# the key light from the front left and above, casting shadows (the brim on the face,
 	# the arms on the body, the figure on the floor)

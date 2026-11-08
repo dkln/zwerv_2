@@ -38,7 +38,7 @@ const ARCHETYPES := {
 		"addiction": "crack",
 		"difficulty": 3,
 		"level": 1,
-		"story": "Ze noemen hem de Ufo Piloot, omdat hij zweert dat hij in '97 boven het Malieveld is meegenomen en zonder zijn naam is teruggezet. Verder is er niks vreemds aan hem: een oude vliegeniersjas, een stoppelbaard, broodmager. Niks doet hem nog pijn, maar hij is altijd moe en heeft altijd trek.",
+		"story": "Ze noemen hem de Ufo Piloot, omdat hij zweert dat hij in '97 boven het Malieveld is meegenomen en zonder zijn naam is teruggezet. Verder is er niks vreemds aan hem: een oude vliegeniersjas, een grijze baard, broodmager. Niks doet hem nog pijn, maar hij is altijd moe en heeft altijd trek.",
 		"stats": {"gezondheid": 150, "uithoudingsvermogen": 60, "honger": 70},
 	},
 	"willem": {
@@ -56,14 +56,24 @@ const ARCHETYPES := {
 		"addiction": "sigaretten",
 		"difficulty": 1,
 		"level": 1,
-		"perk": "Begint met € 25 in de pet en hond Bobbie bij zich.",
+		"perk": "Begint met € 25 in de pet.",
 		"start_money": 25,
 		"story": "Sjaan speelde dertig jaar accordeon op de Grote Markt, tot haar huisbaas het pand verkocht. Nu slaapt ze met haar hond Bobbie in een portiek in Chinatown, maar ze speelt nog elke dag. Er valt altijd wel wat in de pet, en Bobbie hoort de politie eerder aankomen dan zij.",
 		"stats": {"gezondheid": 90, "uithoudingsvermogen": 110, "honger": 90},
 	},
+	"gerrit": {
+		"name": "Gerrit",
+		"subtitle": "DE VISSER",
+		"addiction": "bier",
+		"difficulty": 2,
+		"level": 1,
+		"perk": "Kan vissen in de grachten en vijvers: nooit lang honger.",
+		"story": "Gerrit voer veertig jaar uit Scheveningen, tot de kotter werd verkocht en zijn vrouw met de schipper vertrok. Nu zit hij met zijn hengel aan de Hofvijver of de Singelgracht. Hij zegt weinig, kan tegen een stootje en eet wat er bijt.",
+		"stats": {"gezondheid": 120, "uithoudingsvermogen": 80, "honger": 120},
+	},
 }
 ## The order on the screen.
-const ORDER := ["jos", "martin", "ufo_piloot", "willem", "sjaan"]
+const ORDER := ["jos", "martin", "ufo_piloot", "willem", "sjaan", "gerrit"]
 ## The highest difficulty and what each is called.
 const DIFFICULTY_CEILING := 5
 const DIFFICULTY_NAMES := ["", "MAKKELIJK", "MAKKELIJK", "GEMIDDELD", "MOEILIJK", "ZWAAR"]

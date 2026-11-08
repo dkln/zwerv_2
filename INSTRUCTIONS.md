@@ -77,17 +77,49 @@ in zijn park; loodsen 9 m, bedrijfsunits 6 m hoog). Oost van de stad (x 176 tot 
 kantoren aan de Prins Clauslaan naar de straat z 29. Opnieuw bouwen:
 `tools/godot.sh --headless --script tools/build/build_city.gd`.
 
-De game start met deze kaart (`run/main_scene` = `scenes/stad.tscn`): de node
-`Rondvlucht` (`scripts/camera/fly_over.gd`) laat de iso-camera langzaam in een ronde
-langs alle buurten glijden: boven elke buurt zoomt hij in, onderweg weer uit
-(instelbaar: `speed`, `zoom_near`, `zoom_far`, `route`).
-Een toets, muisklik of scroll geeft de camera aan jou (vrije camera); `active` uit =
-meteen zelf rondkijken. Over het beeld ligt een vignet (node `Vignet`,
+In de stad loop je rond met het gekozen karakter (node `Speler`, zie "De speler" hieronder);
+de camera volgt de speler (node `Volgcamera`) en is niet zelf te bewegen: geen vrije camera,
+geen rondvlucht. Over het beeld ligt een vignet (node `Vignet`,
 `scripts/effects/vignette.gd` + `vignette.gdshader`) dat alleen de randen wat afdonkert
 (het begint op 75% van het midden, `inner`; het midden blijft schoon)
 (`strength`, `inner`, `softness`, uit met `enabled`): een laag die over het beeld wordt
 gemengd, zonder schermkopie of blur, dus vrijwel gratis. Er is geen tilt-shift en geen
 scherptediepte (DOF) meer: het beeld is overal scherp.
+
+De speler (node `Speler`, `scripts/player/player_controller.gd`)
+------------------------------------------------------------------
+- Het karakter van het karakterscherm (`PlayerCharacter.current_id()`), als voxelfiguur
+  (`PlayerModel`). Iedereen begint op het Stationsplein bij Centraal (`START_PLACE`, op een
+  pleintegel), slapend op zijn rug met opstijgende z'tjes; als de stad geladen is en
+  `sleep_seconds` (3 s) voorbij zijn, of bij een toets, wordt hij wakker en staat op
+  (`wake_time`). Slapend loopt hij niet en lopen honger en uithoudingsvermogen niet terug
+  (`start_asleep` uit = staand beginnen).
+- Lopen: WASD of pijltjes, langs het iso-beeld (omhoog = het beeld in); Shift = rennen
+  zolang er uithoudingsvermogen is (`walk_speed` 3 m/s, `run_speed` 6,5 m/s). Geen
+  CharacterBody: elke physics-stap een straal omlaag naar de grond (opstapjes tot `max_step`
+  0,6 m, niet van een rand van meer dan `max_drop` 1,3 m, niet het water in, niet steiler dan
+  `max_slope`) en een cilinder zo breed als de figuur die nergens tegenaan mag (muren,
+  lantaarnpalen); geblokkeerd glijdt hij langs de muur. Het gebruikt de collision die de
+  tiles al hebben (Grond trimesh, Gebouwen blok, Props doos). De speler heeft zelf een
+  botsvorm met de buitenmaten van de figuur (`Botsvorm`, een AnimatableBody3D), zodat
+  wrakken ertegen botsen.
+- Stats (de HUD toont ze): honger begint vol en loopt altijd langzaam leeg
+  (`hunger_per_minute` 10, bij rennen 2×); leeg kost het elke `starvation_interval` 3 s
+  `starvation_damage` 2 gezondheid. Rennen kost uithoudingsvermogen, dat na 0,8 s weer
+  aanvult; leeggerend ben je uitgeput tot 25% terug is. Bij 0 gezondheid ga je dood: de
+  figuur valt om, de HUD toont het doodsscherm ("JE BENT DOOD", het dood-deuntje; Enter =
+  opnieuw met hetzelfde karakter, Escape = hoofdmenu).
+- Aangereden: overlapt de voetafdruk van een voertuig (`Vehicle.footprints`) die van de
+  speler bij meer dan 1,2 m/s, dan verliest hij `damage_per_speed` × v +
+  `damage_per_speed_squared` × v² gezondheid (50 km/h ≈ 55), vliegen er scherven en stof
+  (`CrashBurst`), schudt het beeld en wordt de figuur een RigidBody3D (`Valpartij`, de doos
+  van de figuur) die met de snelheid van het voertuig wegvliegt en tuimelt. Ligt hij stil,
+  dan staat hij op de dichtstbijzijnde beloopbare plek op.
+- Pijn (aanrijding, honger, slecht eten) laat de figuur knipperen zoals in oude games
+  (`hurt_blink_time`); na het opstaan knippert hij en is hij even onkwetsbaar.
+- Inventaris: `inventory` (item -> aantal, `scripts/player/items.gd` met `START_ITEMS` per
+  karakter); `use_item` past het effect van een item toe op de stats.
+- Test: `tools/check/player_test.gd`.
 
 Op de rails rijden twee RandstadRails (`scripts/vehicles/randstadrail.gd`, twee wagons, 22,25 m) en
 twee NS-treinen (`ns_train.gd`, drie wagons, 40 m; elk blijft op zijn eigen spoor, `own_track`), beide op `rail_vehicle.gd`. Ze passen op hun perrons: een tramhalte
@@ -236,30 +268,24 @@ Allemaal zijn het een `Vehicle` (`scripts/vehicles/vehicle.gd`):
   brommer en scooter 22°, fietsen 15°), geleidelijk (`LEAN_RATE`).
 - De voorwielen sturen hooguit 40° (`max_steering_degrees`): een wiel steekt dan wat uit de
   wielkast, net als bij een echte auto.
-Druk op F en de camera volgt de sedan (node `Volgcamera`, `scripts/camera/follow_camera.gd`). Die jaagt de
-auto niet zelf na, maar een punt dat doorlopend vóór de auto ligt: waar hij over
+De camera volgt de speler (node `Volgcamera`, `scripts/camera/follow_camera.gd`, `target` = `../Speler`).
+Hij jaagt de speler niet zelf na, maar een punt dat doorlopend vóór hem ligt: waar hij over
 `lead_time` seconden is bij zijn gladgestreken snelheid (`velocity_smoothing`, begrensd
 tot `max_lead` van het beeld). Daar volgt hij op een kritisch gedempte veer
 (`glide_time`), zodat de camera bij een constante snelheid even gelijkmatig meebeweegt
 en bij optrekken en remmen geleidelijk meegaat.
-Hij zoomt van 16 m in beeld bij stilstand (`zoom_still`) tot 55 m (`zoom_fast`) en gaat
-mee de tunnelbak in. Rijdt de auto onder iets door, dan zakt de camera al in de open bak
-achter hem en volgt hem als achtervolgcamera door de tunnel, die zijn eigen lampen heeft
-(node `Tunnelverlichting`, `scripts/world/tunnel_lights.gd`); pas als auto en camera weer
-buiten zijn, glijdt hij omhoog (`tunnel_*`). Om de 20 tot 35 s (`closeup_every`) maakt hij een close-up: hij
-zoomt in tot 7 m, zakt wat lager en zwaait om de auto heen (`closeup_*`, uit met
-`closeups`). Tijdens het volgen laat B de SUV als spookrijder op de gevolgde auto
-inrijden (demo-botsing, `Vehicle.drive_into`), en zet T het spel op 4× snelheid en weer
-terug (`fast_forward`, de physics-stappen schalen mee). Tab volgt het volgende voertuig en
-Shift+Tab het vorige, ook de treinen en trams (die staan in de lijst vlak vóór de sedan, dus
-Shift+Tab is er het snelst). Het beeld glijdt er in `switch_time` seconden heen en zoomt op een
-lange weg wat uit (`switch_zoom_out`, `switch_zoom_out_most`); F volgt daarna het laatst gevolgde
-voertuig. Een andere toets geeft je de vrije camera terug. De auto rijdt met een vaste
+Hij zoomt van 18 m in beeld bij stilstand (`zoom_still`) tot 24 m bij rennen (`zoom_fast`,
+`fast_speed`) en gaat mee de tunnelbak in: gaat de speler onder iets door, dan zakt de camera in
+de open bak erachter en volgt als achtervolgcamera (`tunnel_*`; de tunnel heeft eigen lampen,
+node `Tunnelverlichting`). Close-ups kunnen nog (`closeups`, standaard uit). Springt het doel
+(opstaan na een aanrijding), dan glijdt het beeld er in `switch_time` s heen. Er zijn geen
+debugtoetsen meer (geen ander voertuig volgen, geen tijd versnellen, geen demo-botsing; die
+zit alleen nog in `tools/check/crash_test.gd`). De auto rijdt met een vaste
 stap van 60 Hz; zijn carrosserie (node `Carrosserie`) wordt elk frame tussen de laatste
 twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
-- Doorkijk (node `Doorkijk`, `scripts/world/building_fade.gd`): zolang de camera de auto
+- Doorkijk (node `Doorkijk`, `scripts/world/building_fade.gd`): zolang de camera de speler
   volgt, vervaagt elk gebouw (aaneengesloten cellen van de laag Gebouwen) dat tussen de
-  auto en de camera staat als geheel, en komt terug als het zicht weer vrij is. Alles wat
+  speler en de camera staat als geheel, en komt terug als het zicht weer vrij is. Alles wat
   uit hun cel steekt (erkers, winkelpuien, luifels) en hun gevel-details vervaagt mee: de
   samengevoegde gebouwen dragen per vertex de cel waar ze bij horen (`layer_baker.gd`,
   CUSTOM0) en de shader kijkt die cel op in een fade-kaart (`voxel_fade.gdshaderinc`).
@@ -416,45 +442,61 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
   (`FADE_TO_MENU`) en het menu komt daar in 3,5 s uit omhoog (`UP_FROM_BLACK`), terwijl de
   muziek van intro naar menu overvloeit. Alleen de spatiebalk breekt hem af en gaat naar het
   hoofdmenu (andere toetsen, zoals de volumetoetsen, en de muis doen niets). Rechtsonder staan, zoals in het hoofdmenu en het karakterscherm, de toetsen
-  op één regel: "[SPATIE] OVERSLAAN  [ENTER] SNELLER". De sterren fonkelen. Muziek: `assets/audio/muziek/approach_vector_intro.ogg`; de intro loopt op die
-  muziek (de klok is waar de muziek is): het logo fadet in van 6 tot 8 s, heel groot, bijna buiten
-  beeld, en krimpt langzaam naar zijn normale formaat tot de eerste grote inzet (16,0 s):
+  op één regel: "[SPATIE] OVERSLAAN  [ENTER] SNELLER". De sterren fonkelen. Muziek: `assets/audio/muziek/zwervr_intro.ogg` (128 BPM, 64 maten van 1,875 s, 120 s, geen lus); de intro loopt op die
+  muziek (de klok is waar de muziek is): het logo fadet in van 5 tot 6,5 s, heel groot, bijna buiten
+  beeld, en krimpt langzaam naar zijn normale formaat tot de drop (maat 9, 15,0 s):
   daar wijkt het in 2,5 s de diepte in en fadet het daarbij uit (`LOGO_SECONDS`), met een
   plop (`UiSounds` "plop") als het verdwijnt, en komt de tekst op, de
-  zwerver op de tweede (63,9 s), zijn vragen direct na de stilte (111,5 s), de slotzin op het
-  rustige slot (142,2 s), het menu waar de muziek uitfadet (172,5 s; `LINE_IN_AT` …
+  zwerver op de klim (maat 25, 45,0 s), de handhavers op de tweede helft van het refrein (maat 41, 75,0 s), de
+  winkelwagen op de systeemcrash (maat 57, 105,0 s: één harde klap, daarna zonder drums), het menu waar de muziek sterft (120,0 s; `LINE_IN_AT` …
   `END_AT`, `CRAWL_CUES`). Zo traag als de muziek toelaat: weinig ruimte tussen de alinea's
   (`PARAGRAPH_GAP`), en de laatste alinea rolt niet van boven weg maar komt in de verte tot
   rust (`CRAWL_REST`) terwijl het verhaal de laatste `CRAWL_FADE` s uitfadet. Bij het einde of overslaan loopt de muziek door in het menu en
   fadet daar in 2 s uit, terwijl de menumuziek infadet. Met het CRT-beeld en dezelfde storingen als het menu
-  (rollende band, VHS-tracking; `CrtDisturbance`). De hele intro duurt zo lang als de muziek: 172,5 s. Test: `tools/check/intro_test.gd` (met `-- volledig`:
+  (rollende band, VHS-tracking; `CrtDisturbance`). De hele intro duurt zo lang als de muziek: 120 s. Test: `tools/check/intro_test.gd` (met `-- volledig`:
   de hele intro, met de gemeten duur).
 - Karakterscherm (`scenes/karakter.tscn`, `scripts/ui/character_creation.gd`): een eigen stap
   tussen NIEUW SPEL en de stad, in dezelfde stijl (nachtlucht met sterren, geen stad erachter,
-  CRT-beeld). Links een lijst die verticaal scrollt met de archetypes uit `scripts/player/player_character.gd`
-  (`ARCHETYPES`: bijnaam, ondertitel met hun kracht, startlevel, een kort verhaal en de stats;
-  100 is gewoon; de verslaving staat erin voor het spel maar niet op het scherm):
-  Jos ("de ijzeren maag": leven 70, stamina 60, honger 140), Martin ("de renner": 100, 150, 70),
-  Ufo Piloot ("de onverwoestbare": 150, 60, 70) en Willem ("de oude rat": overal 80, maar
-  level 3 in plaats van 1) en Sjaan ("de straatmuzikant": 90, 110, 90; als enige begint ze met
-  € 25 in de pet, `start_money`, die de HUD als geld zet, en haar hond Bobbie zit bij haar;
-  zo'n eigenschap staat als "EXTRA" in het detail, `perk`). Per regel een thumbnail van het gezicht, de naam, de ondertitel en het
-  level; de gekozen regel in amber, de andere grijs gedimd. Rechts de gekozen in het groot: het
-  hele poppetje in 3D, langzaam om zijn as draaiend (`SPIN`; na elke keuze staat het eerst
-  `FRONT_HOLD` s recht van voren, zodat het gezicht te zien is), de naam, de ondertitel, het level, het
-  verhaal en de stats als segmentbalken van de HUD (aandeel van `STAT_CEILING`). Pijltjes of 1-9
-  kiezen, Enter of BEGIN begint, Esc gaat terug naar het hoofdmenu; de muis: klikken kiest,
-  nog eens klikken op de gekozen begint, het wiel scrollt de lijst. De keuze blijft bewaard in `PlayerCharacter.chosen_id` (een statische variabele) en de
-  HUD neemt die over: het portret linksboven (het gezicht in 3D), de naam, het level en het
-  maximum van de stats.
-  De poppetjes (`scripts/player/player_model.gd`) zijn alle vier zwervers (versleten kleren,
-  gaten en lappen, hun spullen bij zich) en worden in code uit voxels van 0,0625 m gebouwd (geen
-  geïmporteerde tile): elke voxel één vlakke kleur (sRGB, `vertex_color_is_srgb`), weinig en
-  duidelijk verschillende kleuren per poppetje. Ze bewegen een beetje (Jos zwaait, Martin
-  trilt, Sjaan wiegt mee met haar muziek, Willem ademt). `scripts/ui/widgets/player_portrait.gd`
-  toont er een in een eigen SubViewport met neutraal licht. Muziek: `karakterkeuze_loop.ogg`
-  (`tools/music/songs/character.py`), zacht (-19 dB) en infadend.
-  Test: `tools/check/character_test.gd` (`-- figures`: alleen de poppetjes).
+  CRT-beeld). De archetypes staan in `scripts/player/player_character.gd` (`ARCHETYPES`: bijnaam,
+  ondertitel met hun kracht, moeilijkheid 1-5, startlevel, eventueel een eigenschap die alleen
+  zij hebben (`perk`), een kort verhaal en de stats; 100 is gewoon; de verslaving staat erin
+  voor het spel maar niet op het scherm):
+  Jos ("de ijzeren maag": leven 70, stamina 60, honger 140; moeilijk), Martin ("de renner":
+  100, 150, 70), Ufo Piloot ("de onverwoestbare": 150, 60, 70), Willem ("de oude rat": overal
+  80, maar level 3), Sjaan ("de straatmuzikant": 90, 110, 90; begint met € 25 in de pet,
+  `start_money`, die de HUD als geld zet; makkelijk) en
+  Gerrit ("de visser": 120, 80, 120; kan vissen in de grachten).
+  Links de lijst: alle zes precies verdeeld over de hoogte van het detailpaneel (hele pixels,
+  `ENTRY_GAP`; pas onder `ENTRY_LOWEST` per regel zou hij scrollen), per regel een thumbnail van
+  het gezicht, de naam, de ondertitel en het level; de gekozen in amber, de andere grijs. Rechts
+  de gekozen in het groot: het hele poppetje in 3D dat op de plaats loopt (`walking`, `WALK_IN`)
+  en langzaam om zijn as draait (`SPIN`; bij elke keuze begint het meteen te draaien, steeds van
+  voren af aan), rechtsboven de moeilijkheid (MOEILIJKHEID, vijf blokjes van groen naar rood en de
+  naam), de naam, de ondertitel, het level, de eigenschap ("EXTRA", teal), het verhaal en de
+  stats als segmentbalken van de HUD (aandeel van `STAT_CEILING`). Pijltjes of 1-9 kiezen, Enter
+  of BEGIN begint, Esc gaat terug naar het hoofdmenu; met de muis kiest een klik, nog een klik op
+  de gekozen begint. De keuze blijft bewaard in `PlayerCharacter.chosen_id` (een statische
+  variabele) en de HUD neemt die over: het portret linksboven (het gezicht in 3D), de naam, het
+  level, het geld en het maximum van de stats.
+  De poppetjes (`scripts/player/player_model.gd`) zijn allemaal zwervers (versleten kleren,
+  hun spullen bij zich) en worden in code uit voxels van 0,0625 m gebouwd (geen geïmporteerde
+  tile). Armen en benen zijn losse delen (`RIGS`: de voxels van elk ledemaat, met wat het
+  vasthoudt) die om hun eigen gewricht draaien, met ruimte ertussen: `walking` laat ze lopen,
+  `pose_limb` zet er een met de hand, en de rustbewegingen gebruiken ze (Jos zwaait, Martin
+  tikt met zijn voet, Sjaan wiegt mee, de anderen ademen). Schaduw: per vlak lichter
+  boven en donkerder opzij en onder, en ambient occlusion per voxelhoek; elke kleur iets
+  verzadigder en met meer contrast (`SATURATION`, `CONTRAST`). Materialen per soort
+  (`VoxelFigure.mark`): stoffen en haar met een eigen shader (`scripts/player/figure.gdshader`:
+  geweven draden die over en onder elkaar lopen (linnenbinding, keper bij spijkerstof met
+  een lichtere inslag), elke draad rond met een eigen gebolde normaal en een iets andere tint,
+  rijen steken bij breisel, fijn en glanzend bij nylon, strengen bij haar, vervaagd waar het
+  kleiner dan een pixel wordt; `CLOTH`), huid, ogen, leer,
+  plastic, metaal en glas als gewone materialen met hun eigen glans (`MATERIALS`).
+  `scripts/ui/widgets/player_portrait.gd` toont een poppetje in een eigen SubViewport: warm
+  hoofdlicht met schaduw (ook op een onzichtbare vloer die alleen de schaduw toont), zacht
+  vul- en tegenlicht, een lage grijze ambient en een eenvoudige lucht voor de reflecties.
+  Muziek: `karakterkeuze_loop.ogg` (zacht: strijkers, FM-piano, het motief rustig; 96 BPM, 40 s, lus), zacht (-19 dB) en
+  infadend. Test: `tools/check/character_test.gd` (`-- figures`: alleen de poppetjes).
 - Hoofdmenu (`scenes/hoofdmenu.tscn`, `scripts/ui/main_menu.gd`), naar het ontwerp
   "Titelscherm" in de HUD-stijl: titel ZWERVR, menu (VERDERGAAN en LADEN uitgegrijsd tot er
   opslag is; NIEUW SPEL toont "LADEN…" en opent het karakterscherm (hieronder), dat daarna de stad opent (op de hoofdthread: op een achtergrondthread crashte het met het LOD-systeem; daarna het laadscherm van de stad);
@@ -528,9 +570,52 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
   omgekeerd (`_play_exit`): de knoppen faden weg, de titel schuift naar links uit beeld, alles
   vervaagt naar inktblauw met een sterke trackingstoring, en het laadscherm van de stad (ook
   inktblauw) neemt het over.
-  Muziek: `assets/audio/muziek/nachtstad_menu_loop.ogg` (een eigen stuk, `tools/music/songs/menu.py`: 124 BPM, andere akkoorden en groove dan de intro, zodat het niet als de intro die doorgaat klinkt), heel en in een lus, die bij het openen meteen op vol volume
+  Muziek: `assets/audio/muziek/nachtstad_menu_loop.ogg` (een eigen stuk in de huisstijl hieronder: energiek en recht, 128 BPM, 48 maten = 90 s, met drijvende FM-bas en koperstoten, zodat het niet als de intro die doorgaat klinkt), heel en in een lus, die bij het openen meteen op vol volume
   begint (geen infade) en bij het verlaten (NIEUW SPEL, AFSLUITEN) in 2 s uitfadet, ook als de
   stad al opent (`MUSIC`, `MUSIC_VOLUME_DB`, `MUSIC_FADE_OUT`).
+  Stadsmuziek: per wijk een eigen loop (`CITY_MUSIC_BY_AREA` in `scripts/ui/hud.gd`, op de
+  wijknamen uit de "wijken"-metadata; andere wijken spelen `stad_centrum_loop.ogg`), na het
+  kaartdeuntje (`deuntje_kaart_start.ogg`) infadend, bij een wijkwissel in 2,5 s overvloeiend
+  op dezelfde plek in de maat, en zachter zolang het pauzemenu open is (`CITY_MUSIC_VOLUME_DB`,
+  `CITY_MUSIC_PAUSED_DB`). Alle vijf: 128 BPM, F mineur, 40 maten = 75 s, dezelfde akkoorden
+  per maat (`tools/megadrive/stad_plan.py`), naadloze lussen:
+  `stad_centrum_loop.ogg` (Centrum, Grote Markt, Paleis Noordeinde, Lange Voorhout: funky en
+  levendig, slapbas, e-piano, koper), `stad_torens_loop.ogg` (Centraal Station, De Resident,
+  Beatrixkwartier, Prins Clauslaan: koel en glanzend, rechte deep house, klokjes),
+  `stad_groen_loop.ogg` (Malieveld, Koekamp: rustig en ruimtelijk, strijkers, nauwelijks
+  drums), `stad_woonwijk_loop.ogg` (Bezuidenhout, Bezuidenhout-Oost, Schilderswijk, Laak,
+  Voorburg: rauw, straat, zware new-jack-swing-shuffle) en `stad_industrie_loop.ogg`
+  (Binckhorst, A12: hard, mechanisch, techno).
+  Alle muziek (`assets/audio/muziek/`) is één huisstijl in de klank van de Sega Mega Drive
+  (FM, PSG-blokgolven, PCM-drums; eigen composities), in F mineur rond Fm – Gb – Bbm, en in
+  elk stuk komt het signatuurmotief terug op de FM-lead (grondtoon, terts, secunde, kwint
+  omlaag in achtste-zestiende-zestiende-kwart). De regels (klankpalet, harmonie, motief,
+  tempo's, grooves, vorm, mixniveaus, originaliteit) en de lijst van alle stukken met waar ze
+  spelen staan in **`docs/MUZIEK.md`**: elk nieuw stuk volgt die. Opnieuw renderen:
+  `tools/megadrive/render.sh` (alles; `render.sh gevecht` één stuk, `render.sh deuntjes dood`
+  één deuntje; Python via `uv` met numpy en soundfile).
+  Verkeersgeluiden in dezelfde Mega Drive-klank (`tools/megadrive/geluiden.py`,
+  `render.sh geluiden`; mono, in `assets/audio/geluiden/`): per voertuig (auto, brommer, bus,
+  tram, trein) een langsrij-geluid (`*_voorbij.ogg`, met Doppler) en een naadloze motorlus
+  (`*_motor_loop.ogg`, voor een AudioStreamPlayer3D op het voertuig), botsingen
+  (`auto_botsing_hard.ogg`, `auto_botsing_licht.ogg`), `tram_bel.ogg`, `trein_hoorn.ogg` en
+  `bus_remmen.ogg`, en voor de hulpdiensten een eigen twee-toonsirene per dienst
+  (`politie_sirene_loop.ogg`, `ambulance_sirene_loop.ogg`, `brandweer_sirene_loop.ogg`, plus
+  `sirene_yelp_loop.ogg`), voorbijrazen met sirene (`*_voorbij.ogg`), `brandweer_hoorn.ogg` en
+  de politiehelikopter (`helikopter_loop.ogg`, `helikopter_voorbij.ogg`); zie `docs/MUZIEK.md`.
+  Ruimtelijk geluid (`scripts/audio/spatial_audio.gd`, autoload `RuimtelijkGeluid`, alleen
+  actief als de speler er is): het oor (AudioListener3D) zit bij de speler of het gevolgde
+  voertuig en draait mee met de camera, zodat links en rechts op het scherm ook links en rechts
+  klinkt. De `MAX_EMITTERS` dichtstbijzijnde voertuigen krijgen hun motorlus (toonhoogte volgt de
+  snelheid, plus Doppler), hulpdiensten hun sirene zolang `siren_on`; botsingen, busremmen, de
+  trambel bij vertrek en soms de treinhoorn klinken vanzelf, de helikopter heeft zijn rotor.
+  Afscherming met raycasts: drie stralen van het oor naar elke bron tegen de stad (laag 1);
+  staat er een gebouw tussen, dan klinkt de bron gedempt (low-pass) en zachter. Echo en galm
+  volgen de omgeving: stralen rondom het oor meten hoe ingesloten je staat en hoe ver de
+  gevels links en rechts zijn; daarmee stelt het de echo (vertraging per gevel, flutter tussen
+  smalle gevels) en de galm (nat en groot in een straat of tunnel, droog op een plein of in
+  het park) van de bus `Verkeer` in; de muziek blijft droog. Test:
+  `tools/check/spatial_audio_test.gd`.
   Geluidseffecten (`scripts/ui/ui_sounds.gd`, `UiSounds.play(node, naam)`, in code gemaakt in
   de stijl van de FM-geluidschip van een 16-bit console: twee-operator-FM, snelle
   toonhoogtesweeps, 6-bit korrel; geen samples): `kies` (ander item kiezen: twee snelle heldere
@@ -575,7 +660,9 @@ Projectstructuur
                            libraries (gemaakt), fonts
     scenes/                stad.tscn (de kaart), intro, hoofdmenu, karakter, menu_kaart(_bron)
     scripts/               spelcode
-      camera/              iso_camera, free_camera, follow_camera, fly_over
+      camera/              iso_camera, free_camera (alleen nog voor de tools), follow_camera
+      player/              player_controller (de speler in de stad), player_character
+                           (archetypes), player_model (voxelfiguur), items
       player/              player_character (archetypes en keuze), player_model (voxelpoppetjes)
       world/               de kaart zelf: level_of_detail, layer_baker, building_fade,
                            ground_map, grass_blades, tint_map, tint_area, day_cycle,
@@ -597,13 +684,13 @@ Projectstructuur
       build/               build_city (+ city/: de bouwer in delen), build_menu_map,
                            build_libraries, build_previews, bake_maps
       check/               coverage, corner_test, crash_test, drive_test, fps_test,
-                           axle_test, follow_switch_test, hud_test, lane_choice_test, traffic_test,
+                           axle_test, player_test, hud_test, lane_choice_test, traffic_test,
                            clash_test, intro_test, menu_test, mesh_audit, offscreen_audit,
                            overlap_test, rail_stop_test, triangle_count
       shots/               shot_tiles, shot_iso, shot_scene, shot_vehicles
       voxgen/              Python-generator van de tiles (zie "Tiles (opnieuw) genereren")
-      music/               generator van de muziek
-    docs/                  Goxel-handleiding (GOXEL.md -> handleiding_goxel.html)
+      megadrive/           Python-generator van alle muziek en de verkeersgeluiden in Mega Drive-stijl (FM, PSG, PCM-drums)
+    docs/                  Goxel-handleiding (GOXEL.md -> handleiding_goxel.html), MUZIEK.md (de muzikale huisstijl)
 
 
 Snel starten
@@ -613,20 +700,14 @@ Snel starten
 2. Open `scenes/stad.tscn`.
 3. Selecteer een GridMap-node (Grond / Gebouwen / Details / Props); onderin
    verschijnt het tile-palet. Zoek op naam, klik een tile, en klik in de 3D-view.
-4. F5 start de stad (`scenes/stad.tscn`, zie boven). De camera staat standaard in
-   isometrische stand: een perspectiefcamera met een smalle kijkhoek (20°),
-   45 graden gedraaid en ~35 graden naar beneden (`scripts/camera/iso_camera.gd`).
-   Een echte perspectiefcamera, omdat Godot schaduwsplits en SSR alleen daarmee
-   goed berekent; zoomen = de afstand veranderen. In de iso-stand: WASD of de
-   pijltjestoetsen = over de kaart schuiven, muiswiel = in- en uitzoomen, Q/E = vloeiend
-   uit- en inzoomen, rechtermuisknop ingedrukt = de kaart verslepen, Z/X = het beeld een
-   kwartslag naar links/rechts draaien, middelste muisknop ingedrukt = vrij draaien, Shift =
-   sneller (`iso_pan_speed`, `iso_zoom_step`, `iso_zoom_speed`, `iso_turn_speed`,
-   `iso_turn_sensitivity`; 6 tot 600 m in beeld). Draaien gaat om het punt midden in beeld;
-   de iso-helpers (`iso_camera.gd`: `direction`, `position`, `place`) nemen een draaiing mee. Zet `isometric`
-   op de Camera-node uit voor een vrije perspectief-camera (rechtermuisknop =
-   kijken, WASD = bewegen, Q/E = omlaag/omhoog, Shift = sneller, muiswiel = snelheid).
-   `iso_size` bepaalt hoeveel meter van de kaart in beeld is.
+4. F5 start de stad (`scenes/stad.tscn`, zie boven). Je loopt rond met het gekozen
+   karakter (WASD of pijltjes, Shift = rennen, Tab/I = spelmenu, Escape = pauze); de camera
+   volgt je in isometrische stand: een perspectiefcamera met een smalle kijkhoek (20°),
+   45 graden gedraaid en ~35 graden naar beneden (`scripts/camera/iso_camera.gd`). Een
+   echte perspectiefcamera, omdat Godot schaduwsplits en SSR alleen daarmee goed berekent.
+   De vrije camera (`scripts/camera/free_camera.gd`, op de Camera-node: schuiven, zoomen,
+   draaien) is in het spel uit: de Volgcamera neemt hem bij de start over. Hij werkt nog
+   in de tools, die de Volgcamera weghalen (`Common.instantiate`).
 
 Vox Tiles-scene en editor-weergave: bovenaan het Build-paneel staat het vinkje
 "Vox Tiles scene". Het markeert de geopende scene als scene die met de tiles gebouwd
@@ -1281,6 +1362,36 @@ Prestaties en uiterlijk
     niet af. Scanlijnen (`scanlines`, `scanline_strength` 0,1) en een iets donkerdere rand
     liggen over beide.
   Test: `tools/godot.sh --headless --script tools/check/hud_test.gd`.
+- Spelmenu (`scripts/ui/game_menu.gd`, `GameMenu`, een CanvasLayer die de HUD als kind
+  krijgt; ontwerpen "Inventory & character", "Questlog" en "Wereldkaart", 1280 x 720, schaalt
+  mee zoals de HUD, met scanlijnen en de lichte buiging van de HUD). Helemaal in code
+  opgebouwd. Bovenin een tabbalk "[Q] INVENTARIS QUESTS KAART [E]" (open tab amber), rechts
+  het geld en "[ESC] SLUITEN".
+  - INVENTARIS: links het karakter (naam, "LV n · subtitel", het figuur in 3D dat langzaam
+    draait, de vier stats als blokjesbalken), midden ALLES/ETEN/DRINKEN/SPULLEN/SLEUTEL en een
+    raster van 6 x 5 vakjes (rand in de kleur van de zeldzaamheid, aantal rechtsonder), rechts
+    het gekozen ding: zeldzaamheid, naam, soort, effecten (groen = goed voor je, rood = slecht;
+    bij `overprikkeldheid` is minder goed), de tekst cursief, de knop uit `action` (ETEN,
+    DRINKEN...) als het iets doet en WEGGOOIEN (niet bij sleutelvoorwerpen). De spullen staan
+    in `scripts/player/items.gd` (`ITEMS`, `START_ITEMS`); de pixeliconen bij `icon` staan in
+    `GameMenu.ITEM_ICONS` (of de HUD-iconen `heart`, `bolt`...), zonder icoon dat van de soort.
+  - QUESTS: links VERHAAL / ZIJMISSIES met de opdrachten uit `hud.quests()` (het formaat van
+    `set_quests`; optioneel ook `description`, `giver`, `rewards` = lijst teksten en per stap
+    `progress`), rechts de gekozen opdracht met doelen (vinkjes) en beloningen. Zonder
+    opdrachten: "Nog geen opdrachten. Zwerf wat rond."
+  - KAART: de hele kaart van het kaartje (`hud.minimap_texture()`, pixels scherp), de speler als
+    witte driehoek, de plekken uit `places` als blokjes (klikken of pijltjes), wijken waar je
+    nog niet was (`hud.visited_areas()`) onder een mist. Rechts de gekozen plek (naam, wijk,
+    afstand), waar je nu bent (wijk en straat) en een legenda; linksonder X/Y in meters.
+  - Toetsen: Tab of I opent de inventaris, J de quests, M de kaart; Q/E wisselt van tab; Tab,
+    Escape of nog eens dezelfde letter sluit. Pijltjes of WASD kiezen, Enter gebruikt, X
+    gooit weg, 1-5 kiest een soort; de muis werkt ook. Open = het spel staat stil (de boom
+    gepauzeerd); niet tijdens het pauzemenu of als de speler dood is.
+  - Gegevens van de node `Speler` (`archetype_id`, `level`, `money`, `stat(naam)`,
+    `inventory`, `use_item`, `drop_item`, `is_dead`, signalen `inventory_changed` en
+    `stats_changed`); zonder speler het gekozen karakter en zijn `START_ITEMS`.
+    API: `open(tab)`, `close()`, `is_open()`.
+  Test: `tools/godot.sh --headless --script tools/check/game_menu_test.gd`.
 - Lettertype: Rubik (`assets/fonts/Rubik.ttf`, OFL-licentie), ingesteld als
   projectfont.
 - Meten: `Godot --script tools/check/fps_test.gd -- 20 flyover` of

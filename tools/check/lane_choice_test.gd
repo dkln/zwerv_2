@@ -257,7 +257,7 @@ func _test_vehicle(scene: Node) -> void:
 			slow_stretch.append(along)
 			choices[along] = {"tile": library.get_item_name(ground.get_cell_item(along)), "speed": SLOW_KMH}
 	ground.set_meta(RoadNetwork.LANE_CHOICES, choices)
-	for node_name in ["DetailNiveau", "Rook", "Grassprieten", "Rondvlucht", "Volgcamera", "Verkeerslichten"]:
+	for node_name in ["DetailNiveau", "Rook", "Grassprieten", "Volgcamera", "Verkeerslichten"]:
 		if scene.has_node(node_name):
 			scene.get_node(node_name).free()
 	scene.get_node("Verkeer").vehicle_count = 0
