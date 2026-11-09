@@ -4,11 +4,13 @@ extends SceneTree
 ## editor has nothing left to do ("Creating mesh previews") when it opens a scene.
 ## Items whose cached preview matches their current import are skipped; "all" renders
 ## every item again. Renders BATCH items per frame, each in a small viewport of its own;
-## an empty render is tried again. Needs a display (not --headless).
+## an empty render is tried again; shows its progress per library (tools/progress.gd).
+## Needs a display (not --headless).
 ## usage: tools/godot.sh --script tools/build/build_previews.gd [-- all]
 
 const Common = preload("res://tools/tool_common.gd")
 const Builder = preload("res://addons/vox_tiles/library/library_builder.gd")
+const Progress = preload("res://tools/progress.gd")
 const BATCH := 48
 
 var _slots := []   # [viewport, camera, mesh instance] per slot
@@ -45,7 +47,10 @@ func _init() -> void:
 				done[mesh] = null
 				todo.append(id)
 		# render in batches; empty renders go round once more
+		var progress := Progress.new("previews %s" % cat, todo.size())
 		for attempt in 2:
+			if attempt == 1 and not todo.is_empty():
+				progress = Progress.new("previews %s: lege opnieuw" % cat, todo.size())
 			var again := []
 			for start in range(0, todo.size(), BATCH):
 				var ids: Array = todo.slice(start, start + BATCH)
@@ -67,6 +72,8 @@ func _init() -> void:
 					rendered += 1
 				for slot in _slots:
 					slot[2].mesh = null
+				progress.step(lib.get_item_name(ids[-1]), ids.size())
+			progress.finish()
 			todo = again
 			if todo.is_empty():
 				break

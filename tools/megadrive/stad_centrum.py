@@ -1,8 +1,8 @@
 """'Stad centrum': the city loop of the old town (Centrum, Grote Markt, Paleis Noordeinde,
 Lange Voorhout): funky and lively, shopping streets at night.
 
-One of the five neighbourhood loops on the shared plan (stad_plan.py: 128 BPM, F minor, 40 bars
-= 75 s, the same chords, so the HUD can crossfade between them). Club house with a light
+One of the five neighbourhood loops on the shared plan (stad_plan.py: 104 BPM, F minor, 40 bars
+= 92 s, the same chords, so the HUD can crossfade between them). Club house with a light
 new-jack-swing shuffle, FM slap bass, FM electric piano, brass and strings, the motif on the FM
 lead, PSG arpeggios, echo and harmony line, PCM drums and PSG-noise hats.
 
@@ -16,6 +16,7 @@ lead, PSG arpeggios, echo and harmony line, PCM drums and PSG-noise hats.
 House style: style.py, docs/MUZIEK.md.
 Render: tools/megadrive/render.sh stad_centrum  (writes assets/audio/muziek/stad_centrum_loop.ogg)
 """
+import stad_plan
 import style
 from stad_plan import A_CHORDS, B_CHORDS, BARS, BPM, BREAK_CHORDS, C_CHORDS, TAG_CHORDS
 from style import Song
@@ -125,7 +126,7 @@ def main() -> None:
         style.psg_arpeggio(song, bar, chord, "up", 0.75, every=2)
         style.drum_bar(song, bar, fill="tom" if offset == 3 else None)
 
-    song.render()
+    stad_plan.finish(song)
 
 
 if __name__ == "__main__":

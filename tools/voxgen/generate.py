@@ -88,7 +88,7 @@ def main():
 
     made = skipped = 0
     t0 = time.time()
-    for n in names:
+    for tile_number, n in enumerate(names, 1):
         path = os.path.join(OUT, n + ".gox")
         exists = any(os.path.exists(os.path.join(OUT, n + e)) for e in TILE_EXTENSIONS)
         if (exists or is_alias(OUT, n)) and not a.force:
@@ -102,7 +102,7 @@ def main():
                 os.remove(os.path.join(OUT, n + ext))
         write_metadata(path, n)
         made += 1
-        print(f"  {n:60s} {m.sx}x{m.sy}x{m.sz}  {cnt} voxels")
+        print(f"[ {100 * tile_number // len(names):3d}% ] {n:60s} {m.sx}x{m.sy}x{m.sz}  {cnt} voxels")
     print(f"{made} created, {skipped} skipped (already existed) in {time.time() - t0:.1f}s")
     if made:
         _dedupe()

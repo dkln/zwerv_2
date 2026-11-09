@@ -97,7 +97,8 @@ voor de hele notatie (`F5:4`, `-:2`, `R:2`, `3:2`, `5:2`, ...).
 
 | Soort stuk | Tempo |
 |---|---|
-| intro, menu, de vijf stadsloops, handelaar, deuntjes | 128 BPM (maat = 1,875 s) |
+| intro, menu, handelaar, deuntjes | 128 BPM (maat = 1,875 s) |
+| de stadsloops (achtergrondmuziek) | 104 BPM (maat = 2,31 s) |
 | gevecht | 150 BPM |
 | karakterkeuze (zacht) | 96 BPM |
 
@@ -140,13 +141,17 @@ akkoord uitkomt.
 | `nachtstad_menu_loop.ogg` | hoofdmenu (`main_menu.gd`) | energiek en recht, 48 maten, 90 s |
 | `karakterkeuze_loop.ogg` | karakterscherm (`character_creation.gd`) | zacht, 96 BPM, 16 maten, 40 s |
 | `deuntje_kaart_start.ogg` | start van de kaart, voor de stadsmuziek (`hud.gd`, `MAP_JINGLE`) | het motief als fanfare op Db en Eb naar F majeur, 6 s |
-| `stad_centrum_loop.ogg` | de stad: oude binnenstad | funky, levendig, 75 s |
-| `stad_torens_loop.ogg` | de stad: kantoortorens | koel, glanzend, 75 s |
-| `stad_groen_loop.ogg` | de stad: parken | rustig, ruimtelijk, 75 s |
-| `stad_woonwijk_loop.ogg` | de stad: woonwijken | rauw, straat, new jack swing, 75 s |
-| `stad_industrie_loop.ogg` | de stad: industrie en snelweg | hard, mechanisch, techno, 75 s |
+| `stad_centrum_loop.ogg` | de stad: oude binnenstad | funky, levendig, 92 s |
+| `stad_torens_loop.ogg` | de stad: kantoortorens | koel, glanzend, 92 s |
+| `stad_groen_loop.ogg` | de stad: parken | rustig, ruimtelijk, 92 s |
+| `stad_woonwijk_loop.ogg` | de stad: woonwijken | rauw, straat, new jack swing, 92 s |
+| `stad_industrie_loop.ogg` | de stad: industrie en snelweg | hard, mechanisch, techno, 92 s |
+| `stad_hofstad_loop.ogg` | de stad: hofkwartier | statig, strijkers en klavecimbel, 92 s |
+| `stad_markt_loop.ogg` | de stad: markten | handtrommels, getokkelde lijn, 92 s |
+| `stad_bos_loop.ogg` | de stad: bos | het rustigst, geen drums, vogels, 92 s |
+| `stad_dorp_loop.ogg` | de stad: dorp | folky, getokkeld, zachte brushes, 92 s |
 | `gevecht_loop.ogg` | zolang je in een gevecht bent (nog te koppelen) | 150 BPM, 32 maten, 51,2 s: de stoere variant van het motief op lead en koper, galopperende kick |
-| `handelaar_loop.ogg` | zolang je in een winkel bent, bij een handelaar (nog te koppelen) | relaxte new jack swing, 128 BPM in F mineur zoals de stadsloops (soepel overvloeien), 16 maten, 30 s |
+| `handelaar_loop.ogg` | zolang je in een winkel bent, bij een handelaar (nog te koppelen) | relaxte new jack swing, 128 BPM in F mineur, 16 maten, 30 s (de stadsloops zijn nu 104 BPM: zet hem bij het koppelen op hun tempo, dan vloeit hij soepel over) |
 | `deuntje_gewonnen.ogg` | gewonnen | het motief snel omhoog, F majeur, 4 s |
 | `deuntje_level_omhoog.ogg` | genoeg XP voor een level | PSG-loopje omhoog, het motief in majeur met klokjes, 4 s |
 | `deuntje_verloren.ogg` | verloren | het motief begint en zakt weg naar een lage F, 4 s |
@@ -156,17 +161,25 @@ akkoord uitkomt.
 
 De HUD kiest de loop bij de wijk waar je bent (`CITY_MUSIC_BY_AREA` in `scripts/ui/hud.gd`;
 de wijknamen uit de "wijken"-metadata) en vloeit over bij een wijkwissel, op dezelfde plek in
-de maat. Andere wijken spelen `stad_centrum_loop.ogg`.
+de maat en met gelijk vermogen (geen gat halverwege), pas na 1,5 s in de nieuwe wijk. Andere wijken spelen `stad_centrum_loop.ogg`.
 
 | Loop | Wijken | Karakter |
 |---|---|---|
-| `stad_centrum_loop` | Centrum, Grote Markt, Paleis Noordeinde, Lange Voorhout | funky house met lichte shuffle, slapbas, e-piano, koper, PSG-echo |
+| `stad_centrum_loop` | Centrum | funky house met lichte shuffle, slapbas, e-piano, koper, PSG-echo |
 | `stad_torens_loop` | Centraal Station, De Resident, Beatrixkwartier, Prins Clauslaan | rechte deep house, bas op de achterslag, piano-offbeats, klokjes, glinsterende arpeggio's, lange koele lead |
-| `stad_groen_loop` | Malieveld, Koekamp | half-time gevoel, strijkers, klokjes, lange bas, nauwelijks drums, het motief zacht met ruimte |
-| `stad_woonwijk_loop` | Bezuidenhout, Bezuidenhout-Oost, Schilderswijk, Laak, Voorburg | zware new-jack-swing-shuffle, gebroken kick, slapbas, korte riffs op het stoere motief |
+| `stad_groen_loop` | Malieveld | half-time gevoel, strijkers, klokjes, lange bas, nauwelijks drums, het motief zacht met ruimte |
+| `stad_woonwijk_loop` | Bezuidenhout, Bezuidenhout-Oost, Laak | zware new-jack-swing-shuffle, gebroken kick, slapbas, korte riffs op het stoere motief |
 | `stad_industrie_loop` | Binckhorst, A12 | techno: kick op elke tel, bas in zestienden, PSG-ostinato, metalen FM-klanken, het motief gehamerd |
+| `stad_hofstad_loop` | Paleis Noordeinde, Lange Voorhout | statig zonder beat: strijkers, een klavecimbelachtige PSG-arpeggio op en neer, klokjes op de één, pauken bij de wendingen, een nobele lead; koperpad in C |
+| `stad_markt_loop` | Grote Markt, Schilderswijk (de Haagse Markt) | handtrommels in een darbuka-patroon ("dum" op de toms, "tek" op zachte claps), een getokkelde PSG-lijn op het motief, lyrische bas, versierde lead met glijders; de C7 geeft de E van F harmonisch mineur |
+| `stad_bos_loop` | Koekamp (het hertenkamp bij het Haagse Bos) | het rustigst: geen drums, zachte strijkers, lange bas, klokjes ver uit elkaar, PSG-vogeltjes af en toe, de lead alleen in A' en C |
+| `stad_dorp_loop` | Voorburg | folky: de PSG tokkelt de akkoorden als een gitaar, spaarzame e-piano, zachte brushes vanaf B, een eenvoudig wijsje op het motief |
 
-Het gedeelde plan (40 maten = 75 s, 128 BPM): A (Fm7 Gbmaj7 Bbm7 Fm7 Fm7 Gbmaj7 Ab6 C7),
+Het zijn achtergrondmuziekjes om bij rond te lopen: rustig (104 BPM) en naar achteren gemengd
+(`stad_plan.finish`: drums, lead, hats en koper zachter dan in de andere stukken, de top wat
+afgerond, iets zachter in totaal), en in het spel op -22 dB.
+
+Het gedeelde plan (40 maten = 92 s, 104 BPM): A (Fm7 Gbmaj7 Bbm7 Fm7 Fm7 Gbmaj7 Ab6 C7),
 A' (idem), B (Bbm9 Bbm9 Gbmaj7 Gbmaj7 Abmaj7 Eb6 Csus C7), break (Gbmaj7 Gbmaj7 Bbm7 C7),
 C (Gbmaj7 Ab6 Fm7 Fm7 Gbmaj7 Ab6 Gm7b5 C7), tag (Fm7 Gbmaj7 Bbm7 C7). Een nieuwe wijkloop
 gebruikt dit plan en verandert alleen de bezetting, groove en melodieën.
@@ -196,8 +209,8 @@ Generator: `tools/megadrive/geluiden.py`; renderen met `tools/megadrive/render.s
 | `auto_motor_loop.ogg`, `brommer_motor_loop.ogg`, `bus_motor_loop.ogg`, `tram_motor_loop.ogg`, `trein_motor_loop.ogg` | naadloze lus van de motor op kruissnelheid, voor een `AudioStreamPlayer3D` op het voertuig (loop aan; `pitch_scale` kan de snelheid volgen; Godot doet afstand, panning en Doppler) | 2 s (trein 2,5 s) |
 | `auto_botsing_hard.ogg` | zware botsing: klap, kreukelend blik, metalen FM-klanken, glasgerinkel, rondvallend puin | 1,8 s |
 | `auto_botsing_licht.ogg` | lichte aanrijding: doffe klap, één metaalklank | 0,9 s |
-| `tram_bel.ogg` | de trambel, "tring tring" | 1,3 s |
-| `trein_hoorn.ogg` | de tweetonige hoorn van een elektrische trein | 2 s |
+| `tram_bel.ogg` | de trambel zoals van de GVB-trams in Amsterdam: de koepelgong, twee snelle slagen ("ding-ding") die naklinken; niet-harmonische boventonen van een geslagen koepel | 1,7 s |
+| `trein_hoorn.ogg` | de hoorn van een NS Koploper (ICM): de twee tyfoons (660 en 370 Hz, de Europese treintonen), een korte hoge en een lange lage stoot; een zoemend membraan door de trompet, met het aanzwellen van de luchtdruk | 1,75 s |
 | `bus_remmen.ogg` | stoppen: kort remgepiep, dan het sissen van de luchtrem | 1,6 s |
 | `politie_sirene_loop.ogg` | sirene van politie (ook de ME-bus): Nederlandse twee-toon 600/450 Hz, 0,55 s per toon, heldere PSG-blokgolven; naadloze lus, naast de motorlus op het voertuig | 2,2 s |
 | `ambulance_sirene_loop.ogg` | sirene van de ambulance: twee-toon 660/495 Hz, 0,75 s per toon, rondere FM-hoorn; lus | 3 s |
@@ -211,6 +224,45 @@ Generator: `tools/megadrive/geluiden.py`; renderen met `tools/megadrive/render.s
 Niveaus: losse geluiden piek -1 dB, motorlussen gemiddeld -16 dB; het niveau in het spel zet je
 met `volume_db`. De tram geldt ook voor de RandstadRail. De hulpdiensten hebben elk een eigen
 toonhoogte, ritme en klankkleur, zodat je ze uit elkaar hoort; een nieuwe sirene volgt dat.
+
+## Stemmen: pijnkreten
+
+Op de Mega Drive waren de stemmen in beat-'em-ups opgenomen samples door de DAC: lage
+samplefrequentie (8 tot 13 kHz), 8 bit, hard opgenomen en geclipt; korrelig, luid en wat nasaal.
+Onze kreten zijn geen opnames (en geen kopieën van bestaande spellen) maar zo gemaakt als een
+stem werkt: een stembandpuls op een dalende toonhoogte door vier formanten (de klinker: "ugh",
+"ah"), met adem, een grom (periodeverdubbeling) voor de inspanning, hard aangestuurd, dan door
+de "DAC" (sample-and-hold op 11 kHz, 8 bit, zonder anti-aliasfilter) en het uitgangsfilter van
+de console (6 kHz). Generator: `tools/megadrive/stemmen.py`; renderen met
+`tools/megadrive/render.sh stemmen` (of enkele: `render.sh stemmen pijn_vrouw_hard`).
+
+| Bestand | Wat | Lengte |
+|---|---|---|
+| `pijn_<stem>_1.ogg` .. `pijn_<stem>_3.ogg` | korte kreten: "ugh!", "hngh!", "uah!" | 0,26 - 0,4 s |
+| `pijn_<stem>_hard.ogg` | een lange kreet bij een zware klap of de dood: "aaargh" | 0,85 - 0,95 s |
+| `lichaam_klap.ogg` | de doffe klap van een lichaam dat geraakt wordt | 0,22 s |
+
+Stemmen: `man` (Jos, Martin), `oude_man` (lager, rauwer, meer adem: Ufo Piloot, Willem, Gerrit),
+`vrouw` (Sjaan); de stem staat als `"voice"` bij het personage in
+`scripts/player/player_character.gd`. In het spel: `PlayerController.cry_out()` (bij
+aangereden worden) speelt de klap en een kreet via `RuimtelijkGeluid.play_at()`, met de
+echo van de straat.
+
+Elk personage heeft ook een eigen **kreet** voor het karakterkeuzescherm, op dezelfde manier
+gemaakt (`say()` in `stemmen.py`: stukjes klinker, toonhoogte, stem en adem; elk personage een
+eigen spreker in `SPEAKERS`), in `assets/audio/kreten/kreet_<id>.ogg`:
+
+| Personage | Kreet |
+|---|---|
+| Jos | "jie-HAA!", de oude rodeorijder |
+| Martin | "hup-hup-HUP!", snel, de laatste hoger |
+| Ufo Piloot | een zwevend "oeoeoe-oeh", op en neer als een theremin |
+| Willem | een hees lachje, "heh-heh-heh" |
+| Sjaan | een vrolijk "hoi!" |
+| Gerrit | een diep "a-HOI!" over het water |
+
+`scripts/ui/character_creation.gd` speelt die als je een personage kiest (en de eerste kort
+na het openen); een nieuwe kreet breekt de vorige af.
 
 ### In het spel: ruimtelijk geluid
 

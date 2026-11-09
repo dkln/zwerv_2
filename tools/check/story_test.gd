@@ -32,9 +32,12 @@ func _init() -> void:
 	_check(box.is_showing(), "proloog opent na het wakker worden")
 	_check(paused, "spel staat stil tijdens het verhaal")
 	await create_timer(0.6).timeout
-	var shown: int = box._text.visible_characters
-	print("na 0,6 s: %d van %d tekens" % [shown, box._text.text.length()])
-	_check(shown > 0 and shown < box._text.text.length(), "tekst verschijnt woord voor woord")
+	var typewriter: RefCounted = box._typewriter
+	var shown: int = typewriter._word_ends[typewriter._words_shown - 1] if typewriter._words_shown > 0 else 0
+	print("na 0,6 s: %d van %d tekens" % [shown, typewriter.text.length()])
+	_check(shown > 0 and shown < typewriter.text.length(), "tekst verschijnt woord voor woord")
+	_check(box._text.text.contains("[bgcolor="), "cursor achter de woorden")
+	_check(box._portrait != null and box._portrait.silhouette.a > 0.0, "verteller als silhouet")
 	var pages: int = box._pages.size()
 	print("proloog: %d pagina's" % pages)
 	for press_index in pages * 2 + 2:

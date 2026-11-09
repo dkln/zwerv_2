@@ -4,9 +4,11 @@ extends Control
 ## in the old adventure games. Over the town (dimmed a little, the game paused):
 ## - top left a banner with what it belongs to ("PROLOOG", "MISSIE 1") and its title;
 ## - top right the keys;
-## - at the bottom the box: on the left a thumbnail of the player (PlayerPortrait, the
-##   chosen figure in 3D) in a frame in the colour of the page, on the right the text with a
-##   name tag over it; when a page is all there a ▼ blinks.
+## - at the bottom the box: on the left a thumbnail of who speaks (PlayerPortrait: the chosen
+##   figure in 3D; for a story page the narrator, the outline of someone unknown,
+##   NARRATOR_FIGURE as a silhouette) in a frame in the colour of the page, on the right the
+##   text with a name tag over it. The text types itself out (Typewriter: word by word, a
+##   block cursor after it, the text blip); when a page is all there a ▼ blinks.
 ## Space, Enter or a click: the rest of the page at once, or (when it is all there) the next
 ## page; after the last the box closes, the game goes on and `finished` fires.
 ## A page is a Dictionary:
@@ -24,10 +26,12 @@ const UiSounds = preload("res://scripts/ui/ui_sounds.gd")
 const PlayerPortrait = preload("res://scripts/ui/widgets/player_portrait.gd")
 const PlayerCharacter = preload("res://scripts/player/player_character.gd")
 
-## Seconds between two words, and the extra rest after a sentence or a comma.
-const WORD_SECONDS := 0.075
-const SENTENCE_REST := 0.32
-const COMMA_REST := 0.12
+const Typewriter = preload("res://scripts/ui/widgets/typewriter.gd")
+
+## The narrator's portrait: this figure as a silhouette (only its outline, a little lighter
+## than the frame's ink), so you see someone without knowing who.
+const NARRATOR_FIGURE := "willem"
+const NARRATOR_SILHOUETTE := Color("#2A2E52")
 const THOUGHT_COLOUR := Color("#C9CCE6")
 const BOX_LEFT := 40.0
 const BOX_BOTTOM := 32.0
@@ -43,9 +47,7 @@ var player_name := ""
 
 var _pages: Array = []
 var _page_index := 0
-var _word_ends: Array[int] = []     # visible characters at the end of each word
-var _words_shown := 0
-var _word_clock := 0.0
+var _typewriter: Typewriter
 var _was_paused := false
 var _blink_clock := 0.0
 var _dim: ColorRect
@@ -58,7 +60,7 @@ var _portrait: SubViewportContainer
 var _text_panel: Panel
 var _name_tag: PanelContainer
 var _name_label: Label
-var _text: Label
+var _text: RichTextLabel
 var _more: Label
 
 
@@ -108,9 +110,8 @@ func handle_input(event: InputEvent) -> bool:
 		or (event is InputEventKey and event.pressed and not event.echo and (event as InputEventKey).keycode == KEY_SPACE) \
 		or (event is InputEventMouseButton and event.pressed and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT)
 	if go_on:
-		if _words_shown < _word_ends.size():
-			_words_shown = _word_ends.size()
-			_text.visible_characters = -1
+		if not _typewriter.is_done():
+			_typewriter.finish()
 		else:
 			_next_page()
 	# every key is the box's while it is open (no pause menu, no game menu under it)
@@ -121,18 +122,8 @@ func _process(delta: float) -> void:
 	if not visible:
 		return
 	_blink_clock += delta
-	if _words_shown < _word_ends.size():
-		_word_clock -= delta
-		while _word_clock <= 0.0 and _words_shown < _word_ends.size():
-			_words_shown += 1
-			_text.visible_characters = _word_ends[_words_shown - 1]
-			var last := _text.text.substr(_word_ends[_words_shown - 1] - 1, 1)
-			_word_clock += WORD_SECONDS + (SENTENCE_REST if last in [".", "!", "?", ":", "…"] else COMMA_REST if last in [",", ";"] else 0.0)
-			if _words_shown % 2 == 1:
-				UiSounds.play(self, "woord", -10.0)
-		_more.visible = false
-	else:
-		_more.visible = fmod(_blink_clock, 0.8) < 0.5
+	_typewriter.update(delta)
+	_more.visible = _typewriter.is_done() and fmod(_blink_clock, 0.8) < 0.5
 
 
 func _show_page() -> void:
@@ -142,8 +133,9 @@ func _show_page() -> void:
 	var text := String(page.get("text", ""))
 	if kind == "gedachte":
 		text = "“" + text + "”"
-	_text.text = text
-	_text.add_theme_color_override("font_color", THOUGHT_COLOUR if kind == "gedachte" else UiStyle.TEXT)
+	_text.add_theme_color_override("default_color", THOUGHT_COLOUR if kind == "gedachte" else UiStyle.TEXT)
+	_typewriter.cursor_colour = accent
+	_show_speaker(kind == "verhaal")
 	var default_speaker := "VERTELLER" if kind == "verhaal" else ("NIEUWE MISSIE" if kind == "missie" else player_name)
 	_name_label.text = String(page.get("speaker", default_speaker))
 	var tag_style := StyleBoxFlat.new()
@@ -163,11 +155,20 @@ func _show_page() -> void:
 	_banner.visible = _banner_title.text != ""
 	_banner_kind.add_theme_color_override("font_color", accent)
 	_banner_diamond.color = accent
-	_word_ends = _word_ends_of(text)
-	_words_shown = 0
-	_word_clock = 0.15
-	_text.visible_characters = 0
+	_typewriter.start(text)
 	_blink_clock = 0.0
+
+
+## The portrait: the player, or for a story page the narrator (a silhouette of someone).
+func _show_speaker(narrator: bool) -> void:
+	if _portrait == null:
+		return
+	var wanted := NARRATOR_FIGURE if narrator else PlayerCharacter.current_id()
+	var wanted_silhouette := NARRATOR_SILHOUETTE if narrator else Color(0, 0, 0, 0)
+	if _portrait.archetype_id != wanted:
+		_portrait.archetype_id = wanted
+	if _portrait.silhouette != wanted_silhouette:
+		_portrait.silhouette = wanted_silhouette
 
 
 func _next_page() -> void:
@@ -183,20 +184,6 @@ func _next_page() -> void:
 		_portrait = null
 	get_tree().paused = _was_paused
 	finished.emit()
-
-
-## The number of visible characters at the end of each word (spaces and line ends between).
-static func _word_ends_of(text: String) -> Array[int]:
-	var ends: Array[int] = []
-	var in_word := false
-	for index in text.length():
-		var is_space := text[index] in [" ", "\n", "\t"]
-		if in_word and is_space:
-			ends.append(index)
-		in_word = not is_space
-	if in_word:
-		ends.append(text.length())
-	return ends
 
 
 # ------------------------------------------------------------------ building
@@ -275,18 +262,23 @@ func _build() -> void:
 	_text_panel.anchor_bottom = 1.0
 	_text_panel.offset_left = PORTRAIT_WIDTH
 	box.add_child(_text_panel)
-	_text = _make_label("", font_body, TEXT_SIZE, UiStyle.TEXT)
+	_text = RichTextLabel.new()
+	_text.add_theme_font_override("normal_font", font_body)
+	_text.add_theme_font_size_override("normal_font_size", TEXT_SIZE)
+	_text.add_theme_color_override("default_color", UiStyle.TEXT)
+	_text.add_theme_constant_override("line_separation", 8)
+	_text.scroll_active = false
+	_text.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_text.vertical_alignment = VERTICAL_ALIGNMENT_TOP
-	_text.add_theme_constant_override("line_spacing", 8)
 	_text.anchor_right = 1.0
 	_text.anchor_bottom = 1.0
 	_text.offset_left = 28
 	_text.offset_top = 34
 	_text.offset_right = -48
 	_text.offset_bottom = -18
-	_text.visible_characters_behavior = TextServer.VC_CHARS_AFTER_SHAPING
 	_text_panel.add_child(_text)
+	_typewriter = Typewriter.new(_text, self)
+	_typewriter.blink_when_done = false
 	_name_tag = PanelContainer.new()
 	_name_tag.position = Vector2(20, -20)
 	_name_label = _make_label("", font_title, 18, UiStyle.INK)

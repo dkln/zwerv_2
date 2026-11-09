@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(tools/godot.sh --headless --script tools/check/*)",
+      "Bash(GODOT_TIMEOUT=* tools/godot.sh --headless --script tools/check/*)"
+    ]
+  }
+}

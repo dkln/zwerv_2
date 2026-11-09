@@ -14,6 +14,7 @@ extends SceneTree
 
 const Common = preload("res://tools/tool_common.gd")
 const LevelOfDetail = preload("res://scripts/world/level_of_detail.gd")
+const Progress = preload("res://tools/progress.gd")
 const SCENES_DIR := "res://scenes"
 ## The cache folder of an older version of level_of_detail.gd.
 const OLD_CACHE_DIR := "user://samengevoegd"
@@ -32,11 +33,12 @@ func _init() -> void:
 	if maps.is_empty():
 		maps = _maps_with_detail_level()
 	await process_frame
-	for map_path in maps:
+	for map_index in maps.size():
+		var map_path := maps[map_index]
 		if rebake:
 			_empty_cache_of(map_path)
 		var started := Time.get_ticks_msec()
-		print("bake: %s ..." % map_path)
+		print("bake: kaart %d van %d: %s ..." % [map_index + 1, maps.size(), map_path])
 		var map := Common.instantiate(map_path)
 		# only fill the cache: an up-to-date level is not even loaded (headless, two
 		# levels loading in threads at once clash in the rendering server)
@@ -44,6 +46,12 @@ func _init() -> void:
 		detail_level.bake_only = true
 		detail_level.loading_screen = false
 		get_root().add_child(map)
+		# the progress of the merge jobs, until they are done
+		var progress := Progress.new("bake %s" % map_path.get_file().get_basename(), 100)
+		await process_frame
+		while detail_level.is_merging():
+			progress.set_done(int(detail_level.merge_progress() * 100.0))
+			await create_timer(0.5).timeout
 		await Common.wait_for_merge(map)
 		print("bake: %s ready in %.1f s" % [map_path, (Time.get_ticks_msec() - started) / 1000.0])
 		map.queue_free()

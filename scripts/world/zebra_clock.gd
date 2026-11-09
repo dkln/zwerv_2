@@ -13,10 +13,11 @@ const SIDE_WIDTH := 1.6
 const PLINTH_HEIGHT := 0.375
 const PLINTH_GROW := 0.25   # metres wider than the column on each side
 ## The faces: their size (square, metres), the height of their middle, how far before the
-## side they stand (so the column does not draw over them), and their pixels across.
+## side they stand (so the column does not draw over them: with the camera's near plane at 2 m
+## and far plane at 6 km a smaller gap z-fights, the face flickering), and their pixels across.
 const FACE_SIZE := 1.45
 const FACE_MIDDLE := HEIGHT - 1.05
-const FACE_OUT := 0.02
+const FACE_OUT := 0.08
 const FACE_PIXELS := 28
 const COLUMN_COLOUR := Color("#e4e2dc")
 const PLINTH_COLOUR := Color("#5b5e66")

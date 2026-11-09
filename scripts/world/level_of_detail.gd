@@ -186,6 +186,16 @@ func clear() -> void:
 		merge_finished.emit()
 
 
+## How far the merging is (0..1, the average of all merge jobs); 1 when there is nothing to do.
+func merge_progress() -> float:
+	if _progress.is_empty():
+		return 1.0
+	var done := 0.0
+	for fraction: float in _progress.values():
+		done += fraction
+	return done / _progress.size()
+
+
 ## Busy merging? Then wait for the `merge_finished` signal.
 func is_merging() -> bool:
 	return _busy > 0
@@ -227,10 +237,7 @@ func _set_progress(key: String, fraction: float) -> void:
 		_progress[key] = clampf(fraction, 0.0, 1.0)
 	if _screen == null or _progress.is_empty():
 		return
-	var done := 0.0
-	for f in _progress.values():
-		done += f
-	_screen.set_progress(done / _progress.size())
+	_screen.set_progress(merge_progress())
 
 
 ## Called when one layer is merged; after the last one emits `merge_finished`

@@ -15,6 +15,7 @@ const INTERIOR_CATEGORIES := ["gebouwen", "details"]
 ## Tiles with at least this share of glass (of their surface) stay see-through.
 const INTERIOR_MAX_GLASS := 0.3
 const Slopes = preload("res://addons/vox_tiles/importer/slopes.gd")
+const Progress = preload("res://tools/progress.gd")
 
 const TILE_ROOT := "res://assets/tiles"
 const LIB_ROOT := "res://assets/libraries"
@@ -23,7 +24,8 @@ const PREVIEW_SIZE := 96
 ## rebuilt (or rebuilt from scratch) gets its previews back without rendering them again.
 const PREVIEW_CACHE := "res://.godot/vox_tiles_previews"
 
-## collision: "trimesh" (exact shape), "box" (bounding box), "none",
+## collision: "trimesh" (exact shape), "box" (bounding box; trees (TRUNK_TILES) only their
+## trunk, so you can walk under the crown), "none",
 ## "auto" (buildings: solid blocks get a 4x3x4 m box, hollow/walkable tiles an exact shape)
 const CATEGORIES := {
 	"grond": {"collision": "trimesh"},
@@ -104,6 +106,7 @@ static func build_category(cat: String, changed: Dictionary, previews: bool, for
 	var files := PackedStringArray()
 	list_tiles(root, files)
 	files.sort()
+	var progress := Progress.new("bibliotheek %s: tiles laden" % cat, files.size())
 	var lib_path := library_path(cat)
 	var lib: MeshLibrary = null
 	if ResourceLoader.exists(lib_path):
@@ -123,6 +126,8 @@ static func build_category(cat: String, changed: Dictionary, previews: bool, for
 	var registry_changed := false
 	var seen := {}
 	var dirty := false
+	var shapes_outdated := int(lib.get_meta("collision_version", 1)) != COLLISION_VERSION
+	var shapes_updated := false
 	var need_preview: Array[int] = []
 	var stamp_of := {}   # item id -> import time stamp of its source (for the preview cache)
 	var sources := {}   # item id -> imported mesh (before the atlas copy)
@@ -131,6 +136,7 @@ static func build_category(cat: String, changed: Dictionary, previews: bool, for
 	var entries := []
 	for path in files:
 		var key := path.trim_prefix(root + "/").get_basename()
+		progress.step(key)
 		seen[key] = true
 		if not ResourceLoader.exists(path):
 			continue # not imported yet
@@ -192,8 +198,12 @@ static func build_category(cat: String, changed: Dictionary, previews: bool, for
 			_set_shadow(lib, id, mesh)
 			dirty = true
 			need_preview.append(id)
-		elif lib.get_item_preview(id) == null:
-			need_preview.append(id)
+		else:
+			if shapes_outdated:
+				lib.set_item_shapes(id, _shapes(mesh, cfg.collision, key))
+				shapes_updated = true
+			if lib.get_item_preview(id) == null:
+				need_preview.append(id)
 	# alias tiles: an item of their own (name, id) that shares the mesh of their tile
 	var aliases := {}   # alias item id -> item id of the tile it points to
 	var alias_files := PackedStringArray()
@@ -261,6 +271,7 @@ static func build_category(cat: String, changed: Dictionary, previews: bool, for
 		var stamps := {}
 		for id in sources:
 			stamps[id] = sources[id].get_meta("source_stamp")
+		progress.stage("textuuratlas maken (%d tiles)" % sources.size())
 		var main := Atlas.build(sources)
 		_set_interior(main.meshes, cat)
 		for id in sources:
@@ -268,6 +279,7 @@ static func build_category(cat: String, changed: Dictionary, previews: bool, for
 			m.set_meta("source_stamp", stamps[id])
 			lib.set_item_mesh(id, m)
 		for level in ["lod", "lod2"]:
+			progress.stage("grove versie %s maken" % level)
 			_build_lod(cat, lib, level, sources, aliases)
 		dirty = true
 	for id in aliases:
@@ -277,6 +289,8 @@ static func build_category(cat: String, changed: Dictionary, previews: bool, for
 			lib.set_item_shapes(id, _shapes(sources[target_id], cfg.collision, lib.get_item_name(id)))
 			_set_shadow(lib, id, sources[target_id])
 			dirty = true
+		elif shapes_outdated:
+			lib.set_item_shapes(id, _shapes(sources[target_id], cfg.collision, lib.get_item_name(id)))
 	# previews: from the cache where possible, the rest rendered (editor only) and cached
 	var render: Array[int] = []
 	for id in need_preview:
@@ -290,6 +304,7 @@ static func build_category(cat: String, changed: Dictionary, previews: bool, for
 		var meshes: Array[Mesh] = []
 		for id in render:
 			meshes.append(lib.get_item_mesh(id))
+		progress.stage("%d previews maken" % meshes.size())
 		var tex: Array = EditorInterface.make_mesh_previews(meshes, PREVIEW_SIZE)
 		for i in render.size():
 			if i < tex.size() and tex[i] != null:
@@ -303,13 +318,18 @@ static func build_category(cat: String, changed: Dictionary, previews: bool, for
 			dirty = true
 	if registry_changed:
 		_write_registry(cat, registry)
-	if dirty:
+	if shapes_outdated:
+		lib.set_meta("collision_version", COLLISION_VERSION)
+		shapes_updated = true
+	if dirty or shapes_updated:
+		progress.stage("opslaan")
 		DirAccess.make_dir_recursive_absolute(LIB_ROOT)
 		var err := ResourceSaver.save(lib, lib_path)
 		if err != OK:
 			push_error("Vox Tiles: could not save %s (%s)" % [lib_path, err])
 		else:
 			print("Vox Tiles: library '%s' updated (%d items)" % [cat, lib.get_item_list().size()])
+	progress.finish()
 	return dirty
 
 
@@ -426,6 +446,17 @@ static func _write_registry(cat: String, registry: Dictionary) -> void:
 	f.store_string(JSON.stringify(ordered, "\t"))
 
 
+## Tiles that collide only with their trunk ("box" mode): the box round everything in their
+## lowest TRUNK_HEIGHT metres (the trunk, a planter round it), standing TRUNK_COLLIDER_HEIGHT high.
+const TRUNK_TILES := ["bomen/"]
+## Raise it when the way colliders are made changes: a library made with an older version gets
+## its colliders made again (only those: the meshes, atlases and coarse versions stay).
+## 2: trees collide with their trunk only.
+const COLLISION_VERSION := 2
+const TRUNK_HEIGHT := 1.6
+const TRUNK_COLLIDER_HEIGHT := 2.5
+
+
 ## Tile name fragments that get an exact collision shape in "auto" mode.
 const EXACT := ["hallen/", "parkeergarage", "overkapping", "pilaren", "zuilengang", "poort", "luchtboog",
 	"toren_beton", "radiotoren", "_dak", "penthouse", "gevel_", "top_", "toren_spits", "toren_pinakels", "bg_portiek", "verd_loggia"]
@@ -527,8 +558,33 @@ static func _shapes(mesh: Mesh, mode: String, key := "") -> Array:
 			var s := mesh.create_trimesh_shape()
 			return [s, Transform3D()] if s else []
 		"box":
+			for trunk_tile in TRUNK_TILES:
+				if key.begins_with(trunk_tile):
+					return _trunk_shape(mesh)
 			var aabb := mesh.get_aabb()
 			var b := BoxShape3D.new()
 			b.size = aabb.size
 			return [b, Transform3D(Basis(), aabb.get_center())]
 	return []
+
+
+## The collider of a tree: a box round its vertices in the lowest TRUNK_HEIGHT m (the trunk),
+## from the ground up TRUNK_COLLIDER_HEIGHT m; the whole bounding box if it has none there.
+static func _trunk_shape(mesh: Mesh) -> Array:
+	var aabb := mesh.get_aabb()
+	var below := aabb.position.y + TRUNK_HEIGHT
+	var low := Vector2(INF, INF)
+	var high := Vector2(-INF, -INF)
+	for surface in mesh.get_surface_count():
+		var vertices: PackedVector3Array = mesh.surface_get_arrays(surface)[Mesh.ARRAY_VERTEX]
+		for vertex in vertices:
+			if vertex.y <= below:
+				low = Vector2(minf(low.x, vertex.x), minf(low.y, vertex.z))
+				high = Vector2(maxf(high.x, vertex.x), maxf(high.y, vertex.z))
+	var box := BoxShape3D.new()
+	if low.x == INF:
+		box.size = aabb.size
+		return [box, Transform3D(Basis(), aabb.get_center())]
+	box.size = Vector3(high.x - low.x, TRUNK_COLLIDER_HEIGHT, high.y - low.y)
+	var centre := Vector3((low.x + high.x) * 0.5, aabb.position.y + TRUNK_COLLIDER_HEIGHT * 0.5, (low.y + high.y) * 0.5)
+	return [box, Transform3D(Basis(), centre)]

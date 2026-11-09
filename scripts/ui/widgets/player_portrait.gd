@@ -10,6 +10,11 @@ extends SubViewportContainer
 ## kept hard (nearest filter, rendered at PIXEL_SCALE of the size and scaled up), as the
 ## rest of the pixel UI.
 
+## play_gesture() makes the figure do its own move (PlayerModel.play_gesture); `gesture_cue`
+## fires at the moment for its shout. `silhouette` (a colour with alpha) draws only its outline.
+
+signal gesture_cue
+
 const PlayerModel = preload("res://scripts/player/player_model.gd")
 
 ## Share of the size the picture is rendered at (smaller = blockier).
@@ -41,6 +46,13 @@ var spin := 0.0:
 			_model.spin = value
 			if value == 0.0:
 				_model.face_front()
+
+## With alpha: the figure only as an outline in this colour (PlayerModel.silhouette).
+var silhouette := Color(0, 0, 0, 0):
+	set(value):
+		silhouette = value
+		if _model:
+			_model.silhouette = value
 
 ## How much the figure walks (0 = stands, 1 = walks on the spot); tween it.
 var walking := 0.0:
@@ -121,6 +133,7 @@ func _init() -> void:
 	_model = PlayerModel.new()
 	_model.archetype_id = archetype_id
 	_model.spin = spin
+	_model.gesture_cue.connect(func() -> void: gesture_cue.emit())
 	_viewport.add_child(_model)
 	_camera = Camera3D.new()
 	_camera.projection = Camera3D.PROJECTION_ORTHOGONAL
@@ -130,6 +143,20 @@ func _init() -> void:
 
 func _ready() -> void:
 	_frame()
+
+
+## Where the top of the figure's head is in this picture (local pixels), for a speech balloon.
+func head_point() -> Vector2:
+	if _model == null or _camera == null:
+		return Vector2(size.x * 0.5, 0.0)
+	var head := Vector3(0.0, _model.height(), 0.0)
+	return _camera.unproject_position(head) * float(stretch_shrink)
+
+
+## The figure does its own move; `gesture_cue` fires at the moment for its shout.
+func play_gesture() -> void:
+	if _model:
+		_model.play_gesture()
 
 
 ## The camera between the whole figure (a little from above) and the face (straight on),

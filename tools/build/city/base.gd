@@ -68,6 +68,11 @@ var _taken := {}    # cells (x,z) holding something other than plain grass or pa
 
 # ------------------------------------------------------------------ scene
 
+## How far the Details and Props layers float over the surface they stand on (m): their
+## undersides would otherwise lie in the same plane as the ground's top and flicker.
+const GROUND_CLEARANCE := 0.02
+
+
 ## Creates a GridMap for one tile library. cell = cell size in metres; center_xz =
 ## centre tiles in their cell on x/z (ground and buildings) or align them to the cell
 ## corner (0.5 m detail/prop grids); y = height offset of the whole layer in metres.
@@ -158,8 +163,8 @@ func _make_scene(node_name: String) -> Node3D:
 	root.add_child(fill)
 	ground = _gridmap("Grond", "grond", Vector3(4, 1, 4), true, 0.0)
 	buildings = _gridmap("Gebouwen", "gebouwen", Vector3(4, 3, 4), true, 0.375)
-	details = _gridmap("Details", "details", Vector3(0.5, 0.5, 0.5), false, 0.375)
-	props = _gridmap("Props", "props", Vector3(0.5, 0.5, 0.5), false, 0.25)
+	details = _gridmap("Details", "details", Vector3(0.5, 0.5, 0.5), false, 0.375 + GROUND_CLEARANCE)
+	props = _gridmap("Props", "props", Vector3(0.5, 0.5, 0.5), false, 0.25 + GROUND_CLEARANCE)
 	for gm in [ground, buildings, details, props]:
 		root.add_child(gm)
 	var cam := Camera3D.new()

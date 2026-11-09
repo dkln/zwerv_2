@@ -9,9 +9,9 @@ extends Node3D
 ##   frayed coat with a patch over a checked shirt and a belly, rope for a belt,
 ##   jeans with a torn knee, fingerless gloves, boots with a sole coming loose, a stone
 ##   kruik of jenever in one hand and a plastic bag with bread in the other;
-## - martin (speed): skin and bone (a chest four voxels wide, legs and arms like sticks) in
+## - martin (speed): skin and bone (a chest no wider than his head, the slimmest arms and legs of all, as thick as the others' thinnest) in
 ##   a faded shell suit (the zip half open over a grey t-shirt), a cheap chain, a belt
-##   pulled tight, trousers with a torn knee, grey trainers with a lace undone, a rucksack
+##   pulled tight, trousers with a torn knee, grey trainers, a rucksack
 ##   too big for him with a sleeping bag on top, a blond mullet (short on top and at the
 ##   sides, long down the neck), sunglasses with
 ##   one lens gone on his forehead, a gaunt clean-shaven face, wide eyes, a small tight
@@ -42,6 +42,17 @@ extends Node3D
 ## (CLOTH); skin, eyes, leather, plastic, metal and glass ordinary materials (MATERIALS). All colours are
 ## graded for more colour and contrast (SATURATION, CONTRAST). `spin` turns the whole
 ## figure slowly round.
+## Gestures: play_gesture() makes the figure do its own move, facing the front (GESTURES:
+## Jos swings a lasso over his head, Martin sprints on the spot and hops three times, the
+## ufo pilot floats up with his arms spread like wings, Willem bends over cackling, his
+## shoulders shaking, Sjaan waves, Gerrit hails a boat with his arm high); `gesture_cue` fires
+## at its moment for the shout (the "HAA", the first "hup"), `gesture_finished` at the end;
+## then it walks and turns on as before.
+## `silhouette`: a colour with alpha draws the whole figure in that one flat colour (the
+## narrator's portrait: only the outline of someone).
+
+signal gesture_cue
+signal gesture_finished
 
 const VOXEL := 0.0625
 const SHADER := preload("res://scripts/player/figure.gdshader")
@@ -56,8 +67,8 @@ const RIGS := {
 		"leg_left": [[3, 0, -3, 5, 12, 4]], "leg_right": [[8, 0, -3, 10, 12, 4]],
 	},
 	"martin": {
-		"arm_left": [[3, 13, -6, 4, 23, 2]], "arm_right": [[9, 13, -6, 11, 23, 2]],
-		"leg_left": [[5, 0, -4, 5, 12, 2]], "leg_right": [[8, 0, -4, 8, 12, 2]],
+		"arm_left": [[1, 13, -6, 3, 23, 2]], "arm_right": [[10, 13, -6, 12, 23, 2]],
+		"leg_left": [[3, 0, -4, 5, 12, 2]], "leg_right": [[8, 0, -4, 10, 12, 2]],
 	},
 	"ufo_piloot": {
 		"arm_left": [[-1, 12, -2, 2, 23, 3]], "arm_right": [[11, 12, -2, 14, 23, 3]],
@@ -110,6 +121,17 @@ const MATERIALS := {
 ## the flat hex codes give, so nothing looks grey and washed out.
 const SATURATION := 1.35
 const CONTRAST := 1.15
+## The gestures: how long (s), the moment the shout starts (s; its loud part, the "HAA" or
+## the "HOI", lands on the big move a little later), and the fade in and out (s).
+const GESTURES := {
+	"jos": {"seconds": 1.7, "cue": 0.23},
+	"martin": {"seconds": 1.3, "cue": 0.12},
+	"ufo_piloot": {"seconds": 1.9, "cue": 0.3},
+	"willem": {"seconds": 1.3, "cue": 0.2},
+	"sjaan": {"seconds": 1.3, "cue": 0.3},
+	"gerrit": {"seconds": 1.7, "cue": 0.25},
+}
+const GESTURE_FADE := 0.25
 ## Seconds a spinning figure first stands facing the front when it is shown anew, before
 ## it turns (0: it turns at once, from the front).
 const FRONT_HOLD := 0.0
@@ -131,6 +153,12 @@ const WALK_BOB := 0.025
 @export var spin := 0.0
 ## How much it walks (0 = stands, 1 = a full walk cycle on the spot); tween it.
 @export_range(0.0, 1.0) var walking := 0.0
+## With alpha: the whole figure in this one flat colour (a silhouette).
+var silhouette := Color(0, 0, 0, 0):
+	set(value):
+		silhouette = value
+		if is_inside_tree():
+			_rebuild()
 
 static var _cache := {}
 static var _materials := {}
@@ -143,6 +171,8 @@ var _clock := 0.0
 var _walk_clock := 0.0
 var _turn := 0.0
 var _hold := FRONT_HOLD   # seconds left facing the front before turning
+var _gesture_clock := -1.0  # seconds into the gesture under way; below 0 when there is none
+var _gesture_cued := false
 
 
 func _ready() -> void:
@@ -174,6 +204,14 @@ func _rebuild() -> void:
 		piece.position = -parts.pivots[limb]
 		joint.add_child(piece)
 		_joints[limb] = joint
+	if silhouette.a > 0.0:
+		var flat := StandardMaterial3D.new()
+		flat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		flat.albedo_color = silhouette
+		flat.cull_mode = BaseMaterial3D.CULL_DISABLED
+		for mesh_instance in _figure.find_children("*", "MeshInstance3D", true, false):
+			(mesh_instance as MeshInstance3D).material_override = flat
+			(mesh_instance as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 
 ## Sets a limb ("arm_left", "arm_right", "leg_left", "leg_right") to this turn round its
@@ -181,6 +219,19 @@ func _rebuild() -> void:
 ## the idle moves.
 func pose_limb(limb: String, degrees: Vector3) -> void:
 	_poses[limb] = degrees
+
+
+## Does the figure's own move (GESTURES), facing the front; `gesture_cue` fires at the moment
+## for its shout, `gesture_finished` at the end. Starting it again starts it over.
+func play_gesture() -> void:
+	_gesture_clock = 0.0
+	_gesture_cued = false
+	_turn = 0.0
+	_hold = float(GESTURES.get(archetype_id, GESTURES.jos).seconds)
+
+
+func is_gesturing() -> bool:
+	return _gesture_clock >= 0.0
 
 
 ## Faces the front at once (and holds there FRONT_HOLD seconds) and turns on from there.
@@ -249,10 +300,98 @@ func _process(delta: float) -> void:
 				offset.y += sin(_clock * 1.4) * 0.006 * still
 				angles.arm_left.z -= (0.5 + 0.5 * sin(_clock * 1.4)) * 2.0 * still
 				angles.arm_right.z += (0.5 + 0.5 * sin(_clock * 1.4)) * 2.0 * still
+	var lean := 0.0
+	if _gesture_clock >= 0.0:
+		var gesture: Dictionary = GESTURES.get(archetype_id, GESTURES.jos)
+		var seconds := float(gesture.seconds)
+		_gesture_clock += delta
+		if not _gesture_cued and _gesture_clock >= float(gesture.cue):
+			_gesture_cued = true
+			gesture_cue.emit()
+		if _gesture_clock >= seconds:
+			_gesture_clock = -1.0
+			gesture_finished.emit()
+		else:
+			# fade from the walk into the gesture and back out of it
+			var weight := clampf(minf(_gesture_clock, seconds - _gesture_clock) / GESTURE_FADE, 0.0, 1.0)
+			weight = weight * weight * (3.0 - 2.0 * weight)
+			var move := _gesture_pose(_gesture_clock, seconds)
+			for limb: String in LIMBS:
+				angles[limb] = angles[limb].lerp(move.get(limb, Vector3.ZERO), weight)
+			offset = offset.lerp(move.get("offset", Vector3.ZERO), weight)
+			sway = lerpf(sway, float(move.get("sway", 0.0)), weight)
+			lean = float(move.get("lean", 0.0)) * weight
 	for limb: String in _joints:
 		(_joints[limb] as Node3D).rotation_degrees = angles[limb] + _poses.get(limb, Vector3.ZERO)
 	_figure.position = offset
-	_figure.rotation_degrees = Vector3(0.0, _turn, sway)
+	_figure.rotation_degrees = Vector3(lean, _turn, sway)
+
+
+## The pose of the gesture `time` seconds in (of `seconds`): limb -> degrees (x: negative
+## swings forward and up, z: positive takes the right arm (+x) out and up, negative the
+## left), "offset" (metres), "sway" and "lean" (degrees: lean positive bends forward).
+func _gesture_pose(time: float, seconds: float) -> Dictionary:
+	var share := time / seconds
+	match archetype_id:
+		"jos":
+			# the old rodeo rider: the right arm up, swinging a lasso round over his hat, the
+			# left hand on his hip, a little hop on the "HAA"
+			var hop := maxf(0.0, sin((time - 0.42) * PI / 0.3)) if time > 0.42 and time < 0.72 else 0.0
+			return {
+				"arm_right": Vector3(sin(time * 13.0) * 22.0, 0.0, 155.0 + cos(time * 13.0) * 12.0),
+				"arm_left": Vector3(-10.0, 0.0, -38.0),
+				"leg_left": Vector3(-8.0 * hop, 0.0, 0.0), "leg_right": Vector3(8.0 * hop, 0.0, 0.0),
+				"offset": Vector3(0.0, 0.07 * hop, 0.0), "sway": sin(time * 6.5) * 3.0,
+			}
+		"martin":
+			# the runner: sprinting on the spot, the arms pumping, three hops on the three "hup"s
+			# (0.12, 0.31, 0.5 s), both fists up on the last
+			var pump := sin(time * 26.0)
+			var hop := 0.0
+			for hop_at in [0.12, 0.31, 0.5]:
+				if time > hop_at and time < hop_at + 0.16:
+					hop = maxf(hop, sin((time - hop_at) * PI / 0.16))
+			var cheer := clampf((time - 0.5) / 0.12, 0.0, 1.0)
+			return {
+				"leg_left": Vector3(pump * 45.0, 0.0, 0.0), "leg_right": Vector3(-pump * 45.0, 0.0, 0.0),
+				"arm_left": Vector3(-pump * 55.0 * (1.0 - cheer), 0.0, -165.0 * cheer),
+				"arm_right": Vector3(pump * 55.0 * (1.0 - cheer), 0.0, 165.0 * cheer),
+				"offset": Vector3(0.0, 0.1 * hop, 0.0), "lean": 8.0 * (1.0 - cheer),
+			}
+		"ufo_piloot":
+			# taken up again: floating off the ground, the arms spread like wings, tilting from
+			# side to side like a saucer, the legs dangling
+			var rise := sin(share * PI)
+			return {
+				"arm_left": Vector3(0.0, 0.0, -85.0 + sin(time * 5.0) * 10.0),
+				"arm_right": Vector3(0.0, 0.0, 85.0 - sin(time * 5.0) * 10.0),
+				"leg_left": Vector3(sin(time * 4.0) * 12.0, 0.0, -6.0), "leg_right": Vector3(-sin(time * 4.0) * 12.0, 0.0, 6.0),
+				"offset": Vector3(0.0, 0.22 * rise, 0.0), "sway": sin(time * 4.5) * 9.0,
+			}
+		"willem":
+			# the old rat: bent over, rubbing his hands, his shoulders shaking with each "heh"
+			var shake := absf(sin((time - 0.2) * PI / 0.16)) if time > 0.2 and time < 0.75 else 0.0
+			return {
+				"arm_left": Vector3(-45.0, 0.0, 18.0 + sin(time * 22.0) * 6.0),
+				"arm_right": Vector3(-45.0, 0.0, -18.0 - sin(time * 22.0) * 6.0),
+				"offset": Vector3(0.0, -0.02 - 0.025 * shake, 0.0), "lean": 14.0,
+			}
+		"sjaan":
+			# the street musician: a cheerful wave with the right hand, bobbing along
+			return {
+				"arm_right": Vector3(-15.0, 0.0, 140.0 + sin(time * 15.0) * 22.0),
+				"arm_left": Vector3(-20.0, 0.0, -10.0),
+				"offset": Vector3(0.0, absf(sin(time * 7.5)) * 0.03, 0.0), "sway": sin(time * 7.5) * 4.0,
+			}
+		_:
+			# the fisherman: hailing a boat across the water, the right arm high and waving
+			# slowly, leaning back to call
+			var reach := clampf(time / 0.35, 0.0, 1.0)
+			return {
+				"arm_right": Vector3(-20.0 * reach, 0.0, (170.0 + sin(time * 6.0) * 18.0) * reach),
+				"arm_left": Vector3(-10.0, 0.0, -12.0),
+				"lean": -6.0 * reach,
+			}
 
 
 # ------------------------------------------------------------------ building
@@ -691,31 +830,31 @@ static func _build_martin(figure: VoxelFigure) -> void:
 	var hair_shade := Color("#C4A850")
 	var pack := Color("#5E6440")
 	var pack_dark := Color("#3E4228")
-	# grey, dirty trainers, a lace undone
-	for leg_x in [5, 8]:
-		figure.box(Vector3i(leg_x, 0, -1), Vector3i(leg_x, 1, 3), trainer)
-		figure.box(Vector3i(leg_x, 0, -1), Vector3i(leg_x, 0, 3), sole)
-	figure.put(5, 0, -2, Color("#D8D4C8"))
-	figure.put(5, 0, -3, Color("#D8D4C8"))
-	# legs as thin as sticks, the trousers hanging off them, a torn knee
-	for leg_x in [5, 8]:
-		figure.box(Vector3i(leg_x, 2, 0), Vector3i(leg_x, 13, 1), pants)
-		figure.box(Vector3i(leg_x, 2, 0), Vector3i(leg_x, 2, 1), suit_dark)
-	figure.box(Vector3i(5, 7, -1), Vector3i(5, 8, -1), SKIN_PALE.darkened(0.1))
-	figure.box(Vector3i(5, 13, 0), Vector3i(8, 14, 1), pants)
-	figure.box(Vector3i(5, 14, -1), Vector3i(8, 14, -1), Color("#2A2420"))     # the belt, pulled tight
-	# a narrow chest in the jacket: faded, the zip half open over a grey t-shirt, the collar up
-	figure.box(Vector3i(5, 15, 0), Vector3i(8, 23, 2), suit)
+	# grey, dirty trainers
+	for leg_x in [3, 8]:
+		figure.box(Vector3i(leg_x, 0, -1), Vector3i(leg_x + 2, 1, 3), trainer)
+		figure.box(Vector3i(leg_x, 0, -1), Vector3i(leg_x + 2, 0, 3), sole)
+	# legs three voxels wide like the others', the trousers hanging off them, a torn knee
+	# (flush with the trouser leg)
+	for leg_x in [3, 8]:
+		figure.box(Vector3i(leg_x, 2, 0), Vector3i(leg_x + 2, 13, 1), pants)
+		figure.box(Vector3i(leg_x, 2, 0), Vector3i(leg_x + 2, 2, 1), suit_dark)
+	figure.box(Vector3i(4, 7, 0), Vector3i(4, 8, 0), SKIN_PALE.darkened(0.1))
+	figure.box(Vector3i(3, 13, 0), Vector3i(10, 14, 1), pants)
+	figure.box(Vector3i(3, 14, -1), Vector3i(10, 14, -1), Color("#2A2420"))    # the belt, pulled tight
+	# a narrow chest (no wider than his head) in the jacket: faded, the zip half open over a
+	# grey t-shirt, the collar up
+	figure.box(Vector3i(4, 15, 0), Vector3i(9, 23, 2), suit)
 	for y in range(18, 23):
-		for x in range(5, 9):
+		for x in range(4, 10):
 			if x + y >= 25 and x + y <= 27:
 				figure.put(x, y, 0, panel)
 	figure.box(Vector3i(6, 15, -1), Vector3i(6, 18, -1), stripe)
 	figure.box(Vector3i(6, 19, 0), Vector3i(7, 23, 0), Color("#8A8A86"))      # the t-shirt
-	figure.box(Vector3i(5, 15, 0), Vector3i(8, 15, 2), suit_dark)
-	figure.box(Vector3i(5, 24, 0), Vector3i(8, 25, 2), suit_dark)             # the collar, up
+	figure.box(Vector3i(4, 15, 0), Vector3i(9, 15, 2), suit_dark)
+	figure.box(Vector3i(4, 24, 0), Vector3i(9, 25, 2), suit_dark)             # the collar, up
 	figure.box(Vector3i(6, 24, 0), Vector3i(7, 25, 0), SKIN_PALE)
-	for x in range(5, 9):
+	for x in range(4, 10):
 		figure.put(x, 23 - (1 if x == 6 or x == 7 else 0), -1, Color("#A8A8A0"))   # a cheap chain
 	# the rucksack, too big for him, a sleeping bag rolled on top, the straps
 	figure.box(Vector3i(4, 15, 3), Vector3i(9, 23, 5), pack)
@@ -724,22 +863,24 @@ static func _build_martin(figure: VoxelFigure) -> void:
 	figure.box(Vector3i(3, 24, 4), Vector3i(10, 24, 4), Color("#2A4068"))
 	figure.box(Vector3i(5, 16, -1), Vector3i(5, 23, -1), pack_dark)
 	figure.box(Vector3i(8, 16, -1), Vector3i(8, 23, -1), pack_dark)
-	# arms like sticks, a gap to the body (joined at the shoulder), a hole at the left elbow;
-	# the right hand holds the can up
-	figure.box(Vector3i(4, 22, 0), Vector3i(4, 23, 1), suit)
-	figure.box(Vector3i(9, 22, 0), Vector3i(9, 23, 1), suit)
-	for arm_x in [3, 10]:
-		figure.box(Vector3i(arm_x, 16, 0), Vector3i(arm_x, 23, 1), suit)
-		figure.box(Vector3i(arm_x, 16, 0), Vector3i(arm_x, 23, 0), stripe)
-		figure.box(Vector3i(arm_x, 15, 0), Vector3i(arm_x, 15, 1), suit_dark)
-	figure.put(3, 19, 1, SKIN_PALE)
-	figure.box(Vector3i(3, 13, 0), Vector3i(3, 14, 1), SKIN_PALE)
-	figure.box(Vector3i(10, 15, -2), Vector3i(10, 16, -1), suit)
-	figure.box(Vector3i(10, 15, -3), Vector3i(10, 16, -3), SKIN_PALE)
-	figure.box(Vector3i(10, 14, -5), Vector3i(11, 18, -4), Color("#2E52B8"))
-	figure.box(Vector3i(10, 16, -5), Vector3i(11, 16, -5), Color("#B8E030"))
-	figure.box(Vector3i(10, 18, -5), Vector3i(11, 18, -4), Color("#B8BCC4"))
-	figure.box(Vector3i(10, 14, -5), Vector3i(11, 14, -4), Color("#B8BCC4"))
+	# thin arms, two voxels like the others' slimmest, a gap to the body (joined at the
+	# shoulder), a stripe down the outside, a hole at the left elbow; the right hand holds the
+	# can up
+	figure.box(Vector3i(3, 21, 0), Vector3i(3, 23, 1), suit)
+	figure.box(Vector3i(10, 21, 0), Vector3i(10, 23, 1), suit)
+	for arm_x in [1, 11]:
+		var outside := arm_x if arm_x < 7 else arm_x + 1
+		figure.box(Vector3i(arm_x, 16, 0), Vector3i(arm_x + 1, 23, 1), suit)
+		figure.box(Vector3i(outside, 16, 0), Vector3i(outside, 23, 0), stripe)
+		figure.box(Vector3i(arm_x, 15, 0), Vector3i(arm_x + 1, 15, 1), suit_dark)
+	figure.put(1, 19, 1, SKIN_PALE)
+	figure.box(Vector3i(1, 13, 0), Vector3i(2, 14, 1), SKIN_PALE)
+	figure.box(Vector3i(11, 15, -2), Vector3i(12, 16, -1), suit)
+	figure.box(Vector3i(11, 15, -3), Vector3i(12, 16, -3), SKIN_PALE)
+	figure.box(Vector3i(11, 14, -5), Vector3i(12, 18, -4), Color("#2E52B8"))
+	figure.box(Vector3i(11, 16, -5), Vector3i(12, 16, -5), Color("#B8E030"))
+	figure.box(Vector3i(11, 18, -5), Vector3i(12, 18, -4), Color("#B8BCC4"))
+	figure.box(Vector3i(11, 14, -5), Vector3i(12, 14, -4), Color("#B8BCC4"))
 	# a thin neck and a gaunt, clean-shaven face: wide eyes with big pupils, sunken cheeks,
 	# a small tight grin, sweat
 	figure.box(Vector3i(6, 26, 1), Vector3i(7, 26, 2), SKIN_PALE)
@@ -778,7 +919,7 @@ static func _build_martin(figure: VoxelFigure) -> void:
 			figure.cells[cell] = hair_shade                                     # strands
 	figure.mark("nylon", [suit, suit_dark, panel, stripe, pants, Color("#3A5A8A"), Color("#2A4068")])
 	figure.mark("cloth", [pack, pack_dark, Color("#8A8A86")])
-	figure.mark("plastic", [trainer, sole, Color("#D8D4C8"), Color("#1A1A20")])
+	figure.mark("plastic", [trainer, sole, Color("#1A1A20")])
 	figure.mark("hair", [hair, hair_shade])
 	figure.mark("metal", [Color("#A8A8A0"), Color("#2E52B8"), Color("#B8E030"), Color("#B8BCC4")])
 	figure.mark("leather", [Color("#2A2420")])

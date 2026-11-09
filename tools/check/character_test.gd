@@ -60,6 +60,28 @@ func _init() -> void:
 			screen._detail_subtitle.text, ", lijst scrollt: ", screen._scroll.vertical_scroll_mode != ScrollContainer.SCROLL_MODE_DISABLED)
 	if screen._detail_name.text != "Ufo Piloot" or screen._detail_figure.archetype_id != "ufo_piloot":
 		problems.append("detail toont de keuze niet")
+	# the one chosen does its move, shouts at its moment and says it in a balloon
+	var cued := [false]
+	screen._detail_figure.gesture_cue.connect(func() -> void: cued[0] = true)
+	screen._select(3)
+	for frame_index in 300:
+		await process_frame
+		if cued[0]:
+			break
+	await process_frame
+	if not cued[0]:
+		problems.append("geen gebaar met kreet")
+	print("ballon: ", screen._balloon.visible, " \"", screen._balloon._typewriter.text, "\"")
+	if not screen._balloon.visible or screen._balloon._typewriter.text != String(PlayerCharacter.ARCHETYPES.willem.shout):
+		problems.append("geen tekstballon bij de kreet")
+	var shout_path: String = screen._shout.stream.resource_path if screen._shout and screen._shout.stream else ""
+	print("kreet: ", shout_path)
+	if not shout_path.ends_with("kreet_willem.ogg"):
+		problems.append("geen kreet bij het kiezen")
+	screen._select(2)   # back to the ufo pilot, whom the town is opened with below
+	for archetype_id: String in PlayerCharacter.ORDER:
+		if not ResourceLoader.exists(screen.SHOUT_FOLDER + "kreet_%s.ogg" % archetype_id):
+			problems.append("geen kreet voor %s" % archetype_id)
 	screen.begin()
 	var waited := 0
 	while waited < 4000:

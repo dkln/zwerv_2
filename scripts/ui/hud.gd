@@ -41,32 +41,42 @@ const MAP_JINGLE_VOLUME_DB := -8.0
 ## The music while roaming the city (tools/megadrive/): a loop per kind of neighbourhood
 ## (CITY_MUSIC_BY_AREA, the names of the "wijken" metadata; others play CITY_MUSIC_DEFAULT).
 ## It starts when the jingle ends, fading in; going into a neighbourhood with other music
-## crossfades to it (`CITY_MUSIC_CROSSFADE` s), starting at the same point in the bar (all
-## loops share one tempo); it plays softer while the pause menu is open.
+## crossfades to it (`CITY_MUSIC_CROSSFADE` s, equal power: the amplitudes follow a quarter
+## sine and cosine, so the sum stays as loud and there is no dip halfway), starting at the
+## same point in the bar (all loops are 40 bars at 104 BPM, tools/megadrive/stad_plan.py). It switches only once the player
+## has been CITY_MUSIC_SETTLE s in the new neighbourhood (walking along a border does not make
+## it flap), outside every neighbourhood ("Den Haag") the music stays what it was, and going
+## back to a loop that is still fading out fades that one in again. Softer while the game is
+## paused (pause menu, game menu, story box): CITY_MUSIC_PAUSED_DB.
 const MUSIC_FOLDER := "res://assets/audio/muziek/"
 const CITY_MUSIC_DEFAULT := "stad_centrum_loop.ogg"
 const CITY_MUSIC_BY_AREA := {
-	"Centrum": "stad_centrum_loop.ogg", "Grote Markt": "stad_centrum_loop.ogg",
-	"Paleis Noordeinde": "stad_centrum_loop.ogg", "Lange Voorhout": "stad_centrum_loop.ogg",
+	"Centrum": "stad_centrum_loop.ogg",
+	"Paleis Noordeinde": "stad_hofstad_loop.ogg", "Lange Voorhout": "stad_hofstad_loop.ogg",
+	"Grote Markt": "stad_markt_loop.ogg", "Schilderswijk": "stad_markt_loop.ogg",
 	"Centraal Station": "stad_torens_loop.ogg", "De Resident": "stad_torens_loop.ogg",
 	"Beatrixkwartier": "stad_torens_loop.ogg", "Prins Clauslaan": "stad_torens_loop.ogg",
-	"Malieveld": "stad_groen_loop.ogg", "Koekamp": "stad_groen_loop.ogg",
+	"Malieveld": "stad_groen_loop.ogg", "Koekamp": "stad_bos_loop.ogg",
 	"Bezuidenhout": "stad_woonwijk_loop.ogg", "Bezuidenhout-Oost": "stad_woonwijk_loop.ogg",
-	"Schilderswijk": "stad_woonwijk_loop.ogg", "Laak": "stad_woonwijk_loop.ogg",
-	"Voorburg": "stad_woonwijk_loop.ogg",
+	"Laak": "stad_woonwijk_loop.ogg",
+	"Voorburg": "stad_dorp_loop.ogg",
 	"Binckhorst": "stad_industrie_loop.ogg", "A12": "stad_industrie_loop.ogg",
 }
-## Played when a neighbourhood's own loop is not there (yet).
-const CITY_MUSIC_FALLBACK := "stad_verkennen_loop.ogg"
-const CITY_MUSIC_CROSSFADE := 2.5
-const CITY_MUSIC_VOLUME_DB := -13.0
-const CITY_MUSIC_PAUSED_DB := -24.0
+const CITY_MUSIC_CROSSFADE := 3.0
+const CITY_MUSIC_VOLUME_DB := -22.0
+const CITY_MUSIC_PAUSED_DB := -30.0
 const CITY_MUSIC_FADE_IN := 3.0
+const CITY_MUSIC_SETTLE := 1.5
+## How fast (dB per second) the level follows pausing and going on.
+const CITY_MUSIC_LEVEL_SPEED := 30.0
+## The name of the town outside every neighbourhood: the music does not change there.
+const NO_WIJK := "Den Haag"
 ## The DetailNiveau of the city scene: the jingle waits until it has merged the map.
 const DETAIL_PATH := NodePath("../DetailNiveau")
 const Iso = preload("res://scripts/camera/iso_camera.gd")
 const UiStyle = preload("res://scripts/ui/ui_style.gd")
 const UiSounds = preload("res://scripts/ui/ui_sounds.gd")
+const GraphicsSettings = preload("res://scripts/ui/graphics_settings.gd")
 const PixelIcon = preload("res://scripts/ui/widgets/pixel_icon.gd")
 const SegmentBar = preload("res://scripts/ui/widgets/segment_bar.gd")
 const CheckSquare = preload("res://scripts/ui/widgets/check_square.gd")
@@ -174,9 +184,15 @@ var _location_place: Label
 var _location_street: Label
 var _location_box: Control
 var _location_clock := 0.0
-var _city_music: AudioStreamPlayer
-var _city_music_file := ""
+var _city_music: AudioStreamPlayer     # the loop that is (fading) in
+var _city_music_file := ""              # its file; "" fades them all out (death)
 var _city_music_on := false   # the jingle is over: the city music plays
+var _city_players := {}                 # file -> AudioStreamPlayer, also the ones fading out
+var _city_weights := {}                 # file -> 0..1, where in its fade it is
+var _city_fade := CITY_MUSIC_CROSSFADE  # seconds of the running fade
+var _city_level_db := CITY_MUSIC_VOLUME_DB
+var _city_pending_file := ""            # a neighbourhood's loop waiting for CITY_MUSIC_SETTLE
+var _city_pending_since := 0.0
 var _focus := Vector3.ZERO       # where the player is, from the last minimap update
 var _has_focus := false
 var _current_wijk := ""
@@ -229,6 +245,7 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_day = start_day
 	_read_menu_settings()
+	GraphicsSettings.apply(get_tree())   # also when the town is started on its own
 	_load_fonts()
 	# the HUD is drawn into a picture of its own, which the CRT overlay lays over the world
 	# bent a little less than the world (crt_ui_curvature)
@@ -307,39 +324,81 @@ func _play_city_music() -> void:
 	if _city_music_on:
 		return
 	_city_music_on = true
-	_switch_city_music(_current_wijk, CITY_MUSIC_FADE_IN)
+	_fade_city_music_to(_city_music_file_for(_current_wijk), CITY_MUSIC_FADE_IN)
 
 
-## Crossfades to the loop of neighbourhood `wijk` (nothing if it is already playing).
-func _switch_city_music(wijk: String, fade := CITY_MUSIC_CROSSFADE) -> void:
-	if not _city_music_on:
+## The neighbourhood changed: its loop takes over once the player has stayed CITY_MUSIC_SETTLE s
+## (in _update_city_music); outside every neighbourhood nothing changes.
+func _switch_city_music(wijk: String) -> void:
+	if wijk == NO_WIJK and _city_music_file != "":
+		_city_pending_file = ""
 		return
-	var file: String = CITY_MUSIC_BY_AREA.get(wijk, CITY_MUSIC_DEFAULT)
-	var stream := _load_loop(file)
-	if stream == null:
-		file = CITY_MUSIC_FALLBACK
-		stream = _load_loop(file)
-	if stream == null:
-		push_warning("hud: no city music for %s" % wijk)
-		return
+	var file := _city_music_file_for(wijk)
 	if file == _city_music_file:
-		return
-	var playback_at := 0.0
-	if _city_music:
-		var old := _city_music
-		playback_at = old.get_playback_position()
-		var out := create_tween()
-		out.tween_property(old, "volume_db", -60.0, fade).set_trans(Tween.TRANS_SINE)
-		out.tween_callback(old.queue_free)
+		_city_pending_file = ""
+	elif file != _city_pending_file:
+		_city_pending_file = file
+		_city_pending_since = Time.get_ticks_msec() / 1000.0
+
+
+func _city_music_file_for(wijk: String) -> String:
+	var file: String = CITY_MUSIC_BY_AREA.get(wijk, CITY_MUSIC_DEFAULT)
+	if _load_loop(file) == null:
+		file = CITY_MUSIC_DEFAULT
+	return file
+
+
+## Makes `file` the loop that fades in over `fade` s (the others fade out); "" fades all out.
+func _fade_city_music_to(file: String, fade: float) -> void:
+	_city_pending_file = ""
 	_city_music_file = file
-	_city_music = AudioStreamPlayer.new()
-	_city_music.name = "StadMuziek"
-	_city_music.stream = stream
-	_city_music.volume_db = -60.0
-	add_child(_city_music)
-	_city_music.play(fmod(playback_at, maxf(stream.get_length(), 0.01)))
-	var target := CITY_MUSIC_PAUSED_DB if get_tree().paused else CITY_MUSIC_VOLUME_DB
-	create_tween().tween_property(_city_music, "volume_db", target, fade).set_trans(Tween.TRANS_SINE)
+	_city_fade = maxf(fade, 0.05)
+	if file == "":
+		_city_music = null
+		return
+	if not _city_players.has(file):
+		var stream := _load_loop(file)
+		if stream == null:
+			push_warning("hud: no city music %s" % file)
+			return
+		var player := AudioStreamPlayer.new()
+		player.name = "StadMuziek"
+		player.stream = stream
+		player.volume_db = -80.0
+		add_child(player)
+		# the same point in the bar as the loudest loop now (they all share one length)
+		var playback_at := 0.0
+		var loudest := -1.0
+		for other_file: String in _city_players:
+			var other: AudioStreamPlayer = _city_players[other_file]
+			if other.playing and _city_weights[other_file] > loudest:
+				loudest = _city_weights[other_file]
+				playback_at = other.get_playback_position() + AudioServer.get_time_since_last_mix()
+		player.play(fmod(playback_at, maxf(stream.get_length(), 0.01)))
+		_city_players[file] = player
+		_city_weights[file] = 0.0
+	_city_music = _city_players[file]
+
+
+## Each frame: a neighbourhood's loop that has waited long enough takes over; every loop
+## moves along its fade (equal power) at the level of the moment (softer while paused).
+func _update_city_music(delta: float) -> void:
+	if _city_pending_file != "" and _city_music_on \
+			and Time.get_ticks_msec() / 1000.0 - _city_pending_since >= CITY_MUSIC_SETTLE:
+		_fade_city_music_to(_city_pending_file, CITY_MUSIC_CROSSFADE)
+	var level_target := CITY_MUSIC_PAUSED_DB if get_tree().paused else CITY_MUSIC_VOLUME_DB
+	_city_level_db = move_toward(_city_level_db, level_target, CITY_MUSIC_LEVEL_SPEED * delta)
+	for file: String in _city_players.keys():
+		var player: AudioStreamPlayer = _city_players[file]
+		var weight: float = move_toward(_city_weights[file], 1.0 if file == _city_music_file else 0.0, delta / _city_fade)
+		_city_weights[file] = weight
+		if weight <= 0.0 and file != _city_music_file:
+			player.queue_free()
+			_city_players.erase(file)
+			_city_weights.erase(file)
+			continue
+		var amplitude := sin(weight * PI * 0.5)
+		player.volume_db = _city_level_db + linear_to_db(maxf(amplitude, 0.0001))
 
 
 static func _load_loop(file: String) -> AudioStream:
@@ -355,6 +414,7 @@ static func _load_loop(file: String) -> AudioStream:
 
 
 func _process(delta: float) -> void:
+	_update_city_music(delta)
 	_update_clock()
 	_update_minimap()
 	_location_clock -= delta
@@ -982,10 +1042,7 @@ func set_paused(on: bool) -> void:
 		UiSounds.play(self, "doe" if on else "terug")
 	_pause_layer.visible = on
 	_ui_viewport.gui_disable_input = not on
-	get_tree().paused = on
-	if _city_music:
-		create_tween().tween_property(_city_music, "volume_db",
-				CITY_MUSIC_PAUSED_DB if on else CITY_MUSIC_VOLUME_DB, 0.4)
+	get_tree().paused = on   # the city music follows by itself (_update_city_music)
 	if on:
 		_select_pause_item(0)
 
@@ -997,12 +1054,7 @@ func _select_pause_item(index: int) -> void:
 	for button_index in _pause_buttons.size():
 		var on := button_index == index
 		var button := _pause_buttons[button_index]
-		var style := StyleBoxFlat.new()
-		style.bg_color = UiStyle.ACCENT if on else Color(0, 0, 0, 0)
-		style.shadow_color = Color.BLACK if on else Color(0, 0, 0, 0)
-		style.shadow_offset = Vector2(4, 4) if on else Vector2.ZERO
-		style.anti_aliasing = false
-		style.content_margin_left = 12
+		var style := UiStyle.menu_item_style(on)
 		for state in ["normal", "hover", "pressed", "focus"]:
 			button.add_theme_stylebox_override(state, style)
 		for colour_name in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
@@ -1064,6 +1116,7 @@ const DEATH_JINGLE_VOLUME_DB := -6.0
 const DEATH_CAUSES := {
 	"honger": "%s is van de honger omgekomen.",
 	"aangereden": "%s is aangereden en niet meer opgestaan.",
+	"verdronken": "%s is in het water gevallen en verdronken.",
 }
 ## Seconds before the keys work (so a key held while dying does not skip it).
 const DEATH_KEYS_AFTER := 1.2
@@ -1120,12 +1173,7 @@ func show_death(cause := "") -> void:
 	fade.tween_property(_death_layer, "modulate:a", 1.0, 0.6)
 	fade.tween_property(_death_keys, "modulate:a", 1.0, 0.4).set_delay(DEATH_KEYS_AFTER - 0.6)
 	_city_music_on = false
-	if _city_music:
-		var music := _city_music
-		_city_music = null
-		var out := create_tween()
-		out.tween_property(music, "volume_db", -60.0, 0.8)
-		out.tween_callback(music.queue_free)
+	_fade_city_music_to("", 0.8)
 	var stream: AudioStream = load(DEATH_JINGLE) if ResourceLoader.exists(DEATH_JINGLE) else null
 	if stream:
 		if stream is AudioStreamOggVorbis:

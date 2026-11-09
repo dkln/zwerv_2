@@ -48,6 +48,11 @@ func _init() -> void:
 	var walked := Vector2(player.global_position.x - start.x, player.global_position.z - start.z).length()
 	print("na 1 s lopen: %.2f m" % walked)
 	_check(walked > 1.0, "loopt met de toetsen (%.2f m)" % walked)
+	# it turns to face where it walks
+	var moved := player.global_position - start
+	var facing: float = atan2(moved.x, moved.z)
+	var off_by := absf(angle_difference(player.rotation.y, facing))
+	_check(off_by < deg_to_rad(20.0), "draait in de looprichting (%.0f graden ernaast)" % rad_to_deg(off_by))
 	await _hold_key(KEY_W, 4.0, player)
 	print("na nog 4 s: ", player.global_position)
 	var stamina_before: float = player.stat("uithoudingsvermogen").x
@@ -68,6 +73,13 @@ func _init() -> void:
 	player._hurt(10.0, "aangereden")
 	_check(player._ragdoll != null, "wordt een rigid body")
 	_check(player.stat("gezondheid").x < health_before, "verliest gezondheid")
+	# the cry of pain: never the same short one twice in a row
+	var repeated := false
+	for cry_index in 20:
+		var previous_cry: int = player._last_cry
+		player.cry_out(false, player.global_position)
+		repeated = repeated or player._last_cry == previous_cry or player._last_cry < 1
+	_check(not repeated, "pijnkreten wisselen af (stem %s)" % player._voice)
 	for frame_index in 600:
 		await physics_frame
 		if player._ragdoll == null:

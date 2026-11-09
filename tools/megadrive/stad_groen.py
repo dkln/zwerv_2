@@ -1,7 +1,7 @@
 """'Stad groen': the city loop of the parks (Malieveld, Koekamp): calmer and spacious, few drums.
 
-One of the five neighbourhood loops on the shared plan (stad_plan.py: 128 BPM, F minor, 40 bars
-= 75 s). Felt in half time: FM strings carry it, electric piano and FM bells in sparse
+One of the five neighbourhood loops on the shared plan (stad_plan.py: 104 BPM, F minor, 40 bars
+= 92 s). Felt in half time: FM strings carry it, electric piano and FM bells in sparse
 chords, a long held bass, PSG twinkles and a PSG line in long notes; the lead sings the motif
 gently with space around it. Drums only as soft hats and a light broken kick in the fuller parts.
 
@@ -16,6 +16,7 @@ House style: style.py, docs/MUZIEK.md.
 Render: tools/megadrive/render.sh stad_groen  (writes assets/audio/muziek/stad_groen_loop.ogg)
 """
 import megadrive
+import stad_plan
 import style
 from stad_plan import BARS, BPM, SECTIONS, bars_of
 from style import Song
@@ -85,7 +86,7 @@ def main() -> None:
             elif name == "tag" and last:
                 for step, tom_index in ((12, 0), (14, 1)):
                     song.pcm.add(song.at(bar, step), style.TOMS[tom_index], 0.45)
-    song.render(target_rms_db=-15.5)
+    stad_plan.finish(song)
 
 
 if __name__ == "__main__":

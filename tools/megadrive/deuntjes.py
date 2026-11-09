@@ -147,7 +147,8 @@ STINGERS = {"kaart_start": map_start, "gewonnen": won, "level_omhoog": level_up,
 
 def main() -> None:
     names = sys.argv[1:] or list(STINGERS)
-    for name in names:
+    for stinger_number, name in enumerate(names, 1):
+        print(f"[ {stinger_number}/{len(names)} ] {name}", flush=True)
         STINGERS[name]()
 
 

@@ -20,14 +20,20 @@ extends Control
 ## does the same. Where the logo vanishes a star twinkles.
 ## The space bar (only that: not other keys, the mouse or the volume keys) breaks it off at
 ## any moment and goes to the main menu; holding Enter (or the down arrow) rolls the story
-## faster (CRAWL_FAST); bottom right the keys say so, as in the menu ("[SPATIE] OVERSLAAN
-## [ENTER] SNELLER"). The stars twinkle, and now and then a tractor drifts through space.
+## faster (CRAWL_FAST); bottom left the context action says so, as in the game (ActionPrompts:
+## SPATIE Overslaan), bottom right the secondary action, as in the menu ("[ENTER] SNELLER",
+## while the story rolls). The stars twinkle, and now and then something drifts through space:
+## one of the zwervers of the game (the characters of the character creation screen) or a
+## tractor.
 ## The CRT look of the HUD lies over it (UiStyle.make_crt_overlay, with the settings of the
 ## main menu).
 
 const UiSounds = preload("res://scripts/ui/ui_sounds.gd")
 const ProtestFlag = preload("res://scripts/vehicles/protest_flag.gd")
+const PlayerModel = preload("res://scripts/player/player_model.gd")
+const PlayerCharacter = preload("res://scripts/player/player_character.gd")
 const UiStyle = preload("res://scripts/ui/ui_style.gd")
+const GraphicsSettings = preload("res://scripts/ui/graphics_settings.gd")
 
 const MENU_SCENE := "res://scenes/hoofdmenu.tscn"
 ## The music of the intro, its volume (dB), and the seconds it fades out in when the intro
@@ -82,16 +88,21 @@ const CRAWL_FADE := 4.0
 ## reaches its end, and the intro the main menu, sooner (the music goes on into the menu).
 const CRAWL_FAST := 12.0
 const FAST_KEYS: Array[Key] = [KEY_ENTER, KEY_KP_ENTER, KEY_DOWN]
-## Now and then a tractor drifts through space behind the story, tumbling slowly (drawn in
-## 3D into a small picture of its own, TRACTOR_PICTURE pixels, shown TRACTOR_SIZE big on
-## the screen at most): the first TRACTOR_FIRST seconds after the stars come, then every
-## TRACTOR_EVERY (from .. to) seconds, each crossing the screen in TRACTOR_SECONDS (from .. to).
-const TRACTOR_FIRST := 14.0
-const TRACTOR_EVERY := Vector2(18.0, 32.0)
-const TRACTOR_SECONDS := Vector2(14.0, 20.0)
-const TRACTOR_PICTURE := 96
-const TRACTOR_SIZE := 190.0
+## Now and then something drifts through space behind the story, tumbling slowly (drawn in
+## 3D into a small picture of its own, DRIFTER_PICTURE pixels, shown DRIFTER_SIZE big on
+## the screen at most): the first DRIFTER_FIRST seconds after the stars come, then every
+## DRIFTER_EVERY (from .. to) seconds, each crossing the screen in DRIFTER_SECONDS (from .. to).
+## What drifts: one of the characters (PlayerCharacter.ORDER, CHARACTER_SCALE times their
+## size so they show as big as a tractor, flailing as if they swim) with CHARACTER_CHANCE,
+## else a tractor (TRACTOR_MODELS); never the same one twice in a row.
+const DRIFTER_FIRST := 14.0
+const DRIFTER_EVERY := Vector2(10.0, 20.0)
+const DRIFTER_SECONDS := Vector2(14.0, 20.0)
+const DRIFTER_PICTURE := 96
+const DRIFTER_SIZE := 190.0
 const TRACTOR_MODELS := ["trekker", "trekker_rood"]
+const CHARACTER_CHANCE := 0.7
+const CHARACTER_SCALE := 2.2
 ## Pixels between the paragraphs of the story (in its picture).
 const PARAGRAPH_GAP := 26
 ## Paragraphs of STORY and the moment each comes in at the bottom of the screen: the
@@ -129,6 +140,8 @@ const SPARKLE_REACH := 90.0
 const STAR_COUNT := 140
 
 var _design: Control
+var _prompts: ActionPrompts
+var _fast_footer: Label
 var _line: Label
 var _stars: Control
 var _logo_holder: Control
@@ -141,13 +154,14 @@ var _music: AudioStreamPlayer
 var _twinkles: Array[Vector3] = []   # per star: pace (rad/s), phase, how deep it dims
 var _clock := 0.0
 var _crawl_ahead := 0.0   # seconds the story is ahead of the music (Enter held: CRAWL_FAST)
-var _tractor_view: TextureRect   # the drifting tractor's picture on the screen
-var _tractor_picture: SubViewport
-var _tractor_spinner: Node3D     # turned as it tumbles
-var _tractor_model: Node3D       # the tractor itself (one of TRACTOR_MODELS, swapped per flight)
-var _tractor_flight := {}        # the flight under way: from, to, start, seconds, axis, spin; empty when none
-var _next_tractor_at := LOGO_FADE_IN_AT + TRACTOR_FIRST
-var _tractor_random := RandomNumberGenerator.new()
+var _drifter_view: TextureRect   # the picture of what drifts, on the screen
+var _drifter_picture: SubViewport
+var _drifter_spinner: Node3D     # turned as it tumbles
+var _drifter_model: Node3D       # what drifts: a character or a tractor, swapped per flight
+var _last_drifter := ""         # its name (character id or tractor model), not twice in a row
+var _drifter_flight := {}        # the flight under way: from, to, start, seconds, axis, spin; empty when none
+var _next_drifter_at := LOGO_FADE_IN_AT + DRIFTER_FIRST
+var _drifter_random := RandomNumberGenerator.new()
 ## Stars twinkle: each dims and brightens at its own pace (from .. to, radians a second).
 const TWINKLE_PACE := Vector2(1.2, 4.5)
 
@@ -167,9 +181,10 @@ func _ready() -> void:
 	_build_line()
 	_build_logo()
 	_build_sparkle()
-	_build_tractor()
+	_build_drifter()
 	_build_crawl()
 	_build_prompts()
+	GraphicsSettings.apply(get_tree())
 	var settings := MainMenu._read_settings()
 	var crt := UiStyle.make_crt_overlay(0.05 if settings.crt else 0.0, 0.035 if settings.crt else 0.0,
 			0.1 if settings.scanlines else 0.0, get_viewport().get_visible_rect().size)
@@ -192,7 +207,8 @@ func _process(delta: float) -> void:
 		if time >= CRAWL_AT and _fast_held():
 			_crawl_ahead += delta * (CRAWL_FAST - 1.0)
 		_play(time)
-	_fly_tractor()
+		_update_prompts(time)
+	_fly_drifter()
 	if not _stars.visible:
 		return
 	for star_index in _twinkles.size():
@@ -518,47 +534,64 @@ func _build_crawl() -> void:
 	_design.add_child(_crawl_screen)
 
 
-## Bottom right, the keys and what they do, as the footer of the main menu and the
-## character creation screen: one line of small pixel text ("[SPATIE] OVERSLAAN",
-## "[ENTER] SNELLER"), 48 px in from the right, 48 px up.
-const PROMPT_TEXT := "[SPATIE] OVERSLAAN      [ENTER] SNELLER"
-const PROMPT_COLOUR := Color("#C9CCE6")
+## Bottom left, the context action of the game (ActionPrompts): SPATIE skips. Bottom right,
+## as the footer of the main menu, the secondary action in small pixel text: once the story
+## rolls, "[ENTER] SNELLER". Both PROMPT_MARGIN px in from the side and up from the bottom.
+const PROMPT_MARGIN := 48
+const SKIP_ACTION := ["SPATIE", "Overslaan"]
+const FAST_TEXT := "[ENTER] SNELLER"
+const FOOTER_COLOUR := Color("#C9CCE6")
 
 
 func _build_prompts() -> void:
-	var keys := Label.new()
-	keys.name = "Toetsen"
-	keys.text = PROMPT_TEXT
-	keys.add_theme_font_override("font", UiStyle.font(UiStyle.FONT_PIXEL))
-	keys.add_theme_font_size_override("font_size", 11)
-	keys.add_theme_color_override("font_color", PROMPT_COLOUR)
-	keys.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	keys.size = Vector2(600, 16)
-	keys.position = Vector2(DESIGN_SIZE.x - 48 - 600, DESIGN_SIZE.y - 48)
-	keys.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_design.add_child(keys)
+	_prompts = ActionPrompts.new()
+	_prompts.name = "Toetsen"
+	_prompts.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	_prompts.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_prompts.offset_left = PROMPT_MARGIN
+	_prompts.offset_bottom = -PROMPT_MARGIN
+	_design.add_child(_prompts)
+	_prompts.set_actions([SKIP_ACTION])
+	_fast_footer = Label.new()
+	_fast_footer.name = "Sneller"
+	_fast_footer.text = FAST_TEXT
+	_fast_footer.add_theme_font_override("font", UiStyle.font(UiStyle.FONT_PIXEL))
+	_fast_footer.add_theme_font_size_override("font_size", 11)
+	_fast_footer.add_theme_color_override("font_color", FOOTER_COLOUR)
+	_fast_footer.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_fast_footer.size = Vector2(600, 16)
+	_fast_footer.position = Vector2(DESIGN_SIZE.x - PROMPT_MARGIN - 600, DESIGN_SIZE.y - PROMPT_MARGIN)
+	_fast_footer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_fast_footer.visible = false
+	_design.add_child(_fast_footer)
 
 
-## The drifting tractor: a small 3D world of its own (a camera, a sun and some ambient
-## light, the tractor tumbling in the middle) drawn into a picture with a clear background,
+## The secondary action shows while the story rolls (`time`: seconds into the music).
+func _update_prompts(time: float) -> void:
+	if _fast_footer:
+		_fast_footer.visible = time >= CRAWL_AT and time < END_AT
+
+
+## What drifts: a small 3D world of its own (a camera, a sun and some ambient light, the
+## character or tractor tumbling in the middle) drawn into a picture with a clear background,
 ## laid over the stars and under the story, pixel-sharp like the rest.
-func _build_tractor() -> void:
-	_tractor_random.randomize()
-	_tractor_picture = SubViewport.new()
-	_tractor_picture.name = "Trekkerbeeld"
-	_tractor_picture.size = Vector2i(TRACTOR_PICTURE, TRACTOR_PICTURE)
-	_tractor_picture.transparent_bg = true
-	_tractor_picture.own_world_3d = true
-	_tractor_picture.render_target_update_mode = SubViewport.UPDATE_DISABLED
-	add_child(_tractor_picture)
+func _build_drifter() -> void:
+	_drifter_random.randomize()
+	_drifter_picture = SubViewport.new()
+	_drifter_picture.name = "Trekkerbeeld"
+	_drifter_picture.size = Vector2i(DRIFTER_PICTURE, DRIFTER_PICTURE)
+	_drifter_picture.transparent_bg = true
+	_drifter_picture.own_world_3d = true
+	_drifter_picture.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	add_child(_drifter_picture)
 	var camera := Camera3D.new()
 	camera.position = Vector3(0.0, 0.0, 8.5)   # room for the flag as it tumbles
 	camera.fov = 40.0
-	_tractor_picture.add_child(camera)
+	_drifter_picture.add_child(camera)
 	var sun := DirectionalLight3D.new()
 	sun.rotation_degrees = Vector3(-35.0, 40.0, 0.0)
 	sun.light_energy = 1.2
-	_tractor_picture.add_child(sun)
+	_drifter_picture.add_child(sun)
 	var environment := Environment.new()
 	environment.background_mode = Environment.BG_CLEAR_COLOR
 	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
@@ -566,17 +599,17 @@ func _build_tractor() -> void:
 	environment.ambient_light_energy = 0.7
 	var world_environment := WorldEnvironment.new()
 	world_environment.environment = environment
-	_tractor_picture.add_child(world_environment)
-	_tractor_spinner = Node3D.new()
-	_tractor_picture.add_child(_tractor_spinner)
-	_tractor_view = TextureRect.new()
-	_tractor_view.name = "Trekker"
-	_tractor_view.texture = _tractor_picture.get_texture()
-	_tractor_view.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	_tractor_view.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	_tractor_view.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_tractor_view.visible = false
-	_design.add_child(_tractor_view)
+	_drifter_picture.add_child(world_environment)
+	_drifter_spinner = Node3D.new()
+	_drifter_picture.add_child(_drifter_spinner)
+	_drifter_view = TextureRect.new()
+	_drifter_view.name = "Trekker"
+	_drifter_view.texture = _drifter_picture.get_texture()
+	_drifter_view.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_drifter_view.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_drifter_view.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_drifter_view.visible = false
+	_design.add_child(_drifter_view)
 
 
 ## A tractor of model `model_name` (assets/tiles/props/voertuigen) with its wheels and the
@@ -613,52 +646,82 @@ static func _make_tractor(model_name: String) -> Node3D:
 	return holder
 
 
-## Starts a tractor drifting across now and then, and moves the one under way: in a
+## The next one to drift: a character with CHARACTER_CHANCE, else a tractor; not the last one.
+func _pick_drifter() -> String:
+	var choices: Array = PlayerCharacter.ORDER if _drifter_random.randf() < CHARACTER_CHANCE else TRACTOR_MODELS
+	var others := choices.filter(func(choice: String) -> bool: return choice != _last_drifter)
+	return others[_drifter_random.randi() % others.size()]
+
+
+## One of the characters (`archetype_id`) as the game draws them (PlayerModel), bigger
+## (CHARACTER_SCALE), flailing its arms and legs as if it swims through space.
+static func _make_character(archetype_id: String) -> Node3D:
+	var holder := Node3D.new()
+	var figure := PlayerModel.new()
+	figure.archetype_id = archetype_id
+	figure.idle = true
+	figure.walking = 1.0
+	figure.scale = Vector3.ONE * CHARACTER_SCALE
+	holder.add_child(figure)
+	return holder
+
+
+## Its middle at the origin, so it tumbles round itself (its height is known once it is built).
+static func _centre_character(holder: Node3D) -> void:
+	var figure := holder.get_child(0) as Node3D
+	figure.position = Vector3(0.0, -figure.call("height") * 0.5 * CHARACTER_SCALE, 0.0)
+
+
+## Starts something drifting across now and then, and moves the one under way: in a
 ## straight line from one side of the screen to the other (a little up or down), smaller
 ## or bigger as it is further or nearer, tumbling round an axis of its own.
-func _fly_tractor() -> void:
-	if _tractor_view == null or not _stars.visible:
+func _fly_drifter() -> void:
+	if _drifter_view == null or not _stars.visible:
 		return
-	if _tractor_flight.is_empty():
-		if _clock < _next_tractor_at or _clock > END_AT - 6.0:
+	if _drifter_flight.is_empty():
+		if _clock < _next_drifter_at or _clock > END_AT - 6.0:
 			return
-		var model_name: String = TRACTOR_MODELS[_tractor_random.randi() % TRACTOR_MODELS.size()]
-		if _tractor_model:
-			_tractor_model.queue_free()
-		_tractor_model = _make_tractor(model_name)
-		if _tractor_model == null:
-			_next_tractor_at = INF
+		var drifter_name := _pick_drifter()
+		if _drifter_model:
+			_drifter_model.queue_free()
+		_drifter_model = _make_character(drifter_name) if PlayerCharacter.ARCHETYPES.has(drifter_name) \
+			else _make_tractor(drifter_name)
+		if _drifter_model == null:
+			_next_drifter_at = INF
 			return
-		_tractor_spinner.add_child(_tractor_model)
-		var shown := TRACTOR_SIZE * _tractor_random.randf_range(0.45, 1.0)
-		var from_left := _tractor_random.randf() < 0.5
-		var start_height := _tractor_random.randf_range(0.1, 0.75) * DESIGN_SIZE.y
-		var end_height := clampf(start_height + _tractor_random.randf_range(-160.0, 160.0), 0.0, DESIGN_SIZE.y - shown)
+		_last_drifter = drifter_name
+		_drifter_spinner.add_child(_drifter_model)
+		if PlayerCharacter.ARCHETYPES.has(drifter_name):
+			_centre_character(_drifter_model)
+		var shown := DRIFTER_SIZE * _drifter_random.randf_range(0.45, 1.0)
+		var from_left := _drifter_random.randf() < 0.5
+		var start_height := _drifter_random.randf_range(0.1, 0.75) * DESIGN_SIZE.y
+		var end_height := clampf(start_height + _drifter_random.randf_range(-160.0, 160.0), 0.0, DESIGN_SIZE.y - shown)
 		var left := Vector2(-shown, start_height)
 		var right := Vector2(DESIGN_SIZE.x, end_height)
-		_tractor_flight = {
+		_drifter_flight = {
 			"from": left if from_left else right,
 			"to": right if from_left else left,
 			"start": _clock,
-			"seconds": _tractor_random.randf_range(TRACTOR_SECONDS.x, TRACTOR_SECONDS.y),
-			"axis": Vector3(_tractor_random.randf_range(-1.0, 1.0), _tractor_random.randf_range(-1.0, 1.0), _tractor_random.randf_range(-0.5, 0.5)).normalized(),
-			"spin": deg_to_rad(_tractor_random.randf_range(18.0, 45.0)) * (1.0 if _tractor_random.randf() < 0.5 else -1.0),
+			"seconds": _drifter_random.randf_range(DRIFTER_SECONDS.x, DRIFTER_SECONDS.y),
+			"axis": Vector3(_drifter_random.randf_range(-1.0, 1.0), _drifter_random.randf_range(-1.0, 1.0), _drifter_random.randf_range(-0.5, 0.5)).normalized(),
+			"spin": deg_to_rad(_drifter_random.randf_range(18.0, 45.0)) * (1.0 if _drifter_random.randf() < 0.5 else -1.0),
 		}
-		_tractor_spinner.basis = Basis.from_euler(Vector3(_tractor_random.randf_range(0.0, TAU), _tractor_random.randf_range(0.0, TAU), 0.0))
-		_tractor_view.size = Vector2.ONE * shown
+		_drifter_spinner.basis = Basis.from_euler(Vector3(_drifter_random.randf_range(0.0, TAU), _drifter_random.randf_range(0.0, TAU), 0.0))
+		_drifter_view.size = Vector2.ONE * shown
 		# the nearer ones (bigger) a little brighter, the far ones dimmer
-		_tractor_view.modulate = Color(1, 1, 1).lerp(Color(0.55, 0.6, 0.75), 1.0 - shown / TRACTOR_SIZE)
-		_tractor_picture.render_target_update_mode = SubViewport.UPDATE_ALWAYS
-		_tractor_view.visible = true
-	var flown := (_clock - float(_tractor_flight.start)) / float(_tractor_flight.seconds)
+		_drifter_view.modulate = Color(1, 1, 1).lerp(Color(0.55, 0.6, 0.75), 1.0 - shown / DRIFTER_SIZE)
+		_drifter_picture.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+		_drifter_view.visible = true
+	var flown := (_clock - float(_drifter_flight.start)) / float(_drifter_flight.seconds)
 	if flown >= 1.0:
-		_tractor_flight = {}
-		_tractor_view.visible = false
-		_tractor_picture.render_target_update_mode = SubViewport.UPDATE_DISABLED
-		_next_tractor_at = _clock + _tractor_random.randf_range(TRACTOR_EVERY.x, TRACTOR_EVERY.y)
+		_drifter_flight = {}
+		_drifter_view.visible = false
+		_drifter_picture.render_target_update_mode = SubViewport.UPDATE_DISABLED
+		_next_drifter_at = _clock + _drifter_random.randf_range(DRIFTER_EVERY.x, DRIFTER_EVERY.y)
 		return
-	_tractor_view.position = (_tractor_flight.from as Vector2).lerp(_tractor_flight.to as Vector2, flown)
-	_tractor_spinner.basis = Basis(_tractor_flight.axis as Vector3, float(_tractor_flight.spin) * get_process_delta_time()) * _tractor_spinner.basis
+	_drifter_view.position = (_drifter_flight.from as Vector2).lerp(_drifter_flight.to as Vector2, flown)
+	_drifter_spinner.basis = Basis(_drifter_flight.axis as Vector3, float(_drifter_flight.spin) * get_process_delta_time()) * _drifter_spinner.basis
 
 
 ## The font at `path` (Rubik when it is missing) at this weight.

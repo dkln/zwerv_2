@@ -16,7 +16,8 @@ Every file is mono (so a Godot AudioStreamPlayer3D can place it in the world), O
                                AudioStreamPlayer3D on the vehicle: turn loop on, Godot does the
                                distance, panning and Doppler; pitch_scale can follow the speed)
     auto_botsing_hard.ogg, auto_botsing_licht.ogg   crashes: a heavy one and a bump
-    tram_bel.ogg, trein_hoorn.ogg, bus_remmen.ogg  signals and stops
+    tram_bel.ogg, trein_hoorn.ogg, bus_remmen.ogg  signals and stops (the train horn: the two
+                               tyfoons of an NS Koploper, 660 and 370 Hz)
 
 Vehicles: auto (car), brommer (moped), bus, tram (also RandstadRail), trein (NS train).
 
@@ -30,6 +31,7 @@ so you can tell them apart):
     brandweer_hoorn.ogg        the fire engine's air horn
     helikopter_loop.ogg        the police helicopter hovering (rotor chop, turbine, tail rotor)
     helikopter_voorbij.ogg     the helicopter flying over
+    plons.ogg                  someone falling into the water: thump, splash, bubbles
 Loops are a whole number of engine cycles long (every frequency fits the loop exactly) and are
 filtered circularly, so they repeat without a click. One-shots peak at -1 dB, loops sit at
 about -16 dB RMS; set the in-game level with volume_db.
@@ -63,13 +65,6 @@ HORN = FmPatch("horn", algorithm=4, feedback=0.9, vibrato_depth=0.0, operators=(
     Operator(ratio=1.0, level=0.6, attack=0.02, decay=0.8, sustain=0.9, release=0.15),
     Operator(ratio=2.0, detune_cents=7, level=1.1, attack=0.03, decay=0.5, sustain=0.7, release=0.12),
     Operator(ratio=1.0, detune_cents=-6, level=0.45, attack=0.02, decay=0.8, sustain=0.9, release=0.15),
-))
-
-TRAM_BELL = FmPatch("tram bell", algorithm=4, feedback=0.0, operators=(
-    Operator(ratio=2.76, level=2.4, attack=0.001, decay=0.12, sustain=0.0, release=0.2),
-    Operator(ratio=1.0, level=0.7, attack=0.001, decay=0.5, sustain=0.0, release=0.35),
-    Operator(ratio=5.4, level=1.2, attack=0.001, decay=0.06, sustain=0.0, release=0.1),
-    Operator(ratio=2.0, level=0.3, attack=0.001, decay=0.3, sustain=0.0, release=0.2),
 ))
 
 
@@ -402,22 +397,76 @@ def crash(hard: bool) -> numpy.ndarray:
     return fade_edges(dac(low_pass(buffer, 9000.0)), 0.001, 0.15)
 
 
+## The tram's gong: its fundamental (Hz) and the partials of a struck dome (ratio, level,
+## decay in s); not harmonic, which makes it a bell rather than a tone.
+TRAM_GONG_HZ = 760.0
+TRAM_GONG_PARTIALS = ((1.0, 1.0, 1.1), (2.32, 0.55, 0.7), (2.98, 0.25, 0.45), (4.25, 0.3, 0.35),
+                      (5.4, 0.12, 0.2), (6.63, 0.15, 0.15))
+
+
+def gong_strike(seed: int, strength: float) -> numpy.ndarray:
+    """One strike of the hammer on the dome: the partials ringing out (each pair a hair apart,
+    so it shimmers) and the clank of the hammer."""
+    times = time_axis(1.4)
+    random = numpy.random.default_rng(seed)
+    ring = numpy.zeros(len(times))
+    for ratio, level, decay in TRAM_GONG_PARTIALS:
+        frequency = TRAM_GONG_HZ * ratio * (1.0 + random.uniform(-0.002, 0.002))
+        shimmer = 1.0 + 0.0025 * ratio
+        ring += level * numpy.exp(-times / decay) * (numpy.sin(TWO_PI * frequency * times)
+                                                   + 0.6 * numpy.sin(TWO_PI * frequency * shimmer * times))
+    clank = band_noise(len(times), 2000.0, 9000.0, seed + 1) * numpy.exp(-times / 0.004) * 0.8
+    return numpy.tanh(1.3 * strength * (ring / 1.6 + clank))
+
+
 def tram_bell() -> numpy.ndarray:
-    """The tram's 'tring tring': a bell hammered fast, twice."""
-    buffer = numpy.zeros(int(1.3 * SAMPLE_RATE))
-    for burst_start in (0.0, 0.42):
-        for strike in range(4):
-            note = megadrive.fm_note(TRAM_BELL, 88.0, 0.05, 1.0 - 0.1 * strike)
-            place(buffer, burst_start + strike * 0.045, numpy.asarray(note), 0.7)
-    return fade_edges(dac(low_pass(buffer, 9000.0)), 0.001, 0.1)
+    """The tram's bell, like the trams of the GVB in Amsterdam: the dome gong under the cab,
+    struck twice quickly ("ding-ding"), ringing on."""
+    buffer = numpy.zeros(int(1.7 * SAMPLE_RATE))
+    place(buffer, 0.0, gong_strike(51, 1.0))
+    place(buffer, 0.2, gong_strike(52, 0.9))
+    return fade_edges(low_pass(dac(low_pass(buffer, 8000.0)), 6000.0), 0.001, 0.25)
+
+
+## The two tones of a European train horn (TSI): the high and the low tyfoon.
+TRAIN_HORN_HIGH_HZ = 660.0
+TRAIN_HORN_LOW_HZ = 370.0
+
+
+def tyfoon(frequency: float, seconds: float, seed: int) -> numpy.ndarray:
+    """One blast of a pneumatic tyfoon (the air horn on the cab of a Koploper): a steel membrane
+    slapping against its seat, so a narrow, buzzy pulse rich in harmonics, through the flared
+    trumpet (a high-pass at the fundamental and a nasal bump around 1.5 kHz). As the valve opens
+    the pitch scoops up while the pressure builds, with a rush of air; it wavers a little while
+    it blows, and sags and dies quickly as the valve shuts."""
+    times = time_axis(seconds + 0.12)
+    held = numpy.clip((seconds - times) / 0.06, 0.0, 1.0)            # valve shutting
+    pressure = numpy.clip(times / 0.05, 0.0, 1.0) ** 0.7 * held
+    random = numpy.random.default_rng(seed)
+    waver = low_pass(random.normal(0.0, 1.0, len(times)), 6.0)
+    waver *= 0.004 / (numpy.abs(waver).max() + 1e-9)
+    pitch = frequency * (1.0 - 0.07 * numpy.exp(-times / 0.035) - 0.03 * (1.0 - held) + waver)
+    phase = phase_of(pitch) % 1.0
+    membrane = numpy.where(phase < 0.22, 1.0, -0.28) + 0.25 * numpy.sin(TWO_PI * phase)
+    spectrum = numpy.fft.rfft(membrane)
+    frequencies = numpy.fft.rfftfreq(len(membrane), 1.0 / SAMPLE_RATE)
+    trumpet = (frequencies / frequency) ** 4 / (1.0 + (frequencies / frequency) ** 4)
+    trumpet *= 1.0 + 1.4 * numpy.exp(-((frequencies - 1500.0) / 500.0) ** 2)
+    trumpet /= 1.0 + (frequencies / 3500.0) ** 2
+    tone = numpy.fft.irfft(spectrum * trumpet, n=len(membrane))
+    tone = numpy.tanh(1.6 * tone / (numpy.abs(tone).max() + 1e-9))
+    rush = band_noise(len(times), 1500.0, 7000.0, seed + 1) * (0.35 * numpy.exp(-times / 0.04) + 0.04) * held
+    return (tone * pressure + rush)
 
 
 def train_horn() -> numpy.ndarray:
-    """The two-tone horn of an electric train: a long low pair, then a short higher one."""
-    buffer = numpy.zeros(int(2.0 * SAMPLE_RATE))
-    place(buffer, 0.0, megadrive.fm_chord(HORN, [57.0, 61.0], 0.85, 1.0))
-    place(buffer, 1.05, megadrive.fm_chord(HORN, [61.0, 64.0], 0.45, 1.0))
-    return fade_edges(dac(low_pass(buffer, 7000.0)), 0.002, 0.2)
+    """The horn of an NS Koploper (ICM): its two tyfoons, a short high blast and then a long low
+    one ("tuu-tuuuu"), as a driver gives it before a level crossing or the platform's end."""
+    buffer = numpy.zeros(int(1.75 * SAMPLE_RATE))
+    place(buffer, 0.0, tyfoon(TRAIN_HORN_HIGH_HZ, 0.32, 41), 0.85)
+    place(buffer, 0.42, tyfoon(TRAIN_HORN_LOW_HZ, 1.05, 42), 1.0)
+    # through the DAC, then the console's output filter takes the edge off the steps
+    return fade_edges(low_pass(dac(low_pass(buffer, 7000.0)), 5000.0), 0.002, 0.15)
 
 
 def bus_brakes() -> numpy.ndarray:
@@ -431,10 +480,28 @@ def bus_brakes() -> numpy.ndarray:
     return fade_edges(dac(squeal + hiss + rumble), 0.005, 0.1)
 
 
+def splash() -> numpy.ndarray:
+    """Someone falling into the water: a low thump and the white rush of the splash, then
+    bubbles gurgling up (short sine chirps rising, like the blips of a sinking diver)."""
+    times = time_axis(1.4)
+    random = numpy.random.default_rng(61)
+    thump = numpy.sin(TWO_PI * numpy.cumsum(70.0 + 90.0 * numpy.exp(-times / 0.03)) / SAMPLE_RATE) * numpy.exp(-times / 0.09)
+    rush = band_noise(len(times), 400.0, 7000.0, 62) * numpy.exp(-times / 0.18) * numpy.clip(times / 0.004, 0.0, 1.0)
+    buffer = 0.9 * thump + 0.8 * rush
+    for bubble_index in range(9):
+        start = random.uniform(0.25, 1.15)
+        bubble_times = time_axis(random.uniform(0.03, 0.06))
+        low = random.uniform(350.0, 700.0)
+        pitch = low * (1.0 + 1.6 * bubble_times / bubble_times[-1])
+        blip = numpy.sin(TWO_PI * numpy.cumsum(pitch) / SAMPLE_RATE) * numpy.sin(numpy.pi * bubble_times / bubble_times[-1])
+        place(buffer, start, blip, random.uniform(0.2, 0.45) * (1.3 - start))
+    return fade_edges(low_pass(dac(numpy.tanh(1.5 * buffer), 16000.0, 8), 7000.0), 0.001, 0.15)
+
+
 # ----------------------------------------------------------------------------- output
 
 
-def write_mono(name: str, signal: numpy.ndarray, loop: bool) -> None:
+def write_mono(name: str, signal: numpy.ndarray, loop: bool, folder: str = OUTPUT_FOLDER) -> None:
     import soundfile
     if loop:
         signal = signal - signal.mean()
@@ -445,8 +512,8 @@ def write_mono(name: str, signal: numpy.ndarray, loop: bool) -> None:
             signal *= ceiling / peak
     else:
         signal = signal * 10.0 ** (-1.2 / 20.0) / (numpy.abs(signal).max() + 1e-9)
-    os.makedirs(OUTPUT_FOLDER, exist_ok=True)
-    path = os.path.join(OUTPUT_FOLDER, name + ".ogg")
+    os.makedirs(folder, exist_ok=True)
+    path = os.path.join(folder, name + ".ogg")
     with soundfile.SoundFile(path, "w", SAMPLE_RATE, 1, format="OGG", subtype="VORBIS", compression_level=0.3) as ogg_file:
         for start in range(0, len(signal), 8192):
             ogg_file.write(signal[start:start + 8192])
@@ -479,11 +546,14 @@ SOUNDS = {
     "brandweer_hoorn": (fire_horn, False),
     "helikopter_loop": (helicopter_loop, True),
     "helikopter_voorbij": (helicopter_pass_by, False),
+    "plons": (splash, False),
 }
 
 
 def main() -> None:
-    for name in sys.argv[1:] or list(SOUNDS):
+    names = sys.argv[1:] or list(SOUNDS)
+    for sound_number, name in enumerate(names, 1):
+        print(f"[ {sound_number}/{len(names)} ] {name}", end="  ", flush=True)
         make, loop = SOUNDS[name]
         write_mono(name, make(), loop)
 

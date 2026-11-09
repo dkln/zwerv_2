@@ -769,7 +769,7 @@ data = {
 }
 
 [node name="Details" type="GridMap" parent="." unique_id=810969412]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.375, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.395, 0)
 mesh_library = ExtResource("3_n5rhk")
 cell_size = Vector3(0.5, 0.5, 0.5)
 cell_octant_size = 4
@@ -781,7 +781,7 @@ data = {
 }
 
 [node name="Props" type="GridMap" parent="." unique_id=252512499]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.25, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.27, 0)
 mesh_library = ExtResource("4_stw27")
 cell_size = Vector3(0.5, 0.5, 0.5)
 cell_octant_size = 4

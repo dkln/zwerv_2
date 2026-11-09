@@ -16,11 +16,17 @@ extends Control
 ## Beginning stores the choice (PlayerCharacter.choose) and opens the town through the
 ## warp; its own loading screen takes over from there.
 ## Music: a soft loop of its own (karakterkeuze_loop.ogg), fading in.
+## When you look at a character (when chosen, and the first one SHOUT_FIRST_DELAY s after the
+## screen opens) they first do their own move facing you (PlayerModel.play_gesture) and only
+## then walk and turn; at its moment they shout (assets/audio/kreten/kreet_<id>.ogg, made by
+## tools/megadrive/stemmen.py), the words in a speech balloon over their head (SpeechBalloon,
+## "shout" of the archetype). A new one cuts the last one off.
 ## Laid out at 1280 x 720, scaled with the window.
 
 const UiStyle = preload("res://scripts/ui/ui_style.gd")
 const UiSounds = preload("res://scripts/ui/ui_sounds.gd")
 const SegmentBar = preload("res://scripts/ui/widgets/segment_bar.gd")
+const SpeechBalloon = preload("res://scripts/ui/widgets/speech_balloon.gd")
 const PixelIcon = preload("res://scripts/ui/widgets/pixel_icon.gd")
 const PlayerPortrait = preload("res://scripts/ui/widgets/player_portrait.gd")
 const PlayerCharacter = preload("res://scripts/player/player_character.gd")
@@ -32,6 +38,11 @@ const MUSIC := "res://assets/audio/muziek/karakterkeuze_loop.ogg"
 const MUSIC_VOLUME_DB := -19.0
 const MUSIC_FADE_IN := 2.5
 const MUSIC_FADE_OUT := 1.6
+const SHOUT_FOLDER := "res://assets/audio/kreten/"
+const SHOUT_VOLUME_DB := -12.0
+const SHOUT_FIRST_DELAY := 0.6
+## The tip of the balloon's tail from the top of the head (px): a little to the side and up.
+const BALLOON_OFFSET := Vector2(26, -6)
 const DESIGN_SIZE := Vector2(1280, 720)
 const SKY := Color("#0E1130")
 const SOFT_TEXT := Color("#C9CCE6")
@@ -80,6 +91,9 @@ var _selected := -1
 var _leaving := false
 var _crt: ColorRect
 var _music: AudioStreamPlayer
+var _shout: AudioStreamPlayer
+var _balloon: SpeechBalloon
+var _figure_window: Control
 var _font_title: Font
 var _font_title_medium: Font
 var _font_pixel: Font
@@ -119,6 +133,9 @@ func _ready() -> void:
 	_select(earlier if earlier >= 0 else 0, false)
 	_play_entrance()
 	_start_music()
+	get_tree().create_timer(SHOUT_FIRST_DELAY).timeout.connect(func() -> void:
+		if not _leaving:
+			_detail_figure.play_gesture())
 
 
 # ------------------------------------------------------------------ choosing
@@ -155,8 +172,33 @@ func _select(index: int, audible := true) -> void:
 		_entries[entry_index].modulate = Color.WHITE if on else Color(0.75, 0.75, 0.75)
 	_scroll.ensure_control_visible(_entries[index])
 	_show_detail(index)
+	if audible:
+		_detail_figure.play_gesture()
 	var archetype: Dictionary = PlayerCharacter.ARCHETYPES[PlayerCharacter.ORDER[index]]
 	_begin_button.text = "▶  BEGIN ALS %s" % String(archetype.name).to_upper()
+
+
+## The moment of the gesture: the shout of the one shown, and its words over their head.
+func _on_gesture_cue() -> void:
+	var archetype_id: String = PlayerCharacter.ORDER[_selected]
+	var archetype: Dictionary = PlayerCharacter.ARCHETYPES[archetype_id]
+	_play_shout(archetype_id)
+	_balloon.say(String(archetype.get("shout", "")), 1.4)
+	_balloon.position = _figure_window.position + _detail_figure.position + _detail_figure.head_point() + BALLOON_OFFSET
+
+
+## The shout of character `archetype_id`, cutting off the one before (nothing without the file).
+func _play_shout(archetype_id: String) -> void:
+	var path := SHOUT_FOLDER + "kreet_%s.ogg" % archetype_id
+	if not ResourceLoader.exists(path):
+		return
+	if _shout == null:
+		_shout = AudioStreamPlayer.new()
+		_shout.name = "Kreet"
+		_shout.volume_db = SHOUT_VOLUME_DB
+		add_child(_shout)
+	_shout.stream = load(path)
+	_shout.play()
 
 
 ## The chosen one in the detail panel: the figure, the texts and the stats, fading in.
@@ -167,6 +209,12 @@ func _show_detail(index: int) -> void:
 	# it walks on the spot while it turns
 	_detail_figure.walking = 0.0
 	create_tween().set_trans(Tween.TRANS_SINE).tween_property(_detail_figure, "walking", 1.0, WALK_IN)
+	# its own move first (the shout at its moment), then it walks and turns
+	if _balloon:
+		_balloon.visible = false
+	if _shout:
+		_shout.stop()
+
 	var difficulty := int(archetype.get("difficulty", 1))
 	for block_index in _difficulty_blocks.size():
 		_difficulty_blocks[block_index].color = DIFFICULTY_COLOURS[mini(difficulty - 1, DIFFICULTY_COLOURS.size() - 1)] \
@@ -359,6 +407,13 @@ func _build_detail() -> void:
 	_detail_figure.position = Vector2(2, 2)
 	_detail_figure.size = FIGURE_SIZE - Vector2(4, 4)
 	window.add_child(_detail_figure)
+	_detail_figure.gesture_cue.connect(_on_gesture_cue)
+	_figure_window = window
+	# over the window, so it is not cut off at its edge
+	_balloon = SpeechBalloon.new()
+	_balloon.name = "Tekstballon"
+	_balloon.z_index = 1
+	_detail.add_child(_balloon)
 	# the difficulty in the top right corner: its name over a row of blocks
 	var difficulty := VBoxContainer.new()
 	difficulty.name = "Moeilijkheid"

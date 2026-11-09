@@ -11,10 +11,14 @@ extends RefCounted
 ## are nicknames; "subtitle" says in a few words what they are good at, "level" the level
 ## they start on, "difficulty" how hard a game with them is (1 easy .. 5 hard; Willem has been on the street longest: level 3, lower stats); "perk" (if
 ## any) something only they have, "start_money" the euros they start with (Sjaan: what is in
-## her cap).
+## her cap). "voice" is the voice of their cries of pain (pijn_<voice>_*), "shout" what they
+## shout on the character creation screen (its sound: assets/audio/kreten/kreet_<id>.ogg; the
+## text in their speech balloon).
 
 const ARCHETYPES := {
 	"jos": {
+		"shout": "Jie-haa!",
+		"voice": "man",
 		"name": "Jos",
 		"subtitle": "DE IJZEREN MAAG",
 		"addiction": "alcohol",
@@ -24,6 +28,8 @@ const ARCHETYPES := {
 		"stats": {"gezondheid": 70, "uithoudingsvermogen": 60, "honger": 140},
 	},
 	"martin": {
+		"shout": "Hup hup HUP!",
+		"voice": "man",
 		"name": "Martin",
 		"subtitle": "DE RENNER",
 		"addiction": "speed",
@@ -33,6 +39,8 @@ const ARCHETYPES := {
 		"stats": {"gezondheid": 100, "uithoudingsvermogen": 150, "honger": 70},
 	},
 	"ufo_piloot": {
+		"shout": "Oeoeoe-oeh...",
+		"voice": "oude_man",
 		"name": "Ufo Piloot",
 		"subtitle": "DE ONVERWOESTBARE",
 		"addiction": "crack",
@@ -42,6 +50,8 @@ const ARCHETYPES := {
 		"stats": {"gezondheid": 150, "uithoudingsvermogen": 60, "honger": 70},
 	},
 	"willem": {
+		"shout": "Heh heh heh...",
+		"voice": "oude_man",
 		"name": "Willem",
 		"subtitle": "DE OUDE RAT",
 		"addiction": "gokkasten",
@@ -51,6 +61,8 @@ const ARCHETYPES := {
 		"stats": {"gezondheid": 80, "uithoudingsvermogen": 80, "honger": 80},
 	},
 	"sjaan": {
+		"shout": "Hoi!",
+		"voice": "vrouw",
 		"name": "Sjaan",
 		"subtitle": "DE STRAATMUZIKANT",
 		"addiction": "sigaretten",
@@ -62,6 +74,8 @@ const ARCHETYPES := {
 		"stats": {"gezondheid": 90, "uithoudingsvermogen": 110, "honger": 90},
 	},
 	"gerrit": {
+		"shout": "A-hoi!",
+		"voice": "oude_man",
 		"name": "Gerrit",
 		"subtitle": "DE VISSER",
 		"addiction": "bier",

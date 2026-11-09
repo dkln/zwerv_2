@@ -1,8 +1,8 @@
 """'Stad torens': the city loop of the office towers (Centraal Station, De Resident,
 Beatrixkwartier, Prins Clauslaan): cool and glossy, glass and steel at night.
 
-One of the five neighbourhood loops on the shared plan (stad_plan.py: 128 BPM, F minor, 40 bars
-= 75 s). Straight (no swing) deep house: synth bass on the off-beats, electric piano in
+One of the five neighbourhood loops on the shared plan (stad_plan.py: 104 BPM, F minor, 40 bars
+= 92 s). Straight (no swing) deep house: synth bass on the off-beats, electric piano in
 off-beat chords, glittering PSG arpeggios with a PSG echo, FM bells, string pads, and the lead
 in long, cool notes, each phrase opening with the motif.
 
@@ -17,6 +17,7 @@ House style: style.py, docs/MUZIEK.md.
 Render: tools/megadrive/render.sh stad_torens  (writes assets/audio/muziek/stad_torens_loop.ogg)
 """
 import megadrive
+import stad_plan
 import style
 from stad_plan import BARS, BPM, SECTIONS, bars_of
 from style import Song
@@ -101,7 +102,7 @@ def main() -> None:
                 if offset >= 2:
                     style.drum_bar(song, bar, kick="none", snare="none", hats="sixteenths", hat_volume=0.4 + 0.2 * offset,
                                    fill="roll" if last else None, ghosts=False)
-    song.render()
+    stad_plan.finish(song)
 
 
 if __name__ == "__main__":

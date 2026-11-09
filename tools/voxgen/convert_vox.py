@@ -177,7 +177,9 @@ def main():
     write_material_table()
     table = material_table()
     total_forced = {}
-    for path in files:
+    for file_number, path in enumerate(files, 1):
+        if file_number % 50 == 0 or file_number == len(files):
+            print(f"[ {100 * file_number // len(files):3d}% ] {file_number}/{len(files)} files", flush=True)
         if os.path.exists(path[:-4] + ".gox"):
             print(f"  {os.path.relpath(path)}: a .gox with this name exists, skipped")
             continue

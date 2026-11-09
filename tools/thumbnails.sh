@@ -20,6 +20,8 @@ for argument in "$@"; do
 	esac
 done
 if [ "$build" = true ]; then
+	echo "[ stap 1/2 ] bibliotheken bijwerken"
 	GODOT_TIMEOUT="${GODOT_TIMEOUT:-1800}" tools/godot.sh --headless --script tools/build/build_libraries.gd || exit $?
+	echo "[ stap 2/2 ] thumbnails maken"
 fi
 GODOT_TIMEOUT="${GODOT_TIMEOUT:-1200}" exec tools/godot.sh --script tools/build/build_previews.gd -- $all

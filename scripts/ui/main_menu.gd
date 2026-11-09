@@ -20,6 +20,7 @@ extends "res://scripts/ui/menu/menu_map.gd"
 ## scripts/ui/menu/menu_map.gd; this file is the menu itself and its panels.
 
 const UiSounds = preload("res://scripts/ui/ui_sounds.gd")
+const GraphicsSettings = preload("res://scripts/ui/graphics_settings.gd")
 
 const CHARACTER_SCENE := "res://scenes/karakter.tscn"
 ## The music of the menu (its own piece, "Nachtstad", not the intro's theme going on),
@@ -96,6 +97,7 @@ func _ready() -> void:
 	_build_title()
 	_build_menu()
 	_build_footer()
+	GraphicsSettings.apply(get_tree())
 	var settings := _read_settings()
 	_crt = UiStyle.make_crt_overlay(0.05 if settings.crt else 0.0, 0.035 if settings.crt else 0.0,
 			0.1 if settings.scanlines else 0.0, get_viewport().get_visible_rect().size)
@@ -342,13 +344,7 @@ func _style_button(button: Button, on: bool, choosable: bool) -> void:
 ## The look of an item of a menu: amber with a hard shadow and a caret when chosen, else
 ## plain text (dimmed when it cannot be chosen); `label` its text.
 func _style_menu_button(button: Button, on: bool, choosable: bool, label: String) -> void:
-	var style := StyleBoxFlat.new()
-	style.bg_color = UiStyle.ACCENT if on else Color(0, 0, 0, 0)
-	style.shadow_color = Color.BLACK if on else Color(0, 0, 0, 0)
-	style.shadow_offset = Vector2(4, 4) if on else Vector2.ZERO
-	style.shadow_size = 0
-	style.anti_aliasing = false
-	style.content_margin_left = 12
+	var style := UiStyle.menu_item_style(on)
 	for state in ["normal", "hover", "pressed", "focus", "disabled"]:
 		button.add_theme_stylebox_override(state, style)
 	var colour := UiStyle.INK if on else (UiStyle.TEXT if choosable else UiStyle.BORDER.lightened(0.15))
@@ -389,6 +385,10 @@ func _build_menu() -> void:
 func _open_settings() -> void:
 	var settings := _read_settings()
 	var column := _open_panel("INSTELLINGEN")
+	_add_panel_item(column, func() -> String: return "ANTI-ALIASING: %s" % GraphicsSettings.anti_aliasing(),
+		func() -> void: GraphicsSettings.next_anti_aliasing(get_tree()))
+	_add_panel_item(column, func() -> String: return "RENDERSCHAAL: %s" % GraphicsSettings.render_scale_text(),
+		func() -> void: GraphicsSettings.next_render_scale(get_tree()))
 	for entry: Array in [["CRT-BEELD", "crt"], ["SCANLIJNEN", "scanlines"]]:
 		var setting: String = entry[1]
 		var label := func() -> String: return "%s: %s" % [entry[0], "AAN" if settings[setting] else "UIT"]

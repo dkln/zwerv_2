@@ -290,8 +290,9 @@ class Song:
     def sixteenths(self, count: float) -> float:
         return round(count * self.step, 4)
 
-    def render(self, target_rms_db: float = -14.0, peak_db: float = -1.5, fade_out: float = 0.0) -> None:
-        stereo = megadrive.master(self.tracks, target_rms_db=target_rms_db, peak_db=peak_db)
+    def render(self, target_rms_db: float = -14.0, peak_db: float = -1.5, fade_out: float = 0.0,
+               low_pass_hz: float = 11000.0) -> None:
+        stereo = megadrive.master(self.tracks, target_rms_db=target_rms_db, peak_db=peak_db, low_pass_hz=low_pass_hz)
         if not self.loop:   # the filtering smears a hit at 0 a hair backwards: start from silence
             fade_in_samples = int(0.003 * megadrive.SAMPLE_RATE)
             stereo[:fade_in_samples] *= megadrive.numpy.linspace(0.0, 1.0, fade_in_samples)[:, None]

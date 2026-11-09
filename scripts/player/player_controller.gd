@@ -37,6 +37,15 @@ extends Node3D
 ## RigidBody3D (Valpartij) with the box of the figure, thrown along with the vehicle's speed,
 ## tumbling. Once it lies still (`knock_down_time` at least) it stands up on the nearest
 ## walkable spot and blinks for `invulnerable_time` s, in which nothing hits it again.
+## Water: it cannot be walked on, but running into it, or pushing against it for
+## `water_push_time` s, makes the figure jump in (a cry, a hop over the edge, a splash and
+## the "plons", WaterSplash), and it sinks for `drown_time` s, waving its arms over its head
+## and kicking (_flail) while bubbles rise, and drowns
+## ("verdronken"). Knocked into the water by a vehicle it drowns too.
+## A hit sounds like an old beat-'em-up: the thud of the body (BODY_HIT_SOUND) and a cry of
+## pain in the character's voice ("voice" of the archetype: pijn_<voice>_1..3, never the same
+## one twice in a row; pijn_<voice>_hard from `hard_cry_strength` or when the hit kills),
+## through RuimtelijkGeluid (tools/megadrive/stemmen.py makes them).
 ##
 ## Start: on the square by Centraal Station (START_PLACE, a key of the scene's "places"
 ## metadata; on a square tile, else pavement, else anything walkable), asleep: the figure
@@ -57,6 +66,7 @@ signal money_changed
 const PlayerCharacter = preload("res://scripts/player/player_character.gd")
 const PlayerModel = preload("res://scripts/player/player_model.gd")
 const Items = preload("res://scripts/player/items.gd")
+const WaterSplash = preload("res://scripts/effects/water_splash.gd")
 const Iso = preload("res://scripts/camera/iso_camera.gd")
 
 const STAT_NAMES := ["gezondheid", "uithoudingsvermogen", "honger", "overprikkeldheid"]
@@ -69,6 +79,9 @@ const PREFERRED_GROUND := [["plein/"], ["plein/", "stoep/"]]
 const TOWN_LAYER := 1
 ## Colour of the shards when the player is hit (cloth and dirt).
 const HIT_SHARD_COLOUR := Color("#6B5844")
+const BODY_HIT_SOUND := "lichaam_klap"
+const SPLASH_SOUND := "plons"
+const SHORT_CRY_COUNT := 3
 
 @export_group("Walking")
 ## Metres a second walking and running.
@@ -95,10 +108,16 @@ const HIT_SHARD_COLOUR := Color("#6B5844")
 @export var hurt_blink_time := 0.8
 @export_group("Being hit")
 @export var hit_speed_threshold := 1.2
+## From this hit strength (0..1, the impact / 20 m/s) the long cry instead of a short one.
+@export var hard_cry_strength := 0.55
 @export var damage_per_speed := 2.2
 @export var damage_per_speed_squared := 0.12
 @export var knock_down_time := 2.2
 @export var invulnerable_time := 1.6
+## Into the water: running into it, or pushing against it this many seconds, makes the figure
+## fall in; it then sinks for `drown_time` s and drowns.
+@export var water_push_time := 0.5
+@export var drown_time := 2.6
 @export var body_mass := 70.0
 @export_group("Scene")
 ## A key of the scene's "places" metadata to start at; empty = START_PLACE.
@@ -152,12 +171,17 @@ var _figure_height := 0.0        # where the figure is drawn (gliding after step
 var _last_safe_position := Vector3.ZERO
 var _water_items := {}           # Grond item -> is it water
 var _random := RandomNumberGenerator.new()
+var _water_push := 0.0            # seconds pushed against water
+var _drowning := false
+var _voice := "man"               # the voice of the cries of pain: man, oude_man, vrouw
+var _last_cry := 0
 
 
 func _ready() -> void:
 	archetype_id = PlayerCharacter.current_id()
 	var archetype := PlayerCharacter.chosen_archetype()
 	level = int(archetype.get("level", 1))
+	_voice = String(archetype.get("voice", "man"))
 	money = float(archetype.get("start_money", 0))
 	for stat_name: String in STAT_NAMES:
 		if stat_name == "overprikkeldheid":
@@ -276,7 +300,7 @@ func _physics_process(delta: float) -> void:
 	if _ragdoll:
 		_follow_ragdoll(delta)
 		return
-	if _dead or _sleeping:
+	if _dead or _sleeping or _drowning:
 		return
 	_walk(delta)
 	_check_vehicles()
@@ -310,8 +334,19 @@ func _walk(delta: float) -> void:
 		if not _try_move(step):
 			if not _try_move(Vector3(step.x, 0.0, 0.0)):
 				_try_move(Vector3(0.0, 0.0, step.z))
+		# pushing against water: in it goes, at once when running
+		var water := _water_point(global_position + direction * 0.6) if global_position.distance_squared_to(start) < 0.0001 else Vector3.INF
+		if water != Vector3.INF:
+			_water_push += delta
+			if _running or _water_push >= water_push_time:
+				_fall_into_water(water)
+				return
+		else:
+			_water_push = 0.0
 		var facing := atan2(direction.x, direction.z)
 		rotation.y = lerp_angle(rotation.y, facing, 1.0 - exp(-delta / maxf(turn_time, 0.001)))
+	else:
+		_water_push = 0.0
 	velocity = (global_position - start) / maxf(delta, 0.0001)
 	var flat_speed := Vector2(velocity.x, velocity.z).length()
 	var walking := clampf(flat_speed / walk_speed, 0.0, 1.7)
@@ -363,6 +398,68 @@ func _fits(feet: Vector3) -> bool:
 	query.exclude = _own_bodies()
 	query.transform = Transform3D(Basis.IDENTITY, feet + Vector3.UP * (max_step + 0.05 + _walk_shape.height * 0.5))
 	return space.intersect_shape(query, 1).is_empty()
+
+
+## The surface of the water under `point` (searched from a step above the figure to well
+## below a quay), or INF when there is no water there.
+func _water_point(point: Vector3) -> Vector3:
+	var space := get_world_3d().direct_space_state
+	var query := PhysicsRayQueryParameters3D.create(
+		Vector3(point.x, global_position.y + max_step + 0.5, point.z), Vector3(point.x, global_position.y - max_drop - 4.0, point.z), TOWN_LAYER)
+	query.exclude = _own_bodies()
+	var hit := space.intersect_ray(query)
+	if hit.is_empty() or not _is_water(hit):
+		return Vector3.INF
+	return hit.position
+
+
+## Jumps into the water at `water`: a cry, a hop over the edge, then the splash and sinking.
+func _fall_into_water(water: Vector3) -> void:
+	_drowning = true
+	_running = false
+	_model.walking = 0.0
+	_model.idle = false
+	cry_out(true, global_position)
+	rotation.y = atan2(water.x - global_position.x, water.z - global_position.z)
+	var from := global_position
+	var hop := create_tween()
+	hop.tween_method(func(share: float) -> void:
+		global_position = from.lerp(water, share) + Vector3.UP * sin(share * PI) * 0.6, 0.0, 1.0, 0.4)
+	hop.tween_callback(_sink.bind(water))
+
+
+## Under it goes at `water`: the splash, bubbles, sinking out of sight, drowned.
+func _sink(water: Vector3) -> void:
+	_drowning = true
+	global_position = water
+	var audio := get_node_or_null("/root/RuimtelijkGeluid")
+	if audio:
+		audio.play_at(water, SPLASH_SOUND, 0.0)
+	var splash := WaterSplash.new()
+	splash.bubble_seconds = drown_time
+	get_parent().add_child(splash)
+	splash.global_position = water
+	_hurt(_stats.gezondheid.x * 0.5, "verdronken")
+	var down := create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	# flailing: both arms up over the head, waving wildly, the legs kicking, fading at the end
+	var flail := create_tween()
+	flail.tween_method(_flail, 0.0, drown_time, drown_time)
+	down.tween_property(_model, "position:y", -_figure_box.size.y - 0.5, drown_time)
+	down.parallel().tween_property(_model, "rotation_degrees:z", _random.randf_range(-25.0, 25.0), drown_time)
+	down.tween_callback(func() -> void:
+		if not _dead:
+			_stats.gezondheid = Vector2(0.0, _stats.gezondheid.y)
+			_push_stats()
+			_die("verdronken"))
+
+
+## The arms and legs while drowning, `time` seconds in: waving over the head, kicking.
+func _flail(time: float) -> void:
+	var tiring := clampf(1.0 - time / drown_time, 0.0, 1.0) * 0.6 + 0.4
+	_model.pose_limb("arm_left", Vector3(sin(time * 13.0) * 30.0, 0.0, (-150.0 + sin(time * 17.0) * 35.0) * tiring))
+	_model.pose_limb("arm_right", Vector3(-sin(time * 13.0 + 1.3) * 30.0, 0.0, (150.0 - sin(time * 17.0 + 0.8) * 35.0) * tiring))
+	_model.pose_limb("leg_left", Vector3(sin(time * 9.0) * 25.0 * tiring, 0.0, 0.0))
+	_model.pose_limb("leg_right", Vector3(-sin(time * 9.0) * 25.0 * tiring, 0.0, 0.0))
 
 
 func _is_water(hit: Dictionary) -> bool:
@@ -584,7 +681,7 @@ func _die(cause: String) -> void:
 	_running = false
 	_model.walking = 0.0
 	_model.idle = false
-	if _ragdoll == null:
+	if _ragdoll == null and not _drowning:
 		# falls over backwards where it stands
 		var fall := create_tween().set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 		fall.tween_property(_model, "rotation_degrees:x", -90.0, 0.45)
@@ -630,7 +727,25 @@ func _hit_by(vehicle: Vehicle) -> void:
 	Vehicle.last_crash = {"at": contact, "strength": strength, "time": Time.get_ticks_msec() / 1000.0}
 	_knock_down(vehicle.velocity, impact)
 	_hurt(damage, "aangereden")
+	cry_out(strength >= hard_cry_strength or _dead, contact)
 	_invulnerable_left = maxf(_invulnerable_left, knock_down_time)
+
+
+## The thud of the hit and a cry of pain at `at`: the long one if `heavy`, else one of the
+## short ones, never the same twice in a row.
+func cry_out(heavy: bool, at: Vector3) -> void:
+	var audio := get_node_or_null("/root/RuimtelijkGeluid")
+	if audio == null:
+		return
+	var cry_name := "pijn_%s_hard" % _voice
+	if not heavy:
+		var cry_number := _random.randi_range(1, SHORT_CRY_COUNT)
+		if cry_number == _last_cry:
+			cry_number = cry_number % SHORT_CRY_COUNT + 1
+		_last_cry = cry_number
+		cry_name = "pijn_%s_%d" % [_voice, cry_number]
+	audio.play_at(at, BODY_HIT_SOUND, -3.0)
+	audio.play_at(at, cry_name, 0.0)
 
 
 ## The figure becomes a RigidBody3D with its own box, thrown along with `push`.
@@ -673,8 +788,26 @@ func _follow_ragdoll(delta: float) -> void:
 	if _dead:
 		return
 	var lies_still := _ragdoll.sleeping or _ragdoll.linear_velocity.length() < 0.3
+	# thrown into the water: it drowns
+	if _ragdoll_clock > 0.3 and _ragdoll.linear_velocity.y <= 0.5:
+		var water := _water_point(_ragdoll.global_position)
+		if water != Vector3.INF and _ragdoll.global_position.y - water.y < 0.8:
+			_drown_from_ragdoll(water)
+			return
 	if (_ragdoll_clock >= knock_down_time and lies_still) or _ragdoll_clock >= knock_down_time * 3.0:
 		_stand_up()
+
+
+## The thrown body lands in the water: the figure back from the rigid body, then it sinks.
+func _drown_from_ragdoll(water: Vector3) -> void:
+	_model.reparent(self, false)
+	_model.transform = Transform3D.IDENTITY
+	_model.idle = false
+	_model.walking = 0.0
+	_ragdoll.queue_free()
+	_ragdoll = null
+	_body_shape.set_deferred("disabled", false)
+	_sink(water)
 
 
 func _stand_up() -> void:

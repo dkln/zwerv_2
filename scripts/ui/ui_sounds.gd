@@ -9,7 +9,10 @@ extends RefCounted
 ## - "terug": going back or leaving a menu: two softer notes going down;
 ## - "plop": the ZWERVR logo of the intro vanishing in the distance: a short round tone
 ##   whose pitch drops fast, like a cork;
-## - "woord": a word appearing in the story box (story_box.gd): a tiny soft tick;
+## - "tekst": a word appearing in a text that types itself out (Typewriter: the story box, the
+##   speech balloons): the blip of the text boxes of 16-bit console games, a short PSG square
+##   wave with a quick drop in pitch, its volume in the chip's coarse steps; play it with a
+##   slightly different `pitch_scale` each time, as those games did;
 ## - "munt": picking up a coin: a quick bright two-note chime going up (a fourth).
 ## Play one with UiSounds.play(node, "kies"); the sounds are made once and kept.
 
@@ -22,7 +25,7 @@ static var _sounds := {}
 
 ## Plays sound `sound_name` (see the top) from a player under `node` that frees itself,
 ## `softer_db` softer (or louder) than VOLUME_DB.
-static func play(node: Node, sound_name: String, softer_db := 0.0) -> void:
+static func play(node: Node, sound_name: String, softer_db := 0.0, pitch_scale := 1.0) -> void:
 	if node == null or not node.is_inside_tree():
 		return
 	var stream := _sound(sound_name)
@@ -31,6 +34,7 @@ static func play(node: Node, sound_name: String, softer_db := 0.0) -> void:
 	var player := AudioStreamPlayer.new()
 	player.stream = stream
 	player.volume_db = VOLUME_DB + softer_db
+	player.pitch_scale = pitch_scale
 	# it keeps sounding while the game is paused, and after a scene change
 	player.process_mode = Node.PROCESS_MODE_ALWAYS
 	node.get_tree().root.add_child(player)
@@ -53,8 +57,8 @@ static func _sound(sound_name: String) -> AudioStreamWAV:
 				_sounds[sound_name] = _notes([[880.0, 0.045], [659.3, 0.09]], 1.0, 0.9)
 			"plop":
 				_sounds[sound_name] = _plop()
-			"woord":
-				_sounds[sound_name] = _notes([[1318.5, 0.022]], 1.0, 0.5)
+			"tekst":
+				_sounds[sound_name] = _text_blip()
 			"munt":
 				_sounds[sound_name] = _notes([[1975.5, 0.06], [2637.0, 0.2]], 1.0, 1.0)
 			_:
@@ -80,6 +84,28 @@ static func _plop() -> AudioStreamWAV:
 		var envelope := clampf(share / 0.04, 0.0, 1.0) * pow(1.0 - share, 2.0)
 		value = roundf(value * envelope * 32.0) / 32.0
 		data.encode_s16(sample_index * 2, int(clampf(value, -1.0, 1.0) * 30000.0))
+	var stream := AudioStreamWAV.new()
+	stream.format = AudioStreamWAV.FORMAT_16_BITS
+	stream.mix_rate = MIX_RATE
+	stream.stereo = false
+	stream.data = data
+	return stream
+
+
+## The text blip: a square wave (the PSG, 25 % duty for its nasal edge) at 1180 Hz dropping a
+## little, 38 ms, its loudness in 16 steps (the chip's 4-bit attenuator) falling off fast.
+static func _text_blip() -> AudioStreamWAV:
+	var seconds := 0.038
+	var count := int(seconds * MIX_RATE)
+	var data := PackedByteArray()
+	data.resize(count * 2)
+	var phase := 0.0
+	for sample_index in count:
+		var share := float(sample_index) / count
+		phase += (1180.0 * (1.0 - 0.12 * share)) / MIX_RATE
+		var square := 1.0 if fmod(phase, 1.0) < 0.25 else -1.0
+		var loudness := floorf(15.0 * pow(1.0 - share, 1.6)) / 15.0
+		data.encode_s16(sample_index * 2, int(square * loudness * 0.5 * 30000.0))
 	var stream := AudioStreamWAV.new()
 	stream.format = AudioStreamWAV.FORMAT_16_BITS
 	stream.mix_rate = MIX_RATE

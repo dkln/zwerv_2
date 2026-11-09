@@ -53,69 +53,30 @@ extends "res://tools/build/city/finishing.gd"
 ##   RandstadRail and railway cross it to Station Voorburg (x 200..210); Voorburg on the
 ##   street x 204 with the Oude Kerk (_voorburg).
 
+const Progress = preload("res://tools/progress.gd")
+
 
 func _init() -> void:
 	Common.watchdog(self, 1100)
 	var root := _make_scene("Stad")
-	_streets()
-	_singel()
-	_noordeinde()
-	_lange_voorhout()
-	_denneweg()
-	_grote_kerk()
-	_binnenhof()
-	_plein()
-	_grote_markt()
-	_grote_marktstraat()
-	_spui()
-	_haagse_bos()
-	_a12()
-	_a12_east()
-	_over_a12()
-	_prins_clauslaan()
-	_malieveld()
-	_bezuidenhout()
-	_theresiastraat()
-	_bezuidenhout_oost()
-	_centraal()
-	_beatrixkwartier()
-	_schenkkade()
-	_schilderswijk()
-	_laakkwartier()
-	_binckhorst()
-	_voorburg()
-	_tram_lines()
-	_paint_streets()
-	_dress_streets()
-	_paint_trams()
-	_tram_tunnel()
-	_bridges()
-	_a12_junction()
-	_square_corners()
-	_auto_kerbs()
-	_round_bend_kerbs()
-	_fill_grass_all()
-	_railway()
-	_a12_bridges()
-	_schenkviaduct()
-	_ministry_over_tram()
-	_a12_footbridge()
-	_paths_to_lonely_buildings()
-	_join_gravel_paths()
-	_roof_equipment()
-	_straighten_hidden_corners()
-	_flatten_facades_by_viaducts()
-	_remove_trees_in_buildings()
-	_fit_signs_on_facades()
-	_one_sign_per_spot()
-	_clear_behind_signs()
-	_bins()
-	_grote_marktstraat_lanes()
-	_camera(root)
-	_zebra_clock(root)
-	_helicopter_flights(root)
-	_car(root)
-	_own_tints(root)
+	var build_steps: Array[Callable] = [
+		_streets, _singel, _noordeinde, _lange_voorhout, _denneweg, _grote_kerk, _binnenhof, _plein,
+		_grote_markt, _grote_marktstraat, _spui, _haagse_bos, _a12, _a12_east, _over_a12,
+		_prins_clauslaan, _malieveld, _bezuidenhout, _theresiastraat, _bezuidenhout_oost, _centraal,
+		_beatrixkwartier, _schenkkade, _schilderswijk, _laakkwartier, _binckhorst, _voorburg,
+		_tram_lines, _paint_streets, _dress_streets, _paint_trams, _tram_tunnel, _bridges, _a12_junction,
+		_square_corners, _auto_kerbs, _round_bend_kerbs, _fill_grass_all, _railway, _a12_bridges,
+		_schenkviaduct, _ministry_over_tram, _a12_footbridge, _paths_to_lonely_buildings,
+		_join_gravel_paths, _roof_equipment, _straighten_hidden_corners, _flatten_facades_by_viaducts,
+		_remove_trees_in_buildings, _fit_signs_on_facades, _one_sign_per_spot, _clear_behind_signs,
+		_bins, _grote_marktstraat_lanes, _camera.bind(root), _zebra_clock.bind(root),
+		_helicopter_flights.bind(root), _car.bind(root), _own_tints.bind(root),
+	]
+	var progress := Progress.new("stad bouwen", build_steps.size())
+	for build_step in build_steps:
+		build_step.call()
+		progress.step(build_step.get_method())
+	progress.finish()
 	if missing.size() > 0:
 		print("MISSING TILES: ", missing.keys())
 	_report()

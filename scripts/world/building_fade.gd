@@ -29,7 +29,9 @@ extends Node
 ##
 ## Blocking is tested along the view direction of the camera (also while the follow
 ## camera swings round for a close-up) from a few points around the vehicle as seen in
-## the picture, up to the camera: the Gebouwen cells those lines pass through block it.
+## the picture, up to the camera: the Gebouwen cells those lines pass through block it,
+## as long as they lie on the camera's side of it (_in_front): a building behind it, which
+## you see it standing in front of, stays.
 
 const Iso = preload("res://scripts/camera/iso_camera.gd")
 
@@ -171,13 +173,22 @@ func _blocking() -> Dictionary:
 			for step in range(1, steps + 1):
 				var point := start + towards_camera * (step * STEP)
 				var cell := _buildings.local_to_map(to_map * point)
-				if _buildings.get_cell_item(cell) != GridMap.INVALID_CELL_ITEM:
+				if _buildings.get_cell_item(cell) != GridMap.INVALID_CELL_ITEM and _in_front(cell, centre, towards_camera):
 					found[_building_of[Vector2i(cell.x, cell.z)]] = true
 				if _ground and point.y > lowest_deck:
 					var ground_cell := _ground.local_to_map(to_ground * point)
 					if ground_cell.y >= deck_level and _ground.get_cell_item(ground_cell) != GridMap.INVALID_CELL_ITEM:
 						found[_building_of[Vector2i(ground_cell.x, ground_cell.z)]] = true
 	return found
+
+
+## True if the middle of building cell `cell` lies on the camera's side of `centre` (seen from
+## above): a building behind the one followed never hides it, even when a test point above it
+## in the picture lands inside that building.
+func _in_front(cell: Vector3i, centre: Vector3, towards_camera: Vector3) -> bool:
+	var middle := _buildings.to_global(_buildings.map_to_local(cell))
+	var flat_towards := Vector2(towards_camera.x, towards_camera.z)
+	return Vector2(middle.x - centre.x, middle.z - centre.z).dot(flat_towards) > 0.0
 
 
 func _process(delta: float) -> void:

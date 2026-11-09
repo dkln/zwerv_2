@@ -54,6 +54,26 @@ static func spaced(base_font: Font, spacing: int) -> Font:
 
 ## A flat panel style without anti-aliasing: this background with a border of
 ## `border_width` pixels all round (or only on the left).
+## The look of an item of a menu (main menu, pause menu): amber with a hard shadow when
+## chosen, else nothing behind it; MENU_ITEM_PADDING px inside on the left and right (and
+## top and bottom), chosen or not, so the text does not shift when the choice moves.
+const MENU_ITEM_PADDING := Vector2(16, 4)
+
+
+static func menu_item_style(on: bool) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = ACCENT if on else Color(0, 0, 0, 0)
+	style.shadow_color = Color.BLACK if on else Color(0, 0, 0, 0)
+	style.shadow_offset = Vector2(4, 4) if on else Vector2.ZERO
+	style.shadow_size = 0
+	style.anti_aliasing = false
+	style.content_margin_left = MENU_ITEM_PADDING.x
+	style.content_margin_right = MENU_ITEM_PADDING.x
+	style.content_margin_top = MENU_ITEM_PADDING.y
+	style.content_margin_bottom = MENU_ITEM_PADDING.y
+	return style
+
+
 static func box_style(background: Color, border: Color, border_width: int, left_only := false) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = background

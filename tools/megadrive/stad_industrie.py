@@ -1,8 +1,8 @@
 """'Stad industrie': the city loop of the industrial zone and the motorway (Binckhorst, A12):
 hard, mechanical, techno.
 
-One of the five neighbourhood loops on the shared plan (stad_plan.py: 128 BPM, F minor, 40 bars
-= 75 s). Dead straight: kick on every beat throughout (except the break), 16th synth bass, a
+One of the five neighbourhood loops on the shared plan (stad_plan.py: 104 BPM, F minor, 40 bars
+= 92 s). Dead straight: kick on every beat throughout (except the break), 16th synth bass, a
 repeating PSG ostinato, clangs of an inharmonic FM "metal" patch like machines, toms, and the
 lead hammering the motif (often twice a bar), long robotic notes in B.
 
@@ -17,6 +17,7 @@ House style: style.py, docs/MUZIEK.md.
 Render: tools/megadrive/render.sh stad_industrie  (writes assets/audio/muziek/stad_industrie_loop.ogg)
 """
 import megadrive
+import stad_plan
 import style
 from megadrive import FmPatch, Operator
 from stad_plan import BARS, BPM, SECTIONS, bars_of
@@ -83,7 +84,7 @@ def main() -> None:
                            hats="open" if name in ("B", "C") else "sixteenths", fill=fill, ghosts=False)
             if offset % 2 == 1 and not last:
                 song.pcm.add(song.at(bar, 15), style.TOMS[2], 0.5)
-    song.render()
+    stad_plan.finish(song)
 
 
 if __name__ == "__main__":

@@ -14,6 +14,8 @@ extends Node
 ## The shadow-casting sun stays between `min_elevation` and `max_elevation` degrees
 ## above the horizon, so shadows never become extremely long; the time of day mainly
 ## drives the colours and the brightness.
+## Next to itself it makes the street lights (StreetLights, "Straatverlichting"): at night the
+## lamps of the Props layer light the street.
 
 @export_range(0.0, 24.0) var time_of_day := 13.0       ## hour of the day
 ## Hours per second (0 = standing still); 0.08 = a day of 5 minutes.
@@ -32,6 +34,8 @@ const APPLY_STEP_HOURS := 0.02
 var night := 0.0
 
 ## A Dutch summer day (late June in The Hague): sunrise and sunset (hours).
+const StreetLights = preload("res://scripts/world/street_lights.gd")
+
 const SUNRISE := 5.5
 const SUNSET := 22.0
 ## The colours of the day at these hours, blended smoothly between them: the sun (colour,
@@ -105,6 +109,10 @@ func _ready() -> void:
 		if _env and _env.sky:
 			_sky = _env.sky.sky_material as ProceduralSkyMaterial
 	_apply()
+	if get_parent().has_node("Props") and not get_parent().has_node("Straatverlichting"):
+		var street_lights := StreetLights.new()
+		street_lights.name = "Straatverlichting"
+		get_parent().add_child.call_deferred(street_lights)
 
 
 ## Advances the clock by `speed` hours per second (wrapping at 24) and reapplies.

@@ -121,6 +121,30 @@ De speler (node `Speler`, `scripts/player/player_controller.gd`)
   karakter); `use_item` past het effect van een item toe op de stats.
 - Test: `tools/check/player_test.gd`.
 
+Verhaal, missies en kleingeld
+-----------------------------
+- Verhaalvak (`scripts/ui/story_box.gd`, in de HUD: `show_story(pagina's, klaar)`), naar het
+  design "Dialoog — story missie": een modal onderin met links een thumbnail van jezelf
+  (`PlayerPortrait`, de gekozen figuur in 3D) en rechts de tekst, die woord voor woord
+  verschijnt zoals in oude avonturengames (`WORD_SECONDS`, rust na een zin of komma, een
+  zacht tikje "woord"). Linksboven een banner (bijv. "PROLOOG · Wakker op Centraal",
+  "MISSIE 1 · Twee euro voor een kroket"), rechtsboven "[SPATIE] VERDER". Soorten pagina:
+  `verhaal` (amber, "VERTELLER"), `gedachte` (teal, tekst tussen aanhalingstekens) en
+  `missie` (amber, "NIEUWE MISSIE"). Spatie/Enter/klik: de rest van de pagina meteen, of de
+  volgende; het spel staat stil zolang het vak open is.
+- Verhaal (node `Verhaal`, `scripts/story/story.gd`): na het wakker worden de proloog (waar je
+  bent, je achtergrondverhaal uit het archetype, twee gedachten bij het wakker worden), dan
+  missie 1: € 2 kleingeld bemachtigen voor een kroket bij Jan Blammage. Wat je bij de start
+  al hebt telt niet mee (`money_earned`). Bij € 2 een gedachte en de stap is afgevinkt; de
+  kroket kopen is de volgende stap (Jan Blammage staat nog niet op de kaart).
+- Kleingeld (node `Kleingeld`, `scripts/world/loose_change.gd`): 20 munten (10, 20, 50 cent,
+  soms een euro) op pleinen en stoepen tot 110 m van de start, drie dichtbij. Eroverheen lopen
+  raapt ze op (`add_money`, geluid "munt", het bedrag stijgt op).
+- Test: `tools/check/story_test.gd`.
+- Statbalken: verandert een stat in één keer met minstens 1,5 punt (aanrijding, honger die
+  bijt, eten), dan trilt de rij van die balk kort en licht op (wit bij erbij, rood bij eraf;
+  `STAT_SHAKE_*` in hud.gd). Het langzame leeglopen en bijvullen trilt niet.
+
 Op de rails rijden twee RandstadRails (`scripts/vehicles/randstadrail.gd`, twee wagons, 22,25 m) en
 twee NS-treinen (`ns_train.gd`, drie wagons, 40 m; elk blijft op zijn eigen spoor, `own_track`), beide op `rail_vehicle.gd`. Ze passen op hun perrons: een tramhalte
 is 6 cellen (24 m), een treinperron 11 cellen (44 m); `tools/check/rail_stop_test.gd` controleert dat. Op elk perron
@@ -575,9 +599,12 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
   stad al opent (`MUSIC`, `MUSIC_VOLUME_DB`, `MUSIC_FADE_OUT`).
   Stadsmuziek: per wijk een eigen loop (`CITY_MUSIC_BY_AREA` in `scripts/ui/hud.gd`, op de
   wijknamen uit de "wijken"-metadata; andere wijken spelen `stad_centrum_loop.ogg`), na het
-  kaartdeuntje (`deuntje_kaart_start.ogg`) infadend, bij een wijkwissel in 2,5 s overvloeiend
-  op dezelfde plek in de maat, en zachter zolang het pauzemenu open is (`CITY_MUSIC_VOLUME_DB`,
-  `CITY_MUSIC_PAUSED_DB`). Alle vijf: 128 BPM, F mineur, 40 maten = 75 s, dezelfde akkoorden
+  kaartdeuntje (`deuntje_kaart_start.ogg`) infadend, bij een wijkwissel in 3 s overvloeiend
+  op dezelfde plek in de maat (gelijk vermogen: sinus/cosinus op de amplitude, dus geen gat
+  halverwege), pas na `CITY_MUSIC_SETTLE` s in de nieuwe wijk (langs een grens lopen wisselt
+  niet steeds), buiten elke wijk ("Den Haag") blijft de muziek zoals hij was; op -19 dB en
+  zachter zolang het spel stilstaat (pauzemenu, spelmenu, verhaalvak; `CITY_MUSIC_VOLUME_DB`,
+  `CITY_MUSIC_PAUSED_DB`). Test: `tools/check/city_music_test.gd`. Alle vijf: 128 BPM, F mineur, 40 maten = 75 s, dezelfde akkoorden
   per maat (`tools/megadrive/stad_plan.py`), naadloze lussen:
   `stad_centrum_loop.ogg` (Centrum, Grote Markt, Paleis Noordeinde, Lange Voorhout: funky en
   levendig, slapbas, e-piano, koper), `stad_torens_loop.ogg` (Centraal Station, De Resident,
@@ -609,7 +636,11 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
   klinkt. De `MAX_EMITTERS` dichtstbijzijnde voertuigen krijgen hun motorlus (toonhoogte volgt de
   snelheid, plus Doppler), hulpdiensten hun sirene zolang `siren_on`; botsingen, busremmen, de
   trambel bij vertrek en soms de treinhoorn klinken vanzelf, de helikopter heeft zijn rotor.
-  Afscherming met raycasts: drie stralen van het oor naar elke bron tegen de stad (laag 1);
+  Rijdt een voertuig snel en dichtbij langs (`PASS_BY_DISTANCE`, de helikopter overhead), dan
+  speelt zijn `*_voorbij.ogg` (een hulpdienst met sirene: de zijne, met sirene), getimed zodat
+  het hardste moment op het dichtstbijzijnde punt valt; motorlus en sirene duiken zolang weg.
+  Remt een hulpdienst met sirene af (kruispunt, file), dan wordt de sirene de yelp; de
+  brandweer toetert daarbij soms (`brandweer_hoorn.ogg`). Afscherming met raycasts: drie stralen van het oor naar elke bron tegen de stad (laag 1);
   staat er een gebouw tussen, dan klinkt de bron gedempt (low-pass) en zachter. Echo en galm
   volgen de omgeving: stralen rondom het oor meten hoe ingesloten je staat en hoe ver de
   gevels links en rechts zijn; daarmee stelt het de echo (vertraging per gevel, flutter tussen
@@ -675,18 +706,23 @@ Projectstructuur
       ui/                  hud, intro, main_menu (+ menu/: de 3D-kaart erachter),
                            loading_screen, action_prompts, warp_transition, crt_disturbance,
                            ui_sounds, ui_style (kleuren, fonts, panelen, CRT) + crt.gdshader,
-                           widgets/ (pixel_icon, segment_bar, check_square, player_arrow)
+                           widgets/ (pixel_icon, segment_bar, check_square, player_arrow,
+                           speech_balloon: tekstballon voor kreten, typewriter: tekst die
+                           zich uittypt met cursor en Sega-tekstgeluid)
     tools/                 command-line tools (start ze met tools/godot.sh)
       godot.sh             Godot met tijdslimiet en zonder stdin
       bake.sh              de kaart vooraf baken (zie "Baken en thumbnails")
       thumbnails.sh        de thumbnails van de tiles maken (idem)
       tool_common.gd       gedeelde helpers van de tools
+      progress.gd          voortgangsregels van de tools ("[ 42% ] ... nog ~25 s")
       build/               build_city (+ city/: de bouwer in delen), build_menu_map,
-                           build_libraries, build_previews, bake_maps
+                           build_libraries, build_previews, bake_maps,
+                           reimport_stale.sh (verouderde tiles headless herimporteren)
       check/               coverage, corner_test, crash_test, drive_test, fps_test,
                            axle_test, player_test, hud_test, lane_choice_test, traffic_test,
                            clash_test, intro_test, menu_test, mesh_audit, offscreen_audit,
-                           overlap_test, rail_stop_test, triangle_count
+                           overlap_test, rail_stop_test, triangle_count, speech_balloon_test,
+                           street_lights_test, drown_test, building_fade_test
       shots/               shot_tiles, shot_iso, shot_scene, shot_vehicles
       voxgen/              Python-generator van de tiles (zie "Tiles (opnieuw) genereren")
       megadrive/           Python-generator van alle muziek en de verkeersgeluiden in Mega Drive-stijl (FM, PSG, PCM-drums)
@@ -1104,7 +1140,17 @@ Previews worden bewaard in `.godot/vox_tiles_previews/` (per tile en importtijd)
 bibliotheek die opnieuw gebouwd wordt, krijgt ze daar direct uit terug.
 `tools/godot.sh` start Godot met een tijdslimiet (`GODOT_TIMEOUT`, standaard 600 s)
 en zonder invoer, zodat een run nooit blijft hangen; de tools in `tools/` stoppen
-bovendien zelf na een script-fout (`Common.watchdog`).
+bovendien zelf na een script-fout (`Common.watchdog`). Elke tool die langer dan een seconde
+bezig is, laat zien hoe ver hij is (`tools/progress.gd`: een regel per 5% of elke 10 s, met
+de geschatte resterende tijd); de Python-generators zetten `[ n/totaal ]` of een percentage
+voor elke regel.
+
+Heb je de kleurentabel (`assets/tiles/materialen.json`) of de `.tile.json` van tiles
+aangepast? Dan wil de editor-plugin die tiles bij het openen herimporteren (Godot zelf kijkt
+alleen naar het `.gox`). Doe dat vooraf headless, met de editor dicht:
+
+    tools/build/reimport_stale.sh          # verouderde tiles herimporteren + bibliotheken
+    tools/build/reimport_stale.sh --list   # alleen laten zien welke verouderd zijn
 
 Baken en thumbnails
 -------------------

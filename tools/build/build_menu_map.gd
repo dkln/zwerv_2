@@ -118,7 +118,9 @@ const LEFT_OUT_OF_BAKE := []
 func _init() -> void:
 	Common.watchdog(self, 900)
 	if not ResourceLoader.exists(SOURCE) or Common.arg(0, "") == "overschrijf":
+		print("[ stap 1/2 ] bron van de menukaart maken uit de stad")
 		_make_source()
+	print("[ stap 2/2 ] menukaart bakken")
 	await _bake_source()
 	quit()
 

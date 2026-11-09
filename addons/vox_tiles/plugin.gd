@@ -125,10 +125,23 @@ func _tiles_with_newer_side_files() -> PackedStringArray:
 		for side_file in TileMetadata.side_files(vox):
 			if FileAccess.file_exists(side_file):
 				t = maxi(t, FileAccess.get_modified_time(side_file))
-		if t > FileAccess.get_modified_time(vox + ".import") and _meta_handled.get(vox, 0) != t:
+		if t > _last_import_time(vox) and _meta_handled.get(vox, 0) != t:
 			_meta_handled[vox] = t   # at most once per save, even if the import fails
 			out.append(vox)
 	return out
+
+
+## When a tile was last imported: the time of its imported mesh in .godot/imported.
+## Not the .import file: Godot leaves that untouched when a reimport gives the same
+## settings, so its time stays old and every tile would look stale on each start.
+func _last_import_time(vox: String) -> int:
+	var import_file := ConfigFile.new()
+	if import_file.load(vox + ".import") != OK:
+		return 0
+	var imported_mesh: String = import_file.get_value("remap", "path", "")
+	if imported_mesh.is_empty() or not FileAccess.file_exists(imported_mesh):
+		return 0
+	return FileAccess.get_modified_time(imported_mesh)
 
 
 ## Tool menu: rebuilds every library from scratch (including previews).

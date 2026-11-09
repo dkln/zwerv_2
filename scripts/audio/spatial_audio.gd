@@ -16,6 +16,16 @@ extends Node
 ##   FireEngine). A vehicle that crashes gives a crash (hard above HARD_CRASH_SPEED); a bus
 ##   that stops hisses its brakes, a tram pulling away rings its bell, a train now and then
 ##   sounds its horn. The helicopter has its rotor loop.
+## - Passing by: a vehicle that will pass the ear closer than PASS_BY_DISTANCE (the helicopter
+##   HELICOPTER_PASS_BY_DISTANCE) at PASS_BY_MIN_SHARE of its cruising speed or more plays its
+##   `<kind>_voorbij` (an emergency vehicle with its siren on: politie/ambulance/brandweer_voorbij,
+##   the helicopter helikopter_voorbij), started so its loudest moment (halfway) falls on the
+##   nearest point; meanwhile its engine loop and siren duck PASS_BY_DUCK_DB (the clip has the
+##   Doppler baked in). Once per approach: it can pass again when it is PASS_BY_REARM m away.
+## - Yelp: an emergency vehicle with its siren on that slows down below YELP_BELOW of its
+##   cruising speed (braking for a crossing, stuck in traffic) switches to the fast yelp
+##   (sirene_yelp_loop) and back to its own siren above YELP_UNTIL; a fire engine that starts
+##   yelping blows its air horn (brandweer_hoorn) with HORN_CHANCE, at most every HORN_PAUSE s.
 ## - Occlusion ("ray cast"): every OCCLUSION_INTERVAL s three rays per source go from the ear
 ##   to the source (straight, and from a little left and right of the ear) against the town
 ##   (TOWN_LAYER); the share that hits a building muffles the source (its
@@ -28,7 +38,9 @@ extends Node
 ##   taps at the walls' echo times, panned their way, feedback as a flutter between close
 ##   facades), and a reverb (AudioEffectReverb) that is big and wet in a street canyon or a
 ##   tunnel and nearly dry on an open square or in a park. All values glide (SMOOTHING).
-## - While the game is paused the traffic is PAUSED_DB softer.
+## - While the game is paused the traffic is PAUSED_DB softer. The bus as a whole sits at
+##   BUS_VOLUME_DB with a compressor and a limiter on it (and Master a limiter), so a loud
+##   moment never blasts.
 ## Sounds: assets/audio/geluiden/ (tools/megadrive/geluiden.py, docs/MUZIEK.md).
 ## Test: tools/check/spatial_audio_test.gd.
 
@@ -50,10 +62,27 @@ const IDLE_PITCH := 0.7
 const MAX_PITCH := 1.45
 const DOPPLER_BOOST := 1.6
 const SPEED_OF_SOUND := 343.0
-const SIREN_VOLUME_DB := 0.0
+const SIREN_VOLUME_DB := -4.0
 const HARD_CRASH_SPEED := 9.0
 const HELICOPTER_SOUND := "helikopter_loop"
 const HELICOPTER_SCRIPT := "police_helicopter.gd"
+const HELICOPTER_PASS_BY := "helikopter_voorbij"
+## Passing by (see the top): how near, how fast (share of the cruising speed), how much the
+## loops duck meanwhile, how far it must get before it can pass again.
+const PASS_BY_DISTANCE := 8.0
+const HELICOPTER_PASS_BY_DISTANCE := 35.0
+const PASS_BY_MIN_SHARE := 0.6
+const HELICOPTER_PASS_BY_MIN_SPEED := 8.0
+const PASS_BY_DUCK_DB := -14.0
+const PASS_BY_REARM := 40.0
+const PASS_BY_VOLUME_DB := -2.0
+## The yelp (see the top): below and above which share of the cruising speed.
+const YELP_SOUND := "sirene_yelp_loop"
+const YELP_BELOW := 0.5
+const YELP_UNTIL := 0.75
+const FIRE_HORN := "brandweer_hoorn"
+const HORN_CHANCE := 0.6
+const HORN_PAUSE := 8.0
 ## Occlusion: how often, and what a source fully behind buildings sounds like.
 const OCCLUSION_INTERVAL := 0.1
 const OCCLUSION_SIDE_OFFSET := 2.0
@@ -69,6 +98,14 @@ const COVER_REACH := 25.0
 ## How fast the occlusion and the echo glide to new values (per second).
 const SMOOTHING := 5.0
 const PAUSED_DB := -14.0
+## The level of the traffic bus as a whole, and how its peaks are held down: a compressor
+## evens out the loud moments (a siren racing past, a crash next to you), a limiter keeps
+## every peak under LIMITER_CEILING_DB; Master gets a limiter of its own as a last guard.
+const BUS_VOLUME_DB := -6.0
+const COMPRESSOR_THRESHOLD_DB := -20.0
+const COMPRESSOR_RATIO := 4.0
+const LIMITER_CEILING_DB := -3.0
+const MASTER_CEILING_DB := -1.0
 
 var _vehicles: Array[Node3D] = []       # every Vehicle (and the helicopter) in the tree
 var _emitters := {}                     # vehicle instance id -> Emitter
@@ -87,6 +124,7 @@ var _ear_previous := Vector3.ZERO
 var _ear_velocity := Vector3.ZERO
 var _ear_right := Vector3.RIGHT
 var _random := RandomNumberGenerator.new()
+var _clock := 0.0                       # seconds of unpaused play (pass-by ducking, horn pause)
 ## What the surroundings ask of the effects (glided to in _glide_environment).
 var _target := {"wet": 0.05, "room": 0.3, "predelay": 20.0, "left_ms": 120.0, "right_ms": 120.0,
 	"left_db": -60.0, "right_db": -60.0, "feedback_db": -60.0, "feedback_ms": 200.0}
@@ -109,6 +147,14 @@ class Emitter:
 	var last_speed := 0.0
 	var was_crashed := false
 	var was_standing := false
+	var siren_name := ""                # its own siren loop (the yelp swaps in and out)
+	var yelping := false
+	var horn_ready_at := 0.0
+	var pass_by_armed := true
+	var pass_by_until := -1.0           # _clock until which its pass-by clip plays
+	var duck := 0.0                     # 0..1, how far its loops are ducked for the clip
+	var previous_position := Vector3.ZERO
+	var velocity := Vector3.ZERO        # measured (the helicopter has no speed of its own)
 
 
 func _ready() -> void:
@@ -150,7 +196,10 @@ func _process(delta: float) -> void:
 	if not _active:
 		return
 	_update_ear(delta)
-	AudioServer.set_bus_volume_db(_bus_index, PAUSED_DB if get_tree().paused else 0.0)
+	var paused := get_tree().paused
+	AudioServer.set_bus_volume_db(_bus_index, BUS_VOLUME_DB + (PAUSED_DB if paused else 0.0))
+	if not paused:
+		_clock += delta
 	_pool_clock -= delta
 	if _pool_clock <= 0.0:
 		_pool_clock = POOL_INTERVAL
@@ -273,9 +322,12 @@ func _make_emitter(vehicle: Node3D) -> Emitter:
 	emitter.base_db = 2.0 if emitter.kind == "helikopter" else MOTOR_VOLUME_DB[emitter.kind]
 	var unit: float = 30.0 if emitter.kind == "helikopter" else UNIT_SIZE[emitter.kind]
 	emitter.motor = _make_player(vehicle, sound_name, unit, emitter.base_db, true)
-	var siren_name := _siren_of(vehicle)
-	if siren_name != "":
-		emitter.siren = _make_player(vehicle, siren_name, 12.0, SIREN_VOLUME_DB, false)
+	emitter.siren_name = _siren_of(vehicle)
+	if emitter.siren_name != "":
+		emitter.siren = _make_player(vehicle, emitter.siren_name, 12.0, SIREN_VOLUME_DB, false)
+	emitter.previous_position = vehicle.global_position
+	# already right next to the ear when it gets its sound: no pass-by for this approach
+	emitter.pass_by_armed = vehicle.global_position.distance_to(_ear) > _pass_by_distance(emitter) * 2.0
 	var car := vehicle as Vehicle
 	if car != null:
 		emitter.was_crashed = car.crashed
@@ -314,7 +366,13 @@ func _update_emitter(emitter: Emitter, delta: float, blend: float) -> void:
 	emitter.occlusion = lerpf(emitter.occlusion, emitter.occlusion_target, blend)
 	var muffle := emitter.occlusion
 	var cutoff := lerpf(OPEN_CUTOFF_HZ, OCCLUDED_CUTOFF_HZ, sqrt(muffle))
-	var occluded_db := OCCLUDED_DB * muffle
+	if delta > 0.0 and not get_tree().paused:
+		var moved := (vehicle.global_position - emitter.previous_position) / delta
+		emitter.velocity = emitter.velocity.lerp(moved, 1.0 - exp(-6.0 * delta))
+	emitter.previous_position = vehicle.global_position
+	_check_pass_by(emitter, cutoff)
+	emitter.duck = lerpf(emitter.duck, 1.0 if _clock < emitter.pass_by_until else 0.0, 1.0 - exp(-8.0 * delta))
+	var occluded_db := OCCLUDED_DB * muffle + PASS_BY_DUCK_DB * emitter.duck
 	var doppler := _doppler(vehicle)
 	var car := vehicle as Vehicle
 	if car == null:
@@ -330,7 +388,7 @@ func _update_emitter(emitter: Emitter, delta: float, blend: float) -> void:
 		var idle_db := lerpf(-5.0, 0.0, clampf(speed / cruise, 0.0, 1.0))
 		emitter.motor.volume_db = emitter.base_db + idle_db + occluded_db
 		if crashed and not emitter.was_crashed:
-			_one_shot(vehicle.global_position, "auto_botsing_hard" if emitter.last_speed > HARD_CRASH_SPEED else "auto_botsing_licht", 10.0, 0.0)
+			_one_shot(vehicle.global_position, "auto_botsing_hard" if emitter.last_speed > HARD_CRASH_SPEED else "auto_botsing_licht", 10.0, -3.0)
 		if crashed:
 			emitter.motor.volume_db = -80.0
 		_signals(emitter, speed)
@@ -338,15 +396,18 @@ func _update_emitter(emitter: Emitter, delta: float, blend: float) -> void:
 		emitter.last_speed = speed
 		if emitter.siren != null and is_instance_valid(emitter.siren):
 			var wants_siren := car.siren_on and not crashed
+			_update_yelp(emitter, speed, wants_siren)
 			if wants_siren and not emitter.siren.playing:
 				emitter.siren.play()
 			elif not wants_siren and emitter.siren.playing:
 				emitter.siren.stop()
 			emitter.siren.pitch_scale = clampf(doppler, 0.5, 2.0)
-			emitter.siren.volume_db = SIREN_VOLUME_DB + occluded_db * 0.7   # a siren cuts through more
+			# a siren cuts through more
+			emitter.siren.volume_db = SIREN_VOLUME_DB + OCCLUDED_DB * muffle * 0.7 + PASS_BY_DUCK_DB * emitter.duck
 			emitter.siren.attenuation_filter_cutoff_hz = lerpf(OPEN_CUTOFF_HZ, OCCLUDED_CUTOFF_HZ * 2.0, sqrt(muffle))
 	if emitter.kind == "helikopter":
-		emitter.motor.volume_db = emitter.base_db + occluded_db * 0.4      # it is above the roofs
+		# it is above the roofs
+		emitter.motor.volume_db = emitter.base_db + OCCLUDED_DB * muffle * 0.4 + PASS_BY_DUCK_DB * emitter.duck
 	emitter.motor.attenuation_filter_cutoff_hz = cutoff
 
 
@@ -359,8 +420,97 @@ func _signals(emitter: Emitter, speed: float) -> void:
 	if emitter.kind == "tram" and not standing and emitter.was_standing:
 		_one_shot(position, "tram_bel", 10.0, -3.0)
 	if emitter.kind == "trein" and not standing and emitter.was_standing and _random.randf() < 0.5:
-		_one_shot(position, "trein_hoorn", 20.0, 0.0)
+		_one_shot(position, "trein_hoorn", 20.0, -4.0)
 	emitter.was_standing = standing
+
+
+## The yelp at a crossing: below YELP_BELOW of its cruising speed the siren swaps to the fast
+## yelp, above YELP_UNTIL back to its own; a fire engine starting to yelp may blow its horn.
+func _update_yelp(emitter: Emitter, speed: float, siren_on: bool) -> void:
+	var cruise: float = CRUISE_SPEED[emitter.kind]
+	var yelp := emitter.yelping
+	if not siren_on:
+		yelp = false
+	elif speed < cruise * YELP_BELOW:
+		yelp = true
+	elif speed > cruise * YELP_UNTIL:
+		yelp = false
+	if yelp == emitter.yelping:
+		return
+	emitter.yelping = yelp
+	var was_playing := emitter.siren.playing
+	emitter.siren.stream = _stream(YELP_SOUND if yelp else emitter.siren_name, true)
+	if was_playing:
+		emitter.siren.play()
+	if yelp and emitter.vehicle is FireEngine and _clock >= emitter.horn_ready_at:
+		emitter.horn_ready_at = _clock + HORN_PAUSE
+		if _random.randf() < HORN_CHANCE:
+			_one_shot(emitter.vehicle.global_position, FIRE_HORN, 14.0, -4.0)
+
+
+func _pass_by_distance(emitter: Emitter) -> float:
+	return HELICOPTER_PASS_BY_DISTANCE if emitter.kind == "helikopter" else PASS_BY_DISTANCE
+
+
+## The pass-by clip of a vehicle (see the top): when it will pass the ear close enough and
+## fast enough, and the nearest point is half the clip away, the clip starts on the vehicle.
+func _check_pass_by(emitter: Emitter, cutoff: float) -> void:
+	var vehicle := emitter.vehicle
+	var offset := vehicle.global_position - _ear
+	if emitter.kind == "helikopter":
+		offset.y = 0.0   # it flies over: what counts is passing overhead
+	if not emitter.pass_by_armed:
+		if offset.length() > PASS_BY_REARM * (2.5 if emitter.kind == "helikopter" else 1.0):
+			emitter.pass_by_armed = true
+		return
+	if get_tree().paused:
+		return
+	var relative := emitter.velocity - _ear_velocity
+	if emitter.kind == "helikopter":
+		relative.y = 0.0
+	var relative_speed := relative.length()
+	var car := vehicle as Vehicle
+	var fast_enough := relative_speed >= HELICOPTER_PASS_BY_MIN_SPEED
+	if car != null:
+		fast_enough = absf(car.speed) >= CRUISE_SPEED[emitter.kind] * PASS_BY_MIN_SHARE and relative_speed > 1.0
+	if not fast_enough or (car != null and car.crashed):
+		return
+	var until_nearest := -offset.dot(relative) / (relative_speed * relative_speed)
+	if until_nearest <= 0.0:
+		return
+	var miss := (offset + relative * until_nearest).length()
+	if miss > _pass_by_distance(emitter):
+		return
+	var sound_name := _pass_by_sound(emitter)
+	var stream := _stream(sound_name, false)
+	if stream == null or until_nearest > stream.get_length() * 0.5:
+		return
+	emitter.pass_by_armed = false
+	var player := AudioStreamPlayer3D.new()
+	player.name = "Voorbij"
+	player.stream = stream
+	player.bus = BUS_NAME
+	# the clip has its own swell and fade: the 3D part only places it (left/right), barely softens
+	player.unit_size = 30.0 if emitter.kind == "helikopter" else 20.0
+	player.max_distance = HEARING_RANGE * 2.0
+	player.volume_db = PASS_BY_VOLUME_DB
+	player.attenuation_filter_cutoff_hz = cutoff
+	player.position = Vector3.UP * 0.8
+	vehicle.add_child(player)
+	player.finished.connect(player.queue_free)
+	# start so the loudest moment (halfway) falls on the nearest point
+	var start := clampf(stream.get_length() * 0.5 - until_nearest, 0.0, stream.get_length() - 0.1)
+	player.play(start)
+	emitter.pass_by_until = _clock + stream.get_length() - start
+
+
+func _pass_by_sound(emitter: Emitter) -> String:
+	if emitter.kind == "helikopter":
+		return HELICOPTER_PASS_BY
+	var car := emitter.vehicle as Vehicle
+	if emitter.siren_name != "" and car != null and car.siren_on:
+		return emitter.siren_name.replace("_sirene_loop", "_voorbij")
+	return emitter.kind + "_voorbij"
 
 
 ## The pitch factor of a source moving towards (above 1) or away from (below 1) the ear.
@@ -377,6 +527,14 @@ func _doppler(vehicle: Node3D) -> float:
 	var closing := (velocity.dot(direction) - _ear_velocity.dot(direction)) * DOPPLER_BOOST
 	closing = clampf(closing, -SPEED_OF_SOUND * 0.5, SPEED_OF_SOUND * 0.5)
 	return SPEED_OF_SOUND / (SPEED_OF_SOUND - closing)
+
+
+## A sound from assets/audio/geluiden/ once at `at`, in the street like the traffic (muffled
+## behind buildings, with the echo of the street); for others than the traffic, such as the
+## player's cries of pain (PlayerController). Nothing happens outside the city.
+func play_at(at: Vector3, sound_name: String, volume_db := 0.0, unit := 8.0) -> void:
+	if _active:
+		_one_shot(at, sound_name, unit, volume_db)
 
 
 func _one_shot(at: Vector3, sound_name: String, unit: float, volume_db: float) -> void:
@@ -470,7 +628,29 @@ func _ensure_bus() -> void:
 	_reverb.hipass = 0.15
 	AudioServer.add_bus_effect(_bus_index, _delay)
 	AudioServer.add_bus_effect(_bus_index, _reverb)
+	var compressor := AudioEffectCompressor.new()
+	compressor.threshold = COMPRESSOR_THRESHOLD_DB
+	compressor.ratio = COMPRESSOR_RATIO
+	compressor.attack_us = 5000.0
+	compressor.release_ms = 180.0
+	compressor.gain = 2.0
+	AudioServer.add_bus_effect(_bus_index, compressor)
+	var limiter := AudioEffectHardLimiter.new()
+	limiter.ceiling_db = LIMITER_CEILING_DB
+	AudioServer.add_bus_effect(_bus_index, limiter)
+	_guard_master()
 	_apply_environment()
+
+
+## A limiter on Master (once), so no sound of the game ever clips.
+func _guard_master() -> void:
+	var master := AudioServer.get_bus_index("Master")
+	for effect_index in AudioServer.get_bus_effect_count(master):
+		if AudioServer.get_bus_effect(master, effect_index) is AudioEffectHardLimiter:
+			return
+	var limiter := AudioEffectHardLimiter.new()
+	limiter.ceiling_db = MASTER_CEILING_DB
+	AudioServer.add_bus_effect(master, limiter)
 
 
 ## Rays round the ear and one up: how enclosed, how far the walls, a wall left and right,

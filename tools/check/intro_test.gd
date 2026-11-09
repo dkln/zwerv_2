@@ -1,7 +1,8 @@
 extends SceneTree
 ## Plays the intro (scenes/intro.tscn), breaks it off with a key after a moment and checks
 ## that the main menu comes up at once, then that its 3D map (loaded in the background)
-## arrives. Prints "intro ok" for each step that went well.
+## arrives. Prints "intro ok" for each step that went well. Also: the context action at the
+## bottom left (SPATIE Overslaan) and every character that can drift through space builds.
 ## With "volledig" it lets the intro play to the end and prints how long it took.
 ## usage: Godot --headless --script tools/check/intro_test.gd [-- volledig]
 
@@ -23,6 +24,7 @@ func _init() -> void:
 		return
 	for frame_index in 30:
 		await process_frame
+	_check_extras(intro)
 	var key := InputEventKey.new()
 	key.keycode = KEY_SPACE
 	key.pressed = true
@@ -128,3 +130,27 @@ func _init() -> void:
 	print("intro ok: vanzelf gebotst (%s)" % natural if natural != "" else "FOUT: geen botsing vanzelf in 4 min menutijd")
 	Engine.time_scale = 1.0
 	quit()
+
+
+## The context actions at the start (only SPATIE: the story is not rolling yet), and every
+## character and tractor that drifts through space can be made, the characters centred.
+func _check_extras(intro: Node) -> void:
+	var prompts := intro.find_child("Toetsen", true, false)
+	var actions: Array = prompts.call("actions") if prompts else []
+	print("intro ok: contextactie %s" % [actions] if actions == [["SPATIE", "Overslaan"]] else "FOUT: contextactie %s" % [actions])
+	var built := 0
+	for drifter_name: String in intro.PlayerCharacter.ORDER + intro.TRACTOR_MODELS:
+		var is_character: bool = intro.PlayerCharacter.ARCHETYPES.has(drifter_name)
+		var drifter: Node3D = intro._make_character(drifter_name) if is_character else intro._make_tractor(drifter_name)
+		if drifter == null:
+			print("FOUT: zwever %s niet gemaakt" % drifter_name)
+			continue
+		get_root().add_child(drifter)
+		if is_character:
+			intro._centre_character(drifter)
+			if (drifter.get_child(0) as Node3D).position.y >= 0.0:
+				print("FOUT: personage %s niet in het midden" % drifter_name)
+				continue
+		drifter.queue_free()
+		built += 1
+	print("intro ok: %d zwevers gemaakt" % built)

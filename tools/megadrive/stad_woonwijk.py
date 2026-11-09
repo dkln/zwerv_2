@@ -1,8 +1,8 @@
 """'Stad woonwijk': the city loop of the neighbourhoods (Bezuidenhout, Bezuidenhout-Oost,
 Schilderswijk, Laak, Voorburg): raw, street, a heavy new-jack-swing shuffle.
 
-One of the five neighbourhood loops on the shared plan (stad_plan.py: 128 BPM, F minor, 40 bars
-= 75 s). Heavy swing, broken kick with a hard snare and clap, the slap bass in its new-jack
+One of the five neighbourhood loops on the shared plan (stad_plan.py: 104 BPM, F minor, 40 bars
+= 92 s). Heavy swing, broken kick with a hard snare and clap, the slap bass in its new-jack
 pattern, brass stabs, and the lead in short riffs that keep hitting the tough motif, with a
 PSG harmony line under it.
 
@@ -16,6 +16,7 @@ PSG harmony line under it.
 House style: style.py, docs/MUZIEK.md.
 Render: tools/megadrive/render.sh stad_woonwijk  (writes assets/audio/muziek/stad_woonwijk_loop.ogg)
 """
+import stad_plan
 import style
 from stad_plan import BARS, BPM, SECTIONS, bars_of
 from style import Song
@@ -87,7 +88,7 @@ def main() -> None:
             style.drum_bar(song, bar, kick="broken", snare="backbeat", clap=True, hats="sixteenths", fill=fill)
             if name == "C":
                 song.pcm.add(song.at(bar, 3), style.KICK, 0.6)
-    song.render()
+    stad_plan.finish(song)
 
 
 if __name__ == "__main__":
