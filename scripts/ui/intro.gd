@@ -187,7 +187,7 @@ func _ready() -> void:
 	GraphicsSettings.apply(get_tree())
 	var settings := MainMenu._read_settings()
 	var crt := UiStyle.make_crt_overlay(0.05 if settings.crt else 0.0, 0.035 if settings.crt else 0.0,
-			0.1 if settings.scanlines else 0.0, get_viewport().get_visible_rect().size)
+			UiStyle.SCANLINE_STRENGTH if settings.scanlines else 0.0, get_viewport().get_visible_rect().size)
 	add_child(crt)
 	# the disturbances of the menu too: a rolling band, now and then VHS tracking
 	crt.add_child(load("res://scripts/ui/crt_disturbance.gd").new())

@@ -1,6 +1,7 @@
 extends Node
 ## Spatial sound of the city (autoload "RuimtelijkGeluid", project.godot): you hear where the
-## traffic is, buildings in between muffle it, and the streets echo by how built-up they are.
+## traffic is (placed in 3D, with a Doppler shift as it comes and goes). Kept plain: no ray
+## casts, no muffling behind buildings, no echo or reverb.
 ## Active only while a player (PlayerController) is in the tree, so: in the city, not in the
 ## menu or the intro. Nothing in the vehicles needs to know about it: it finds every Vehicle
 ## and the police helicopter itself (SceneTree.node_added) and hangs players on them.
@@ -26,18 +27,6 @@ extends Node
 ##   cruising speed (braking for a crossing, stuck in traffic) switches to the fast yelp
 ##   (sirene_yelp_loop) and back to its own siren above YELP_UNTIL; a fire engine that starts
 ##   yelping blows its air horn (brandweer_hoorn) with HORN_CHANCE, at most every HORN_PAUSE s.
-## - Occlusion ("ray cast"): every OCCLUSION_INTERVAL s three rays per source go from the ear
-##   to the source (straight, and from a little left and right of the ear) against the town
-##   (TOWN_LAYER); the share that hits a building muffles the source (its
-##   attenuation_filter_cutoff_hz from OPEN_CUTOFF_HZ down to OCCLUDED_CUTOFF_HZ) and makes it
-##   OCCLUDED_DB softer, smoothly.
-## - Echo and reverb: every ENVIRONMENT_INTERVAL s ENVIRONMENT_RAYS rays go round the ear
-##   (ENVIRONMENT_REACH m) and one goes up. How many hit, how far, and the nearest wall on the
-##   left and the right set the effects of the bus BUS_NAME (made here, sent to Master; the
-##   music stays dry): a slap-back echo off the left and right facades (AudioEffectDelay, its
-##   taps at the walls' echo times, panned their way, feedback as a flutter between close
-##   facades), and a reverb (AudioEffectReverb) that is big and wet in a street canyon or a
-##   tunnel and nearly dry on an open square or in a park. All values glide (SMOOTHING).
 ## - While the game is paused the traffic is PAUSED_DB softer. The bus as a whole sits at
 ##   BUS_VOLUME_DB with a compressor and a limiter on it (and Master a limiter), so a loud
 ##   moment never blasts.
@@ -46,7 +35,6 @@ extends Node
 
 const SOUND_FOLDER := "res://assets/audio/geluiden/"
 const BUS_NAME := "Verkeer"
-const TOWN_LAYER := 1
 const LISTENER_HEIGHT := 1.7
 const MAX_EMITTERS := 14
 const HEARING_RANGE := 90.0
@@ -83,20 +71,6 @@ const YELP_UNTIL := 0.75
 const FIRE_HORN := "brandweer_hoorn"
 const HORN_CHANCE := 0.6
 const HORN_PAUSE := 8.0
-## Occlusion: how often, and what a source fully behind buildings sounds like.
-const OCCLUSION_INTERVAL := 0.1
-const OCCLUSION_SIDE_OFFSET := 2.0
-const OPEN_CUTOFF_HZ := 9000.0
-const OCCLUDED_CUTOFF_HZ := 650.0
-const OCCLUDED_DB := -11.0
-## The surroundings of the ear: how often, how many rays round it, how far they reach.
-const ENVIRONMENT_INTERVAL := 0.25
-const ENVIRONMENT_RAYS := 12
-const ENVIRONMENT_REACH := 60.0
-const ENVIRONMENT_HEIGHT := 2.0
-const COVER_REACH := 25.0
-## How fast the occlusion and the echo glide to new values (per second).
-const SMOOTHING := 5.0
 const PAUSED_DB := -14.0
 ## The level of the traffic bus as a whole, and how its peaks are held down: a compressor
 ## evens out the loud moments (a siren racing past, a crash next to you), a limiter keeps
@@ -113,36 +87,21 @@ var _player: Node3D                     # the PlayerController
 var _listener: AudioListener3D
 var _active := false
 var _bus_index := -1
-var _delay: AudioEffectDelay
-var _reverb: AudioEffectReverb
 var _streams := {}
 var _pool_clock := 0.0
-var _occlusion_clock := 0.0
-var _environment_clock := 0.0
 var _ear := Vector3.ZERO
 var _ear_previous := Vector3.ZERO
 var _ear_velocity := Vector3.ZERO
-var _ear_right := Vector3.RIGHT
 var _random := RandomNumberGenerator.new()
 var _clock := 0.0                       # seconds of unpaused play (pass-by ducking, horn pause)
-## What the surroundings ask of the effects (glided to in _glide_environment).
-var _target := {"wet": 0.05, "room": 0.3, "predelay": 20.0, "left_ms": 120.0, "right_ms": 120.0,
-	"left_db": -60.0, "right_db": -60.0, "feedback_db": -60.0, "feedback_ms": 200.0}
-var _current := _target.duplicate()
-## What the last survey measured (for the test and for tuning): share of rays that hit,
-## mean distance, nearest wall left and right (metres; ENVIRONMENT_REACH = nothing), covered.
-var survey := {"enclosure": 0.0, "mean_distance": ENVIRONMENT_REACH, "left": ENVIRONMENT_REACH,
-	"right": ENVIRONMENT_REACH, "covered": false}
 
 
-## The sound of one vehicle: its engine (and siren) players, smoothed occlusion, last state.
+## The sound of one vehicle: its engine (and siren) players, its last state.
 class Emitter:
 	var vehicle: Node3D
 	var kind := ""
 	var motor: AudioStreamPlayer3D
 	var siren: AudioStreamPlayer3D
-	var occlusion := 0.0
-	var occlusion_target := 0.0
 	var base_db := 0.0
 	var last_speed := 0.0
 	var was_crashed := false
@@ -204,18 +163,8 @@ func _process(delta: float) -> void:
 	if _pool_clock <= 0.0:
 		_pool_clock = POOL_INTERVAL
 		_update_pool()
-	_occlusion_clock -= delta
-	if _occlusion_clock <= 0.0:
-		_occlusion_clock = OCCLUSION_INTERVAL
-		_measure_occlusion()
-	_environment_clock -= delta
-	if _environment_clock <= 0.0:
-		_environment_clock = ENVIRONMENT_INTERVAL
-		_survey_surroundings()
-	var blend := 1.0 - exp(-SMOOTHING * delta)
 	for emitter: Emitter in _emitters.values():
-		_update_emitter(emitter, delta, blend)
-	_glide_environment(blend)
+		_update_emitter(emitter, delta)
 
 
 func _set_active(on: bool) -> void:
@@ -264,7 +213,6 @@ func _update_ear(delta: float) -> void:
 	if forward.length_squared() < 0.0001:
 		forward = Vector3.FORWARD
 	forward = forward.normalized()
-	_ear_right = forward.cross(Vector3.UP).normalized()
 	_listener.global_transform = Transform3D(Basis.looking_at(forward, Vector3.UP), _ear)
 
 
@@ -344,7 +292,7 @@ func _make_player(parent: Node3D, sound_name: String, unit: float, volume_db: fl
 	player.unit_size = unit
 	player.max_distance = HEARING_RANGE * (2.5 if sound_name == HELICOPTER_SOUND else 1.2)
 	player.volume_db = volume_db
-	player.attenuation_filter_cutoff_hz = OPEN_CUTOFF_HZ
+	player.attenuation_filter_db = 0.0   # no muffling with distance: only softer
 	player.position = Vector3.UP * 0.8
 	parent.add_child(player)
 	if play_now and player.stream != null:
@@ -359,20 +307,17 @@ func _free_emitter(emitter: Emitter) -> void:
 			player.queue_free()
 
 
-func _update_emitter(emitter: Emitter, delta: float, blend: float) -> void:
+func _update_emitter(emitter: Emitter, delta: float) -> void:
 	var vehicle := emitter.vehicle
 	if not is_instance_valid(vehicle) or emitter.motor == null or not is_instance_valid(emitter.motor):
 		return
-	emitter.occlusion = lerpf(emitter.occlusion, emitter.occlusion_target, blend)
-	var muffle := emitter.occlusion
-	var cutoff := lerpf(OPEN_CUTOFF_HZ, OCCLUDED_CUTOFF_HZ, sqrt(muffle))
 	if delta > 0.0 and not get_tree().paused:
 		var moved := (vehicle.global_position - emitter.previous_position) / delta
 		emitter.velocity = emitter.velocity.lerp(moved, 1.0 - exp(-6.0 * delta))
 	emitter.previous_position = vehicle.global_position
-	_check_pass_by(emitter, cutoff)
+	_check_pass_by(emitter)
 	emitter.duck = lerpf(emitter.duck, 1.0 if _clock < emitter.pass_by_until else 0.0, 1.0 - exp(-8.0 * delta))
-	var occluded_db := OCCLUDED_DB * muffle + PASS_BY_DUCK_DB * emitter.duck
+	var duck_db := PASS_BY_DUCK_DB * emitter.duck
 	var doppler := _doppler(vehicle)
 	var car := vehicle as Vehicle
 	if car == null:
@@ -386,7 +331,7 @@ func _update_emitter(emitter: Emitter, delta: float, blend: float) -> void:
 			engine_pitch = minf(MAX_PITCH, 1.0 + (speed - cruise) / cruise * 0.5)
 		emitter.motor.pitch_scale = clampf(engine_pitch * doppler, 0.3, 2.5)
 		var idle_db := lerpf(-5.0, 0.0, clampf(speed / cruise, 0.0, 1.0))
-		emitter.motor.volume_db = emitter.base_db + idle_db + occluded_db
+		emitter.motor.volume_db = emitter.base_db + idle_db + duck_db
 		if crashed and not emitter.was_crashed:
 			_one_shot(vehicle.global_position, "auto_botsing_hard" if emitter.last_speed > HARD_CRASH_SPEED else "auto_botsing_licht", 10.0, -3.0)
 		if crashed:
@@ -402,13 +347,9 @@ func _update_emitter(emitter: Emitter, delta: float, blend: float) -> void:
 			elif not wants_siren and emitter.siren.playing:
 				emitter.siren.stop()
 			emitter.siren.pitch_scale = clampf(doppler, 0.5, 2.0)
-			# a siren cuts through more
-			emitter.siren.volume_db = SIREN_VOLUME_DB + OCCLUDED_DB * muffle * 0.7 + PASS_BY_DUCK_DB * emitter.duck
-			emitter.siren.attenuation_filter_cutoff_hz = lerpf(OPEN_CUTOFF_HZ, OCCLUDED_CUTOFF_HZ * 2.0, sqrt(muffle))
+			emitter.siren.volume_db = SIREN_VOLUME_DB + duck_db
 	if emitter.kind == "helikopter":
-		# it is above the roofs
-		emitter.motor.volume_db = emitter.base_db + OCCLUDED_DB * muffle * 0.4 + PASS_BY_DUCK_DB * emitter.duck
-	emitter.motor.attenuation_filter_cutoff_hz = cutoff
+		emitter.motor.volume_db = emitter.base_db + duck_db
 
 
 ## Little events: a bus stopping hisses, a tram pulling away rings, a train now and then hoots.
@@ -454,7 +395,7 @@ func _pass_by_distance(emitter: Emitter) -> float:
 
 ## The pass-by clip of a vehicle (see the top): when it will pass the ear close enough and
 ## fast enough, and the nearest point is half the clip away, the clip starts on the vehicle.
-func _check_pass_by(emitter: Emitter, cutoff: float) -> void:
+func _check_pass_by(emitter: Emitter) -> void:
 	var vehicle := emitter.vehicle
 	var offset := vehicle.global_position - _ear
 	if emitter.kind == "helikopter":
@@ -494,7 +435,7 @@ func _check_pass_by(emitter: Emitter, cutoff: float) -> void:
 	player.unit_size = 30.0 if emitter.kind == "helikopter" else 20.0
 	player.max_distance = HEARING_RANGE * 2.0
 	player.volume_db = PASS_BY_VOLUME_DB
-	player.attenuation_filter_cutoff_hz = cutoff
+	player.attenuation_filter_db = 0.0
 	player.position = Vector3.UP * 0.8
 	vehicle.add_child(player)
 	player.finished.connect(player.queue_free)
@@ -529,9 +470,9 @@ func _doppler(vehicle: Node3D) -> float:
 	return SPEED_OF_SOUND / (SPEED_OF_SOUND - closing)
 
 
-## A sound from assets/audio/geluiden/ once at `at`, in the street like the traffic (muffled
-## behind buildings, with the echo of the street); for others than the traffic, such as the
-## player's cries of pain (PlayerController). Nothing happens outside the city.
+## A sound from assets/audio/geluiden/ once at `at`, placed in 3D like the traffic; for others
+## than the traffic, such as the player's cries of pain (PlayerController). Nothing happens
+## outside the city.
 func play_at(at: Vector3, sound_name: String, volume_db := 0.0, unit := 8.0) -> void:
 	if _active:
 		_one_shot(at, sound_name, unit, volume_db)
@@ -546,8 +487,8 @@ func _one_shot(at: Vector3, sound_name: String, unit: float, volume_db: float) -
 	player.bus = BUS_NAME
 	player.unit_size = unit
 	player.max_distance = HEARING_RANGE * 1.5
-	player.volume_db = volume_db - 11.0 * _occlusion_of(at)
-	player.attenuation_filter_cutoff_hz = lerpf(OPEN_CUTOFF_HZ, OCCLUDED_CUTOFF_HZ, sqrt(_occlusion_of(at)))
+	player.volume_db = volume_db
+	player.attenuation_filter_db = 0.0
 	add_child(player)
 	player.global_position = at + Vector3.UP
 	player.finished.connect(player.queue_free)
@@ -571,37 +512,7 @@ func _stream(sound_name: String, looping: bool) -> AudioStream:
 	return stream
 
 
-# ----------------------------------------------------------------------------- occlusion
-
-
-func _measure_occlusion() -> void:
-	for emitter: Emitter in _emitters.values():
-		if is_instance_valid(emitter.vehicle):
-			emitter.occlusion_target = _occlusion_of(emitter.vehicle.global_position + Vector3.UP * 1.0)
-
-
-## Share (0..1) of three rays from the ear (and a little left and right of it) to `point`
-## that hit a building of the town on the way.
-func _occlusion_of(point: Vector3) -> float:
-	var space := get_viewport().world_3d.direct_space_state if get_viewport() != null else null
-	if space == null:
-		return 0.0
-	var blocked := 0
-	for side in [0.0, -OCCLUSION_SIDE_OFFSET, OCCLUSION_SIDE_OFFSET]:
-		var from: Vector3 = _ear + _ear_right * float(side)
-		var line := point - from
-		var length := line.length()
-		if length < 3.0:
-			continue
-		var direction := line / length
-		# start clear of the player's own body, stop short of the vehicle's own collider
-		var query := PhysicsRayQueryParameters3D.create(from + direction * 1.2, point - direction * 2.5, TOWN_LAYER)
-		if not space.intersect_ray(query).is_empty():
-			blocked += 1
-	return blocked / 3.0
-
-
-# ----------------------------------------------------------------------------- echo and reverb
+# ----------------------------------------------------------------------------- the bus
 
 
 func _ensure_bus() -> void:
@@ -613,21 +524,6 @@ func _ensure_bus() -> void:
 		AudioServer.set_bus_send(_bus_index, "Master")
 	while AudioServer.get_bus_effect_count(_bus_index) > 0:
 		AudioServer.remove_bus_effect(_bus_index, 0)
-	_delay = AudioEffectDelay.new()
-	_delay.dry = 1.0
-	_delay.tap1_active = true
-	_delay.tap2_active = true
-	_delay.tap1_pan = -0.7
-	_delay.tap2_pan = 0.7
-	_delay.feedback_active = true
-	_delay.feedback_lowpass = 3500.0
-	_reverb = AudioEffectReverb.new()
-	_reverb.dry = 1.0
-	_reverb.damping = 0.35
-	_reverb.spread = 0.8
-	_reverb.hipass = 0.15
-	AudioServer.add_bus_effect(_bus_index, _delay)
-	AudioServer.add_bus_effect(_bus_index, _reverb)
 	var compressor := AudioEffectCompressor.new()
 	compressor.threshold = COMPRESSOR_THRESHOLD_DB
 	compressor.ratio = COMPRESSOR_RATIO
@@ -639,7 +535,6 @@ func _ensure_bus() -> void:
 	limiter.ceiling_db = LIMITER_CEILING_DB
 	AudioServer.add_bus_effect(_bus_index, limiter)
 	_guard_master()
-	_apply_environment()
 
 
 ## A limiter on Master (once), so no sound of the game ever clips.
@@ -653,82 +548,12 @@ func _guard_master() -> void:
 	AudioServer.add_bus_effect(master, limiter)
 
 
-## Rays round the ear and one up: how enclosed, how far the walls, a wall left and right,
-## a roof overhead; turned into what the echo and the reverb should do.
-func _survey_surroundings() -> void:
-	var space := get_viewport().world_3d.direct_space_state
-	var origin := _ear + Vector3.UP * (ENVIRONMENT_HEIGHT - LISTENER_HEIGHT)
-	var hits := 0
-	var distance_sum := 0.0
-	var nearest_left := ENVIRONMENT_REACH
-	var nearest_right := ENVIRONMENT_REACH
-	var nearest := ENVIRONMENT_REACH
-	for ray_index in ENVIRONMENT_RAYS:
-		var angle := TAU * ray_index / ENVIRONMENT_RAYS
-		var direction := Vector3(cos(angle), 0.0, sin(angle))
-		var query := PhysicsRayQueryParameters3D.create(origin + direction * 1.0, origin + direction * ENVIRONMENT_REACH, TOWN_LAYER)
-		var hit := space.intersect_ray(query)
-		var distance := ENVIRONMENT_REACH
-		if not hit.is_empty():
-			hits += 1
-			distance = origin.distance_to(hit.position)
-		distance_sum += distance
-		nearest = minf(nearest, distance)
-		var side := direction.dot(_ear_right)
-		if side > 0.5:
-			nearest_right = minf(nearest_right, distance)
-		elif side < -0.5:
-			nearest_left = minf(nearest_left, distance)
-	var up := PhysicsRayQueryParameters3D.create(origin, origin + Vector3.UP * COVER_REACH, TOWN_LAYER)
-	var covered := not space.intersect_ray(up).is_empty()
-	var enclosure := float(hits) / ENVIRONMENT_RAYS
-	var mean_distance := distance_sum / ENVIRONMENT_RAYS
-	survey = {"enclosure": enclosure, "mean_distance": mean_distance, "left": nearest_left,
-		"right": nearest_right, "covered": covered}
-
-	var cover := 1.0 if covered else 0.0
-	_target["wet"] = clampf(0.03 + 0.3 * enclosure + 0.3 * cover, 0.0, 0.7)
-	_target["room"] = clampf(0.2 + 0.7 * mean_distance / ENVIRONMENT_REACH, 0.15, 0.95) * (0.7 if covered else 1.0)
-	_target["predelay"] = clampf(2.0 * nearest / SPEED_OF_SOUND * 1000.0, 5.0, 200.0)
-	for side_name in ["left", "right"]:
-		var wall: float = nearest_left if side_name == "left" else nearest_right
-		var strength := 1.0 - wall / ENVIRONMENT_REACH        # 0: nothing there, 1: right next to it
-		_target[side_name + "_ms"] = clampf(2.0 * wall / SPEED_OF_SOUND * 1000.0, 15.0, 1500.0)
-		_target[side_name + "_db"] = lerpf(-60.0, -13.0, clampf(strength, 0.0, 1.0)) if wall < ENVIRONMENT_REACH else -60.0
-	var both_walls := nearest_left < ENVIRONMENT_REACH and nearest_right < ENVIRONMENT_REACH
-	var street_width := nearest_left + nearest_right
-	_target["feedback_ms"] = clampf(2.0 * street_width / SPEED_OF_SOUND * 1000.0, 20.0, 1500.0)
-	_target["feedback_db"] = lerpf(-60.0, -16.0, clampf(1.0 - street_width / 50.0, 0.0, 1.0)) if both_walls else -60.0
-
-
-func _glide_environment(blend: float) -> void:
-	for key in _target:
-		var slow := blend * (0.4 if key.ends_with("_ms") else 1.0)   # moving delay times warble: slower
-		_current[key] = lerpf(float(_current[key]), float(_target[key]), slow)
-	_apply_environment()
-
-
-func _apply_environment() -> void:
-	if _delay == null or _reverb == null:
-		return
-	_reverb.wet = _current["wet"]
-	_reverb.room_size = _current["room"]
-	_reverb.predelay_msec = _current["predelay"]
-	_reverb.predelay_feedback = 0.25
-	_delay.tap1_delay_ms = _current["left_ms"]
-	_delay.tap1_level_db = _current["left_db"]
-	_delay.tap2_delay_ms = _current["right_ms"]
-	_delay.tap2_level_db = _current["right_db"]
-	_delay.feedback_delay_ms = _current["feedback_ms"]
-	_delay.feedback_level_db = _current["feedback_db"]
-
-
-## For the test: how many vehicles have sound now, and their occlusion.
+## For the test: the vehicles that have sound now.
 func emitter_report() -> Array:
 	var report := []
 	for emitter: Emitter in _emitters.values():
 		if is_instance_valid(emitter.vehicle):
 			report.append({"kind": emitter.kind, "distance": emitter.vehicle.global_position.distance_to(_ear),
-				"occlusion": emitter.occlusion_target, "pitch": emitter.motor.pitch_scale,
+				"pitch": emitter.motor.pitch_scale,
 				"siren": emitter.siren != null and emitter.siren.playing})
 	return report

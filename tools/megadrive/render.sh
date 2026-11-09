@@ -8,9 +8,9 @@
 #        tools/megadrive/render.sh geluiden             (the traffic sound effects, see geluiden.py;
 #                                                         or some: render.sh geluiden tram_bel)
 #        tools/megadrive/render.sh stemmen              (the cries of pain, see stemmen.py)
-# Pieces: stad_centrum stad_torens stad_groen stad_woonwijk stad_industrie stad_hofstad stad_markt stad_bos stad_dorp nachtstad_menu karakterkeuze zwervr_intro gevecht handelaar deuntjes geluiden stemmen
+# Pieces: stad_centrum stad_torens stad_groen stad_woonwijk stad_industrie stad_hofstad stad_markt stad_bos stad_dorp nachtstad_menu karakterkeuze laden zwervr_intro gevecht handelaar deuntjes geluiden stemmen
 cd "$(dirname "$0")" || exit 1
-all="stad_centrum stad_torens stad_groen stad_woonwijk stad_industrie stad_hofstad stad_markt stad_bos stad_dorp nachtstad_menu karakterkeuze zwervr_intro gevecht handelaar deuntjes geluiden stemmen"
+all="stad_centrum stad_torens stad_groen stad_woonwijk stad_industrie stad_hofstad stad_markt stad_bos stad_dorp nachtstad_menu karakterkeuze laden zwervr_intro gevecht handelaar deuntjes geluiden stemmen"
 run() {
 	uv run --quiet --with soundfile --with numpy python3 "$@" < /dev/null || exit 1
 }

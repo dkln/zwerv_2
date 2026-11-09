@@ -124,7 +124,7 @@ func _ready() -> void:
 	_build_footer()
 	var settings := MainMenu._read_settings()
 	_crt = UiStyle.make_crt_overlay(0.05 if settings.crt else 0.0, 0.035 if settings.crt else 0.0,
-			0.1 if settings.scanlines else 0.0, get_viewport().get_visible_rect().size)
+			UiStyle.SCANLINE_STRENGTH if settings.scanlines else 0.0, get_viewport().get_visible_rect().size)
 	add_child(_crt)
 	_crt.add_child(load("res://scripts/ui/crt_disturbance.gd").new())
 	get_viewport().size_changed.connect(_fit_to_window)

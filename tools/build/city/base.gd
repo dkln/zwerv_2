@@ -125,14 +125,14 @@ func _make_scene(node_name: String) -> Node3D:
 	e.ssil_enabled = false
 	e.ssil_radius = 6.0
 	e.ssil_intensity = 0.9
-	# soft glow around lamps (emit material, energy 6) and bright highlights;
-	# Godot's default glow levels
+	# soft glow only round the lamps (emit material, energy 6): a lower threshold and more glow
+	# blurred every bright edge, so things ran into each other
 	e.glow_enabled = true
-	e.glow_intensity = 0.5
-	e.glow_hdr_threshold = 1.2
+	e.glow_intensity = 0.25
+	e.glow_hdr_threshold = 1.8
 	e.adjustment_enabled = true
 	e.adjustment_saturation = 1.12
-	e.adjustment_contrast = 1.1
+	e.adjustment_contrast = 1.22
 	e.fog_enabled = false
 	e.fog_light_color = Color(0.7, 0.78, 0.88)
 	e.fog_density = 0.0005

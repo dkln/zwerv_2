@@ -10,7 +10,7 @@ uniform sampler2D ui_texture : filter_linear, repeat_disable, hint_default_trans
 uniform float curvature = 0.05;
 uniform float ui_curvature = 0.02;
 uniform float corner = 0.035;
-uniform float scanline_strength = 0.1;
+uniform float scanline_strength = 0.14;
 uniform vec2 screen_size = vec2(1280.0, 720.0);
 uniform float opacity = 1.0;
 // a rolling disturbance: a band at this height of the screen (0 top .. 1 bottom; off when

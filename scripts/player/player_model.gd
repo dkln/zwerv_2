@@ -9,7 +9,7 @@ extends Node3D
 ##   frayed coat with a patch over a checked shirt and a belly, rope for a belt,
 ##   jeans with a torn knee, fingerless gloves, boots with a sole coming loose, a stone
 ##   kruik of jenever in one hand and a plastic bag with bread in the other;
-## - martin (speed): skin and bone (a chest no wider than his head, the slimmest arms and legs of all, as thick as the others' thinnest) in
+## - martin (speed): once a top athlete (the 800 metres), now skin and bone (a chest no wider than his head, the slimmest arms and legs of all, as thick as the others' thinnest) in
 ##   a faded shell suit (the zip half open over a grey t-shirt), a cheap chain, a belt
 ##   pulled tight, trousers with a torn knee, grey trainers, a rucksack
 ##   too big for him with a sleeping bag on top, a blond mullet (short on top and at the
@@ -23,7 +23,8 @@ extends Node3D
 ##   for a lost one, a red knitted scarf, corduroy trousers and worn slippers, a checked flat cap
 ##   over white hair, round glasses, bushy brows, a grey moustache and white stubble, a
 ##   plastic bag in one hand.
-## - sjaan (sigaretten): a street musician: big curly auburn hair under a green knitted
+## - sjaan (sigaretten): once a toilet attendant, thirty years with her saucer by the toilets
+##   of a department store: big curly auburn hair under a green knitted
 ##   beanie, a denim jacket with pins, a long patchwork skirt, boots.
 ## - gerrit (bier): an old fisherman from Scheveningen: a yellow oilskin coat with toggles
 ##   and a sou'wester, a navy roll-neck jumper under it, rubber boots, a full grey beard
@@ -43,10 +44,10 @@ extends Node3D
 ## graded for more colour and contrast (SATURATION, CONTRAST). `spin` turns the whole
 ## figure slowly round.
 ## Gestures: play_gesture() makes the figure do its own move, facing the front (GESTURES:
-## Jos swings a lasso over his head, Martin sprints on the spot and hops three times, the
+## Jos holds out his hand, begging, and shrugs on the "-ro?", Martin sprints on the spot and hops to "Al zijn ze paars!", the
 ## ufo pilot floats up with his arms spread like wings, Willem bends over cackling, his
-## shoulders shaking, Sjaan waves, Gerrit hails a boat with his arm high); `gesture_cue` fires
-## at its moment for the shout (the "HAA", the first "hup"), `gesture_finished` at the end;
+## shoulders shaking, Sjaan polishes ("Ff poetsen"), Gerrit points at you, jabbing on "SCHOL" and on "KOP"); `gesture_cue` fires
+## at its moment for the shout (the start of "5 euro?", of "Al zijn ze paars!"), `gesture_finished` at the end;
 ## then it walks and turns on as before.
 ## `silhouette`: a colour with alpha draws the whole figure in that one flat colour (the
 ## narrator's portrait: only the outline of someone).
@@ -121,15 +122,15 @@ const MATERIALS := {
 ## the flat hex codes give, so nothing looks grey and washed out.
 const SATURATION := 1.35
 const CONTRAST := 1.15
-## The gestures: how long (s), the moment the shout starts (s; its loud part, the "HAA" or
+## The gestures: how long (s), the moment the shout starts (s; its loud part, the "PAARS" or
 ## the "HOI", lands on the big move a little later), and the fade in and out (s).
 const GESTURES := {
-	"jos": {"seconds": 1.7, "cue": 0.23},
-	"martin": {"seconds": 1.3, "cue": 0.12},
-	"ufo_piloot": {"seconds": 1.9, "cue": 0.3},
+	"jos": {"seconds": 1.6, "cue": 0.25},
+	"martin": {"seconds": 1.5, "cue": 0.12},
+	"ufo_piloot": {"seconds": 2.3, "cue": 0.3},
 	"willem": {"seconds": 1.3, "cue": 0.2},
 	"sjaan": {"seconds": 1.3, "cue": 0.3},
-	"gerrit": {"seconds": 1.7, "cue": 0.25},
+	"gerrit": {"seconds": 1.5, "cue": 0.25},
 }
 const GESTURE_FADE := 0.25
 ## Seconds a spinning figure first stands facing the front when it is shown anew, before
@@ -334,24 +335,26 @@ func _gesture_pose(time: float, seconds: float) -> Dictionary:
 	var share := time / seconds
 	match archetype_id:
 		"jos":
-			# the old rodeo rider: the right arm up, swinging a lasso round over his hat, the
-			# left hand on his hip, a little hop on the "HAA"
-			var hop := maxf(0.0, sin((time - 0.42) * PI / 0.3)) if time > 0.42 and time < 0.72 else 0.0
+			# begging: the right hand held out, palm up, leaning in a little; on the "-ro?"
+			# (0.7 s) a shrug, both arms a little out, the head to one side
+			var reach := clampf(time / 0.25, 0.0, 1.0)
+			var shrug := sin(clampf((time - 0.7) / 0.45, 0.0, 1.0) * PI)
 			return {
-				"arm_right": Vector3(sin(time * 13.0) * 22.0, 0.0, 155.0 + cos(time * 13.0) * 12.0),
-				"arm_left": Vector3(-10.0, 0.0, -38.0),
-				"leg_left": Vector3(-8.0 * hop, 0.0, 0.0), "leg_right": Vector3(8.0 * hop, 0.0, 0.0),
-				"offset": Vector3(0.0, 0.07 * hop, 0.0), "sway": sin(time * 6.5) * 3.0,
+				"arm_right": Vector3(-70.0 * reach, 0.0, 8.0 + 22.0 * shrug),
+				"arm_left": Vector3(-8.0, 0.0, -10.0 - 22.0 * shrug),
+				"offset": Vector3(0.0, 0.025 * shrug, 0.0), "lean": 8.0 * reach - 4.0 * shrug,
+				"sway": 5.0 * shrug + sin(time * 3.0) * 1.5,
 			}
 		"martin":
-			# the runner: sprinting on the spot, the arms pumping, three hops on the three "hup"s
-			# (0.12, 0.31, 0.5 s), both fists up on the last
+			# the old athlete, wired: sprinting on the spot, the arms pumping, a hop on "AL" and
+			# on "ZIJN" (0.14, 0.33 s), both fists up and a big hop on "PAARS!" (0.68 s)
 			var pump := sin(time * 26.0)
 			var hop := 0.0
-			for hop_at in [0.12, 0.31, 0.5]:
-				if time > hop_at and time < hop_at + 0.16:
-					hop = maxf(hop, sin((time - hop_at) * PI / 0.16))
-			var cheer := clampf((time - 0.5) / 0.12, 0.0, 1.0)
+			for hop_at: float in [0.14, 0.33, 0.68]:
+				var hop_seconds := 0.26 if hop_at > 0.6 else 0.15
+				if time > hop_at and time < hop_at + hop_seconds:
+					hop = maxf(hop, sin((time - hop_at) * PI / hop_seconds) * (1.5 if hop_at > 0.6 else 1.0))
+			var cheer := clampf((time - 0.64) / 0.1, 0.0, 1.0)
 			return {
 				"leg_left": Vector3(pump * 45.0, 0.0, 0.0), "leg_right": Vector3(-pump * 45.0, 0.0, 0.0),
 				"arm_left": Vector3(-pump * 55.0 * (1.0 - cheer), 0.0, -165.0 * cheer),
@@ -377,20 +380,28 @@ func _gesture_pose(time: float, seconds: float) -> Dictionary:
 				"offset": Vector3(0.0, -0.02 - 0.025 * shake, 0.0), "lean": 14.0,
 			}
 		"sjaan":
-			# the street musician: a cheerful wave with the right hand, bobbing along
+			# the toilet attendant: "Ff poetsen", the right hand polishing in quick circles in
+			# front of her, the left on her hip, bobbing along
+			var reach := clampf(time / 0.25, 0.0, 1.0)
 			return {
-				"arm_right": Vector3(-15.0, 0.0, 140.0 + sin(time * 15.0) * 22.0),
-				"arm_left": Vector3(-20.0, 0.0, -10.0),
-				"offset": Vector3(0.0, absf(sin(time * 7.5)) * 0.03, 0.0), "sway": sin(time * 7.5) * 4.0,
+				"arm_right": Vector3(-65.0 * reach + sin(time * 16.0) * 12.0, 0.0, 12.0 + cos(time * 16.0) * 14.0),
+				"arm_left": Vector3(-10.0, 0.0, -35.0),
+				"offset": Vector3(0.0, absf(sin(time * 8.0)) * 0.02, 0.0), "sway": sin(time * 8.0) * 3.0,
 			}
 		_:
-			# the fisherman: hailing a boat across the water, the right arm high and waving
-			# slowly, leaning back to call
-			var reach := clampf(time / 0.35, 0.0, 1.0)
+			# the fisherman, teasing: the right arm pointing at you, jabbing on "SCHOL" (0.4 s)
+			# and on "KOP" (0.77 s), the left hand on his belly, leaning back with a laugh
+			var reach := clampf(time / 0.3, 0.0, 1.0)
+			var jab := 0.0
+			for jab_at: float in [0.4, 0.77]:
+				if time > jab_at and time < jab_at + 0.16:
+					jab = maxf(jab, sin((time - jab_at) * PI / 0.16))
+			var laugh := clampf((time - 0.9) / 0.2, 0.0, 1.0) * (1.0 - clampf((time - 1.3) / 0.2, 0.0, 1.0))
 			return {
-				"arm_right": Vector3(-20.0 * reach, 0.0, (170.0 + sin(time * 6.0) * 18.0) * reach),
-				"arm_left": Vector3(-10.0, 0.0, -12.0),
-				"lean": -6.0 * reach,
+				"arm_right": Vector3(-80.0 * reach - 15.0 * jab, 0.0, 6.0),
+				"arm_left": Vector3(-35.0, 0.0, 22.0),
+				"offset": Vector3(0.0, absf(sin(time * 16.0)) * 0.02 * laugh, 0.0),
+				"lean": 5.0 * jab * reach - 7.0 * laugh,
 			}
 
 
@@ -817,7 +828,7 @@ static func _build_jos(figure: VoxelFigure) -> void:
 	figure.mark("skin", [Color("#C8463E"), Color("#C87A6A"), Color("#5A2A28")])
 
 
-## Martin: skin and bone, restless in a faded shell suit, his house on his back.
+## Martin: once a top athlete, now skin and bone, restless in his faded old tracksuit, his house on his back.
 static func _build_martin(figure: VoxelFigure) -> void:
 	var suit := Color("#4E8C84")
 	var suit_dark := Color("#335E58")
@@ -868,8 +879,8 @@ static func _build_martin(figure: VoxelFigure) -> void:
 	# can up
 	figure.box(Vector3i(3, 21, 0), Vector3i(3, 23, 1), suit)
 	figure.box(Vector3i(10, 21, 0), Vector3i(10, 23, 1), suit)
-	for arm_x in [1, 11]:
-		var outside := arm_x if arm_x < 7 else arm_x + 1
+	for arm_x: int in [1, 11]:
+		var outside: int = arm_x if arm_x < 7 else arm_x + 1
 		figure.box(Vector3i(arm_x, 16, 0), Vector3i(arm_x + 1, 23, 1), suit)
 		figure.box(Vector3i(outside, 16, 0), Vector3i(outside, 23, 0), stripe)
 		figure.box(Vector3i(arm_x, 15, 0), Vector3i(arm_x + 1, 15, 1), suit_dark)
@@ -1003,7 +1014,7 @@ static func _build_pilot(figure: VoxelFigure) -> void:
 	figure.mark("hair", [hair, beard, beard_dark])
 
 
-## Sjaan: a street musician.
+## Sjaan: once a toilet attendant.
 static func _build_sjaan(figure: VoxelFigure) -> void:
 	var denim := Color("#4A6A9A")
 	var denim_dark := Color("#33496A")

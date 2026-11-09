@@ -142,7 +142,7 @@ const EXAMPLE_QUESTS := [
 		scanlines = value
 		_update_crt()
 ## How dark a scanline is (0..1).
-@export_range(0.0, 0.5) var scanline_strength := 0.1:
+@export_range(0.0, 0.5) var scanline_strength := UiStyle.SCANLINE_STRENGTH:
 	set(value):
 		scanline_strength = value
 		_update_crt()

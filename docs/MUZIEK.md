@@ -151,6 +151,7 @@ akkoord uitkomt.
 | `stad_bos_loop.ogg` | de stad: bos | het rustigst, geen drums, vogels, 92 s |
 | `stad_dorp_loop.ogg` | de stad: dorp | folky, getokkeld, zachte brushes, 92 s |
 | `gevecht_loop.ogg` | zolang je in een gevecht bent (nog te koppelen) | 150 BPM, 32 maten, 51,2 s: de stoere variant van het motief op lead en koper, galopperende kick |
+| `laden_loop.ogg` | wachtmuziek onder het laadscherm (`scripts/ui/loading_screen.gd`), in en uit fadend | licht en huppelend: e-piano op de tegentijd, een tikkende PSG-klok, zachte gebroken beat, een vrolijk wijsje op het motief; 112 BPM, F mineur, 16 maten, 34 s |
 | `handelaar_loop.ogg` | zolang je in een winkel bent, bij een handelaar (nog te koppelen) | relaxte new jack swing, 128 BPM in F mineur, 16 maten, 30 s (de stadsloops zijn nu 104 BPM: zet hem bij het koppelen op hun tempo, dan vloeit hij soepel over) |
 | `deuntje_gewonnen.ogg` | gewonnen | het motief snel omhoog, F majeur, 4 s |
 | `deuntje_level_omhoog.ogg` | genoeg XP voor een level | PSG-loopje omhoog, het motief in majeur met klokjes, 4 s |
@@ -254,12 +255,12 @@ eigen spreker in `SPEAKERS`), in `assets/audio/kreten/kreet_<id>.ogg`:
 
 | Personage | Kreet |
 |---|---|
-| Jos | "jie-HAA!", de oude rodeorijder |
-| Martin | "hup-hup-HUP!", snel, de laatste hoger |
-| Ufo Piloot | een zwevend "oeoeoe-oeh", op en neer als een theremin |
+| Jos | "5 euro?", bedelend, vragend omhoog |
+| Martin | "Al zijn ze paars!", de oud-topsporter, snel, oplopend naar "PAARS" |
+| Ufo Piloot | "Derde Dal Universum", dromerig, golvend als een theremin (vibrato), de klemtoon hoog op "VER" |
 | Willem | een hees lachje, "heh-heh-heh" |
-| Sjaan | een vrolijk "hoi!" |
-| Gerrit | een diep "a-HOI!" over het water |
+| Sjaan | een vrolijk "Ff poetsen", de oude toiletjuffrouw, de klemtoon op "POE" |
+| Gerrit | een diep, plagend "Scholluhkop!", Scheveens, de klemtoon op "SCHOL" |
 
 `scripts/ui/character_creation.gd` speelt die als je een personage kiest (en de eerste kort
 na het openen); een nieuwe kreet breekt de vorige af.
@@ -267,8 +268,8 @@ na het openen); een nieuwe kreet breekt de vorige af.
 ### In het spel: ruimtelijk geluid
 
 `scripts/audio/spatial_audio.gd` (autoload `RuimtelijkGeluid`) speelt deze geluiden in 3D: bij
-de dichtstbijzijnde voertuigen de motorlus (en de sirene), gedempt achter gebouwen (raycasts
-van het oor naar de bron), met echo en galm op de bus `Verkeer` die de omgeving volgen
-(raycasts rondom het oor). Een nieuw voertuiggeluid: zet het in `MOTOR_SOUNDS` (op de
+de dichtstbijzijnde voertuigen de motorlus (en de sirene), in 3D geplaatst met een
+Dopplerverschuiving. Bewust eenvoudig: geen raycasts, geen demping achter gebouwen, geen echo
+of galm; op de bus `Verkeer` alleen een compressor en een limiter tegen uitschieters. Een nieuw voertuiggeluid: zet het in `MOTOR_SOUNDS` (op de
 `vehicle_kind`) of maak er een gebeurtenis bij in `_signals`; de muziek gaat niet door die bus.
 

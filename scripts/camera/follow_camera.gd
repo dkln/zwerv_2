@@ -21,6 +21,7 @@ extends Node
 ## glide over (`switch_time`).
 
 const Iso = preload("res://scripts/camera/iso_camera.gd")
+const EdgeOutline = preload("res://scripts/effects/edge_outline.gd")
 const TunnelLights = preload("res://scripts/world/tunnel_lights.gd")
 ## Layer of the ground layer that tunnel tiles are placed on.
 const TUNNEL_LEVEL := -6
@@ -32,9 +33,9 @@ const JUMP_SPEED := 80.0
 ## What the camera follows (the player).
 @export var target: NodePath = ^"../Speler"
 ## Metres in view when the target stands still.
-@export var zoom_still := 18.0
+@export var zoom_still := 26.0
 ## Metres in view at `fast_speed` and above.
-@export var zoom_fast := 24.0
+@export var zoom_fast := 34.0
 ## Speed (m/s) at which the view is zoomed out furthest (running).
 @export var fast_speed := 7.0
 ## Seconds the view looks ahead of the target (times its average velocity), at most
@@ -126,6 +127,9 @@ func _ready() -> void:
 		set_process(false)
 		return
 	_ground = get_node_or_null(ground_path) as GridMap
+	# the outlines of the town on the camera (scripts/effects/edge_outline.gd)
+	if not _cam.has_node("Randjes"):
+		_cam.add_child.call_deferred(EdgeOutline.new())
 	_focus = _followed.global_position
 	_zoom = zoom_still
 	if active:

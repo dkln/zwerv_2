@@ -88,7 +88,7 @@ const ITEM_ICONS := {
 	"kruik": {"colour": Color("#C9A76A"), "rows": ["...###...", "....#....", "..#####..", ".#######.", "#########", "#########", ".#######.", "..#####.."]},
 	"shag": {"colour": Color("#7FB0A0"), "rows": ["#########", "#.......#", "#########", "#########", "##.#.#.##", "#########"]},
 	"slaapzak": {"colour": Color("#5B8CFF"), "rows": ["..#####..", ".##...##.", "##.###.##", "##.#.#.##", "##.###.##", ".##...##.", "..#####.."]},
-	"accordeon": {"colour": Color("#FF5D73"), "rows": ["#.#.#.#.#", "#########", "#.#.#.#.#", "#########", "#.#.#.#.#", "#########"]},
+	"emmer": {"colour": Color("#6FC3FF"), "rows": ["..#####..", ".#.....#.", "#########", ".#######.", ".##...##.", ".#######.", "..#####.."]},
 	"hengel": {"colour": Color("#C9A76A"), "rows": ["........#", ".......#.", "......#.#", ".....#..#", "....#...#", "...#....#", "..#....##", ".#.....##", "#........"]},
 	"flessen": {"colour": Color("#6FC3FF"), "rows": ["..#...#..", "..#...#..", ".###.###.", ".###.###.", ".###.###.", ".###.###.", ".###.###."]},
 	"hoed": {"colour": Color("#B5823A"), "rows": ["...###...", "..#####..", "..#####..", "#########", ".#######."]},
@@ -1836,7 +1836,7 @@ func _move_place_selection(direction: Vector2) -> void:
 func _build_crt() -> void:
 	var curvature := 0.02
 	var corner := 0.035
-	var scanline_strength := 0.1
+	var scanline_strength := UiStyle.SCANLINE_STRENGTH
 	if _hud and "crt_ui_curvature" in _hud:
 		curvature = minf(_hud.crt_ui_curvature, _hud.crt_curvature)
 		corner = _hud.crt_corner if curvature > 0.0 else 0.0

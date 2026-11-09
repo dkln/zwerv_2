@@ -19,6 +19,8 @@ const WORD_SECONDS := 0.075
 const SENTENCE_REST := 0.32
 const COMMA_REST := 0.12
 const BLINK_SECONDS := 0.8
+## Between the last word and the cursor: two non-breaking spaces (they stay on the word's line).
+const CURSOR_GAP := "\u00A0\u00A0"
 ## The blip: dB softer than the menu sounds, and how far its pitch wanders (share).
 const BLIP_SOFTER_DB := -12.0
 const BLIP_PITCH_SPREAD := 0.06
@@ -91,7 +93,10 @@ func update(delta: float) -> void:
 func _render() -> void:
 	var shown := _word_ends[_words_shown - 1] if _words_shown > 0 else 0
 	var cursor_on := show_cursor and (not is_done() or (blink_when_done and fmod(_blink_clock, BLINK_SECONDS) < BLINK_SECONDS * 0.6))
-	var cursor := "[bgcolor=#%s] [/bgcolor]" % cursor_colour.to_html(false) if cursor_on else "[color=#00000000] [/color]"
+	# a space before the cursor (CURSOR_GAP), so it stands a little apart from the last word
+	var cursor := CURSOR_GAP + ("[bgcolor=#%s]\u00A0[/bgcolor]" % cursor_colour.to_html(false) if cursor_on else "[color=#00000000]\u00A0[/color]")
+	if not show_cursor:
+		cursor = ""
 	var rest := text.substr(shown)
 	label.text = _escaped(text.substr(0, shown)) + cursor \
 			+ ("[color=#00000000]%s[/color]" % _escaped(rest) if rest != "" else "")

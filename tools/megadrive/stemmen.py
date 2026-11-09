@@ -15,9 +15,9 @@ Every file is mono, Ogg Vorbis, 44.1 kHz, peak -1 dB, in assets/audio/geluiden/:
     lichaam_klap.ogg                                        the thud of a body being hit
 
 and the shouts of the characters (heard when you look at one on the character creation
-screen), in assets/audio/kreten/kreet_<character>.ogg: Jos "jie-HAA!" (the rodeo rider),
-Martin "hup-hup-HUP!" (the runner), the Ufo Piloot a wavering "oeoeoe-oeh", Willem a hoarse
-cackle, Sjaan "hoi!", Gerrit a deep "a-HOI!". They are
+screen), in assets/audio/kreten/kreet_<character>.ogg: Jos "5 euro?" (begging, like a question),
+Martin "Al zijn ze paars!" (the old athlete), the Ufo Piloot "Derde Dal Universum" (dreamy, wavering like a theremin), Willem a hoarse
+cackle, Sjaan "Ff poetsen" (the old toilet attendant), Gerrit a deep, teasing "Scholluhkop!". They are
 made like the cries (`say`: segments of vowels, pitch, voice and breath, through the formants
 and the DAC); each character has a speaker of their own (SPEAKERS).
 
@@ -58,6 +58,18 @@ VOWELS = {
     "i": ((280.0, 2250.0, 2900.0, 3500.0), (60.0, 90.0, 150.0, 200.0)),
     "o": ((450.0, 800.0, 2600.0, 3400.0), (70.0, 90.0, 150.0, 220.0)),
     "oe": ((300.0, 700.0, 2300.0, 3300.0), (60.0, 80.0, 140.0, 200.0)),
+    "eu": ((450.0, 1600.0, 2400.0, 3400.0), (70.0, 100.0, 150.0, 220.0)),
+    "uu": ((280.0, 1800.0, 2300.0, 3300.0), (60.0, 100.0, 140.0, 200.0)),
+    # the "l": voiced, the tongue up, a low second formant
+    "l": ((380.0, 1000.0, 2600.0, 3400.0), (90.0, 150.0, 200.0, 250.0)),
+    # nasal: the mouth closed, a low murmur
+    "m": ((250.0, 1000.0, 2200.0, 3200.0), (120.0, 250.0, 300.0, 350.0)),
+    # the bursts of the stops (breath only, coloured where the tongue or lips let go)
+    "k": ((900.0, 2400.0, 3300.0, 4200.0), (300.0, 400.0, 500.0, 600.0)),
+    "p": ((500.0, 1100.0, 2400.0, 3400.0), (300.0, 400.0, 500.0, 600.0)),
+    "d": ((700.0, 1800.0, 2800.0, 3800.0), (300.0, 400.0, 500.0, 600.0)),
+    # the hiss of the "s" (and the "f" with "p"): high, sharp
+    "s": ((2600.0, 3800.0, 4800.0, 5600.0), (500.0, 600.0, 700.0, 800.0)),
 }
 
 ## The cries: length (s), the vowels it moves through (vowel, from-time share), how the pitch
@@ -172,7 +184,7 @@ def body_hit() -> numpy.ndarray:
 
 ## A shout is a row of segments: (seconds, vowel at the start, vowel at the end, pitch at the
 ## start, pitch at the end (times the speaker's `pitch`), loudness of the voice, of the breath).
-## A "-" vowel is silence (a stop: the "p" of "hup"). The values glide within a segment and
+## A "-" vowel is silence (the closure before a stop: the "p" of "op"). The values glide within a segment and
 ## jump between them, smoothed a little so nothing clicks.
 def say(speaker: dict, segments, seed: int) -> numpy.ndarray:
     tracks = {name: [] for name in ("pitch", "voice", "breath", "f1", "f2", "f3", "f4", "b1", "b2", "b3", "b4")}
@@ -191,6 +203,9 @@ def say(speaker: dict, segments, seed: int) -> numpy.ndarray:
         tracks["breath"].append(numpy.full(count, 0.0 if silent else breath_level))
         last_vowel = end_vowel
     track = {name: numpy.concatenate(parts) for name, parts in tracks.items()}
+    if "vibrato" in speaker:
+        rate, depth = speaker["vibrato"]
+        track["pitch"] = track["pitch"] * (1.0 + depth * numpy.sin(TWO_PI * rate * numpy.arange(len(track["pitch"])) / SAMPLE_RATE))
     sample_count = len(track["pitch"])
     voice_level = low_pass(track["voice"], 60.0)
     breath_level = low_pass(track["breath"], 80.0)
@@ -208,11 +223,13 @@ def say(speaker: dict, segments, seed: int) -> numpy.ndarray:
     return fade_edges(low_pass(dac(low_pass(driven, 7000.0), VOICE_RATE, 8), OUTPUT_FILTER_HZ), 0.003, 0.05)
 
 
-## The speakers of the shouts: base pitch (Hz), formant scale, growl, jitter, drive.
+## The speakers of the shouts: base pitch (Hz), formant scale, growl, jitter, drive, and an
+## optional vibrato (rate in Hz, depth as a share of the pitch).
 SPEAKERS = {
     "jos": {"pitch": 150.0, "formants": 1.0, "growl": 0.3, "jitter": 0.03, "drive": 3.2},
     "martin": {"pitch": 185.0, "formants": 1.06, "growl": 0.15, "jitter": 0.02, "drive": 3.0},
-    "ufo_piloot": {"pitch": 140.0, "formants": 0.97, "growl": 0.2, "jitter": 0.03, "drive": 2.6},
+    "ufo_piloot": {"pitch": 140.0, "formants": 0.97, "growl": 0.2, "jitter": 0.03, "drive": 2.6,
+                   "vibrato": (6.0, 0.06)},
     "willem": {"pitch": 120.0, "formants": 0.95, "growl": 0.55, "jitter": 0.06, "drive": 3.4},
     "sjaan": {"pitch": 300.0, "formants": 1.15, "growl": 0.15, "jitter": 0.03, "drive": 3.0},
     "gerrit": {"pitch": 105.0, "formants": 0.92, "growl": 0.4, "jitter": 0.04, "drive": 3.2},
@@ -220,26 +237,46 @@ SPEAKERS = {
 
 ## What each character shouts when you look at them on the character creation screen.
 SHOUTS = {
-    # the old rodeo rider: "jie-HAA!", the "haa" swooping up and falling away
-    "jos": [(0.14, "i", "i", 1.25, 1.35, 1.0, 0.05), (0.05, "i", "a", 1.35, 1.2, 0.6, 0.6),
-            (0.42, "a", "a", 1.75, 1.15, 1.0, 0.08), (0.12, "a", "uh", 1.15, 0.95, 0.5, 0.15)],
-    # the runner: "hup-hup-HUP!", quick, the last one higher
-    "martin": [(0.03, "uh", "uh", 1.2, 1.2, 0.0, 0.8), (0.09, "uh", "uh", 1.2, 1.15, 1.0, 0.05), (0.07, "-", "-", 1, 1, 0, 0),
-               (0.03, "uh", "uh", 1.25, 1.25, 0.0, 0.8), (0.09, "uh", "uh", 1.25, 1.2, 1.0, 0.05), (0.07, "-", "-", 1, 1, 0, 0),
-               (0.03, "uh", "uh", 1.5, 1.5, 0.0, 0.9), (0.16, "uh", "uh", 1.6, 1.35, 1.0, 0.05), (0.05, "-", "-", 1, 1, 0, 0)],
-    # the ufo pilot, far away: "oeoeoe-oeh", wavering up and down like a theremin
-    "ufo_piloot": [(0.18, "oe", "oe", 1.3, 1.9, 0.9, 0.1), (0.18, "oe", "u", 1.9, 1.3, 0.9, 0.1),
-                   (0.18, "u", "oe", 1.3, 2.0, 0.9, 0.1), (0.3, "oe", "uh", 2.0, 1.1, 0.8, 0.15)],
+    # begging, hopeful: "5 euro?" ("vijf euro?"), going up at the end like a question
+    "jos": [(0.05, "u", "u", 1.1, 1.1, 0.35, 0.6), (0.16, "e", "i", 1.15, 1.05, 1.0, 0.05),
+            (0.07, "p", "p", 1.0, 1.0, 0.0, 0.9), (0.14, "eu", "eu", 1.0, 1.05, 1.0, 0.05),
+            (0.03, "uh", "uh", 1.05, 1.05, 0.4, 0.2), (0.26, "o", "o", 1.1, 1.6, 1.0, 0.05)],
+    # the old athlete, wired: "Al zijn ze paars!", quick, going up to "PAARS"
+    "martin": [(0.09, "a", "a", 1.3, 1.35, 1.0, 0.05), (0.06, "l", "l", 1.35, 1.3, 0.7, 0.0),
+               (0.05, "s", "s", 1.0, 1.0, 0.35, 0.7), (0.13, "e", "i", 1.35, 1.3, 1.0, 0.05),
+               (0.05, "ng", "ng", 1.3, 1.3, 0.6, 0.0), (0.04, "s", "s", 1.0, 1.0, 0.35, 0.7),
+               (0.07, "uh", "uh", 1.35, 1.4, 0.9, 0.05), (0.05, "-", "-", 1, 1, 0, 0),
+               (0.025, "p", "p", 1.0, 1.0, 0.0, 1.0), (0.22, "a", "a", 1.9, 1.6, 1.0, 0.06),
+               (0.04, "uh", "uh", 1.6, 1.5, 0.4, 0.25), (0.12, "s", "s", 1.0, 1.0, 0.0, 1.0)],
+    # the ufo pilot, of the planet Erra, naming where he comes from: "Derde Dal Universum", dreamy, the stress
+    # high on "VER", the whole line wavering like a theremin (his speaker's vibrato)
+    "ufo_piloot": [(0.03, "-", "-", 1, 1, 0, 0), (0.02, "d", "d", 1.0, 1.0, 0.3, 0.8),
+                   (0.12, "e", "e", 1.5, 1.6, 1.0, 0.05), (0.03, "uh", "uh", 1.6, 1.6, 0.4, 0.2),
+                   (0.02, "d", "d", 1.0, 1.0, 0.3, 0.8), (0.1, "uh", "uh", 1.5, 1.3, 0.9, 0.05),
+                   (0.05, "-", "-", 1, 1, 0, 0), (0.02, "d", "d", 1.0, 1.0, 0.3, 0.8),
+                   (0.16, "a", "a", 1.6, 1.8, 1.0, 0.05), (0.08, "l", "l", 1.8, 1.7, 0.7, 0.0),
+                   (0.06, "-", "-", 1, 1, 0, 0), (0.09, "uu", "uu", 1.4, 1.5, 1.0, 0.05),
+                   (0.05, "ng", "ng", 1.5, 1.5, 0.6, 0.0), (0.08, "i", "i", 1.5, 1.6, 1.0, 0.05),
+                   (0.05, "u", "u", 1.6, 1.6, 0.35, 0.6), (0.12, "e", "uh", 1.9, 2.0, 1.0, 0.05),
+                   (0.03, "uh", "uh", 2.0, 1.9, 0.4, 0.2), (0.08, "s", "s", 1.0, 1.0, 0.0, 1.0),
+                   (0.1, "uh", "uh", 1.6, 1.3, 0.9, 0.05), (0.12, "m", "m", 1.3, 1.0, 0.55, 0.0)],
     # the old rat: a hoarse cackle, "heh-heh-heh"
     "willem": [(0.03, "e", "e", 1.6, 1.6, 0.0, 0.9), (0.08, "e", "uh", 1.6, 1.45, 1.0, 0.25), (0.05, "-", "-", 1, 1, 0, 0),
                (0.03, "e", "e", 1.5, 1.5, 0.0, 0.9), (0.08, "e", "uh", 1.5, 1.35, 1.0, 0.25), (0.05, "-", "-", 1, 1, 0, 0),
                (0.03, "e", "e", 1.4, 1.4, 0.0, 0.9), (0.12, "e", "uh", 1.4, 1.1, 1.0, 0.3)],
-    # the street musician: a cheerful "hoi!", up and down
-    "sjaan": [(0.04, "o", "o", 1.3, 1.3, 0.0, 0.8), (0.14, "o", "o", 1.35, 1.6, 1.0, 0.05),
-              (0.16, "o", "i", 1.6, 1.15, 1.0, 0.05)],
-    # the fisherman: a deep "a-HOI!" across the water
-    "gerrit": [(0.16, "a", "a", 1.1, 1.05, 1.0, 0.05), (0.05, "a", "o", 1.05, 1.1, 0.3, 0.7),
-               (0.3, "o", "o", 1.45, 1.35, 1.0, 0.05), (0.2, "o", "i", 1.35, 1.0, 1.0, 0.08)],
+    # the old toilet attendant, cheerful: "Ff poetsen" ("effe poetsen"), the stress on "POE"
+    "sjaan": [(0.09, "e", "e", 1.3, 1.35, 1.0, 0.05), (0.07, "p", "p", 1.0, 1.0, 0.0, 0.8),
+              (0.03, "-", "-", 1, 1, 0, 0), (0.025, "p", "p", 1.0, 1.0, 0.0, 0.9),
+              (0.14, "oe", "oe", 1.5, 1.6, 1.0, 0.05), (0.03, "-", "-", 1, 1, 0, 0),
+              (0.02, "d", "d", 1.0, 1.0, 0.0, 0.9), (0.07, "s", "s", 1.0, 1.0, 0.0, 1.0),
+              (0.12, "uh", "uh", 1.35, 1.15, 0.9, 0.05)],
+    # the fisherman from Scheveningen, deep and teasing: "Scholluhkop!" (plaice-head), the
+    # stress on "SCHOL", the "ch" a long scrape at the back of the throat
+    "gerrit": [(0.07, "s", "s", 1.0, 1.0, 0.0, 1.0), (0.08, "k", "k", 1.0, 1.0, 0.0, 0.9),
+               (0.13, "o", "o", 1.4, 1.45, 1.0, 0.05), (0.07, "l", "l", 1.45, 1.35, 0.7, 0.0),
+               (0.09, "uh", "uh", 1.3, 1.2, 0.9, 0.05), (0.04, "-", "-", 1, 1, 0, 0),
+               (0.03, "k", "k", 1.0, 1.0, 0.0, 1.1), (0.18, "o", "o", 1.35, 1.1, 1.0, 0.05),
+               (0.05, "-", "-", 1, 1, 0, 0), (0.03, "p", "p", 1.0, 1.0, 0.0, 0.9)],
 }
 SHOUTS_FOLDER = os.path.join(style.PROJECT, "assets", "audio", "kreten")
 

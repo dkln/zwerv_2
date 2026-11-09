@@ -52,7 +52,7 @@ func prologue_pages() -> Array:
 	]
 	var money_line := "Je zakken zijn leeg."
 	if float(archetype.get("start_money", 0)) > 0.0:
-		money_line = "Wat er in je pet zit, is voor het eten van Bobbie. Voor de kroket moet je zelf wat bij elkaar scharrelen."
+		money_line = "Wat er op je schoteltje ligt, is voor de shag. Voor de kroket moet je zelf wat bij elkaar scharrelen."
 	pages.append(_page("missie", "Een kroket bij Jan Blammage kost twee euro. %s Zoek kleingeld: op het plein, onder de bankjes en bij de fietsenrekken ligt altijd wel wat. Lopen doe je met WASD of de pijltjes, rennen met Shift. In het spelmenu (Tab) staat wat je moet doen." % money_line,
 		{"banner_kind": MISSION_KIND, "banner": MISSION_TITLE}))
 	return pages

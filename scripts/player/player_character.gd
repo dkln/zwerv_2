@@ -10,14 +10,14 @@ extends RefCounted
 ## (stamina) and "honger" (how much the hunger meter holds); 100 is ordinary. The names
 ## are nicknames; "subtitle" says in a few words what they are good at, "level" the level
 ## they start on, "difficulty" how hard a game with them is (1 easy .. 5 hard; Willem has been on the street longest: level 3, lower stats); "perk" (if
-## any) something only they have, "start_money" the euros they start with (Sjaan: what is in
-## her cap). "voice" is the voice of their cries of pain (pijn_<voice>_*), "shout" what they
+## any) something only they have, "start_money" the euros they start with (Sjaan: what is on
+## her saucer, from her years as a toilet attendant). "voice" is the voice of their cries of pain (pijn_<voice>_*), "shout" what they
 ## shout on the character creation screen (its sound: assets/audio/kreten/kreet_<id>.ogg; the
 ## text in their speech balloon).
 
 const ARCHETYPES := {
 	"jos": {
-		"shout": "Jie-haa!",
+		"shout": "5 euro?",
 		"voice": "man",
 		"name": "Jos",
 		"subtitle": "DE IJZEREN MAAG",
@@ -28,25 +28,25 @@ const ARCHETYPES := {
 		"stats": {"gezondheid": 70, "uithoudingsvermogen": 60, "honger": 140},
 	},
 	"martin": {
-		"shout": "Hup hup HUP!",
+		"shout": "Al zijn ze paars!",
 		"voice": "man",
 		"name": "Martin",
 		"subtitle": "DE RENNER",
 		"addiction": "speed",
 		"difficulty": 2,
 		"level": 1,
-		"story": "Martin was de snelste fatbikekoerier van de Schilderswijk, tot hij zijn fiets en zijn kamer kwijtraakte. Stilstaan kan hij nog steeds niet. Zijn hele huis zit in zijn rugzak. Hij rent de stad door, praat tegen de meeuwen op het Plein en vergeet dagenlang te eten.",
+		"story": "Martin liep ooit de 800 meter voor Nederland en had een plek in de nationale ploeg, tot een gescheurde hamstring er een eind aan maakte. Wat hij toen tegen de pijn kreeg, liet hem nooit meer los. Zijn oude trainingspak draagt hij nog, zijn hele huis zit in zijn rugzak. Stilstaan kan hij niet: hij rent de stad door, praat tegen de meeuwen op het Plein en vergeet dagenlang te eten.",
 		"stats": {"gezondheid": 100, "uithoudingsvermogen": 150, "honger": 70},
 	},
 	"ufo_piloot": {
-		"shout": "Oeoeoe-oeh...",
+		"shout": "Derde Dal Universum",
 		"voice": "oude_man",
 		"name": "Ufo Piloot",
 		"subtitle": "DE ONVERWOESTBARE",
 		"addiction": "crack",
 		"difficulty": 3,
 		"level": 1,
-		"story": "Ze noemen hem de Ufo Piloot, omdat hij zweert dat hij in '97 boven het Malieveld is meegenomen en zonder zijn naam is teruggezet. Verder is er niks vreemds aan hem: een oude vliegeniersjas, een grijze baard, broodmager. Niks doet hem nog pijn, maar hij is altijd moe en heeft altijd trek.",
+		"story": "Ze noemen hem de Ufo Piloot. Hij komt van de planeet Erra, zegt hij, uit het Derde Dal Universum, en in '97 maakte zijn schotel een noodlanding op het Malieveld. Sindsdien wacht hij op een lift naar huis. Verder is er niks vreemds aan hem: een oude vliegeniersjas, een grijze baard, broodmager. Niks doet hem nog pijn, maar hij is altijd moe en heeft altijd trek.",
 		"stats": {"gezondheid": 150, "uithoudingsvermogen": 60, "honger": 70},
 	},
 	"willem": {
@@ -61,20 +61,20 @@ const ARCHETYPES := {
 		"stats": {"gezondheid": 80, "uithoudingsvermogen": 80, "honger": 80},
 	},
 	"sjaan": {
-		"shout": "Hoi!",
+		"shout": "Ff poetsen",
 		"voice": "vrouw",
 		"name": "Sjaan",
-		"subtitle": "DE STRAATMUZIKANT",
+		"subtitle": "DE TOILETJUFFROUW",
 		"addiction": "sigaretten",
 		"difficulty": 1,
 		"level": 1,
-		"perk": "Begint met € 25 in de pet.",
+		"perk": "Begint met € 25 op het schoteltje.",
 		"start_money": 25,
-		"story": "Sjaan speelde dertig jaar accordeon op de Grote Markt, tot haar huisbaas het pand verkocht. Nu slaapt ze met haar hond Bobbie in een portiek in Chinatown, maar ze speelt nog elke dag. Er valt altijd wel wat in de pet, en Bobbie hoort de politie eerder aankomen dan zij.",
+		"story": "Sjaan zat dertig jaar met haar schoteltje bij de wc's van het warenhuis aan de Grote Marktstraat, tot er een poortje met een pinautomaat kwam. Nu slaapt ze in een portiek in Chinatown, maar haar emmer en haar zeem heeft ze nog. Ze weet waar elke wc van de stad is, en waar de schoonmakers koffie drinken. Even poetsen voor een paar centen? Dat doet ze nog altijd.",
 		"stats": {"gezondheid": 90, "uithoudingsvermogen": 110, "honger": 90},
 	},
 	"gerrit": {
-		"shout": "A-hoi!",
+		"shout": "Scholluhkop!",
 		"voice": "oude_man",
 		"name": "Gerrit",
 		"subtitle": "DE VISSER",

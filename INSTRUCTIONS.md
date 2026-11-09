@@ -487,7 +487,7 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
   voor het spel maar niet op het scherm):
   Jos ("de ijzeren maag": leven 70, stamina 60, honger 140; moeilijk), Martin ("de renner":
   100, 150, 70), Ufo Piloot ("de onverwoestbare": 150, 60, 70), Willem ("de oude rat": overal
-  80, maar level 3), Sjaan ("de straatmuzikant": 90, 110, 90; begint met € 25 in de pet,
+  80, maar level 3), Sjaan ("de toiletjuffrouw": 90, 110, 90; begint met € 25 op het schoteltje,
   `start_money`, die de HUD als geld zet; makkelijk) en
   Gerrit ("de visser": 120, 80, 120; kan vissen in de grachten).
   Links de lijst: alle zes precies verdeeld over de hoogte van het detailpaneel (hele pixels,
@@ -722,7 +722,8 @@ Projectstructuur
                            axle_test, player_test, hud_test, lane_choice_test, traffic_test,
                            clash_test, intro_test, menu_test, mesh_audit, offscreen_audit,
                            overlap_test, rail_stop_test, triangle_count, speech_balloon_test,
-                           street_lights_test, drown_test, building_fade_test
+                           street_lights_test, drown_test, building_fade_test,
+                           edge_outline_test (met venster)
       shots/               shot_tiles, shot_iso, shot_scene, shot_vehicles
       voxgen/              Python-generator van de tiles (zie "Tiles (opnieuw) genereren")
       megadrive/           Python-generator van alle muziek en de verkeersgeluiden in Mega Drive-stijl (FM, PSG, PCM-drums)

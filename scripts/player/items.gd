@@ -42,8 +42,8 @@ const ITEMS := {
 		"effect": {"overprikkeldheid": -20, "gezondheid": -3}, "action": "ROKEN"},
 	"slaapzak": {"name": "Slaapzak", "kind": "spullen", "rarity": "bijzonder", "icon": "slaapzak",
 		"text": "Ruikt naar alle portieken van Den Haag."},
-	"accordeon": {"name": "Accordeon", "kind": "spullen", "rarity": "episch", "icon": "accordeon",
-		"text": "Dertig jaar Grote Markt. Mist een knop, niemand hoort het."},
+	"emmer": {"name": "Emmer en zeem", "kind": "spullen", "rarity": "episch", "icon": "emmer",
+		"text": "Dertig jaar wc's gepoetst. De emmer lekt, de zeem glimt nog."},
 	"hengel": {"name": "Hengel", "kind": "spullen", "rarity": "zeldzaam", "icon": "hengel",
 		"text": "Van de kotter meegenomen. Het enige dat hij nog van de zee heeft."},
 	"pleister": {"name": "Pleisters", "kind": "spullen", "rarity": "gewoon", "icon": "heart",
@@ -62,7 +62,7 @@ const START_ITEMS := {
 	"martin": {"energiedrank": 3, "slaapzak": 1, "water": 1},
 	"ufo_piloot": {"brood": 1, "sigaretten": 1, "water": 2},
 	"willem": {"statiegeld": 6, "brood": 1, "pleister": 1, "bier": 1},
-	"sjaan": {"accordeon": 1, "sigaretten": 1, "appel": 2},
+	"sjaan": {"emmer": 1, "sigaretten": 1, "appel": 2},
 	"gerrit": {"hengel": 1, "vis": 1, "bier": 2, "foto": 1},
 }
 

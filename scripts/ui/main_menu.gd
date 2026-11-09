@@ -100,7 +100,7 @@ func _ready() -> void:
 	GraphicsSettings.apply(get_tree())
 	var settings := _read_settings()
 	_crt = UiStyle.make_crt_overlay(0.05 if settings.crt else 0.0, 0.035 if settings.crt else 0.0,
-			0.1 if settings.scanlines else 0.0, get_viewport().get_visible_rect().size)
+			UiStyle.SCANLINE_STRENGTH if settings.scanlines else 0.0, get_viewport().get_visible_rect().size)
 	add_child(_crt)
 	# now and then the picture is disturbed (a rolling band, VHS tracking)
 	_crt.add_child(load("res://scripts/ui/crt_disturbance.gd").new())
@@ -592,7 +592,7 @@ func _apply_crt(settings: Dictionary) -> void:
 	var material := _crt.material as ShaderMaterial
 	material.set_shader_parameter("curvature", 0.05 if settings.crt else 0.0)
 	material.set_shader_parameter("corner", 0.035 if settings.crt else 0.0)
-	material.set_shader_parameter("scanline_strength", 0.1 if settings.scanlines else 0.0)
+	material.set_shader_parameter("scanline_strength", UiStyle.SCANLINE_STRENGTH if settings.scanlines else 0.0)
 
 
 # ------------------------------------------------------------------ the picture

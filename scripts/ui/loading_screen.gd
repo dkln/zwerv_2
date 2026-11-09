@@ -3,6 +3,8 @@ extends CanvasLayer
 ## panel): the title, the loading text ("— STAD LADEN —") and a segmented bar with the
 ## percentage, under the CRT look of the HUD (with the HUD's settings when there is one).
 ## Shown by the DetailNiveau (scripts/world/level_of_detail.gd) while it merges the map.
+## Waiting music under it (MUSIC: laden_loop.ogg, tools/megadrive/laden.py), fading in when
+## it opens and out when it goes.
 ##   var screen := LoadingScreen.new()
 ##   screen.text = "Stad laden…"
 ##   screen.hud = get_node_or_null("../HUD")
@@ -17,6 +19,10 @@ const SEGMENTS := 30
 const TITLE := "ZWERVR"
 ## Seconds of the fade when it is done.
 const FADE_SECONDS := 0.35
+const MUSIC := "res://assets/audio/muziek/laden_loop.ogg"
+const MUSIC_VOLUME_DB := -14.0
+const MUSIC_FADE_IN := 1.2
+const MUSIC_FADE_OUT := 0.7
 
 ## What is loading (shown in capitals, without the ellipsis).
 var text := "Stad laden…"
@@ -28,10 +34,12 @@ var _panel: ColorRect
 var _percentage: Label
 var _bar: SegmentBar
 var _crt: ColorRect
+var _music: AudioStreamPlayer
 
 
 func _ready() -> void:
 	layer = 100
+	_start_music()
 	_panel = ColorRect.new()
 	_panel.color = UiStyle.INK
 	_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -69,7 +77,7 @@ func _ready() -> void:
 	column.add_child(box)
 	var curvature: float = _hud_setting("crt_curvature", 0.05)
 	var corner: float = _hud_setting("crt_corner", 0.035)
-	var scanline_strength: float = _hud_setting("scanline_strength", 0.1)
+	var scanline_strength: float = _hud_setting("scanline_strength", UiStyle.SCANLINE_STRENGTH)
 	if hud and hud.get("scanlines") == false:
 		scanline_strength = 0.0
 	_crt = UiStyle.make_crt_overlay(curvature, corner, scanline_strength, get_viewport().get_visible_rect().size)
@@ -91,7 +99,30 @@ func fade_out() -> void:
 	tween.tween_property(_panel, "modulate:a", 0.0, FADE_SECONDS)
 	var crt_material := _crt.material as ShaderMaterial
 	tween.tween_method(func(value: float) -> void: crt_material.set_shader_parameter("opacity", value), 1.0, 0.0, FADE_SECONDS)
+	if _music:
+		tween.tween_property(_music, "volume_db", -60.0, MUSIC_FADE_OUT)
 	tween.chain().tween_callback(queue_free)
+
+
+## The waiting music, looping, fading in (nothing without the file).
+func _start_music() -> void:
+	var stream: AudioStream = null
+	if ResourceLoader.exists(MUSIC):
+		stream = load(MUSIC)
+	elif FileAccess.file_exists(MUSIC):
+		stream = AudioStreamOggVorbis.load_from_file(MUSIC)
+	if stream == null:
+		return
+	if stream is AudioStreamOggVorbis:
+		(stream as AudioStreamOggVorbis).loop = true
+	_music = AudioStreamPlayer.new()
+	_music.name = "Wachtmuziek"
+	_music.stream = stream
+	_music.volume_db = -40.0
+	_music.process_mode = Node.PROCESS_MODE_ALWAYS
+	add_child(_music)
+	_music.play()
+	create_tween().tween_property(_music, "volume_db", MUSIC_VOLUME_DB, MUSIC_FADE_IN)
 
 
 ## A setting of the HUD, or `default` without a HUD (or without that setting).
