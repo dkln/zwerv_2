@@ -1,59 +1,45 @@
 """The shared plan of the city loops (stad_centrum, stad_torens, stad_groen, stad_woonwijk,
 stad_industrie, stad_hofstad, stad_markt, stad_bos, stad_dorp): one tempo, one length and one
-chord per bar for all of them, and one background mix (finish).
+chord per bar for all of them, and one background mix (finish). The plan itself is in the
+active style profile (CITY_SECTIONS, TEMPOS["stad"], CITY_BACKGROUND_GAINS ...).
 
 The HUD crossfades between the loops when you walk into another neighbourhood and starts the
 new loop at the playback position of the old one (scripts/ui/hud.gd, CITY_MUSIC_BY_AREA).
-Because every loop is 40 bars at 104 BPM (92 s) on this same harmony, the crossfade lands in the
-same bar, on the same chord, in the same section: only the arrangement changes.
+Because every loop has the same tempo, length and harmony, the crossfade lands in the same
+bar, on the same chord, in the same section: only the arrangement changes.
 
-    bars  1-8   A      Fm7 Gbmaj7 Bbm7 Fm7 Fm7 Gbmaj7 Ab6 C7
-    bars  9-16  A'     the same
-    bars 17-24  B      Bbm9 Bbm9 Gbmaj7 Gbmaj7 Abmaj7 Eb6 Csus C7
-    bars 25-28  break  Gbmaj7 Gbmaj7 Bbm7 C7
-    bars 29-36  C      Gbmaj7 Ab6 Fm7 Fm7 Gbmaj7 Ab6 Gm7b5 C7
-    bars 37-40  tag    Fm7 Gbmaj7 Bbm7 C7  (leads back to bar 1)
+In synthwave_rpg (120 BPM, D minor, 48 bars = 96 s):
+    bars  1-8   A      i VI III VII  i VI III VII           (Dm Bb F C ...)
+    bars  9-16  A2     i VI III VII  iv VI VIIsus VII
+    bars 17-24  B      VI VII i i  VI VII V V7              (the lift to the dominant)
+    bars 25-28  break  VImaj7 VImaj7 iv V
+    bars 29-36  C      i VI III VII  i VI VII V             (the peak)
+    bars 37-44  D      iv i VI III  iv i V V7
+    bars 45-48  tag    i VI VII V  (leads back to bar 1)
 
-They are background music for walking round: unhurried (104 BPM) and mixed back (finish):
-the drums, the lead, the hats and the brass lower than in the other pieces, the top rounded
-off, a little softer overall.
+They are background music for walking round, mixed back (finish): the drums, the lead, the
+hats and the brass lower than in the other pieces, the top rounded off.
 
 House style: style.py and docs/MUZIEK.md.
 """
-from style import chords
+import style
 
-BPM = 104
-## The background mix of the city loops: the gain of each track (the house mix in style.Song is
-## for music you listen to), the top rounded off at LOW_PASS_HZ, the loudness.
-BACKGROUND_GAINS = {"pcm drums": 0.42, "psg noise": 0.14, "lead": 0.42, "brass": 0.3, "bass": 0.52,
-                    "psg 1": 0.16, "psg 2": 0.16}
-LOW_PASS_HZ = 7500.0
-TARGET_RMS_DB = -17.0
-BARS = 40
-
-A_CHORDS = chords(["F m7", "Gb maj7", "Bb m7", "F m7", "F m7", "Gb maj7", "Ab 6", "C 7"])
-B_CHORDS = chords(["Bb m9", "Bb m9", "Gb maj7", "Gb maj7", "Ab maj7", "Eb 6", "C sus", "C 7"])
-BREAK_CHORDS = chords(["Gb maj7", "Gb maj7", "Bb m7", "C 7"])
-C_CHORDS = chords(["Gb maj7", "Ab 6", "F m7", "F m7", "Gb maj7", "Ab 6", "G m7b5", "C 7"])
-TAG_CHORDS = chords(["F m7", "Gb maj7", "Bb m7", "C 7"])
-
-# (name, first bar, chords)
-SECTIONS = [
-    ("A", 0, A_CHORDS),
-    ("A2", 8, A_CHORDS),
-    ("B", 16, B_CHORDS),
-    ("break", 24, BREAK_CHORDS),
-    ("C", 28, C_CHORDS),
-    ("tag", 36, TAG_CHORDS),
-]
+PROFILE = style.PROFILE
+BPM = style.tempo("stad")
+BARS = style.plan_bars(PROFILE.CITY_SECTIONS)
+## (name, first bar, chords) per section
+SECTIONS = style.plan(PROFILE.CITY_SECTIONS)
+SECTION_CHORDS = {name: section_chords for name, _, section_chords in SECTIONS}
+SECTION_START = {name: first_bar for name, first_bar, _ in SECTIONS}
 
 
-def finish(song, target_rms_db: float = TARGET_RMS_DB) -> None:
-    """Mixes a city loop back for the background (BACKGROUND_GAINS, LOW_PASS_HZ) and renders it."""
+def finish(song, target_rms_db: float = None) -> None:
+    """Mixes a city loop back for the background and renders it."""
     for track in song.tracks:
-        if track.name in BACKGROUND_GAINS:
-            track.gain = BACKGROUND_GAINS[track.name]
-    song.render(target_rms_db=target_rms_db, low_pass_hz=LOW_PASS_HZ)
+        if track.name in PROFILE.CITY_BACKGROUND_GAINS:
+            track.gain = PROFILE.CITY_BACKGROUND_GAINS[track.name]
+    song.render(target_rms_db=PROFILE.CITY_TARGET_RMS_DB if target_rms_db is None else target_rms_db,
+                low_pass_hz=PROFILE.CITY_LOW_PASS_HZ)
 
 
 def theme(*bars: str) -> str:
@@ -63,5 +49,66 @@ def theme(*bars: str) -> str:
 
 def bars_of(first_bar: int, section_chords):
     """(bar, offset in the section, chord, is the last bar of the section) for every bar."""
-    for offset, chord in enumerate(section_chords):
-        yield first_bar + offset, offset, chord, offset == len(section_chords) - 1
+    for offset, bar_chord in enumerate(section_chords):
+        yield first_bar + offset, offset, bar_chord, offset == len(section_chords) - 1
+
+
+def new_song(file_name: str, piece_name: str):
+    """A city loop on the plan, with the swing of its piece in the profile."""
+    return style.Song(file_name, bpm=BPM, bars=BARS, swing=style.piece(piece_name)["swing"])
+
+
+# ----------------------------------------------------------------------------- the city themes
+# One family of melodies for every neighbourhood (in scale and chord degrees, so they follow
+# the key of the profile); each loop plays them on its own voices, octaves and grooves, and
+# may add its own. Written for the sections of synthwave_rpg's CITY_SECTIONS.
+
+THEME_A2 = theme(
+    "M -:2 ^5:2 ^7:4",
+    "^6:6 ^5:2 ^4:4 ^3:4",
+    "M ^2':4 ^1':4",
+    "^7:12 -:4",
+    "M ^1':4 ^6:4",
+    "^6:4 ^1':4 ^3':4 ^1':4",
+    "^7:6 ^4:2 ^5:4 ^7:4",
+    "^7:8 -:8",
+)
+THEME_B = theme(
+    "^6:4 ^1':4 ^4':4 ^3':4",
+    "^2':6 ^1':2 ^7:4 ^2':4",
+    "^3':8 ^5:4 ^1':4",
+    "^1':12 -:4",
+    "^6:4 ^1':4 ^4':4 ^3':4",
+    "^5':6 ^4':2 ^3':4 ^2':4",
+    "3':4 8:4 5:4 3:4",
+    "M 3':4 5':4",
+)
+THEME_C = theme(
+    "^1':4 ^7:2 ^1':2 ^2':4 ^3':4",
+    "^4':6 ^3':2 ^1':4 ^6:4",
+    "^5:4 ^1':4 ^3':6 ^2':2",
+    "^2':8 ^7:4 ^5:4",
+    "M ^3':4 ^1':4",
+    "^6:4 ^1':4 ^4':4 ^3':4",
+    "^2':6 ^1':2 ^7:8",
+    "M 5:4 3:4",
+)
+THEME_D = theme(
+    "^4:8 ^6:4 ^1':4",
+    "^1':6 ^7:2 ^5:8",
+    "^6:4 ^5:4 ^4:4 ^6:4",
+    "^5:12 -:4",
+    "^4:8 ^6:4 ^1':4",
+    "^3':6 ^2':2 ^1':8",
+    "8:6 5:2 3:8",
+    "M -:8",
+)
+## The motif softly in the break, and once in the tag.
+THEME_BREAK = "M -:8 -:16 M -:8 -:16"
+THEME_TAG = "M -:8 -:16 -:16 -:16"
+THEMES = {"A2": THEME_A2, "B": THEME_B, "C": THEME_C, "D": THEME_D, "break": THEME_BREAK, "tag": THEME_TAG}
+
+
+def section(name: str):
+    """(first bar, chords) of a section of the plan."""
+    return SECTION_START[name], SECTION_CHORDS[name]

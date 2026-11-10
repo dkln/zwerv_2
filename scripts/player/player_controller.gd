@@ -20,9 +20,12 @@ extends Node3D
 ##   along the wall (the move split in x and z).
 ## The figure (PlayerModel) walks with its speed, turns towards where it goes, and its height
 ## follows steps smoothly (the node itself snaps, the figure glides).
-## Talking: someone on foot or in a chair within `talk_reach` m (and before it) shows
-## "[E] Praten" bottom left (GameHud.set_actions); E starts a conversation with them
-## (Conversations, in the story box: the game stands still meanwhile), they turn to you.
+## Talking: someone on foot or in a chair within `talk_reach` m (and before it; the group
+## TALKABLE_GROUP: pedestrians and the people in an interior) shows "[E] Praten" bottom left
+## (GameHud.set_actions); E starts a conversation with them (Conversations, in the story box:
+## the game stands still meanwhile), they turn to you. A door (DOORS_GROUP: a snack bar's
+## entrance, the way out of an interior; Interiors) shows its own action ("[E] Naar binnen")
+## and E goes through it; teleport puts the player on the other side.
 ## Space jumps (`jump_height` m, falling back at `jump_gravity`; it costs `jump_stamina`, not
 ## when exhausted): in the air it still steers, may come down on something up to its jump
 ## higher than where it left (a bench, a low wall), never over a drop or water it could not
@@ -78,6 +81,10 @@ signal died(cause: String)
 ## Got up after sleeping at the start (or placed, when it does not start asleep).
 signal woke_up
 signal money_changed
+## Something bought (buy: at a snack bar), its item id.
+signal bought(item_id: String)
+## A conversation started with someone (talk_to), the kind of person (Conversations.persona).
+signal talked(persona: String)
 
 const GroundShadow = preload("res://scripts/effects/ground_shadow.gd")
 const PlayerCharacter = preload("res://scripts/player/player_character.gd")
@@ -86,6 +93,9 @@ const Items = preload("res://scripts/player/items.gd")
 const WaterSplash = preload("res://scripts/effects/water_splash.gd")
 const Iso = preload("res://scripts/camera/iso_camera.gd")
 const Conversations = preload("res://scripts/story/conversations.gd")
+## Who can be talked to (InteriorPerson.TALKABLE_GROUP) and the doors (Interiors.DOORS_GROUP).
+const TALKABLE_GROUP := "aanspreekbaar"
+const DOORS_GROUP := "deuren"
 ## How much more XP each next level takes, and the colour of "+50 XP".
 const XP_GROWTH := 1.5
 const XP_TEXT_COLOUR := Color("#47D6C2")
@@ -166,8 +176,10 @@ const TALK_TURN_SECONDS := 0.35
 ## Starts asleep on the ground and wakes up (off: starts standing).
 @export var start_asleep := true
 ## Seconds it sleeps once the town is there (a key wakes it sooner) and the getting up takes.
-@export var sleep_seconds := 3.0
+@export var sleep_seconds := 0.8
 @export var wake_time := 1.1
+## How far the view's coming down (FollowCamera.arrival_progress) has to be for it to wake.
+const WAKE_AT_ARRIVAL := 0.8
 @export var detail_path := NodePath("../DetailNiveau")
 ## The follow camera: while it still comes down from the sky at the start (its arrival) the
 ## player sleeps on, so it wakes (and the story starts) once you see it.
@@ -308,11 +320,23 @@ func add_xp(points: float) -> void:
 		levelled = true
 	if _hud:
 		if _hud.has_method("show_floating_number"):
-			_hud.show_floating_number(global_position + Vector3.UP * 2.3, "+%d XP" % roundi(points), XP_TEXT_COLOUR, 16)
+			_hud.show_floating_number(global_position + Vector3.UP * 2.3, "+%d XP" % roundi(points), XP_TEXT_COLOUR, 18)
 		if _hud.has_method("set_xp"):
 			_hud.set_xp(xp, xp_for_level)
 		if levelled and _hud.has_method("show_level_up"):
 			_hud.show_level_up(level)
+
+
+## Buys `item_id` for `price` euros (a snack bar: Conversations): "ok" (paid, in the pockets,
+## `bought` fires), "geld" (not enough money) or "vol" (no room in the pockets: not paid).
+func buy(item_id: String, price: float) -> String:
+	if money + 0.001 < price:
+		return "geld"
+	if not add_item(item_id):
+		return "vol"
+	add_money(-price)
+	bought.emit(item_id)
+	return "ok"
 
 
 func add_money(euros: float) -> void:
@@ -494,26 +518,52 @@ func _look_for_someone_to_talk_to() -> void:
 	var best := INF
 	var facing := Vector2(sin(rotation.y), cos(rotation.y))
 	if not _airborne:
-		for person in get_tree().get_nodes_in_group(Vehicle.WALKERS_GROUP):
-			if person == self or not person is Pedestrian or (person as Pedestrian)._ragdoll != null:
+		# who can be talked to (pedestrians, the people in an interior) and the doors
+		var candidates: Array = get_tree().get_nodes_in_group(TALKABLE_GROUP) + get_tree().get_nodes_in_group(DOORS_GROUP)
+		for candidate in candidates:
+			var thing := candidate as Node3D
+			if thing == null or thing == self or not thing.is_visible_in_tree() or thing.get("_ragdoll") != null:
 				continue
-			var offset := Vector2(person.global_position.x - global_position.x, person.global_position.z - global_position.z)
+			var reach: float = thing.call("reach") if thing.has_method("reach") else talk_reach
+			var offset := Vector2(thing.global_position.x - global_position.x, thing.global_position.z - global_position.z)
 			var distance := offset.length()
-			if distance > talk_reach or absf(person.global_position.y - global_position.y) > 1.2:
+			if distance > reach or absf(thing.global_position.y - global_position.y) > 1.2:
 				continue
 			# the one before it counts as nearer
 			var score := distance - 0.8 * maxf(facing.dot(offset / maxf(distance, 0.001)), 0.0)
 			if score < best:
 				best = score
-				nearest = person
+				nearest = thing
 	if nearest != _talk_partner:
 		_talk_partner = nearest
 		if _hud and _hud.has_method("set_actions"):
-			_hud.set_actions([["E", "Praten"]] if nearest else [])
+			var action := String(nearest.call("action_text")) if nearest and nearest.has_method("action_text") else "Praten"
+			_hud.set_actions([["E", action]] if nearest else [])
 	var talk_key := Input.is_physical_key_pressed(KEY_E)
 	if talk_key and not _talk_key_was_down and _talk_partner:
-		talk_to(_talk_partner)
+		if _talk_partner.has_method("go_through"):
+			_talk_partner.call("go_through")
+			_talk_partner = null
+			if _hud and _hud.has_method("set_actions"):
+				_hud.set_actions([])
+		else:
+			talk_to(_talk_partner)
 	_talk_key_was_down = talk_key
+
+
+## Puts the player at `at` (on the ground there), facing `yaw`: going into or out of a
+## building (Interiors). Standing, not in a jump, the figure there at once.
+func teleport(at: Vector3, yaw: float) -> void:
+	var ground := _ground_height(at, at.y + 1.0, 4.0)
+	global_position = Vector3(at.x, at.y if is_nan(ground) else ground, at.z)
+	rotation.y = yaw
+	_airborne = false
+	_vertical_speed = 0.0
+	_jump_pose(false)
+	velocity = Vector3.ZERO
+	_figure_height = global_position.y
+	_last_safe_position = global_position
+	_water_push = 0.0
 
 
 ## A conversation with `person` (Conversations) in the story box; they turn to face you.
@@ -521,7 +571,11 @@ func talk_to(person: Node3D) -> void:
 	if _hud == null or not _hud.has_method("show_story"):
 		return
 	var towards := global_position - person.global_position
-	if Vector2(towards.x, towards.z).length_squared() > 0.0001:
+	# someone sitting at a table stays on its chair (only you turn to them)
+	var stays_seated: bool = person.get("sitting") == true
+	if stays_seated and Vector2(towards.x, towards.z).length_squared() > 0.0001:
+		rotation.y = atan2(-towards.x, -towards.z)
+	elif Vector2(towards.x, towards.z).length_squared() > 0.0001:
 		# they turn round to you (smoothly, also while the story box holds the game), you to them
 		var from: float = person.rotation.y
 		var to := from + angle_difference(from, atan2(towards.x, towards.z))
@@ -529,6 +583,7 @@ func talk_to(person: Node3D) -> void:
 		turn.tween_property(person, "rotation:y", to, TALK_TURN_SECONDS).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 		rotation.y = atan2(-towards.x, -towards.z)
 	var talk := Conversations.new(person, self, _hud)
+	talked.emit(talk.persona)
 	# the view glides in on the two of you, and back after
 	var follow := get_node_or_null(follow_camera_path)
 	if follow and follow.has_method("talk_close_up"):
@@ -815,7 +870,8 @@ func _update_sleep(delta: float) -> void:
 	if level_of_detail and level_of_detail.has_method("is_merging") and level_of_detail.is_merging():
 		town_ready = false
 	var follow_camera := get_node_or_null(follow_camera_path)
-	if follow_camera and follow_camera.has_method("is_arriving") and follow_camera.is_arriving():
+	# awake as the view comes down onto the player (before it has quite settled)
+	if follow_camera and follow_camera.has_method("arrival_progress") and follow_camera.arrival_progress() < WAKE_AT_ARRIVAL:
 		town_ready = false
 	if town_ready:
 		_sleep_left -= delta
@@ -943,10 +999,15 @@ func _die(cause: String) -> void:
 		fall.tween_property(_model, "rotation_degrees:x", -90.0, 0.45)
 		fall.parallel().tween_property(_model, "position:y", _model.position.y + _figure_box.size.z * 0.5, 0.45)
 	died.emit(cause)
-	if cause == "aangereden":
+	# run over or starved: the dramatic slow motion with the view zooming in on the player
+	if cause in SLOW_MOTION_DEATHS:
 		_slow_motion_death(cause)
 	elif _hud and _hud.has_method("show_death"):
 		_hud.show_death(cause)
+
+
+## The deaths that get the slow motion and the close-up (_slow_motion_death).
+const SLOW_MOTION_DEATHS := ["aangereden", "honger"]
 
 
 func _slow_motion_death(cause: String) -> void:

@@ -13,7 +13,7 @@ dest_files=["res://.godot/imported/naam_kapper_1.gox-90d9ad344e2d82f6418196911e9
 
 [params]
 
-voxel_size=0.125
+voxel_size=0.075
 ambient_occlusion=true
 color_merge=14
 lod_color_tolerance=24

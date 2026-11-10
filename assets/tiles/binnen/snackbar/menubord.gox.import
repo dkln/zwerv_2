@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://d0n26l06am5gs"
+path="res://.godot/imported/menubord.gox-501886873980641fa5a024cfd836ca26.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/binnen/snackbar/menubord.gox"
+dest_files=["res://.godot/imported/menubord.gox-501886873980641fa5a024cfd836ca26.mesh"]
+
+[params]
+
+voxel_size=0.0625
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(0, 0, 0)

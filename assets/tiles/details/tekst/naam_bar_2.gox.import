@@ -13,7 +13,7 @@ dest_files=["res://.godot/imported/naam_bar_2.gox-ad3be1f242fc8ebf6b2324a253b460
 
 [params]
 
-voxel_size=0.125
+voxel_size=0.0987
 ambient_occlusion=true
 color_merge=14
 lod_color_tolerance=24

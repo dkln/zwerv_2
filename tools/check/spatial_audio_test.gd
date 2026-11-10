@@ -64,7 +64,8 @@ func _check(condition: bool, label: String) -> void:
 func _check_sound_files(spatial: Node) -> void:
 	var code := FileAccess.get_file_as_string(spatial.get_script().resource_path)
 	# the horns and bells are named by the vehicles and the pedestrians (play_signal)
-	for user_path in ["res://scripts/vehicles/vehicle.gd", "res://scripts/vehicles/fire_engine.gd", "res://scripts/world/pedestrian.gd"]:
+	for user_path in ["res://scripts/vehicles/vehicle.gd", "res://scripts/vehicles/fire_engine.gd", "res://scripts/world/pedestrian.gd",
+			"res://scripts/effects/vehicle_fire.gd", "res://scripts/world/interiors.gd"]:
 		code += FileAccess.get_file_as_string(user_path)
 	var unused: Array[String] = []
 	var not_imported: Array[String] = []

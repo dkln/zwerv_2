@@ -7,7 +7,7 @@ extends RefCounted
 ## Wheelie: always, its own WHEELIE_LINES and WHEELIE_KIND_LINES), "aanrijding" (it has just
 ## run the player over, Vehicle.shout_after_hit: always, HIT_LINES). Not at every honk: the same speaker at most every
 ## SPEAKER_PAUSE seconds, anyone at all at most every ANY_PAUSE seconds (but "doordrukken"),
-## only near the camera (SHOUT_DISTANCE) and in view. The balloon types the line, holds
+## only near what the camera looks at (SHOUT_DISTANCE) and in view. The balloon types the line, holds
 ## HOLD_SECONDS and fades; a new line of the same speaker replaces the one in its balloon.
 ## With it the speaker babbles (Babble, at the speaker: BABBLE_MOOD, a question going up), in
 ## its voice (`voice()` of a pedestrian; a driver one from its instance).
@@ -16,7 +16,9 @@ extends RefCounted
 ##   DriverShout.shout(self, "auto", "wachten", 2.2)
 
 const SpeechBalloon = preload("res://scripts/ui/widgets/speech_balloon.gd")
+const UiStyle = preload("res://scripts/ui/ui_style.gd")
 const Babble = preload("res://scripts/audio/babble.gd")
+const Iso = preload("res://scripts/camera/iso_camera.gd")
 ## The mood of the babble of a shout (Babble) by its mood; a line ending in "?" asks ("vraag").
 const BABBLE_MOOD := {"wachten": "boos", "waarschuwen": "boos", "doordrukken": "boos", "wheelie": "opgewonden",
 	"aanrijding": "verdrietig"}
@@ -109,8 +111,8 @@ const ANY_PAUSE := 1.5
 const SHOUT_DISTANCE := 45.0
 const HOLD_SECONDS := 2.2
 const BALLOON_LAYER := 9
-## The colour of a driver's balloon (a little warmer than the player's accent).
-const DRIVER_ACCENT := Color("#FF6B4A")
+## The colour of a balloon in the street: the accent of the UI, as every balloon.
+const DRIVER_ACCENT := UiStyle.ACCENT
 const READY_META := "shout_ready_at"
 const BALLOON_META := "shout_balloon"
 const MOODS := ["wachten", "waarschuwen", "doordrukken", "wheelie", "aanrijding"]
@@ -137,7 +139,10 @@ static func shout(speaker: Node3D, kind: String, mood: String, roof_height: floa
 	if camera == null:
 		return false
 	var roof := speaker.global_position + Vector3.UP * roof_height
-	if camera.global_position.distance_to(roof) > SHOUT_DISTANCE or not camera.is_position_in_frustum(roof):
+	# near what the camera looks at (the camera itself hangs far off, high above the town)
+	# (a camera looking out level has no point on the ground: then from itself)
+	var focus := Iso.ground_focus(camera) if -camera.global_basis.z.y < -0.2 else camera.global_position
+	if Vector2(focus.x - roof.x, focus.z - roof.z).length() > SHOUT_DISTANCE or not camera.is_position_in_frustum(roof):
 		return false
 	_any_ready_at = now + ANY_PAUSE
 	speaker.set_meta(READY_META, now + SPEAKER_PAUSE)

@@ -3,6 +3,7 @@ extends RefCounted
 ## they look) and the mood of each kind of line.
 
 const Conversations = preload("res://scripts/story/conversations.gd")
+const Items = preload("res://scripts/player/items.gd")
 
 
 ## A stand-in for a passer-by: its mobility and the look of its figure.
@@ -48,11 +49,20 @@ func test_persona_from_the_look(test) -> void:
 
 
 func test_every_persona_has_everything(test) -> void:
-	for persona: String in Conversations.PERSONAS:
-		var data: Dictionary = Conversations.PERSONAS[persona]
-		for key in ["speaker", "greetings", "topic", "money_yes", "money_no", "blammage", "bye"]:
+	var personas := Conversations.personas()
+	test.check(personas.size() >= 9, "alle soorten mensen uit de data (%d)" % personas.size())
+	for persona: String in personas:
+		var data: Dictionary = personas[persona]
+		for key in ["spreker", "begroetingen", "onderwerp", "kleingeld_ja", "kleingeld_nee", "snackbar", "dag", "gulheid"]:
 			test.check(data.has(key), "%s heeft %s" % [persona, key])
-		test.check(Conversations.GENEROSITY.has(persona), "%s heeft een gulheid" % persona)
+
+
+func test_the_counter_has_a_menu(test) -> void:
+	var menu: Array = Conversations.counter().get("menu", [])
+	test.check(menu.size() >= 3, "de snackbar verkoopt iets (%d)" % menu.size())
+	test.check(menu.any(func(entry: Dictionary) -> bool: return entry.get("item") == "kroket"), "een kroket")
+	for entry: Dictionary in menu:
+		test.check(Items.ITEMS.has(str(entry.get("item", ""))), "%s is een item" % entry.get("item"))
 
 
 func test_nobody_is_a_commuter(test) -> void:
@@ -62,7 +72,7 @@ func test_nobody_is_a_commuter(test) -> void:
 func test_moods_of_a_persona(test) -> void:
 	var talk := Conversations.new(null, null, null)
 	talk.persona = "oude_hagenaar"
-	test.check(talk.mood_of("greeting") == "boos", "de oude Hagenaar groet boos")
-	test.check(talk.mood_of("money_yes") == "blij", "geven is blij (de standaard)")
+	test.check(talk.mood_of("begroeting") == "boos", "de oude Hagenaar groet boos")
+	test.check(talk.mood_of("kleingeld_ja") == "blij", "geven is blij (de standaard)")
 	talk.persona = "forens"
-	test.check(talk.mood_of("blammage") == "opgewonden", "over de snackbar: opgewonden")
+	test.check(talk.mood_of("snackbar") == "opgewonden", "over de snackbar: opgewonden")

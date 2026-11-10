@@ -16,12 +16,12 @@ uniform float dive : hint_range(0.0, 1.0) = 0.0;
 uniform float magnify = 1.0;
 // How the layers grow with the zoom (magnify to this power), how many blocks per screen
 // height each has at the start, and the radius (in its own blocks) of the hole they part round.
-const float NEAR_POWER = 1.6;
-const float FAR_POWER = 1.3;
+const float NEAR_POWER = 2.1;
+const float FAR_POWER = 1.6;
 const float NEAR_START_BLOCKS = 16.0;
 const float FAR_START_BLOCKS = 30.0;
-const float NEAR_HOLE_BLOCKS = 1.5;
-const float FAR_HOLE_BLOCKS = 2.5;
+const float NEAR_HOLE_BLOCKS = 1.1;
+const float FAR_HOLE_BLOCKS = 1.8;
 uniform vec3 day_light = vec3(0.96, 0.97, 1.0);
 uniform vec3 day_shade = vec3(0.70, 0.74, 0.82);
 uniform vec3 night_light = vec3(0.20, 0.23, 0.32);
@@ -88,8 +88,8 @@ void fragment() {
 	float opening = smoothstep(0.0, 0.15, dive);
 	// cover 0: nothing, 1: the thickest it gets: loose banks of blocks with the town still
 	// showing between them
-	vec2 near_block = block_layer(centred, near_blocks, drift, vec2(3.1, 7.2), mix(0.85, 0.5, cover), NEAR_HOLE_BLOCKS * opening);
-	vec2 far_block = block_layer(centred, far_blocks, drift * 0.6, vec2(11.4, 2.9), mix(0.9, 0.55, cover), FAR_HOLE_BLOCKS * opening);
+	vec2 near_block = block_layer(centred, near_blocks, drift, vec2(3.1, 7.2), mix(0.8, 0.36, cover), NEAR_HOLE_BLOCKS * opening);
+	vec2 far_block = block_layer(centred, far_blocks, drift * 0.6, vec2(11.4, 2.9), mix(0.85, 0.42, cover), FAR_HOLE_BLOCKS * opening);
 	vec2 block = near_block.x > 0.0 ? near_block : vec2(far_block.x, far_block.y * 0.85);
 	float alpha = block.x * smoothstep(0.0, 0.08, cover);
 	float night = clamp(zwervr_night, 0.0, 1.0);

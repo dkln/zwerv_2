@@ -13,7 +13,7 @@ dest_files=["res://.godot/imported/naam_kleding_3.gox-368cfb98d6d4d3e0a00a049e3c
 
 [params]
 
-voxel_size=0.125
+voxel_size=0.0893
 ambient_occlusion=true
 color_merge=14
 lod_color_tolerance=24

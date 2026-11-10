@@ -662,6 +662,16 @@ func _car(root: Node3D) -> void:
 	pedestrians.set_script(load("res://scripts/world/pedestrians.gd"))
 	root.add_child(pedestrians)
 	pedestrians.owner = root
+	var terraces := Node3D.new()
+	terraces.name = "Terrassen"   # people sitting at the café tables (scripts/world/terraces.gd)
+	terraces.set_script(load("res://scripts/world/terraces.gd"))
+	root.add_child(terraces)
+	terraces.owner = root
+	var interiors := Node3D.new()
+	interiors.name = "Binnenruimtes"   # the snack bars you walk into (scripts/world/interiors.gd)
+	interiors.set_script(load("res://scripts/world/interiors.gd"))
+	root.add_child(interiors)
+	interiors.owner = root
 	var story := Node.new()
 	story.name = "Verhaal"   # the prologue and the missions (scripts/story/story.gd)
 	story.set_script(load("res://scripts/story/story.gd"))

@@ -22,8 +22,8 @@ const UiStyle = preload("res://scripts/ui/ui_style.gd")
 const Typewriter = preload("res://scripts/ui/widgets/typewriter.gd")
 
 ## The widest the text runs before it wraps (px), the font size, the padding.
-const MAX_TEXT_WIDTH := 240.0
-const TEXT_SIZE := 13
+const MAX_TEXT_WIDTH := 320.0
+const TEXT_SIZE := 18
 const PADDING := Vector2(12, 8)
 ## How far the black copy under the text sits lower (px).
 const TEXT_SHADOW := 2

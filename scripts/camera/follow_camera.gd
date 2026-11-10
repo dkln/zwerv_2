@@ -63,7 +63,7 @@ const ARRIVAL_STEPS := 128
 ## (starting to walk) and `zoom_in_glide_time` coming back in (standing still again: quicker,
 ## so the figure is soon close again).
 @export var glide_time := 0.6
-@export var zoom_glide_time := 2.0
+@export var zoom_glide_time := 3.5
 @export var zoom_in_glide_time := 0.8
 @export_group("Gliding over")
 ## Seconds the view takes to glide over to the target after it jumped.
@@ -136,6 +136,9 @@ const ARRIVAL_STEPS := 128
 ## A conversation (PlayerController.talk_to, talk_close_up): the view glides slowly in on the
 ## middle between the player and who it talks to, `talk_zoom` metres in view, in about
 ## `talk_glide` seconds (also while the game stands still for the story box), and back after.
+## Inside a building (set_indoors): metres in view, the same standing or walking (the room
+## is small), and how long the view takes to get there.
+@export var indoor_zoom := 9.0
 @export var talk_zoom := 7.0
 @export var talk_glide := 2.6
 @export var dramatic_zoom := 6.0
@@ -147,7 +150,7 @@ const ARRIVAL_STEPS := 128
 ## about halfway down.
 @export var arrival := true
 @export var arrival_zoom := 300.0
-@export var arrival_seconds := 8.0
+@export var arrival_seconds := 5.5
 
 var _cam: Camera3D
 var _followed: Node3D
@@ -173,6 +176,8 @@ var _glide_over_from := Vector3.ZERO # where the view started, as seen from the 
 var _glide_over_zoom := 0.0          # extra metres in view while gliding over
 var _dramatic := false               # zoomed in on a dramatic moment (dramatic_close_up)
 var _talk_partner: Node3D            # who the player talks to (talk_close_up), else null
+var _turn_round_buildings_default := true   # turn_round_buildings as set, outside
+var _indoors := false
 var _arrival_clock := -1.0           # seconds into the arrival (< 0: waiting for the town)
 var _arriving := false               # the arrival is still to come or going on
 var _clouds: Node                    # the cloud layer of the arrival
@@ -190,6 +195,7 @@ var target_node: Node3D:
 
 
 func _ready() -> void:
+	_turn_round_buildings_default = turn_round_buildings
 	_cam = get_viewport().get_camera_3d()
 	_followed = get_node_or_null(target) as Node3D
 	if _cam == null or _followed == null:
@@ -263,6 +269,33 @@ func talk_close_up(partner: Node3D) -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS if partner else Node.PROCESS_MODE_INHERIT
 
 
+## Inside a building (Interiors): no turning round buildings (there are none to hide the
+## player; the walls of an interior are low at the camera's side), the view as it was.
+func set_indoors(indoors: bool) -> void:
+	_indoors = indoors
+	turn_round_buildings = not indoors and _turn_round_buildings_default
+	# straight to the zoom of inside or outside (under the swipe)
+	_zoom = indoor_zoom if indoors else zoom_still
+	_zoom_velocity = 0.0
+	_turn_goal = 0.0
+	_turn = 0.0
+	_turn_velocity = 0.0
+
+
+## The view on its target at once, without gliding over (after the target was put elsewhere).
+func snap_to_target() -> void:
+	if _followed == null:
+		return
+	var target := _target_position()
+	_focus = target
+	_focus_velocity = Vector3.ZERO
+	_target_velocity = Vector3.ZERO
+	_target_last = target
+	_glide_over_left = 0.0
+	_glide_over_from = Vector3.ZERO
+	_view_focus = target
+
+
 func is_dramatic() -> bool:
 	return _dramatic
 
@@ -270,6 +303,15 @@ func is_dramatic() -> bool:
 ## True while the view still comes down from the sky at the start (for the tests).
 func is_arriving() -> bool:
 	return _arriving
+
+
+## How far the arrival is (0 .. 1; 1 when there is none, or it is over).
+func arrival_progress() -> float:
+	if not _arriving:
+		return 1.0
+	if _arrival_clock < 0.0:
+		return 0.0
+	return clampf(_arrival_clock / maxf(arrival_seconds, 0.1), 0.0, 1.0)
 
 
 ## The arrival: how much it is still zoomed out, waiting while the town loads, then down
@@ -320,7 +362,7 @@ static func _arrival_descent(progress: float) -> float:
 func _set_clouds(progress: float, view_size: float) -> void:
 	if _clouds == null:
 		return
-	_clouds.cover = 1.0 - smoothstep(0.5, 0.85, progress)
+	_clouds.cover = 1.0 - smoothstep(0.62, 0.92, progress)
 	_clouds.dive = progress
 	_clouds.magnify = arrival_zoom / maxf(view_size, 0.01)
 
@@ -355,6 +397,8 @@ func _process(delta: float) -> void:
 	if _dramatic:
 		goal_zoom = dramatic_zoom
 		goal = target_position
+	if _indoors and not _dramatic:
+		goal_zoom = indoor_zoom
 	var talking := _talk_partner != null and is_instance_valid(_talk_partner) and not _dramatic
 	if talking:
 		goal_zoom = talk_zoom

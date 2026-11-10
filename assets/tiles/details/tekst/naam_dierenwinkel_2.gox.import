@@ -13,7 +13,7 @@ dest_files=["res://.godot/imported/naam_dierenwinkel_2.gox-817eae6df28e8a1a09a6e
 
 [params]
 
-voxel_size=0.125
+voxel_size=0.0815
 ambient_occlusion=true
 color_merge=14
 lod_color_tolerance=24

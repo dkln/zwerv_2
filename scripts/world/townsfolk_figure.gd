@@ -55,6 +55,9 @@ const EYE := Color("#1A1420")
 const MOUTH := Color("#8A4A44")
 
 static var _parts := {}   # look key -> parts (VoxelFigure.to_parts)
+## Looks whose parts are kept at most (the pedestrians keep changing, Pedestrians): beyond this
+## the oldest go (the figures built from them keep their meshes).
+const PARTS_KEPT := 160
 
 ## The look this figure is built from (look_for).
 var look := {}
@@ -237,6 +240,8 @@ func _build() -> void:
 ## The meshes and joints of a look, built once per look and shared.
 static func parts_of(figure_look: Dictionary) -> Dictionary:
 	var key := str(figure_look)
+	if not _parts.has(key) and _parts.size() >= PARTS_KEPT:
+		_parts.erase(_parts.keys()[0])   # the oldest (a Dictionary keeps the order things went in)
 	if not _parts.has(key):
 		var figure := PlayerModel.VoxelFigure.new()
 		_build_voxels(figure, figure_look)

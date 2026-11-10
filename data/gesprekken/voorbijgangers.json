@@ -1,0 +1,297 @@
+{
+	"uitleg": "Gesprekken met voorbijgangers: wie je aanspreekt (de eerste in 'personen' waarvan 'herkennen' klopt), wat ze zeggen en in welke stemming. Zie data/LEESMIJ.md.",
+	"vragen": {
+		"kleingeld": "Heeft u misschien wat kleingeld voor me?",
+		"snackbar": "Weet u waar Jan Blammage zit?",
+		"dag": "Laat maar. Fijne dag nog."
+	},
+	"nog_iets": [
+		"Nog iets?",
+		"Was er nog wat?",
+		"Verder nog iets?"
+	],
+	"stemmingen": {
+		"begroeting": "neutraal",
+		"onderwerp": "neutraal",
+		"doorvraag": "blij",
+		"kleingeld_ja": "blij",
+		"kleingeld_nee": "verdrietig",
+		"snackbar": "opgewonden",
+		"dag": "blij"
+	},
+	"personen": [
+		{
+			"id": "rolstoel",
+			"herkennen": {
+				"vervoer": "rolstoel"
+			},
+			"spreker": "MAN IN ROLSTOEL",
+			"begroetingen": [
+				"Hé, kijk uit voor m'n wielen, maat. Wat kan ik voor je doen?",
+				"Ja? Ik rij net een rondje. Zeg het maar."
+			],
+			"onderwerp": {
+				"vraag": "Hoe gaat het met de stoepen hier?",
+				"antwoord": "Stoepen? Half Den Haag is een hindernisbaan. Elke stoeprand is een berg, en de klinkers rammelen m'n tanden los.",
+				"doorvraag": "En toch rij je rond?",
+				"doorantwoord": "Natuurlijk! Ik laat me niet binnenhouden door een stoeprand. Ik doe gewoon een wheelie, kijk maar uit."
+			},
+			"kleingeld_ja": "Hier, een paar centen. Wij moeten elkaar een beetje helpen, hè?",
+			"kleingeld_nee": "Sorry jong, m'n uitkering is ook op. Volgende maand misschien.",
+			"snackbar": "Jan Blammage? Daar ga ik ook altijd heen. Kijk maar op je kaart, die zitten overal in de stad.",
+			"dag": "Rij voorzichtig, hè. O nee, jij loopt. Nou, loop voorzichtig dan.",
+			"gulheid": {
+				"kans": 50,
+				"bedrag": 0.2
+			},
+			"stemmingen": {
+				"begroeting": "blij",
+				"onderwerp": "boos",
+				"doorvraag": "opgewonden"
+			}
+		},
+		{
+			"id": "scootmobiel",
+			"herkennen": {
+				"vervoer": "scootmobiel"
+			},
+			"spreker": "MEVROUW OP SCOOTMOBIEL",
+			"begroetingen": [
+				"Ja ja, wat is er? Ik heb haast, de markt gaat zo dicht.",
+				"Goedemiddag! Pas op m'n mandje, daar zitten de eieren in."
+			],
+			"onderwerp": {
+				"vraag": "Mooie scootmobiel, mevrouw.",
+				"antwoord": "Hè, dank je! Vijftien kilometer per uur. M'n kleinzoon heeft hem een beetje opgevoerd.",
+				"doorvraag": "Opgevoerd? Mag dat wel?",
+				"doorantwoord": "Mag dat wel, mag dat wel... Ik ben zevenentachtig, jongen. Ik mag alles."
+			},
+			"kleingeld_ja": "Ach jongen, hier. Koop er wat warms van. En niet aan de drank, hè!",
+			"kleingeld_nee": "Kleingeld? Dat zit allemaal in de parkeermeter van m'n zoon. Sorry hoor.",
+			"snackbar": "Jan Blammage! Die kroketten zijn nog net zo lekker als in 1962. Op je kaartje staan ze, kijk maar.",
+			"dag": "Dag jongen! En ga eens naar de kapper.",
+			"gulheid": {
+				"kans": 60,
+				"bedrag": 0.5
+			},
+			"stemmingen": {
+				"begroeting": "boos",
+				"doorvraag": "boos"
+			}
+		},
+		{
+			"id": "oude_hagenaar",
+			"herkennen": {
+				"haar": "kaal"
+			},
+			"spreker": "OUDE HAGENAAR",
+			"begroetingen": [
+				"Ollah. Wat mot je?",
+				"Zo, jij ziet er ook uit alsof je een lange nacht had."
+			],
+			"onderwerp": {
+				"vraag": "Hoe was Den Haag vroeger?",
+				"antwoord": "Vroeger? Toen reed de tram nog met een conducteur en kostte een kroket een kwartje. Nu is alles glas en kantoor.",
+				"doorvraag": "Was het beter toen?",
+				"doorantwoord": "Beter? Nee hoor. Wel goedkoper. En de mensen groetten je nog. Ollah, zeg ik altijd. Ollah!"
+			},
+			"kleingeld_ja": "Hier, een paar centen. Niet zeuren, gewoon pakken.",
+			"kleingeld_nee": "Kleingeld? Ik ben zelf ook een zwerver geweest, jong. Je mot het zelf bij elkaar scharrelen.",
+			"snackbar": "Jan Blammage, da's de beste. Kijk op je kaart, dan zie je waar ze zitten. Neem een frikandel speciaal erbij.",
+			"dag": "Hou je haaks, jonguh.",
+			"gulheid": {
+				"kans": 40,
+				"bedrag": 0.2
+			},
+			"stemmingen": {
+				"begroeting": "boos",
+				"onderwerp": "verdrietig",
+				"kleingeld_nee": "boos",
+				"dag": "neutraal"
+			}
+		},
+		{
+			"id": "pet",
+			"herkennen": {
+				"haar": "pet"
+			},
+			"spreker": "MAN MET PET",
+			"begroetingen": [
+				"Hé maat! Ook goeiemorgen. Of is het al middag?",
+				"Wat is er, makker? Ik sta op het punt aan het werk te gaan."
+			],
+			"onderwerp": {
+				"vraag": "Wat voor werk doe je?",
+				"antwoord": "Ik sta op de markt. Groente en fruit. Drie kilo appels voor een tientje, geen mens die dat nog doet.",
+				"doorvraag": "Kan ik niet bij je komen werken?",
+				"doorantwoord": "Bij mij? Hahaha. Kom eerst maar eens wakker, dan praten we verder. Maar je hebt lef, dat mag ik wel."
+			},
+			"kleingeld_ja": "Hier, een paar muntjes. Gewoon tussen ons, hè?",
+			"kleingeld_nee": "Kleingeld? Op de markt is alles cash, maar dat is voor m'n vrouw. Sorry, makker.",
+			"snackbar": "Jan Blammage? Elke dag na de markt. Ze zitten op je kaart, maat. Zeg maar dat je van mij komt.",
+			"dag": "Zie je, makker. Kop op!",
+			"gulheid": {
+				"kans": 50,
+				"bedrag": 0.5
+			},
+			"stemmingen": {
+				"begroeting": "blij",
+				"doorvraag": "opgewonden"
+			}
+		},
+		{
+			"id": "dame",
+			"herkennen": {
+				"haar": "lang",
+				"rok": true
+			},
+			"spreker": "NETTE DAME",
+			"begroetingen": [
+				"Oh! U laat me schrikken. Kan ik u ergens mee helpen?",
+				"Goedendag. U ziet er... vermoeid uit."
+			],
+			"onderwerp": {
+				"vraag": "Waar gaat u zo netjes heen?",
+				"antwoord": "Naar de Koninklijke Schouwburg. Een toneelstuk over een man die alles kwijtraakt. Heel ontroerend, zeggen ze.",
+				"doorvraag": "Dat klinkt als mijn leven.",
+				"doorantwoord": "Oh. Oh lieverd. Nou, dan weet u alvast hoe het afloopt. Er komt een pauze met bitterballen."
+			},
+			"kleingeld_ja": "Hier, alstublieft. Gebruik het verstandig, beloofd?",
+			"kleingeld_nee": "Ik betaal tegenwoordig alles met mijn telefoon, het spijt me werkelijk.",
+			"snackbar": "Een snackbar? Dat ik u dat moet vertellen... Op uw kaart staan ze. Ik ga er zelf wel eens heen. Niet verder vertellen.",
+			"dag": "Een fijne dag nog. En draag een jas, het wordt koud.",
+			"gulheid": {
+				"kans": 60,
+				"bedrag": 0.5
+			},
+			"stemmingen": {
+				"begroeting": "verdrietig",
+				"doorvraag": "verdrietig",
+				"snackbar": "neutraal"
+			}
+		},
+		{
+			"id": "student",
+			"herkennen": {
+				"haar": "lang",
+				"rok": false
+			},
+			"spreker": "STUDENT",
+			"begroetingen": [
+				"Hé! Sorry, ik heb over tien minuten tentamen. Wat is er?",
+				"Yo. Jij bent toch die van het Plein? Wat is er?"
+			],
+			"onderwerp": {
+				"vraag": "Wat studeer je?",
+				"antwoord": "Internationaal recht. In Den Haag, hè, de stad van vrede en recht. Ik word later rechter in het Vredespaleis.",
+				"doorvraag": "En dan kun je mij vrijspreken?",
+				"doorantwoord": "Haha, dat hangt ervan af wat je gedaan hebt. Maar ik reken alleen in kroketten, hoor."
+			},
+			"kleingeld_ja": "Hier, een paar centen. Ik leef zelf van studieschuld, dus wat maakt het uit.",
+			"kleingeld_nee": "Kleingeld? Ik heb nog geen tien cent voor de koffieautomaat. Sorry!",
+			"snackbar": "Jan Blammage! Daar eten we altijd na het stappen. Op je kaart, kijk maar, die met het ruitje.",
+			"dag": "Ik moet rennen! Succes, hè!",
+			"gulheid": {
+				"kans": 30,
+				"bedrag": 0.1
+			},
+			"stemmingen": {
+				"begroeting": "opgewonden",
+				"onderwerp": "opgewonden"
+			}
+		},
+		{
+			"id": "ambtenaar",
+			"herkennen": {
+				"jas": [
+					"#22242A",
+					"#6A6E74"
+				]
+			},
+			"spreker": "AMBTENAAR",
+			"begroetingen": [
+				"Ja? Ik heb om negen uur een overleg op het ministerie. Kort graag.",
+				"Goedemorgen. Heeft u een afspraak? O nee, dit is de straat."
+			],
+			"onderwerp": {
+				"vraag": "Wat doet u op het ministerie?",
+				"antwoord": "Ik schrijf beleid over het schrijven van beleid. Het is een belangrijke notitie. Volgend jaar is hij af.",
+				"doorvraag": "Wat staat erin?",
+				"doorantwoord": "Dat valt nog onder embargo. Maar tussen ons: er komt een werkgroep. Die gaat een advies schrijven. Over de notitie."
+			},
+			"kleingeld_ja": "Hier. Ik zet het wel op de declaratie onder 'maatschappelijke betrokkenheid'.",
+			"kleingeld_nee": "Daar is geen budget voor, vrees ik. Probeert u het volgend kwartaal nog eens.",
+			"snackbar": "Jan Blammage? Ik ken het niet. Dat wil zeggen: officieel niet. Kijkt u op uw kaart, daar staan ze.",
+			"dag": "Ik moet door. Fijne dag nog, en vergeet uw formulieren niet.",
+			"gulheid": {
+				"kans": 45,
+				"bedrag": 0.2
+			},
+			"stemmingen": {
+				"begroeting": "neutraal",
+				"kleingeld_nee": "neutraal",
+				"snackbar": "neutraal",
+				"dag": "neutraal"
+			}
+		},
+		{
+			"id": "toerist",
+			"herkennen": {
+				"jas": [
+					"#C8B48A"
+				]
+			},
+			"spreker": "TOERIST",
+			"begroetingen": [
+				"Oh, hello! Eh, hallo! Is this the way to the beach? Het strand?",
+				"Hallo! Ik kom uit Groningen. Waar is hier dat Binnenhof?"
+			],
+			"onderwerp": {
+				"vraag": "Waar komt u vandaan?",
+				"antwoord": "Uit Groningen! Ik ben hier voor het Binnenhof, maar dat zit helemaal in de steigers. Ik zie alleen maar bouwdoek.",
+				"doorvraag": "Dat is al jaren zo.",
+				"doorantwoord": "Jaren? Nou, dan kom ik wel terug als ik met pensioen ben. Of mijn kleinkinderen."
+			},
+			"kleingeld_ja": "Ach, natuurlijk! Hier, en nog een fijne dag in uw mooie stad.",
+			"kleingeld_nee": "Oh, alles is op aan de parkeergarage. Twintig euro! Voor twee uur!",
+			"snackbar": "Jan Blammage? Daar wil ik ook heen! Op uw kaart? Kijk, die. Dan gaan we samen. Nee, grapje.",
+			"dag": "Dag! Doei! Bye!",
+			"gulheid": {
+				"kans": 70,
+				"bedrag": 1.0
+			},
+			"stemmingen": {
+				"begroeting": "opgewonden",
+				"onderwerp": "verdrietig",
+				"doorvraag": "blij"
+			}
+		},
+		{
+			"id": "forens",
+			"herkennen": {},
+			"spreker": "VOORBIJGANGER",
+			"begroetingen": [
+				"Hm? Sorry, ik moet m'n tram halen. Wat is er?",
+				"Hé. Gaat het wel met je?"
+			],
+			"onderwerp": {
+				"vraag": "Waar moet u heen?",
+				"antwoord": "Naar Zoetermeer, met de RandstadRail. Elke dag. Al twaalf jaar. Ik ken alle haltes uit m'n hoofd.",
+				"doorvraag": "Noem ze dan eens op.",
+				"doorantwoord": "Centraal, Laan van NOI, Voorburg 't Loo, Leidschendam-Voorburg... ach, daar gaat m'n tram. Bedankt, hoor."
+			},
+			"kleingeld_ja": "Hier. Een paar muntjes. Sterkte, hè.",
+			"kleingeld_nee": "Ik heb alleen m'n ov-kaart bij me. Sorry.",
+			"snackbar": "Jan Blammage? Die zitten overal, kijk maar op je kaart. Lekkere kroketten, trouwens.",
+			"dag": "Ik moet gaan. Pas goed op jezelf.",
+			"gulheid": {
+				"kans": 30,
+				"bedrag": 0.2
+			},
+			"stemmingen": {
+				"doorvraag": "verdrietig",
+				"dag": "neutraal"
+			}
+		}
+	]
+}

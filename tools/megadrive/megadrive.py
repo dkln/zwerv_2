@@ -13,8 +13,11 @@ It imitates the three sound sources of the console:
 * SN76489 PSG: square waves whose pitch is quantized to the chip's 10-bit divider and whose
   volume moves in 2 dB steps, updated once per 60 Hz frame like a driver's software envelope;
   and the 16-bit LFSR white noise (used here for hi-hats and the crash).
-* PCM drums through the DAC: kick, snare, clap and toms are synthesized, then resampled with
-  sample-and-hold to ~17.5 kHz and quantized to 8 bits, so they have that grainy sampled edge.
+* PCM drums through the DAC: kick (fat or tight), snare (plain or the 80s gated one), clap and
+  toms are synthesized, then resampled with sample-and-hold to ~13-17.5 kHz and quantized to
+  8 bits, so they have that grainy sampled edge. FM patches may be driven into overdrive
+  (`drive`: the "guitar"), PSG notes may carry a driver vibrato, and `tape_stop` slows a
+  stretch of the mix to a standstill.
 
 Everything is added to `Track`s (a mono buffer plus a pan) with wrap-around: what rings past
 the end of the buffer lands at the start, so a song renders as a seamless loop. `master()`
@@ -102,6 +105,10 @@ class FmPatch:
     vibrato_depth: float = 0.0  # semitones
     vibrato_rate: float = 5.5
     vibrato_delay: float = 0.25
+    # overdrive after the operators (0 = none): the "electric guitar" of the house style, as
+    # Mega Drive composers got it, an FM voice with high feedback driven into the clipping
+    # of the output stage; the 9-bit rounding comes after it
+    drive: float = 0.0
 
 
 def _envelope(operator: Operator, times: numpy.ndarray, note_length: float) -> numpy.ndarray:
@@ -180,6 +187,8 @@ def fm_note(patch: FmPatch, midi_note: float, length: float, velocity: float = 1
     else:
         output = first + operator_output(1, 0.0) + operator_output(2, 0.0) + operator_output(3, 0.0)
 
+    if patch.drive:
+        output = numpy.tanh(patch.drive * output) / numpy.tanh(patch.drive)
     output *= velocity
     fade_samples = min(len(output), int(0.004 * SAMPLE_RATE))
     output[-fade_samples:] *= numpy.linspace(1.0, 0.0, fade_samples)
@@ -215,13 +224,24 @@ def _psg_frame_envelope(times: numpy.ndarray, length: float, decay: float, susta
 
 @lru_cache(maxsize=None)
 def psg_square(midi_note: float, length: float, volume: float = 1.0, decay: float = 0.15,
-               sustain: float = 0.5, release: float = 0.05) -> numpy.ndarray:
-    """A PSG square note; pitch rounded to the chip's divider (slightly out of tune, as it was)."""
-    divider = max(1, min(1023, round(PSG_CLOCK / (32.0 * midi_to_frequency(midi_note)))))
-    frequency = PSG_CLOCK / (32.0 * divider)
+               sustain: float = 0.5, release: float = 0.05, vibrato_depth: float = 0.0,
+               vibrato_rate: float = 7.0, vibrato_delay: float = 0.08) -> numpy.ndarray:
+    """A PSG square note; pitch rounded to the chip's divider (slightly out of tune, as it was).
+    The SN76489 has only a 50% square: the thin "chiptune lead" comes from a fast vibrato that
+    the sound driver writes into the divider once per frame (`vibrato_depth` in semitones)."""
     total_seconds = length + release * 4.0 + 1.0 / FRAME_RATE
     times = numpy.arange(int(total_seconds * SAMPLE_RATE)) / SAMPLE_RATE
-    square = numpy.where((times * frequency) % 1.0 < 0.5, 1.0, -1.0)
+    if vibrato_depth:
+        frame_times = numpy.floor(times * FRAME_RATE) / FRAME_RATE
+        fade_in = numpy.clip((frame_times - vibrato_delay) / 0.1, 0.0, 1.0)
+        pitch = midi_note + vibrato_depth * fade_in * numpy.sin(2 * numpy.pi * vibrato_rate * frame_times)
+        dividers = numpy.clip(numpy.round(PSG_CLOCK / (32.0 * 440.0 * 2.0 ** ((pitch - 69.0) / 12.0))), 1, 1023)
+        phase = numpy.cumsum(PSG_CLOCK / (32.0 * dividers)) / SAMPLE_RATE
+        square = numpy.where(phase % 1.0 < 0.5, 1.0, -1.0)
+    else:
+        divider = max(1, min(1023, round(PSG_CLOCK / (32.0 * midi_to_frequency(midi_note)))))
+        frequency = PSG_CLOCK / (32.0 * divider)
+        square = numpy.where((times * frequency) % 1.0 < 0.5, 1.0, -1.0)
     output = square * _psg_frame_envelope(times, length, decay, sustain, release) * volume
     output.setflags(write=False)
     return output
@@ -320,6 +340,29 @@ def make_clap() -> numpy.ndarray:
     return _pcm(numpy.tanh(3.0 * band * envelope) * 0.8)
 
 
+def make_tight_kick() -> numpy.ndarray:
+    """A dry, tight electronic kick (the 80s drum machine): short, a higher punch, a click."""
+    times = numpy.arange(int(0.24 * SAMPLE_RATE)) / SAMPLE_RATE
+    frequency = 55.0 + 140.0 * numpy.exp(-times / 0.018) + 400.0 * numpy.exp(-times / 0.003)
+    body = numpy.sin(2 * numpy.pi * numpy.cumsum(frequency) / SAMPLE_RATE)
+    body *= numpy.exp(-times / 0.09) * numpy.clip(times / 0.001, 0.0, 1.0)
+    click = numpy.diff(_noise(0.24), prepend=0.0) * numpy.exp(-times / 0.0015) * 0.5
+    return _pcm(numpy.tanh(2.6 * (body + click)) * 0.95)
+
+
+def make_gated_snare(gate_seconds: float = 0.17) -> numpy.ndarray:
+    """The 80s gated-reverb snare: a snappy hit, then a dense, bright room tail that holds
+    up for `gate_seconds` and is cut off hard by the gate, sampled into the DAC."""
+    seconds = gate_seconds + 0.05
+    times = numpy.arange(int(seconds * SAMPLE_RATE)) / SAMPLE_RATE
+    tone = (numpy.sin(2 * numpy.pi * 200.0 * times) * 0.7 + numpy.sin(2 * numpy.pi * 330.0 * times) * 0.3)
+    tone *= numpy.exp(-times / 0.04)
+    snap = numpy.diff(_noise(seconds), prepend=0.0) * numpy.exp(-times / 0.03) * 0.7
+    room = _smooth(_noise(seconds), 2) * (0.55 + 0.1 * numpy.exp(-times / 0.05))
+    gate = numpy.clip((gate_seconds - times) / 0.008, 0.0, 1.0)
+    return _pcm(numpy.tanh(1.7 * (tone + snap + room * gate)) * 0.85, rate=13000.0)
+
+
 def make_tom(start_frequency: float) -> numpy.ndarray:
     """An electronic tom: a sine sweeping down a fifth, a pinch of noise."""
     times = numpy.arange(int(0.36 * SAMPLE_RATE)) / SAMPLE_RATE
@@ -372,6 +415,26 @@ def master(tracks, target_rms_db: float = -14.0, peak_db: float = -1.5,
         if abs(20 * numpy.log10(numpy.sqrt(numpy.mean(limited ** 2))) - target_rms_db) < 0.1:
             break
     return limited
+
+
+def tape_stop(stereo: numpy.ndarray, at_seconds: float, seconds: float) -> numpy.ndarray:
+    """A tape stop: from `at_seconds` the music slows down to a standstill over `seconds`
+    (the pitch dropping with it), then silence until the end of that stretch; what follows
+    plays on as it was."""
+    start = int(at_seconds * SAMPLE_RATE)
+    length = int(seconds * SAMPLE_RATE)
+    end = min(start + length, len(stereo))
+    if start >= end:
+        return stereo
+    progress = numpy.arange(end - start) / length
+    speed = (1.0 - progress) ** 2
+    read_at = start + numpy.cumsum(speed)
+    result = stereo.copy()
+    for channel in range(stereo.shape[1]):
+        result[start:end, channel] = numpy.interp(read_at, numpy.arange(len(stereo)), stereo[:, channel])
+    fade = numpy.clip((1.0 - progress) / 0.15, 0.0, 1.0)
+    result[start:end] *= fade[:, None]
+    return result
 
 
 def write_ogg(path: str, stereo: numpy.ndarray, quality: float = 0.7) -> None:

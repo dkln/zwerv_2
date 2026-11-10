@@ -5,7 +5,9 @@ extends RefCounted
 ## next pass of their materials (PlayerModel.material_for, outlined); every other mesh under a
 ## node gets it here as its material_overlay, pushed out from the middle of its mesh (one
 ## material per mesh, kept on the mesh itself as meta OUTLINE_META, so it goes with it).
-## Transparent meshes (glass discs, blurs) are left out.
+## Left out: transparent meshes (glass, blurs), meshes whose shader cuts them out with ALPHA (the
+## helicopter's rotor: a flat square that only shows its blades) and flat meshes without any
+## thickness (their outline would be a square round all of them).
 ##   Outline.apply(self)   # after the node has built its meshes
 
 const PlayerModel = preload("res://scripts/player/player_model.gd")
@@ -45,9 +47,19 @@ static func _outlined(instance: MeshInstance3D) -> bool:
 	return false
 
 
+## How thin a mesh may be (metres, its thinnest side) and still get the outline.
+const THINNEST := 0.01
+
+
 static func _transparent(instance: MeshInstance3D) -> bool:
+	var box := instance.mesh.get_aabb().size
+	if minf(box.x, minf(box.y, box.z)) < THINNEST:
+		return true   # flat: a plane
 	for surface in instance.mesh.get_surface_count():
-		var material := instance.get_active_material(surface) as BaseMaterial3D
-		if material and material.transparency != BaseMaterial3D.TRANSPARENCY_DISABLED:
+		var material := instance.get_active_material(surface)
+		if material is BaseMaterial3D and (material as BaseMaterial3D).transparency != BaseMaterial3D.TRANSPARENCY_DISABLED:
 			return true
+		if material is ShaderMaterial and (material as ShaderMaterial).shader \
+				and (material as ShaderMaterial).shader.code.contains("ALPHA"):
+			return true   # cut out by its shader (the rotor)
 	return false

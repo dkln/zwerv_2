@@ -1,0 +1,186 @@
+{
+	"uitleg": "Hoe druk het is rond de speler (scripts/world/crowd.gd): per uur van de dag en per gebied hoeveel voetgangers en voertuigen er zijn, wie er rondloopt en wat er rijdt. Zie data/LEESMIJ.md.",
+
+	"voertuig_basis": {
+		"auto": 0.46, "fiets": 0.2, "brommer": 0.12, "vracht": 0.1, "bus": 0.04, "landbouw": 0.03, "klein": 0.05
+	},
+
+	"uren": [
+		{"uur": 0.0, "voetgangers": 0.22, "verkeer": 0.18,
+			"mensen": {"nachtbraker": 5, "uitgaanspubliek": 3, "forens": 0.5},
+			"voertuigen": {"auto": 1.0, "fiets": 0.6, "brommer": 1.3, "vracht": 0.4, "bus": 0.3, "landbouw": 0.0, "klein": 0.5}},
+		{"uur": 3.5, "voetgangers": 0.08, "verkeer": 0.08,
+			"mensen": {"nachtbraker": 3, "forens": 1, "werkman": 1},
+			"voertuigen": {"auto": 1.0, "fiets": 0.3, "brommer": 0.6, "vracht": 0.9, "bus": 0.1, "landbouw": 0.0, "klein": 0.3}},
+		{"uur": 6.0, "voetgangers": 0.4, "verkeer": 0.5,
+			"mensen": {"forens": 5, "werkman": 3, "kantoormens": 1, "zakenmens": 1.5},
+			"voertuigen": {"auto": 1.0, "fiets": 1.0, "brommer": 0.8, "vracht": 1.3, "bus": 1.0, "landbouw": 0.4, "klein": 0.8}},
+		{"uur": 7.5, "voetgangers": 1.0, "verkeer": 1.0,
+			"mensen": {"forens": 5, "kantoormens": 3, "zakenmens": 3.5, "scholier": 3, "werkman": 1},
+			"voertuigen": {"auto": 1.2, "fiets": 1.5, "brommer": 1.0, "vracht": 0.8, "bus": 1.3, "landbouw": 0.2, "klein": 0.8}},
+		{"uur": 9.5, "voetgangers": 0.75, "verkeer": 0.75,
+			"mensen": {"winkelpubliek": 3, "oudere": 2, "toerist": 1.5, "kantoormens": 1, "zakenmens": 1, "werkman": 1, "wandelaar": 1},
+			"voertuigen": {"auto": 1.0, "fiets": 1.0, "brommer": 0.8, "vracht": 1.4, "bus": 1.0, "landbouw": 0.7, "klein": 1.2}},
+		{"uur": 12.5, "voetgangers": 0.9, "verkeer": 0.75,
+			"mensen": {"winkelpubliek": 4, "oudere": 2, "toerist": 3, "kantoormens": 2, "zakenmens": 1, "wandelaar": 1.5},
+			"voertuigen": {"auto": 1.0, "fiets": 1.1, "brommer": 0.9, "vracht": 1.2, "bus": 1.0, "landbouw": 0.6, "klein": 1.2}},
+		{"uur": 15.5, "voetgangers": 0.9, "verkeer": 0.85,
+			"mensen": {"winkelpubliek": 3, "scholier": 3, "oudere": 2, "toerist": 2, "wandelaar": 1},
+			"voertuigen": {"auto": 1.0, "fiets": 1.4, "brommer": 1.1, "vracht": 1.0, "bus": 1.1, "landbouw": 0.5, "klein": 1.0}},
+		{"uur": 17.0, "voetgangers": 1.0, "verkeer": 1.0,
+			"mensen": {"forens": 5, "kantoormens": 3, "zakenmens": 3, "winkelpubliek": 2, "scholier": 1},
+			"voertuigen": {"auto": 1.3, "fiets": 1.5, "brommer": 1.0, "vracht": 0.6, "bus": 1.3, "landbouw": 0.2, "klein": 0.8}},
+		{"uur": 19.0, "voetgangers": 0.7, "verkeer": 0.6,
+			"mensen": {"uitgaanspubliek": 4, "winkelpubliek": 2, "toerist": 2, "forens": 1, "wandelaar": 1},
+			"voertuigen": {"auto": 1.0, "fiets": 1.0, "brommer": 1.2, "vracht": 0.3, "bus": 0.8, "landbouw": 0.1, "klein": 0.6}},
+		{"uur": 22.0, "voetgangers": 0.55, "verkeer": 0.4,
+			"mensen": {"uitgaanspubliek": 6, "nachtbraker": 2, "toerist": 1},
+			"voertuigen": {"auto": 1.0, "fiets": 0.8, "brommer": 1.3, "vracht": 0.3, "bus": 0.5, "landbouw": 0.0, "klein": 0.5}}
+	],
+
+	"gebieden": {
+		"Centraal Station": {"voetgangers": 1.4, "verkeer": 1.1,
+			"mensen": {"forens": 2.0, "zakenmens": 2.0, "toerist": 1.6, "kantoormens": 1.3},
+			"voertuigen": {"fiets": 1.6, "bus": 1.6, "landbouw": 0.1, "vracht": 0.6}},
+		"De Resident": {"voetgangers": 1.0, "verkeer": 1.0,
+			"mensen": {"kantoormens": 2.5, "zakenmens": 2.5, "forens": 1.5, "oudere": 0.5},
+			"voertuigen": {"auto": 1.3, "landbouw": 0.1}},
+		"Beatrixkwartier": {"voetgangers": 0.9, "verkeer": 1.1,
+			"mensen": {"kantoormens": 2.5, "zakenmens": 2.5, "forens": 1.5, "oudere": 0.5},
+			"voertuigen": {"auto": 1.3, "landbouw": 0.1}},
+		"Grote Markt": {"voetgangers": 1.3, "verkeer": 0.8,
+			"mensen": {"uitgaanspubliek": 2.0, "winkelpubliek": 1.5, "toerist": 1.3},
+			"voertuigen": {"fiets": 1.6, "brommer": 1.2, "vracht": 0.5, "landbouw": 0.1}},
+		"Centrum": {"voetgangers": 1.25, "verkeer": 1.0,
+			"mensen": {"winkelpubliek": 1.5, "toerist": 1.3, "uitgaanspubliek": 1.3},
+			"voertuigen": {"fiets": 1.8, "brommer": 1.1, "vracht": 0.6, "landbouw": 0.2}},
+		"Lange Voorhout": {"voetgangers": 1.1, "verkeer": 0.9,
+			"mensen": {"toerist": 2.0, "oudere": 1.3, "zakenmens": 1.3},
+			"voertuigen": {"fiets": 1.3, "landbouw": 0.1}},
+		"Paleis Noordeinde": {"voetgangers": 1.1, "verkeer": 0.8,
+			"mensen": {"toerist": 2.5, "oudere": 1.2},
+			"voertuigen": {"fiets": 1.3, "landbouw": 0.1}},
+		"Malieveld": {"voetgangers": 0.8, "verkeer": 0.4,
+			"mensen": {"wandelaar": 3.0, "oudere": 1.5, "toerist": 1.2, "zakenmens": 0.4},
+			"voertuigen": {"fiets": 2.0, "auto": 0.5, "vracht": 0.2}},
+		"Koekamp": {"voetgangers": 0.8, "verkeer": 0.4,
+			"mensen": {"wandelaar": 3.0, "oudere": 1.5, "zakenmens": 0.4},
+			"voertuigen": {"fiets": 2.0, "auto": 0.5, "vracht": 0.2}},
+		"Bezuidenhout": {"voetgangers": 0.7, "verkeer": 0.7,
+			"mensen": {"oudere": 1.5, "scholier": 1.3, "zakenmens": 0.5},
+			"voertuigen": {"fiets": 1.2}},
+		"Bezuidenhout-Oost": {"voetgangers": 0.7, "verkeer": 0.7,
+			"mensen": {"oudere": 1.5, "scholier": 1.3, "zakenmens": 0.5},
+			"voertuigen": {"fiets": 1.2}},
+		"Prins Clauslaan": {"voetgangers": 0.6, "verkeer": 0.9,
+			"mensen": {"kantoormens": 1.5, "oudere": 1.2},
+			"voertuigen": {"auto": 1.3}},
+		"Schilderswijk": {"voetgangers": 0.9, "verkeer": 0.7,
+			"mensen": {"winkelpubliek": 1.5, "scholier": 1.4, "oudere": 1.2, "zakenmens": 0.3},
+			"voertuigen": {"fiets": 1.4, "brommer": 1.4, "klein": 1.3}},
+		"Laak": {"voetgangers": 0.75, "verkeer": 0.8,
+			"mensen": {"scholier": 1.5, "oudere": 1.2, "werkman": 1.2},
+			"voertuigen": {"brommer": 1.3, "vracht": 1.3}},
+		"Binckhorst": {"voetgangers": 0.5, "verkeer": 1.1,
+			"mensen": {"werkman": 3.5, "zakenmens": 0.8, "winkelpubliek": 0.4, "toerist": 0.3},
+			"voertuigen": {"vracht": 3.0, "landbouw": 1.0, "auto": 0.8, "fiets": 0.5}},
+		"A12": {"voetgangers": 0.3, "verkeer": 1.4,
+			"mensen": {"werkman": 1.5},
+			"voertuigen": {"auto": 2.0, "vracht": 1.6, "bus": 0.5, "fiets": 0.1, "brommer": 0.2, "landbouw": 0.0, "klein": 0.2}},
+		"Voorburg": {"voetgangers": 0.6, "verkeer": 0.7,
+			"mensen": {"oudere": 1.6, "winkelpubliek": 1.2, "zakenmens": 0.5},
+			"voertuigen": {"fiets": 1.3}}
+	},
+
+	"mensen": {
+		"forens": {
+			"jassen": ["#2E4A78", "#22242A", "#6A6E74", "#C8B48A", "#3E5E3A"],
+			"broeken": ["#2A3A5A", "#22242A", "#3E5A86", "#5A5E64"],
+			"schoenen": ["#1A1612", "#5A3A22", "#3A3A40", "#E8E6E0"],
+			"kapsels": {"kort": 4, "lang": 3, "kaal": 1, "pet": 0.5},
+			"rok": 0.25, "tempo": 1.12,
+			"dragen": {"rugzak": 2, "schoudertas": 2, "aktetas": 1, "": 3}
+		},
+		"kantoormens": {
+			"jassen": ["#22242A", "#6A6E74"],
+			"broeken": ["#22242A", "#2A3A5A", "#5A5E64"],
+			"schoenen": ["#1A1612", "#5A3A22"],
+			"kapsels": {"kort": 5, "lang": 3, "kaal": 1.5},
+			"rok": 0.35, "tempo": 1.05,
+			"dragen": {"aktetas": 3, "handtas": 2, "schoudertas": 1, "": 2}
+		},
+		"zakenmens": {
+			"pak": true,
+			"jassen": ["#22242A", "#2A3A5A", "#6A6E74"],
+			"broeken": ["#22242A", "#2A3A5A"],
+			"schoenen": ["#1A1612", "#5A3A22"],
+			"kapsels": {"kort": 6, "lang": 3, "kaal": 1},
+			"rok": 0.2, "tempo": 1.15,
+			"dragen": {"aktetas": 6, "rolkoffer": 1.5, "handtas": 1}
+		},
+		"scholier": {
+			"jassen": ["#8A2A2A", "#3E5E3A", "#2A7A8A", "#E0A030", "#5A3A6A", "#B85A78", "#22242A"],
+			"broeken": ["#3E5A86", "#22242A", "#5A5E64"],
+			"schoenen": ["#E8E6E0", "#E8E6E0", "#22242A", "#8A2A2A"],
+			"haarkleuren": ["#2A1E16", "#4A3020", "#7A5432", "#C8A060", "#E0C890", "#141210", "#9A3A1E"],
+			"kapsels": {"kort": 4, "lang": 4, "pet": 3},
+			"rok": 0.15, "tempo": 1.15,
+			"dragen": {"rugzak": 7, "schoudertas": 1, "": 1}
+		},
+		"winkelpubliek": {
+			"kapsels": {"kort": 4, "lang": 4, "kaal": 1, "pet": 1},
+			"rok": 0.4, "tempo": 0.95, "scootmobiel": 0.04, "rolstoel": 0.03,
+			"dragen": {"handtas": 3, "schoudertas": 2, "rugzak": 1, "": 3}
+		},
+		"oudere": {
+			"jassen": ["#C8B48A", "#7A4A2A", "#6A6E74", "#2E4A78", "#D8D2C4", "#3E5E3A"],
+			"broeken": ["#8A7A5E", "#5A5E64", "#4E3A2A", "#2A3A5A"],
+			"schoenen": ["#5A3A22", "#1A1612", "#3A3A40"],
+			"haarkleuren": ["#8A8680", "#D8D4CC", "#D8D4CC"],
+			"kapsels": {"kort": 3, "lang": 2, "kaal": 3, "pet": 1.5},
+			"rok": 0.45, "tempo": 0.82, "scootmobiel": 0.17, "rolstoel": 0.17,
+			"dragen": {"handtas": 3, "": 4}
+		},
+		"toerist": {
+			"jassen": ["#C8B48A", "#E0A030", "#2A7A8A", "#B85A78", "#D8D2C4"],
+			"broeken": ["#8A7A5E", "#3E5A86", "#5A5E64"],
+			"schoenen": ["#E8E6E0", "#5A3A22"],
+			"kapsels": {"kort": 3, "lang": 3, "pet": 4},
+			"rok": 0.2, "tempo": 0.85, "rolstoel": 0.02,
+			"dragen": {"rugzak": 4, "rolkoffer": 3, "schoudertas": 1, "": 1}
+		},
+		"wandelaar": {
+			"jassen": ["#3E5E3A", "#7A4A2A", "#2A7A8A", "#8A2A2A", "#C8B48A"],
+			"broeken": ["#3A4A3A", "#8A7A5E", "#4E3A2A", "#3E5A86"],
+			"schoenen": ["#5A3A22", "#3A3A40"],
+			"kapsels": {"kort": 3, "lang": 3, "kaal": 1, "pet": 3},
+			"rok": 0.05, "tempo": 0.9, "scootmobiel": 0.05, "rolstoel": 0.04,
+			"dragen": {"rugzak": 4, "": 3}
+		},
+		"werkman": {
+			"jassen": ["#E0A030", "#E0A030", "#2E4A78", "#6A6E74"],
+			"broeken": ["#2A3A5A", "#22242A", "#3A4A3A"],
+			"schoenen": ["#1A1612", "#5A3A22"],
+			"kapsels": {"kort": 4, "kaal": 2, "pet": 4},
+			"rok": 0.0, "tempo": 1.0,
+			"dragen": {"rugzak": 2, "": 5}
+		},
+		"uitgaanspubliek": {
+			"jassen": ["#22242A", "#5A3A6A", "#B85A78", "#8A2A2A", "#D8D2C4", "#2A7A8A"],
+			"broeken": ["#22242A", "#3E5A86", "#2A3A5A"],
+			"schoenen": ["#8A2A2A", "#22242A", "#E8E6E0", "#1A1612"],
+			"haarkleuren": ["#2A1E16", "#4A3020", "#7A5432", "#C8A060", "#E0C890", "#141210", "#9A3A1E"],
+			"kapsels": {"kort": 3, "lang": 5, "pet": 1},
+			"rok": 0.55, "tempo": 1.0,
+			"dragen": {"handtas": 3, "schoudertas": 1, "": 4}
+		},
+		"nachtbraker": {
+			"jassen": ["#22242A", "#6A6E74", "#3E5E3A", "#2A3A5A", "#5A3A6A"],
+			"broeken": ["#22242A", "#3E5A86", "#5A5E64"],
+			"schoenen": ["#E8E6E0", "#22242A", "#1A1612"],
+			"kapsels": {"kort": 3, "lang": 2, "pet": 4},
+			"rok": 0.15, "tempo": 0.92,
+			"dragen": {"rugzak": 1, "schoudertas": 1, "": 5}
+		}
+	}
+}

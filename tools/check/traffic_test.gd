@@ -23,9 +23,12 @@ func _init() -> void:
 	Common.watchdog(self, 900)
 	var seconds := Common.arg_float(0, 300.0)
 	var scene := Common.instantiate("res://scenes/stad.tscn")
-	for node_name in ["DetailNiveau", "Rook", "Grassprieten"]:
+	# Verhaal too: its prologue holds the game (the story box pauses the tree)
+	for node_name in ["DetailNiveau", "Rook", "Grassprieten", "Verhaal"]:
 		if scene.has_node(node_name):
 			scene.get_node(node_name).free()
+	# the whole network, all kept (not the set round the player): every road is tried
+	scene.get_node("Verkeer").whole_town = true
 	Engine.time_scale = TIME_SCALE
 	Engine.physics_ticks_per_second = 60 * TIME_SCALE
 	Engine.max_physics_steps_per_frame = 4 * TIME_SCALE

@@ -13,7 +13,7 @@ dest_files=["res://.godot/imported/naam_cafe_1.gox-756c1e68340a136713bacffe091cf
 
 [params]
 
-voxel_size=0.125
+voxel_size=0.0893
 ambient_occlusion=true
 color_merge=14
 lod_color_tolerance=24

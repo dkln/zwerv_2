@@ -19,6 +19,7 @@ extends "res://scripts/ui/menu/menu_map.gd"
 ## The living 3D map behind it (columns, tram, helicopter, moon) is in its base,
 ## scripts/ui/menu/menu_map.gd; this file is the menu itself and its panels.
 
+const SwipeTransition = preload("res://scripts/ui/swipe_transition.gd")
 const UiSounds = preload("res://scripts/ui/ui_sounds.gd")
 const GraphicsSettings = preload("res://scripts/ui/graphics_settings.gd")
 
@@ -312,8 +313,7 @@ func _free_map() -> void:
 
 
 ## The menu goes: the items fade out one by one, the title slides off to the left, and the
-## picture goes into a wave (WarpTransition, ending in ink, the colour of the town's loading
-## screen, which comes out of it). Awaited before the town is opened.
+## swipe (SwipeTransition) sweeps over it to the character creation. Awaited before that opens.
 const EXIT_SECONDS := 0.5
 
 
@@ -329,7 +329,8 @@ func _play_exit() -> void:
 	exit.tween_property(_title_column, "modulate:a", 0.0, EXIT_SECONDS)
 	for footer_label: CanvasItem in _footer:
 		exit.tween_property(footer_label, "modulate:a", 0.0, EXIT_SECONDS * 0.6)
-	await WarpTransition.leave(get_tree(), WARP_SECONDS).covered
+	# to the character creation: the swipe (as going into a building), it sweeps on over it
+	await SwipeTransition.swipe(get_tree()).covered
 
 
 static func _caret(on: bool) -> String:

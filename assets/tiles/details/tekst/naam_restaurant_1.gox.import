@@ -13,7 +13,7 @@ dest_files=["res://.godot/imported/naam_restaurant_1.gox-6b947e0ee249fa7b0335297
 
 [params]
 
-voxel_size=0.125
+voxel_size=0.0815
 ambient_occlusion=true
 color_merge=14
 lod_color_tolerance=24

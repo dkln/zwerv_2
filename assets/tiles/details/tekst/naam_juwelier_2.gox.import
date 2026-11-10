@@ -13,7 +13,7 @@ dest_files=["res://.godot/imported/naam_juwelier_2.gox-7c1eb0599a7894ebc7e3cce2c
 
 [params]
 
-voxel_size=0.125
+voxel_size=0.0893
 ambient_occlusion=true
 color_merge=14
 lod_color_tolerance=24

@@ -285,15 +285,15 @@ func _plein() -> void:
 	for c in [Vector2i(53, 38), Vector2i(56, 38), Vector2i(53, 46), Vector2i(56, 46)]:
 		_g(c.x, c.y, "natuur/gras")
 	for z in range(34, 50, 3):
-		Pr(57 * 4 + 2.0, z * 4 + 2.0, ["terras/terras_set_parasol_groen", "terras/terras_set_parasol", "terras/tafel_vierkant_stoelen"][z % 3], "W")
+		Pr(57 * 4 + 2.0, z * 4 + 2.0, ["terras/terras_set_parasol_groen", "terras/terras_set", "terras/tafel_vierkant_stoelen"][z % 3], "W")
 		Pr(58 * 4 + 2.0, z * 4 + 1.0, "terras/bloembak_terras", "W")
 	# the terraces reach well out onto the square, round the statue too
 	for z in range(33, 51, 2):
 		if z >= 40 and z <= 43:
 			continue
-		Pr(56 * 4 + 1.0, z * 4 + 2.0, ["terras/terras_set_parasol", "terras/terras_set_parasol_groen"][(z / 2) % 2], "W")
+		Pr(56 * 4 + 1.0, z * 4 + 2.0, ["terras/terras_set", "terras/tafel_rond_stoelen", "terras/terras_set_parasol", "terras/terras_set"][(z / 2) % 4], "W")
 		if z % 4 == 1:
-			Pr(54 * 4 + 2.0, z * 4 + 2.0, ["terras/terras_set_parasol_groen", "terras/terras_set_parasol"][(z / 4) % 2], "W")
+			Pr(54 * 4 + 2.0, z * 4 + 2.0, ["terras/terras_set", "terras/tafel_vierkant_stoelen"][(z / 4) % 2], "W")
 	for z in [35, 44, 48]:
 		Pr(57 * 4 + 3.0, z * 4.0, "terras/stoepbord", "W")
 	for x in [52, 54, 56]:
@@ -340,16 +340,16 @@ func _grote_markt() -> void:
 			continue
 		D(x * 4 + 2.0, 71 * 4.0, 2.5, ["zonwering/markies", "luifels/luifel_rood", "zonwering/knikarmscherm_streep", "luifels/luifel_groen"][x % 4], "N")
 		if x % 2 == 0:
-			Pr(x * 4 + 2.0, 70 * 4 + 1.0, ["terras/terras_set_parasol", "terras/terras_set_parasol_groen", "terras/tafel_rond_stoelen"][(x / 2) % 3], "N")
+			Pr(x * 4 + 2.0, 70 * 4 + 1.0, ["terras/terras_set", "terras/tafel_rond_stoelen", "terras/terras_set_parasol"][(x / 2) % 3], "N")
 			Pr(x * 4 + 2.0, 69 * 4 + 1.0, "terras/terras_scherm", "N")
 	for z in range(62, 70, 2):
-		Pr(10 * 4 + 2.0, z * 4 + 2.0, ["terras/statafel", "terras/parasol_groot", "terras/bistrostoel"][(z / 2) % 3], "E")
+		Pr(10 * 4 + 2.0, z * 4 + 2.0, ["terras/statafel", "terras/terras_set", "terras/bistrostoel"][(z / 2) % 3], "E")
 	# terraces in front of the cafes on the west and the east side
 	for z in range(61, 69, 2):
-		Pr(11 * 4 + 2.0, z * 4 + 2.0, ["terras/terras_set_parasol", "terras/terras_set_parasol_groen", "terras/tafel_vierkant_stoelen"][(z / 2) % 3], "E")
+		Pr(11 * 4 + 2.0, z * 4 + 2.0, ["terras/terras_set", "terras/tafel_vierkant_stoelen", "terras/terras_set_parasol_groen"][(z / 2) % 3], "E")
 		Pr(12 * 4 + 2.0, z * 4 + 2.0, "terras/terras_set", "E")
 	for z in [63, 65, 68]:
-		Pr(20 * 4 + 2.0, z * 4 + 2.0, ["terras/terras_set_parasol_groen", "terras/tafel_rond_stoelen", "terras/terras_set_parasol"][z % 3], "W")
+		Pr(20 * 4 + 2.0, z * 4 + 2.0, ["terras/terras_set", "terras/tafel_rond_stoelen", "terras/terras_set_parasol"][z % 3], "W")
 		Pr(19 * 4 + 2.0, z * 4 + 2.0, "terras/terras_set", "W")
 	Pr(19 * 4.0, 61 * 4 + 2.0, "straat/kiosk")
 	Pr(13 * 4.0, 63 * 4.0, "verlichting/lantaarn_gietijzer")

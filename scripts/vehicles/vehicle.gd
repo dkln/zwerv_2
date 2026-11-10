@@ -412,6 +412,17 @@ const DODGE_SPEED := 3.0
 const HORN_WITHIN := 2.5
 const HORN_STANDING := 3.0
 const HORN_PAUSE := 5.0
+## Honking at the other traffic: after this many seconds held up by another vehicle, and on a
+## hard brake for one (a near crash: braking this hard, at this speed or more).
+const HONK_AT_VEHICLE_AFTER := 3.0
+const NEAR_CRASH_BRAKING := 1.2
+const NEAR_CRASH_SPEED := 4.0
+## Held up longer (the same one not getting out of the way): from the HOLD_HORN_FROM-th honk
+## on it holds its horn (the long horn of its kind, LONG_HORNS); moving on again
+## (INSISTENCE_RESET_SPEED) starts it over.
+const HOLD_HORN_FROM := 3
+const INSISTENCE_RESET_SPEED := 2.5
+const LONG_HORNS := {"auto_toeter": "auto_toeter_lang", "bus_toeter": "bus_toeter_lang", "brommer_toeter": "brommer_toeter_lang"}
 const IMPATIENT_AFTER := 12.0
 const IMPATIENT_SPEED := 2.5
 const IMPATIENT_CALM := 2.0
@@ -457,6 +468,7 @@ var _people_countdown := 0           # physics steps until the next look at the 
 var _people_limit := INF             # speed (m/s) for the people on foot in its way
 var _dodge := 0.0                    # metres it swerves right (+) or left (-) round someone
 var _horn_clock := 0.0               # seconds until it may sound its horn again
+var _horn_insistence := 0            # honks for the hold-up of now (longer from HOLD_HORN_FROM)
 var _standing_for_people := 0.0      # seconds it has stood still for someone in its way
 var _impatience := 0.0               # seconds stood for someone in its path (honks or not)
 var _pushing_through := -1.0         # seconds it has been pushing through; < 0 = not
@@ -643,6 +655,12 @@ func _physics_process(delta: float) -> void:
 	# the acceleration that brings it to the target speed in about SPEED_SETTLE seconds,
 	# reached gradually; never past the target speed
 	var wanted := clampf((target - speed) / SPEED_SETTLE, -braking * 1.5, acceleration)
+	# a near crash: braking hard for the vehicle ahead, it honks at it
+	if wanted <= -braking * NEAR_CRASH_BRAKING and speed > NEAR_CRASH_SPEED and _blocked_by != null \
+			and _horn_clock <= 0.0 and not unseen and not self is RailVehicle:
+		_sound_horn("waarschuwen")
+	if speed > INSISTENCE_RESET_SPEED:
+		_horn_insistence = 0
 	var rate := brake_rate if wanted < acceleration_now else throttle_rate
 	acceleration_now = move_toward(acceleration_now, wanted, rate * delta)
 	if speed > target + BRAKE_SLACK:
@@ -672,6 +690,36 @@ func _physics_process(delta: float) -> void:
 
 func _exit_tree() -> void:
 	all_vehicles.erase(self)
+
+
+## Back in the tree after a rest (Traffic takes vehicles out and puts them back): among the
+## vehicles again (the first time _ready does that).
+func _enter_tree() -> void:
+	if is_node_ready() and not all_vehicles.has(self):
+		all_vehicles.append(self)
+
+
+## Starts afresh on the road near `cell`, heading `heading` (Traffic, putting it down round the
+## player), standing still; it looks at once whether it is seen.
+func put_down(cell: Vector2i, heading: Vector2i) -> void:
+	_restart_at(cell, heading)
+	_saved_delta = 0.0
+	_sight_countdown = 0
+	_blocked_by = null
+	_traffic_blocker = null
+
+
+## Lets go of `other` (taken out of the town by Traffic): it no longer waits or makes way for it.
+func forget(other: Vehicle) -> void:
+	if _blocked_by == other:
+		_blocked_by = null
+	if _traffic_blocker == other:
+		_traffic_blocker = null
+	if _yielding_to == other:
+		_yielding_to = null
+		yielding = false
+	if _not_for == other:
+		_not_for = null
 
 
 ## Draws the body between the last two physics steps (the frame rate differs from the
@@ -836,15 +884,21 @@ func _beside_route(spot: Vector2, front: float, reach: float, beside: float) -> 
 	return Vector2(INF, 0.0)
 
 
-## Sounds its horn (or rings its bell) where it is; the driver may shout something too
+## Sounds its horn (or rings its bell) where it is, held down longer the more it has to
+## (LONG_HORNS); the driver may shout something too
 ## (DriverShout; `mood`: "wachten" standing still for someone in its way, "waarschuwen"
 ## driving at them, "doordrukken" pushing through).
 func _sound_horn(mood := "waarschuwen") -> void:
 	_horn_clock = HORN_PAUSE
 	_standing_for_people = 0.0
+	_horn_insistence += 1
+	var horn := _horn()
+	# held up long: it holds its horn down
+	if _horn_insistence >= HOLD_HORN_FROM and LONG_HORNS.has(horn):
+		horn = LONG_HORNS[horn]
 	var sound := get_node_or_null("/root/RuimtelijkGeluid")
 	if sound and sound.has_method("play_signal"):
-		sound.play_signal(global_position, _horn(), 9.0)
+		sound.play_signal(global_position, horn, 9.0)
 	if not unseen:
 		DriverShout.shout(self, vehicle_kind, mood, _outer_box.end.y + 0.4)
 
@@ -2198,6 +2252,9 @@ func _watch_for_gridlock(delta: float) -> void:
 		_blocked_clock = 0.0
 		return
 	_blocked_clock += delta
+	# held up by another vehicle: it honks at it (again every HORN_PAUSE, ever longer)
+	if _blocked_clock > HONK_AT_VEHICLE_AFTER and _horn_clock <= 0.0 and not unseen and not self is RailVehicle:
+		_sound_horn("wachten")
 	var patience := RING_PATIENCE + get_instance_id() % RING_PATIENCE_SPREAD
 	# a ring with a siren in it: not the siren (it may not wait), the other gets out of the way
 	if _blocked_clock > SIREN_RING_PATIENCE and not has_priority() and _waits_in_a_ring_with_siren():

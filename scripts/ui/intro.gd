@@ -62,21 +62,21 @@ const STORY := [
 	"Hij pakt zijn winkelwagen, trekt zijn jas recht\nen duwt de regen in.",
 	"Zo begint zijn zwerftocht door Den Haag.",
 ]
-## The moments of the intro (seconds into zwervr_intro.ogg: 128 BPM, a bar is 1.875 s, 64 bars,
-## 120 s): the swell from 0, the chase at bar 9
-## (15.0), the climb at bar 25 (45.0), the chorus at bar 33 (60.0) and its second half at bar 41
-## (75.0), the duel at bar 49 (90.0), the outro at bar 57 (105.0) and the end at 120.0, where
+## The moments of the intro (seconds into zwervr_intro.ogg: 120 BPM, a bar is 2 s, 60 bars,
+## 120 s; tools/megadrive/zwervr_intro.py): the intro from 0, the exploration theme at bar 9
+## (16.0), the battle climax at bar 25 (48.0), the duel at bar 41 (80.0), the system crash
+## and the outro at bar 53 (104.0) and the end at 120.0, where
 ## the menu takes over): the opening line fading in
 ## and out, the logo, the start of the crawl, the end of the crawl and of the intro.
 const LINE_IN_AT := 0.4
 const LINE_OUT_AT := 3.6    # gone at 4.8, before the logo fades in
 ## The logo and the stars fade in from LOGO_FADE_IN_AT, stand there whole from LOGO_AT, and
-## the logo stands big (LOGO_HOLD) until the chase of the music (15.0): there it starts
+## the logo stands big (LOGO_HOLD) until the exploration theme of the music (16.0): there it starts
 ## to go away and the story comes in.
 const LOGO_FADE_IN_AT := 5.0
 const LINE_FADE := 1.2
 const LOGO_AT := 6.5
-const CRAWL_AT := 15.0
+const CRAWL_AT := 16.0
 ## The story rolls to END_AT (where the music fades): the last paragraph does not roll off
 ## the top but comes to rest far off at CRAWL_REST (share of the picture's height from the
 ## top) and the story fades out over the last CRAWL_FADE seconds; no travel wasted, so it
@@ -109,7 +109,7 @@ const PARAGRAPH_GAP := 26
 ## zwerver on the climb, the handhavers on the second half of the chorus, the way out into
 ## the rain on the outro (the last sentence then comes to rest as the music dies).
 ## Between them the story rolls evenly, at much the same pace throughout.
-const CRAWL_CUES := {5: 45.0, 8: 75.0, 10: 105.0}
+const CRAWL_CUES := {5: 48.0, 8: 80.0, 10: 104.0}
 ## The crawl picture: the size the text is drawn in (pixels), the
 ## width of its far top edge on the screen (share of the bottom edge) and how much of the
 ## screen it takes from the bottom up.

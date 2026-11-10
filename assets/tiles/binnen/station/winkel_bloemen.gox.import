@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://b4onsddg2l8mp"
+path="res://.godot/imported/winkel_bloemen.gox-37d402984f7598153cbbb9629917ead1.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/binnen/station/winkel_bloemen.gox"
+dest_files=["res://.godot/imported/winkel_bloemen.gox-37d402984f7598153cbbb9629917ead1.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(0, 0, 0)

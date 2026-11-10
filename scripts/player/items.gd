@@ -24,6 +24,12 @@ const ITEMS := {
 	"frikandel": {"name": "Koude frikandel", "kind": "eten", "rarity": "bijzonder", "icon": "frikandel",
 		"text": "Uit de bak achter de snackbar. Nog warm van binnen, bijna.",
 		"effect": {"honger": 40, "gezondheid": -2}, "action": "ETEN"},
+	"kroket": {"name": "Warme kroket", "kind": "eten", "rarity": "bijzonder", "icon": "kroket",
+		"text": "Knapperig, gloeiend heet van binnen. Uit de muur of over de toonbank: een Haagse kroket.",
+		"effect": {"honger": 40, "overprikkeldheid": -5}, "action": "ETEN"},
+	"patat": {"name": "Patatje met", "kind": "eten", "rarity": "bijzonder", "icon": "patat",
+		"text": "Een puntzak patat met mayonaise. Vet, zout en warm: precies goed.",
+		"effect": {"honger": 50, "gezondheid": -1}, "action": "ETEN"},
 	"appel": {"name": "Gekneusde appel", "kind": "eten", "rarity": "gewoon", "icon": "appel",
 		"text": "Van de markt, onder de kraam gerold.",
 		"effect": {"honger": 12, "gezondheid": 3}, "action": "ETEN"},
@@ -60,6 +66,9 @@ const ITEMS := {
 		"text": "Van de rodeo in het Zuiderpark. Ook een kussen."},
 	"foto": {"name": "Oude foto", "kind": "sleutel", "rarity": "legendarisch", "icon": "foto",
 		"text": "Een vrouw, een kotter en de haven van Scheveningen."},
+	# from the machines in Den Haag Centraal (scripts/world/station.gd): opens the OV gates
+	"ov_chipkaart": {"name": "OV-chipkaart", "kind": "sleutel", "rarity": "bijzonder", "icon": "ov_chipkaart",
+		"text": "Anoniem, blauw, € 7,50 uit de automaat. Piep bij binnenkomst, piep-piep bij vertrek."},
 }
 
 const START_ITEMS := {

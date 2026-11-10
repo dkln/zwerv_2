@@ -163,6 +163,7 @@ func _koekamp() -> void:
 	_trees([Vector2i(x0 + 1, 47), Vector2i(x0 + 5, 51)], ["bomen/treurwilg"])
 	for z in [44, 53]:
 		Pr((x0 + 3) * 4 + 2.0, z * 4 + 2.0, "straat/bank_hout", "N")
+	_deer_camp_snack_bar()
 	places["koekamp"] = Vector2((x0 + 3) * 4.0, 38 * 4.0)
 	places["bezuidenhoutseweg"] = Vector2((x0 + 3) * 4.0, 58 * 4.0 + 4.0)
 
@@ -308,6 +309,21 @@ func _centraal() -> void:
 	Pr(77 * 4 + 2.0, 63 * 4 + 2.0, "markt/frietkar", "E")
 	Pr(77 * 4 + 2.0, 65 * 4 + 2.0, "markt/loempiakar", "E")
 	places["centraal"] = Vector2(83 * 4.0, 64 * 4.0)
+
+
+## A Jan Blammage in the Koekamp, by the deer camp, close to Centraal Station: a white pavilion
+## of two cells and one storey on the grass just south of the gravel path (x 92..93, z 44),
+## its front to the path (N): the snack bar (you walk into it: scripts/world/interiors.gd)
+## and a window, flat roofs, its name sign and the big fries cone on the path before it.
+func _deer_camp_snack_bar() -> void:
+	var z := 44
+	B(92, 0, z, "modern_wit/modern_wit_bg_snackbar", "N")
+	B(93, 0, z, "modern_wit/modern_wit_bg_raam", "N")
+	for x in [92, 93]:
+		B(x, 1, z, "modern_wit/modern_wit_dak_plat_los", "N")
+	D(92 * 4 + 2.0, z * 4.0, NAME_SIGN_HEIGHT, JAN_BLAMMAGE_SIGN, "N")
+	Pr(92 * 4 + 0.5, z * 4 - 1.5, "terras/friet_puntzak", "N")
+	places["snackbar_hertenkamp"] = Vector2(92 * 4.0 + 2.0, z * 4.0 + 2.0)
 
 
 ## Storeys of the glass hall of Centraal Station (3 m each).

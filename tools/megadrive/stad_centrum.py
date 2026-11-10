@@ -1,131 +1,85 @@
-"""'Stad centrum': the city loop of the old town (Centrum, Grote Markt, Paleis Noordeinde,
-Lange Voorhout): funky and lively, shopping streets at night.
+"""'Stad centrum': the city loop of the old town (Centrum and the neighbourhoods without a loop
+of their own): lively 16-bit synthwave, the shopping streets at night.
 
-One of the five neighbourhood loops on the shared plan (stad_plan.py: 104 BPM, F minor, 40 bars
-= 92 s, the same chords, so the HUD can crossfade between them). Club house with a light
-new-jack-swing shuffle, FM slap bass, FM electric piano, brass and strings, the motif on the FM
-lead, PSG arpeggios, echo and harmony line, PCM drums and PSG-noise hats.
-
-    A      groove: bass, electric piano, PSG arpeggio, snare
-    A'     + the lead's theme, built on the motif
-    B      brass pads, the second theme (motif first), PSG harmony line
-    break  no kick, FM strings, the motif softly twice, a snare roll to build up
-    C      peak: riff theme with a PSG echo, brass stabs, open hats
-    tag    the A groove, thinner, the motif once more, tom fill into the top
-
-House style: style.py, docs/MUZIEK.md.
-Render: tools/megadrive/render.sh stad_centrum  (writes assets/audio/muziek/stad_centrum_loop.ogg)
+On the shared plan (stad_plan.py: in synthwave_rpg 120 BPM, D minor, 48 bars = 96 s).
+    A      groove: solid bass in sixteenths with octave jumps, the PSG arpeggio, brass stabs on
+           2 and 4, tight kick and gated snare
+    A2     + the city theme on the synth lead with the PSG echo
+    B      power chords, the climbing theme
+    break  pad, the motif softly twice, a roll
+    C      the peak: the theme on the lead, the twin guitars an octave down, brass, claps
+    D      the lyrical theme on the guitar with its tape delay, pads
+    tag    the groove, the motif once more, a tom fill to the top
+Render: tools/megadrive/render.sh stad_centrum
 """
 import stad_plan
 import style
-from stad_plan import A_CHORDS, B_CHORDS, BARS, BPM, BREAK_CHORDS, C_CHORDS, TAG_CHORDS
-from style import Song
+from stad_plan import THEMES, bars_of, section
 
-A_THEME = """
-    M -:2 Eb5:1 F5:1 Ab5:2 G5:2
-    Bb5:6 Ab5:2 Gb5:2 F5:2 Db5:4
-    M Db6:3 C6:1 Bb5:2 Ab5:2
-    F5:10 -:2 C5:1 Eb5:1 F5:2
-    M! -:2 F5:1 Ab5:1 C6:4
-    Db6:4 Bb5:2 Gb5:2 Ab5:4 Bb5:4
-    M C6:2 Eb6:2 C6:2 Ab5:2
-    M -:2 E5:1 G5:1 Bb5:4
-"""
-B_THEME = """
-    M F5:4 Db5:2 C5:2
-    Eb5:6 F5:2 C5:8
-    Bb5:8 F5:4 Gb5:2 Ab5:2
-    F5:12 -:4
-    Ab5:4 C6:4 F6:4 Eb6:2 Db6:2
-    Eb6:6 Bb5:2 G5:4 Bb5:4
-    C6:4 F5:4 G5:4 Bb5:4
-    G5:2 E5:2 C5:2 Bb4:2 E5:4 G5:4
-"""
-BREAK_THEME = "M -:8 -:16 M -:8 -:16"
-C_THEME = """
-    F5:1 Bb5:1 Db6:2 Bb5:1 Db6:1 Eb6:2 Db6:1 Bb5:1 Gb5:2 F5:2 Gb5:2
-    Ab5:1 C6:1 Eb6:2 C6:1 Eb6:1 F6:2 Eb6:1 C6:1 Ab5:2 C6:4
-    M C6:4 Bb5:2 Ab5:2
-    F5:10 -:2 C5:1 Eb5:1 F5:2
-    M Db6:2 Bb5:2 Db6:2 F6:2
-    Eb6:1 F6:1 Eb6:2 C6:1 Ab5:1 Eb6:2 C6:2 Ab5:2 C6:4
-    M Db6:2 C6:2 Bb5:2 G5:2
-    M E6:6 -:2
-"""
-TAG_THEME = "M -:8 -:16 -:16 -:16"
+PIECE = style.piece("stad_centrum")
+
+
+def groove(song, bar, offset, bar_chord, last, fill="snare", hats="sixteenths", clap=False):
+    style.bass_bar(song, bar, bar_chord, "solid_turn" if offset % 4 == 3 else "solid")
+    style.arpeggio(song, bar, bar_chord, "up", 0.55)
+    style.brass_stabs(song, bar, bar_chord, velocity=0.8)
+    style.drum_bar(song, bar, kick="four", hats=hats, clap=clap, fill=fill if last else None)
 
 
 def main() -> None:
-    song = Song("stad_centrum_loop.ogg", bpm=BPM, bars=BARS, swing=0.14)
+    song = stad_plan.new_song("stad_centrum_loop.ogg", "stad_centrum")
+    first_bar, section_chords = section("A")
+    for bar, offset, bar_chord, last in bars_of(first_bar, section_chords):
+        groove(song, bar, offset, bar_chord, last)
+    style.crash(song, first_bar)
 
-    # A: groove only
-    for offset, chord in enumerate(A_CHORDS):
-        bar = offset
-        style.bass_bar(song, bar, chord, "funk_turn" if offset % 2 else "funk")
-        style.piano_bar(song, bar, chord, "answer" if offset % 2 else "push")
-        style.psg_arpeggio(song, bar, chord, "up", 0.75)
-        style.drum_bar(song, bar, fill="snare" if offset == 7 else None)
-    style.crash(song, 0)
+    first_bar, section_chords = section("A2")
+    style.lead(song, first_bar, THEMES["A2"], section_chords, echo=True)
+    for bar, offset, bar_chord, last in bars_of(first_bar, section_chords):
+        groove(song, bar, offset, bar_chord, last, clap=True)
 
-    # A': the theme
-    style.lead(song, 8, A_THEME, A_CHORDS)
-    for offset, chord in enumerate(A_CHORDS):
-        bar = 8 + offset
-        style.bass_bar(song, bar, chord, "funk_turn" if offset % 2 else "funk")
-        style.piano_bar(song, bar, chord, "answer" if offset % 2 else "push")
-        style.psg_arpeggio(song, bar, chord, "up_octave", 0.5)
-        style.drum_bar(song, bar, clap=True, fill="snare" if offset == 7 else None)
-        if offset % 4 == 3:
-            song.pcm.add(song.at(bar, 14), style.KICK, 0.55)
-    style.crash(song, 8)
+    first_bar, section_chords = section("B")
+    style.lead(song, first_bar, THEMES["B"], section_chords, slides=True)
+    for bar, offset, bar_chord, last in bars_of(first_bar, section_chords):
+        style.bass_bar(song, bar, bar_chord, "solid")
+        style.power_chords(song, bar, bar_chord, "push", 0.75)
+        style.arpeggio(song, bar, bar_chord, "updown", 0.4, octave=1, every=2, track=song.psg_three)
+        style.drum_bar(song, bar, kick="four", clap=True, hats="open", fill="drop" if last else None)
+    style.crash(song, first_bar)
 
-    # B: brass pads, second theme with a harmony line
-    style.lead(song, 16, B_THEME, B_CHORDS, harmony=True, slides=True)
-    for offset, chord in enumerate(B_CHORDS):
-        bar = 16 + offset
-        style.bass_bar(song, bar, chord, "lyrical")
-        if offset in (0, 2):
-            style.brass_pad(song, bar, chord, bars=2)
-        elif offset >= 4:
-            style.brass_pad(song, bar, chord, bars=1)
-        style.drum_bar(song, bar, snare="none", clap=True, hats="eighths", ghosts=False,
-                       fill="drop" if offset == 7 else None)
-
-    # break: strings, long bass, twinkling PSG, the motif softly, a roll into C
-    style.lead(song, 24, BREAK_THEME, BREAK_CHORDS, velocity=0.7)
-    for offset, chord in enumerate(BREAK_CHORDS):
-        bar = 24 + offset
-        style.bass_bar(song, bar, chord, "hold")
-        if offset in (0, 2, 3):
-            style.strings_pad(song, bar, chord, bars=2 if offset == 0 else 1)
-        style.piano_bar(song, bar, chord, "sparse")
-        style.psg_arpeggio(song, bar, chord, "twinkle", 0.45)
-        if offset == 2:
-            style.drum_bar(song, bar, kick="none", snare="none", hats="eighths", hat_volume=0.5, ghosts=False)
-        if offset == 1:
-            song.pcm.add(song.at(bar, 12), style.CLAP, 0.5)
-        if offset == 3:
+    first_bar, section_chords = section("break")
+    style.lead(song, first_bar, THEMES["break"], section_chords, velocity=0.7)
+    for bar, offset, bar_chord, last in bars_of(first_bar, section_chords):
+        style.pad(song, bar, bar_chord)
+        style.bass_bar(song, bar, bar_chord, "hold")
+        style.arpeggio(song, bar, bar_chord, "twinkle", 0.4)
+        if last:
             style.drum_bar(song, bar, kick="none", snare="none", hats="eighths", hat_volume=0.6, fill="roll")
 
-    # C: the peak
-    style.lead(song, 28, C_THEME, C_CHORDS, echo=True)
-    for offset, chord in enumerate(C_CHORDS):
-        bar = 28 + offset
-        style.bass_bar(song, bar, chord, "house")
-        style.brass_stabs(song, bar, chord, [(-2, 2), (0, 1), (3, 1), (6, 2)] if offset % 2 == 0 else [(10, 1), (12, 2)])
-        style.psg_arpeggio(song, bar, chord, "updown", 0.75)
-        style.drum_bar(song, bar, kick="push", clap=True, hats="open", fill="snare" if offset == 7 else None)
-    style.crash(song, 28)
+    first_bar, section_chords = section("C")
+    style.lead(song, first_bar, THEMES["C"], section_chords, echo=True)
+    if PIECE["guitar"]:
+        style.guitar(song, first_bar, THEMES["C"], section_chords, velocity=0.65, twin=True, octave=-1)
+    for bar, offset, bar_chord, last in bars_of(first_bar, section_chords):
+        style.bass_bar(song, bar, bar_chord, "solid_turn" if offset % 2 else "solid")
+        style.brass_stabs(song, bar, bar_chord, [(-2, 2), (4, 1), (12, 1)] if offset % 2 == 0 else [(4, 1), (10, 1), (12, 2)])
+        style.arpeggio(song, bar, bar_chord, "rolling", 0.45, octave=1, track=song.psg_three)
+        style.drum_bar(song, bar, kick="push", clap=True, hats="open", fill="snare" if last else None)
+    style.crash(song, first_bar)
 
-    # tag: back to the groove, tom fill into the top
-    style.lead(song, 36, TAG_THEME, TAG_CHORDS, velocity=0.85)
-    for offset, chord in enumerate(TAG_CHORDS):
-        bar = 36 + offset
-        style.bass_bar(song, bar, chord, "funk_turn" if offset % 2 else "funk")
-        style.piano_bar(song, bar, chord, "answer" if offset % 2 else "push")
-        style.psg_arpeggio(song, bar, chord, "up", 0.75, every=2)
-        style.drum_bar(song, bar, fill="tom" if offset == 3 else None)
+    first_bar, section_chords = section("D")
+    style.guitar(song, first_bar, THEMES["D"], section_chords, velocity=0.75, echo=True)
+    for bar, offset, bar_chord, last in bars_of(first_bar, section_chords):
+        style.pad(song, bar, bar_chord, velocity=0.7)
+        style.bass_bar(song, bar, bar_chord, "lyrical")
+        style.arpeggio(song, bar, bar_chord, "up", 0.35, every=2)
+        style.drum_bar(song, bar, kick="rock", hats="eighths", fill="snare" if last else None)
+    style.crash(song, first_bar, volume=0.7)
 
+    first_bar, section_chords = section("tag")
+    style.lead(song, first_bar, THEMES["tag"], section_chords, velocity=0.85)
+    for bar, offset, bar_chord, last in bars_of(first_bar, section_chords):
+        groove(song, bar, offset, bar_chord, last, fill="tom")
     stad_plan.finish(song)
 
 

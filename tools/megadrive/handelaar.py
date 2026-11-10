@@ -1,58 +1,44 @@
-"""'Handelaar': the loop at a merchant. Laid-back new jack swing, only synths, a bit of a smirk.
+"""'Handelaar': the loop inside a shop (the snack bars: scripts/world/interiors.gd). A laid-back
+variant of the style: the same tempo as the city loops, so it can flow over smoothly.
 
-House style (style.py): heavy swing, broken kick, FM slap bass, electric piano carrying the
-chords, a PSG counter-line, the motif on the FM lead in a relaxed register.
-
-128 BPM, F minor, 16 bars = 30 s, loops seamlessly.
-
-    bars  1-8   Fm9 Gbmaj7 Bbm9 Ab6 twice: piano, bass, the motif in bars 1, 3, 5 and 7
-    bars  9-16  Gbmaj7 Ab6 Fm9 Fm9 / Gbmaj7 Ab6 Bbm9 C7: lead answers, PSG harmony, a snare fill home
-
+Style profile: MERCHANT_CHORDS, TEMPOS["handelaar"]; in synthwave_rpg 120 BPM, D minor,
+16 bars = 32 s, a light swing. The slap bass, plucked chords on the off-beats, soft brass
+stabs, a broken beat with claps, a friendly tune on the chiptune lead; the second time the
+synth lead takes it with the PSG echo.
 Render: tools/megadrive/render.sh handelaar  (writes assets/audio/muziek/handelaar_loop.ogg)
 """
 import style
-from style import Song, chords
+from style import Song
 
-A_CHORDS = chords(["F m9", "Gb maj7", "Bb m9", "Ab 6", "F m9", "Gb maj7", "Bb m9", "Ab 6"])
-B_CHORDS = chords(["Gb maj7", "Ab 6", "F m9", "F m9", "Gb maj7", "Ab 6", "Bb m9", "C 7"])
-
-A_THEME = """
-    M -:2 Ab5:1 G5:1 F5:4
-    -:4 Db6:2 Bb5:2 F5:8
-    M -:4 Db6:2 C6:2
-    Ab5:8 -:8
-    M -:2 C6:1 Bb5:1 Ab5:4
-    -:4 Bb5:2 Db6:2 F6:8
-    M! -:8
-    -:8 Eb6:2 C6:2 Ab5:4
-"""
-B_THEME = """
-    Bb5:6 Ab5:2 F5:4 Gb5:4
-    Ab5:6 C6:2 Eb6:8
+PROFILE = style.PROFILE
+SHOP_TUNE = """
+    M -:4 ^5:4
+    ^6:4 ^5:2 ^4:2 ^3:8
+    M ^1':4 ^7:4
+    ^7:6 ^5:2 ^2':8
+    ^4:4 ^6:4 ^1':4 ^6:4
+    ^5:8 ^3:4 ^4:4
+    ^5:6 ^4:2 ^2:8
     M 3:4 R:4
-    -:16
-    Db6:6 C6:2 Bb5:4 F5:4
-    Eb6:6 C6:2 Ab5:8
-    M Db6:4 C6:4
-    M -:8
 """
 
 
 def main() -> None:
-    song = Song("handelaar_loop.ogg", bpm=128, bars=16, swing=0.22)
-    style.lead(song, 0, A_THEME, A_CHORDS, velocity=0.85, slides=True)
-    style.lead(song, 8, B_THEME, B_CHORDS, velocity=0.85, slides=True, harmony=True)
-    for offset, chord in enumerate(A_CHORDS + B_CHORDS):
-        bar = offset
-        style.bass_bar(song, bar, chord, "new_jack")
-        style.piano_bar(song, bar, chord, "answer" if offset % 2 else "push", velocity=1.0)
-        if offset >= 8:
-            style.psg_arpeggio(song, bar, chord, "motif", 0.4, every=2)
-        last = offset == 15
-        style.drum_bar(song, bar, kick="broken", snare="backbeat", clap=offset >= 8, hats="sixteenths",
-                       fill="snare" if last else None, hat_volume=0.8)
-    style.crash(song, 0, volume=0.6)
-    song.render()
+    section_chords = style.chords(PROFILE.MERCHANT_CHORDS)
+    song = Song("handelaar_loop.ogg", bpm=style.tempo("handelaar"), bars=len(section_chords),
+                swing=style.piece("handelaar")["swing"])
+    style.chip_lead(song, 0, SHOP_TUNE, section_chords[:8], volume=0.75, vibrato=0.2)
+    style.lead(song, 8, SHOP_TUNE, section_chords[8:], echo=True, slides=True)
+    for bar, bar_chord in enumerate(section_chords):
+        style.bass_bar(song, bar, bar_chord, "slap")
+        style.pluck_chord(song, bar, bar_chord, (2, 6, 10, 14), 0.55, track=song.harmony)
+        style.brass_stabs(song, bar, bar_chord, [(7, 1), (12, 1)], 0.55)
+        if bar >= 8:
+            style.pad(song, bar, bar_chord, velocity=0.5)
+        drums_last = bar % 8 == 7
+        style.drum_bar(song, bar, kick="broken", snare="none", clap=True, hats="eighths", hat_volume=0.6,
+                       fill="tom" if bar == 15 else ("drop" if drums_last else None))
+    song.render(target_rms_db=-15.0)
 
 
 if __name__ == "__main__":

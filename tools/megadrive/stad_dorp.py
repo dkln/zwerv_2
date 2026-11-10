@@ -1,49 +1,42 @@
-"""'Stad dorp': the city loop of the village (Voorburg, the old village over the motorway):
-gentle and homely, a church tower, a canal, quiet streets.
+"""'Stad dorp': the city loop of the village (Voorburg): folky.
 
-One of the city loops on the shared plan (stad_plan.py: 104 BPM, F minor, 40 bars = 92 s).
-Folky: the PSG picks the chords like a guitar (every other sixteenth), the electric piano in
-sparse chords, a held bass, soft brushes (quiet hats, a half-time kick) from B on, and a
-simple lead tune that keeps coming back to the motif.
-
-    A      picking, piano, bass
-    A'     the lead's tune
-    B      brushes come in, strings
-    break  picking alone, the motif once
-    C      the tune again with the PSG harmony, brushes
-    tag    picking and piano into the top
-
-House style: style.py, docs/MUZIEK.md.
-Render: tools/megadrive/render.sh stad_dorp  (writes assets/audio/muziek/stad_dorp_loop.ogg)
+On the shared plan (stad_plan.py). A plucked FM voice strums the chords like a guitar, the
+walking bass, soft brushes (the PSG noise in eighths) from B, a simple tune on the chiptune
+lead, the city theme on the synth lead in C.
+Render: tools/megadrive/render.sh stad_dorp
 """
 import stad_plan
 import style
-from stad_plan import BARS, BPM, SECTIONS, bars_of, theme
-from style import Song
+from stad_plan import THEMES, bars_of, section
 
-THEMES = {
-    "A2": theme("M 3:8", "5:8 3:8", "M R:8", "3:12 -:4", "M 5:8", "8:8 5:8", "M 3:8", "R:12 -:4"),
-    "B": theme("5:8 8:8", "5:16", "3:8 5:8", "R:16", "5:8 8:8", "9:8 8:8", "5:8 3:8", "5:12 -:4"),
-    "break": theme("-:16", "M -:8", "-:16", "-:16"),
-    "C": theme("M 3:8", "5:8 3:8", "M R:8", "3:12 -:4", "M 5:8", "8:8 5:8", "M 3:8", "R:12 -:4"),
-}
+STRUM = (0, 1, 2, 6, 8, 9, 10, 14)
+
+
+def village(song, bar, offset, bar_chord, last, brushes=False):
+    style.bass_bar(song, bar, bar_chord, "walking")
+    style.pluck_chord(song, bar, bar_chord, STRUM, 0.55, track=song.harmony)
+    if brushes:
+        style.drum_bar(song, bar, kick="half", snare="none", hats="eighths", hat_volume=0.45, ghosts=False)
+        song.pcm.add(song.at(bar, 4), style.PLAIN_SNARE, 0.25)
+        song.pcm.add(song.at(bar, 12), style.PLAIN_SNARE, 0.3)
 
 
 def main() -> None:
-    song = Song("stad_dorp_loop.ogg", bpm=BPM, bars=BARS, swing=0.04)
-    for name, first_bar, section_chords in SECTIONS:
-        if name in THEMES:
-            style.lead(song, first_bar, THEMES[name], section_chords, velocity=0.6,
-                       harmony=name == "C")
-        for bar, offset, chord, last in bars_of(first_bar, section_chords):
-            style.psg_arpeggio(song, bar, chord, "up_octave", 0.3, every=2)
-            if name != "break":
-                style.piano_bar(song, bar, chord, "sparse", velocity=0.7)
-                style.bass_bar(song, bar, chord, "hold", velocity=0.55)
-            if name in ("B", "C"):
-                style.strings_pad(song, bar, chord, bars=1, velocity=0.5)
-                style.drum_bar(song, bar, kick="half", snare="none", hats="eighths", ghosts=False,
-                               velocity=0.45, hat_volume=0.4)
+    song = stad_plan.new_song("stad_dorp_loop.ogg", "stad_dorp")
+    for name in ("A", "A2", "B", "break", "C", "D", "tag"):
+        first_bar, section_chords = section(name)
+        if name in ("A2", "D"):
+            style.chip_lead(song, first_bar, THEMES[name], section_chords, volume=0.65, vibrato=0.15)
+        elif name in ("B", "C"):
+            style.lead(song, first_bar, THEMES[name], section_chords, velocity=0.8, slides=True)
+        elif name in ("break", "tag"):
+            style.lead(song, first_bar, THEMES[name], section_chords, velocity=0.65, patch=style.PLUCK, track=song.pad)
+        for bar, offset, bar_chord, last in bars_of(first_bar, section_chords):
+            if name == "break":
+                style.pad(song, bar, bar_chord, velocity=0.6)
+                style.bass_bar(song, bar, bar_chord, "hold")
+                continue
+            village(song, bar, offset, bar_chord, last, brushes=name in ("B", "C", "D", "tag"))
     stad_plan.finish(song)
 
 

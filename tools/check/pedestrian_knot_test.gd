@@ -46,11 +46,15 @@ func _init() -> void:
 	var start := {}
 	for person: Pedestrian in knot:
 		start[person] = person.global_position
+	# how far each one got from the knot during the run (it may walk back past it later)
+	var farthest := {}
 	for frame_index in 60 * 20:
 		await physics_frame
+		for person: Pedestrian in knot:
+			farthest[person] = maxf(float(farthest.get(person, 0.0)), Vector2(person.global_position.x - middle.x, person.global_position.z - middle.z).length())
 	var away := 0
 	for person: Pedestrian in knot:
-		var moved: float = Vector2(person.global_position.x - middle.x, person.global_position.z - middle.z).length()
+		var moved: float = farthest[person]
 		print("  %-14s %-11s %.1f m van de kluit" % [person.name, person.mobility if person.mobility != "" else "lopend", moved])
 		if moved < 2.0:
 			print("    pauze %.1f geblokt %.1f opgehouden %.1f geest %.1f doel %.1f m, mag %s, physics %s, ragdoll %s" % [person._pause, person._blocked, person._held_up, person._ghost_left,

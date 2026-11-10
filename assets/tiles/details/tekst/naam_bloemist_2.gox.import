@@ -13,7 +13,7 @@ dest_files=["res://.godot/imported/naam_bloemist_2.gox-eb58cf9240edccd497d8c0202
 
 [params]
 
-voxel_size=0.125
+voxel_size=0.075
 ambient_occlusion=true
 color_merge=14
 lod_color_tolerance=24

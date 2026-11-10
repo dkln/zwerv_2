@@ -1,0 +1,452 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/world/station.gd" id="1_onr5k"]
+[ext_resource type="MeshLibrary" path="res://assets/libraries/binnen.res" id="2_gk1x5"]
+[ext_resource type="MeshLibrary" path="res://assets/libraries/grond.res" id="3_2wwqn"]
+[ext_resource type="MeshLibrary" path="res://assets/libraries/props.res" id="4_hs2n6"]
+
+[node name="Centraal" type="Node3D" unique_id=745176056]
+script = ExtResource("1_onr5k")
+
+[node name="Vloer" type="GridMap" parent="." unique_id=1167349633]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.125, 0)
+mesh_library = ExtResource("2_gk1x5")
+cell_size = Vector3(0.5, 0.5, 0.5)
+cell_center_x = false
+cell_center_y = false
+cell_center_z = false
+data = {
+"cells": PackedInt32Array(65444, 65476, 35, 65444, 65484, 35, 65444, 65492, 35, 65444, 65500, 35, 65444, 65508, 35, 65444, 65516, 35, 65444, 65524, 35, 65444, 65532, 35, 65452, 65476, 35, 65452, 65484, 35, 65452, 65492, 35, 65452, 65500, 35, 65452, 65508, 35, 65452, 65516, 35, 65452, 65524, 35, 65452, 65532, 35, 65460, 65476, 35, 65460, 65484, 35, 65460, 65492, 35, 65460, 65500, 35, 65460, 65508, 35, 65460, 65516, 35, 65460, 65524, 35, 65460, 65532, 35, 65468, 65476, 35, 65468, 65484, 35, 65468, 65492, 35, 65468, 65500, 35, 65468, 65508, 35, 65468, 65516, 35, 65468, 65524, 35, 65468, 65532, 35, 65476, 65476, 35, 65476, 65484, 35, 65476, 65492, 35, 65476, 65500, 35, 65476, 65508, 35, 65476, 65516, 35, 65476, 65524, 35, 65476, 65532, 35, 65484, 65476, 35, 65484, 65484, 35, 65484, 65492, 35, 65484, 65500, 35, 65484, 65508, 35, 65484, 65516, 35, 65484, 65524, 35, 65484, 65532, 35, 65492, 65476, 35, 65492, 65484, 35, 65492, 65492, 35, 65492, 65500, 35, 65492, 65508, 35, 65492, 65516, 35, 65492, 65524, 35, 65492, 65532, 35, 65500, 65476, 35, 65500, 65484, 35, 65500, 65492, 35, 65500, 65500, 35, 65500, 65508, 35, 65500, 65516, 35, 65500, 65524, 35, 65500, 65532, 35, 65508, 65476, 35, 65508, 65484, 35, 65508, 65492, 35, 65508, 65500, 35, 65508, 65508, 35, 65508, 65516, 35, 65508, 65524, 35, 65508, 65532, 35, 65516, 65476, 35, 65516, 65484, 35, 65516, 65492, 35, 65516, 65500, 35, 65516, 65508, 35, 65516, 65516, 35, 65516, 65524, 35, 65516, 65532, 35, 65524, 65476, 35, 65524, 65484, 35, 65524, 65492, 35, 65524, 65500, 35, 65524, 65508, 35, 65524, 65516, 35, 65524, 65524, 35, 65524, 65532, 35, 65532, 65476, 35, 65532, 65484, 35, 65532, 65492, 35, 65532, 65500, 35, 65532, 65508, 35, 65532, 65516, 35, 65532, 65524, 35, 65532, 65532, 35, 4, 65476, 35, 4, 65484, 35, 4, 65492, 35, 4, 65500, 35, 4, 65508, 35, 4, 65516, 35, 4, 65524, 35, 4, 65532, 35, 12, 65476, 35, 12, 65484, 35, 12, 65492, 35, 12, 65500, 35, 12, 65508, 35, 12, 65516, 35, 12, 65524, 35, 12, 65532, 35, 20, 65476, 35, 20, 65484, 35, 20, 65492, 35, 20, 65500, 35, 20, 65508, 35, 20, 65516, 35, 20, 65524, 35, 20, 65532, 35, 28, 65476, 35, 28, 65484, 35, 28, 65492, 35, 28, 65500, 35, 28, 65508, 35, 28, 65516, 35, 28, 65524, 35, 28, 65532, 35, 36, 65476, 35, 36, 65484, 35, 36, 65492, 35, 36, 65500, 35, 36, 65508, 35, 36, 65516, 35, 36, 65524, 35, 36, 65532, 35, 44, 65476, 35, 44, 65484, 35, 44, 65492, 35, 44, 65500, 35, 44, 65508, 35, 44, 65516, 35, 44, 65524, 35, 44, 65532, 35, 52, 65476, 35, 52, 65484, 35, 52, 65492, 35, 52, 65500, 35, 52, 65508, 35, 52, 65516, 35, 52, 65524, 35, 52, 65532, 35, 60, 65476, 35, 60, 65484, 35, 60, 65492, 35, 60, 65500, 35, 60, 65508, 35, 60, 65516, 35, 60, 65524, 35, 60, 65532, 35, 68, 65476, 35, 68, 65484, 35, 68, 65492, 35, 68, 65500, 35, 68, 65508, 35, 68, 65516, 35, 68, 65524, 35, 68, 65532, 35, 76, 65476, 35, 76, 65484, 35, 76, 65492, 35, 76, 65500, 35, 76, 65508, 35, 76, 65516, 35, 76, 65524, 35, 76, 65532, 35, 84, 65476, 35, 84, 65484, 35, 84, 65492, 35, 84, 65500, 35, 84, 65508, 35, 84, 65516, 35, 84, 65524, 35, 84, 65532, 35, 92, 65476, 35, 92, 65484, 35, 92, 65492, 35, 92, 65500, 35, 92, 65508, 35, 92, 65516, 35, 92, 65524, 35, 92, 65532, 35)
+}
+
+[node name="Inrichting" type="GridMap" parent="." unique_id=734472207]
+mesh_library = ExtResource("2_gk1x5")
+cell_size = Vector3(0.5, 0.5, 0.5)
+cell_center_x = false
+cell_center_y = false
+cell_center_z = false
+data = {
+"cells": PackedInt32Array(65440, 65476, 1048612, 96, 65476, 1441829, 65440, 65484, 1048612, 96, 65484, 1441829, 65440, 65492, 1048612, 96, 65492, 1441829, 65440, 65500, 1048612, 96, 65500, 1441829, 65440, 65508, 1048612, 96, 65508, 1441829, 65440, 65516, 1048612, 96, 65516, 1441829, 65440, 65524, 1048612, 96, 65524, 1441829, 65440, 65532, 1048612, 96, 65532, 1441829, 65440, 4, 1048612, 96, 4, 1441829, 65440, 12, 1048612, 96, 12, 1441829, 65440, 20, 1048612, 96, 20, 1441829, 65440, 28, 1048612, 96, 28, 1441829, 65440, 36, 1048612, 96, 36, 1441829, 65440, 44, 1048612, 96, 44, 1441829, 65440, 52, 1048612, 96, 52, 1441829, 65440, 60, 1048612, 96, 60, 1441829, 65440, 68, 1048612, 96, 68, 1441829, 65440, 76, 1048612, 96, 76, 1441829, 65440, 84, 1048612, 96, 84, 1441829, 65440, 92, 1048612, 96, 92, 1441829, 65440, 100, 1048612, 96, 100, 1441829, 65444, 104, 655396, 65452, 104, 655399, -65620, 105, 655393, 65460, 104, 655399, -65612, 105, 655393, 65468, 104, 655396, 65476, 104, 655396, 65484, 104, 655399, -65588, 105, 655393, 65492, 104, 655399, -65580, 105, 655393, 65500, 104, 655396, 65508, 104, 655396, 65516, 104, 655399, -65556, 105, 655393, 65524, 104, 655399, -65548, 105, 655393, 65532, 104, 655396, 4, 104, 655396, 12, 104, 655399, -131060, 105, 655393, 20, 104, 655399, -131052, 105, 655393, 28, 104, 655396, 36, 104, 655396, 44, 104, 655399, -131028, 105, 655393, 52, 104, 655399, -131020, 105, 655393, 60, 104, 655396, 68, 104, 655396, 76, 104, 655399, -130996, 105, 655393, 84, 104, 655399, -130988, 105, 655393, 92, 104, 655396, 65442, 65472, 38, 94, 65472, 38, 65448, 65472, 37, 65456, 65472, 37, 65464, 65472, 37, 65472, 65472, 37, 65480, 65472, 37, 65496, 65472, 37, 65504, 65472, 37, 65512, 65472, 37, 65520, 65472, 37, 65528, 65472, 37, 8, 65472, 37, 16, 65472, 37, 24, 65472, 37, 32, 65472, 37, 40, 65472, 37, 56, 65472, 37, 64, 65472, 37, 72, 65472, 37, 80, 65472, 37, 88, 65472, 37, 65443, 65480, 1048620, 65443, 65488, 1048618, 65443, 65496, 1048619, 65443, 65504, 1048616, 65443, 65512, 1048617, 65524, 65496, 655405, 65532, 65496, 655404, 4, 65496, 655407, 12, 65496, 655406, 65524, 65502, 42, 65532, 65502, 45, 4, 65502, 43, 12, 65502, 40, 94, 65486, 1441819, 94, 65488, 1441819, 94, 65490, 1441819, 94, 65492, 1441819, 94, 65508, 1441819, 94, 65510, 1441819, 94, 65512, 1441819, 65462, 65524, 655387, 65464, 65524, 655387, 72, 65524, 655387, 74, 65524, 655387, 524240, 65520, 655394, 458752, 65520, 655394, 458800, 65520, 655394, 458661, 6, 655389, 458683, 6, 655389, 458693, 6, 655389, 458715, 6, 655389, 458725, 6, 655389, 458747, 6, 655389, 393221, 6, 655389, 393243, 6, 655389, 393253, 6, 655389, 393275, 6, 655389, 393285, 6, 655389, 393307, 6, 655389, 589824, 65512, 655388, 65472, 16, 30, 65472, 40, 30, 65472, 64, 30, 65472, 88, 30, 65504, 16, 30, 65504, 40, 30, 65504, 64, 30, 65504, 88, 30, 0, 16, 30, 0, 40, 30, 0, 64, 30, 0, 88, 30, 32, 16, 30, 32, 40, 30, 32, 64, 30, 32, 88, 30, 64, 16, 30, 64, 40, 30, 64, 64, 30, 64, 88, 30, 65456, 65488, 30, 65456, 65512, 30, 65504, 65488, 30, 65504, 65512, 30, 32, 65488, 30, 32, 65512, 30, 80, 65488, 30, 80, 65512, 30, 65452, 65533, 26, 65460, 65533, 26, 65484, 65533, 26, 65492, 65533, 26, 65516, 65533, 26, 65524, 65533, 26, 12, 65533, 26, 20, 65533, 26, 44, 65533, 26, 52, 65533, 26, 76, 65533, 26, 84, 65533, 26)
+}
+
+[node name="Sporen" type="GridMap" parent="." unique_id=945695905]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -48, -1.375, 0)
+mesh_library = ExtResource("3_2wwqn")
+cell_size = Vector3(4, 1, 4)
+cell_center_y = false
+data = {
+"cells": PackedInt32Array(0, 0, 1048665, 0, 1, 1048665, 0, 2, 1048665, 0, 3, 1048665, 0, 4, 1048665, 0, 5, 1048665, 0, 6, 1048665, 0, 7, 1048665, 0, 8, 1048665, 0, 9, 1048665, 0, 10, 1048665, 0, 11, 1048665, 0, 12, 1048665, 1, 0, 96, 1, 1, 95, 1, 2, 95, 1, 3, 95, 1, 4, 95, 1, 5, 95, 1, 6, 95, 1, 7, 95, 1, 8, 95, 1, 9, 95, 1, 10, 95, 1, 11, 95, 1, 12, 95, 2, 0, 96, 2, 1, 95, 2, 2, 95, 2, 3, 95, 2, 4, 95, 2, 5, 95, 2, 6, 95, 2, 7, 95, 2, 8, 95, 2, 9, 95, 2, 10, 95, 2, 11, 95, 2, 12, 95, 3, 0, 1441881, 3, 1, 1441881, 3, 2, 1441881, 3, 3, 1441881, 3, 4, 1441881, 3, 5, 1441881, 3, 6, 1441881, 3, 7, 1441881, 3, 8, 1441881, 3, 9, 1441881, 3, 10, 1441881, 3, 11, 1441881, 3, 12, 1441881, 4, 0, 1048665, 4, 1, 1048665, 4, 2, 1048665, 4, 3, 1048665, 4, 4, 1048665, 4, 5, 1048665, 4, 6, 1048665, 4, 7, 1048665, 4, 8, 1048665, 4, 9, 1048665, 4, 10, 1048665, 4, 11, 1048665, 4, 12, 1048665, 5, 0, 96, 5, 1, 95, 5, 2, 95, 5, 3, 95, 5, 4, 95, 5, 5, 95, 5, 6, 95, 5, 7, 95, 5, 8, 95, 5, 9, 95, 5, 10, 95, 5, 11, 95, 5, 12, 95, 6, 0, 96, 6, 1, 95, 6, 2, 95, 6, 3, 95, 6, 4, 95, 6, 5, 95, 6, 6, 95, 6, 7, 95, 6, 8, 95, 6, 9, 95, 6, 10, 95, 6, 11, 95, 6, 12, 95, 7, 0, 1441881, 7, 1, 1441881, 7, 2, 1441881, 7, 3, 1441881, 7, 4, 1441881, 7, 5, 1441881, 7, 6, 1441881, 7, 7, 1441881, 7, 8, 1441881, 7, 9, 1441881, 7, 10, 1441881, 7, 11, 1441881, 7, 12, 1441881, 8, 0, 1048665, 8, 1, 1048665, 8, 2, 1048665, 8, 3, 1048665, 8, 4, 1048665, 8, 5, 1048665, 8, 6, 1048665, 8, 7, 1048665, 8, 8, 1048665, 8, 9, 1048665, 8, 10, 1048665, 8, 11, 1048665, 8, 12, 1048665, 9, 0, 96, 9, 1, 95, 9, 2, 95, 9, 3, 95, 9, 4, 95, 9, 5, 95, 9, 6, 95, 9, 7, 95, 9, 8, 95, 9, 9, 95, 9, 10, 95, 9, 11, 95, 9, 12, 95, 10, 0, 96, 10, 1, 95, 10, 2, 95, 10, 3, 95, 10, 4, 95, 10, 5, 95, 10, 6, 95, 10, 7, 95, 10, 8, 95, 10, 9, 95, 10, 10, 95, 10, 11, 95, 10, 12, 95, 11, 0, 1441881, 11, 1, 1441881, 11, 2, 1441881, 11, 3, 1441881, 11, 4, 1441881, 11, 5, 1441881, 11, 6, 1441881, 11, 7, 1441881, 11, 8, 1441881, 11, 9, 1441881, 11, 10, 1441881, 11, 11, 1441881, 11, 12, 1441881, 12, 0, 1048665, 12, 1, 1048665, 12, 2, 1048665, 12, 3, 1048665, 12, 4, 1048665, 12, 5, 1048665, 12, 6, 1048665, 12, 7, 1048665, 12, 8, 1048665, 12, 9, 1048665, 12, 10, 1048665, 12, 11, 1048665, 12, 12, 1048665, 13, 0, 96, 13, 1, 95, 13, 2, 95, 13, 3, 95, 13, 4, 95, 13, 5, 95, 13, 6, 95, 13, 7, 95, 13, 8, 95, 13, 9, 95, 13, 10, 95, 13, 11, 95, 13, 12, 95, 14, 0, 96, 14, 1, 95, 14, 2, 95, 14, 3, 95, 14, 4, 95, 14, 5, 95, 14, 6, 95, 14, 7, 95, 14, 8, 95, 14, 9, 95, 14, 10, 95, 14, 11, 95, 14, 12, 95, 15, 0, 1441881, 15, 1, 1441881, 15, 2, 1441881, 15, 3, 1441881, 15, 4, 1441881, 15, 5, 1441881, 15, 6, 1441881, 15, 7, 1441881, 15, 8, 1441881, 15, 9, 1441881, 15, 10, 1441881, 15, 11, 1441881, 15, 12, 1441881, 16, 0, 1048665, 16, 1, 1048665, 16, 2, 1048665, 16, 3, 1048665, 16, 4, 1048665, 16, 5, 1048665, 16, 6, 1048665, 16, 7, 1048665, 16, 8, 1048665, 16, 9, 1048665, 16, 10, 1048665, 16, 11, 1048665, 16, 12, 1048665, 17, 0, 96, 17, 1, 95, 17, 2, 95, 17, 3, 95, 17, 4, 95, 17, 5, 95, 17, 6, 95, 17, 7, 95, 17, 8, 95, 17, 9, 95, 17, 10, 95, 17, 11, 95, 17, 12, 95, 18, 0, 96, 18, 1, 95, 18, 2, 95, 18, 3, 95, 18, 4, 95, 18, 5, 95, 18, 6, 95, 18, 7, 95, 18, 8, 95, 18, 9, 95, 18, 10, 95, 18, 11, 95, 18, 12, 95, 19, 0, 1441881, 19, 1, 1441881, 19, 2, 1441881, 19, 3, 1441881, 19, 4, 1441881, 19, 5, 1441881, 19, 6, 1441881, 19, 7, 1441881, 19, 8, 1441881, 19, 9, 1441881, 19, 10, 1441881, 19, 11, 1441881, 19, 12, 1441881, 20, 0, 1048665, 20, 1, 1048665, 20, 2, 1048665, 20, 3, 1048665, 20, 4, 1048665, 20, 5, 1048665, 20, 6, 1048665, 20, 7, 1048665, 20, 8, 1048665, 20, 9, 1048665, 20, 10, 1048665, 20, 11, 1048665, 20, 12, 1048665, 21, 0, 96, 21, 1, 95, 21, 2, 95, 21, 3, 95, 21, 4, 95, 21, 5, 95, 21, 6, 95, 21, 7, 95, 21, 8, 95, 21, 9, 95, 21, 10, 95, 21, 11, 95, 21, 12, 95, 22, 0, 96, 22, 1, 95, 22, 2, 95, 22, 3, 95, 22, 4, 95, 22, 5, 95, 22, 6, 95, 22, 7, 95, 22, 8, 95, 22, 9, 95, 22, 10, 95, 22, 11, 95, 22, 12, 95, 23, 0, 1441881, 23, 1, 1441881, 23, 2, 1441881, 23, 3, 1441881, 23, 4, 1441881, 23, 5, 1441881, 23, 6, 1441881, 23, 7, 1441881, 23, 8, 1441881, 23, 9, 1441881, 23, 10, 1441881, 23, 11, 1441881, 23, 12, 1441881)
+}
+
+[node name="Props" type="GridMap" parent="." unique_id=1177254345]
+mesh_library = ExtResource("4_hs2n6")
+cell_size = Vector3(0.5, 0.5, 0.5)
+cell_center_x = false
+cell_center_y = false
+cell_center_z = false
+data = {
+"cells": PackedInt32Array(65472, 28, 1048662, 65472, 52, 1048662, 65472, 76, 1048662, 65472, 32, 92, 65472, 68, 92, 65472, 3, 655667, 65504, 28, 1048662, 65504, 52, 1048662, 65504, 76, 1048662, 65504, 32, 92, 65504, 68, 92, 65504, 3, 655667, 0, 28, 1048662, 0, 52, 1048662, 0, 76, 1048662, 0, 32, 92, 0, 68, 92, 0, 3, 655667, 32, 28, 1048662, 32, 52, 1048662, 32, 76, 1048662, 32, 32, 92, 32, 68, 92, 32, 3, 655667, 64, 28, 1048662, 64, 52, 1048662, 64, 76, 1048662, 64, 32, 92, 64, 68, 92, 64, 3, 655667, 65476, 65484, 86, 65482, 65484, 72, 65496, 65484, 86, 65502, 65484, 72, 40, 65484, 86, 46, 65484, 72, 60, 65484, 86, 66, 65484, 72, 65512, 65512, 92, 24, 65512, 92, 65494, 65478, 307, 6, 65478, 307, 54, 65478, 307)
+}
+
+[node name="Winkel_1" type="Marker3D" parent="." unique_id=900447262]
+transform = Transform3D(1.1924881e-08, 0, -1, 0, 1, 0, 1, 0, 1.1924881e-08, -43.9, 0, -28)
+metadata/kind = "koffie"
+metadata/shop_name = "Duwus Bertus"
+
+[node name="Verkoper_1" type="Marker3D" parent="." unique_id=271880455]
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -46.7, 0, -28)
+metadata/kind = "koffie"
+metadata/shop_name = "Duwus Bertus"
+
+[node name="Uithangbord_1" type="Marker3D" parent="." unique_id=764269206]
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -44.92, 3.05, -28)
+
+[node name="Winkel_2" type="Marker3D" parent="." unique_id=2107344894]
+transform = Transform3D(1.1924881e-08, 0, -1, 0, 1, 0, 1, 0, 1.1924881e-08, -43.9, 0, -24)
+metadata/kind = "broodjes"
+metadata/shop_name = "Broodje Seinstoring"
+
+[node name="Verkoper_2" type="Marker3D" parent="." unique_id=1791046060]
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -46.7, 0, -24)
+metadata/kind = "broodjes"
+metadata/shop_name = "Broodje Seinstoring"
+
+[node name="Uithangbord_2" type="Marker3D" parent="." unique_id=1269545003]
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -44.92, 3.05, -24)
+
+[node name="Winkel_3" type="Marker3D" parent="." unique_id=1145386238]
+transform = Transform3D(1.1924881e-08, 0, -1, 0, 1, 0, 1, 0, 1.1924881e-08, -43.9, 0, -20)
+metadata/kind = "kiosk"
+metadata/shop_name = "Kiosk Centraal"
+
+[node name="Verkoper_3" type="Marker3D" parent="." unique_id=608874394]
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -46.7, 0, -20)
+metadata/kind = "kiosk"
+metadata/shop_name = "Kiosk Centraal"
+
+[node name="Uithangbord_3" type="Marker3D" parent="." unique_id=1160684351]
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -44.92, 3.05, -20)
+
+[node name="Winkel_4" type="Marker3D" parent="." unique_id=686257570]
+transform = Transform3D(1.1924881e-08, 0, -1, 0, 1, 0, 1, 0, 1.1924881e-08, -43.9, 0, -16)
+metadata/kind = "bloemen"
+metadata/shop_name = "Bloemen van de Hofvijver"
+
+[node name="Verkoper_4" type="Marker3D" parent="." unique_id=425816145]
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -46.7, 0, -16)
+metadata/kind = "bloemen"
+metadata/shop_name = "Bloemen van de Hofvijver"
+
+[node name="Uithangbord_4" type="Marker3D" parent="." unique_id=1726733042]
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -44.92, 3.05, -16)
+
+[node name="Winkel_5" type="Marker3D" parent="." unique_id=863518711]
+transform = Transform3D(1.1924881e-08, 0, -1, 0, 1, 0, 1, 0, 1.1924881e-08, -43.9, 0, -12)
+metadata/kind = "boeken"
+metadata/shop_name = "Boek & Spoor"
+
+[node name="Verkoper_5" type="Marker3D" parent="." unique_id=1317355973]
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -46.7, 0, -12)
+metadata/kind = "boeken"
+metadata/shop_name = "Boek & Spoor"
+
+[node name="Uithangbord_5" type="Marker3D" parent="." unique_id=487863186]
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -44.92, 3.05, -12)
+
+[node name="Winkel_6" type="Marker3D" parent="." unique_id=215945653]
+transform = Transform3D(1, 0, 1.7484555e-07, 0, 1, 0, -1.7484555e-07, 0, 1, -6, 0, -22.6)
+metadata/kind = "smikkels"
+metadata/shop_name = "Smikkels"
+
+[node name="Verkoper_6" type="Marker3D" parent="." unique_id=1766161643]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, -6, 0, -19.8)
+metadata/kind = "smikkels"
+metadata/shop_name = "Smikkels"
+
+[node name="Uithangbord_6" type="Marker3D" parent="." unique_id=962268729]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, -6, 3.05, -21.58)
+
+[node name="Winkel_7" type="Marker3D" parent="." unique_id=1189919993]
+transform = Transform3D(1, 0, 1.7484555e-07, 0, 1, 0, -1.7484555e-07, 0, 1, -2.0000002, 0, -22.6)
+metadata/kind = "koffie"
+metadata/shop_name = "Duwus Bertus"
+
+[node name="Verkoper_7" type="Marker3D" parent="." unique_id=967721932]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, -2, 0, -19.8)
+metadata/kind = "koffie"
+metadata/shop_name = "Duwus Bertus"
+
+[node name="Uithangbord_7" type="Marker3D" parent="." unique_id=584388238]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, -2.0000002, 3.05, -21.58)
+
+[node name="Winkel_8" type="Marker3D" parent="." unique_id=642875752]
+transform = Transform3D(1, 0, 1.7484555e-07, 0, 1, 0, -1.7484555e-07, 0, 1, 1.9999998, 0, -22.6)
+metadata/kind = "stroopwafels"
+metadata/shop_name = "Stroopwafel Express"
+
+[node name="Verkoper_8" type="Marker3D" parent="." unique_id=1458957808]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 2, 0, -19.8)
+metadata/kind = "stroopwafels"
+metadata/shop_name = "Stroopwafel Express"
+
+[node name="Uithangbord_8" type="Marker3D" parent="." unique_id=1799244394]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 1.9999999, 3.05, -21.58)
+
+[node name="Winkel_9" type="Marker3D" parent="." unique_id=1126921073]
+transform = Transform3D(1, 0, 1.7484555e-07, 0, 1, 0, -1.7484555e-07, 0, 1, 6, 0, -22.6)
+metadata/kind = "snoep"
+metadata/shop_name = "De Zoete Inval"
+
+[node name="Verkoper_9" type="Marker3D" parent="." unique_id=2061588136]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 6, 0, -19.8)
+metadata/kind = "snoep"
+metadata/shop_name = "De Zoete Inval"
+
+[node name="Uithangbord_9" type="Marker3D" parent="." unique_id=1173563249]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 6, 3.05, -21.58)
+
+[node name="Winkel_10" type="Marker3D" parent="." unique_id=1435142083]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, -6, 0, -14.4)
+metadata/kind = "broodjes"
+metadata/shop_name = "Broodje Seinstoring"
+
+[node name="Verkoper_10" type="Marker3D" parent="." unique_id=1491303885]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 0, -17.2)
+metadata/kind = "broodjes"
+metadata/shop_name = "Broodje Seinstoring"
+
+[node name="Uithangbord_10" type="Marker3D" parent="." unique_id=1540740954]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 3.05, -15.42)
+
+[node name="Winkel_11" type="Marker3D" parent="." unique_id=1220238814]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, -2, 0, -14.4)
+metadata/kind = "smikkels"
+metadata/shop_name = "Smikkels"
+
+[node name="Verkoper_11" type="Marker3D" parent="." unique_id=1619603848]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 0, -17.2)
+metadata/kind = "smikkels"
+metadata/shop_name = "Smikkels"
+
+[node name="Uithangbord_11" type="Marker3D" parent="." unique_id=942914640]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 3.05, -15.42)
+
+[node name="Winkel_12" type="Marker3D" parent="." unique_id=931127937]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 2, 0, -14.4)
+metadata/kind = "kiosk"
+metadata/shop_name = "Kiosk Perron 12"
+
+[node name="Verkoper_12" type="Marker3D" parent="." unique_id=562629184]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 0, -17.2)
+metadata/kind = "kiosk"
+metadata/shop_name = "Kiosk Perron 12"
+
+[node name="Uithangbord_12" type="Marker3D" parent="." unique_id=1526592122]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 3.05, -15.42)
+
+[node name="Winkel_13" type="Marker3D" parent="." unique_id=946708513]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 6, 0, -14.4)
+metadata/kind = "bloemen"
+metadata/shop_name = "Tulp & Tak"
+
+[node name="Verkoper_13" type="Marker3D" parent="." unique_id=1273406870]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 0, -17.2)
+metadata/kind = "bloemen"
+metadata/shop_name = "Tulp & Tak"
+
+[node name="Uithangbord_13" type="Marker3D" parent="." unique_id=1036936922]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 3.05, -15.42)
+
+[node name="Automaat_1" type="Marker3D" parent="." unique_id=1913016386]
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, 46.1, 0, -25)
+
+[node name="Automaat_2" type="Marker3D" parent="." unique_id=1746342735]
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, 46.1, 0, -24)
+
+[node name="Automaat_3" type="Marker3D" parent="." unique_id=973001946]
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, 46.1, 0, -23)
+
+[node name="Automaat_4" type="Marker3D" parent="." unique_id=1946669713]
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, 46.1, 0, -22)
+
+[node name="Automaat_5" type="Marker3D" parent="." unique_id=192034431]
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, 46.1, 0, -14)
+
+[node name="Automaat_6" type="Marker3D" parent="." unique_id=171369370]
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, 46.1, 0, -13)
+
+[node name="Automaat_7" type="Marker3D" parent="." unique_id=158355775]
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, 46.1, 0, -12)
+
+[node name="Automaat_8" type="Marker3D" parent="." unique_id=573582636]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -37, 0, -6.9)
+
+[node name="Automaat_9" type="Marker3D" parent="." unique_id=1643164968]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -36, 0, -6.9)
+
+[node name="Automaat_10" type="Marker3D" parent="." unique_id=186500738]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 36, 0, -6.9)
+
+[node name="Automaat_11" type="Marker3D" parent="." unique_id=1115034055]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 37, 0, -6.9)
+
+[node name="Vertrekbord_1" type="Marker3D" parent="." unique_id=337542999]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, -24, 4.375, -8.16)
+
+[node name="Vertrekbord_2" type="Marker3D" parent="." unique_id=715376913]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 0, 4.375, -8.16)
+
+[node name="Vertrekbord_3" type="Marker3D" parent="." unique_id=1941570583]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 24, 4.375, -8.16)
+
+[node name="Perronscherm_1" type="Marker3D" parent="." unique_id=1428681851]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, -45.5, 3.375, 2.84)
+
+[node name="Perronscherm_2" type="Marker3D" parent="." unique_id=1427228497]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, -34.5, 3.375, 2.84)
+
+[node name="Perronscherm_3" type="Marker3D" parent="." unique_id=1867543237]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, -29.5, 3.375, 2.84)
+
+[node name="Perronscherm_4" type="Marker3D" parent="." unique_id=375124625]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, -18.5, 3.375, 2.84)
+
+[node name="Perronscherm_5" type="Marker3D" parent="." unique_id=122922769]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, -13.5, 3.375, 2.84)
+
+[node name="Perronscherm_6" type="Marker3D" parent="." unique_id=1404474690]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, -2.5, 3.375, 2.84)
+
+[node name="Perronscherm_7" type="Marker3D" parent="." unique_id=307096033]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 2.5, 3.375, 2.84)
+
+[node name="Perronscherm_8" type="Marker3D" parent="." unique_id=398070425]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 13.5, 3.375, 2.84)
+
+[node name="Perronscherm_9" type="Marker3D" parent="." unique_id=1554035260]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 18.5, 3.375, 2.84)
+
+[node name="Perronscherm_10" type="Marker3D" parent="." unique_id=1331184343]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 29.5, 3.375, 2.84)
+
+[node name="Perronscherm_11" type="Marker3D" parent="." unique_id=478534098]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 34.5, 3.375, 2.84)
+
+[node name="Perronscherm_12" type="Marker3D" parent="." unique_id=2033001531]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 45.5, 3.375, 2.84)
+
+[node name="Klok" type="Marker3D" parent="." unique_id=515336672]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 0, 5.0625, -12.16)
+
+[node name="Deur1" type="Marker3D" parent="." unique_id=748168469]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -24, 0, -31)
+
+[node name="Deur2" type="Marker3D" parent="." unique_id=1981965974]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -31)
+
+[node name="Deur3" type="Marker3D" parent="." unique_id=355453212]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 24, 0, -31)
+
+[node name="Dienstdeur" type="Marker3D" parent="." unique_id=573292859]
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -47.2, 0, -8)
+
+[node name="Poortjes_1" type="Marker3D" parent="." unique_id=357746252]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -46, 0, -1.5)
+
+[node name="Poortjes_2" type="Marker3D" parent="." unique_id=1844104516]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -32, 0, -1.5)
+
+[node name="Poortjes_3" type="Marker3D" parent="." unique_id=1321591809]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -16, 0, -1.5)
+
+[node name="Poortjes_4" type="Marker3D" parent="." unique_id=1794217381]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -1.5)
+
+[node name="Poortjes_5" type="Marker3D" parent="." unique_id=1035962009]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16, 0, -1.5)
+
+[node name="Poortjes_6" type="Marker3D" parent="." unique_id=1357774984]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 32, 0, -1.5)
+
+[node name="Poortjes_7" type="Marker3D" parent="." unique_id=29443075]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 46, 0, -1.5)
+
+[node name="Lamp1" type="OmniLight3D" parent="." unique_id=428311749]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -32, 6, -24)
+light_color = Color(1, 0.94509804, 0.8627451, 1)
+light_energy = 1.3
+omni_range = 20.0
+
+[node name="Lamp2" type="OmniLight3D" parent="." unique_id=1987242122]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -32, 6, -8)
+light_color = Color(1, 0.94509804, 0.8627451, 1)
+light_energy = 1.3
+omni_range = 20.0
+
+[node name="Lamp3" type="OmniLight3D" parent="." unique_id=724233522]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6, -24)
+light_color = Color(1, 0.94509804, 0.8627451, 1)
+light_energy = 1.3
+omni_range = 20.0
+
+[node name="Lamp4" type="OmniLight3D" parent="." unique_id=903213655]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6, -8)
+light_color = Color(1, 0.94509804, 0.8627451, 1)
+light_energy = 1.3
+omni_range = 20.0
+
+[node name="Lamp5" type="OmniLight3D" parent="." unique_id=958805573]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 32, 6, -24)
+light_color = Color(1, 0.94509804, 0.8627451, 1)
+light_energy = 1.3
+omni_range = 20.0
+
+[node name="Lamp6" type="OmniLight3D" parent="." unique_id=1512284783]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 32, 6, -8)
+light_color = Color(1, 0.94509804, 0.8627451, 1)
+light_energy = 1.3
+omni_range = 20.0
+
+[node name="Lamp7" type="OmniLight3D" parent="." unique_id=483492745]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -46, 6, 12)
+light_color = Color(1, 0.94509804, 0.8627451, 1)
+light_energy = 1.3
+omni_range = 20.0
+
+[node name="Lamp8" type="OmniLight3D" parent="." unique_id=989684184]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -46, 6, 36)
+light_color = Color(1, 0.94509804, 0.8627451, 1)
+light_energy = 1.3
+omni_range = 20.0
+
+[node name="Lamp9" type="OmniLight3D" parent="." unique_id=68251409]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -32, 6, 12)
+light_color = Color(1, 0.94509804, 0.8627451, 1)
+light_energy = 1.3
+omni_range = 20.0
+
+[node name="Lamp10" type="OmniLight3D" parent="." unique_id=639694256]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -32, 6, 36)
+light_color = Color(1, 0.94509804, 0.8627451, 1)
+light_energy = 1.3
+omni_range = 20.0
+
+[node name="Lamp11" type="OmniLight3D" parent="." unique_id=1313299128]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -16, 6, 12)
+light_color = Color(1, 0.94509804, 0.8627451, 1)
+light_energy = 1.3
+omni_range = 20.0
+
+[node name="Lamp12" type="OmniLight3D" parent="." unique_id=207949296]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -16, 6, 36)
+light_color = Color(1, 0.94509804, 0.8627451, 1)
+light_energy = 1.3
+omni_range = 20.0
+
+[node name="Lamp13" type="OmniLight3D" parent="." unique_id=1654547271]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6, 12)
+light_color = Color(1, 0.94509804, 0.8627451, 1)
+light_energy = 1.3
+omni_range = 20.0
+
+[node name="Lamp14" type="OmniLight3D" parent="." unique_id=7068663]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6, 36)
+light_color = Color(1, 0.94509804, 0.8627451, 1)
+light_energy = 1.3
+omni_range = 20.0
+
+[node name="Lamp15" type="OmniLight3D" parent="." unique_id=1738709436]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16, 6, 12)
+light_color = Color(1, 0.94509804, 0.8627451, 1)
+light_energy = 1.3
+omni_range = 20.0
+
+[node name="Lamp16" type="OmniLight3D" parent="." unique_id=963613815]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16, 6, 36)
+light_color = Color(1, 0.94509804, 0.8627451, 1)
+light_energy = 1.3
+omni_range = 20.0
+
+[node name="Lamp17" type="OmniLight3D" parent="." unique_id=819009879]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 32, 6, 12)
+light_color = Color(1, 0.94509804, 0.8627451, 1)
+light_energy = 1.3
+omni_range = 20.0
+
+[node name="Lamp18" type="OmniLight3D" parent="." unique_id=301798838]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 32, 6, 36)
+light_color = Color(1, 0.94509804, 0.8627451, 1)
+light_energy = 1.3
+omni_range = 20.0
+
+[node name="Lamp19" type="OmniLight3D" parent="." unique_id=831917209]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 46, 6, 12)
+light_color = Color(1, 0.94509804, 0.8627451, 1)
+light_energy = 1.3
+omni_range = 20.0
+
+[node name="Lamp20" type="OmniLight3D" parent="." unique_id=777302060]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 46, 6, 36)
+light_color = Color(1, 0.94509804, 0.8627451, 1)
+light_energy = 1.3
+omni_range = 20.0

@@ -37,7 +37,7 @@ func _init() -> void:
 	var people := walkers.people()
 	print("voetgangers: %d, beloopbare cellen %d, zebra-overgangen %d" % [people.size(), walkers._walkable_cells.size(),
 			walkers._links.keys().filter(func(cell: Vector3i) -> bool: return walkers.is_zebra(cell)).size()])
-	_check(people.size() == walkers.count, "alle voetgangers geplaatst (%d)" % people.size())
+	_check(people.size() == walkers.wanted_count(), "alle voetgangers geplaatst (%d van %d voor dit uur en deze wijk)" % [people.size(), walkers.wanted_count()])
 	var two_wheelers: Array[TwoWheeler] = []
 	for vehicle in Vehicle.all_vehicles:
 		if vehicle is TwoWheeler:

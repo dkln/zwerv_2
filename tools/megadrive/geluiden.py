@@ -37,6 +37,18 @@ so you can tell them apart):
     helikopter_voorbij.ogg     the helicopter flying over
     plons.ogg                  someone falling into the water: thump, splash, bubbles
     springen.ogg               the player jumping: a short rising PSG blip, as in a platform game
+    brand_loop.ogg             a vehicle on fire (loop): a low roar of the flames, crackles and pops
+    explosie.ogg               a burning wreck blowing up: a deep boom, a rush of debris, a rumble dying away
+    deur_binnen.ogg            going into a shop or the station: the electronic door chime, "pling-plong"
+    deur_buiten.ogg            going out again: the same chime
+The station (Den Haag Centraal, scripts/world/station.gd):
+    omroep_gong.ogg            the chime before an announcement in the hall (three soft notes up)
+    conducteur_fluit.ogg       the conductor's pea whistle before a train leaves
+    trein_deuren_dicht.ogg     a Sprinter's doors about to close: a row of beeps, then the hiss
+    trein_deuren_open.ogg      the doors of a train opening: the air letting go, the leaves sliding
+    ov_inchecken.ogg, ov_uitchecken.ogg   an OV-chipkaart at a reader: one beep in, two out
+    ov_geweigerd.ogg           a reader saying no: a low buzz, twice
+    poortje_open.ogg           the glass paddles of a gate swinging open
 Loops are a whole number of engine cycles long (every frequency fits the loop exactly) and are
 filtered circularly, so they repeat without a click. Every file is at one loudness
 (loudness.py: a one-shot's loudest 400 ms and a loop's average at -16 LUFS, peaks under -1 dB);
@@ -388,7 +400,7 @@ def crash(hard: bool) -> numpy.ndarray:
     random = numpy.random.default_rng(12 if hard else 13)
     times = time_axis(seconds)
     # the impact: a PCM thump and a burst of crunching noise
-    place(buffer, 0.0, style.KICK, 1.0 if hard else 0.7)
+    place(buffer, 0.0, style.FAT_KICK, 1.0 if hard else 0.7)
     place(buffer, 0.0, style.TOMS[2], 0.8)
     crunch = band_noise(len(times), 200.0, 7000.0, 21) * numpy.exp(-times / (0.25 if hard else 0.09))
     buffer += crunch * (0.9 if hard else 0.6)
@@ -533,6 +545,32 @@ def car_horn() -> numpy.ndarray:
     return fade_edges(low_pass(dac(low_pass(buffer, 7000.0)), 5000.0), 0.002, 0.08)
 
 
+def car_horn_long() -> numpy.ndarray:
+    """A car that has waited long enough: one short blast and then holding it, "toet-toeeeeet"."""
+    buffer = numpy.zeros(int(2.0 * SAMPLE_RATE))
+    place(buffer, 0.0, horn_blast(CAR_HORN_HZ, 0.16, 61))
+    place(buffer, 0.27, horn_blast(CAR_HORN_HZ, 1.5, 67))
+    return fade_edges(low_pass(dac(low_pass(buffer, 7000.0)), 5000.0), 0.002, 0.1)
+
+
+def bus_horn_long() -> numpy.ndarray:
+    """A bus or a lorry leaning on its horn: a long, deep blast."""
+    buffer = numpy.zeros(int(2.2 * SAMPLE_RATE))
+    place(buffer, 0.0, horn_blast(BUS_HORN_HZ, 1.9, 69))
+    return fade_edges(low_pass(dac(low_pass(buffer, 6000.0)), 4500.0), 0.002, 0.15)
+
+
+def moped_horn_long() -> numpy.ndarray:
+    """A moped's horn held down: one long thin beep."""
+    seconds = 1.4
+    buffer = numpy.zeros(int(1.6 * SAMPLE_RATE))
+    times = time_axis(seconds)
+    pitch = 790.0 * (1.0 - 0.03 * numpy.exp(-times / 0.02))
+    envelope = numpy.clip(times / 0.006, 0.0, 1.0) * numpy.clip((seconds - times) / 0.03, 0.0, 1.0)
+    place(buffer, 0.0, square(phase_of(pitch), 0.35) * envelope * 0.8)
+    return fade_edges(low_pass(dac(low_pass(buffer, 5000.0)), 4000.0), 0.002, 0.05)
+
+
 def bus_horn() -> numpy.ndarray:
     """A bus or a lorry: one long, deep blast."""
     buffer = numpy.zeros(int(1.0 * SAMPLE_RATE))
@@ -561,6 +599,71 @@ def jump() -> numpy.ndarray:
     tone = square(phase_of(sweep), 0.25) * 0.55 + square(phase_of(sweep * 0.5), 0.5) * 0.2
     puff = band_noise(len(times), 300.0, 2500.0, 11) * numpy.exp(-times / 0.015) * 0.25
     return fade_edges(low_pass(dac(low_pass((tone * envelope + puff), 6000.0)), 5000.0), 0.002, 0.03)
+
+
+def fire_loop() -> numpy.ndarray:
+    """A fire, seamless over its length: the roar of the flames (filtered noise breathing
+    slowly), crackles and the odd pop, through the DAC."""
+    seconds = 3.0
+    count = int(seconds * SAMPLE_RATE)
+    times = numpy.arange(count) / SAMPLE_RATE
+    breathing = 0.75 + 0.25 * numpy.sin(TWO_PI * times / seconds) * numpy.sin(TWO_PI * 3.0 * times / seconds)
+    roar = band_noise(count, 60.0, 600.0, 21) * breathing * 0.7
+    random = numpy.random.default_rng(5)
+    crackle = numpy.zeros(count)
+    click_times = time_axis(0.012)
+    for start in random.uniform(0.0, seconds - 0.02, 90):
+        click = band_noise(len(click_times), 1500.0, 6000.0, int(start * 1000)) * numpy.exp(-click_times / 0.003)
+        place(crackle, start, click * random.uniform(0.3, 1.0))
+    pop_times = time_axis(0.08)
+    for start in random.uniform(0.0, seconds - 0.1, 6):
+        pop = numpy.sin(TWO_PI * 140.0 * pop_times) * numpy.exp(-pop_times / 0.02)
+        place(crackle, start, pop * 0.6)
+    return low_pass(dac(low_pass(roar + crackle * 0.5, 7000.0)), 6000.0)
+
+
+def explosion() -> numpy.ndarray:
+    """A burning wreck blowing up: a deep boom falling in pitch, a rush of debris, a long
+    rumble dying away."""
+    seconds = 2.4
+    times = time_axis(seconds)
+    boom = numpy.sin(TWO_PI * numpy.cumsum(55.0 * numpy.exp(-times / 0.4) + 25.0) / SAMPLE_RATE) * numpy.exp(-times / 0.5)
+    rush = band_noise(len(times), 200.0, 5000.0, 13) * numpy.exp(-times / 0.18)
+    rumble = band_noise(len(times), 30.0, 250.0, 17) * numpy.exp(-times / 0.9)
+    sound = numpy.tanh(2.5 * (boom * 1.0 + rush * 0.8 + rumble * 0.7))
+    return fade_edges(low_pass(dac(low_pass(sound, 6000.0)), 5000.0), 0.002, 0.4)
+
+
+## The electronic chime of a shop door (the sensor over the door): two soft notes, "pling"
+## high and "plong" a major third lower, each a sine with a little bell partial, ringing on.
+DOOR_CHIME_HZ = (1318.5, 1046.5)
+
+
+def _door_chime(frequency: float, seconds: float, seed: int) -> numpy.ndarray:
+    times = time_axis(seconds)
+    random = numpy.random.default_rng(seed)
+    tone = numpy.zeros(len(times))
+    for ratio, level, decay in ((1.0, 1.0, 0.55), (2.0, 0.22, 0.25), (3.0, 0.07, 0.12)):
+        tone += level * numpy.exp(-times / decay) * numpy.sin(TWO_PI * frequency * ratio * (1.0 + random.uniform(-0.0005, 0.0005)) * times)
+    return tone * numpy.clip(times / 0.004, 0.0, 1.0)
+
+
+def _pling_plong(gap: float) -> numpy.ndarray:
+    seconds = 1.4
+    buffer = numpy.zeros(int(seconds * SAMPLE_RATE))
+    place(buffer, 0.0, _door_chime(DOOR_CHIME_HZ[0], 1.1, 111) * 0.6)
+    place(buffer, gap, _door_chime(DOOR_CHIME_HZ[1], 1.1, 112) * 0.6)
+    return fade_edges(low_pass(dac(low_pass(buffer, 7000.0)), 6000.0), 0.002, 0.3)
+
+
+def door_in() -> numpy.ndarray:
+    """Going in (a shop, the station): the electronic door chime, "pling-plong"."""
+    return _pling_plong(0.32)
+
+
+def door_out() -> numpy.ndarray:
+    """Going out again: the same chime, the second note a little sooner."""
+    return _pling_plong(0.28)
 
 
 def scooter_beep() -> numpy.ndarray:
@@ -626,6 +729,113 @@ def write_mono(name: str, signal: numpy.ndarray, loop: bool, folder: str = OUTPU
     print(f"written: {path}  ({len(signal) / SAMPLE_RATE:.2f} s{', loop' if loop else ''})")
 
 
+
+# ----------------------------------------------------------------------------- the station
+
+def _soft_bell(frequency: float, seconds: float, seed: int) -> numpy.ndarray:
+    """One note of the chime in the hall: a soft FM-like bell (a sine with a few inharmonic
+    partials dying away faster), a gentle strike, no clank."""
+    times = time_axis(seconds)
+    random = numpy.random.default_rng(seed)
+    ring = numpy.zeros(len(times))
+    for ratio, level, decay in ((1.0, 1.0, 1.1), (2.0, 0.35, 0.5), (3.01, 0.18, 0.25), (4.2, 0.08, 0.12)):
+        detune = 1.0 + random.uniform(-0.001, 0.001)
+        ring += level * numpy.exp(-times / decay) * numpy.sin(TWO_PI * frequency * ratio * detune * times)
+    attack = numpy.clip(times / 0.006, 0.0, 1.0)
+    return ring * attack
+
+
+def station_chime() -> numpy.ndarray:
+    """The chime before an announcement in the station hall: three soft bell notes going up
+    (G, C, E), the last one ringing out."""
+    buffer = numpy.zeros(int(2.6 * SAMPLE_RATE))
+    for start, frequency, seed in ((0.0, 392.0, 61), (0.38, 523.3, 62), (0.76, 659.3, 63)):
+        place(buffer, start, _soft_bell(frequency, 1.8, seed) * 0.6)
+    return fade_edges(low_pass(dac(low_pass(buffer, 7000.0)), 6000.0), 0.002, 0.4)
+
+
+def conductor_whistle() -> numpy.ndarray:
+    """The conductor's whistle on the platform before the doors close: a shrill pea whistle,
+    the pea rattling the tone (a fast warble), one long blast with a little rise at the start."""
+    seconds = 1.1
+    times = time_axis(seconds)
+    pitch = 2950.0 + 120.0 * numpy.clip(times / 0.08, 0.0, 1.0)
+    rattle = 1.0 + 0.035 * numpy.sin(TWO_PI * 38.0 * times) * (0.6 + 0.4 * numpy.sin(TWO_PI * 5.0 * times))
+    tone = numpy.sin(TWO_PI * numpy.cumsum(pitch * rattle) / SAMPLE_RATE)
+    breath = band_noise(len(times), 2500.0, 6500.0, 71) * 0.18
+    envelope = numpy.clip(times / 0.02, 0.0, 1.0) * numpy.clip((seconds - times) / 0.08, 0.0, 1.0)
+    amplitude = 0.75 + 0.25 * (numpy.sin(TWO_PI * 38.0 * times) > 0.0)
+    return fade_edges(low_pass(dac(low_pass((tone * amplitude + breath) * envelope * 0.7, 8000.0)), 6500.0), 0.002, 0.05)
+
+
+def train_door_beeps() -> numpy.ndarray:
+    """The doors of a Sprinter about to close: a fast row of high beeps (a PSG square), then
+    the hiss of the air as they slide shut."""
+    seconds = 2.6
+    buffer = numpy.zeros(int(seconds * SAMPLE_RATE))
+    beep_seconds = 0.09
+    beep_times = time_axis(beep_seconds)
+    envelope = numpy.clip(beep_times / 0.003, 0.0, 1.0) * numpy.clip((beep_seconds - beep_times) / 0.01, 0.0, 1.0)
+    beep = square(phase_of(numpy.full(len(beep_times), 1760.0)), 0.5) * envelope * 0.5
+    for index in range(10):
+        place(buffer, index * 0.16, beep)
+    hiss_times = time_axis(0.9)
+    hiss = band_noise(len(hiss_times), 1200.0, 7000.0, 81) * numpy.exp(-hiss_times / 0.35) * 0.35
+    thump = numpy.sin(TWO_PI * 90.0 * hiss_times) * numpy.exp(-numpy.maximum(hiss_times - 0.55, 0.0) / 0.05) * (hiss_times > 0.55) * 0.5
+    place(buffer, 1.6, hiss + thump)
+    return fade_edges(low_pass(dac(low_pass(buffer, 7500.0)), 6000.0), 0.002, 0.1)
+
+
+def train_doors_open() -> numpy.ndarray:
+    """The doors of a train opening: the air letting go (a hiss) and the leaves sliding, one
+    low bump as they stop."""
+    seconds = 1.2
+    times = time_axis(seconds)
+    hiss = band_noise(len(times), 900.0, 6000.0, 91) * numpy.exp(-times / 0.3) * 0.45
+    slide = band_noise(len(times), 150.0, 900.0, 92) * numpy.clip(times / 0.1, 0.0, 1.0) * numpy.exp(-times / 0.5) * 0.3
+    bump = numpy.sin(TWO_PI * 80.0 * times) * numpy.exp(-numpy.maximum(times - 0.7, 0.0) / 0.05) * (times > 0.7) * 0.5
+    return fade_edges(low_pass(dac(low_pass(hiss + slide + bump, 7000.0)), 6000.0), 0.002, 0.15)
+
+
+def _reader_beep(frequency: float, seconds: float) -> numpy.ndarray:
+    times = time_axis(seconds)
+    envelope = numpy.clip(times / 0.003, 0.0, 1.0) * numpy.clip((seconds - times) / 0.012, 0.0, 1.0)
+    return (square(phase_of(numpy.full(len(times), frequency)), 0.5) * 0.4
+            + numpy.sin(TWO_PI * frequency * times) * 0.4) * envelope
+
+
+def ov_check_in() -> numpy.ndarray:
+    """Checking in with an OV-chipkaart at a reader: one bright beep."""
+    buffer = numpy.zeros(int(0.35 * SAMPLE_RATE))
+    place(buffer, 0.0, _reader_beep(2093.0, 0.16))
+    return fade_edges(low_pass(dac(low_pass(buffer, 7000.0)), 6000.0), 0.001, 0.03)
+
+
+def ov_check_out() -> numpy.ndarray:
+    """Checking out: two beeps, quickly after each other."""
+    buffer = numpy.zeros(int(0.45 * SAMPLE_RATE))
+    place(buffer, 0.0, _reader_beep(2093.0, 0.1))
+    place(buffer, 0.15, _reader_beep(2093.0, 0.1))
+    return fade_edges(low_pass(dac(low_pass(buffer, 7000.0)), 6000.0), 0.001, 0.03)
+
+
+def ov_refused() -> numpy.ndarray:
+    """A reader that says no (no card, or the gate the wrong way): a low buzz, twice."""
+    buffer = numpy.zeros(int(0.6 * SAMPLE_RATE))
+    place(buffer, 0.0, _reader_beep(330.0, 0.18))
+    place(buffer, 0.25, _reader_beep(330.0, 0.22))
+    return fade_edges(low_pass(dac(low_pass(buffer, 5000.0)), 4500.0), 0.001, 0.04)
+
+
+def gate_paddles() -> numpy.ndarray:
+    """The glass paddles of a gate swinging open: a short whirr of the motor and a soft tick."""
+    seconds = 0.5
+    times = time_axis(seconds)
+    whirr = square(phase_of(180.0 + 120.0 * times / seconds), 0.3) * numpy.exp(-times / 0.2) * 0.15
+    tick = band_noise(len(times), 1500.0, 6000.0, 101) * numpy.exp(-numpy.maximum(times - 0.35, 0.0) / 0.01) * (times > 0.35) * 0.4
+    return fade_edges(low_pass(dac(low_pass(whirr + tick, 6000.0)), 5000.0), 0.002, 0.05)
+
+
 SOUNDS = {
     "auto_voorbij": (lambda: pass_by("auto", 3.0), False),
     "auto_motor_loop": (lambda: motor_loop("auto"), True),
@@ -654,11 +864,26 @@ SOUNDS = {
     "helikopter_voorbij": (helicopter_pass_by, False),
     "plons": (splash, False),
     "auto_toeter": (car_horn, False),
+    "auto_toeter_lang": (car_horn_long, False),
+    "bus_toeter_lang": (bus_horn_long, False),
+    "brommer_toeter_lang": (moped_horn_long, False),
     "bus_toeter": (bus_horn, False),
     "brommer_toeter": (moped_horn, False),
     "fiets_bel": (bike_bell, False),
     "scootmobiel_toeter": (scooter_beep, False),
     "springen": (jump, False),
+    "brand_loop": (fire_loop, True),
+    "explosie": (explosion, False),
+    "deur_binnen": (door_in, False),
+    "deur_buiten": (door_out, False),
+    "omroep_gong": (station_chime, False),
+    "conducteur_fluit": (conductor_whistle, False),
+    "trein_deuren_dicht": (train_door_beeps, False),
+    "trein_deuren_open": (train_doors_open, False),
+    "ov_inchecken": (ov_check_in, False),
+    "ov_uitchecken": (ov_check_out, False),
+    "ov_geweigerd": (ov_refused, False),
+    "poortje_open": (gate_paddles, False),
 }
 
 

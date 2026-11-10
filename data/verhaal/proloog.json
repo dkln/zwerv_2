@@ -1,0 +1,23 @@
+{
+	"uitleg": "De proloog: na het wakker worden. {achtergrond} is het verhaal van je karakter, {naam} zijn naam. Zie data/LEESMIJ.md.",
+	"banner_soort": "PROLOOG",
+	"banner": "Wakker op Centraal",
+	"paginas": [
+		{
+			"soort": "verhaal",
+			"tekst": "Den Haag Centraal, kwart over zes in de ochtend. De eerste trams piepen de bocht om, de duiven zijn al wakker en een schoonmaker veegt de nacht van het Stationsplein."
+		},
+		{
+			"soort": "verhaal",
+			"tekst": "{achtergrond}"
+		},
+		{
+			"soort": "gedachte",
+			"tekst": "Au, mijn rug. Weer een nacht op de stenen van het plein. Wat een nacht was dat. Ik weet niet eens meer hoe ik hier terecht ben gekomen."
+		},
+		{
+			"soort": "gedachte",
+			"tekst": "En mijn maag knort harder dan de RandstadRail. Een kroket... een warme kroket van Jan Blammage. Daar zou ik een moord voor doen. Nou ja. Bijna."
+		}
+	]
+}

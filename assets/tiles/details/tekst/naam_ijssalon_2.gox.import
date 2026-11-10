@@ -13,7 +13,7 @@ dest_files=["res://.godot/imported/naam_ijssalon_2.gox-22c2896451e4e23d333847f3a
 
 [params]
 
-voxel_size=0.125
+voxel_size=0.0893
 ambient_occlusion=true
 color_merge=14
 lod_color_tolerance=24

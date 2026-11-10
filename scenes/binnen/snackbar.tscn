@@ -1,0 +1,58 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/world/interior.gd" id="1_3ie6h"]
+[ext_resource type="MeshLibrary" path="res://assets/libraries/binnen.res" id="2_vu6kr"]
+
+[node name="Snackbar" type="Node3D" unique_id=870431721]
+script = ExtResource("1_3ie6h")
+
+[node name="Vloer" type="GridMap" parent="." unique_id=2123712679]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.125, 0)
+mesh_library = ExtResource("2_vu6kr")
+cell_size = Vector3(0.5, 0.5, 0.5)
+cell_center_x = false
+cell_center_y = false
+cell_center_z = false
+data = {
+"cells": PackedInt32Array(65528, 65532, 21, 65528, 4, 21, 0, 65532, 21, 0, 4, 21, 8, 65532, 21, 8, 4, 21)
+}
+
+[node name="Inrichting" type="GridMap" parent="." unique_id=1529382107]
+mesh_library = ExtResource("2_vu6kr")
+cell_size = Vector3(0.5, 0.5, 0.5)
+cell_center_x = false
+cell_center_y = false
+cell_center_z = false
+data = {
+"cells": PackedInt32Array(65528, 8, 655371, 0, 8, 655371, 8, 8, 655371, 65524, 65532, 1048587, 65524, 4, 1048587, 65528, 65528, 25, 8, 65528, 25, 65533, 65528, 23, 3, 65528, 23, 12, 65532, 1441817, 12, 4, 1441817, 0, 3, 655377, 3, 7, 655361, 196605, 7, 655363, 65525, 5, 1048578, 0, 65529, 0, 65529, 65533, 13, 65529, 65531, 12, 65529, 65535, 655372, 7, 65533, 13, 7, 65531, 12, 7, 65535, 655372)
+}
+
+[node name="Plek1" type="Marker3D" parent="." unique_id=871570271]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.5, 0, -2.5)
+
+[node name="Plek2" type="Marker3D" parent="." unique_id=1093911844]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, -3.5, 0, -0.5)
+
+[node name="Plek3" type="Marker3D" parent="." unique_id=1961329122]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.5, 0, -2.5)
+
+[node name="Plek4" type="Marker3D" parent="." unique_id=2016798452]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 3.5, 0, -0.5)
+
+[node name="Deur" type="Marker3D" parent="." unique_id=2076158580]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -3.2)
+
+[node name="Snackbarhouder" type="Marker3D" parent="." unique_id=1137512867]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, -0.5, 0, 2.5)
+
+[node name="Lamp" type="OmniLight3D" parent="." unique_id=680151942]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 2.7, 0)
+light_color = Color(1, 0.8862745, 0.6901961, 1)
+light_energy = 1.4
+omni_range = 8.0
+
+[node name="Lamp2" type="OmniLight3D" parent="." unique_id=516680238]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 2.7, 0)
+light_color = Color(1, 0.8862745, 0.6901961, 1)
+light_energy = 1.4
+omni_range = 8.0

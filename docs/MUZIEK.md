@@ -1,20 +1,31 @@
 # Muziek: de huisstijl van ZWERVR
 
-Alle muziek van het spel is één huisstijl. Elk nieuw stuk volgt de regels hieronder, zodat
-alles klinkt als dezelfde game. De code staat in `tools/megadrive/`:
+Alle muziek van het spel is één huisstijl in de klank van de **Sega Mega Drive / Genesis**.
+Elk stuk volgt de regels hieronder, zodat alles klinkt als dezelfde game. De huidige stijl is
+**16-bit synthwave action-RPG** (profiel `synthwave_rpg`): heroïsch, opgewekt, triomfantelijk,
+120 BPM, D mineur. De code staat in `tools/megadrive/`:
 
-- `megadrive.py`: de "geluidschip" (FM, PSG, PCM-drums, mix en export)
-- `style.py`: de huisstijl in code: instrumenten, drumstel, grooves, het motief, de mix
-- `stad_plan.py`: het gedeelde plan van de vijf stadsloops
-- één bestand per stuk (`stad_centrum.py`, `nachtstad_menu.py`, `gevecht.py`, ...);
-  de vijf deuntjes staan samen in `deuntjes.py`
+- `megadrive.py`: de "geluidschip" (FM, PSG, DAC-drums, overdrive, tape stop, mix en export)
+- `stijlen/<naam>.py`: **het stijlprofiel**: tempo's, toonsoort en modus, akkoordschema's per
+  sectie (als trapnamen: `i`, `VI`, `III`, `VII`, `V7`, ...), het motief, de instrumentpatches,
+  het drumstel en per nummer zijn variaties (`PIECES`)
+- `style.py`: de componeerhulpmiddelen op het actieve profiel (`ACTIVE_STYLE`, of de
+  omgevingsvariabele `ZWERVR_MUZIEK_STIJL`)
+- `stad_plan.py`: het gedeelde plan en de gedeelde thema's van de negen stadsloops
+- één bestand per stuk (`stad_centrum.py`, `nachtstad_menu.py`, `gevecht.py`, ...); de
+  deuntjes staan samen in `deuntjes.py`
+- `check_music.py`: controle van wat er gerenderd is (lengte, luidheid, piek, lusnaad,
+  niveau per 8 maten, gelijke lengte van de stadsloops)
 
-## Renderen
+## Renderen en controleren
 
 ```sh
-tools/megadrive/render.sh                    # alles (ongeveer 20 s)
+tools/megadrive/render.sh                    # alles (ongeveer een halve minuut)
 tools/megadrive/render.sh gevecht handelaar  # alleen deze stukken
-tools/megadrive/render.sh deuntjes dood      # één deuntje: kaart_start, gewonnen, level_omhoog, nieuwe_missie, verloren, dood
+tools/megadrive/render.sh deuntjes dood      # één deuntje: kaart_start, gewonnen, level_omhoog, nieuwe_missie, taak_klaar, verloren, dood
+uv run --with numpy --with soundfile python3 tools/megadrive/check_music.py   # alles nakijken
+ZWERVR_MUZIEK_SPOREN=1 tools/megadrive/render.sh gevecht   # ook de balans per spoor tonen
+ZWERVR_MUZIEK_STIJL=<naam> tools/megadrive/render.sh       # met een ander profiel renderen
 ```
 
 Draait Python via `uv` met numpy en soundfile; geen Godot nodig. De uitvoer gaat naar
@@ -22,181 +33,195 @@ Draait Python via `uv` met numpy en soundfile; geen Godot nodig. De uitvoer gaat
 bestand, geef het een eigen bestandsnaam in `Song(...)` en zet de naam in de lijst `all` van
 `render.sh`.
 
+## Stijlprofielen: een andere muziekstijl proberen
+
+Een stijl is een profiel in `tools/megadrive/stijlen/`. Een nieuwe stijl (bijvoorbeeld uit een
+geplakte Suno/Udio/Gemini-beschrijving: de skill `/muziek-prompt` doet dit stap voor stap):
+
+1. kopieer `stijlen/synthwave_rpg.py` naar `stijlen/<naam>.py` en pas aan: `TEMPOS`, `KEY`,
+   `MODE`, de akkoordschema's (`CITY_SECTIONS`, `BATTLE_SECTIONS`, `MENU_SECTIONS`,
+   `INTRO_SECTIONS`, `MERCHANT_CHORDS`, `LOADING_CHORDS`, `CHARACTER_CHORDS`), het motief
+   (`MOTIF_RHYTHM`, `MOTIF_VARIANTS`), de patches (`PATCHES`), het drumstel (`DRUMS`) en
+   `PIECES` (swing, energie, bas, gitaar per nummer);
+2. zet `ACTIVE_STYLE` in `style.py` op de nieuwe naam;
+3. pas waar nodig de nummers aan (de arrangementen en melodieën staan per nummer; ze zijn in
+   trappen van de toonladder en akkoordtrappen geschreven, dus een andere toonsoort volgt vanzelf);
+4. render, controleer, werk dit document bij.
+
+De melodieën en arrangementen van de vorige huisstijl ("klassiek": funky house en new jack
+swing, 104-150 BPM, F mineur rond Fm – Gb – Bbm, het motief F Ab G C) staan niet als profiel
+terug: ze zaten in andere componeercode. Ze staan in de git-geschiedenis (`tools/megadrive/`
+en `assets/audio/muziek/` in commit `e4c986db` en eerder).
+
 ## Originaliteit
 
-De klank is geïnspireerd op 16-bit Sega Mega Drive / Genesis-muziek in de stijl van
-beat-'em-up-soundtracks uit het begin van de jaren negentig (zoals Streets of Rage 2). Alleen
-de klankkleur en het genre zijn inspiratie. **Geen melodieën, baslijnen of akkoordschema's
-uit bestaande nummers (uit games of daarbuiten) namaken.** Alles is eigen compositie.
+De klank is geïnspireerd op 16-bit Mega Drive-muziek: action-RPG's en beat-'em-ups uit het begin
+van de jaren negentig. Alleen de klankkleur en het genre zijn inspiratie. **Geen melodieën,
+baslijnen of akkoordschema's uit bestaande nummers (uit games of daarbuiten) namaken.** Alles is
+eigen compositie. Een akkoordreeks als i – VI – III – VII is gemeengoed; de melodieën niet.
 
-## Klankpalet: de Mega Drive
+## Klankpalet: de Mega Drive, en waar de grenzen zitten
 
-Drie soorten geluidsbron, zoals op het apparaat:
+Wat de chip kon, en hoe de stijl daarbinnen blijft:
 
-**YM2612 FM**: vier operatoren per stem, een van de 8 algoritmes, feedback op operator 1,
-uitvoer afgerond op 9-bit DAC-stappen. De patches in `style.py`:
+- **YM2612 FM, zes kanalen**, waarvan het zesde de **DAC** is voor de drums: dus **vijf FM-stemmen**
+  tegelijk. Vier operatoren per stem, een van de 8 algoritmes, feedback op operator 1, uitvoer
+  afgerond op 9-bit DAC-stappen. Een akkoord is twee FM-stemmen (een tweeklank, `Chord.dyad`),
+  of één stem met de operatoren op grondtoon, kwint en octaaf (de **powerchord**). Pad en koper
+  wisselen elkaar af; de "muur van geluid" is een kwestie van afwisselen, niet van alles tegelijk.
+- **SN76489 PSG**: drie blokgolven (alleen 50%: een "25%-pulse" bestaat op deze chip niet; de
+  dunne chiptune-lead komt van een snel **driver-vibrato** dat per frame in de deler wordt
+  geschreven), toonhoogte op de 10-bit deler (iets vals, zoals echt), volume in stappen van 2 dB,
+  60 keer per seconde bijgewerkt; en de 16-bit LFSR-ruis voor hi-hats, open hats en bekkens.
+- **DAC-drums**: korte samples, ~13-17,5 kHz, 8 bit: de strakke elektronische kick (`tight`),
+  de vette kick (`FAT_KICK`, voor grote klappen), de **80s gated snare** (een felle klap met een
+  dichte kamerstaart die het gate na 0,17 s hard afknipt), een gewone snare (ghost notes, rolls),
+  clap, drie toms. Een metalen **FM-snare** ligt er licht overheen (op een FM-kanaal).
+
+De patches in het profiel (`PATCHES`):
 
 | Patch | Waarvoor |
 |---|---|
-| `LEAD` | **de signatuurstem**: elke uitspraak van het motief, en de melodieën. Vibrato na een korte wachttijd |
-| `SLAP_BASS` | funky slapbas (stad, handelaar, karakterkeuze) |
-| `SYNTH_BASS` | strakke, drijvende bas (menu, gevecht, intro, torens, industrie) |
-| `ELECTRIC_PIANO` | FM-e-piano: akkoordstoten, rustige akkoorden |
-| `BRASS` | koperpads (lange akkoorden) |
-| `BRASS_STAB` | korte koperstoten, ook in het ritme van het motief |
-| `STRINGS` | FM-strijkers: pads, breaks, intro en outro |
-| `BELL` | FM-klokjes: glans (torens, groen, level omhoog) |
-
-Een stuk mag een eigen patch toevoegen voor één kleur (bijvoorbeeld `METAL` in
-`stad_industrie.py`), maar het motief speelt altijd op `LEAD`.
-
-**SN76489 PSG**: blokgolven met de toonhoogte op de 10-bit deler (iets vals, zoals echt) en
-het volume in stappen van 2 dB, 60 keer per seconde bijgewerkt. Twee kanalen:
-`psg_one` voor arpeggio's en ostinato's, `psg_two` voor de echo (dezelfde lijn drie zestienden
-later), de tegenstem en de terts eronder. PSG-ruis (16-bit LFSR) voor hi-hats, open hats en
-bekkens.
-
-**PCM-drums** via de DAC: kick (dik, 909-achtig), snare met ruis, clap, drie toms; ~17,5 kHz,
-8 bit, voor die korrelige rand.
+| `lead` (`SYNTH_LEAD`) | **de signatuurstem**: het motief en de zingende thema's, vibrato na een korte wachttijd |
+| `guitar` | de **elektrische gitaar**: FM met hoge feedback, door de overdrive (`drive`), bends (`~`), vibrato; met `twin=True` de tweede gitaar een terts lager |
+| `power` | powerchords op één kanaal, hard aangezet (`anthem`, `push`, `hits`, `chug`, `held`) |
+| `solid_bass` | de punchy, metalige FM-bas in zestienden met octaafsprongen (`solid`, `drive`, `syncopated`, ...) |
+| `slap_bass` | de slapbas voor de lossere stukken (`slap`, `lyrical`, `walking`) |
+| `brass_stab`, `brass` | FM-koperstoten op 2 en 4, koperpads |
+| `pad` | het warme "analoge" pad (twee ontstemde dragers, trage aanzet) |
+| `bell`, `chime` | FM-klokjes en de nostalgische lead-chime van de outro's |
+| `pluck` | getokkeld (klavecimbel, folkgitaar, de luit van de markt) |
+| `fm_snare`, `metal` | de metalen snare-laag, metaalklanken (industrie) |
 
 **Panning en mix** (vast in `Song`, voor elk stuk gelijk): bas, lead en drums in het midden;
-piano links (-0,55), koper rechts (0,5), strijkers licht links, PSG 1 en 2 licht rechts en
-links, ruis licht rechts. Zachter dan de harde L/R van het apparaat, voor koptelefoons. Lichte
-"Model 1"-kleur: low-pass rond 11 kHz, high-pass op 25 Hz.
+gitaar links (-0,4), de tweede gitaar en het echo-delay rechts (0,4), koper rechts (0,5), pad
+links (-0,45), PSG 1/2/3 licht rechts, links, rechts, ruis licht rechts. Zachter dan de harde L/R
+van het apparaat, voor koptelefoons. Lichte "Model 1"-kleur: low-pass rond 11 kHz, high-pass
+op 25 Hz.
+
+De rollen van de PSG: `psg_one` de chiptune-lead of de arpeggio, `psg_two` de echo (dezelfde
+lijn drie zestienden later) en de tegenstem, `psg_three` het fonkelende tegen-arpeggio.
 
 ## Toonsoort en harmonie
 
-- Alles in **F mineur**.
-- Het hart is **i – bII – iv: Fm – Gb – Bbm**. De bII (Gb) geeft de donkere, stoere kleur.
-- Kleurakkoorden: **Ab** en **Cm**, en **C7** als weg terug naar Fm. Verder mag Eb, Db/Gb maj7,
-  Bbm9, Csus, Gm7b5 als doorgang.
-- Energiek, niet triomfantelijk. Majeur alleen als uitzondering: winnen, level omhoog, de
-  fanfare van de kaart (die eindigt op F majeur).
+- Alles in **D mineur** (`KEY`, `MODE` in het profiel).
+- Het hart: **i – VI – III – VII: Dm – Bb – F – C**, het heroïsche, voortstuwende action-RPG-gevoel.
+- Kleur: **iv (Gm)**, **V en V7 (A, A7)** met de C# van harmonisch mineur als weg terug,
+  **VImaj7**, **VIIsus**, **Vsus**.
+- Majeur voor winnen, level omhoog, de fanfare van de kaart (die landt op **D majeur**, `I`).
 
 ## Het motief
 
-Vier korte, harde noten in twee tellen:
+Vier noten in twee tellen, op het akkoord van zijn maat:
 
 - ritme: **achtste, zestiende, zestiende, kwart**
-- noten: **grondtoon, terts, de secunde boven de grondtoon, dan de kwint omlaag**
-- over Fm: **F5 Ab5 G5 C5**; over Gb: Gb5 Bb5 Ab5 Db5; over Bbm: Bb5 Db6 C6 F5
-- het past zich aan elk akkoord aan: de terts is groot of klein volgens het akkoord, de kwint
-  omlaag is de kwint van het akkoord (bij m7b5 de verminderde kwint, en daar is de secunde een
-  halve toon); grondtonen tussen D5 en C#6
-- variant "stoer" (`M!`): eindigt op de kleine septiem eronder in plaats van de kwint (alleen
-  op mineur)
-- **speelt altijd op de signatuurstem `LEAD`** (de PSG mag het echoën of beantwoorden)
-- **moet in elk stuk duidelijk en herkenbaar terugkomen**: liefst aan het begin van frases,
-  in loops meerdere keren, in deuntjes als kern
+- noten: **grondtoon, de kwint erboven, het octaaf, dan de toonladdertoon onder dat octaaf**:
+  een sprong omhoog en een wending. Over Dm: **D5 A5 D6 C6**; over Bb: Bb4 F5 Bb5 A5; over F:
+  F5 C6 F6 E6; over C: C5 G5 C6 Bb5; over A: A4 E5 A5 G5
+- variant `M^` (stijgend): eindigt op de none boven het octaaf (D5 A5 D6 E6); variant `M!`
+  (stoer): grondtoon, terts, kwint, grondtoon een octaaf lager
+- speelt op de signatuurstem `lead` (of de gitaar, de klokjes, de PSG die hem echoot), en **komt in
+  elk stuk duidelijk terug**: aan het begin van frases, in loops meerdere keren, in deuntjes als kern
 
-In de melodietekst van een stuk is `M` het motief op het akkoord van die maat (8 zestienden),
-`M!` de stoere variant, `M+`/`M-` een octaaf hoger/lager. Zie de docstring van `style.py`
-voor de hele notatie (`F5:4`, `-:2`, `R:2`, `3:2`, `5:2`, ...).
+In de melodietekst van een stuk: `M` het motief (8 zestienden), `M^`/`M!` de varianten,
+`M+`/`M-` een octaaf hoger/lager; `R:2` `3:2` `5:2` `7:2` `8:2` `9:2` akkoordtrappen; `^1:4` ..
+`^7:4` trappen van de toonladder (`'` octaaf hoger, `,` lager); `~` ervoor: een bend omhoog;
+`-:4` een rust. Zie de docstring van `style.py`.
 
-## Tempo's
+## Tempo's (`TEMPOS`)
 
 | Soort stuk | Tempo |
 |---|---|
-| intro, handelaar, deuntjes | 128 BPM (maat = 1,875 s) |
-| menu | 140 BPM (maat = 1,71 s) |
-| de stadsloops (achtergrondmuziek) | 104 BPM (maat = 2,31 s) |
-| gevecht | 150 BPM |
+| intro, menu, gevecht, stadsloops, handelaar, deuntjes | **120 BPM** (maat = 2,0 s) |
+| laden | 100 BPM |
 | karakterkeuze (zacht) | 96 BPM |
 
 Alle stadsloops hebben **hetzelfde tempo, dezelfde lengte en dezelfde akkoorden per maat**
-(`stad_plan.py`), zodat het overvloeien bij een wijkwissel op dezelfde maat en hetzelfde
-akkoord uitkomt.
+(`CITY_SECTIONS`, `stad_plan.py`), zodat het overvloeien bij een wijkwissel op dezelfde maat en
+hetzelfde akkoord uitkomt. De handelaar heeft hetzelfde tempo, zodat hij soepel overvloeit.
 
 ## Groove en drums
 
-- House: four-on-the-floor-kick, snare en/of clap op 2 en 4, hi-hats in zestienden met
-  accent op de achterslag, open hats op de achterslagen voor de hoogtepunten.
-- New jack swing: gebroken kick (1, de "en" van 2, 3), harde backbeat, swing 0,2-0,25.
-- Lichte swing (0,1-0,15) voor de funky stukken, recht (0) voor menu, gevecht, torens en industrie.
-- Ghost notes op de snare, extra kick op de laatste achtste van de maat voor duw.
-- Vullingen aan het eind van elke sectie: snare (laatste tel), toms (terug naar het begin van
-  een loop), roll (16en die aanzwellen uit een break), drop (stilte op de laatste tel).
-- Breaks zonder kick; rustige stukken (groen, karakterkeuze) met minder drums.
+- Four-on-the-floor met de gated snare op 2 en 4 (en claps in de hoogtepunten), hi-hats in
+  zestienden, open hats op de achterslagen, **double-time hats** (een rammel van 32sten aan het
+  eind van elke tel) voor de bouw en het duel.
+- Gebroken (1, de "en" van 2, 3) en rock-kicks (1, 3, de "en" van 3) voor de rauwere stukken,
+  half-time (1 en de "en" van 3) voor de rustige.
+- Lichte swing (0,06-0,16) voor handelaar, laden, woonwijk, markt, centrum, dorp; recht voor de rest.
+- Vullingen aan het eind van elke sectie: snare, toms (terug naar het begin van een loop), roll,
+  drop; een bekken op elke sectieovergang.
 
 ## Vorm en lengtes
 
-- Loops: **een geheel aantal maten**, 30-90 s, **naadloos**: wat over het einde klinkt komt op
-  het begin; geen klik op het lusmoment. Geen intro: meteen de groove. Afwisseling met
-  secties (A, A', B, break, C, tag) en vullingen; een tomfill in de laatste maat leidt terug
-  naar maat 1.
-- Deuntjes: geen lus, **4 s** (kaartdeuntje **6 s**), eindigen met een korte uitfade.
+- Loops: **een geheel aantal maten**, **naadloos** (wat over het einde klinkt komt op het begin).
+  Geen intro: meteen de groove. Secties met vullingen; de laatste maat leidt terug naar maat 1.
+- Het gevecht volgt de vorm van de stijl: **A (verkenning) – B (gevechtshoogtepunt) – solo/duel –
+  climax**; de intro: **intro – A – B – duel – systeemcrash (tape stop) – outro**.
+- Deuntjes: geen lus, **4 s** (kaartdeuntje **6 s**, nieuwe missie **2,2 s**, taak klaar **2,8 s**),
+  met een korte uitfade.
 - De intro: precies op de tijden van `scripts/ui/intro.gd` (zie hieronder).
 
 ## Mixniveaus
 
-- elk bestand eindigt op **-16 LUFS** (geïntegreerd, zoals `ffmpeg -af ebur128` meet; zie
+- elk bestand eindigt op **-16 LUFS** (geïntegreerd, zie
   [Eén luidheid voor alle audio](#één-luidheid-voor-alle-audio)), pieken onder -1,5 dB
-- `target_rms_db` van `render()` bepaalt alleen nog hoe hard de mix de begrenzer in gaat (de
-  dichtheid: zachte stukken -16 tot -18,5 dB klinken luchtiger), niet hoe luid het bestand is
-- per spoor de vaste niveaus in `Song`; de master begrenst zacht, `loudness.level` zet daarna het
-  niveau
+- `target_rms_db` van `render()` bepaalt alleen hoe hard de mix de begrenzer in gaat (de
+  dichtheid), niet hoe luid het bestand is
+- per spoor de vaste niveaus in `Song`; de stadsloops naar achteren gemengd
+  (`CITY_BACKGROUND_GAINS`, `CITY_LOW_PASS_HZ` in het profiel)
 
 ## Alle stukken en waar ze spelen
 
 | Bestand (`assets/audio/muziek/`) | Waar | Stuk |
 |---|---|---|
-| `zwervr_intro.ogg` | intro (`scripts/ui/intro.gd`) | 128 BPM, 64 maten, 120 s, geen lus |
-| `nachtstad_menu_loop.ogg` | hoofdmenu (`main_menu.gd`) | vol actie en recht, 140 BPM, de kick gaat altijd door, 48 maten, 82 s |
-| `karakterkeuze_loop.ogg` | karakterscherm (`character_creation.gd`) | zacht, 96 BPM, 16 maten, 40 s |
-| `deuntje_kaart_start.ogg` | start van de kaart, voor de stadsmuziek (`hud.gd`, `MAP_JINGLE`) | het motief als fanfare op Db en Eb naar F majeur, 6 s |
-| `stad_centrum_loop.ogg` | de stad: oude binnenstad | funky, levendig, 92 s |
-| `stad_torens_loop.ogg` | de stad: kantoortorens | koel, glanzend, 92 s |
-| `stad_groen_loop.ogg` | de stad: parken | rustig, ruimtelijk, 92 s |
-| `stad_woonwijk_loop.ogg` | de stad: woonwijken | rauw, straat, new jack swing, 92 s |
-| `stad_industrie_loop.ogg` | de stad: industrie en snelweg | hard, mechanisch, techno, 92 s |
-| `stad_hofstad_loop.ogg` | de stad: hofkwartier | statig, strijkers en klavecimbel, 92 s |
-| `stad_markt_loop.ogg` | de stad: markten | handtrommels, getokkelde lijn, 92 s |
-| `stad_bos_loop.ogg` | de stad: bos | het rustigst, geen drums, vogels, 92 s |
-| `stad_dorp_loop.ogg` | de stad: dorp | folky, getokkeld, zachte brushes, 92 s |
-| `gevecht_loop.ogg` | zolang je in een gevecht bent (nog te koppelen) | 150 BPM, 32 maten, 51,2 s: de stoere variant van het motief op lead en koper, galopperende kick |
-| `laden_loop.ogg` | wachtmuziek onder het laadscherm (`scripts/ui/loading_screen.gd`), in en uit fadend; zolang het laadscherm er is, is verder niets van de stad te horen (geen verkeer, geen wijkmuziek) | laid back zoals de handelaar: zware shuffle, FM-slapbas in new jack-stijl, e-piano die duwt en antwoordt, zachte gebroken beat met lome backbeat, een ontspannen wijsje met glijders, de tweede keer met PSG-antwoord; 92 BPM, F mineur, 16 maten, 41,7 s |
-| `handelaar_loop.ogg` | zolang je in een winkel bent, bij een handelaar (nog te koppelen) | relaxte new jack swing, 128 BPM in F mineur, 16 maten, 30 s (de stadsloops zijn nu 104 BPM: zet hem bij het koppelen op hun tempo, dan vloeit hij soepel over) |
-| `deuntje_gewonnen.ogg` | gewonnen | het motief snel omhoog, F majeur, 4 s |
+| `zwervr_intro.ogg` | intro (`scripts/ui/intro.gd`) | 120 BPM, 60 maten, 120 s, geen lus: intro, verkenning, gevecht, duel, tape stop, outro |
+| `nachtstad_menu_loop.ogg` | hoofdmenu (`main_menu.gd`) | het titelscherm: de motief-fanfare, powerchords, het grote thema met de twee gitaren, pads en klokjes; de kick gaat door; 32 maten, 64 s |
+| `karakterkeuze_loop.ogg` | karakterscherm (`character_creation.gd`) | zacht: pad, klokjes op het motief, traag arpeggio, later een zachte chiptune-melodie; 96 BPM, 16 maten, 40 s |
+| `laden_loop.ogg` | onder het laadscherm (`loading_screen.gd`) | rustig, half-time: zacht pulserende bas, pad, de chime op het motief, getokkelde akkoorden, later een melodie op de lead; 100 BPM, 16 maten, 38,4 s |
+| `handelaar_loop.ogg` | in een winkel (de snackbars, `interiors.gd`) | ontspannen: slapbas, getokkelde akkoorden op de achterslagen, zacht koper, gebroken beat met claps, een vriendelijk wijsje op de chiptune-lead, de tweede keer op de lead met PSG-echo; 120 BPM, 16 maten, 32 s |
+| `gevecht_loop.ogg` | in een gevecht | het volle battle theme: chiptune-verkenning, powerchords en zwevende lead, gitaar- en chiptune-duel, de twee gitaren in tertsen; 32 maten, 64 s |
+| `stad_*_loop.ogg` | de stad, per wijk (hieronder) | 120 BPM, 48 maten, 96 s |
+| `deuntje_kaart_start.ogg` | start van de kaart (`hud.gd`, `MAP_JINGLE`) | het motief als fanfare op Bb en C naar D majeur, met powerchords, 6 s |
+| `deuntje_gewonnen.ogg` | een missie klaar | het motief snel omhoog, D majeur, korte groove met de twee gitaren, 4 s |
 | `deuntje_level_omhoog.ogg` | genoeg XP voor een level | PSG-loopje omhoog, het motief in majeur met klokjes, 4 s |
-| `deuntje_nieuwe_missie.ogg` | een nieuwe missie (de melding bovenin, `GameHud.show_mission`) | het motief snel op klokjes, koperstoten op Db en Eb, een open F met wat glitter, 2,2 s |
-| `deuntje_verloren.ogg` | verloren | het motief begint en zakt weg naar een lage F, 4 s |
-| `deuntje_dood.ogg` | dood (`hud.gd`, `DEATH_JINGLE`) | lage klap, PSG-duik, het motief vertraagd een octaaf lager, 4 s |
+| `deuntje_nieuwe_missie.ogg` | een nieuwe missie (`GameHud.show_mission`) | het motief op klokjes, koper en powerchord op Bb en C, een open D, 2,2 s |
+| `deuntje_taak_klaar.ogg` | een stap van een missie klaar | snareroll, fanfare door D, G en A, een grote D majeur, 2,8 s |
+| `deuntje_verloren.ogg` | verloren | het motief begint en zakt weg naar een lage D, 4 s |
+| `deuntje_dood.ogg` | dood (`hud.gd`, `DEATH_JINGLE`) | lage klap, PSG-duik, het motief vertraagd een octaaf lager, de band stopt, 4 s |
 
 ### De stad per wijk
 
-De HUD kiest de loop bij de wijk waar je bent (`CITY_MUSIC_BY_AREA` in `scripts/ui/hud.gd`;
-de wijknamen uit de "wijken"-metadata) en vloeit over bij een wijkwissel, op dezelfde plek in
-de maat en met gelijk vermogen (geen gat halverwege), pas na 1,5 s in de nieuwe wijk. Andere wijken spelen `stad_centrum_loop.ogg`.
+De HUD kiest de loop bij de wijk waar je bent (`CITY_MUSIC_BY_AREA` in `scripts/ui/hud.gd`) en
+vloeit over bij een wijkwissel, op dezelfde plek in de maat. Andere wijken spelen
+`stad_centrum_loop.ogg`. Alle negen spelen dezelfde familie van thema's (`stad_plan.THEMES`),
+elk op zijn eigen manier:
 
 | Loop | Wijken | Karakter |
 |---|---|---|
-| `stad_centrum_loop` | Centrum | funky house met lichte shuffle, slapbas, e-piano, koper, PSG-echo |
-| `stad_torens_loop` | Centraal Station, De Resident, Beatrixkwartier, Prins Clauslaan | rechte deep house, bas op de achterslag, piano-offbeats, klokjes, glinsterende arpeggio's, lange koele lead |
-| `stad_groen_loop` | Malieveld | half-time gevoel, strijkers, klokjes, lange bas, nauwelijks drums, het motief zacht met ruimte |
-| `stad_woonwijk_loop` | Bezuidenhout, Bezuidenhout-Oost, Laak | zware new-jack-swing-shuffle, gebroken kick, slapbas, korte riffs op het stoere motief |
-| `stad_industrie_loop` | Binckhorst, A12 | techno: kick op elke tel, bas in zestienden, PSG-ostinato, metalen FM-klanken, het motief gehamerd |
-| `stad_hofstad_loop` | Paleis Noordeinde, Lange Voorhout | statig zonder beat: strijkers, een klavecimbelachtige PSG-arpeggio op en neer, klokjes op de één, pauken bij de wendingen, een nobele lead; koperpad in C |
-| `stad_markt_loop` | Grote Markt, Schilderswijk (de Haagse Markt) | handtrommels in een darbuka-patroon ("dum" op de toms, "tek" op zachte claps), een getokkelde PSG-lijn op het motief, lyrische bas, versierde lead met glijders; de C7 geeft de E van F harmonisch mineur |
-| `stad_bos_loop` | Koekamp (het hertenkamp bij het Haagse Bos) | het rustigst: geen drums, zachte strijkers, lange bas, klokjes ver uit elkaar, PSG-vogeltjes af en toe, de lead alleen in A' en C |
-| `stad_dorp_loop` | Voorburg | folky: de PSG tokkelt de akkoorden als een gitaar, spaarzame e-piano, zachte brushes vanaf B, een eenvoudig wijsje op het motief |
+| `stad_centrum_loop` | Centrum | levendige synthwave: solid bass, arpeggio, koperstoten, het stadsthema op de lead met echo, powerchords in B, de twee gitaren in C, het lyrische thema op de gitaar in D |
+| `stad_torens_loop` | Centraal Station, De Resident, Beatrixkwartier, Prins Clauslaan | koel en glazig: bas op de achterslag, klokjes, fonkelende arpeggio's een octaaf hoger, de chiptune-lead, lange noten op de lead; geen gitaar |
+| `stad_groen_loop` | Malieveld | rustig en ruim: half-time, lange bas, pad, klokjes op het motief, de chiptune zacht, de lead in B en C |
+| `stad_woonwijk_loop` | Bezuidenhout, Bezuidenhout-Oost, Laak | rauw: gebroken kick, harde gated snare, slapbas, palm-muted chugs, riffs op het stoere motief, de gitaren in C en D |
+| `stad_industrie_loop` | Binckhorst, A12 | hard en mechanisch: kick op elke tel, bas in zestienden, FM-metaal op de achterslagen, PSG-ostinato, het motief gehamerd, de twee gitaren in C |
+| `stad_hofstad_loop` | Paleis Noordeinde, Lange Voorhout | statig, zonder beat: pad, een getokkeld klavecimbel-arpeggio, een klokje op de één, pauken bij de wendingen, de melodie op het koper |
+| `stad_markt_loop` | Grote Markt, Schilderswijk | handtrommels in een darbuka-patroon ("dum" op de lage tom, "tek" op zachte claps), getokkelde akkoorden, lyrische bas, versierde lead met glijders |
+| `stad_bos_loop` | Koekamp | het rustigst: geen drums, pad, lange bas, klokjes ver uit elkaar, PSG-vogeltjes, de lead alleen in A2 en C |
+| `stad_dorp_loop` | Voorburg | folky: de akkoorden getokkeld als een gitaar, wandelende bas, zachte brushes vanaf B, een eenvoudig wijsje op de chiptune |
 
-Het zijn achtergrondmuziekjes om bij rond te lopen: rustig (104 BPM) en naar achteren gemengd
-(`stad_plan.finish`: drums, lead, hats en koper zachter dan in de andere stukken, de top wat
-afgerond, iets zachter in totaal), en in het spel op -8,8 dB (gepauzeerd -16,8 dB).
-
-Het gedeelde plan (40 maten = 92 s, 104 BPM): A (Fm7 Gbmaj7 Bbm7 Fm7 Fm7 Gbmaj7 Ab6 C7),
-A' (idem), B (Bbm9 Bbm9 Gbmaj7 Gbmaj7 Abmaj7 Eb6 Csus C7), break (Gbmaj7 Gbmaj7 Bbm7 C7),
-C (Gbmaj7 Ab6 Fm7 Fm7 Gbmaj7 Ab6 Gm7b5 C7), tag (Fm7 Gbmaj7 Bbm7 C7). Een nieuwe wijkloop
-gebruikt dit plan en verandert alleen de bezetting, groove en melodieën.
+Het gedeelde plan (48 maten = 96 s): A (i VI III VII i VI III VII), A2 (i VI III VII iv VI
+VIIsus VII), B (VI VII i i VI VII V V7), break (VImaj7 VImaj7 iv V), C (i VI III VII i VI VII V),
+D (iv i VI III iv i V V7), tag (i VI VII V). Een nieuwe wijkloop gebruikt dit plan en verandert
+alleen de bezetting, groove en melodieën.
 
 ### De intro
 
-`scripts/ui/intro.gd` loopt op de muziek; de ankerpunten liggen vast (maat = 1,875 s):
-zwelling vanaf 0 (het logo fadet in van 5 tot 6,5 s, het motief zacht op maat 5 = 7,5 s), de
-jacht op maat 9 (15,0 s, `CRAWL_AT`), de klim op maat 25 (45,0 s), het refrein op maat 33
-(60,0 s) en de tweede helft op maat 41 (75,0 s), het duel op maat 49 (90,0 s), de systeemcrash
-op maat 57 (105,0 s: één harde klap, PSG-duik, daarna geen drums) en het uitsterven tot 120,0 s
-(`END_AT`). Verander je die tijden, pas dan `intro.gd` mee aan (`CRAWL_AT`, `CRAWL_CUES`, `END_AT`).
+`scripts/ui/intro.gd` loopt op de muziek; de ankerpunten liggen vast (maat = 2,0 s): de intro
+vanaf 0 (alleen het arpeggio, de bas na 4 s, het motief zacht op 6 s, het logo staat op 6,5 s),
+de verkenning op maat 9 (**16,0 s**, `CRAWL_AT`), het gevechtshoogtepunt op maat 25 (**48,0 s**),
+het duel op maat 41 (**80,0 s**), de systeemcrash op maat 53 (**104,0 s**: de band stopt over de
+laatste tel, één harde klap, een PSG-duik) en de outro tot **120,0 s** (`END_AT`): kick en bas,
+dan de bas alleen, de chime met zijn PSG-echo, een laatste akkoordstoot met bekken en de tape
+stop. Verander je die tijden, pas dan `intro.gd` mee aan (`CRAWL_AT`, `CRAWL_CUES`, `END_AT`).
 
 ## Geluidseffecten van het verkeer en de hulpdiensten
 

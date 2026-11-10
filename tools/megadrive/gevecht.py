@@ -1,87 +1,129 @@
-"""'Gevecht': the battle loop. Fast and tough: the tough motif hammered on lead and brass.
+"""'Gevecht': the battle loop, the full action-RPG battle theme of the style.
 
-House style (style.py), at full tilt: 16th synth bass, galloping kick, brass stabs on the
-motif's rhythm, fast PSG arpeggios, tom fills.
+Style profile (stijlen/<active>.py): BATTLE_SECTIONS, TEMPOS["gevecht"]; in synthwave_rpg
+120 BPM, D minor, 32 bars = 64 s, straight, loops seamlessly:
 
-150 BPM, F minor, 32 bars = 51.2 s, straight, loops seamlessly.
-
-    bars  1-8   A   Fm Gb Fm Gb / Bbm Gb C7 C7: the tough motif on lead and brass, call and answer
-    bars  9-16  B   the theme on the lead, PSG echo, open hats
-    bars 17-24  C   half-time: heavy kick and snare, the motif traded between lead and PSG
-    bars 25-32  A'  A again with the theme an octave up and a tom fill back to the top
+    bars  1-8   A       exploration: the square-wave chiptune lead with a fast vibrato over
+                        the solid bass, FM brass stabs on 2 and 4 (doubled at the end of every
+                        four bars), the PSG arpeggio, hats building with rolls
+    bars  9-16  B       battle climax: four on the floor, gated snare and claps, distorted
+                        power chords, the soaring synth lead on i-VI-III-VII, a sparkling
+                        counter-arpeggio
+    bars 17-24  solo    the duel: the guitar solos two bars (bends, vibrato), the chiptune
+                        answers two bars in fast runs, syncopated bass, double-time hats
+    bars 25-32  climax  the twin guitars in thirds with the synth lead, pads and brass, high
+                        arpeggios, the heaviest beat; a tom fill back to the top
 
 Render: tools/megadrive/render.sh gevecht  (writes assets/audio/muziek/gevecht_loop.ogg)
 """
 import style
-from style import Song, chords
+from style import Song
 
-A_CHORDS = chords(["F m7", "Gb maj", "F m7", "Gb maj", "Bb m7", "Gb maj", "C 7", "C 7"])
-C_CHORDS = chords(["Bb m7", "Bb m7", "Gb maj7", "Gb maj7", "Ab maj", "Ab maj", "C 7", "C 7"])
+PROFILE = style.PROFILE
+SECTIONS = {name: (first_bar, section_chords) for name, first_bar, section_chords in style.plan(PROFILE.BATTLE_SECTIONS)}
 
-A_HITS = "M! -:8 M -:8 M! M! M -:8 M! -:8 M -:8 M -:8 M 5:2 3:2 9:2 R:2"
-B_THEME = """
-    M! C6:2 Ab5:2 F5:4
-    M Db6:2 Bb5:2 Gb5:4
-    M! Eb6:4 C6:4
-    Bb5:2 Ab5:2 Gb5:2 F5:2 Db5:8
-    M Db6:4 F6:4
-    Eb6:4 Db6:2 Bb5:2 Gb5:8
-    M G5:2 Bb5:2 C6:4
-    E6:12 -:4
+EXPLORATION = """
+    M ^3':2 ^1':2 ^5:4
+    ^6:3 ^5:1 ^4:2 ^3:2 ^4:4 ^6:4
+    M ^7:2 ^1':2 ^3':4
+    ^2':6 ^1':2 ^7:4 ^5:4
+    M^ ^3':2 ^2':2 ^1':4
+    ^6:2 ^1':2 ^2':2 ^3':2 ^4':4 ^3':2 ^2':2
+    M ^2':2 ^7:2 ^5:4
+    ^7:4 ^1':4 ^2':8
 """
-C_CALLS = "M -:8 -:16 M -:8 -:16 M -:8 -:16 M -:8 M M"
-A_THEME_HIGH = """
-    M! C6:2 Ab5:2 F5:4
-    M Db6:2 Bb5:2 Gb5:4
-    M! Eb6:4 C6:4
-    M Bb5:4 Gb5:4
-    M Db6:4 F6:4
-    Eb6:4 Db6:2 Bb5:2 Gb5:8
-    M G5:2 Bb5:2 C6:4
-    M E6:8
+SOARING = """
+    ^5:4 ^1':6 ^2':2 ^3':4
+    ^4':6 ^3':2 ^2':4 ^1':4
+    M ^1':4 ^7:4
+    ^7:6 ^1':2 ^2':8
+    ^5:4 ^1':6 ^2':2 ^3':4
+    ^4':4 ^3':4 ^2':4 ^4':4
+    ^3':6 ^2':2 ^1':4 ^7:4
+    M^ ^2':8
+"""
+GUITAR_CALLS = [
+    "~^4:3 ^6:1 ^1':2 ^6:2 ~^1':4 ^6:2 ^4:2 ^5:2 ^4:2 ^3:2 ^1:2 ~^3:6 ^2:2",
+    "^4':4 ~^5':4 ^4':2 ^3':2 ^1':4 ^3':2 ^1':2 ^6:2 ^5:2 ~^1':8",
+]
+CHIP_ANSWERS = [
+    "^6:1 ^1':1 ^3':1 ^1':1 ^6:1 ^1':1 ^3':1 ^4':1 ^3':2 ^1':2 ^6:2 ^5:2 "
+    "^7:1 ^2':1 ^4':1 ^2':1 ^7:1 ^2':1 ^4':1 ^5':1 ^4':2 ^2':2 ^7:2 ^1':2",
+    "R:1 3:1 5:1 8:1 5:1 3:1 R:1 3:1 5:2 8:2 5:2 3:2 "
+    "8:1 5:1 3:1 R:1 3:1 5:1 8:1 5:1 3':4 8:4",
+]
+FINAL = """
+    ^5:4 ^1':6 ^2':2 ^3':4
+    ^4':6 ^3':2 ^2':4 ^1':4
+    M ^1':4 ^7:4
+    ^7:6 ^1':2 ^2':8
+    ^6:4 ^1':4 ^4':6 ^3':2
+    ^5':6 ^4':2 ^3':4 ^2':4
+    8:4 3':4 5':8
+    M 5:2 3:2 R:4
 """
 
 
 def main() -> None:
-    song = Song("gevecht_loop.ogg", bpm=150, bars=32, swing=0.0)
+    song = Song("gevecht_loop.ogg", bpm=style.tempo("gevecht"), bars=style.plan_bars(PROFILE.BATTLE_SECTIONS),
+                swing=style.piece("gevecht")["swing"])
 
-    def section_a(first_bar, theme, octave):
-        style.lead(song, first_bar, theme, A_CHORDS, octave=octave)
-        for offset, chord in enumerate(A_CHORDS):
-            bar = first_bar + offset
-            style.bass_bar(song, bar, chord, "drive", patch=style.SYNTH_BASS)
-            style.brass_stabs(song, bar, chord, [(0, 2), (2, 1), (3, 1), (4, 4)] if offset % 2 == 0 else [(8, 2), (12, 2)])
-            style.psg_arpeggio(song, bar, chord, "updown", 0.6)
-            last = offset == 7
-            style.drum_bar(song, bar, kick="gallop", clap=True, hats="sixteenths",
-                           fill=("tom" if first_bar == 24 else "snare") if last else None, ghosts=False)
-        style.crash(song, first_bar)
+    # A: exploration
+    first_bar, section_chords = SECTIONS["A"]
+    style.chip_lead(song, first_bar, EXPLORATION, section_chords)
+    for offset, bar_chord in enumerate(section_chords):
+        bar = first_bar + offset
+        style.bass_bar(song, bar, bar_chord, "solid_turn" if offset % 4 == 3 else "solid")
+        hits = [(4, 1), (12, 1)] + ([(14, 1), (15, 1)] if offset % 4 == 3 else [])
+        style.brass_stabs(song, bar, bar_chord, hits)
+        style.arpeggio(song, bar, bar_chord, "up", 0.5, track=song.psg_three)
+        style.drum_bar(song, bar, kick="four", hats="double" if offset >= 4 else "sixteenths",
+                       hat_volume=0.7 + 0.04 * offset, fm_snare=True, fill="snare" if offset == 7 else None)
+    style.crash(song, first_bar)
 
-    section_a(0, A_HITS, 0)
+    # B: the battle climax
+    first_bar, section_chords = SECTIONS["B"]
+    style.lead(song, first_bar, SOARING, section_chords, echo=True)
+    for offset, bar_chord in enumerate(section_chords):
+        bar = first_bar + offset
+        style.bass_bar(song, bar, bar_chord, "solid")
+        style.power_chords(song, bar, bar_chord, "anthem")
+        style.arpeggio(song, bar, bar_chord, "updown", 0.42, octave=1, track=song.psg_three)
+        style.drum_bar(song, bar, kick="four", clap=True, hats="open", fill="tom" if offset == 7 else None)
+    style.crash(song, first_bar)
+    style.crash(song, first_bar + 4, volume=0.7)
 
-    style.lead(song, 8, B_THEME, A_CHORDS, echo=True)
-    for offset, chord in enumerate(A_CHORDS):
-        bar = 8 + offset
-        style.bass_bar(song, bar, chord, "house", patch=style.SYNTH_BASS)
-        style.brass_pad(song, bar, chord, bars=1, velocity=0.7)
-        style.drum_bar(song, bar, kick="push", clap=True, hats="open", fill="snare" if offset == 7 else None)
-    style.crash(song, 8)
+    # solo: guitar and chiptune trade licks
+    first_bar, section_chords = SECTIONS["solo"]
+    for pair in range(2):
+        call_bar = first_bar + pair * 4
+        style.guitar(song, call_bar, GUITAR_CALLS[pair], section_chords[pair * 4:pair * 4 + 2], octave=-1 if pair else 0,
+                     echo=True)
+        style.chip_lead(song, call_bar + 2, CHIP_ANSWERS[pair], section_chords[pair * 4 + 2:pair * 4 + 4], volume=0.9)
+    for offset, bar_chord in enumerate(section_chords):
+        bar = first_bar + offset
+        style.bass_bar(song, bar, bar_chord, "syncopated")
+        if offset % 4 >= 2:
+            style.power_chords(song, bar, bar_chord, "hits", 0.7)
+        else:
+            style.brass_stabs(song, bar, bar_chord, [(6, 1), (14, 1)], 0.7)
+        style.drum_bar(song, bar, kick="drive", hats="double", fill="snare" if offset == 7 else None)
 
-    # C: half-time, the lead calls the motif and the PSG answers it a bar later
-    style.lead(song, 16, C_CALLS, C_CHORDS)
-    for offset, chord in enumerate(C_CHORDS):
-        bar = 16 + offset
-        style.bass_bar(song, bar, chord, "pulse", patch=style.SYNTH_BASS)
-        style.strings_pad(song, bar, chord, bars=1, velocity=0.7)
-        style.psg_arpeggio(song, bar, chord, "up", 0.45, every=1, track=song.psg_one)
-        if offset % 2 == 1:
-            for pitch, step, steps_long in zip(style.motif_notes(chord, tough=True), (0, 2, 3, 4), style.MOTIF_STEPS):
-                song.psg_two.add(song.at(bar, step), style.megadrive.psg_square(
-                    pitch, song.sixteenths(steps_long * 0.7), 0.9, decay=0.1, sustain=0.5))
-        style.drum_bar(song, bar, kick="half", snare="half", clap=True, hats="eighths",
-                       fill="roll" if offset == 7 else None)
+    # climax: twin guitars in thirds with the synth lead, pad and brass, high arpeggios
+    first_bar, section_chords = SECTIONS["climax"]
+    style.lead(song, first_bar, FINAL, section_chords)
+    style.guitar(song, first_bar, FINAL, section_chords, velocity=0.8, twin=True, octave=-1)
+    for offset, bar_chord in enumerate(section_chords):
+        bar = first_bar + offset
+        style.bass_bar(song, bar, bar_chord, "solid_turn" if offset % 2 else "solid")
+        if offset % 2 == 0:
+            style.pad(song, bar, bar_chord, bars=2, velocity=0.75)
+        style.brass_stabs(song, bar, bar_chord, [(4, 1), (12, 1)], 0.8)
+        style.arpeggio(song, bar, bar_chord, "rolling", 0.45, octave=1, track=song.psg_three)
+        style.drum_bar(song, bar, kick="push", clap=True, hats="open", fill="tom" if offset == 7 else None)
+    style.crash(song, first_bar)
+    style.big_hit(song, first_bar, 0, section_chords[0], 3)
 
-    section_a(24, A_THEME_HIGH, 0)
     song.render()
 
 

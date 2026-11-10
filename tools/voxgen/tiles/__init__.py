@@ -20,6 +20,7 @@ Modules per category (later ones build on the helpers of earlier ones):
   bus lanes, luxury apartments, green roofs), traffic_lights_industry (traffic lights in
   every state, sheds, warehouses, factories), street_carts (chip van, street organ,
   spring-roll and ice-cream carts, market stalls)
+- interiors: interior (category binnen: the rooms you walk into, scenes/binnen/; the snack bar)
 
 The import order below is the registration order and must stay as it is.
 """
@@ -46,3 +47,4 @@ from . import emergency_vehicles  # noqa: F401
 from . import small_vehicles  # noqa: F401
 from . import two_wheelers  # noqa: F401
 from . import street_carts  # noqa: F401
+from . import interior  # noqa: F401

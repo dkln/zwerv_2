@@ -15,12 +15,12 @@ var _problems: Array[String] = []
 
 func _init() -> void:
 	Common.watchdog(self, 300)
-	for persona: String in Conversations.PERSONAS:
-		var data: Dictionary = Conversations.PERSONAS[persona]
+	for persona: String in Conversations.personas():
+		var data: Dictionary = Conversations.personas()[persona]
 		var complete := true
-		for key in ["speaker", "greetings", "topic", "money_yes", "money_no", "blammage", "bye"]:
+		for key in ["spreker", "begroetingen", "onderwerp", "kleingeld_ja", "kleingeld_nee", "snackbar", "dag", "gulheid"]:
 			complete = complete and data.has(key)
-		_check(complete and (data.topic as Array).size() == 3 and Conversations.GENEROSITY.has(persona), "persona %s compleet" % persona)
+		_check(complete, "persona %s compleet" % persona)
 	PlayerCharacter.choose("martin")
 	var scene := Common.instantiate(Common.CITY, false)
 	for node_name in ["DetailNiveau", "Rook", "Grassprieten", "Verhaal"]:
@@ -103,7 +103,7 @@ func _init() -> void:
 	_check(first_line.get_theme_font_size("font_size") == box.TEXT_SIZE, "keuzes even groot als de tekst")
 	# ask for change
 	box._typewriter.finish()
-	var money_index: int = (page.choices as Array).find(Conversations.ASK_MONEY)
+	var money_index: int = (page.choices as Array).find(Conversations.question("kleingeld"))
 	box._choose(money_index)
 	box._say_choice()
 	page = box._pages[box._page_index]
@@ -113,8 +113,8 @@ func _init() -> void:
 	var view: Rect2 = box._scroll.get_global_rect()
 	var reply: Rect2 = box._text.get_global_rect()
 	_check(box._text.text != "" and view.grow(1.0).encloses(reply), "na de keuze de hele nieuwe reactie in beeld (%s in %s)" % [reply, view])
-	_check(box._history_text.visible and box._history_text.text.contains(Conversations.ASK_MONEY), "wat gezegd is blijft staan")
-	_check(not (page.choices as Array).has(Conversations.ASK_MONEY), "kleingeld niet nog eens vragen")
+	_check(box._history_text.visible and box._history_text.text.contains(Conversations.question("kleingeld")), "wat gezegd is blijft staan")
+	_check(not (page.choices as Array).has(Conversations.question("kleingeld")), "kleingeld niet nog eens vragen")
 	_check(person.has_meta(Conversations.GAVE_META), "eens per persoon")
 	# a new line typing out: the part that has appeared stays in view as it goes
 	box._choose(0)
@@ -140,7 +140,7 @@ func _init() -> void:
 	_check(view.grow(1.0).encloses(reply), "ook na nog een keuze de nieuwste reactie helemaal in beeld")
 	# goodbye
 	box._typewriter.finish()
-	box._choose((page.choices as Array).find(Conversations.ASK_BYE))
+	box._choose((page.choices as Array).find(Conversations.question("dag")))
 	box._say_choice()
 	print("  dag: ", box._pages[box._page_index].text)
 	box._typewriter.finish()

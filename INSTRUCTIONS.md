@@ -186,9 +186,34 @@ van een licht volgt uit zijn draaiing; tijden zijn instelbaar op de node.
 
 Er rijdt verkeer door de stad: een sedan, node `Auto` (`scripts/vehicles/car.gd`), en een
 SUV, node `SUV` (`scripts/vehicles/suv.gd`), staan in de scène; de node `Verkeer`
-(`scripts/traffic/traffic.gd`) zet er bij het starten nog `vehicle_count` (50) voertuigen bij,
-verspreid over het wegennet (`spacing`, `traffic_seed`, de mix in `MIX`), en daarna
-`services_count` (7) hulpdiensten en dienstauto's (`SERVICES`, nodes `Dienst1`..). Soorten:
+(`scripts/traffic/traffic.gd`) zet er voertuigen bij (de mix in `MIX`, nodes `Verkeer1`..) en
+hulpdiensten en dienstauto's (`SERVICES`, nodes `Dienst1`..). Dat is een set rond de speler,
+niet het verkeer van de hele stad:
+- Bij het starten komen ze op de wegen binnen `appear_within` (230 m) van de speler, op een
+  recht stuk gewone weg dat ergens heen leidt, minstens `spacing` (20 m) uit elkaar.
+- Een voertuig verder dan `keep_within` (280 m) van de speler, of dat al `renew_after` (90 tot
+  200 s) rondrijdt en verder dan `renew_beyond` (70 m) is, gaat buiten beeld uit de stad: uit de
+  boom (niet getekend, rijdt niet, geen geluid; de anderen laten het los, `Vehicle.forget`),
+  bewaard om terug te zetten (hooguit `parked_kept`, 30). Nieuwe komen buiten beeld op een
+  rijstrook tussen `appear_from` (110 m) en `appear_within` van de speler (een bewaarde van
+  dezelfde soort, `Vehicle.put_down`, of een nieuwe). Wrakken, trams en treinen, en de Auto en
+  SUV uit de scène blijven altijd.
+- Hoeveel: `vehicle_count` (50) maal het aandeel van het uur van de dag en de wijk van de
+  speler, hooguit `most_vehicles` (70); de diensten `services_count` (7) maal alleen het
+  uuraandeel, minstens `fewest_services` (2). Wat er komt: een voertuigsoort (`auto`, `fiets`,
+  `brommer`, `vracht`, `bus`, `landbouw`, `klein`, de derde kolom van `MIX`) getrokken met de
+  gewichten van het uur en van de wijk waar het verschijnt, dan een van die soort die de
+  rijstrook toestaat. Een fietspad komt zo vaak aan de beurt als er fietsers en brommers zijn.
+  Alles in `data/drukte.json` (`scripts/world/crowd.gd`, zie hieronder).
+- Per halve seconde (`tick_seconds`) hooguit `changes_per_tick` (4) wissels, na een sprong van de
+  speler (een warp, een geladen spel) alles in één keer. In een binnenruimte staat het stil.
+  Zonder camera (de tools) is niets buiten beeld, dus gaat er niets weg
+  (`unseen_without_camera` zet dat aan voor een test).
+- `whole_town` = true doet het zoals vroeger: `vehicle_count` + `services_count` over het hele
+  wegennet (`traffic_seed`), allemaal gehouden; `tools/check/traffic_test.gd` gebruikt dat.
+- Controle: `tools/check/crowd_test.gd` (aantallen om 13:00, 03:00 en 08:00, rust buiten de
+  boom, een teruggezet voertuig rijdt, alles rond de speler na een sprong) en
+  `tests/unit/test_crowd.gd` (de tabel). Soorten:
 
 | Script | Model (`voertuigen/`) | Lengte | Massa | Koppel wielen |
 |---|---|---|---|---|
@@ -243,11 +268,29 @@ staal `metal` (`rvs`, `metaal*`), banden en zitjes mat (`opaque`), lampen en ref
 motor stuurt hooguit 15 graden, van de fietsen 25; fietsen hebben geen remlicht en
 richtingaanwijzers.
 
-Voetgangers (node `Voetgangers`, `scripts/world/pedestrians.gd` en `pedestrian.gd`): 64
+Voetgangers (node `Voetgangers`, `scripts/world/pedestrians.gd` en `pedestrian.gd`):
 stadsbewoners lopen over de stoep- en pleintiles (`stoep/`, `plein/`, zonder gebouw erop) in de
 buurt van de speler, van cel naar cel, nu en dan even stilstaand; een plek waar ze niet in een
 rechte lijn kunnen komen zonder tegen iets van de stad te lopen (lantaarnpaal, bank, boom)
-kiezen ze niet. Wie verder dan `reach` (110 m) van de speler raakt, komt buiten beeld terug.
+kiezen ze niet. Ook dit is een set rond de speler: `count` (60) maal het aandeel van het uur en
+de wijk (`data/drukte.json`), minstens `fewest` (6), hooguit `most` (84). Wie verder dan `reach`
+(110 m) van de speler raakt, wordt iemand anders (`Pedestrian.become`: andere look, tempo,
+hulpmiddel en tas, zelfde node) op een cel tussen `return_near` (50 m) en `reach`, buiten beeld.
+Wie er `renew_after` (45 tot 110 s) rondloopt, buiten beeld is en verder dan `renew_beyond`
+(30 m) van de speler, gaat ook: dan komt er iemand anders (of niemand, als er minder nodig zijn).
+Wie niet nodig is rust uit de boom (`_resting`) tot er weer meer moeten. Per seconde hooguit
+`changes_per_second` (3) wissels, na een sprong van de speler alles; in een binnenruimte staat
+het stil. Wie er komt is een soort mens van dat uur en van de wijk waar hij verschijnt
+(`Crowd.person_kind`): forenzen, kantoormensen en zakenmensen (in pak, met aktetas) in de spits,
+scholieren na school, winkelend publiek, ouderen, toeristen (rolkoffer, rugzak) en wandelaars
+overdag, werklui in geel in de Binckhorst, uitgaanspubliek 's avonds en nachtbrakers 's nachts;
+gekleed als die soort (`Crowd.look_for`), op het tempo van die soort, met wat die soort draagt
+(`CarriedItems`, `scripts/world/carried_items.gd`, als dat script er is). Een vast aandeel van
+elke soort zit in een rolstoel of op een scootmobiel (`Pedestrians._aid_for`: geen toeval, het
+aandeel komt precies uit), vooral ouderen. Wie doodgereden wordt, begint opnieuw als iemand
+anders (`Pedestrians.start_again`). De lijst `TownsfolkFigure._parts` houdt hooguit `PARTS_KEPT`
+(160) looks bij.
+
 Bij een zebrapad (`weg/zebrapad`) steken ze recht over, haaks op de rijstroken: bij de
 stoeprand claimen ze het zebrapad (de auto's stoppen ervoor, `Vehicle._someone_crossing`), ze
 wachten zolang er een voertuig te dichtbij en te snel aankomt, en een auto die al gewacht heeft
@@ -260,8 +303,8 @@ groep `lopers`, `Vehicle._watch_people`): ze kijken hun remweg plus 2,5 s voorui
 hun pad en waarschuwen met hun toeter: `auto_toeter`, `bus_toeter` (bus en vrachtwagen, boven
 3500 kg), `brommer_toeter`, `fiets_bel` (fiets, fatbike), `tram_bel`, `trein_hoorn`,
 `brandweer_hoorn` (`horn_sound` of `_horn()`), als iemand binnen 2,5 s op hun pad is of na 3 s
-nog in de weg staat, hooguit elke 5 s. Controle: `tools/check/people_traffic_test.gd`. Eén op de `mobility_every` (9) zit in een
-rolstoel en één op een scootmobiel (`Pedestrian.mobility`, `scripts/world/mobility_aid.gd`, in code
+nog in de weg staat, hooguit elke 5 s. Controle: `tools/check/people_traffic_test.gd`. Een deel
+zit in een rolstoel of op een scootmobiel (zie hierboven; `Pedestrian.mobility`, `scripts/world/mobility_aid.gd`, in code
 gebouwd in voxels, de berijder een zittende stadsbewoner): ze rijden de kant op waar ze naar kijken en
 draaien hooguit `TURN_RATE` per seconde; de wielen zijn de wielmodellen van de voertuigen
 (`fiets_wiel`, `klein_wiel`, verkleind) en draaien via de wielshader (`voxel_wheel.gdshader`,
@@ -270,6 +313,27 @@ punt aan, het voorwiel van de scootmobiel stuurt met de stuurkolom in (de handen
 scootmobiel mag ook over de fietspaden (`Pedestrians.may_use`: cellen waar fietsen mogen en
 auto's niet) en toetert (`scootmobiel_toeter`) als iemand voor hem blijft staan. De botsvorm
 omvat stoel en berijder. Controle: `tools/check/mobility_test.gd`.
+
+Drukte (`data/drukte.json`, gelezen door `scripts/world/crowd.gd`, uitgelegd in
+`data/LEESMIJ.md`): één tabel voor wanneer en waar het druk is en met wie.
+- `uren`: momenten van de dag (`uur`) met het aandeel voetgangers en verkeer (`voetgangers`,
+  `verkeer`; 1 = `count` en `vehicle_count`), de gewichten van de soorten mensen (`mensen`) en
+  van de voertuigsoorten (`voertuigen`). Tussen twee momenten loopt het geleidelijk over, ook
+  rond middernacht. Nu: 's nachts 0,08 tot 0,22, spits (7:30 en 17:00) 1,0, overdag 0,75 tot
+  0,9, 's avonds 0,4 tot 0,7.
+- `gebieden`: per wijk (de namen van de metadata `wijken`, zoals de HUD ze toont) een factor op
+  voetgangers en verkeer en andere gewichten. Nu: Centraal Station 1,4 voetgangers / 1,1 verkeer
+  (forenzen, zakenmensen, bussen, fietsers), Centrum en Grote Markt druk met voetgangers en
+  fietsers, De Resident en Beatrixkwartier kantoormensen en auto's, Malieveld en Koekamp (het
+  Haagse Bos) wandelaars en weinig auto's (0,4), woonwijken rustiger (0,6 tot 0,9), Binckhorst
+  weinig voetgangers (0,5) maar drie keer zoveel vrachtverkeer en werklui, de A12 1,4 verkeer met
+  vooral auto's en vrachtwagens en bijna geen voetgangers (0,3).
+- `voertuig_basis`: het aandeel van elke voertuigsoort vóór uur en wijk.
+- `mensen`: per soort mens de kleuren (`jassen`, `broeken`, `schoenen`, `haarkleuren`), de
+  kapsels (gewichten), de kans op een rok, het `tempo`, het aandeel in een `rolstoel` en op een
+  `scootmobiel`, wat ze dragen (`dragen`, gewichten, `""` is niets) en `pak` (in pak, via
+  `CarriedItems.business_look`). De kleuren van kantoormensen (`#22242A`, `#6A6E74`) en toeristen
+  (`#C8B48A`) zijn die waaraan de gesprekken hun persoon herkennen (`ambtenaar`, `toerist`).
 De meters van de HUD (`scripts/ui/widgets/segment_bar.gd`) laten zien dat ze veranderen,
 zonder te bewegen: wat een klap eraf haalt blijft even rood-oranje staan (knipperend, 0,45 s)
 en loopt dan leeg naar het nieuwe niveau; een kleine daling (honger) laat het randsegment
@@ -565,13 +629,13 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
   (`FADE_TO_MENU`) en het menu komt daar in 3,5 s uit omhoog (`UP_FROM_BLACK`), terwijl de
   muziek van intro naar menu overvloeit. Alleen de spatiebalk breekt hem af en gaat naar het
   hoofdmenu (andere toetsen, zoals de volumetoetsen, en de muis doen niets). Rechtsonder staan, zoals in het hoofdmenu en het karakterscherm, de toetsen
-  op één regel: "[SPATIE] OVERSLAAN  [ENTER] SNELLER". De sterren fonkelen. Muziek: `assets/audio/muziek/zwervr_intro.ogg` (128 BPM, 64 maten van 1,875 s, 120 s, geen lus); de intro loopt op die
+  op één regel: "[SPATIE] OVERSLAAN  [ENTER] SNELLER". De sterren fonkelen. Muziek: `assets/audio/muziek/zwervr_intro.ogg` (120 BPM, 60 maten van 2,0 s, 120 s, geen lus); de intro loopt op die
   muziek (de klok is waar de muziek is): het logo fadet in van 5 tot 6,5 s, heel groot, bijna buiten
-  beeld, en krimpt langzaam naar zijn normale formaat tot de drop (maat 9, 15,0 s):
+  beeld, en krimpt langzaam naar zijn normale formaat tot de drop (maat 9, 16,0 s):
   daar wijkt het in 2,5 s de diepte in en fadet het daarbij uit (`LOGO_SECONDS`), met een
   plop (`UiSounds` "plop") als het verdwijnt, en komt de tekst op, de
-  zwerver op de klim (maat 25, 45,0 s), de handhavers op de tweede helft van het refrein (maat 41, 75,0 s), de
-  winkelwagen op de systeemcrash (maat 57, 105,0 s: één harde klap, daarna zonder drums), het menu waar de muziek sterft (120,0 s; `LINE_IN_AT` …
+  zwerver op het gevechtshoogtepunt (maat 25, 48,0 s), de handhavers op het duel (maat 41, 80,0 s), de
+  winkelwagen op de systeemcrash (maat 53, 104,0 s: de band stopt, één harde klap, daarna de outro), het menu waar de muziek sterft (120,0 s; `LINE_IN_AT` …
   `END_AT`, `CRAWL_CUES`). Zo traag als de muziek toelaat: weinig ruimte tussen de alinea's
   (`PARAGRAPH_GAP`), en de laatste alinea rolt niet van boven weg maar komt in de verte tot
   rust (`CRAWL_REST`) terwijl het verhaal de laatste `CRAWL_FADE` s uitfadet. Bij het einde of overslaan loopt de muziek door in het menu en
@@ -618,7 +682,7 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
   `scripts/ui/widgets/player_portrait.gd` toont een poppetje in een eigen SubViewport: warm
   hoofdlicht met schaduw (ook op een onzichtbare vloer die alleen de schaduw toont), zacht
   vul- en tegenlicht, een lage grijze ambient en een eenvoudige lucht voor de reflecties.
-  Muziek: `karakterkeuze_loop.ogg` (zacht: strijkers, FM-piano, het motief rustig; 96 BPM, 40 s, lus), op -12 dB en
+  Muziek: `karakterkeuze_loop.ogg` (zacht: pad, klokjes op het motief, een zachte chiptune-melodie; 96 BPM, 40 s, lus), op -12 dB en
   infadend. Test: `tools/check/character_test.gd` (`-- figures`: alleen de poppetjes).
 - Hoofdmenu (`scenes/hoofdmenu.tscn`, `scripts/ui/main_menu.gd`), naar het ontwerp
   "Titelscherm" in de HUD-stijl: titel ZWERVR, menu (VERDERGAAN en LADEN uitgegrijsd tot er
@@ -693,7 +757,7 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
   omgekeerd (`_play_exit`): de knoppen faden weg, de titel schuift naar links uit beeld, alles
   vervaagt naar inktblauw met een sterke trackingstoring, en het laadscherm van de stad (ook
   inktblauw) neemt het over.
-  Muziek: `assets/audio/muziek/nachtstad_menu_loop.ogg` (een eigen stuk in de huisstijl hieronder: energiek en recht, 128 BPM, 48 maten = 90 s, met drijvende FM-bas en koperstoten, zodat het niet als de intro die doorgaat klinkt), heel en in een lus, die bij het openen meteen op vol volume
+  Muziek: `assets/audio/muziek/nachtstad_menu_loop.ogg` (een eigen stuk in de huisstijl hieronder: het heroïsche titelscherm, 120 BPM, 32 maten = 64 s, met de solid bass, de motief-fanfare, powerchords en de twee gitaren), heel en in een lus, die bij het openen meteen op vol volume
   begint (geen infade) en bij het verlaten (NIEUW SPEL, AFSLUITEN) in 2 s uitfadet, ook als de
   stad al opent (`MUSIC`, `MUSIC_VOLUME_DB`, `MUSIC_FADE_OUT`).
   Stadsmuziek: per wijk een eigen loop (`CITY_MUSIC_BY_AREA` in `scripts/ui/hud.gd`, op de
@@ -703,23 +767,24 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
   halverwege), pas na `CITY_MUSIC_SETTLE` s in de nieuwe wijk (langs een grens lopen wisselt
   niet steeds), buiten elke wijk ("Den Haag") blijft de muziek zoals hij was; op -10 dB en
   zachter zolang het spel stilstaat (pauzemenu, spelmenu, verhaalvak; `CITY_MUSIC_VOLUME_DB`,
-  `CITY_MUSIC_PAUSED_DB`). Test: `tools/check/city_music_test.gd`. Alle vijf: 128 BPM, F mineur, 40 maten = 75 s, dezelfde akkoorden
-  per maat (`tools/megadrive/stad_plan.py`), naadloze lussen:
-  `stad_centrum_loop.ogg` (Centrum, Grote Markt, Paleis Noordeinde, Lange Voorhout: funky en
-  levendig, slapbas, e-piano, koper), `stad_torens_loop.ogg` (Centraal Station, De Resident,
-  Beatrixkwartier, Prins Clauslaan: koel en glanzend, rechte deep house, klokjes),
-  `stad_groen_loop.ogg` (Malieveld, Koekamp: rustig en ruimtelijk, strijkers, nauwelijks
-  drums), `stad_woonwijk_loop.ogg` (Bezuidenhout, Bezuidenhout-Oost, Schilderswijk, Laak,
-  Voorburg: rauw, straat, zware new-jack-swing-shuffle) en `stad_industrie_loop.ogg`
-  (Binckhorst, A12: hard, mechanisch, techno).
+  `CITY_MUSIC_PAUSED_DB`). Test: `tools/check/city_music_test.gd`. Alle negen stadsloops: 120 BPM, D mineur, 48 maten = 96 s, dezelfde akkoorden
+  per maat (`tools/megadrive/stad_plan.py`, het plan in het stijlprofiel), naadloze lussen; per wijk een eigen
+  karakter (centrum levendig, torens koel en glazig, groen rustig, woonwijk rauw, industrie mechanisch,
+  hofstad statig zonder beat, markt met handtrommels, bos zonder drums, dorp folky; zie `docs/MUZIEK.md`).
   Alle muziek (`assets/audio/muziek/`) is één huisstijl in de klank van de Sega Mega Drive
-  (FM, PSG-blokgolven, PCM-drums; eigen composities), in F mineur rond Fm – Gb – Bbm, en in
-  elk stuk komt het signatuurmotief terug op de FM-lead (grondtoon, terts, secunde, kwint
-  omlaag in achtste-zestiende-zestiende-kwart). De regels (klankpalet, harmonie, motief,
-  tempo's, grooves, vorm, mixniveaus, originaliteit) en de lijst van alle stukken met waar ze
+  (YM2612-FM met de DAC voor de drums, SN76489-PSG; eigen composities): nu **16-bit synthwave
+  action-RPG**, heroïsch, 120 BPM, D mineur rond i – VI – III – VII (Dm – Bb – F – C), met FM-"gitaren"
+  (overdrive, bends, twee gitaren in tertsen), powerchords, een chiptune-lead met driver-vibrato,
+  snelle PSG-arpeggio's en de 80s gated snare; in elk stuk komt het motief terug (grondtoon, kwint,
+  octaaf, de toonladdertoon eronder: D A D C). Wat een stijl is (tempo, toonsoort, akkoordschema's,
+  motief, patches, drums, variaties per nummer) staat in één verwisselbaar **stijlprofiel**
+  (`tools/megadrive/stijlen/<naam>.py`, actief: `ACTIVE_STYLE` in `style.py`); een geplakte
+  Suno/Udio/Gemini-beschrijving wordt een nieuw profiel met de skill **`/muziek-prompt`**
+  (`.claude/skills/muziek-prompt/SKILL.md`). De regels en de lijst van alle stukken met waar ze
   spelen staan in **`docs/MUZIEK.md`**: elk nieuw stuk volgt die. Opnieuw renderen:
   `tools/megadrive/render.sh` (alles; `render.sh gevecht` één stuk, `render.sh deuntjes dood`
-  één deuntje; Python via `uv` met numpy en soundfile).
+  één deuntje; Python via `uv` met numpy en soundfile); nakijken met
+  `uv run --with numpy --with soundfile python3 tools/megadrive/check_music.py`.
   Verkeersgeluiden in dezelfde Mega Drive-klank (`tools/megadrive/geluiden.py`,
   `render.sh geluiden`; mono, in `assets/audio/geluiden/`): per voertuig (auto, brommer, bus,
   tram, trein) een langsrij-geluid (`*_voorbij.ogg`, met Doppler) en een naadloze motorlus
@@ -777,6 +842,77 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
   te scherp draait.
 
 
+Binnenruimtes (snackbars, Den Haag Centraal)
+--------------------------------------------
+Gebouwen waar je in kunt lopen staan in `scripts/world/interiors.gd` (node `Binnenruimtes`),
+één regel per soort in `KINDS`. Voor elke ingang op de kaart staat een deinende oranje pijl
+(groot, op en neer, met de nep-3D-schaduw van de teksten) en "[E] Naar binnen". Naar binnen
+en buiten gaan klinkt als het elektronische deurgeluid van een winkel ("pling-plong",
+`deur_binnen`/`deur_buiten` in `tools/megadrive/geluiden.py`). De binnenruimte ligt ver
+buiten de kaart (`at`), staat stil en is onzichtbaar zolang je buiten bent.
+
+- Snackbars (`scenes/binnen/snackbar.tscn`, `scripts/world/interior.gd`): elke gevel
+  `_bg_snackbar` is een ingang; naam, kleurvariant en gasten per snackbar.
+- Den Haag Centraal (`scenes/binnen/centraal.tscn`, `scripts/world/station.gd`): de drie
+  deuren van de stationshal aan het Stationsplein (west naar oost deur 1..3) komen uit bij
+  Deur1..3 binnen; naar buiten ga je bij de deur waar je uitloopt. De indeling staat in
+  `scripts/world/station_layout.gd` (één bron voor bouwer en spel): een kopstation met 12
+  sporen en 7 perrons (`grond/spoor/perron`, `trein_recht`, `trein_stootblok` van de stad,
+  `PLATFORM_DROP` omlaag zodat de perrons gelijk liggen met de hal), een hal van 96 x 32 m met
+  13 winkels (o.a. Smikkels met automatiekwand, Broodje Seinstoring, Duwus Bertus; een
+  Smikkels-verkoper verkoopt kroketten als in de snackbar), OV-chipkaartautomaten, drie
+  vertrekborden, een stationsklok met rode secondewijzer, pilaren, banken, OV-paaltjes.
+  - Treinen (`station_train.gd`, de NS-wagons van de stad): elk spoor heeft een vertrek
+    (bestemming, Intercity/Sprinter, 2 of 3 wagons, soms vertraging of "rijdt niet"). Op een
+    willekeurig moment rijdt de trein door de achterwand binnen, remt voor het stootjuk,
+    opent de deuren aan de perronkant, staat 2,5-4,5 min, de conducteur fluit (17 s voor
+    vertrek), de deuren piepen dicht (12 s), en hij vertrekt zoals hij kwam.
+  - Klok: de stationsklok begint bij de tijd van de stad als je de eerste keer binnenkomt
+    en loopt dan in echte tijd. Borden en perronschermen tonen tijd, bestemming, spoor en
+    vertraging.
+  - Omroep (`station_audio.gd`): eigen bussen "Stationshal" (galm van de hal) en "Omroep"
+    (luidsprekerband, echo van verre speakers, door de hal-galm): de gong `omroep_gong`, dan de
+    brabbelstem van het spel, de tekst onderin beeld. Vertrek, vertraging, uitval en af en toe
+    een mededeling (`NOTICES`).
+  - Poortjes (`station_gates.gd`) voor elk perron: kasten met poortjes in (vanuit de hal) en
+    uit (naar de hal), glazen klepjes die echt dichtzitten (botsvorm) en open zwaaien de kant
+    op die je gaat. Groen lampje aan de kant waar je in mag, rood aan de andere. Zonder
+    OV-chipkaart (item `ov_chipkaart`, € 7,50 uit een automaat) zoemt de lezer nee. Inchecken
+    is één piep, uitchecken twee. Bij de OV-paaltjes check je met [E] in of uit.
+  - Mensen (`station_person.gd`, met tassen uit `scripts/world/carried_items.gd`):
+    reizigers, zakenmensen met aktetas, toeristen met rolkoffer en rugzak, scholieren met
+    rugzak; hoeveel en wie hangt af van het uur (`BUSY_BY_HOUR`, `WHO_BY_HOUR`). Ze lopen om
+    winkels en obstakels heen, wachten bij een poortje tot het open is, checken in, wachten
+    op het perron, stappen in als de deuren open zijn; uit een binnengekomen trein stappen
+    mensen uit en gaan naar buiten of een winkel in. Conducteurs (NS-blauw met pet) lopen naar
+    hun trein en fluiten; handhavers (zwart met geel) lopen in paren door de hal en één over
+    de perrons. Onzichtbare randen langs de perrons: niemand valt op het spoor.
+  - Markers in de scène (verplaatsbaar in de editor, ook voor missies): Deur1..3,
+    Dienstdeur, Poortjes_<n>, Vertrekbord_<n>, Perronscherm_<spoor>, Klok, Winkel_<n>,
+    Verkoper_<n> (metadata `kind`, `shop_name`), Uithangbord_<n>, Automaat_<n>.
+  - Test: `tools/check/station_test.gd` (ingangen, sporen, poortjes met en zonder kaart,
+    een vertrekkende trein, instappen, niemand vast, naar buiten bij deur 3).
+
+Binnenruimtes maken (dezelfde opzet als de snackbar):
+
+1. Tiles in `tools/voxgen/tiles/interior.py` onder `binnen/<naam>/` (voxels van 0,125 m,
+   vloeren en muren 4 m breed; hoge muren achter en links, lage voor en rechts, waar de
+   camera inkijkt). `python3 tools/voxgen/generate.py --only binnen/<naam>`, dan importeren
+   (editor open: hij doet het zelf; dicht: `tools/godot.sh --headless --import`) en
+   `tools/godot.sh --headless --script tools/build/build_libraries.gd`.
+2. Een bouwfunctie in `tools/build/build_interiors.gd` (zoals `_build_snack_bar` en
+   `_build_station`): GridMaps `Vloer` (y -0,125) en `Inrichting` met de bibliotheek
+   `binnen`, eventueel `Props` en grondtiles, markers (`Deur` of `Deur1..n`, plekken voor
+   mensen), lampen. Bouwen: `tools/godot.sh --headless --script tools/build/build_interiors.gd -- <naam>`
+   (een bestaande scène blijft staan; `-- opnieuw <naam>` bouwt hem over).
+3. Een script: `scripts/world/interior.gd` als basis; met meer leven een script dat het
+   uitbreidt (`extends "res://scripts/world/interior.gd"`) en `dress()`, `doors()`,
+   `player_came_in()`/`player_went_out()` invult.
+4. Een regel in `KINDS` van `interiors.gd`: `scene`, `music`, `at` (een eigen plek ver buiten
+   de kaart), en waar de ingangen zijn: `front` (deel van de naam van een geveltile) of
+   `doors` + `place` + `place_reach` (deurtiles bij een plek op de kaart).
+5. Een check in `tools/check/` naar het voorbeeld van `interior_test.gd`/`station_test.gd`.
+
 Projectstructuur
 ----------------
     addons/vox_tiles/      editor-plugin (plugin.gd, plugin.cfg)
@@ -826,6 +962,8 @@ Projectstructuur
                            arrival_test, simple_figure_test,
                            loading_after_warp_test
       shots/               shot_tiles, shot_iso, shot_scene, shot_vehicles
+    data/                  het verhaal, de missies en de gesprekken als JSON (zelf aan te passen
+                           en uit te breiden; uitleg in data/LEESMIJ.md)
     tests/                 unit tests: kleine onderdelen los, zonder de stad (snel);
                            tests/unit/test_*.gd, elke functie test_* een test;
                            tools/godot.sh --headless --script tests/run_unit_tests.gd [-- <filter>]

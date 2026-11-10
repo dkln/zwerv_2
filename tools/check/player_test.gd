@@ -151,8 +151,13 @@ func _init() -> void:
 			break
 	_check(player.stat("honger").x <= 0.0, "honger loopt leeg")
 	_check(player.is_dead(), "dood bij 0 gezondheid")
-	await Common.wait_frames(self, 3)
 	var hud: Node = scene.get_node("HUD")
+	# starved: first the slow motion with the close-up, then the death screen (real seconds)
+	_check(scene.get_node("Volgcamera").is_dramatic(), "verhongerd: dramatisch ingezoomd")
+	for attempt in 50:
+		if hud._death_layer.visible:
+			break
+		await create_timer(0.1, true, false, true).timeout
 	_check(hud._death_layer.visible, "doodsscherm te zien")
 	print("speler ok" if _problems.is_empty() else "speler problemen: " + str(_problems))
 	quit(0 if _problems.is_empty() else 1)

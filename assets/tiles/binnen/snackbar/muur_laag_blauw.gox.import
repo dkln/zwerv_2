@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://d1me3moke0q1j"
+path="res://.godot/imported/muur_laag_blauw.gox-63f99066ecccd76279338991154c152f.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/binnen/snackbar/muur_laag_blauw.gox"
+dest_files=["res://.godot/imported/muur_laag_blauw.gox-63f99066ecccd76279338991154c152f.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(0, 0, 0)

@@ -34,6 +34,8 @@ const CATEGORIES := {
 	"gebouwen": {"collision": "auto"},
 	"details": {"collision": "none"},
 	"props": {"collision": "blocks"},
+	# the interiors (scenes/binnen/): floors, walls and furniture, blocks as the props
+	"binnen": {"collision": "blocks"},
 }
 
 

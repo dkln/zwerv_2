@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://bhpwe1lpd6dqj"
+path="res://.godot/imported/poortje_klep.gox-3733d8699b84da49c100b8f2cae4b592.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/binnen/station/poortje_klep.gox"
+dest_files=["res://.godot/imported/poortje_klep.gox-3733d8699b84da49c100b8f2cae4b592.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(0, 0, 0)

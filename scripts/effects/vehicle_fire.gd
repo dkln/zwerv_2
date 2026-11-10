@@ -5,10 +5,14 @@ extends Node3D
 ## over the last DIE_SECONDS; then the wreck goes (blinking, death_blink.gd) and the smoke
 ## drifts on a while where it was (leave_smoke). In the worst case it explodes first
 ## (explode): a ball of fire bursting out, a flash, shards and black smoke, and the wreck
-## thrown up (EXPLOSION_HOP, EXPLOSION_SPIN). Part of the vehicle logic: the town's
+## thrown up (EXPLOSION_HOP, EXPLOSION_SPIN). It sounds (RuimtelijkGeluid): the fire roars and
+## crackles (FIRE_SOUND, softer as it dies down), an explosion booms (EXPLOSION_SOUND). Part of the vehicle logic: the town's
 ## vehicles (vehicle.gd) and the wrecks behind the menu (main_menu.gd) both use it.
 
 const MenuFire = preload("res://scripts/effects/menu_fire.gd")
+const FIRE_SOUND := "brand_loop"
+const EXPLOSION_SOUND := "explosie"
+const FIRE_SOUND_DB := 2.0
 const CrashBurst = preload("res://scripts/effects/crash_burst.gd")
 
 ## Closing speed (m/s, about 50 km/h) from which a crash sets the vehicles alight.
@@ -37,6 +41,7 @@ var _flames: GPUParticles3D
 var _smoke: GPUParticles3D
 var _light: OmniLight3D
 var _age := 0.0
+var _sound: AudioStreamPlayer3D
 
 
 ## True if a crash at this closing speed (m/s) sets the vehicles on fire.
@@ -53,6 +58,9 @@ static func explodes(closing_speed: float) -> bool:
 ## shards and the black smoke under `parent`, and the wreck thrown up and round.
 static func explode(wreck: RigidBody3D, height: float, parent: Node) -> void:
 	var at := wreck.global_position + Vector3.UP * height
+	var sound := wreck.get_tree().root.get_node_or_null("RuimtelijkGeluid") if wreck.is_inside_tree() else null
+	if sound and sound.has_method("play_event"):
+		sound.play_event(at, EXPLOSION_SOUND, 25.0)
 	var fireball := MenuFire.make_flames(FIREBALL_SIZE)
 	fireball.name = "Vuurbal"
 	fireball.one_shot = true
@@ -97,6 +105,9 @@ func _ready() -> void:
 	_light.shadow_enabled = false
 	for part: Node3D in [_flames, _smoke, _light]:
 		add_child(part)
+	var sound := get_tree().root.get_node_or_null("RuimtelijkGeluid")
+	if sound and sound.has_method("attach_loop"):
+		_sound = sound.attach_loop(self, FIRE_SOUND, 10.0, FIRE_SOUND_DB)
 
 
 func _process(delta: float) -> void:
@@ -107,6 +118,12 @@ func _process(delta: float) -> void:
 		_smoke.amount_ratio = maxf(burning, 0.3)
 	var flicker := 0.75 + 0.25 * sin(_age * 19.0) * sin(_age * 6.1)
 	_light.light_energy = LIGHT_ENERGY * burning * flicker
+	if _sound:
+		# heard while in view (or just outside it), as every sound
+		var sound := get_tree().root.get_node_or_null("RuimtelijkGeluid")
+		var heard: bool = sound == null or not sound.has_method("in_view") or sound.in_view(global_position)
+		var softer: float = sound.distance_db(global_position) if sound and sound.has_method("distance_db") else 0.0
+		_sound.volume_db = FIRE_SOUND_DB + softer + linear_to_db(maxf(burning, 0.001)) if heard else -80.0
 
 
 ## Seconds until it has burnt out (and the wreck goes).

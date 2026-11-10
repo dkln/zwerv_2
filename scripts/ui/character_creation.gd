@@ -24,6 +24,7 @@ extends Control
 ## "shout" of the archetype). A new one cuts the last one off.
 ## Laid out at 1280 x 720, scaled with the window.
 
+const SwipeTransition = preload("res://scripts/ui/swipe_transition.gd")
 const UiStyle = preload("res://scripts/ui/ui_style.gd")
 const UiSounds = preload("res://scripts/ui/ui_sounds.gd")
 const SegmentBar = preload("res://scripts/ui/widgets/segment_bar.gd")
@@ -253,26 +254,30 @@ func begin() -> void:
 	UiSounds.play(self, "doe")
 	PlayerCharacter.choose(PlayerCharacter.ORDER[_selected])
 	_begin_button.text = "▶  LADEN…"
-	await _leave()
+	await _leave(false)
 	get_tree().change_scene_to_file(CITY_SCENE)
 
 
 func _back_to_menu() -> void:
 	_leaving = true
 	UiSounds.play(self, "terug")
-	await _leave()
+	await _leave(true)
 	get_tree().change_scene_to_file(MENU_SCENE)
 
 
-## The list and the detail fade away, the music fades, the picture goes into the warp.
-func _leave() -> void:
+## The list and the detail fade away, the music fades, the picture goes into the warp (to
+## the town: its loading screen comes out of it) or, back to the menu, the swipe.
+func _leave(swipe := false) -> void:
 	var exit := create_tween().set_parallel(true).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
 	for index in _entries.size():
 		exit.tween_property(_entries[index], "modulate:a", 0.0, 0.4).set_delay(0.06 * index)
 	exit.tween_property(_detail, "modulate:a", 0.0, 0.5)
 	exit.tween_property(_detail, "position:x", _detail.position.x + 30.0, 0.5)
 	_fade_out_music()
-	await WarpTransition.leave(get_tree(), WARP_SECONDS).covered
+	if swipe:
+		await SwipeTransition.swipe(get_tree()).covered
+	else:
+		await WarpTransition.leave(get_tree(), WARP_SECONDS).covered
 
 
 # ------------------------------------------------------------------ building

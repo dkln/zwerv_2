@@ -14,7 +14,7 @@ extends Node3D
 ## its right after SIDE_STEP_AFTER (both doing so, two who meet pass each other), and after
 ## BLOCKED_TIME goes another way; a rider turns round on the spot for that. Held up more
 ## than GHOST_AFTER seconds all told (a knot of people that cannot get out of each other's
-## way), it walks on through the others for GHOST_SECONDS.
+## way), it walks on through the others for GHOST_SECONDS (not through the player).
 ## It stands on the ground (a ray down onto the town's colliders, a step up or down glides),
 ## and has a collider the size of the figure (Botsvorm, an AnimatableBody3D on the town's
 ## layer, as the player has), so the player cannot walk through it and wrecks bump into it.
@@ -33,12 +33,15 @@ extends Node3D
 ## an old man's when bald or riding, else a man's) and it is thrown aside (a RigidBody3D,
 ## Valpartij, as the player is; what it rides tumbles with it). Lying still it gets up where
 ## it lies (or on the nearest spot of its last cell) and walks on. With its health gone it
-## stays down DEAD_LIE seconds, then starts afresh away from the player (Pedestrians.bring_back:
-## someone else, healthy). While down the traffic does not stop for it.
+## stays down DEAD_LIE seconds, then starts afresh away from the player (Pedestrians.start_again:
+## someone else, healthy).
+## Who it is (look, pace, what it carries, `crowd_kind`) Pedestrians chooses from the hour and
+## the neighbourhood (Crowd, data/drukte.json); `become` makes it someone else on the spot. While down the traffic does not stop for it.
 
 ## Collision layer of the town and of the wrecks.
 const Sight = preload("res://scripts/world/sight.gd")
 const GroundShadow = preload("res://scripts/effects/ground_shadow.gd")
+const Crowd = preload("res://scripts/world/crowd.gd")
 const TOWN_LAYER := 1
 ## Metres per second walking (the slowest and the fastest), and how much faster over a zebra.
 const SLOWEST := 1.05
@@ -53,6 +56,8 @@ const PAUSE_CHANCE := 0.12
 const PAUSE_LONGEST := 3.5
 ## Someone this near ahead of it (metres) makes it stop; this long blocked, it goes another way.
 const KEEP_CLEAR := 0.85
+## Closer than this (metres) beside its way it stops for the player too (no brushing past).
+const PLAYER_BRUSH := 0.9
 const BLOCKED_TIME := 1.2
 ## Untangling (see the top): when it starts to step aside, how fast (m/s), and when it walks
 ## through the others and for how long.
@@ -81,6 +86,7 @@ const RIDE_ARRIVE_WITHIN := 0.35
 ## How much the scooter's front wheel steers for each radian a second it turns.
 const STEER_PER_TURN := 0.45
 const DriverShout = preload("res://scripts/vehicles/driver_shout.gd")
+const TALKABLE_GROUP := "aanspreekbaar"
 const Wheelie = preload("res://scripts/vehicles/wheelie.gd")
 ## How far a wheelchair's front comes up in a wheelie, and the most it may turn meanwhile (rad/s).
 const CHAIR_WHEELIE_DEGREES := 24.0
@@ -110,6 +116,16 @@ const SHORT_CRY_COUNT := 3
 @export var safe_time := 2.2
 ## "" walking, "rolstoel" in a wheelchair, "scootmobiel" on a mobility scooter (MobilityAid).
 @export var mobility := ""
+## Its look (TownsfolkFigure); empty: the one of TownsfolkFigure.look_for(walker_seed).
+var wanted_look := {}
+## Its pace against the usual (Crowd.pace_of its kind).
+var pace_factor := 1.0
+## What it carries (a kind of CarriedItems; "" nothing), and the kind of person it is
+## (data/drukte.json "mensen"; "" none in particular).
+var carried := ""
+var crowd_kind := ""
+var _carried_item: Node3D
+var _carried_pose := false
 
 var town: Pedestrians
 var figure: TownsfolkFigure
@@ -151,24 +167,9 @@ var _last_cry := 0
 
 
 func _ready() -> void:
-	_random.seed = walker_seed
 	add_to_group(Vehicle.WALKERS_GROUP)   # vehicles brake, swerve and hoot for it
-	if mobility != "":
-		aid = MobilityAid.create(mobility, walker_seed, town.props_library())
-		add_child(aid)
-		figure = aid.rider
-		_drawn = aid
-		var pace: Vector2 = RIDE_PACE[mobility]
-		_pace = _random.randf_range(pace.x, pace.y)
-		if mobility == "rolstoel":
-			_wheelie = Wheelie.new(deg_to_rad(CHAIR_WHEELIE_DEGREES), walker_seed)
-	else:
-		figure = TownsfolkFigure.create(TownsfolkFigure.look_for(walker_seed))
-		figure.name = "Figuur"
-		add_child(figure)
-		_drawn = figure
-		_pace = _random.randf_range(SLOWEST, FASTEST)
-	_add_collider()
+	add_to_group(TALKABLE_GROUP)          # the player can talk to it (PlayerController)
+	_dress()
 	add_child(GroundShadow.new())   # a soft patch under it, so it stands apart from the street
 	_sight_countdown = get_instance_id() % Sight.LOOK_STEPS
 	# no free spot on its start cell: another one near the player
@@ -183,6 +184,75 @@ func _ready() -> void:
 		global_position = town.cell_middle(start_cell)
 		cell = start_cell
 		_target = global_position
+
+
+## Builds what is seen of it from `walker_seed`, `mobility`, `wanted_look` (empty: the look of
+## TownsfolkFigure.look_for), `pace_factor` and `carried` (CarriedItems), and its collider.
+func _dress() -> void:
+	_random.seed = walker_seed
+	if mobility != "":
+		aid = MobilityAid.create(mobility, walker_seed, town.props_library(), wanted_look)
+		add_child(aid)
+		figure = aid.rider
+		_drawn = aid
+		var pace: Vector2 = RIDE_PACE[mobility]
+		_pace = _random.randf_range(pace.x, pace.y) * clampf(pace_factor, 0.8, 1.2)
+		if mobility == "rolstoel":
+			_wheelie = Wheelie.new(deg_to_rad(CHAIR_WHEELIE_DEGREES), walker_seed)
+	else:
+		figure = TownsfolkFigure.create(wanted_look if not wanted_look.is_empty() else TownsfolkFigure.look_for(walker_seed))
+		figure.name = "Figuur"
+		add_child(figure)
+		_drawn = figure
+		_pace = _random.randf_range(SLOWEST, FASTEST) * pace_factor
+		_carry()
+	_add_collider()
+
+
+## What it carries (`carried`, a kind of CarriedItems, scripts/world/carried_items.gd), if
+## that script is there and it walks.
+func _carry() -> void:
+	_carried_item = null
+	if carried == "" or figure == null:
+		return
+	var items := Crowd.carried_items()
+	if items == null or not Crowd.has_function(items, "attach"):
+		carried = ""
+		return
+	_carried_item = items.call("attach", figure, carried, walker_seed) as Node3D
+	_carried_pose = Crowd.has_function(items, "pose")
+
+
+## Becomes someone else (Pedestrians: someone who goes and someone who comes, without a new
+## node): another look, pace, way of going about and what it carries; where it stands it
+## leaves to Pedestrians (restart_at, bring_back).
+func become(new_seed: int, new_look: Dictionary, new_mobility: String, new_pace_factor := 1.0, new_carried := "",
+		new_kind := "") -> void:
+	if _ragdoll:
+		_end_ragdoll()
+	if _drawn:
+		_drawn.free()
+	if _body:
+		_body.free()
+	_drawn = null
+	_body = null
+	figure = null
+	aid = null
+	_wheelie = null
+	_carried_item = null
+	_carried_pose = false
+	walker_seed = new_seed
+	wanted_look = new_look
+	mobility = new_mobility
+	pace_factor = new_pace_factor
+	carried = new_carried
+	crowd_kind = new_kind
+	health = MAX_HEALTH
+	_held_up = 0.0
+	_ghost_left = 0.0
+	_blocked = 0.0
+	_walking = 0.0
+	_dress()
 
 
 ## Starts afresh on this cell (at the start, or brought back near the player), on a spot
@@ -265,7 +335,8 @@ func _physics_process(delta: float) -> void:
 		if facing.dot(towards) > 0.5:
 			looking = facing
 	_ghost_left = maxf(_ghost_left - delta, 0.0)
-	if _ghost_left <= 0.0 and _someone_ahead(looking):
+	# walking through the others (untangling) it still stops for the player
+	if (_ghost_left <= 0.0 and _someone_ahead(looking)) or (_ghost_left > 0.0 and _player_ahead(looking)):
 		_blocked += delta
 		_held_up += delta
 		if mobility == "scootmobiel" and _blocked > HORN_AFTER and _horn_clock <= 0.0 and not _honked_while_blocked:
@@ -347,6 +418,8 @@ func _walk_figure(delta: float, walking: float) -> void:
 		return
 	_phase = fmod(_phase + _speed * delta / TownsfolkFigure.STRIDE * PI * _walking, TAU)
 	figure.walk(_phase, _walking)
+	if _carried_pose and _carried_item:
+		Crowd.carried_items().call("pose", figure, carried)
 
 
 ## Now and then back on the big wheels (Wheelie), only riding on going (nearly) straight;
@@ -471,12 +544,23 @@ func _someone_ahead(direction: Vector2) -> bool:
 		var offset := Vector2(other.global_position.x - global_position.x, other.global_position.z - global_position.z)
 		if offset.length() < _keep_clear() and offset.dot(direction) > 0.2 and absf(other.global_position.y - global_position.y) < 1.5:
 			return true
-	var player := town._player
-	if player:
-		var offset := Vector2(player.global_position.x - global_position.x, player.global_position.z - global_position.z)
-		if offset.length() < _keep_clear() + 0.2 and offset.dot(direction) > 0.2:
-			return true
+	if _player_ahead(direction):
+		return true
 	return false
+
+
+## True if the player stands right ahead of it.
+func _player_ahead(direction: Vector2) -> bool:
+	var player := town._player
+	if player == null:
+		return false
+	var offset := Vector2(player.global_position.x - global_position.x, player.global_position.z - global_position.z)
+	var distance := offset.length()
+	if distance < 0.0001:
+		return true
+	var ahead := offset.dot(direction) / distance
+	# right ahead, or close beside its way (it would brush past the player)
+	return (distance < _keep_clear() + 0.2 and ahead > 0.2) or (distance < PLAYER_BRUSH and ahead > -0.3)
 
 
 func _keep_clear() -> float:
@@ -495,6 +579,10 @@ func _step_aside(looking: Vector2, delta: float) -> void:
 	for other in _all:
 		if other != self and Vector2(other.global_position.x - spot.x, other.global_position.z - spot.z).length() < _keep_clear() * 0.6:
 			return
+	# nor into the player
+	var player := town._player
+	if player and Vector2(player.global_position.x - spot.x, player.global_position.z - spot.z).length() < _keep_clear():
+		return
 	global_position = spot
 
 
@@ -711,7 +799,7 @@ func _follow_ragdoll(delta: float) -> void:
 		if _ragdoll_clock >= DEAD_LIE:
 			health = MAX_HEALTH
 			_get_up()
-			town.bring_back(self)
+			town.start_again(self)
 		return
 	var lies_still := _ragdoll.sleeping or _ragdoll.linear_velocity.length() < 0.3
 	if (_ragdoll_clock >= KNOCK_DOWN_TIME and lies_still) or _ragdoll_clock >= KNOCK_DOWN_TIME * 3.0:

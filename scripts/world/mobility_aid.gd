@@ -39,7 +39,7 @@ const MOST_STEER := 0.6
 ## How fast a caster swivels round to its way (1/s).
 const SWIVEL_RATE := 8.0
 ## Paints of the scooters (one per seed) and of the wheelchair frames.
-const SCOOTER_PAINTS := [Color("#B8282E"), Color("#2A5AA8"), Color("#2E7A4A"), Color("#C8C8CC"), Color("#6A2A7A")]
+const SCOOTER_PAINTS := [Color("#D8262E"), Color("#2A62D0"), Color("#F0C020")]   # bright red, blue, yellow
 const CHAIR_PAINTS := [Color("#2A2E36"), Color("#3A5AA0"), Color("#9A2A2A"), Color("#B8BCC4")]
 
 var kind := "rolstoel"
@@ -59,7 +59,7 @@ var _tilt: Node3D                 # holds everything; turned back in a wheelie
 
 ## A wheelchair or a scooter of `kind`, its paint and its rider's look from `seed`, the
 ## wheels from the props library `library` (none without one).
-static func create(aid_kind: String, seed: int, library: MeshLibrary) -> MobilityAid:
+static func create(aid_kind: String, seed: int, library: MeshLibrary, rider_look := {}) -> MobilityAid:
 	var aid := MobilityAid.new()
 	aid.kind = aid_kind
 	aid.name = "Rolstoel" if aid_kind == "rolstoel" else "Scootmobiel"
@@ -69,7 +69,8 @@ static func create(aid_kind: String, seed: int, library: MeshLibrary) -> Mobilit
 		aid._build_wheelchair(CHAIR_PAINTS[random.randi() % CHAIR_PAINTS.size()], library)
 	else:
 		aid._build_scooter(SCOOTER_PAINTS[random.randi() % SCOOTER_PAINTS.size()], library)
-	aid.rider = TownsfolkFigure.create(TownsfolkFigure.look_for(seed * 13 + 7))
+	# the rider's own look (Pedestrian.wanted_look), else one of the seed
+	aid.rider = TownsfolkFigure.create(rider_look if not rider_look.is_empty() else TownsfolkFigure.look_for(seed * 13 + 7))
 	aid.rider.name = "Berijder"
 	aid.add_child(aid.rider)
 	aid.rider.position = aid.hip - aid.rider.hip_middle()
@@ -259,10 +260,17 @@ func _build_scooter(paint: Color, library: MeshLibrary) -> void:
 	_box(tiller, Vector3(-0.03, 0.86, 0.36), Vector3(0.03, 0.92, 0.46), dark)
 	_box(tiller, Vector3(-0.26, 0.9, 0.34), Vector3(0.26, 0.94, 0.38), chrome)         # handlebar
 	_box(tiller, Vector3(-0.08, 0.92, 0.38), Vector3(0.08, 0.98, 0.44), Color("#1E1F24"))  # display
-	_box(tiller, Vector3(-0.16, 0.6, 0.54), Vector3(0.16, 0.8, 0.7), Color("#3A3E46"))  # basket
-	_box(tiller, Vector3(-0.13, 0.63, 0.55), Vector3(0.13, 0.8, 0.69), Color(0, 0, 0, 0))
+	# the basket on the front: light wire walls and bottom, the shopping in it
+	var wire := Color("#D8DCE2")
+	_box(tiller, Vector3(-0.2, 0.58, 0.54), Vector3(0.2, 0.6, 0.8), wire)              # bottom
+	_box(tiller, Vector3(-0.2, 0.6, 0.78), Vector3(0.2, 0.84, 0.8), wire)              # front
+	for side: float in [-1.0, 1.0]:
+		_box(tiller, Vector3(0.18 * side, 0.6, 0.54), Vector3(0.2 * side, 0.84, 0.8), wire)   # the sides
+	_box(tiller, Vector3(-0.16, 0.6, 0.6), Vector3(-0.04, 0.96, 0.66), Color("#D8A050"))  # a French loaf
+	_box(tiller, Vector3(0.04, 0.6, 0.62), Vector3(0.12, 0.9, 0.7), Color("#4E9A3A"))     # a leek
+	_box(tiller, Vector3(0.05, 0.6, 0.63), Vector3(0.11, 0.7, 0.69), Color("#E8E4D0"))    # its white end
 	tiller.mark("plastic", [paint])
-	tiller.mark("metal", [chrome, Color("#3A3E46")])
+	tiller.mark("metal", [chrome, wire])
 	tiller.mark("leather", [dark, Color("#1E1F24")])
 	var tiller_mesh := _add_mesh(tiller, "Stuurkolom")
 	tiller_mesh.position -= origin

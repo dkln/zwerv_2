@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://dih2pfnb65ini"
+path="res://.godot/imported/vloer_zwartwit.gox-f75e82fc5b2b49f12474b32d1fb09859.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/binnen/snackbar/vloer_zwartwit.gox"
+dest_files=["res://.godot/imported/vloer_zwartwit.gox-f75e82fc5b2b49f12474b32d1fb09859.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(0, 0, 0)

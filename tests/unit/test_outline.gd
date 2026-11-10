@@ -31,3 +31,20 @@ func test_a_character_and_glass_are_left_alone(test) -> void:
 	test.check(glass.material_overlay == null, "glas niet")
 	character.free()
 	glass.free()
+
+
+func test_the_rotor_and_flat_planes_are_left_alone(test) -> void:
+	var rotor := MeshInstance3D.new()
+	rotor.mesh = PlaneMesh.new()
+	var rotor_material := ShaderMaterial.new()
+	rotor_material.shader = load("res://addons/vox_tiles/materials/voxel_rotor.gdshader")
+	rotor.material_override = rotor_material
+	Outline.apply(rotor)
+	test.check(rotor.material_overlay == null, "de rotor (plat, uitgesneden) niet")
+	var cut_out := MeshInstance3D.new()
+	cut_out.mesh = BoxMesh.new()
+	cut_out.material_override = rotor_material
+	Outline.apply(cut_out)
+	test.check(cut_out.material_overlay == null, "een shader met ALPHA niet")
+	rotor.free()
+	cut_out.free()

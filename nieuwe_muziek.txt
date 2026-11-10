@@ -1,0 +1,46 @@
+Hij draait op een stevige 128 BPM met een vuige YM2612-achtige FM-bas, harde gated drums en gerichte, zware gitaarstabs in de refreinen (zonder dat de gitaren continu doordenderen).
+
+Hieronder vind je de volledige muzikale blauwdruk, inclusief opbouw, sound design en kant-en-klare prompts die je direct in andere AI-tools of je DAW kunt stoppen.
+Muzikale Specificaties
+
+    Tempo: 128 BPM (agressieve actie-RPG vibe)
+
+    Toonsoort: C-mineur (C – D – E♭ – F – G – A♭ – B♭)
+
+    Maatsoort: 4/4
+
+    Karakter: Donker, stoer, knallend, 16-bit arcade boss-theme met een moderne zware punch
+
+Instrumenten & Sound Design
+
+    FM Slap & Drive Bass: Geïnspireerd op de Sega Mega Drive (Yamaha YM2612 chip), strakke zestiende noten, lichte digitale overdrive en harde attack.
+
+    Chiptune Leads: Snijdende square waves en 12.5% pulse waves met pitch-bends en snelle cascades voor de hoofdmelodie.
+
+    Elektrische Gitaren (Gedoseerd): Zware drop-C high-gain gitaren. Ze spelen geen doorlopende solo's of loopjes, maar vallen enkel binnen bij refreinen en overgangen met zware powerchord-accenten ("chugs") om de drop extra gewicht te geven.
+
+    Drums & Percussie: Zware vier-kwarts kick, hard kletterende gated 80s snare, crunchy 8-bit noise hi-hats en white-noise laser risers.
+
+    Pads: Brede detuned analoge saw-pads die alleen in de refreinen openstaan voor epische breedte.
+
+Sectie,Maten,Akkoorden,Arrangement & Gitaaraandeel
+Intro,8 maten,Cm – A♭ – B♭ – Cm,"Puur synths: FM-bas pompt, snelle 8-bit arpeggio's bouwen op. Geen gitaren."
+Verse 1,8 maten,Cm – E♭ – B♭ – Fm,"Volledige synthwave beat, agressieve square-lead melodie. Geen gitaren."
+Pre-Chorus,8 maten,A♭ – B♭ – Cm – B♭/D,"Witte ruis sweeps, rollende snarefills, opzwepende spanning. Geen gitaren."
+Chorus 1 (Drop),8 maten,Cm – A♭ – E♭ – B♭,Knalmoment: Zware elektrische gitaar-powerchords vallen staccato in op de zware tellen; gecombineerd met soaring synthlead en dubbele kicks.
+Breakdown / Bridge,8 maten,Cm – Fm – A♭ – G7,Rustpunt: drums vallen weg naar minimale kicks; melancholische chiptune echo's en een diepe FM-drone. Geen gitaren.
+Build-up,4 maten,A♭ – B♭ – G,Versnellende marching snare rolls en oplopende pitch-sweep synths. Geen gitaren.
+Final Climax,8 maten,Cm – A♭ – E♭ – B♭,Volle impact: Gitaren rammen synchroon met de FM-bas mee op de accenten; maximale chiptunemelodie en gated drums.
+Outro,4 maten,A♭ – B♭ – Cm,"Eén massieve, resonant uitklinkende powerchord-klap samen met een strakke galmende bekkenhit en dalende 8-bit zap."
+
+Lyrics / Structuur Box:
+[Instrumental Intro: gritty 16-bit FM slap bass, fast chiptune arpeggios, no guitars]
+[Verse: punchy 128 bpm kick, cutting square wave lead, pure electronic groove]
+[Pre-Chorus: rising white noise sweeps, intense drum build-up]
+[Chorus: heavy distorted electric guitar power chords punctuate the drop, soaring synth hook, massive gated snares]
+[Bridge: minimal halftime drums, atmospheric deep FM drone, solitary 8-bit melodic phrase, no guitars]
+[Build-up: accelerating snare roll, pitch riser]
+[Final Drop: explosive climax, heavy guitar accents locking with overdriven FM bass, triumphant chiptune melody]
+[Outro: single massive ringing guitar power chord and tight gated drum finish]
+
+Hard-hitting 128 BPM dark synthwave and chiptune battle theme in C minor, gritty Sega Genesis YM2612 FM bassline, punchy gated drums, occasional heavy electric guitar power chords accenting the drop, soaring 8-bit square leads, epic and stoic RPG aesthetic, completely instrumental.

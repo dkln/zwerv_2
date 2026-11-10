@@ -13,7 +13,7 @@ dest_files=["res://.godot/imported/naam_supermarkt_1.gox-2545442cbf9e118bf74d552
 
 [params]
 
-voxel_size=0.125
+voxel_size=0.0987
 ambient_occlusion=true
 color_merge=14
 lod_color_tolerance=24

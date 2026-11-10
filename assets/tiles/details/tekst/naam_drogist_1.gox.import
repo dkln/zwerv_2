@@ -13,7 +13,7 @@ dest_files=["res://.godot/imported/naam_drogist_1.gox-2bbd364d68a9bfcd0171fe28ae
 
 [params]
 
-voxel_size=0.125
+voxel_size=0.075
 ambient_occlusion=true
 color_merge=14
 lod_color_tolerance=24

@@ -68,6 +68,9 @@ const CITY_MUSIC_BY_AREA := {
 	"Binckhorst": "stad_industrie_loop.ogg", "A12": "stad_industrie_loop.ogg",
 }
 const CITY_MUSIC_CROSSFADE := 3.0
+## Inside a building: how fast its music takes over; how much softer the music is under a jingle.
+const INDOOR_MUSIC_FADE := 1.2
+const JINGLE_DUCK_DB := 8.0
 const CITY_MUSIC_VOLUME_DB := -15.0
 const CITY_MUSIC_PAUSED_DB := -22.0
 const CITY_MUSIC_FADE_IN := 3.0
@@ -200,6 +203,8 @@ var _city_players := {}                 # file -> AudioStreamPlayer, also the on
 var _city_weights := {}                 # file -> 0..1, where in its fade it is
 var _city_fade := CITY_MUSIC_CROSSFADE  # seconds of the running fade
 var _city_level_db := CITY_MUSIC_VOLUME_DB
+var _indoor_music := ""          # the loop of the building the player is in (set_indoor_music)
+var _jingles_playing := 0
 var _city_pending_file := ""            # a neighbourhood's loop waiting for CITY_MUSIC_SETTLE
 var _city_pending_since := 0.0
 var _focus := Vector3.ZERO       # where the player is, from the last minimap update
@@ -358,6 +363,8 @@ func _play_city_music() -> void:
 ## The neighbourhood changed: its loop takes over once the player has stayed CITY_MUSIC_SETTLE s
 ## (in _update_city_music); outside every neighbourhood nothing changes.
 func _switch_city_music(wijk: String) -> void:
+	if _indoor_music != "":
+		return   # inside a building its own music plays (set_indoor_music)
 	if wijk == NO_WIJK and _city_music_file != "":
 		_city_pending_file = ""
 		return
@@ -374,6 +381,17 @@ func _city_music_file_for(wijk: String) -> String:
 	if _load_loop(file) == null:
 		file = CITY_MUSIC_DEFAULT
 	return file
+
+
+## Inside a building (Interiors): its own loop (`file`, in MUSIC_FOLDER; the merchant's for a
+## snack bar) in place of the neighbourhood's, fading over INDOOR_MUSIC_FADE s; "" back to
+## the neighbourhood's.
+func set_indoor_music(file: String) -> void:
+	_indoor_music = file
+	if file != "":
+		_fade_city_music_to(file, INDOOR_MUSIC_FADE)
+	elif _city_music_on:
+		_fade_city_music_to(_city_music_file_for(_current_wijk), INDOOR_MUSIC_FADE)
 
 
 ## Makes `file` the loop that fades in over `fade` s (the others fade out); "" fades all out.
@@ -415,6 +433,9 @@ func _update_city_music(delta: float) -> void:
 			and Time.get_ticks_msec() / 1000.0 - _city_pending_since >= CITY_MUSIC_SETTLE:
 		_fade_city_music_to(_city_pending_file, CITY_MUSIC_CROSSFADE)
 	var level_target := CITY_MUSIC_PAUSED_DB if get_tree().paused else CITY_MUSIC_VOLUME_DB
+	# softer while a jingle plays over it, so the jingle is heard
+	if _jingles_playing > 0:
+		level_target -= JINGLE_DUCK_DB
 	_city_level_db = move_toward(_city_level_db, level_target, CITY_MUSIC_LEVEL_SPEED * delta)
 	for file: String in _city_players.keys():
 		var player: AudioStreamPlayer = _city_players[file]
@@ -507,6 +528,17 @@ func set_xp(points: float, points_for_level: float) -> void:
 	_xp_text.text = "%s / %s" % [_thousands(roundi(clamped)), _thousands(roundi(top))]
 
 
+## A step of a mission done (Story): a short triumph; the whole mission: the longer one.
+const TASK_JINGLE := "res://assets/audio/muziek/deuntje_taak_klaar.ogg"
+const MISSION_DONE_JINGLE := "res://assets/audio/muziek/deuntje_gewonnen.ogg"
+const TASK_JINGLE_VOLUME_DB := -2.0
+
+
+## A task of a mission done: its triumph tune (the whole mission done: the longer one).
+func play_task_done(mission_done := false) -> void:
+	_play_jingle(MISSION_DONE_JINGLE if mission_done else TASK_JINGLE, TASK_JINGLE_VOLUME_DB, "TaakDeuntje")
+
+
 const LEVEL_JINGLE := "res://assets/audio/muziek/deuntje_level_omhoog.ogg"
 const LEVEL_JINGLE_VOLUME_DB := -1.0
 
@@ -579,6 +611,8 @@ func _next_notice() -> void:
 ## Plays a jingle once over the music (nothing without the file).
 func _play_jingle(path: String, volume_db: float, player_name: String) -> void:
 	var stream: AudioStream = load(path) if ResourceLoader.exists(path) else null
+	if stream == null and FileAccess.file_exists(path):
+		stream = AudioStreamOggVorbis.load_from_file(path)   # not imported yet
 	if stream == null:
 		push_warning("hud: no jingle at %s" % path)
 		return
@@ -588,9 +622,13 @@ func _play_jingle(path: String, volume_db: float, player_name: String) -> void:
 	jingle.name = player_name
 	jingle.stream = stream
 	jingle.volume_db = volume_db
+	jingle.process_mode = Node.PROCESS_MODE_ALWAYS   # also while the story box holds the game
 	add_child(jingle)
 	jingle.play()
-	jingle.finished.connect(jingle.queue_free)
+	_jingles_playing += 1
+	jingle.finished.connect(func() -> void:
+		_jingles_playing = maxi(_jingles_playing - 1, 0)
+		jingle.queue_free())
 
 
 ## The quests in the tracker, top to bottom; empty = no tracker. Each a Dictionary:

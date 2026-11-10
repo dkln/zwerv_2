@@ -1,0 +1,48 @@
+{
+	"uitleg": "Wat de snackbarhouder zegt en verkoopt. {snackbar} is de naam van de zaak, {wat} wat je kocht, {prijs} wat het kost. 'item' is een item uit scripts/player/items.gd. Zie data/LEESMIJ.md.",
+	"spreker": "SNACKBARHOUDER",
+	"begroetingen": [
+		"Goeiedag! Welkom bij {snackbar}. Wat mag het zijn?",
+		"Zeg het maar, jongen. Wat wordt het?",
+		"Ha, een nieuw gezicht bij {snackbar}! Wat mag ik voor je bakken?"
+	],
+	"menu": [
+		{
+			"item": "kroket",
+			"vraag": "Een kroket, alstublieft",
+			"prijs": 2.0,
+			"naam": "kroket"
+		},
+		{
+			"item": "patat",
+			"vraag": "Een patatje met",
+			"prijs": 3.0,
+			"naam": "patatje met"
+		},
+		{
+			"item": "frikandel",
+			"vraag": "Een frikandel",
+			"prijs": 2.0,
+			"naam": "frikandel"
+		}
+	],
+	"gekocht": [
+		"Alsjeblieft, een {wat}. Eet smakelijk!",
+		"Een {wat}, vers uit het vet. Pas op, heet!"
+	],
+	"geen_geld": "Dat is {prijs}, jongen. Kom maar terug als je het bij elkaar hebt.",
+	"zakken_vol": "Je zakken zitten vol, zo te zien. Eerst wat opmaken, hè?",
+	"tip_vraag": "Wat is er lekker hier?",
+	"tip": "De kroketten zijn vanochtend nog gedraaid. Echte Haagse, met een flinke klodder mosterd erbij.",
+	"niets_vraag": "Laat maar, toch maar niet.",
+	"dag": "Tot de volgende keer! Doe de deur achter je dicht, het tocht.",
+	"nog_iets": "Verder nog iets?",
+	"stemmingen": {
+		"begroeting": "blij",
+		"gekocht": "blij",
+		"geen_geld": "verdrietig",
+		"zakken_vol": "neutraal",
+		"tip": "opgewonden",
+		"dag": "blij"
+	}
+}

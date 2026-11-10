@@ -1,55 +1,42 @@
-"""'Karakterkeuze': soft loop under the character creation screen.
+"""'Karakterkeuze': the soft loop of the character creation screen (character_creation.gd).
 
-House style (style.py), turned down: FM strings and electric piano, a slow PSG arpeggio, a
-soft broken beat (no four-on-the-floor) and the motif on the FM lead, gently, every four bars.
-
-96 BPM, F minor, 16 bars = 40 s, light swing, loops seamlessly.
-
-    bars  1-8   Fm9 Gbmaj7 Bbm9 Fm9 / Abmaj7 Gbmaj7 Bbm9 Csus   the motif in bars 1 and 5
-    bars  9-16  the same with a soft beat and a PSG counter-line; the motif in bars 9 and 13
-
+Style profile: CHARACTER_CHORDS, TEMPOS["karakterkeuze"]; in synthwave_rpg 96 BPM, D minor,
+16 bars = 40 s. The pad, bells on the motif, a slow PSG arpeggio, a light kick; the second
+time a soft tune on the chiptune lead.
 Render: tools/megadrive/render.sh karakterkeuze  (writes assets/audio/muziek/karakterkeuze_loop.ogg)
 """
 import style
-from style import Song, chords
+from style import Song
 
-CHORDS = chords(["F m9", "Gb maj7", "Bb m9", "F m9", "Ab maj7", "Gb maj7", "Bb m9", "C sus"])
-
-THEME = """
-    M 3:6 -:2
-    Bb5:8 -:8
-    -:16
-    -:16
-    M 5:4 3:4
-    Bb5:6 Ab5:2 F5:8
-    -:16
-    -:8 G5:4 Bb5:4
+PROFILE = style.PROFILE
+CHOOSING_TUNE = """
+    M -:8
+    ^6:8 ^5:8
+    M ^7:4 ^5:4
+    ^5:8 ^4:8
+    M -:8
+    ^1':8 ^7:4 ^6:4
+    ^5:8 ^4:4 ^5:4
+    R:8 3:8
 """
 
 
 def main() -> None:
-    song = Song("karakterkeuze_loop.ogg", bpm=96, bars=16, swing=0.1)
-    for half in range(2):
-        first_bar = half * 8
-        style.lead(song, first_bar, THEME, CHORDS, velocity=0.62)
-        for offset, chord in enumerate(CHORDS):
-            bar = first_bar + offset
-            style.strings_pad(song, bar, chord, bars=1, velocity=0.8)
-            style.piano_bar(song, bar, chord, "sparse", velocity=0.85)
-            style.psg_arpeggio(song, bar, chord, "up", 0.45, every=2)
-            style.bass_bar(song, bar, chord, "whole", velocity=0.7)
-            if half == 1:
-                style.drum_bar(song, bar, kick="broken", snare="none", hats="eighths", ghosts=False,
-                               velocity=0.5, hat_volume=0.55)
-                song.pcm.add(song.at(bar, 12), style.SNARE, 0.3)
-                # a quiet PSG line, a chord tone under the pad's top
-                top = chord.voicing[-1] + 12
-                song.psg_two.add(song.at(bar, 8), style.megadrive.psg_square(
-                    chord.tone_below(top, 1), song.sixteenths(7), 0.5, decay=0.5, sustain=0.5, release=0.2))
-            else:
-                style.drum_bar(song, bar, kick="none", snare="none", hats="eighths", ghosts=False,
-                               hat_volume=0.35 if offset >= 4 else 0.0)
-    song.render(target_rms_db=-16.0)
+    section_chords = style.chords(PROFILE.CHARACTER_CHORDS)
+    song = Song("karakterkeuze_loop.ogg", bpm=style.tempo("karakterkeuze"), bars=len(section_chords),
+                swing=style.piece("karakterkeuze")["swing"])
+    style.chip_lead(song, 8, CHOOSING_TUNE, section_chords[8:], volume=0.6, vibrato=0.18)
+    for bar, bar_chord in enumerate(section_chords):
+        if bar % 2 == 0:
+            style.pad(song, bar, bar_chord, bars=2, velocity=0.75)
+        style.bass_bar(song, bar, bar_chord, "hold", velocity=0.7)
+        style.arpeggio(song, bar, bar_chord, "up", 0.3, every=2, track=song.psg_three)
+        if bar % 4 == 0:
+            style.bells(song, bar, style.motif_notes(bar_chord, octave=1), (0, 2, 3, 4), 0.45)
+        if bar >= 4:
+            style.drum_bar(song, bar, kick="half", snare="none", hats="eighths" if bar >= 8 else "none",
+                           hat_volume=0.4, ghosts=False, velocity=0.65)
+    song.render(target_rms_db=-18.0)
 
 
 if __name__ == "__main__":
