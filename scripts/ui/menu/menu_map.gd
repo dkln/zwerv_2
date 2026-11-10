@@ -68,6 +68,8 @@ func _show_map(packed: PackedScene) -> void:
 	_day_cycle = map.get_node_or_null("Dagcyclus")
 	if _day_cycle:
 		_day_cycle.set("speed", MENU_HOURS_PER_SECOND)
+		_day_cycle.set("daylight_slowdown", 1.0)   # the menu shows the whole day evenly
+		_day_cycle.set("night_speedup", 1.0)
 		_day_cycle.call("set_time", MENU_START_HOUR)
 	_period = float(map.get_meta("periode", 0.0))
 	if _period > 0.0:

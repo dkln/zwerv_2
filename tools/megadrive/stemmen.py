@@ -5,8 +5,11 @@ DAC: low sample rates (8 to 13 kHz), 8 bits, recorded hot and clipped, so they s
 loud and a bit nasal. These are not recordings but made the same way a voice is: a glottal pulse
 (the vocal folds) at a falling pitch, through formant resonators (the vowel: "ugh", "ah"), with
 breath noise, a growl (period doubling) for the strain, driven into saturation, and at the end
-through the "DAC": sample-and-hold at VOICE_RATE and 8 bits, without an anti-alias filter in
-between, which gives the crunchy edge, and the console's output filter (OUTPUT_FILTER_HZ).
+through the "DAC": band-limited below half the VOICE_RATE (as the sampler recorded it), sample-and-
+hold at VOICE_RATE and 8 bits, which gives the crunchy edge, and a steep reconstruction filter,
+so the mirrors of the steps do not whistle (megadrive_voice).
+All voices are levelled on how loud they sound (as the ear hears it, loudness.py, like every sound), so
+a deep shout and a bright one sit at one level.
 
 Every file is mono, Ogg Vorbis, 44.1 kHz, peak -1 dB, in assets/audio/geluiden/:
 
@@ -20,6 +23,13 @@ Martin "Al zijn ze paars!" (the old athlete), the Ufo Piloot "Derde Dal Universu
 cackle, Sjaan "Ff poetsen" (the old toilet attendant), Gerrit a deep, teasing "Scholluhkop!". They are
 made like the cries (`say`: segments of vowels, pitch, voice and breath, through the formants
 and the DAC); each character has a speaker of their own (SPEAKERS).
+
+and the babble of the people in the street and in conversations (no words, only sounds whose
+tune tells the mood, as the voices of old adventure games), in assets/audio/geluiden/:
+
+    brabbel_<stem>_<emotie>_<n>.ogg   a few syllables (n 1..BABBLE_VARIANTS), emotie one of
+                                      BABBLE_MOODS: neutraal, blij, opgewonden, boos, verdrietig,
+                                      vraag (the last syllable going up: a question)
 
 Voices (stem): man, oude_man (lower, rougher, more breath), vrouw.
 The game picks the voice of the character ("voice" in scripts/player/player_character.gd).
@@ -39,6 +49,29 @@ from geluiden import SAMPLE_RATE, TWO_PI, band_noise, dac, fade_edges, low_pass,
 VOICE_RATE = 11025.0
 ## The analog low-pass after the DAC: keeps the grit of the steps, takes the hard edge off.
 OUTPUT_FILTER_HZ = 6000.0
+## The low-pass before the DAC (as the sampler had when the voice was recorded): the hiss of an
+## "s" above half the VOICE_RATE would fold back as a whistling rasp; the grit of the steps stays.
+ANTI_ALIAS_HZ = 4800.0
+## The reconstruction after the DAC, steep: the steps of the sample-and-hold mirror the voice
+## above half the VOICE_RATE (a metallic whistle on every "s" and burst); those mirrors go, the
+## 8-bit grit within the voice stays.
+RECONSTRUCTION_HZ = 5000.0
+## How loud the breath (the hiss of the consonants) is against the voice.
+BREATH_GAIN = 1.6
+
+
+def brick_wall(signal: numpy.ndarray, cutoff_hz: float) -> numpy.ndarray:
+    """Nothing above `cutoff_hz` (a steep fall over the last 10 %, so it does not ring)."""
+    spectrum = numpy.fft.rfft(signal)
+    frequencies = numpy.fft.rfftfreq(len(signal), 1.0 / SAMPLE_RATE)
+    spectrum *= numpy.clip((cutoff_hz - frequencies) / (0.1 * cutoff_hz), 0.0, 1.0)
+    return numpy.fft.irfft(spectrum, n=len(signal))
+
+
+def megadrive_voice(signal: numpy.ndarray) -> numpy.ndarray:
+    """Through the sampler and the DAC: band-limited, 8 bits at VOICE_RATE, the mirrors filtered off."""
+    held = dac(brick_wall(signal, ANTI_ALIAS_HZ), VOICE_RATE, 8)
+    return low_pass(brick_wall(held, RECONSTRUCTION_HZ), OUTPUT_FILTER_HZ)
 
 ## Per voice: pitch at the start and the end of a cry (Hz), formant scale (shorter vocal tract
 ## is higher), how much breath, how much growl (period doubling), how much pitch jitter.
@@ -165,7 +198,7 @@ def cry(voice_name: str, cry_key) -> numpy.ndarray:
     spoken /= numpy.abs(spoken).max() + 1e-9
     driven = numpy.tanh(3.2 * spoken)
     # through the DAC, then the console's output filter, which rounds off the steps a bit
-    return fade_edges(low_pass(dac(low_pass(driven, 7000.0), VOICE_RATE, 8), OUTPUT_FILTER_HZ), 0.002, 0.04)
+    return fade_edges(megadrive_voice(driven), 0.002, 0.04)
 
 
 def body_hit() -> numpy.ndarray:
@@ -213,14 +246,15 @@ def say(speaker: dict, segments, seed: int) -> numpy.ndarray:
     voiced = glottal_pulses(track["pitch"], growl, speaker.get("jitter", 0.02), seed)
     voiced /= numpy.sqrt(numpy.mean(voiced ** 2)) + 1e-9
     breath = band_noise(sample_count, 500.0, 7000.0, seed + 1)
-    source = voiced * voice_level + breath * breath_level * 3.0
+    # the hiss of the "s", "k" and "p" softer than the voice, so a burst is not the loudest of the shout
+    source = voiced * voice_level + breath * breath_level * BREATH_GAIN
     output = source
     for formant in range(4):
         output = resonate(output, track[f"f{formant + 1}"] * speaker.get("formants", 1.0), track[f"b{formant + 1}"])
     output = output - low_pass(output, 150.0)
     output /= numpy.abs(output).max() + 1e-9
     driven = numpy.tanh(speaker.get("drive", 3.0) * output)
-    return fade_edges(low_pass(dac(low_pass(driven, 7000.0), VOICE_RATE, 8), OUTPUT_FILTER_HZ), 0.003, 0.05)
+    return fade_edges(megadrive_voice(driven), 0.003, 0.05)
 
 
 ## The speakers of the shouts: base pitch (Hz), formant scale, growl, jitter, drive, and an
@@ -243,11 +277,11 @@ SHOUTS = {
             (0.03, "uh", "uh", 1.05, 1.05, 0.4, 0.2), (0.26, "o", "o", 1.1, 1.6, 1.0, 0.05)],
     # the old athlete, wired: "Al zijn ze paars!", quick, going up to "PAARS"
     "martin": [(0.09, "a", "a", 1.3, 1.35, 1.0, 0.05), (0.06, "l", "l", 1.35, 1.3, 0.7, 0.0),
-               (0.05, "s", "s", 1.0, 1.0, 0.35, 0.7), (0.13, "e", "i", 1.35, 1.3, 1.0, 0.05),
-               (0.05, "ng", "ng", 1.3, 1.3, 0.6, 0.0), (0.04, "s", "s", 1.0, 1.0, 0.35, 0.7),
+               (0.05, "s", "s", 1.0, 1.0, 0.0, 0.12), (0.13, "e", "i", 1.35, 1.3, 1.0, 0.05),
+               (0.05, "ng", "ng", 1.3, 1.3, 0.6, 0.0), (0.04, "s", "s", 1.0, 1.0, 0.0, 0.12),
                (0.07, "uh", "uh", 1.35, 1.4, 0.9, 0.05), (0.05, "-", "-", 1, 1, 0, 0),
                (0.025, "p", "p", 1.0, 1.0, 0.0, 1.0), (0.22, "a", "a", 1.9, 1.6, 1.0, 0.06),
-               (0.04, "uh", "uh", 1.6, 1.5, 0.4, 0.25), (0.12, "s", "s", 1.0, 1.0, 0.0, 1.0)],
+               (0.04, "uh", "uh", 1.6, 1.5, 0.4, 0.25), (0.12, "s", "s", 1.0, 1.0, 0.0, 0.2)],
     # the ufo pilot, of the planet Erra, naming where he comes from: "Derde Dal Universum", dreamy, the stress
     # high on "VER", the whole line wavering like a theremin (his speaker's vibrato)
     "ufo_piloot": [(0.03, "-", "-", 1, 1, 0, 0), (0.02, "d", "d", 1.0, 1.0, 0.3, 0.8),
@@ -286,7 +320,65 @@ def shout(character: str) -> numpy.ndarray:
     return say(SPEAKERS[character], SHOUTS[character], seed)
 
 
+## The babble (see the top): per mood how high the voice is (share of its pitch) at the start
+## and the end of the line, how long a syllable is (s), the pitch swing within a syllable,
+## how hard the voice is driven, extra growl, breath and an optional vibrato.
+BABBLE_MOODS = {
+    "neutraal": {"pitch": (1.0, 0.92), "syllable": 0.085, "swing": 0.06, "drive": 3.0, "growl": 0.0, "breath": 0.05},
+    "blij": {"pitch": (1.3, 1.5), "syllable": 0.07, "swing": 0.16, "drive": 3.0, "growl": 0.0, "breath": 0.05},
+    "opgewonden": {"pitch": (1.55, 1.9), "syllable": 0.055, "swing": 0.22, "drive": 3.2, "growl": 0.0, "breath": 0.06},
+    "boos": {"pitch": (0.95, 0.8), "syllable": 0.065, "swing": -0.12, "drive": 5.0, "growl": 0.45, "breath": 0.15},
+    "verdrietig": {"pitch": (0.85, 0.62), "syllable": 0.14, "swing": -0.08, "drive": 2.2, "growl": 0.0, "breath": 0.3,
+                   "vibrato": (5.5, 0.05)},
+    # a question: level, then the last syllable longer and going up far ("rise")
+    "vraag": {"pitch": (1.0, 1.02), "syllable": 0.08, "swing": 0.03, "drive": 3.0, "growl": 0.0, "breath": 0.05,
+              "rise": 0.65},
+}
+BABBLE_VARIANTS = 3
+## The syllables babble is made of: a consonant (or none) and a vowel.
+BABBLE_CONSONANTS = ["d", "k", "p", "m", "l", "-", "d", "m"]
+BABBLE_VOWELS = ["a", "e", "o", "i", "uh", "oe", "eu", "a"]
+
+
+def babble(voice_name: str, mood: str, variant: int) -> numpy.ndarray:
+    """A few syllables of babble in the voice, the tune of the mood."""
+    voice = VOICES[voice_name]
+    settings = BABBLE_MOODS[mood]
+    seed = zlib.crc32(f"{voice_name}{mood}{variant}".encode()) % 10000
+    random = numpy.random.default_rng(seed)
+    speaker = {"pitch": (voice["pitch"][0] + voice["pitch"][1]) * 0.5, "formants": voice["formants"],
+               "growl": voice["growl"] * 0.5 + settings["growl"], "jitter": voice["jitter"], "drive": settings["drive"]}
+    if "vibrato" in settings:
+        speaker["vibrato"] = settings["vibrato"]
+    syllables = 3 + variant % 2 if mood != "verdrietig" else 2 + variant % 2
+    start, end = settings["pitch"]
+    segments = []
+    for syllable in range(syllables):
+        share = syllable / max(syllables - 1, 1)
+        pitch = start + (end - start) * share + random.uniform(-0.05, 0.05)
+        consonant = BABBLE_CONSONANTS[random.integers(len(BABBLE_CONSONANTS))]
+        vowel = BABBLE_VOWELS[random.integers(len(BABBLE_VOWELS))]
+        if consonant in ("d", "k", "p"):
+            segments.append((0.025, consonant, consonant, 1.0, 1.0, 0.0, 0.8))
+        elif consonant in ("m", "l"):
+            segments.append((0.04, consonant, consonant, pitch, pitch, 0.6, 0.0))
+        length = settings["syllable"] * random.uniform(0.8, 1.25)
+        swing = settings["swing"]
+        if syllable == syllables - 1 and "rise" in settings:
+            length *= 2.0
+            swing = settings["rise"]
+        segments.append((length, vowel, vowel, pitch, pitch * (1.0 + swing), 1.0, settings["breath"]))
+        # a little gap between syllables, longer for the sad and the calm
+        segments.append((settings["syllable"] * 0.35, "-", "-", 1, 1, 0, 0))
+    return say(speaker, segments, seed)
+
+
 SOUNDS = {"lichaam_klap": body_hit}
+for _voice_name in VOICES:
+    for _mood in BABBLE_MOODS:
+        for _variant in range(1, BABBLE_VARIANTS + 1):
+            SOUNDS[f"brabbel_{_voice_name}_{_mood}_{_variant}"] = (
+                lambda voice_name=_voice_name, mood=_mood, variant=_variant: babble(voice_name, mood, variant))
 for _voice_name in VOICES:
     for _cry_key in CRIES:
         SOUNDS[f"pijn_{_voice_name}_{_cry_key}"] = (lambda voice_name=_voice_name, cry_key=_cry_key: cry(voice_name, cry_key))
@@ -301,7 +393,15 @@ def main() -> None:
     for sound_number, name in enumerate(names, 1):
         print(f"[ {sound_number}/{len(names)} ] {name}", end="  ", flush=True)
         folder = SHOUTS_FOLDER if name.startswith("kreet_") else geluiden.OUTPUT_FOLDER
-        geluiden.write_mono(name, SOUNDS[name](), False, folder)
+        sound = SOUNDS[name]()
+        voice = name != "lichaam_klap"
+        if voice:
+            # levelled by ear; what the limiter added above the voice taken off again, and the
+            # peaks kept under the ceiling without limiting once more
+            for attempt in range(4):
+                sound = brick_wall(geluiden.level_one_shot(sound), RECONSTRUCTION_HZ + 300.0)
+            sound *= min(1.0, 10.0 ** (geluiden.ONE_SHOT_CEILING_DB / 20.0) / (numpy.abs(sound).max() + 1e-9))
+        geluiden.write_mono(name, sound, False, folder, levelled=voice)
 
 
 if __name__ == "__main__":

@@ -196,6 +196,9 @@ const SIGNS := {"bg_bakker": "tekst/bord_bakker", "bg_slager": "tekst/bord_slage
 const NAME_SIGN_HEIGHT := 2.7
 ## Most name signs a kind of shop has (tekst/naam_<kind>_1 .. _3).
 const NAME_SIGNS_PER_KIND := 3
+## The name sign of the snack bars that are a Jan Blammage (scripts/story/story.gd BLAMMAGE_SIGN):
+## they get the fries cone (props/terras/friet_puntzak) out front.
+const JAN_BLAMMAGE_SIGN := "tekst/naam_snackbar_2"
 
 
 ## The name sign of a shop of this kind ("bg_bakker": tekst/naam_bakker_<n>), another one
@@ -298,6 +301,9 @@ func _shops(start: Vector2i, step: Vector2i, n: int, front: String, seed: int, k
 				or _name_sign(kinds[(i + 1 + seed) % kinds.size()], 0) != "")
 		if name_sign != "":
 			D(wx, wz, NAME_SIGN_HEIGHT, name_sign, front)
+			# a Jan Blammage has its big fries cone out on the pavement, beside the door
+			if name_sign == JAN_BLAMMAGE_SIGN:
+				Pr(wx + off.x * 1.0 + step.x * 1.3, wz + off.y * 1.0 + step.y * 1.3, "terras/friet_puntzak", front)
 		elif SIGNS.has(shop) and not beside_a_name:
 			D(wx - step.x, wz - step.y, 3.5, SIGNS[shop], front)
 		elif (i + seed) % 2 == 0:

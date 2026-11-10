@@ -2,36 +2,31 @@ extends Node3D
 ## The voxel figure of a player archetype (PlayerCharacter.ARCHETYPES), built in code from
 ## boxes of voxels of VOXEL metres (as the riders of the traffic, 0.0625 m), so it needs no
 ## imported tile: about 2 m tall, standing on y = 0, the face towards +z. All four are
-## zwervers: worn and dirty clothes, holes and patches, what they own on them; their names
-## are nicknames.
-## - jos (alcohol): a battered cowboy hat (a hole in the brim, string for a band), long
-##   matted grey hair and a scruffy beard, a red drinker's nose and heavy eyelids, a long
-##   frayed coat with a patch over a checked shirt and a belly, rope for a belt,
-##   jeans with a torn knee, fingerless gloves, boots with a sole coming loose, a stone
-##   kruik of jenever in one hand and a plastic bag with bread in the other;
-## - martin (speed): once a top athlete (the 800 metres), now skin and bone (a chest no wider than his head, the slimmest arms and legs of all, as thick as the others' thinnest) in
-##   a faded shell suit (the zip half open over a grey t-shirt), a cheap chain, a belt
-##   pulled tight, trousers with a torn knee, grey trainers, a rucksack
-##   too big for him with a sleeping bag on top, a blond mullet (short on top and at the
-##   sides, long down the neck), sunglasses with
-##   one lens gone on his forehead, a gaunt clean-shaven face, wide eyes, a small tight
-##   grin, sweat, and an energy drink;
-## - ufo_piloot (crack): an ordinary man, skinny: an old aviator jacket too big on him
-##   with a fleece collar over a grey hoodie, faded jeans held up by the last hole of his
-##   belt, worn shoes, a hollow face with tired eyes and a grey beard, short messy hair;
-## - willem (gokkasten): an old man in a long faded coat with big buttons and a safety pin
-##   for a lost one, a red knitted scarf, corduroy trousers and worn slippers, a checked flat cap
-##   over white hair, round glasses, bushy brows, a grey moustache and white stubble, a
-##   plastic bag in one hand.
-## - sjaan (sigaretten): once a toilet attendant, thirty years with her saucer by the toilets
-##   of a department store: big curly auburn hair under a green knitted
-##   beanie, a denim jacket with pins, a long patchwork skirt, boots.
-## - gerrit (bier): an old fisherman from Scheveningen: a yellow oilskin coat with toggles
-##   and a sou'wester, a navy roll-neck jumper under it, rubber boots, a full grey beard
-##   and a weathered red face, a bucket with a fish's tail sticking out in one hand.
+## zwervers in worn clothes; their names are nicknames. Kept simple, with few details: big
+## areas of one colour, no lone detail voxels (buttons, stitches, stains, strands). Nobody
+## carries a rucksack (one picked up in the town is put on: set_backpack).
+## - jos (alcohol): a battered cowboy hat, long matted grey hair and a scruffy beard, a red
+##   drinker's nose, a long coat over a red shirt and a belly, rope for a belt, jeans,
+##   fingerless gloves, boots;
+## - martin (speed): once a top athlete (the 800 metres), now skin and bone (a chest no wider
+##   than his head, the slimmest arms and legs of all) in a faded tracksuit whose jacket is
+##   all one colour, grey trainers, a blond mullet, sunglasses on his forehead, wide eyes and
+##   a small tight grin;
+## - ufo_piloot (crack): an ordinary man, skinny: an old aviator jacket too big on him with a
+##   fleece collar over a grey hoodie, faded jeans, worn shoes, a grey beard, short hair;
+## - willem (gokkasten): an old man in a long coat, a red knitted scarf, corduroy trousers
+##   and slippers, a flat cap over white hair, round glasses, bushy brows, a grey moustache.
+## - sjaan (sigaretten): once a toilet attendant: big curly auburn hair under a green knitted
+##   beanie, a denim jacket, a long patchwork skirt, boots.
+## - gerrit (bier): an old fisherman from Scheveningen: a yellow oilskin coat and a
+##   sou'wester, a navy roll-neck jumper under it, rubber boots, a full grey beard and a
+##   weathered red face.
 ## Limbs: the arms and the legs are parts of their own (RIGS: the boxes of voxels of each),
-## each turning round its own joint (shoulder, hip), so they move independently of each
-## other: `walking` (0..1) swings them in a walk cycle, pose_limb sets one by hand, and the
+## each turning round its own joint (shoulder, hip), the forearm and the shin hanging from
+## them at the elbow and the knee, so they move independently of each other: `walking`
+## (0..1) swings them in a walk cycle, above 1 in a run of its own (RUN_*: the knees driven
+## up, the elbows bent, leaning forward, off the ground between the steps), pose_limb sets
+## one by hand, and the
 ## idle moves use them too (Jos sways and swings his arms, Martin taps his feet and
 ## jitters, Sjaan rocks along, Willem and the pilot breathe).
 ## Shading: each face a little darker on the sides and below, and every corner darkened by
@@ -57,41 +52,63 @@ signal gesture_finished
 
 const VOXEL := 0.0625
 const SHADER := preload("res://scripts/player/figure.gdshader")
+const PLAIN_SHADER := preload("res://scripts/player/figure_plain.gdshader")
+const OUTLINE_SHADER := preload("res://scripts/player/figure_outline.gdshader")
+const GroundShadow = preload("res://scripts/effects/ground_shadow.gd")
+## Colours closer than this (RGB distance) are one colour in a simple figure.
+const SIMPLE_COLOUR_DISTANCE := 0.12
 ## Voxels up to the middle of each face (eyes and nose), to zoom in on it.
 const FACE_HEIGHT := {"jos": 28.5, "martin": 30.5, "ufo_piloot": 29.5, "willem": 26.0, "sjaan": 29.0, "gerrit": 29.0}
 ## The limbs of each figure: per limb the boxes of voxel cells (x0, y0, z0, x1, y1, z1,
 ## both corners included) that belong to it, what it holds included; the rest is the body.
-## The joint is at the top of the limb, in its middle.
+## The joint is at the top of the limb, in its middle. A cell in the boxes of more than one
+## limb belongs to the last one: the forearm and the shin are the lower part of the arm and
+## the leg (PARENT_LIMB), with the elbow and the knee at their top.
 const RIGS := {
 	"jos": {
 		"arm_left": [[-3, 3, -4, 0, 23, 6]], "arm_right": [[13, 3, -4, 15, 23, 6]],
 		"leg_left": [[3, 0, -3, 5, 12, 4]], "leg_right": [[8, 0, -3, 10, 12, 4]],
+		"forearm_left": [[-3, 3, -4, 0, 17, 6]], "forearm_right": [[13, 3, -4, 15, 17, 6]],
+		"shin_left": [[3, 0, -3, 5, 6, 4]], "shin_right": [[8, 0, -3, 10, 6, 4]],
 	},
 	"martin": {
 		"arm_left": [[1, 13, -6, 3, 23, 2]], "arm_right": [[10, 13, -6, 12, 23, 2]],
-		"leg_left": [[3, 0, -4, 5, 12, 2]], "leg_right": [[8, 0, -4, 10, 12, 2]],
+		"leg_left": [[3, 0, -4, 5, 12, 3]], "leg_right": [[8, 0, -4, 10, 12, 3]],
+		"forearm_left": [[1, 13, -6, 3, 18, 2]], "forearm_right": [[10, 13, -6, 12, 18, 2]],
+		"shin_left": [[3, 0, -4, 5, 6, 3]], "shin_right": [[8, 0, -4, 10, 6, 3]],
 	},
 	"ufo_piloot": {
 		"arm_left": [[-1, 12, -2, 2, 23, 3]], "arm_right": [[11, 12, -2, 14, 23, 3]],
 		"leg_left": [[4, 0, -2, 5, 13, 3]], "leg_right": [[8, 0, -2, 9, 13, 3]],
+		"forearm_left": [[-1, 12, -2, 2, 18, 3]], "forearm_right": [[11, 12, -2, 14, 18, 3]],
+		"shin_left": [[4, 0, -2, 5, 6, 3]], "shin_right": [[8, 0, -2, 9, 6, 3]],
 	},
 	"willem": {
 		"arm_left": [[-1, 3, -2, 1, 20, 4], [2, 19, 0, 2, 20, 3]],
 		"arm_right": [[12, 10, -2, 14, 20, 4], [11, 19, 0, 11, 20, 3]],
 		"leg_left": [[3, 0, -2, 5, 7, 3]], "leg_right": [[8, 0, -2, 10, 7, 3]],
+		"forearm_left": [[-1, 3, -2, 1, 15, 4]], "forearm_right": [[12, 10, -2, 14, 15, 4]],
+		"shin_left": [[3, 0, -2, 5, 3, 3]], "shin_right": [[8, 0, -2, 10, 3, 3]],
 	},
 	"gerrit": {
 		"arm_left": [[-3, 3, -2, 1, 24, 4], [2, 23, 0, 2, 24, 3]],
 		"arm_right": [[12, 10, -2, 13, 24, 4], [11, 23, 0, 11, 24, 3]],
 		"leg_left": [[3, 0, -2, 5, 10, 4]], "leg_right": [[8, 0, -2, 10, 10, 4]],
+		"forearm_left": [[-3, 3, -2, 1, 18, 4]], "forearm_right": [[12, 10, -2, 13, 18, 4]],
+		"shin_left": [[3, 0, -2, 5, 5, 4]], "shin_right": [[8, 0, -2, 10, 5, 4]],
 	},
 	"sjaan": {
 		"arm_left": [[0, 13, -2, 1, 24, 3], [2, 23, 0, 2, 24, 2]],
 		"arm_right": [[12, 13, -2, 13, 24, 3], [11, 23, 0, 11, 24, 2]],
-		"leg_left": [[3, 0, -2, 5, 3, 4]], "leg_right": [[8, 0, -2, 10, 3, 4]],
+		"leg_left": [[3, 0, -2, 5, 7, 4]], "leg_right": [[8, 0, -2, 10, 7, 4]],
+		"forearm_left": [[0, 13, -2, 1, 18, 3]], "forearm_right": [[12, 13, -2, 13, 18, 3]],
+		"shin_left": [[3, 0, -2, 5, 3, 4]], "shin_right": [[8, 0, -2, 10, 3, 4]],
 	},
 }
-const LIMBS := ["arm_left", "arm_right", "leg_left", "leg_right"]
+const LIMBS := ["arm_left", "arm_right", "leg_left", "leg_right", "forearm_left", "forearm_right", "shin_left", "shin_right"]
+## The lower limbs hang from the upper ones (their joint nodes are children of these), so
+## an elbow and a knee bend on top of the swing of the shoulder and the hip.
+const PARENT_LIMB := {"forearm_left": "arm_left", "forearm_right": "arm_right", "shin_left": "leg_left", "shin_right": "leg_right"}
 ## The kinds of material. The fabrics (and hair, which is drawn the same way) have the
 ## fabric shader (figure.gdshader), each with its own pattern (1 weave, 2 twill, 3 knit,
 ## 4 strands), its strength and threads per voxel, how much the threads bump the normal
@@ -136,24 +153,71 @@ const GESTURE_FADE := 0.25
 ## Seconds a spinning figure first stands facing the front when it is shown anew, before
 ## it turns (0: it turns at once, from the front).
 const FRONT_HOLD := 0.0
-## The walk: steps a second, how far the legs and the arms swing (degrees), how much the
-## body bobs (metres).
+## The walk: steps a second, how far the legs and the arms swing (degrees), how far the knee
+## bends as the leg comes forward, how much the body bobs (metres).
 const STEPS_PER_SECOND := 1.8
 const LEG_SWING := 26.0
 const ARM_SWING := 20.0
+const WALK_KNEE := 22.0
 const WALK_BOB := 0.025
+## The run (`walking` above 1: from RUN_FROM it blends in, fully at RUN_FULL): not the walk
+## sped up but a run of its own. The steps come RUN_CADENCE times as fast as a walk's; the
+## thigh drives far forward (RUN_THIGH_FORWARD, the knee lifted high) and pushes back
+## (RUN_THIGH_BACK); the knee bends deep as the leg swings through, the heel kicked up
+## (RUN_KNEE), and never quite straightens (RUN_KNEE_MIN); the arms pump from the shoulder
+## (RUN_ARM_FORWARD, RUN_ARM_BACK), the elbows bent at about a right angle (RUN_ELBOW),
+## closing a little as the arm comes forward (RUN_ELBOW_PUMP); the body leans forward
+## (RUN_LEAN, degrees) and its shoulders turn against the hips (RUN_TWIST); it is highest
+## between the steps, both feet off the ground (RUN_BOB, metres), and lowest as a foot lands.
+const RUN_FROM := 1.05
+const RUN_FULL := 1.5
+const RUN_CADENCE := 1.5
+const RUN_THIGH_FORWARD := 62.0
+const RUN_THIGH_BACK := 32.0
+const RUN_KNEE := 105.0
+const RUN_KNEE_MIN := 14.0
+const RUN_ARM_FORWARD := 50.0
+const RUN_ARM_BACK := 38.0
+const RUN_ELBOW := 82.0
+const RUN_ELBOW_PUMP := 18.0
+const RUN_LEAN := 11.0
+const RUN_TWIST := 5.0
+const RUN_BOB := 0.09
 
 @export var archetype_id := "jos":
 	set(value):
 		archetype_id = value
 		if is_inside_tree():
 			_rebuild()
+## Size of the figure (1 = its voxels of VOXEL metres, as on the screens; the town draws it
+## smaller, PlayerController.FIGURE_SCALE, so it stands in proportion to the townspeople,
+## the bicycles and the cars).
+## With fewer details (the town, seen from afar; VoxelFigure.simplify).
+@export var simple := false:
+	set(value):
+		simple = value
+		if is_inside_tree():
+			_rebuild()
+## With the rucksack on its back (BACKPACK), picked up in the town; nobody starts with one.
+@export var backpack := false:
+	set(value):
+		if backpack == value:
+			return
+		backpack = value
+		if is_inside_tree():
+			_rebuild()
+@export var figure_scale := 1.0:
+	set(value):
+		figure_scale = value
+		if _figure:
+			_figure.scale = Vector3.ONE * figure_scale
 ## Moves on its own (sway, jitter, tapping, playing).
 @export var idle := true
 ## Degrees a second it turns round (0 = stands still facing +z).
 @export var spin := 0.0
-## How much it walks (0 = stands, 1 = a full walk cycle on the spot); tween it.
-@export_range(0.0, 1.0) var walking := 0.0
+## How much it walks (0 = stands, 1 = a full walk cycle on the spot; above 1 it runs, from
+## RUN_FROM to RUN_FULL, the player's run); tween it.
+@export_range(0.0, 2.0) var walking := 0.0
 ## With alpha: the whole figure in this one flat colour (a silhouette).
 var silhouette := Color(0, 0, 0, 0):
 	set(value):
@@ -185,24 +249,33 @@ func _rebuild() -> void:
 		_figure.queue_free()
 	_figure = Node3D.new()
 	_figure.name = "Figuur"
+	_figure.scale = Vector3.ONE * figure_scale
 	add_child(_figure)
 	_joints.clear()
-	var parts := parts_for(archetype_id)
+	var parts := parts_for(archetype_id, simple, backpack)
 	_height = parts.height
 	var body := MeshInstance3D.new()
 	body.name = "Lijf"
 	body.mesh = parts.meshes.body
+	body.layers = GroundShadow.FIGURE_LAYER   # its own ground shadow does not fall on it
 	_figure.add_child(body)
 	for limb: String in LIMBS:
 		if not parts.meshes.has(limb):
 			continue
 		var joint := Node3D.new()
 		joint.name = limb
-		joint.position = parts.pivots[limb]
-		_figure.add_child(joint)
+		var parent_limb: String = PARENT_LIMB.get(limb, "")
+		if _joints.has(parent_limb):
+			# the elbow or the knee: placed from the shoulder or the hip, turning with it
+			joint.position = parts.pivots[limb] - parts.pivots[parent_limb]
+			(_joints[parent_limb] as Node3D).add_child(joint)
+		else:
+			joint.position = parts.pivots[limb]
+			_figure.add_child(joint)
 		var piece := MeshInstance3D.new()
 		piece.mesh = parts.meshes[limb]
 		piece.position = -parts.pivots[limb]
+		piece.layers = GroundShadow.FIGURE_LAYER
 		joint.add_child(piece)
 		_joints[limb] = joint
 	if silhouette.a > 0.0:
@@ -253,9 +326,24 @@ static func face_height(id: String) -> float:
 	return FACE_HEIGHT.get(id, 29.0) * VOXEL
 
 
-## The height of the figure in metres (to frame it).
+## The box round the whole figure standing still (its limbs at rest), in its own space at its
+## figure_scale: feet at y = 0, facing +z.
+func rest_bounds() -> AABB:
+	var parts := parts_for(archetype_id, simple, backpack)
+	var bounds := AABB()
+	var first := true
+	for part: String in parts.meshes:
+		var box: AABB = (parts.meshes[part] as ArrayMesh).get_aabb()
+		if box.size == Vector3.ZERO:
+			continue
+		bounds = box if first else bounds.merge(box)
+		first = false
+	return AABB(bounds.position * figure_scale, bounds.size * figure_scale)
+
+
+## The height of the figure in metres (to frame it), at its figure_scale.
 func height() -> float:
-	return _height
+	return _height * figure_scale
 
 
 func _process(delta: float) -> void:
@@ -266,20 +354,35 @@ func _process(delta: float) -> void:
 		_hold -= delta
 	else:
 		_turn += spin * delta
-	_walk_clock += delta * STEPS_PER_SECOND * PI * walking
+	var walk_amount := minf(walking, 1.0)
+	var run := smoothstep(RUN_FROM, RUN_FULL, walking)
+	_walk_clock += delta * STEPS_PER_SECOND * PI * lerpf(walking, RUN_CADENCE, run)
 	var stride := sin(_walk_clock)
 	var sway := 0.0
-	var offset := Vector3(0.0, absf(cos(_walk_clock)) * WALK_BOB * walking, 0.0)
+	var offset := Vector3(0.0, absf(cos(_walk_clock)) * WALK_BOB * walk_amount * (1.0 - run), 0.0)
 	var angles := {}
 	for limb: String in LIMBS:
 		angles[limb] = Vector3.ZERO
-	# the walk: legs opposite, each arm against its leg
-	angles.leg_left.x += stride * LEG_SWING * walking
-	angles.leg_right.x -= stride * LEG_SWING * walking
-	angles.arm_left.x -= stride * ARM_SWING * walking
-	angles.arm_right.x += stride * ARM_SWING * walking
+	# the walk: legs opposite, each arm against its leg, the knee bending as the leg comes forward
+	var walk_weight := walk_amount * (1.0 - run)
+	angles.leg_left.x += stride * LEG_SWING * walk_weight
+	angles.leg_right.x -= stride * LEG_SWING * walk_weight
+	angles.shin_left.x += maxf(0.0, -cos(_walk_clock)) * WALK_KNEE * walk_weight
+	angles.shin_right.x += maxf(0.0, cos(_walk_clock)) * WALK_KNEE * walk_weight
+	angles.arm_left.x -= stride * ARM_SWING * walk_weight
+	angles.arm_right.x += stride * ARM_SWING * walk_weight
+	var lean := 0.0
+	var twist := 0.0
+	if run > 0.0:
+		var run_pose := _run_pose(_walk_clock)
+		for limb: String in run_pose:
+			angles[limb] += (run_pose[limb] as Vector3) * run
+		# highest between the steps (both feet off the ground), lowest as a foot lands
+		offset.y += absf(stride) * RUN_BOB * run
+		lean = RUN_LEAN * run
+		twist = -stride * RUN_TWIST * run
 	if idle:
-		var still := 1.0 - walking
+		var still := 1.0 - walk_amount
 		match archetype_id:
 			"jos":
 				# drunk: a slow sway from the boots up, the arms swinging loose
@@ -301,7 +404,6 @@ func _process(delta: float) -> void:
 				offset.y += sin(_clock * 1.4) * 0.006 * still
 				angles.arm_left.z -= (0.5 + 0.5 * sin(_clock * 1.4)) * 2.0 * still
 				angles.arm_right.z += (0.5 + 0.5 * sin(_clock * 1.4)) * 2.0 * still
-	var lean := 0.0
 	if _gesture_clock >= 0.0:
 		var gesture: Dictionary = GESTURES.get(archetype_id, GESTURES.jos)
 		var seconds := float(gesture.seconds)
@@ -321,11 +423,49 @@ func _process(delta: float) -> void:
 				angles[limb] = angles[limb].lerp(move.get(limb, Vector3.ZERO), weight)
 			offset = offset.lerp(move.get("offset", Vector3.ZERO), weight)
 			sway = lerpf(sway, float(move.get("sway", 0.0)), weight)
-			lean = float(move.get("lean", 0.0)) * weight
+			lean = lerpf(lean, float(move.get("lean", 0.0)), weight)
+			twist = lerpf(twist, 0.0, weight)
 	for limb: String in _joints:
 		(_joints[limb] as Node3D).rotation_degrees = angles[limb] + _poses.get(limb, Vector3.ZERO)
-	_figure.position = offset
-	_figure.rotation_degrees = Vector3(lean, _turn, sway)
+	_figure.position = offset * figure_scale
+	_figure.rotation_degrees = Vector3(lean, _turn + twist, sway)
+	if walking > 0.01:
+		_keep_feet_up()
+
+
+## Lifts the figure so no foot goes through the ground (y = 0): a bent knee and the lean of
+## the run swing the toes down.
+func _keep_feet_up() -> void:
+	var lowest := 0.0
+	var to_model := global_transform.affine_inverse()
+	for limb: String in ["shin_left", "shin_right"]:
+		var joint: Node3D = _joints.get(limb)
+		if joint == null or joint.get_child_count() == 0:
+			continue
+		var piece := joint.get_child(0) as MeshInstance3D
+		lowest = minf(lowest, ((to_model * piece.global_transform) * piece.mesh.get_aabb()).position.y)
+	_figure.position.y -= lowest
+
+
+## The run at `phase` (radians, TAU a pair of steps; the left leg pushes back while
+## sin(phase) > 0): limb -> degrees (x: negative swings forward, for the elbow forward and
+## up, for the knee positive bends it, the foot going back). Each thigh drives far forward
+## and pushes back less far; the knee folds deepest as the leg swings through under the
+## body (the heel kicked up) and is nearly straight as the foot lands; each arm pumps
+## against its leg, bent at the elbow, the hand coming up as it swings forward.
+static func _run_pose(phase: float) -> Dictionary:
+	var pose := {}
+	for side: String in ["left", "right"]:
+		var swing := sin(phase) if side == "left" else -sin(phase)            # > 0: the leg back
+		var coming_forward := maxf(0.0, -cos(phase) if side == "left" else cos(phase))
+		var thigh := swing * (RUN_THIGH_BACK if swing > 0.0 else RUN_THIGH_FORWARD)
+		pose["leg_" + side] = Vector3(thigh, 0.0, 0.0)
+		pose["shin_" + side] = Vector3(RUN_KNEE_MIN + coming_forward * (RUN_KNEE - RUN_KNEE_MIN), 0.0, 0.0)
+		# the arm against the leg of its side: forward (negative) while that leg is back
+		var arm := -swing * (RUN_ARM_FORWARD if swing > 0.0 else RUN_ARM_BACK)
+		pose["arm_" + side] = Vector3(arm, 0.0, -4.0 if side == "left" else 4.0)
+		pose["forearm_" + side] = Vector3(-RUN_ELBOW - maxf(0.0, swing) * RUN_ELBOW_PUMP, 0.0, 0.0)
+	return pose
 
 
 ## The pose of the gesture `time` seconds in (of `seconds`): limb -> degrees (x: negative
@@ -359,6 +499,9 @@ func _gesture_pose(time: float, seconds: float) -> Dictionary:
 				"leg_left": Vector3(pump * 45.0, 0.0, 0.0), "leg_right": Vector3(-pump * 45.0, 0.0, 0.0),
 				"arm_left": Vector3(-pump * 55.0 * (1.0 - cheer), 0.0, -165.0 * cheer),
 				"arm_right": Vector3(pump * 55.0 * (1.0 - cheer), 0.0, 165.0 * cheer),
+				# the elbows bent while pumping, straight as the fists go up; the knees kicking up
+				"forearm_left": Vector3(-80.0 * (1.0 - cheer), 0.0, 0.0), "forearm_right": Vector3(-80.0 * (1.0 - cheer), 0.0, 0.0),
+				"shin_left": Vector3(15.0 + maxf(0.0, -pump) * 70.0, 0.0, 0.0), "shin_right": Vector3(15.0 + maxf(0.0, pump) * 70.0, 0.0, 0.0),
 				"offset": Vector3(0.0, 0.1 * hop, 0.0), "lean": 8.0 * (1.0 - cheer),
 			}
 		"ufo_piloot":
@@ -409,38 +552,61 @@ func _gesture_pose(time: float, seconds: float) -> Dictionary:
 
 ## The figure of an archetype, built once: {"meshes": {"body", limbs...: ArrayMesh},
 ## "pivots": {limb: Vector3 joint in metres}, "height": metres}.
-static func parts_for(id: String) -> Dictionary:
-	if not _cache.has(id):
-		var figure := VoxelFigure.new()
-		figure.mark("skin", [SKIN_TAN, SKIN_PALE, SKIN_GREY, SKIN_OLD])
-		figure.mark("eye", [EYE_DARK, EYE_WHITE, TEETH])
-		match id:
-			"martin":
-				_build_martin(figure)
-			"ufo_piloot":
-				_build_pilot(figure)
-			"willem":
-				_build_willem(figure)
-			"sjaan":
-				_build_sjaan(figure)
-			"gerrit":
-				_build_gerrit(figure)
-			_:
-				_build_jos(figure)
-		if is_nan(figure.centre_cell.x):
-			# every head is x 4..9: turn round it and frame it in the middle
-			figure.centre_cell = Vector2(7.0, 3.0)
+## `simple`: with fewer details (VoxelFigure.simplify), for the town, where it is seen from afar.
+## `with_backpack`: with the rucksack on its back (BACKPACK; one picked up in the town).
+static func parts_for(id: String, simple := false, with_backpack := false) -> Dictionary:
+	var key := id + ("/eenvoudig" if simple else "") + ("/rugzak" if with_backpack else "")
+	if not _cache.has(key):
+		var figure := voxels_for(id, with_backpack)
+		if simple:
+			figure.simplify()
 		var materials := {}
 		for kind: String in CLOTH.keys() + MATERIALS.keys() + ["glow"]:
-			materials[kind] = material_for(kind)
-		_cache[id] = figure.to_parts(VOXEL, RIGS.get(id, {}), materials, graded)
-	return _cache[id]
+			materials[kind] = material_for(kind, true)
+		_cache[key] = figure.to_parts(VOXEL, RIGS.get(id, {}), materials, graded)
+	return _cache[key]
+
+
+## The voxels of an archetype (its look), before they become meshes; `with_backpack`: with
+## the rucksack on its back.
+static func voxels_for(id: String, with_backpack := false) -> VoxelFigure:
+	var figure := VoxelFigure.new()
+	figure.mark("skin", [SKIN_TAN, SKIN_PALE, SKIN_GREY, SKIN_OLD])
+	figure.mark("eye", [EYE_DARK, EYE_WHITE, TEETH])
+	match id:
+		"martin":
+			_build_martin(figure)
+		"ufo_piloot":
+			_build_pilot(figure)
+		"willem":
+			_build_willem(figure)
+		"sjaan":
+			_build_sjaan(figure)
+		"gerrit":
+			_build_gerrit(figure)
+		_:
+			_build_jos(figure)
+	if with_backpack:
+		_add_backpack(figure, BACKPACK.get(id, BACKPACK.jos))
+	if is_nan(figure.centre_cell.x):
+		# every head is x 4..9: turn round it and frame it in the middle
+		figure.centre_cell = Vector2(7.0, 3.0)
+	return figure
 
 
 ## The material of a kind, made once and shared: the fabrics and hair the fabric shader
 ## with their own settings (CLOTH), the rest an ordinary material (MATERIALS), glowing parts
 ## unshaded.
-static func material_for(kind: String) -> Material:
+## The material of a kind of voxel; `outlined` (the characters: the player and the
+## townspeople) with the hard outline as its next pass (figure_outline.gdshader).
+static func material_for(kind: String, outlined := false) -> Material:
+	if outlined:
+		var outlined_key := kind + "/omlijnd"
+		if not _materials.has(outlined_key):
+			var with_outline := material_for(kind).duplicate() as Material
+			with_outline.next_pass = outline_material()
+			_materials[outlined_key] = with_outline
+		return _materials[outlined_key]
 	if not _materials.has(kind):
 		if CLOTH.has(kind):
 			var settings: Dictionary = CLOTH[kind]
@@ -458,23 +624,35 @@ static func material_for(kind: String) -> Material:
 			fabric.set_shader_parameter("rim_value", settings.rim)
 			_materials[kind] = fabric
 		else:
-			var plain := StandardMaterial3D.new()
-			plain.vertex_color_use_as_albedo = true
-			plain.vertex_color_is_srgb = true
-			plain.cull_mode = BaseMaterial3D.CULL_DISABLED
 			if kind == "glow":
-				plain.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+				var glow := StandardMaterial3D.new()
+				glow.vertex_color_use_as_albedo = true
+				glow.vertex_color_is_srgb = true
+				glow.cull_mode = BaseMaterial3D.CULL_DISABLED
+				glow.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+				_materials[kind] = glow
 			else:
+				# the bevel of each voxel too (figure_plain.gdshader)
 				var settings: Dictionary = MATERIALS.get(kind, MATERIALS.leather)
-				plain.roughness = settings.roughness
-				plain.metallic = settings.metallic
-				plain.metallic_specular = settings.specular
-				if settings.rim > 0.0:
-					plain.rim_enabled = true
-					plain.rim = settings.rim
-					plain.rim_tint = 0.6
-			_materials[kind] = plain
+				var plain := ShaderMaterial.new()
+				plain.shader = PLAIN_SHADER
+				plain.set_shader_parameter("roughness_value", settings.roughness)
+				plain.set_shader_parameter("metallic_value", settings.metallic)
+				plain.set_shader_parameter("specular_value", settings.specular)
+				plain.set_shader_parameter("rim_value", settings.rim)
+				_materials[kind] = plain
 	return _materials[kind]
+
+
+static var _outline: ShaderMaterial
+
+
+## The hard outline round the characters (shared).
+static func outline_material() -> ShaderMaterial:
+	if _outline == null:
+		_outline = ShaderMaterial.new()
+		_outline.shader = OUTLINE_SHADER
+	return _outline
 
 
 ## A colour graded: SATURATION and CONTRAST (in sRGB).
@@ -494,6 +672,10 @@ class VoxelFigure:
 	## The cell (x, z) the figure turns round and is centred on; unset (NAN) = the middle of
 	## all its voxels (parts_for sets the middle of the head for every figure).
 	var centre_cell := Vector2(NAN, NAN)
+	## Without the shading of the faces (darker sides and below, ambient occlusion): every
+	## face its colour as it is, so white stays white (the Zebraklok); the light of the
+	## scene still shades it.
+	var flat_shading := false
 
 	func put(x: int, y: int, z: int, colour: Color, glow := false) -> void:
 		var cell := Vector3i(x, y, z)
@@ -536,6 +718,56 @@ class VoxelFigure:
 				nearest = kinds[marked]
 		return nearest
 
+	## Fewer details, for a figure seen from afar (the town): colours that are nearly the same
+	## (shades of one fabric, dirt, slubs) become the one used most, and a lone voxel of
+	## another colour among its neighbours (a button, a stitch, a speck) takes theirs, `passes`
+	## times; the eyes and glowing voxels stay. The shape stays as it is.
+	func simplify(passes := 2) -> void:
+		# nearly equal colours -> the most used of them
+		var counts := {}
+		for cell: Vector3i in cells:
+			counts[cells[cell]] = counts.get(cells[cell], 0) + 1
+		var by_use: Array = counts.keys()
+		by_use.sort_custom(func(first: Color, second: Color) -> bool: return counts[first] > counts[second])
+		var merged := {}
+		for colour: Color in by_use:
+			merged[colour] = colour
+			if kind_of(colour) == "eye":
+				continue
+			for main: Color in by_use:
+				if counts[main] <= counts[colour]:
+					break
+				if merged[main] == main and kind_of(main) == kind_of(colour) \
+						and Vector3(main.r - colour.r, main.g - colour.g, main.b - colour.b).length() < SIMPLE_COLOUR_DISTANCE:
+					merged[colour] = main
+					break
+		for cell: Vector3i in cells:
+			cells[cell] = merged[cells[cell]]
+		# lone voxels take the colour round them
+		var sides := [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0), Vector3i(0, -1, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1)]
+		for pass_index in passes:
+			var changes := {}
+			for cell: Vector3i in cells:
+				var colour: Color = cells[cell]
+				if glowing.has(cell) or kind_of(colour) == "eye":
+					continue
+				var round_it := {}
+				var same := 0
+				for side: Vector3i in sides:
+					if cells.has(cell + side):
+						var other: Color = cells[cell + side]
+						if other == colour:
+							same += 1
+						elif kind_of(other) != "eye":
+							round_it[other] = round_it.get(other, 0) + 1
+				if same > 1:
+					continue
+				for other: Color in round_it:
+					if round_it[other] >= 3:
+						changes[cell] = other
+			for cell: Vector3i in changes:
+				cells[cell] = changes[cell]
+
 	## The body and the limbs (`rig`: limb -> boxes of cells, RIGS) as meshes: only the
 	## faces between a voxel and air (of any part, so a limb's faces against the body are
 	## drawn and it can move away from it), a surface per kind of material, centred on x
@@ -565,6 +797,13 @@ class VoxelFigure:
 						part = limb
 			part_of[cell] = part
 			part_cells[part].append(cell)
+		# the cells of each part as a set (for the outward direction of the corners)
+		var part_sets := {}
+		for part_name: String in part_cells:
+			var cell_set := {}
+			for part_cell: Vector3i in part_cells[part_name]:
+				cell_set[part_cell] = true
+			part_sets[part_name] = cell_set
 		# the faces, by part and kind
 		var kind_cache := {}          # Color -> kind
 		var grade_cache := {}         # Color -> graded Color
@@ -580,12 +819,14 @@ class VoxelFigure:
 			if not tools.has(key):
 				var tool := SurfaceTool.new()
 				tool.begin(Mesh.PRIMITIVE_TRIANGLES)
+				# CUSTOM0: each corner's outward direction, for the outline (figure_outline.gdshader)
+				tool.set_custom_format(0, SurfaceTool.CUSTOM_RGB_FLOAT)
 				tools[key] = tool
 			for side: Vector3i in [Vector3i.RIGHT, Vector3i.LEFT, Vector3i.UP, Vector3i.DOWN, Vector3i.BACK, Vector3i.FORWARD]:
 				var next := cell + side
 				if cells.has(next) and part_of[next] == part:
 					continue
-				_add_face(tools[key], cell, Vector3(cell) - centre, side, grade_cache[colour], voxel, cells)
+				_add_face(tools[key], cell, Vector3(cell) - centre, side, grade_cache[colour], voxel, cells, flat_shading, part_sets[part])
 		var meshes := {}
 		for key: String in tools:
 			var part := key.get_slice("/", 0)
@@ -616,6 +857,11 @@ class VoxelFigure:
 			pivots[limb] = Vector3(joint.x, joint.y, -joint.z) * voxel
 		return {"meshes": meshes, "pivots": pivots, "height": (highest.y + 1 - lowest.y) * voxel}
 
+	## The light on each kind of face: the top full, the front and back less, the left and
+	## right sides less again, the bottom least (strong steps: blocks of one colour stay apart).
+	const FACE_LIGHT := {Vector3i.UP: 1.0, Vector3i.BACK: 0.76, Vector3i.FORWARD: 0.76,
+		Vector3i.RIGHT: 0.64, Vector3i.LEFT: 0.64, Vector3i.DOWN: 0.48}
+
 	## How much each level of corner occlusion darkens a vertex (0 = open .. 3 = shut in).
 	const OCCLUSION := [1.0, 0.8, 0.66, 0.52]
 
@@ -623,7 +869,7 @@ class VoxelFigure:
 	## `side`, each of its corners darkened by the voxels round it (ambient occlusion: in a
 	## corner or a gap it gets less light), as voxel art does.
 	static func _add_face(tool: SurfaceTool, cell: Vector3i, corner: Vector3, side: Vector3i, colour: Color,
-			voxel: float, cells: Dictionary) -> void:
+			voxel: float, cells: Dictionary, flat := false, part_set := {}) -> void:
 		# the face's four corners in the voxel (0..1)
 		var points: Array
 		match side:
@@ -641,8 +887,9 @@ class VoxelFigure:
 				points = [Vector3(0, 0, 0), Vector3(0, 1, 0), Vector3(1, 1, 0), Vector3(1, 0, 0)]
 		# z runs backwards in the figure: mirror it so the front (z = 0) faces +z
 		var normal := Vector3(side.x, side.y, -side.z)
-		# a little darker on the sides and below, as light from above
-		var light := 1.0 if side == Vector3i.UP else (0.7 if side == Vector3i.DOWN else 0.88)
+		# light from above, each kind of face its own level (FACE_LIGHT), so faces of one colour
+		# that meet at an edge still read apart
+		var light := 1.0 if flat else float(FACE_LIGHT.get(side, 0.8))
 		var placed: Array[Vector3] = []
 		var shades: Array[Color] = []
 		var outside := cell + side
@@ -664,6 +911,8 @@ class VoxelFigure:
 			var first := cells.has(outside + along)
 			var second := cells.has(outside + across)
 			var level := 3 if first and second else int(first) + int(second) + int(cells.has(outside + along + across))
+			if flat:
+				level = 0
 			var shade: float = light * OCCLUSION[level]
 			shades.append(Color(colour.r * shade, colour.g * shade, colour.b * shade))
 		# the mirror flips the winding: draw the triangles the other way round; split the
@@ -674,7 +923,36 @@ class VoxelFigure:
 		for index: int in order:
 			tool.set_normal(normal)
 			tool.set_color(shades[index])
+			# where in the voxel's face this corner is (0..1, v up the sides): for the bevel
+			# of each voxel (voxel_bevel.gdshaderinc)
+			var point: Vector3 = points[index]
+			tool.set_custom(0, _outward(cell + Vector3i(point), part_set, normal))
+			if side.x != 0:
+				tool.set_uv(Vector2(point.z, point.y))
+			elif side.y != 0:
+				tool.set_uv(Vector2(point.x, point.z))
+			else:
+				tool.set_uv(Vector2(point.x, point.y))
 			tool.add_vertex(placed[index])
+
+
+	## The outward direction at the grid corner `grid_point` (the corner between the eight
+	## voxels round it): towards the empty ones of its part, mirrored in z as the faces are;
+	## as a Color (CUSTOM0). `fallback`: the face's normal, when it is not clear.
+	static func _outward(grid_point: Vector3i, part_set: Dictionary, fallback: Vector3) -> Color:
+		var way := Vector3.ZERO
+		if not part_set.is_empty():
+			for dx in [-1, 0]:
+				for dy in [-1, 0]:
+					for dz in [-1, 0]:
+						var around := grid_point + Vector3i(dx, dy, dz)
+						if not part_set.has(around):
+							way += Vector3(dx + 0.5, dy + 0.5, dz + 0.5)
+		way = Vector3(way.x, way.y, -way.z)
+		if way.length_squared() < 0.0001:
+			way = fallback
+		way = way.normalized()
+		return Color(way.x, way.y, way.z)
 
 
 # ------------------------------------------------------------------ the figures
@@ -686,6 +964,31 @@ const SKIN_OLD := Color("#E2B79A")
 const EYE_DARK := Color("#1A1420")
 const EYE_WHITE := Color("#EEEAE0")
 const TEETH := Color("#E6DDBE")
+## The rucksack: its canvas and flap, how deep it is (voxels) and per figure where it sits
+## (z of the first voxel behind its back, lowest and highest y: clear of the hair, the hat
+## and the arms).
+const BACKPACK_CANVAS := Color("#5E6440")
+const BACKPACK_FLAP := Color("#3E4228")
+const BACKPACK_DEPTH := 3
+const BACKPACK := {
+	"jos": Vector3i(6, 13, 22),
+	"martin": Vector3i(3, 15, 23),
+	"ufo_piloot": Vector3i(4, 15, 23),
+	"willem": Vector3i(5, 11, 19),
+	"sjaan": Vector3i(4, 14, 21),
+	"gerrit": Vector3i(4, 15, 23),
+}
+
+
+## The rucksack (picked up in the town: PlayerController.pick_up_backpack): a plain canvas
+## block on the back, x 4..9 (between the arms), from just behind the back `depth` voxels
+## deep, its flap on top in a darker shade.
+## `place`: Vector3i(z of the first voxel behind the back, lowest y, highest y).
+static func _add_backpack(figure: VoxelFigure, place: Vector3i) -> void:
+	var back_z := place.x
+	figure.box(Vector3i(4, place.y, back_z), Vector3i(9, place.z, back_z + BACKPACK_DEPTH - 1), BACKPACK_CANVAS)
+	figure.box(Vector3i(4, place.z - 1, back_z), Vector3i(9, place.z, back_z + BACKPACK_DEPTH - 1), BACKPACK_FLAP)
+	figure.mark("cloth", [BACKPACK_CANVAS, BACKPACK_FLAP])
 
 
 ## A head of x left_x..left_x+5 from y bottom to bottom+6, `depth` deep: rounded corners,
@@ -703,48 +1006,34 @@ static func _head(figure: VoxelFigure, left_x: int, bottom: int, skin: Color, de
 	figure.box(Vector3i(left_x + 2, bottom + 2, -1), Vector3i(left_x + 3, bottom + 3, -1), skin.darkened(0.05))
 
 
-## Jos: sturdy, a belly, a long coat; the kruik in his right hand, a bag in his left.
+## Jos: sturdy, a belly, a long coat. Few details: plain colours, no small voxels.
 static func _build_jos(figure: VoxelFigure) -> void:
 	var boot := Color("#5E3A22")
 	var boot_dark := Color("#30200F")
 	var jeans := Color("#43587A")
-	var jeans_worn := Color("#7186A6")
 	var shirt := Color("#9A3A36")
-	var shirt_dark := Color("#5E2224")
 	var coat := Color("#6B5236")
 	var coat_dark := Color("#4A3824")
-	var patch := Color("#5E6B4A")
 	var rope := Color("#B9A27A")
 	var hat := Color("#7A6448")
+	var hat_band := Color("#3A3028")
 	var hair := Color("#9C968C")
-	var beard := Color("#8A8478")
-	# boots, the left sole coming loose at the toe (a grey sock showing)
+	var glove := Color("#4E4A48")
+	var nose := Color("#C8463E")
+	# boots with a dark sole
 	for leg_x in [3, 8]:
 		figure.box(Vector3i(leg_x, 0, -1), Vector3i(leg_x + 2, 3, 3), boot)
 		figure.box(Vector3i(leg_x, 0, -1), Vector3i(leg_x + 2, 0, 3), boot_dark)
-		figure.box(Vector3i(leg_x, 0, 3), Vector3i(leg_x + 2, 1, 4), boot_dark)
-		figure.box(Vector3i(leg_x, 3, 0), Vector3i(leg_x + 2, 3, 3), boot_dark)
-	figure.box(Vector3i(3, 0, -2), Vector3i(5, 0, -2), boot_dark)                  # the loose sole
-	# jeans, a torn knee with skin through it, a patch on the thigh; a gap between the legs
+	# jeans, a gap between the legs
 	for leg_x in [3, 8]:
 		figure.box(Vector3i(leg_x, 4, 0), Vector3i(leg_x + 2, 12, 3), jeans)
-	figure.box(Vector3i(4, 7, 0), Vector3i(5, 8, 0), jeans_worn)
-	figure.box(Vector3i(8, 7, -1), Vector3i(10, 8, -1), jeans_worn)
-	figure.box(Vector3i(8, 7, -1), Vector3i(9, 7, -1), SKIN_TAN)                   # the torn knee
-	figure.box(Vector3i(4, 10, -1), Vector3i(5, 11, -1), Color("#6A4A30"))
-	# rope for a belt, tied with the ends hanging
+	# rope for a belt
 	figure.box(Vector3i(2, 13, -1), Vector3i(11, 13, 4), rope)
-	figure.put(6, 12, -2, rope)
-	figure.put(6, 11, -2, rope)
-	# a checked shirt over a belly, stained
+	# a red shirt over a belly
 	figure.box(Vector3i(2, 14, 0), Vector3i(11, 22, 4), shirt)
 	figure.box(Vector3i(3, 14, -1), Vector3i(10, 18, -1), shirt)
 	figure.box(Vector3i(4, 15, -2), Vector3i(9, 17, -2), shirt)
-	for cell: Vector3i in figure.cells.keys():
-		if figure.cells[cell] == shirt and (posmod(cell.x, 4) < 2) != (posmod(cell.y, 4) < 2):
-			figure.cells[cell] = shirt_dark
-	figure.box(Vector3i(6, 16, -2), Vector3i(7, 17, -2), Color("#8A6A3A"))   # a stain on the belly
-	# the long coat: open in front, down to the knees, frayed at the hem, a patch, the collar up
+	# the long coat: open in front, down to the knees, the collar up
 	for y in range(6, 24):
 		for z in range(0, 6):
 			for x in [1, 2, 11, 12]:
@@ -752,170 +1041,88 @@ static func _build_jos(figure: VoxelFigure) -> void:
 					figure.put(x, y, z, coat)
 		for x in range(1, 13):
 			figure.put(x, y, 5, coat)
-	figure.box(Vector3i(3, 14, -1), Vector3i(3, 22, -1), coat)
-	figure.box(Vector3i(10, 14, -1), Vector3i(10, 22, -1), coat)
-	figure.box(Vector3i(2, 14, -1), Vector3i(2, 22, -1), coat_dark)
-	figure.box(Vector3i(11, 14, -1), Vector3i(11, 22, -1), coat_dark)
-	for x in range(1, 13):
-		if x % 3 == 0:
-			figure.clear(x, 6, 5)
-	figure.clear(1, 6, 1)
-	figure.clear(12, 7, 2)
-	figure.box(Vector3i(1, 17, -1), Vector3i(2, 19, -1), patch)           # the patch, sewn on
+	figure.box(Vector3i(2, 14, -1), Vector3i(3, 22, -1), coat)
+	figure.box(Vector3i(10, 14, -1), Vector3i(11, 22, -1), coat)
 	figure.box(Vector3i(2, 23, -1), Vector3i(3, 24, 5), coat_dark)        # collar up
 	figure.box(Vector3i(10, 23, -1), Vector3i(11, 24, 5), coat_dark)
 	figure.box(Vector3i(3, 23, 5), Vector3i(10, 24, 5), coat_dark)
-	# sleeves of the coat (a gap to the body, joined at the shoulder), frayed cuffs,
-	# fingerless gloves
+	# sleeves of the coat (a gap to the body, joined at the shoulder), fingerless gloves
 	figure.box(Vector3i(-1, 22, 1), Vector3i(0, 23, 4), coat)
 	figure.box(Vector3i(13, 22, 1), Vector3i(14, 23, 4), coat)
 	for arm_x in [-2, 14]:
 		figure.box(Vector3i(arm_x, 14, 1), Vector3i(arm_x + 1, 23, 4), coat)
-		figure.box(Vector3i(arm_x, 14, 1), Vector3i(arm_x + 1, 14, 4), coat_dark)
-		figure.box(Vector3i(arm_x, 12, 1), Vector3i(arm_x + 1, 13, 3), Color("#4E4A48"))   # the glove
-		figure.box(Vector3i(arm_x, 11, 1), Vector3i(arm_x + 1, 11, 2), SKIN_TAN)            # the fingers
-	# the stone kruik of jenever in the right hand
-	figure.box(Vector3i(14, 5, 0), Vector3i(15, 9, 1), Color("#B8A170"))
-	figure.box(Vector3i(14, 6, -1), Vector3i(15, 7, -1), Color("#E8E0C8"))         # the label
-	figure.box(Vector3i(14, 10, 0), Vector3i(15, 10, 0), Color("#9A845A"))
-	figure.put(14, 11, 0, Color("#4A2E1C"))
-	# a plastic bag in the left hand, a loaf sticking out
-	figure.box(Vector3i(-3, 3, 0), Vector3i(-1, 9, 3), Color("#E2E0D6"))
-	figure.box(Vector3i(-3, 6, -1), Vector3i(-1, 6, -1), Color("#3A6AB8"))
-	figure.box(Vector3i(-2, 10, 1), Vector3i(-2, 10, 2), Color("#E2E0D6"))    # the handles
-	figure.box(Vector3i(-3, 10, 2), Vector3i(-3, 11, 3), Color("#C89A5A"))    # the loaf
-	# neck and head: weathered and dirty, a red nose, heavy eyelids
+		figure.box(Vector3i(arm_x, 11, 1), Vector3i(arm_x + 1, 13, 3), glove)
+	# neck and head: weathered, a red nose
 	figure.box(Vector3i(6, 24, 2), Vector3i(7, 24, 3), SKIN_TAN)
 	_head(figure, 4, 25, SKIN_TAN)
-	figure.box(Vector3i(6, 27, -1), Vector3i(7, 28, -1), Color("#C8463E"))
+	figure.box(Vector3i(6, 27, -1), Vector3i(7, 28, -1), nose)
 	figure.put(5, 29, 0, EYE_DARK)
 	figure.put(8, 29, 0, EYE_DARK)
-	figure.put(5, 30, 0, SKIN_TAN.darkened(0.3))
-	figure.put(8, 30, 0, SKIN_TAN.darkened(0.3))
-	figure.box(Vector3i(4, 31, -1), Vector3i(5, 31, -1), hair.darkened(0.25))
-	figure.box(Vector3i(8, 31, -1), Vector3i(9, 31, -1), hair.darkened(0.25))
-	figure.put(4, 28, -1, Color("#C87A6A"))
-	figure.put(9, 28, -1, Color("#C87A6A"))
-	# a scruffy beard over the jaw and down the neck, the mouth in it
-	figure.box(Vector3i(4, 25, -1), Vector3i(9, 26, -1), beard)
-	figure.box(Vector3i(4, 25, 0), Vector3i(9, 27, 0), beard)
-	figure.box(Vector3i(5, 23, -1), Vector3i(8, 24, -1), beard)
-	figure.box(Vector3i(5, 26, -2), Vector3i(8, 26, -2), beard.darkened(0.1))   # the moustache
-	figure.box(Vector3i(6, 25, -1), Vector3i(7, 25, -1), Color("#5A2A28"))
+	# a scruffy grey beard over the jaw and down the neck
+	figure.box(Vector3i(4, 25, -1), Vector3i(9, 26, -1), hair)
+	figure.box(Vector3i(4, 25, 0), Vector3i(9, 27, 0), hair)
+	figure.box(Vector3i(5, 23, -1), Vector3i(8, 24, -1), hair)
 	# long matted grey hair
 	figure.box(Vector3i(3, 24, 5), Vector3i(10, 31, 6), hair)
 	figure.box(Vector3i(3, 27, 3), Vector3i(3, 31, 4), hair)
 	figure.box(Vector3i(10, 27, 3), Vector3i(10, 31, 4), hair)
-	# the battered hat: the brim drooping at the front, a hole in it, string for a band
+	# the battered cowboy hat: the brim drooping at the front, a dark band
 	for x in range(0, 14):
 		for z in range(-3, 9):
 			var corner := (x <= 1 or x >= 12) and (z <= -2 or z >= 7)
 			if not corner:
 				figure.put(x, 31 if z <= -2 else 32, z, hat)
-	figure.clear(11, 32, 6)
-	figure.clear(10, 32, 7)
-	figure.box(Vector3i(3, 33, 0), Vector3i(10, 33, 5), Color("#3A3028"))
+	figure.box(Vector3i(3, 33, 0), Vector3i(10, 33, 5), hat_band)
 	figure.box(Vector3i(3, 34, 0), Vector3i(10, 36, 5), hat)
 	figure.box(Vector3i(4, 37, 1), Vector3i(9, 37, 4), hat)
-	figure.box(Vector3i(6, 37, 1), Vector3i(7, 37, 4), hat.darkened(0.3))
-	figure.clear(9, 36, 0)
-	figure.mark("cloth", [shirt, shirt_dark, coat, coat_dark, patch, rope, hat, Color("#3A3028")])
-	figure.mark("denim", [jeans, jeans_worn])
-	figure.mark("knit", [Color("#4E4A48")])
+	figure.mark("cloth", [shirt, coat, coat_dark, rope, hat, hat_band])
+	figure.mark("denim", [jeans])
+	figure.mark("knit", [glove])
 	figure.mark("leather", [boot, boot_dark])
-	figure.mark("hair", [hair, beard])
-	figure.mark("plastic", [Color("#B8A170"), Color("#E8E0C8"), Color("#9A845A"), Color("#E2E0D6"), Color("#3A6AB8")])
-	figure.mark("skin", [Color("#C8463E"), Color("#C87A6A"), Color("#5A2A28")])
+	figure.mark("hair", [hair])
+	figure.mark("skin", [nose])
 
 
-## Martin: once a top athlete, now skin and bone, restless in his faded old tracksuit, his house on his back.
+## Martin: once a top athlete, now skin and bone, restless in his faded old tracksuit.
+## Few details: the jacket one colour (sleeves and collar the same), plain trousers.
 static func _build_martin(figure: VoxelFigure) -> void:
 	var suit := Color("#4E8C84")
-	var suit_dark := Color("#335E58")
-	var panel := Color("#6A4E8A")
-	var stripe := Color("#C8C8C0")
 	var pants := Color("#4E4068")
 	var trainer := Color("#A8A498")
 	var sole := Color("#5A5650")
 	var hair := Color("#E8D47A")
-	var hair_shade := Color("#C4A850")
-	var pack := Color("#5E6440")
-	var pack_dark := Color("#3E4228")
-	# grey, dirty trainers
+	var shades := Color("#1A1A20")
+	# grey trainers
 	for leg_x in [3, 8]:
 		figure.box(Vector3i(leg_x, 0, -1), Vector3i(leg_x + 2, 1, 3), trainer)
 		figure.box(Vector3i(leg_x, 0, -1), Vector3i(leg_x + 2, 0, 3), sole)
-	# legs three voxels wide like the others', the trousers hanging off them, a torn knee
-	# (flush with the trouser leg)
+	# legs three voxels wide like the others', the trousers hanging off them
 	for leg_x in [3, 8]:
 		figure.box(Vector3i(leg_x, 2, 0), Vector3i(leg_x + 2, 13, 1), pants)
-		figure.box(Vector3i(leg_x, 2, 0), Vector3i(leg_x + 2, 2, 1), suit_dark)
-	figure.box(Vector3i(4, 7, 0), Vector3i(4, 8, 0), SKIN_PALE.darkened(0.1))
 	figure.box(Vector3i(3, 13, 0), Vector3i(10, 14, 1), pants)
-	figure.box(Vector3i(3, 14, -1), Vector3i(10, 14, -1), Color("#2A2420"))    # the belt, pulled tight
-	# a narrow chest (no wider than his head) in the jacket: faded, the zip half open over a
-	# grey t-shirt, the collar up
+	# a narrow chest (no wider than his head) in the tracksuit jacket, the collar up: all one colour
 	figure.box(Vector3i(4, 15, 0), Vector3i(9, 23, 2), suit)
-	for y in range(18, 23):
-		for x in range(4, 10):
-			if x + y >= 25 and x + y <= 27:
-				figure.put(x, y, 0, panel)
-	figure.box(Vector3i(6, 15, -1), Vector3i(6, 18, -1), stripe)
-	figure.box(Vector3i(6, 19, 0), Vector3i(7, 23, 0), Color("#8A8A86"))      # the t-shirt
-	figure.box(Vector3i(4, 15, 0), Vector3i(9, 15, 2), suit_dark)
-	figure.box(Vector3i(4, 24, 0), Vector3i(9, 25, 2), suit_dark)             # the collar, up
-	figure.box(Vector3i(6, 24, 0), Vector3i(7, 25, 0), SKIN_PALE)
-	for x in range(4, 10):
-		figure.put(x, 23 - (1 if x == 6 or x == 7 else 0), -1, Color("#A8A8A0"))   # a cheap chain
-	# the rucksack, too big for him, a sleeping bag rolled on top, the straps
-	figure.box(Vector3i(4, 15, 3), Vector3i(9, 23, 5), pack)
-	figure.box(Vector3i(5, 16, 6), Vector3i(8, 20, 6), pack_dark)
-	figure.box(Vector3i(3, 24, 3), Vector3i(10, 25, 5), Color("#3A5A8A"))
-	figure.box(Vector3i(3, 24, 4), Vector3i(10, 24, 4), Color("#2A4068"))
-	figure.box(Vector3i(5, 16, -1), Vector3i(5, 23, -1), pack_dark)
-	figure.box(Vector3i(8, 16, -1), Vector3i(8, 23, -1), pack_dark)
+	figure.box(Vector3i(4, 24, 0), Vector3i(9, 25, 2), suit)
 	# thin arms, two voxels like the others' slimmest, a gap to the body (joined at the
-	# shoulder), a stripe down the outside, a hole at the left elbow; the right hand holds the
-	# can up
+	# shoulder), the hands bare
 	figure.box(Vector3i(3, 21, 0), Vector3i(3, 23, 1), suit)
 	figure.box(Vector3i(10, 21, 0), Vector3i(10, 23, 1), suit)
 	for arm_x: int in [1, 11]:
-		var outside: int = arm_x if arm_x < 7 else arm_x + 1
-		figure.box(Vector3i(arm_x, 16, 0), Vector3i(arm_x + 1, 23, 1), suit)
-		figure.box(Vector3i(outside, 16, 0), Vector3i(outside, 23, 0), stripe)
-		figure.box(Vector3i(arm_x, 15, 0), Vector3i(arm_x + 1, 15, 1), suit_dark)
-	figure.put(1, 19, 1, SKIN_PALE)
+		figure.box(Vector3i(arm_x, 15, 0), Vector3i(arm_x + 1, 23, 1), suit)
 	figure.box(Vector3i(1, 13, 0), Vector3i(2, 14, 1), SKIN_PALE)
-	figure.box(Vector3i(11, 15, -2), Vector3i(12, 16, -1), suit)
-	figure.box(Vector3i(11, 15, -3), Vector3i(12, 16, -3), SKIN_PALE)
-	figure.box(Vector3i(11, 14, -5), Vector3i(12, 18, -4), Color("#2E52B8"))
-	figure.box(Vector3i(11, 16, -5), Vector3i(12, 16, -5), Color("#B8E030"))
-	figure.box(Vector3i(11, 18, -5), Vector3i(12, 18, -4), Color("#B8BCC4"))
-	figure.box(Vector3i(11, 14, -5), Vector3i(12, 14, -4), Color("#B8BCC4"))
-	# a thin neck and a gaunt, clean-shaven face: wide eyes with big pupils, sunken cheeks,
-	# a small tight grin, sweat
+	figure.box(Vector3i(11, 13, 0), Vector3i(12, 14, 1), SKIN_PALE)
+	# a thin neck and a gaunt, clean-shaven face: wide eyes, a small tight grin
 	figure.box(Vector3i(6, 26, 1), Vector3i(7, 26, 2), SKIN_PALE)
 	_head(figure, 4, 27, SKIN_PALE)
 	for eye_x in [4, 8]:
 		figure.box(Vector3i(eye_x, 30, 0), Vector3i(eye_x + 1, 31, 0), EYE_WHITE)
-	figure.put(5, 30, 0, EYE_DARK)
-	figure.put(8, 30, 0, EYE_DARK)
-	figure.put(5, 31, 0, EYE_DARK)
-	figure.put(8, 31, 0, EYE_DARK)
-	for x in [4, 9]:
-		figure.box(Vector3i(x, 27, 0), Vector3i(x, 28, 0), SKIN_PALE.darkened(0.15))   # sunken cheeks
-	figure.box(Vector3i(4, 33, -1), Vector3i(5, 33, -1), hair_shade)            # raised brows
-	figure.box(Vector3i(8, 33, -1), Vector3i(9, 33, -1), hair_shade)
-	figure.box(Vector3i(6, 28, 0), Vector3i(7, 28, 0), TEETH)                   # the grin, small and tight
-	figure.put(5, 28, 0, Color("#7A2E34"))
-	figure.put(8, 28, 0, Color("#7A2E34"))
-	figure.put(10, 31, 0, Color("#9FD0F0"))
-	figure.put(10, 30, 0, Color("#9FD0F0"))
-	# sunglasses on the forehead, one lens gone
-	figure.box(Vector3i(3, 34, -1), Vector3i(10, 34, -1), Color("#1A1A20"))
-	figure.box(Vector3i(4, 34, -2), Vector3i(5, 34, -2), Color("#2A2240"))
+	figure.box(Vector3i(5, 30, 0), Vector3i(5, 31, 0), EYE_DARK)
+	figure.box(Vector3i(8, 30, 0), Vector3i(8, 31, 0), EYE_DARK)
+	figure.box(Vector3i(6, 28, 0), Vector3i(7, 28, 0), TEETH)                   # the grin
+	# sunglasses on the forehead
+	figure.box(Vector3i(3, 34, -1), Vector3i(10, 34, -1), shades)
 	# a blond mullet: short and flat on top, short at the sides above the ears, long down
-	# the back of the neck to the collar, spreading out at the ends
+	# the back of the neck to the collar
 	figure.box(Vector3i(4, 34, 0), Vector3i(9, 34, 5), hair)
 	figure.box(Vector3i(4, 35, 1), Vector3i(9, 35, 5), hair)
 	figure.box(Vector3i(3, 31, 1), Vector3i(3, 33, 5), hair)
@@ -924,44 +1131,30 @@ static func _build_martin(figure: VoxelFigure) -> void:
 	figure.box(Vector3i(10, 27, 4), Vector3i(10, 30, 5), hair)
 	figure.box(Vector3i(4, 26, 6), Vector3i(9, 34, 6), hair)                    # the back, down the neck
 	figure.box(Vector3i(3, 26, 6), Vector3i(10, 28, 7), hair)
-	figure.box(Vector3i(4, 25, 7), Vector3i(9, 25, 7), hair)
-	for cell: Vector3i in figure.cells.keys():
-		if figure.cells[cell] == hair and posmod(cell.x + cell.y * 2 + cell.z, 4) == 0:
-			figure.cells[cell] = hair_shade                                     # strands
-	figure.mark("nylon", [suit, suit_dark, panel, stripe, pants, Color("#3A5A8A"), Color("#2A4068")])
-	figure.mark("cloth", [pack, pack_dark, Color("#8A8A86")])
-	figure.mark("plastic", [trainer, sole, Color("#1A1A20")])
-	figure.mark("hair", [hair, hair_shade])
-	figure.mark("metal", [Color("#A8A8A0"), Color("#2E52B8"), Color("#B8E030"), Color("#B8BCC4")])
-	figure.mark("leather", [Color("#2A2420")])
-	figure.mark("glass", [Color("#2A2240"), Color("#9FD0F0")])
+	figure.mark("nylon", [suit, pants])
+	figure.mark("plastic", [trainer, sole, shades])
+	figure.mark("hair", [hair])
 
 
 ## The ufo pilot: an ordinary man, skinny, in an old aviator jacket (where his nickname
-## partly comes from) over a grey hoodie.
+## partly comes from) over a grey hoodie. Few details: plain colours, no small voxels.
 static func _build_pilot(figure: VoxelFigure) -> void:
 	var leather := Color("#6A4428")
-	var leather_dark := Color("#46301C")
 	var fleece := Color("#DCCFB2")
 	var hoodie := Color("#707074")
 	var jeans := Color("#3E4A5E")
 	var shoe := Color("#3A3634")
 	var hair := Color("#4A403A")
 	var beard := Color("#A8A49C")
-	var beard_dark := Color("#86827A")
-	# worn dark shoes, white soles
+	# worn dark shoes
 	for leg_x in [4, 8]:
 		figure.box(Vector3i(leg_x, 0, -1), Vector3i(leg_x + 1, 1, 3), shoe)
-		figure.box(Vector3i(leg_x, 0, -1), Vector3i(leg_x + 1, 0, 3), Color("#B8B4AA"))
-	# thin legs in faded jeans with a gap between them, loose at the knees
+	# thin legs in faded jeans with a gap between them
 	for leg_x in [4, 8]:
 		figure.box(Vector3i(leg_x, 2, 0), Vector3i(leg_x + 1, 13, 2), jeans)
-		figure.box(Vector3i(leg_x, 7, -1), Vector3i(leg_x + 1, 8, -1), jeans.lightened(0.18))
 	figure.box(Vector3i(4, 12, 0), Vector3i(9, 14, 2), jeans)
-	figure.box(Vector3i(4, 14, -1), Vector3i(9, 14, 3), Color("#2A2420"))      # the belt, last hole
 	# a narrow chest in the grey hoodie
 	figure.box(Vector3i(4, 15, 0), Vector3i(9, 23, 2), hoodie)
-	figure.box(Vector3i(5, 16, -1), Vector3i(8, 18, -1), hoodie.darkened(0.15))   # the pouch
 	# the aviator jacket, open, too big on him: the fleece collar and lapels
 	for y in range(15, 24):
 		for z in range(-1, 4):
@@ -969,199 +1162,136 @@ static func _build_pilot(figure: VoxelFigure) -> void:
 				figure.put(x, y, z, leather)
 		for x in range(3, 11):
 			figure.put(x, y, 3, leather)
-	figure.box(Vector3i(3, 15, -1), Vector3i(10, 15, 3), leather_dark)        # the waistband
 	figure.box(Vector3i(5, 20, -1), Vector3i(5, 23, -1), fleece)
 	figure.box(Vector3i(8, 20, -1), Vector3i(8, 23, -1), fleece)
 	figure.box(Vector3i(3, 24, -1), Vector3i(10, 25, 4), fleece)
-	figure.box(Vector3i(5, 24, 0), Vector3i(8, 25, 2), hoodie.darkened(0.2))
 	# thin arms in the sleeves with a gap to the body (joined at the shoulder), the hands bare
 	figure.box(Vector3i(2, 22, 0), Vector3i(2, 23, 2), leather)
 	figure.box(Vector3i(11, 22, 0), Vector3i(11, 23, 2), leather)
 	for arm_x in [0, 12]:
 		figure.box(Vector3i(arm_x, 15, 0), Vector3i(arm_x + 1, 23, 2), leather)
-		figure.box(Vector3i(arm_x, 15, 0), Vector3i(arm_x + 1, 15, 2), leather_dark)
 		figure.box(Vector3i(arm_x, 13, 0), Vector3i(arm_x + 1, 14, 1), SKIN_GREY)
-	# a thin neck and a hollow face: tired eyes, a grey beard, short messy hair
+	# a thin neck and a hollow face: tired eyes, a grey beard, short hair
 	figure.box(Vector3i(6, 26, 1), Vector3i(7, 26, 2), SKIN_GREY)
 	_head(figure, 4, 27, SKIN_GREY)
 	for eye_x in [5, 8]:
 		figure.put(eye_x, 30, 0, EYE_DARK)
-		figure.put(eye_x, 29, 0, SKIN_GREY.darkened(0.22))                      # rings under the eyes
-	figure.box(Vector3i(4, 31, -1), Vector3i(5, 31, -1), hair)                  # brows
-	figure.box(Vector3i(8, 31, -1), Vector3i(9, 31, -1), hair)
-	# a full grey beard over the jaw and the cheeks, sideburns up to the hair, the point of
-	# it over the fleece collar, the mouth in it under a moustache
+	# a full grey beard over the jaw and the cheeks, sideburns up to the hair
 	figure.box(Vector3i(4, 27, 0), Vector3i(9, 28, 0), beard)
 	figure.box(Vector3i(4, 26, -1), Vector3i(9, 28, -1), beard)
 	figure.box(Vector3i(3, 27, 0), Vector3i(3, 30, 1), beard)
 	figure.box(Vector3i(10, 27, 0), Vector3i(10, 30, 1), beard)
 	figure.box(Vector3i(5, 24, -2), Vector3i(8, 25, -2), beard)
-	figure.box(Vector3i(6, 23, -2), Vector3i(7, 23, -2), beard_dark)
-	figure.box(Vector3i(6, 27, -2), Vector3i(7, 27, -2), Color("#6A3A34"))      # the mouth
-	figure.box(Vector3i(5, 28, -2), Vector3i(8, 28, -2), beard_dark)            # the moustache
 	figure.box(Vector3i(4, 34, 0), Vector3i(9, 34, 5), hair)
 	figure.box(Vector3i(3, 30, 2), Vector3i(3, 33, 5), hair)
 	figure.box(Vector3i(10, 30, 2), Vector3i(10, 33, 5), hair)
 	figure.box(Vector3i(4, 28, 6), Vector3i(9, 33, 6), hair)
 	figure.box(Vector3i(4, 33, -1), Vector3i(6, 33, -1), hair)                  # a fringe to one side
-	for x in [4, 6, 8]:
-		figure.put(x, 35, 2 + (x % 3), hair)                                    # messy on top
-	figure.mark("leather", [leather, leather_dark, shoe, Color("#2A2420")])
+	figure.mark("leather", [leather, shoe])
 	figure.mark("knit", [fleece])
 	figure.mark("cloth", [hoodie])
 	figure.mark("denim", [jeans])
-	figure.mark("plastic", [Color("#B8B4AA")])
-	figure.mark("hair", [hair, beard, beard_dark])
+	figure.mark("hair", [hair, beard])
 
 
-## Sjaan: once a toilet attendant.
+## Sjaan: once a toilet attendant. Few details: a skirt in four big patches, plain colours.
 static func _build_sjaan(figure: VoxelFigure) -> void:
 	var denim := Color("#4A6A9A")
-	var denim_dark := Color("#33496A")
 	var boot := Color("#3A2A22")
 	var hair := Color("#A8482A")
 	var beanie := Color("#3E7A4A")
-	var red := Color("#B82A2A")
 	var patches := [Color("#8A3A5A"), Color("#C8963A"), Color("#3A6A6A"), Color("#6A4A8A")]
-	# boots
+	var tights := Color("#2E2A30")
+	var top := Color("#D8D0C0")
+	var smile := Color("#A83A3A")
+	# boots, dark tights over the knees (the legs show below the skirt, so her walk does)
 	for leg_x in [3, 8]:
 		figure.box(Vector3i(leg_x, 0, -1), Vector3i(leg_x + 2, 3, 3), boot)
-		figure.box(Vector3i(leg_x, 0, -1), Vector3i(leg_x + 2, 0, 3), Color("#1E1610"))
-	# a long patchwork skirt, wider at the hem, in squares of four colours
-	figure.box(Vector3i(2, 4, -1), Vector3i(11, 8, 4), patches[0])
-	figure.box(Vector3i(3, 9, 0), Vector3i(10, 14, 3), patches[0])
+		figure.box(Vector3i(leg_x, 4, 0), Vector3i(leg_x + 2, 7, 2), tights)
+	# a patchwork skirt to the knees, wider at the hem: a big patch of a colour per quarter
+	figure.box(Vector3i(2, 8, -1), Vector3i(11, 10, 4), patches[0])
+	figure.box(Vector3i(3, 11, 0), Vector3i(10, 14, 3), patches[0])
 	for cell: Vector3i in figure.cells.keys():
 		if figure.cells[cell] == patches[0]:
-			figure.cells[cell] = patches[posmod(cell.x / 3 + cell.y / 3 + cell.z / 3, 4)]
-	# the denim jacket, pins on it, the cuffs turned up
+			figure.cells[cell] = patches[int(cell.x >= 7) + 2 * int(cell.z >= 2)]
+	# the denim jacket open over a light top
 	figure.box(Vector3i(3, 15, 0), Vector3i(10, 24, 3), denim)
-	figure.box(Vector3i(3, 15, 0), Vector3i(10, 15, 3), denim_dark)
-	figure.box(Vector3i(6, 16, -1), Vector3i(7, 24, -1), Color("#D8D0C0"))   # a light top under it
-	figure.box(Vector3i(5, 23, -1), Vector3i(5, 24, -1), denim_dark)          # the collar
-	figure.box(Vector3i(8, 23, -1), Vector3i(8, 24, -1), denim_dark)
-	figure.put(4, 22, -1, Color("#E8C840"))                                   # pins
-	figure.put(9, 21, -1, red)
+	figure.box(Vector3i(6, 16, -1), Vector3i(7, 24, -1), top)
 	# the arms hanging by her sides (a gap to the body, joined at the shoulder), the hands
 	figure.box(Vector3i(2, 23, 0), Vector3i(2, 24, 2), denim)
 	figure.box(Vector3i(11, 23, 0), Vector3i(11, 24, 2), denim)
 	for arm_x in [0, 12]:
 		figure.box(Vector3i(arm_x, 15, 0), Vector3i(arm_x + 1, 24, 2), denim)
-		figure.box(Vector3i(arm_x, 15, 0), Vector3i(arm_x + 1, 15, 2), denim_dark)     # the cuffs turned up
 		figure.box(Vector3i(arm_x, 13, 1), Vector3i(arm_x + 1, 14, 2), SKIN_PALE)
-	# the head: freckles, a smile, a cigarette behind the ear
+	# the head: a smile
 	figure.box(Vector3i(6, 25, 1), Vector3i(7, 25, 2), SKIN_PALE)
 	_head(figure, 4, 26, SKIN_PALE)
 	figure.put(5, 29, 0, EYE_DARK)
 	figure.put(8, 29, 0, EYE_DARK)
-	figure.box(Vector3i(5, 27, 0), Vector3i(8, 27, 0), Color("#A83A3A"))      # the smile
-	figure.put(4, 28, 0, Color("#C8865A"))                                    # freckles
-	figure.put(9, 28, 0, Color("#C8865A"))
-	figure.box(Vector3i(4, 30, -1), Vector3i(5, 30, -1), hair.darkened(0.3))  # brows
-	figure.box(Vector3i(8, 30, -1), Vector3i(9, 30, -1), hair.darkened(0.3))
+	figure.box(Vector3i(5, 27, 0), Vector3i(8, 27, 0), smile)
 	# big curly hair round the face and down the back, under a green beanie
 	figure.box(Vector3i(2, 25, 1), Vector3i(3, 31, 6), hair)
 	figure.box(Vector3i(10, 25, 1), Vector3i(11, 31, 6), hair)
 	figure.box(Vector3i(3, 22, 6), Vector3i(10, 31, 7), hair)
-	for cell: Vector3i in figure.cells.keys():
-		if figure.cells[cell] == hair and posmod(cell.x + cell.y + cell.z, 3) == 0:
-			figure.cells[cell] = hair.darkened(0.2)
 	figure.box(Vector3i(3, 32, -1), Vector3i(10, 33, 6), beanie)
 	figure.box(Vector3i(4, 34, 0), Vector3i(9, 34, 5), beanie)
-	figure.box(Vector3i(3, 32, -1), Vector3i(10, 32, -1), beanie.darkened(0.25))   # the turned-up rim
-	figure.box(Vector3i(6, 35, 2), Vector3i(7, 35, 3), beanie.lightened(0.2))      # the bobble
-	figure.box(Vector3i(11, 30, 1), Vector3i(11, 30, 3), Color("#F0ECE4"))         # the cigarette
-	figure.mark("denim", [denim, denim_dark])
-	figure.mark("cloth", patches + [Color("#D8D0C0"), Color("#F0ECE4")])
-	figure.mark("knit", [beanie])
+	figure.mark("denim", [denim])
+	figure.mark("cloth", patches + [top])
+	figure.mark("knit", [beanie, tights])
 	figure.mark("leather", [boot])
 	figure.mark("hair", [hair])
-	figure.mark("plastic", [red])
-	figure.mark("metal", [Color("#E8C840")])
+	figure.mark("skin", [smile])
 
 
-## Willem: an old man in a long coat and a checked flat cap.
+## Willem: an old man in a long coat and a flat cap. Few details: plain colours, no small voxels.
 static func _build_willem(figure: VoxelFigure) -> void:
 	var coat := Color("#56604A")
-	var coat_dark := Color("#3A4232")
 	var trousers := Color("#7A5A3A")
 	var slipper := Color("#4A3A30")
 	var scarf := Color("#A8382E")
 	var cap := Color("#5A4A3C")
-	var cap_check := Color("#B8A47C")
 	var cap_dark := Color("#3E3229")
-	var cap_dark_check := Color("#86744E")
 	var grey := Color("#D4D0CA")
-	# worn brown slippers, corduroy trousers (ribs down the front)
+	var glasses := Color("#3A3A3E")
+	# worn brown slippers, corduroy trousers
 	for leg_x in [3, 8]:
 		figure.box(Vector3i(leg_x, 0, -1), Vector3i(leg_x + 2, 1, 3), slipper)
-		figure.box(Vector3i(leg_x, 0, -1), Vector3i(leg_x + 2, 0, 3), Color("#2A201A"))
 		figure.box(Vector3i(leg_x, 2, 0), Vector3i(leg_x + 2, 9, 2), trousers)
-		figure.box(Vector3i(leg_x + 1, 2, -1), Vector3i(leg_x + 1, 5, -1), trousers.darkened(0.2))
-	# the long coat, wider at the hem, big buttons, a pocket, a safety pin for a lost button
+	# the long coat, wider at the hem
 	figure.box(Vector3i(2, 8, -1), Vector3i(11, 11, 4), coat)
 	figure.box(Vector3i(3, 12, 0), Vector3i(10, 21, 4), coat)
-	figure.box(Vector3i(2, 8, -1), Vector3i(11, 8, 4), coat_dark)
-	figure.box(Vector3i(6, 9, -1), Vector3i(6, 21, -1), coat_dark)             # where it closes
-	for y in [10, 14, 18]:
-		figure.put(7, y, -1, Color("#2A1E1A"))
-	figure.box(Vector3i(7, 16, -1), Vector3i(7, 16, -1), Color("#C8CCD0"))     # the safety pin
-	figure.box(Vector3i(8, 10, -2), Vector3i(10, 11, -2), coat_dark)           # the pocket
 	# a red knitted scarf, one end down the front
 	figure.box(Vector3i(3, 20, -1), Vector3i(10, 21, 5), scarf)
 	figure.box(Vector3i(4, 15, -2), Vector3i(5, 19, -2), scarf)
-	figure.box(Vector3i(4, 15, -2), Vector3i(5, 15, -2), scarf.darkened(0.25))
-	# arms with a gap to the body (joined at the shoulder); the left by his side with a
-	# plastic bag, the right hanging
+	# arms with a gap to the body (joined at the shoulder), hanging by his sides
 	figure.box(Vector3i(2, 19, 0), Vector3i(2, 20, 3), coat)
 	figure.box(Vector3i(11, 19, 0), Vector3i(11, 20, 3), coat)
 	figure.box(Vector3i(0, 12, 0), Vector3i(1, 20, 3), coat)
 	figure.box(Vector3i(0, 10, 1), Vector3i(1, 11, 2), SKIN_OLD)
-	figure.box(Vector3i(-1, 3, 0), Vector3i(1, 8, 2), Color("#E2E0D6"))        # the bag
-	figure.box(Vector3i(-1, 6, -1), Vector3i(1, 6, -1), Color("#C83A32"))
-	figure.put(0, 9, 1, Color("#E2E0D6"))
 	figure.box(Vector3i(12, 12, 0), Vector3i(13, 20, 3), coat)
-	figure.box(Vector3i(12, 12, 0), Vector3i(13, 12, 3), coat_dark)
 	figure.box(Vector3i(12, 10, 1), Vector3i(13, 11, 2), SKIN_OLD)
-	# the head: round glasses, bushy white brows, a grey moustache, white stubble
+	# the head: round glasses, bushy white brows, a grey moustache
 	figure.box(Vector3i(6, 22, 2), Vector3i(7, 22, 3), SKIN_OLD)
 	_head(figure, 4, 23, SKIN_OLD)
 	for lens_x in [4, 7]:
-		figure.box(Vector3i(lens_x, 26, -1), Vector3i(lens_x + 2, 27, -1), Color("#3A3A3E"))
-		figure.put(lens_x + 1, 26, -1, Color("#D8E0E8"))
-		figure.put(lens_x + 1, 27, -1, Color("#D8E0E8"))
-	figure.put(5, 26, 0, EYE_DARK)
-	figure.put(8, 26, 0, EYE_DARK)
+		figure.box(Vector3i(lens_x, 26, -1), Vector3i(lens_x + 2, 27, -1), glasses)
 	figure.box(Vector3i(4, 28, -1), Vector3i(5, 28, -1), grey)                 # brows
 	figure.box(Vector3i(8, 28, -1), Vector3i(9, 28, -1), grey)
-	figure.box(Vector3i(6, 25, -1), Vector3i(7, 25, -1), SKIN_OLD.darkened(0.08))   # the nose
-	figure.box(Vector3i(5, 24, -1), Vector3i(8, 24, -1), Color("#A8A49E"))     # the moustache
-	figure.box(Vector3i(4, 23, 0), Vector3i(9, 23, 0), grey)                   # stubble on the chin
-	figure.box(Vector3i(6, 23, -1), Vector3i(7, 23, -1), Color("#7A3A34"))     # the mouth
+	figure.box(Vector3i(5, 24, -1), Vector3i(8, 24, -1), grey)                 # the moustache
 	# white hair round the back, under a flat cap with its peak forward
 	figure.box(Vector3i(3, 24, 3), Vector3i(3, 28, 5), grey)
 	figure.box(Vector3i(10, 24, 3), Vector3i(10, 28, 5), grey)
 	figure.box(Vector3i(4, 24, 6), Vector3i(9, 28, 6), grey)
 	figure.box(Vector3i(3, 29, -1), Vector3i(10, 30, 6), cap)
 	figure.box(Vector3i(4, 31, 0), Vector3i(9, 31, 6), cap)
-	figure.box(Vector3i(3, 29, -3), Vector3i(10, 29, -2), cap_dark)            # the peak
-	figure.box(Vector3i(3, 29, -1), Vector3i(10, 29, -1), cap_dark)
-	# checked: squares of two voxels in a light and a dark shade, over the crown and the peak
-	for cell: Vector3i in figure.cells.keys():
-		var square_parity := posmod(floori(cell.x / 2.0) + floori(cell.y / 2.0) + floori(cell.z / 2.0), 2)
-		if square_parity == 0:
-			if figure.cells[cell] == cap:
-				figure.cells[cell] = cap_check
-			elif figure.cells[cell] == cap_dark:
-				figure.cells[cell] = cap_dark_check
-	figure.mark("cloth", [coat, coat_dark, trousers, slipper, cap, cap_check, cap_dark, cap_dark_check])
+	figure.box(Vector3i(3, 29, -3), Vector3i(10, 29, -1), cap_dark)            # the peak
+	figure.mark("cloth", [coat, trousers, slipper, cap, cap_dark])
 	figure.mark("knit", [scarf])
-	figure.mark("hair", [grey, Color("#A8A49E")])
-	figure.mark("plastic", [Color("#3A3A3E"), Color("#2A1E1A"), Color("#E2E0D6"), Color("#C83A32")])
-	figure.mark("glass", [Color("#D8E0E8")])
-	figure.mark("metal", [Color("#C8CCD0")])
+	figure.mark("hair", [grey])
+	figure.mark("plastic", [glasses])
 
 
-## Gerrit: an old fisherman in oilskins, a bucket in his left hand.
+## Gerrit: an old fisherman in oilskins. Few details: plain colours, no small voxels.
 static func _build_gerrit(figure: VoxelFigure) -> void:
 	var oilskin := Color("#E8B820")
 	var oilskin_dark := Color("#B88A10")
@@ -1170,23 +1300,15 @@ static func _build_gerrit(figure: VoxelFigure) -> void:
 	var jumper := Color("#22305A")
 	var beard := Color("#BCB8B0")
 	var skin := Color("#D08A6A")
-	var bucket := Color("#9AA0A8")
-	# rubber boots up to the knee, a lighter band at the top
+	var nose := Color("#C0604A")
+	# rubber boots up to the knee
 	for leg_x in [3, 8]:
 		figure.box(Vector3i(leg_x, 0, -1), Vector3i(leg_x + 2, 6, 3), rubber)
-		figure.box(Vector3i(leg_x, 0, -1), Vector3i(leg_x + 2, 0, 3), Color("#141A16"))
-		figure.box(Vector3i(leg_x, 6, 0), Vector3i(leg_x + 2, 6, 3), rubber.lightened(0.25))
 		figure.box(Vector3i(leg_x, 7, 0), Vector3i(leg_x + 2, 10, 3), trousers)
 	figure.box(Vector3i(3, 11, 0), Vector3i(10, 11, 3), trousers)
-	# the oilskin coat, flared at the hem, closed with wooden toggles, pocket flaps
+	# the oilskin coat, flared at the hem
 	figure.box(Vector3i(2, 12, -1), Vector3i(11, 14, 4), oilskin)
 	figure.box(Vector3i(3, 15, 0), Vector3i(10, 24, 3), oilskin)
-	figure.box(Vector3i(2, 12, -1), Vector3i(11, 12, 4), oilskin_dark)
-	figure.box(Vector3i(6, 13, -1), Vector3i(6, 24, -1), oilskin_dark)
-	for y in [15, 18, 21]:
-		figure.box(Vector3i(6, y, -2), Vector3i(7, y, -2), Color("#6A4422"))
-	figure.box(Vector3i(3, 16, -1), Vector3i(4, 16, -1), oilskin_dark)
-	figure.box(Vector3i(9, 16, -1), Vector3i(10, 16, -1), oilskin_dark)
 	# the roll-neck jumper showing at the collar
 	figure.box(Vector3i(4, 25, 0), Vector3i(9, 25, 4), jumper)
 	figure.box(Vector3i(5, 24, -1), Vector3i(8, 24, -1), jumper)
@@ -1195,42 +1317,26 @@ static func _build_gerrit(figure: VoxelFigure) -> void:
 	figure.box(Vector3i(11, 23, 0), Vector3i(11, 24, 3), oilskin)
 	for arm_x in [0, 12]:
 		figure.box(Vector3i(arm_x, 14, 0), Vector3i(arm_x + 1, 24, 3), oilskin)
-		figure.box(Vector3i(arm_x, 14, 0), Vector3i(arm_x + 1, 14, 3), oilskin_dark)
 		figure.box(Vector3i(arm_x, 12, 1), Vector3i(arm_x + 1, 13, 2), skin)
-	# the bucket in the left hand, a fish's tail out of it
-	figure.box(Vector3i(-3, 3, 0), Vector3i(0, 9, 3), bucket)
-	figure.box(Vector3i(-3, 9, 0), Vector3i(0, 9, 3), bucket.darkened(0.25))
-	figure.box(Vector3i(-2, 4, 1), Vector3i(-1, 8, 2), Color("#3A4048"))           # inside, seen from above
-	figure.clear(-2, 9, 1)
-	figure.clear(-1, 9, 2)
-	figure.box(Vector3i(-1, 10, 1), Vector3i(-1, 11, 2), Color("#7A9AB0"))         # the tail
-	figure.box(Vector3i(-1, 12, 0), Vector3i(-1, 12, 3), Color("#7A9AB0"))
-	figure.box(Vector3i(0, 10, 1), Vector3i(0, 11, 2), bucket.darkened(0.25))      # the handle to the hand
-	# the head: weathered and red, a full grey beard, the mouth in it
+	# the head: weathered and red, a full grey beard
 	_head(figure, 4, 26, skin)
 	figure.put(5, 29, 0, EYE_DARK)
 	figure.put(8, 29, 0, EYE_DARK)
-	figure.box(Vector3i(4, 30, -1), Vector3i(5, 30, -1), beard.darkened(0.15))
-	figure.box(Vector3i(8, 30, -1), Vector3i(9, 30, -1), beard.darkened(0.15))
-	figure.box(Vector3i(6, 28, -1), Vector3i(7, 29, -1), Color("#C0604A"))         # the nose
+	figure.box(Vector3i(6, 28, -1), Vector3i(7, 29, -1), nose)
 	figure.box(Vector3i(4, 26, -1), Vector3i(9, 27, -1), beard)
 	figure.box(Vector3i(3, 26, 0), Vector3i(3, 28, 3), beard)
 	figure.box(Vector3i(10, 26, 0), Vector3i(10, 28, 3), beard)
 	figure.box(Vector3i(5, 25, -1), Vector3i(8, 25, -1), beard)
-	figure.box(Vector3i(6, 27, -2), Vector3i(7, 27, -2), Color("#6A3A34"))         # the mouth
-	figure.box(Vector3i(5, 28, -2), Vector3i(8, 28, -2), beard.darkened(0.1))      # the moustache
 	figure.box(Vector3i(3, 29, 2), Vector3i(3, 31, 5), beard)                      # grey hair at the sides
 	figure.box(Vector3i(10, 29, 2), Vector3i(10, 31, 5), beard)
 	# the sou'wester: a yellow crown, a brim all round, long at the back over the neck
 	figure.box(Vector3i(2, 32, -2), Vector3i(11, 32, 7), oilskin_dark)
 	figure.box(Vector3i(3, 33, -1), Vector3i(10, 35, 6), oilskin)
 	figure.box(Vector3i(4, 36, 0), Vector3i(9, 36, 5), oilskin)
-	figure.box(Vector3i(3, 28, 7), Vector3i(10, 31, 7), oilskin)
-	figure.box(Vector3i(3, 27, 7), Vector3i(10, 27, 7), oilskin_dark)
+	figure.box(Vector3i(3, 27, 7), Vector3i(10, 31, 7), oilskin)
 	figure.mark("nylon", [oilskin, oilskin_dark])
-	figure.mark("plastic", [rubber, Color("#141A16"), Color("#6A4422"), Color("#7A9AB0")])
+	figure.mark("plastic", [rubber])
 	figure.mark("cloth", [trousers])
 	figure.mark("knit", [jumper])
 	figure.mark("hair", [beard])
-	figure.mark("skin", [skin, Color("#C0604A"), Color("#6A3A34")])
-	figure.mark("metal", [bucket, Color("#3A4048")])
+	figure.mark("skin", [skin, nose])

@@ -35,7 +35,7 @@ const ARCHETYPES := {
 		"addiction": "speed",
 		"difficulty": 2,
 		"level": 1,
-		"story": "Martin liep ooit de 800 meter voor Nederland en had een plek in de nationale ploeg, tot een gescheurde hamstring er een eind aan maakte. Wat hij toen tegen de pijn kreeg, liet hem nooit meer los. Zijn oude trainingspak draagt hij nog, zijn hele huis zit in zijn rugzak. Stilstaan kan hij niet: hij rent de stad door, praat tegen de meeuwen op het Plein en vergeet dagenlang te eten.",
+		"story": "Martin liep ooit de 800 meter voor Nederland en had een plek in de nationale ploeg, tot een gescheurde hamstring er een eind aan maakte. Wat hij toen tegen de pijn kreeg, liet hem nooit meer los. Zijn oude trainingspak draagt hij nog, zijn hele huis zit in zijn zakken. Stilstaan kan hij niet: hij rent de stad door, praat tegen de meeuwen op het Plein en vergeet dagenlang te eten.",
 		"stats": {"gezondheid": 100, "uithoudingsvermogen": 150, "honger": 70},
 	},
 	"ufo_piloot": {

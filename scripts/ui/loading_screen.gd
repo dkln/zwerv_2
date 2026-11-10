@@ -4,7 +4,7 @@ extends CanvasLayer
 ## percentage, under the CRT look of the HUD (with the HUD's settings when there is one).
 ## Shown by the DetailNiveau (scripts/world/level_of_detail.gd) while it merges the map.
 ## Waiting music under it (MUSIC: laden_loop.ogg, tools/megadrive/laden.py), fading in when
-## it opens and out when it goes.
+## it opens and out when it goes; meanwhile nothing else of the town is heard (GROUP).
 ##   var screen := LoadingScreen.new()
 ##   screen.text = "Stad laden…"
 ##   screen.hud = get_node_or_null("../HUD")
@@ -20,7 +20,10 @@ const TITLE := "ZWERVR"
 ## Seconds of the fade when it is done.
 const FADE_SECONDS := 0.35
 const MUSIC := "res://assets/audio/muziek/laden_loop.ogg"
-const MUSIC_VOLUME_DB := -14.0
+## While a loading screen is up (this group) only its waiting music plays: the sounds of the
+## town (RuimtelijkGeluid, scripts/audio/spatial_audio.gd) and its music (the HUD) wait.
+const GROUP := "laadscherm"
+const MUSIC_VOLUME_DB := -8.2
 const MUSIC_FADE_IN := 1.2
 const MUSIC_FADE_OUT := 0.7
 
@@ -37,7 +40,13 @@ var _crt: ColorRect
 var _music: AudioStreamPlayer
 
 
+## True while a loading screen is up (or fading out).
+static func showing(tree: SceneTree) -> bool:
+	return tree != null and tree.get_first_node_in_group(GROUP) != null
+
+
 func _ready() -> void:
+	add_to_group(GROUP)
 	layer = 100
 	_start_music()
 	_panel = ColorRect.new()
@@ -141,8 +150,6 @@ static func _label(label_text: String, font_path: String, font_size: int, colour
 	label.add_theme_font_override("font", UiStyle.font(font_path))
 	label.add_theme_font_size_override("font_size", font_size)
 	label.add_theme_color_override("font_color", colour)
-	label.add_theme_color_override("font_shadow_color", UiStyle.INK.darkened(0.6))
-	label.add_theme_constant_override("shadow_offset_x", shadow)
-	label.add_theme_constant_override("shadow_offset_y", shadow)
-	label.add_theme_constant_override("shadow_outline_size", 0)
+	if shadow > 0:
+		UiStyle.faux_3d(label, shadow)
 	return label

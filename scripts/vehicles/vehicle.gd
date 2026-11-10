@@ -19,8 +19,9 @@ extends Node3D
 ## the line between them. It keeps to the speed
 ## limit of the road it is on (and brakes in time for a lower one ahead), slows down for
 ## corners, and stops:
-## - before a zebra crossing (weg/zebrapad), for `zebra_wait` seconds, then drives on, when
-##   someone crosses there (_someone_crossing; no one yet: there are no pedestrians);
+## - before a zebra crossing (weg/zebrapad) when someone waits to cross there, for
+##   `zebra_wait` seconds, then drives on, and for as long as someone is on it
+##   (_someone_crossing: the pedestrians, scripts/world/pedestrians.gd);
 ## - at traffic lights (Verkeerslichten, scripts/traffic/traffic_lights.gd) until its
 ##   stream is green, before the zebra or the crossing, whichever comes first (the lights
 ##   of the whole crossing, found from its middle; a zebra right before it goes with it).
@@ -87,6 +88,7 @@ extends Node3D
 ## Top speed of the vehicle itself (km/h); it never goes faster than the speed limit.
 @export var top_speed_kmh := 130.0
 ## Cells it looks ahead over a crossing for whether a heading leads on (see _leads_on).
+const Sight = preload("res://scripts/world/sight.gd")
 const CROSSING_LOOKAHEAD := 4
 ## Speed through a corner (m/s).
 @export var corner_speed := 4.5
@@ -103,6 +105,9 @@ const CROSSING_LOOKAHEAD := 4
 @export_group("Rules")
 ## Kind of vehicle, for lanes only some kinds may use (a bus lane: "bus").
 @export var vehicle_kind := "auto"
+## The sound (assets/audio/geluiden/) it warns people on foot with; "" = the one of its kind
+## (_horn()).
+@export var horn_sound := ""
 ## Stops for traffic lights.
 @export var obeys_lights := true
 ## Seconds it waits before a zebra crossing without traffic lights.
@@ -162,8 +167,13 @@ const CROSSING_LOOKAHEAD := 4
 @export var front_wheel_radius := 0.0
 ## Two wheels: it leans into a corner as far as its speed and the sharpness of the corner
 ## ask (the angle whose tangent is the sideways acceleration over gravity), at most this.
+## The lean starts before the corner (LEAN_LEAD: the bend a moment ahead), and the rider
+## countersteers into it ("insturen"): to lean over to the left the front wheel first
+## turns briefly to the right (`countersteer`: seconds of steering per radian a second of
+## lean), then follows the corner.
 @export var leans := false
 @export var max_lean_degrees := 25.0
+@export var countersteer := 0.12
 ## Largest steering angle of the front wheels (degrees); 0 = they don't steer.
 @export var max_steering_degrees := 40.0
 ## How quickly the steering follows the corner (1/s).
@@ -354,8 +364,11 @@ const CORNER_ROUNDING_EXTRA := 1.0
 const PLAN_MARGIN := 16.0
 ## Cells forward over which it moves over into the lane alongside, longest first.
 const MOVE_OVER_CELLS := [3, 2, 1]
-## How fast a two-wheeler takes up its lean (1/s), and gravity for it (m/s²).
+## How fast a two-wheeler takes up its lean (1/s), and gravity for it (m/s²); seconds ahead
+## (at its speed) of the bend it leans for, and the metres over which that bend is measured.
 const LEAN_RATE := 5.0
+const LEAN_LEAD := 0.35
+const LEAN_SPAN := 1.5
 const GRAVITY := 9.81
 ## All corner speeds (corner_speed, tight_corner_speed of each type) times this: the types
 ## keep their order (a bus slower than a car), the whole town a little quicker round them.
@@ -372,10 +385,48 @@ const MAX_TRAILER_ANGLE := 1.4
 const WHEEL_DRAW_DISTANCE := 220.0
 ## Sideways and lengthways steps (metres) along a vehicle at which it claims the cell under it.
 const COVER_STEP := 2.0
+## People on foot in its way (pedestrians and the player, the group WALKERS_GROUP): it looks
+## ahead its stopping distance plus PEOPLE_LOOK_TIME seconds, brakes to stand PEOPLE_GAP
+## metres before someone in its path (its width plus PEOPLE_SIDE_ROOM on each side), and
+## swerves (up to DODGE_OFFSET m, not on rails) away from someone near the edge of it, slowing
+## down meanwhile. It warns them with its horn (`horn_sound`, or the one of its kind: a bell
+## on a bicycle, a beep on a moped, a deep horn on a bus or a lorry) when they are in its path
+## less than HORN_WITHIN seconds ahead, or stand in its way after it stopped for HORN_STANDING
+## seconds, or has to brake hard for them; at most every HORN_PAUSE seconds.
+## Impatient: once it has stood IMPATIENT_AFTER seconds for someone in its path (honking
+## meanwhile), it honks once more, the driver shouts (DriverShout) and it pushes through:
+## it creeps on at IMPATIENT_SPEED (no longer stopping for them, nor at the zebra they are
+## on) and knocks over whoever it drives into (the player takes the hit itself,
+## player_controller.gd; a pedestrian through hit_by_vehicle, pedestrian.gd). Once its path
+## has been clear IMPATIENT_CALM seconds (or after IMPATIENT_MOST seconds) it drives as usual.
+const DriverShout = preload("res://scripts/vehicles/driver_shout.gd")
+const Outline = preload("res://scripts/effects/outline.gd")
+const WALKERS_GROUP := "lopers"
+const PEOPLE_LOOK_TIME := 2.5
+const PEOPLE_GAP := 2.0
+const PEOPLE_SIDE_ROOM := 0.45
+## Metres between the points of its route it looks at for people (_beside_route).
+const PEOPLE_ROUTE_STEP := 1.0
+const DODGE_OFFSET := 0.9
+const DODGE_SPEED := 3.0
+const HORN_WITHIN := 2.5
+const HORN_STANDING := 3.0
+const HORN_PAUSE := 5.0
+const IMPATIENT_AFTER := 12.0
+const IMPATIENT_SPEED := 2.5
+const IMPATIENT_CALM := 2.0
+const IMPATIENT_MOST := 10.0
+## Metres from its front within which someone in its path is touched (hit_by_vehicle).
+const PEOPLE_CONTACT := 0.35
+## Above this mass (kg) a vehicle without a horn of its own sounds the deep one (lorries).
+const HEAVY_HORN_MASS := 3500.0
+
 ## Out of sight: a vehicle off the screen by more than UNSEEN_MARGIN (a share of the screen
-## size round it), or further than UNSEEN_DISTANCE from a perspective camera, steps half as
-## often (twice the time per step) and leaves its wheels and lamps alone; it looks every
-## SIGHT_CHECK_STEPS physics steps whether it is still out of sight.
+## size round it), or further than UNSEEN_DISTANCE from a perspective camera (used to put a
+## lost one down unseen). How often it steps goes by Sight (scripts/world/sight.gd): out of
+## sight every other step, far from the view every fourth (with the time of all of them),
+## and then it leaves its wheels and lamps alone; it looks every SIGHT_CHECK_STEPS physics
+## steps where it is.
 const UNSEEN_MARGIN := 0.3
 const UNSEEN_DISTANCE := 300.0
 const SIGHT_CHECK_STEPS := 15
@@ -401,6 +452,15 @@ static var last_crash := {"at": Vector3.ZERO, "strength": 0.0, "time": -100.0}
 ## Out of sight of the camera (see UNSEEN_MARGIN): it takes less CPU time.
 var unseen := false
 var _sight_countdown := 0
+var _steps_between := 1              # physics steps per step it takes (Sight)
+var _people_countdown := 0           # physics steps until the next look at the people on foot
+var _people_limit := INF             # speed (m/s) for the people on foot in its way
+var _dodge := 0.0                    # metres it swerves right (+) or left (-) round someone
+var _horn_clock := 0.0               # seconds until it may sound its horn again
+var _standing_for_people := 0.0      # seconds it has stood still for someone in its way
+var _impatience := 0.0               # seconds stood for someone in its path (honks or not)
+var _pushing_through := -1.0         # seconds it has been pushing through; < 0 = not
+var _path_clear_for := 0.0           # seconds its path has been clear while pushing through
 var _saved_delta := 0.0              # time of the step it skipped while out of sight
 var _lane_reversals := 0             # turns round in its own lane since the last crossing
 var _lost_clock := -1.0              # seconds it has been lost (driving to and fro); < 0 = not
@@ -457,6 +517,12 @@ var _rear_axle_spot := Vector2.ZERO
 var _front_axle_motion := Vector2.ZERO  # how far the front axle moved in the last step
 var _corner_rounding := CORNER_ROUNDING_LEAST  # metres, see the constant
 var _lean := 0.0                     # radians a two-wheeler leans (left > 0)
+var _lean_rate := 0.0                # and how fast that changes (radians a second)
+var _path_steering := 0.0            # steering angle the path asks (radians), before countersteering
+## The steering head (a bicycle's fork and bars, two_wheeler.gd): turns with the steering
+## about its own y (its parent leans it back as the head tube); the front wheels under it
+## are turned by it, not on their own.
+var _steering_pivot: Node3D
 var _last_yaw := 0.0                 # its heading at the last step
 var _corner_lead := CORNER_REACH     # metres before a corner from which it keeps to its corner speed
 var _cells_kept_behind := 1          # planned cells it keeps behind it (a long one: more)
@@ -526,9 +592,14 @@ func _ready() -> void:
 	_add_lamps()
 	_add_emergency()
 	_measure_length()
+	Outline.apply(_body)   # the hard outline, as the characters have
+	if _trailer:
+		Outline.apply(_trailer)
 	if wheel_torque > 0.0:
 		acceleration = wheel_torque / maxf(wheel_radius, 0.01) / total_mass()
 	_look_countdown = get_instance_id() % TRAFFIC_LOOK_STEPS
+	_sight_countdown = get_instance_id() % SIGHT_CHECK_STEPS
+	_people_countdown = get_instance_id() % TRAFFIC_LOOK_STEPS
 	_day_cycle = root.get_node_or_null("Dagcyclus")
 	all_vehicles.append(self)
 	if network.is_empty():
@@ -548,7 +619,8 @@ func _physics_process(delta: float) -> void:
 	_sight_countdown -= 1
 	if _sight_countdown < 0:
 		_sight_countdown = SIGHT_CHECK_STEPS
-		unseen = _out_of_sight(global_position)
+		_steps_between = Sight.steps_between(get_viewport(), global_position)
+		unseen = _steps_between > 1
 	_watch_progress(delta)
 	if _lost_clock >= 0.0:
 		_lost_clock += delta
@@ -556,9 +628,9 @@ func _physics_process(delta: float) -> void:
 			_relocate()
 			return
 	if unseen:
-		# every other step, with the time of both
+		# every other (or fourth) step, with the time of all of them
 		_saved_delta += delta
-		if _saved_delta < delta * 1.5:
+		if _saved_delta < delta * (_steps_between - 0.5):
 			return
 		delta = _saved_delta
 	_saved_delta = 0.0
@@ -621,16 +693,190 @@ func _process(delta: float) -> void:
 	# would seem to stand still or run backwards); delta is this frame's time
 	var turn_per_frame := speed / maxf(wheel_radius, 0.01) * delta
 	var blur := smoothstep(0.25, 0.7, turn_per_frame)
+	if _steering_pivot:
+		_steering_pivot.rotation.y = steering
 	for wheel_index in _wheels.size():
 		var wheel := _wheels[wheel_index]
 		var ratio := _wheel_roll_ratios[wheel_index]
-		wheel.rotation.y = steering if wheel.position.z > 0.0 and max_steering_degrees > 0.0 else 0.0
+		if wheel.get_parent() != _steering_pivot:
+			wheel.rotation.y = steering if wheel.position.z > 0.0 and max_steering_degrees > 0.0 else 0.0
 		var instance := wheel.get_child(0) as GeometryInstance3D
 		# the wheel model itself never turns: voxel_wheel.gdshader turns its spokes (front
 		# wheels of another size roll at their own rate)
 		instance.set_instance_shader_parameter("roll", -(roll if ratio == 1.0 else front_roll))
 		instance.set_instance_shader_parameter("spin_blur", blur if ratio == 1.0 else smoothstep(0.25, 0.7, turn_per_frame * ratio))
 	_update_lamps()
+	_animate(roll, steering, delta)
+
+
+## Looks at the people on foot ahead (see WALKERS_GROUP): the speed it may go for them
+## (`_people_limit`), how far it swerves round one (`_dodge`), and its horn. `seconds`: the
+## time since the last look.
+func _watch_people(seconds: float) -> void:
+	_people_limit = INF
+	_dodge = 0.0
+	if crashed or _outer_box.size.x <= 0.0:
+		return
+	var forward := Vector2(global_basis.z.x, global_basis.z.z).normalized()
+	var front := _outer_box.end.z
+	var half_width := _outer_box.size.x * 0.5
+	var room := half_width + PEOPLE_SIDE_ROOM
+	var reach := front + PEOPLE_GAP + speed * PEOPLE_LOOK_TIME + speed * speed / (2.0 * maxf(braking, 0.5))
+	var on_rails := vehicle_kind == "tram" or vehicle_kind == "trein"
+	var nearest := INF          # metres from its front to the nearest one in its path
+	var warn_at := INF          # metres to the nearest one it has to swerve round or stop for
+	var reach_squared := (reach + 1.0) * (reach + 1.0)
+	for walker in get_tree().get_nodes_in_group(WALKERS_GROUP):
+		var person := walker as Node3D
+		if person == null or not person.is_visible_in_tree():
+			continue
+		if absf(person.global_position.y - global_position.y) > 2.5:
+			continue
+		var offset := Vector2(person.global_position.x - global_position.x, person.global_position.z - global_position.z)
+		if offset.length_squared() > reach_squared or offset.dot(forward) < front - 1.0:
+			continue
+		# where along its route ahead they are, and how far beside it (from the middle of its
+		# lane, not from where it has swerved to: else it would lose them as it swerves,
+		# swing back and run into them); the route may bend, so it looks along it, not straight on
+		var place := _beside_route(Vector2(person.global_position.x, person.global_position.z), front, reach, room + 0.6)
+		if place.x == INF:
+			continue
+		var ahead := place.x
+		var lane_side := place.y
+		var needed := room - absf(lane_side)   # how far over it must go to pass them clear
+		if needed <= 0.0:
+			continue
+		if ahead < PEOPLE_CONTACT and speed > 0.5 and person.has_method("hit_by_vehicle"):
+			# driven into: knocked over to the side they stand on
+			var side := Vector3(global_basis.x.x, 0.0, global_basis.x.z).normalized() * (1.0 if lane_side >= 0.0 else -1.0)
+			person.hit_by_vehicle(self, velocity * 0.8 + side * (speed + 1.5))
+			continue
+		warn_at = minf(warn_at, ahead)
+		if not on_rails and needed <= DODGE_OFFSET and absf(lane_side) > 0.15:
+			# near the edge of its path: round them on the other side, slowly
+			var swerve := (needed + 0.15) * -signf(lane_side)
+			if absf(swerve) > absf(_dodge):
+				_dodge = swerve
+			_people_limit = minf(_people_limit, DODGE_SPEED + ahead * 0.5)
+			continue
+		nearest = minf(nearest, ahead)
+	# a warning when it would be on them soon, or has to brake hard for them
+	var coming_soon := speed > 1.5 and (warn_at / speed < HORN_WITHIN or _people_limit < speed - 1.0)
+	if _pushing_through >= 0.0:
+		_push_through(seconds, nearest != INF)
+		return
+	if nearest == INF:
+		_standing_for_people = 0.0
+		_impatience = 0.0
+		if coming_soon and _horn_clock <= 0.0:
+			_sound_horn("waarschuwen")
+		return
+	# the speed follows its target about SPEED_SETTLE late, and it looks only every few steps:
+	# that far before the stopping point it starts braking already
+	var stop_at := _distance + nearest - PEOPLE_GAP - speed * (SPEED_SETTLE + 0.1)
+	# planned with its usual braking: it can brake harder (1.5 x), which is the margin for the
+	# braking building up and for the time between its looks
+	_people_limit = 0.0 if stop_at - _distance < 0.3 else minf(_people_limit, _approach_speed(0.0, stop_at))
+	_standing_for_people = _standing_for_people + seconds if speed < 0.3 else 0.0
+	if speed < 0.3:
+		_impatience += seconds
+	if _impatience >= IMPATIENT_AFTER and not reckless and not has_priority():
+		# waited long enough: honks, shouts and drives on
+		_impatience = 0.0
+		_pushing_through = 0.0
+		_path_clear_for = 0.0
+		_sound_horn("doordrukken")
+		_push_through(0.0, true)
+		return
+	coming_soon = coming_soon or (speed > 1.5 and _people_limit < speed - 1.0)
+	if _horn_clock <= 0.0 and (coming_soon or _standing_for_people > HORN_STANDING):
+		_sound_horn("wachten" if _standing_for_people > HORN_STANDING else "waarschuwen")
+
+
+## Pushing through (see IMPATIENT_AFTER): creeps on at IMPATIENT_SPEED whoever is in its path
+## (`someone_in_path`); back to driving as usual once that has been clear IMPATIENT_CALM s,
+## or after IMPATIENT_MOST s.
+func _push_through(seconds: float, someone_in_path: bool) -> void:
+	_pushing_through += seconds
+	_path_clear_for = 0.0 if someone_in_path else _path_clear_for + seconds
+	_standing_for_people = 0.0
+	if _path_clear_for >= IMPATIENT_CALM or _pushing_through >= IMPATIENT_MOST:
+		_pushing_through = -1.0
+		_impatience = 0.0
+		return
+	if someone_in_path:
+		_people_limit = IMPATIENT_SPEED
+
+
+## True while it pushes through someone in its way (see IMPATIENT_AFTER).
+func is_pushing_through() -> bool:
+	return _pushing_through >= 0.0
+
+
+## Where `spot` (x, z on the map) lies along its route ahead: (metres from its front to
+## there, metres right (+) or left of its route there), the first route point (each
+## PEOPLE_ROUTE_STEP metres, from its front to `reach` metres from its middle) it is within
+## `beside` metres of; (INF, 0) if none.
+func _beside_route(spot: Vector2, front: float, reach: float, beside: float) -> Vector2:
+	var at := _distance + front
+	var last := _distance + reach
+	while at <= last:
+		var point := _route_point(at)
+		var next := _route_point(at + PEOPLE_ROUTE_STEP)
+		var along := Vector2(next.x - point.x, next.z - point.z)
+		if along.length_squared() > 0.000001:
+			along = along.normalized()
+			var offset := spot - Vector2(point.x, point.z)
+			var ahead_of_point := offset.dot(along)
+			if absf(ahead_of_point) <= PEOPLE_ROUTE_STEP * 0.5 + 0.01:
+				var side := offset.dot(Vector2(-along.y, along.x))
+				if absf(side) < beside:
+					return Vector2(at + ahead_of_point - _distance - front, side)
+		at += PEOPLE_ROUTE_STEP
+	return Vector2(INF, 0.0)
+
+
+## Sounds its horn (or rings its bell) where it is; the driver may shout something too
+## (DriverShout; `mood`: "wachten" standing still for someone in its way, "waarschuwen"
+## driving at them, "doordrukken" pushing through).
+func _sound_horn(mood := "waarschuwen") -> void:
+	_horn_clock = HORN_PAUSE
+	_standing_for_people = 0.0
+	var sound := get_node_or_null("/root/RuimtelijkGeluid")
+	if sound and sound.has_method("play_signal"):
+		sound.play_signal(global_position, _horn(), 9.0)
+	if not unseen:
+		DriverShout.shout(self, vehicle_kind, mood, _outer_box.end.y + 0.4)
+
+
+## Its driver shouts something after running the player over (DriverShout, "aanrijding").
+func shout_after_hit() -> void:
+	DriverShout.shout(self, vehicle_kind, "aanrijding", _outer_box.end.y + 0.4)
+
+
+## The horn of its kind (see horn_sound).
+func _horn() -> String:
+	if horn_sound != "":
+		return horn_sound
+	match vehicle_kind:
+		"fiets":
+			return "fiets_bel"
+		"brommer":
+			return "brommer_toeter"
+		"tram":
+			return "tram_bel"
+		"trein":
+			return "trein_hoorn"
+		"bus":
+			return "bus_toeter"
+	return "bus_toeter" if mass_kg > HEAVY_HORN_MASS else "auto_toeter"
+
+
+## Moves what else there is on it every drawn frame (the rider of a two-wheeler,
+## two_wheeler.gd): `roll` is how far the wheels have turned (radians), `steering` the
+## steering angle, both as drawn this frame.
+func _animate(_roll: float, _steering_now: float, _delta: float) -> void:
+	pass
 
 
 ## Where the vehicle is drawn this frame (for a camera that follows it).
@@ -879,6 +1125,7 @@ func _update_emergency(delta: float) -> void:
 			wanted_offset = YIELD_OFFSET
 	else:
 		yielding = false
+	wanted_offset += _dodge
 	_side_offset = move_toward(_side_offset, wanted_offset, OFFSET_RATE * delta)
 
 
@@ -1106,16 +1353,16 @@ func _must_stop(from_cell: Vector3i, to_cell: Vector3i, distance: float) -> Stri
 		return "light" if distance > braking_distance - 0.5 else ""
 	if phase == 0:
 		return ""
-	if zebra and not _waited_at.has(to_cell) and _someone_crossing(to_cell):
+	if zebra and not is_pushing_through() and _someone_crossing(to_cell) and (not _waited_at.has(to_cell) or Pedestrians.someone_on_zebra(to_cell)):
 		return "zebra"
 	return ""
 
 
-## True if someone is on or about to step onto zebra `cell`. There are no pedestrians in
-## the town yet, so a zebra without lights never stops anyone; this is where they will
-## be looked for.
-func _someone_crossing(_cell: Vector3i) -> bool:
-	return false
+## True if someone is on or about to step onto zebra `cell` (a pedestrian has claimed it,
+## scripts/world/pedestrians.gd). Once it has waited there it drives on, unless someone is
+## on the zebra.
+func _someone_crossing(cell: Vector3i) -> bool:
+	return Pedestrians.someone_at_zebra(cell)
 
 
 ## Metres between its front and the line it stops at (a zebra, a crossing), and how far
@@ -1422,6 +1669,13 @@ func _target_speed(delta: float) -> float:
 			_traffic_blocker = _blocked_by
 		_blocked_by = _traffic_blocker
 		target = minf(target, _traffic_limit)
+	# people on foot in its way
+	_horn_clock = maxf(_horn_clock - delta, 0.0)
+	_people_countdown -= 1
+	if _people_countdown < 0:
+		_people_countdown = TRAFFIC_LOOK_STEPS - 1
+		_watch_people(delta * TRAFFIC_LOOK_STEPS)
+	target = minf(target, _people_limit)
 	# the first cell boundary it has to stop at
 	for ahead_index in range(index + 1, last + 1):
 		# its front STOP_LINE_GAP before the line between the cells (the start of the zebra
@@ -1540,17 +1794,34 @@ func _place(delta := 0.0) -> void:
 		_lean_into_corner(atan2(along_body.x, along_body.y), delta)
 
 
-## Tilts a two-wheeler into its corner: the lean that balances turning at this rate at this
-## speed, eased in and out (LEAN_RATE); a left turn (the heading turning towards +x, its left)
-## leans it to the left.
+## Tilts a two-wheeler into its corner: the lean that balances the bend it will be in
+## LEAN_LEAD seconds from now at this speed (so it leans over before the corner, as a
+## rider does), eased in and out (LEAN_RATE); a left turn (the heading turning towards +x,
+## its left) leans it to the left.
 func _lean_into_corner(yaw: float, delta: float) -> void:
 	if delta > 0.0:
-		var yaw_rate := wrapf(yaw - _last_yaw, -PI, PI) / delta
 		var limit := deg_to_rad(max_lean_degrees)
-		var wanted := clampf(atan(speed * yaw_rate / GRAVITY), -limit, limit)
+		var bend := _bend_ahead(_distance + _front_axle + speed * LEAN_LEAD)
+		var wanted := clampf(atan(speed * speed * bend / GRAVITY), -limit, limit)
+		var before := _lean
 		_lean = lerpf(_lean, wanted, 1.0 - exp(-LEAN_RATE * delta))
+		_lean_rate = (_lean - before) / delta
 	_last_yaw = yaw
 	global_basis = global_basis * Basis(Vector3(0.0, 0.0, 1.0), -_lean)
+
+
+## How sharply the rounded route bends at route distance `at` (radians per metre, a left
+## bend positive), measured over LEAN_SPAN metres either side.
+func _bend_ahead(at: float) -> float:
+	var behind := _rounded_route_point(at - LEAN_SPAN)
+	var here := _rounded_route_point(at)
+	var ahead := _rounded_route_point(at + LEAN_SPAN)
+	var first := here - behind
+	var second := ahead - here
+	if first.length_squared() < 0.0001 or second.length_squared() < 0.0001:
+		return 0.0
+	var turn := wrapf(atan2(second.x, second.y) - atan2(first.x, first.y), -PI, PI)
+	return turn / ((first.length() + second.length()) * 0.5)
 
 
 func _add_model(props: GridMap) -> void:
@@ -1785,12 +2056,16 @@ func _turn_wheels(distance_driven: float, delta: float) -> void:
 	_wheel_roll = fmod(_wheel_roll + distance_driven / maxf(wheel_radius, 0.01), TAU)
 	if front_wheel_radius > 0.0:
 		_front_wheel_roll = fmod(_front_wheel_roll + distance_driven / front_wheel_radius, TAU)
-	var wanted := _steering
+	var wanted := _path_steering
+	var max_angle := deg_to_rad(max_steering_degrees)
 	if distance_driven > 0.001 and _front_axle_motion.length_squared() > 0.0:
 		var seen_from_body := global_basis.inverse() * Vector3(_front_axle_motion.x, 0.0, _front_axle_motion.y)
-		var max_angle := deg_to_rad(max_steering_degrees)
 		wanted = clampf(atan2(seen_from_body.x, seen_from_body.z), -max_angle, max_angle)
-	_steering = lerpf(_steering, wanted, 1.0 - exp(-steering_rate * delta))
+	_path_steering = lerpf(_path_steering, wanted, 1.0 - exp(-steering_rate * delta))
+	_steering = _path_steering
+	if leans:
+		# countersteering: leaning over to the left takes a turn of the bars to the right
+		_steering = clampf(_path_steering - countersteer * _lean_rate, -max_angle, max_angle)
 	# the wheels themselves are turned every frame in _process, between this step and the last
 
 

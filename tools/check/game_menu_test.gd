@@ -122,7 +122,7 @@ func _run() -> void:
 	_check(menu._shown_items.size() == 4, "vier soorten spullen in het raster (%d)" % menu._shown_items.size())
 	_check(menu._character_name.text == "Willem", "naam van het karakter: " + menu._character_name.text)
 	_check(menu._character_line.text.begins_with("LV 3"), "niveau: " + menu._character_line.text)
-	_check(menu._money_label.text == "12", "geld: " + menu._money_label.text)
+	_check(menu._money_label.text == "12,00", "geld: " + menu._money_label.text)
 	_check(menu._portrait != null, "figuur in 3D")
 	menu._selected_item = "brood"
 	menu._refresh()

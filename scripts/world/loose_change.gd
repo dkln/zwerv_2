@@ -4,8 +4,10 @@ extends Node3D
 ## starts (within `reach` metres; the first few close by, so the first one is soon found).
 ## A coin stands on its edge, turns and bobs a little, glinting gold; walking over it (within
 ## `pick_up_distance`) picks it up: PlayerController.add_money, a chime ("munt") and its
-## value rising from where it lay ("+€ 0,50"). For mission 1 (scripts/story/story.gd).
+## value rising from where it lay ("+€ 0,50", GameHud.show_floating_number). A pulsing rim
+## (QuestOutline) makes them stand out from the street. For mission 1 (scripts/story/story.gd).
 
+const QuestOutline = preload("res://scripts/effects/quest_outline.gd")
 const UiSounds = preload("res://scripts/ui/ui_sounds.gd")
 ## Ground tile folders coins lie on.
 const COIN_GROUND := ["plein/", "stoep/"]
@@ -115,6 +117,7 @@ func _add_coin(at: Vector3, value: float) -> void:
 	coin.rotation_degrees.x = 90.0   # on its edge
 	coin.scale = Vector3.ONE * (1.25 if value >= 1.0 else 1.0)
 	holder.add_child(coin)
+	QuestOutline.add(coin, 0.03)
 	_coins.append({"node": holder, "value": value, "base": holder.position.y, "phase": _random.randf() * TAU})
 
 
@@ -124,21 +127,9 @@ func _pick_up(index: int) -> void:
 	var node: Node3D = coin.node
 	_player.call("add_money", coin.value)
 	UiSounds.play(self, "munt", -2.0)
-	var tag := Label3D.new()
-	tag.text = "+" + _euros(coin.value)
-	tag.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	tag.no_depth_test = true
-	tag.font_size = 48
-	tag.pixel_size = 0.006
-	tag.outline_size = 10
-	tag.modulate = COIN_GOLD
-	tag.outline_modulate = Color("#0B0D1A")
-	add_child(tag)
-	tag.global_position = node.global_position + Vector3.UP * 0.6
-	var rise := tag.create_tween().set_parallel(true)
-	rise.tween_property(tag, "position:y", tag.position.y + 1.2, 0.9).set_ease(Tween.EASE_OUT)
-	rise.tween_property(tag, "modulate:a", 0.0, 0.9).set_delay(0.3)
-	rise.chain().tween_callback(tag.queue_free)
+	var hud: Node = _player.get("_hud")
+	if hud and hud.has_method("show_floating_number"):
+		hud.show_floating_number(node.global_position + Vector3.UP * 0.6, "+" + _euros(coin.value), COIN_GOLD)
 	node.queue_free()
 
 

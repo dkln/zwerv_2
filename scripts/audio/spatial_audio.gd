@@ -27,14 +27,21 @@ extends Node
 ##   cruising speed (braking for a crossing, stuck in traffic) switches to the fast yelp
 ##   (sirene_yelp_loop) and back to its own siren above YELP_UNTIL; a fire engine that starts
 ##   yelping blows its air horn (brandweer_hoorn) with HORN_CHANCE, at most every HORN_PAUSE s.
+## - Every sound is softened by distance gently (logarithmic) and never boosted close by
+##   (_even_out), so near and far differ less.
 ## - While the game is paused the traffic is PAUSED_DB softer. The bus as a whole sits at
 ##   BUS_VOLUME_DB with a compressor and a limiter on it (and Master a limiter), so a loud
 ##   moment never blasts.
 ## Sounds: assets/audio/geluiden/ (tools/megadrive/geluiden.py, docs/MUZIEK.md).
 ## Test: tools/check/spatial_audio_test.gd.
 
+const LoadingScreen = preload("res://scripts/ui/loading_screen.gd")
 const SOUND_FOLDER := "res://assets/audio/geluiden/"
 const BUS_NAME := "Verkeer"
+## The one-shots (horns, bells, cries, hits, splashes) have a bus of their own, with only a
+## limiter: through the compressor of the traffic bus the engines around would squash them
+## to their own level, and they would be lost under the traffic and the music.
+const EVENT_BUS_NAME := "Voorvallen"
 const LISTENER_HEIGHT := 1.7
 const MAX_EMITTERS := 14
 const HEARING_RANGE := 90.0
@@ -43,14 +50,25 @@ const POOL_INTERVAL := 0.5
 const MOTOR_SOUNDS := {"auto": "auto_motor_loop", "brommer": "brommer_motor_loop", "bus": "bus_motor_loop",
 	"tram": "tram_motor_loop", "trein": "trein_motor_loop"}
 const CRUISE_SPEED := {"auto": 13.0, "brommer": 10.0, "bus": 9.0, "tram": 8.0, "trein": 20.0}
-const MOTOR_VOLUME_DB := {"auto": -6.0, "brommer": -7.0, "bus": -3.0, "tram": -4.0, "trein": -1.0}
+## The files are all equally loud (-16 LUFS, tools/megadrive/loudness.py), so these numbers are
+## the real balance between the engines.
+const MOTOR_VOLUME_DB := {"auto": -9.3, "brommer": -8.0, "bus": -8.2, "tram": -4.8, "trein": -2.1}
 ## How near (m) a source is at full loudness (unit_size), per kind; bigger is heard further.
 const UNIT_SIZE := {"auto": 6.0, "brommer": 5.0, "bus": 9.0, "tram": 9.0, "trein": 14.0}
 const IDLE_PITCH := 0.7
+## Under this speed (m/s) a tram or train fades out; standing still it is silent.
+const RAIL_SILENT_BELOW := 1.5
 const MAX_PITCH := 1.45
 const DOPPLER_BOOST := 1.6
 const SPEED_OF_SOUND := 343.0
-const SIREN_VOLUME_DB := -4.0
+const SIREN_VOLUME_DB := -3.5
+## The levels of the one-shots (the files are all equally loud: their loudest moment at -16 LUFS,
+## tools/megadrive/loudness.py): what happens to you or right by you (a crash, a hit, a cry, a splash)
+## loudest, the signals of the traffic (horns, bells) a little under that, what goes on in the
+## background (passing by, brakes) under those.
+const EVENT_DB := 5.5
+const SIGNAL_DB := 2.5
+const BACKGROUND_DB := -0.5
 const HARD_CRASH_SPEED := 9.0
 const HELICOPTER_SOUND := "helikopter_loop"
 const HELICOPTER_SCRIPT := "police_helicopter.gd"
@@ -63,7 +81,7 @@ const PASS_BY_MIN_SHARE := 0.6
 const HELICOPTER_PASS_BY_MIN_SPEED := 8.0
 const PASS_BY_DUCK_DB := -14.0
 const PASS_BY_REARM := 40.0
-const PASS_BY_VOLUME_DB := -2.0
+const PASS_BY_VOLUME_DB := -0.5   # BACKGROUND_DB
 ## The yelp (see the top): below and above which share of the cruising speed.
 const YELP_SOUND := "sirene_yelp_loop"
 const YELP_BELOW := 0.5
@@ -76,8 +94,8 @@ const PAUSED_DB := -14.0
 ## evens out the loud moments (a siren racing past, a crash next to you), a limiter keeps
 ## every peak under LIMITER_CEILING_DB; Master gets a limiter of its own as a last guard.
 const BUS_VOLUME_DB := -6.0
-const COMPRESSOR_THRESHOLD_DB := -20.0
-const COMPRESSOR_RATIO := 4.0
+const COMPRESSOR_THRESHOLD_DB := -24.0
+const COMPRESSOR_RATIO := 6.0
 const LIMITER_CEILING_DB := -3.0
 const MASTER_CEILING_DB := -1.0
 
@@ -87,6 +105,7 @@ var _player: Node3D                     # the PlayerController
 var _listener: AudioListener3D
 var _active := false
 var _bus_index := -1
+var _event_bus_index := -1
 var _streams := {}
 var _pool_clock := 0.0
 var _ear := Vector3.ZERO
@@ -149,7 +168,9 @@ func _is_helicopter(node: Node) -> bool:
 
 
 func _process(delta: float) -> void:
-	var should_run := _player != null and is_instance_valid(_player) and _player.is_inside_tree()
+	# not while the town is loading: then only the waiting music plays
+	var should_run := _player != null and is_instance_valid(_player) and _player.is_inside_tree() \
+			and not LoadingScreen.showing(get_tree())
 	if should_run != _active:
 		_set_active(should_run)
 	if not _active:
@@ -157,6 +178,7 @@ func _process(delta: float) -> void:
 	_update_ear(delta)
 	var paused := get_tree().paused
 	AudioServer.set_bus_volume_db(_bus_index, BUS_VOLUME_DB + (PAUSED_DB if paused else 0.0))
+	AudioServer.set_bus_volume_db(_event_bus_index, BUS_VOLUME_DB + (PAUSED_DB if paused else 0.0))
 	if not paused:
 		_clock += delta
 	_pool_clock -= delta
@@ -267,7 +289,7 @@ func _make_emitter(vehicle: Node3D) -> Emitter:
 	emitter.vehicle = vehicle
 	emitter.kind = _kind_of(vehicle)
 	var sound_name: String = HELICOPTER_SOUND if emitter.kind == "helikopter" else MOTOR_SOUNDS[emitter.kind]
-	emitter.base_db = 2.0 if emitter.kind == "helikopter" else MOTOR_VOLUME_DB[emitter.kind]
+	emitter.base_db = 0.3 if emitter.kind == "helikopter" else MOTOR_VOLUME_DB[emitter.kind]
 	var unit: float = 30.0 if emitter.kind == "helikopter" else UNIT_SIZE[emitter.kind]
 	emitter.motor = _make_player(vehicle, sound_name, unit, emitter.base_db, true)
 	emitter.siren_name = _siren_of(vehicle)
@@ -293,6 +315,7 @@ func _make_player(parent: Node3D, sound_name: String, unit: float, volume_db: fl
 	player.max_distance = HEARING_RANGE * (2.5 if sound_name == HELICOPTER_SOUND else 1.2)
 	player.volume_db = volume_db
 	player.attenuation_filter_db = 0.0   # no muffling with distance: only softer
+	_even_out(player)
 	player.position = Vector3.UP * 0.8
 	parent.add_child(player)
 	if play_now and player.stream != null:
@@ -331,9 +354,12 @@ func _update_emitter(emitter: Emitter, delta: float) -> void:
 			engine_pitch = minf(MAX_PITCH, 1.0 + (speed - cruise) / cruise * 0.5)
 		emitter.motor.pitch_scale = clampf(engine_pitch * doppler, 0.3, 2.5)
 		var idle_db := lerpf(-5.0, 0.0, clampf(speed / cruise, 0.0, 1.0))
+		# a tram or a train standing still makes no sound: it fades out under RAIL_SILENT_BELOW m/s
+		if emitter.kind == "tram" or emitter.kind == "trein":
+			idle_db += linear_to_db(maxf(clampf(speed / RAIL_SILENT_BELOW, 0.0, 1.0), 0.0001))
 		emitter.motor.volume_db = emitter.base_db + idle_db + duck_db
 		if crashed and not emitter.was_crashed:
-			_one_shot(vehicle.global_position, "auto_botsing_hard" if emitter.last_speed > HARD_CRASH_SPEED else "auto_botsing_licht", 10.0, -3.0)
+			_one_shot(vehicle.global_position, "auto_botsing_hard" if emitter.last_speed > HARD_CRASH_SPEED else "auto_botsing_licht", 10.0, EVENT_DB)
 		if crashed:
 			emitter.motor.volume_db = -80.0
 		_signals(emitter, speed)
@@ -357,11 +383,11 @@ func _signals(emitter: Emitter, speed: float) -> void:
 	var standing := speed < 0.5
 	var position := emitter.vehicle.global_position
 	if emitter.kind == "bus" and standing and not emitter.was_standing and emitter.last_speed > 0.0:
-		_one_shot(position, "bus_remmen", 8.0, -4.0)
+		_one_shot(position, "bus_remmen", 8.0, BACKGROUND_DB)
 	if emitter.kind == "tram" and not standing and emitter.was_standing:
-		_one_shot(position, "tram_bel", 10.0, -3.0)
+		_one_shot(position, "tram_bel", 10.0, SIGNAL_DB)
 	if emitter.kind == "trein" and not standing and emitter.was_standing and _random.randf() < 0.5:
-		_one_shot(position, "trein_hoorn", 20.0, -4.0)
+		_one_shot(position, "trein_hoorn", 20.0, SIGNAL_DB)
 	emitter.was_standing = standing
 
 
@@ -386,7 +412,7 @@ func _update_yelp(emitter: Emitter, speed: float, siren_on: bool) -> void:
 	if yelp and emitter.vehicle is FireEngine and _clock >= emitter.horn_ready_at:
 		emitter.horn_ready_at = _clock + HORN_PAUSE
 		if _random.randf() < HORN_CHANCE:
-			_one_shot(emitter.vehicle.global_position, FIRE_HORN, 14.0, -4.0)
+			_one_shot(emitter.vehicle.global_position, FIRE_HORN, 14.0, SIGNAL_DB)
 
 
 func _pass_by_distance(emitter: Emitter) -> float:
@@ -436,6 +462,7 @@ func _check_pass_by(emitter: Emitter) -> void:
 	player.max_distance = HEARING_RANGE * 2.0
 	player.volume_db = PASS_BY_VOLUME_DB
 	player.attenuation_filter_db = 0.0
+	_even_out(player)
 	player.position = Vector3.UP * 0.8
 	vehicle.add_child(player)
 	player.finished.connect(player.queue_free)
@@ -473,9 +500,26 @@ func _doppler(vehicle: Node3D) -> float:
 ## A sound from assets/audio/geluiden/ once at `at`, placed in 3D like the traffic; for others
 ## than the traffic, such as the player's cries of pain (PlayerController). Nothing happens
 ## outside the city.
+## Something that happens to you or right by you (a hit, a cry, a splash): at EVENT_DB.
+func play_event(at: Vector3, sound_name: String, unit := 8.0) -> void:
+	play_at(at, sound_name, EVENT_DB, unit)
+
+
+## A signal of the traffic (a horn, a bell): at SIGNAL_DB.
+func play_signal(at: Vector3, sound_name: String, unit := 8.0) -> void:
+	play_at(at, sound_name, SIGNAL_DB, unit)
+
+
 func play_at(at: Vector3, sound_name: String, volume_db := 0.0, unit := 8.0) -> void:
 	if _active:
 		_one_shot(at, sound_name, unit, volume_db)
+
+
+## Distance softens a sound gently (logarithmic), and never makes it louder than its level
+## close by: so what is near and what is far differ less (HEARING_RANGE).
+static func _even_out(player: AudioStreamPlayer3D) -> void:
+	player.attenuation_model = AudioStreamPlayer3D.ATTENUATION_LOGARITHMIC
+	player.max_db = 0.0
 
 
 func _one_shot(at: Vector3, sound_name: String, unit: float, volume_db: float) -> void:
@@ -484,11 +528,15 @@ func _one_shot(at: Vector3, sound_name: String, unit: float, volume_db: float) -
 		return
 	var player := AudioStreamPlayer3D.new()
 	player.stream = stream
-	player.bus = BUS_NAME
+	player.bus = EVENT_BUS_NAME
 	player.unit_size = unit
 	player.max_distance = HEARING_RANGE * 1.5
 	player.volume_db = volume_db
 	player.attenuation_filter_db = 0.0
+	_even_out(player)
+	# max_db caps volume_db too: at 0 dB a horn or a cry above 0 (EVENT_DB, SIGNAL_DB) would
+	# be cut back to the level of the engines and be lost under them and the music
+	player.max_db = maxf(volume_db, 0.0)
 	add_child(player)
 	player.global_position = at + Vector3.UP
 	player.finished.connect(player.queue_free)
@@ -534,6 +582,18 @@ func _ensure_bus() -> void:
 	var limiter := AudioEffectHardLimiter.new()
 	limiter.ceiling_db = LIMITER_CEILING_DB
 	AudioServer.add_bus_effect(_bus_index, limiter)
+	_event_bus_index = AudioServer.get_bus_index(EVENT_BUS_NAME)
+	if _event_bus_index == -1:
+		AudioServer.add_bus()
+		_event_bus_index = AudioServer.bus_count - 1
+		AudioServer.set_bus_name(_event_bus_index, EVENT_BUS_NAME)
+		AudioServer.set_bus_send(_event_bus_index, "Master")
+	while AudioServer.get_bus_effect_count(_event_bus_index) > 0:
+		AudioServer.remove_bus_effect(_event_bus_index, 0)
+	var event_limiter := AudioEffectHardLimiter.new()
+	event_limiter.ceiling_db = LIMITER_CEILING_DB
+	AudioServer.add_bus_effect(_event_bus_index, event_limiter)
+	AudioServer.set_bus_volume_db(_event_bus_index, BUS_VOLUME_DB)
 	_guard_master()
 
 

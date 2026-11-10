@@ -50,6 +50,7 @@ const STATES := {
 var _lights := []        # {cell, kind, ns, group, shown}
 var _groups := []        # per intersection: time offset
 var _centres := []       # per intersection: mean position of its lights (metres)
+var _walk_lights := {}   # intersection -> true if it has pedestrian lights
 var _ids := {}           # prop name -> item id
 var _time := 0.0
 
@@ -92,6 +93,9 @@ func _ready() -> void:
 					b.group = g
 					todo.append(found.find(b))
 	_lights = found
+	for light in found:
+		if light.kind == "voetganger":
+			_walk_lights[light.group] = true
 	for g in _groups.size():
 		var sum := Vector3.ZERO
 		var n := 0
@@ -160,6 +164,28 @@ func car_phase(pos: Vector3, north_south: bool, radius := 14.0) -> int:
 	if own < green_time + amber_time:
 		return 1
 	return 2
+
+
+## Whether someone on foot at `pos` (metres), crossing along z (`along_z`, beside the
+## north-south stream) or along x, may start crossing at the nearest intersection with
+## pedestrian lights within `radius` metres: 0 green (in the first `pedestrian_time` seconds
+## of its stream's green), 1 red (wait), -1 no pedestrian lights there (scripts/world/pedestrian.gd).
+func pedestrian_phase(pos: Vector3, along_z: bool, radius := 16.0) -> int:
+	var best := -1
+	var best_distance := radius
+	for group in _centres.size():
+		if not _walk_lights.has(group):
+			continue
+		var distance := Vector2(_centres[group].x - pos.x, _centres[group].z - pos.z).length()
+		if distance <= best_distance:
+			best_distance = distance
+			best = group
+	if best < 0:
+		return -1
+	var half := green_time + amber_time + clearance_time
+	var time_in_cycle := fposmod(_time + _groups[best], 2.0 * half)
+	var own := time_in_cycle if along_z else fposmod(time_in_cycle - half, 2.0 * half)
+	return 0 if own < pedestrian_time else 1
 
 
 ## Intersections within `in_step_within` of each other (and on, chained) take the time

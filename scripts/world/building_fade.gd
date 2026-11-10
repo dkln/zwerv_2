@@ -1,17 +1,18 @@
 extends Node
-## See-through buildings (the "Doorkijk" node): while the follow camera (Volgcamera,
-## scripts/camera/follow_camera.gd) follows a vehicle, every building that stands between
-## the vehicle and the camera fades out, as a whole, and fades back in once the view is
-## clear again.
+## A view hole through buildings (the "Doorkijk" node): while the follow camera (Volgcamera,
+## scripts/camera/follow_camera.gd) follows the player (or a vehicle), every building that
+## stands between it and the camera gets a round hole (`hole_radius` metres) in it, along the
+## view from the player to the camera, opening and closing in `fade_time`; the rest of the
+## building stays.
 ##
 ## A building is a group of touching cells of the Gebouwen GridMap (seen from above:
 ## cells that share a side, at any height). The merged chunk meshes hold many buildings,
 ## so the fading is done in the voxel shaders (addons/vox_tiles/materials/voxel_fade.gdshaderinc):
 ## a texture with one pixel per 4 x 4 m cell holds how far the building on that cell has
-## faded (global shader parameters `zwervr_fade_map` and `zwervr_fade_area`), and the
-## shaders leave out that share of its pixels in an even screen-door pattern. Every cell
-## of a building gets the same value, so the whole building fades at once (never single
-## faces), and its shadow stays.
+## opened its hole (global shader parameters `zwervr_fade_map` and `zwervr_fade_area`; the
+## last row of the texture holds the hole: pixel 0 = its centre x, y, z and radius), and the
+## shaders leave out what of it lies in the hole (a dithered edge). Every cell of a building
+## gets the same value, so its hole opens at once (never single faces), and its shadow stays.
 ##
 ## Shaders that can leave out pixels are much slower on tile-based GPUs (Apple), so the
 ## voxel shaders only do it when compiled with ZWERVR_FADE: only the merged chunk meshes
@@ -54,6 +55,12 @@ const Iso = preload("res://scripts/camera/iso_camera.gd")
 ## picture: the camera's right and up), and the heights (metres above it) of the test
 ## points: the vehicle and a little room around it should stay in sight.
 @export var test_reach := 3.0
+## The same for someone on foot (not a Vehicle): only what covers the figure itself fades,
+## not a building it stands in front of or beside that only covers the room round it.
+@export var walker_reach := 0.5
+## Radius (metres) of the view hole round the followed (across the view). Only how big the
+## hole is: whether a building gets one depends on the test points (test_reach, walker_reach).
+@export var hole_radius := 6.0
 @export var test_heights := PackedFloat32Array([0.3, 1.6])
 ## Highest point (metres above the vehicle) up to which the view lines are followed (and
 ## never past the camera).
@@ -137,7 +144,8 @@ func _find_buildings() -> void:
 			_with_deck[_building_of[flat]] = true
 	_origin = lowest
 	var size := highest - lowest + Vector2i.ONE
-	_image = Image.create(size.x, size.y, false, Image.FORMAT_R8)
+	# floats: the last row holds the centre and radius of the hole in metres
+	_image = Image.create(size.x, size.y + 1, false, Image.FORMAT_RGBAF)
 	_texture = ImageTexture.create_from_image(_image)
 
 
@@ -160,6 +168,10 @@ func _blocking() -> Dictionary:
 	if camera:
 		# no further than the camera: what lies behind it is not in view
 		steps = mini(steps, int(centre.distance_to(camera.global_position) / STEP))
+	# only what really covers the followed gets a hole (a building it stands in front of, or
+	# beside, does not), however big the hole then is
+	var reach := test_reach if vehicle is Vehicle else walker_reach
+	var flat_towards := Vector2(towards_camera.x, towards_camera.z)
 	var corners: Array[Vector2] = []
 	for row in 3:
 		for column in 3:
@@ -169,11 +181,14 @@ func _blocking() -> Dictionary:
 			# the test points lie round the vehicle as seen in the picture (across the view,
 			# not on the ground): only what covers the vehicle and the room round it on the
 			# screen blocks it, not the facades beside a narrow street
-			var start := centre + Vector3.UP * height + (across * corner.x + upwards * corner.y) * test_reach
+			var start := centre + Vector3.UP * height + (across * corner.x + upwards * corner.y) * reach
 			for step in range(1, steps + 1):
 				var point := start + towards_camera * (step * STEP)
 				var cell := _buildings.local_to_map(to_map * point)
-				if _buildings.get_cell_item(cell) != GridMap.INVALID_CELL_ITEM and _in_front(cell, centre, towards_camera):
+				# the sample itself lies on the camera's side of the followed too: a test point
+				# shifted up in the picture starts behind it, inside the building at its back
+				var ahead := Vector2(point.x - centre.x, point.z - centre.z).dot(flat_towards) > 0.0
+				if ahead and _buildings.get_cell_item(cell) != GridMap.INVALID_CELL_ITEM and _in_front(cell, centre, towards_camera):
 					found[_building_of[Vector2i(cell.x, cell.z)]] = true
 				if _ground and point.y > lowest_deck:
 					var ground_cell := _ground.local_to_map(to_ground * point)
@@ -215,8 +230,21 @@ func _process(delta: float) -> void:
 			_use_fade_materials(index, false)
 		else:
 			_fade[index] = next
+	if not _fade.is_empty():
+		_place_hole()
+		changed = true
 	if changed:
 		_texture.update(_image)
+
+
+## The centre (the middle of the followed, as drawn) and radius of the hole, in the last row.
+func _place_hole() -> void:
+	var followed: Node3D = _follow.get("target_node")
+	if followed == null:
+		return
+	var centre: Vector3 = followed.call("drawn_position") if followed.has_method("drawn_position") else followed.global_position
+	centre += Vector3.UP * 0.9
+	_image.set_pixel(0, _image.get_height() - 1, Color(centre.x, centre.y, centre.z, hole_radius))
 
 
 ## Gives the merged chunk meshes on building `index` the materials that can fade (on),

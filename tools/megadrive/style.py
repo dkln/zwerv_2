@@ -19,7 +19,7 @@ Ingredients (the agreement of the project, kept from the earlier generator):
     PSG square arpeggios, echoes and counter-lines, PCM drums (kick, snare, clap, toms) and
     PSG-noise hats and crashes.
   - one mix: the same tracks with the same pans and levels everywhere (`HouseTracks`), hard-ish
-    panning per channel as on the console, master at about -14 dB RMS with peaks near -1 dB.
+    panning per channel as on the console; every file ends at -16 LUFS, peaks under -1.5 dB (loudness.py).
 
 Phrases are written as text, one token per note, `name:sixteenths`:
     "F5:4"   a note          "-:2"  a rest
@@ -33,6 +33,7 @@ import sys
 from dataclasses import dataclass
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import loudness  # noqa: E402
 import megadrive  # noqa: E402
 from megadrive import FmPatch, Operator, Track  # noqa: E402
 
@@ -242,6 +243,9 @@ BASS_GROOVES = {
     "pulse": [(step, 1, "R", 0.9 if step % 4 == 0 else 0.7) for step in range(0, 16, 2)],
     "hold": [(0, 12, "R", 0.85), (12, 2, "5", 0.6), (14, 2, "O", 0.7)],
     "whole": [(0, 15, "R", 0.85)],
+    # ska: a walking line, a note on every beat climbing through the chord, a push into the next
+    "walking": [(0, 3, "R", 1.0), (4, 3, "3", 0.85), (8, 3, "5", 0.9), (12, 2, "7", 0.8), (14, 2, "5", 0.7)],
+    "walking_up": [(0, 3, "R", 1.0), (4, 3, "5", 0.85), (8, 3, "O", 0.9), (12, 2, "5", 0.8), (14, 2, "3", 0.75)],
     "new_jack": [(0, 3, "R", 1.0), (3, 1, "O", 0.8), (6, 1, "R", 0.7), (7, 2, "7", 0.85), (10, 1, "R", 0.9),
                  (11, 1, "O", 0.7), (13, 1, "5", 0.7), (14, 2, "3", 0.8)],
 }
@@ -300,6 +304,9 @@ class Song:
             fade_samples = int(fade_out * megadrive.SAMPLE_RATE)
             fade = megadrive.numpy.linspace(1.0, 0.0, fade_samples) ** 2
             stereo[-fade_samples:] *= fade[:, None]
+        # target_rms_db only sets how hard the mix hits the limiter (the density); every file
+        # ends at one loudness (loudness.py), so the game alone decides how loud a piece plays
+        stereo = loudness.level(stereo, one_shot=False, ceiling_db=peak_db)
         target = os.path.join(MUSIC_FOLDER, self.file_name)
         megadrive.write_ogg(target, stereo)
         print(f"written: {target}  ({self.bars} bars at {self.bpm:g} BPM, {self.seconds:.2f} s"
@@ -349,6 +356,9 @@ PIANO_RHYTHMS = {
     "push": [(0, 3, 1.0), (3, 2, 0.7), (6, 1, 0.8), (10, 3, 0.9), (14, 1, 0.6)],
     "answer": [(0, 2, 0.9), (4, 1, 0.6), (6, 3, 0.85), (11, 2, 0.8), (14, 2, 0.7)],
     "offbeats": [(2, 2, 0.85), (6, 2, 0.8), (10, 2, 0.85), (14, 2, 0.75)],
+    # ska: the skank, short and hard on every upbeat; the "bubble" doubles each one
+    "skank": [(2, 1, 0.95), (6, 1, 0.9), (10, 1, 0.95), (14, 1, 0.85)],
+    "bubble": [(2, 1, 0.9), (3, 1, 0.5), (6, 1, 0.85), (7, 1, 0.5), (10, 1, 0.9), (11, 1, 0.5), (14, 1, 0.85), (15, 1, 0.5)],
     "sparse": [(0, 3, 0.6), (10, 3, 0.6)],
     "held": [(0, 15, 0.7)],
 }
@@ -409,6 +419,7 @@ def crash(song: Song, bar: int, step: float = 0, volume: float = 1.0) -> None:
 
 
 KICK_PATTERNS = {"four": (0, 4, 8, 12), "push": (0, 4, 8, 12, 14), "broken": (0, 7, 10), "half": (0, 10),
+                 "ska": (0, 8), "ska_push": (0, 8, 11),
                  "gallop": (0, 3, 4, 8, 11, 12), "none": ()}
 SNARE_PATTERNS = {"backbeat": (4, 12), "half": (8,), "none": ()}
 
@@ -463,6 +474,36 @@ def drum_bar(song: Song, bar: int, kick: str = "four", snare: str = "backbeat", 
                 continue
             song.pcm.add(song.at(bar, step), SNARE, (0.2 + 0.75 * step / 15) * velocity)
         song.pcm.add(song.at(bar, 15), CLAP, 0.9 * velocity)
+
+
+## Drum solos: one bar each, (step, drum, velocity); drum K kick, S snare, C clap, T0..T2 the
+## toms high to low, X a crash.
+DRUM_SOLOS = {
+    # down the toms in sixteenths, kicks under the ones
+    "toms_down": [(0, "K", 1.0), (0, "S", 0.9), (2, "T0", 0.8), (3, "T0", 0.6), (4, "T0", 0.9), (5, "T1", 0.7),
+                  (6, "T1", 0.85), (7, "T1", 0.6), (8, "K", 0.9), (8, "T1", 0.9), (9, "T2", 0.7), (10, "T2", 0.85),
+                  (11, "T2", 0.65), (12, "S", 0.8), (13, "S", 0.6), (14, "T0", 0.9), (15, "T2", 1.0)],
+    # snare and kick trading, syncopated, as a ska drummer
+    "trade": [(0, "K", 1.0), (2, "S", 0.9), (3, "S", 0.5), (4, "K", 0.8), (6, "S", 0.95), (7, "K", 0.7),
+              (9, "S", 0.6), (10, "S", 0.9), (11, "K", 0.7), (12, "S", 0.7), (13, "S", 0.8), (14, "S", 0.9),
+              (15, "S", 1.0)],
+    # accents with a clap, then a tom run up to the one
+    "accents": [(0, "K", 1.0), (0, "X", 0.6), (3, "S", 0.9), (3, "C", 0.6), (6, "S", 0.9), (6, "C", 0.6),
+                (8, "K", 0.9), (10, "S", 0.9), (10, "C", 0.6), (12, "T2", 0.8), (13, "T1", 0.85), (14, "T0", 0.9),
+                (15, "T0", 1.0)],
+    # a building snare roll in thirty-seconds
+    "roll": [(step * 0.5, "S", 0.25 + 0.75 * step / 31) for step in range(32)] + [(0, "K", 1.0), (8, "K", 0.9)],
+}
+
+
+def drum_solo(song: Song, bar: int, solo: str, velocity: float = 1.0) -> None:
+    """One bar of a drum solo (DRUM_SOLOS), the drums alone."""
+    sounds = {"K": KICK, "S": SNARE, "C": CLAP, "T0": TOMS[0], "T1": TOMS[1], "T2": TOMS[2]}
+    for step, drum, hit_velocity in DRUM_SOLOS[solo]:
+        if drum == "X":
+            crash(song, bar, step, hit_velocity)
+        else:
+            song.pcm.add(song.at(bar, step), sounds[drum], hit_velocity * velocity)
 
 
 def big_hit(song: Song, bar: int, step: float, chord: Chord, sixteenths: float) -> None:

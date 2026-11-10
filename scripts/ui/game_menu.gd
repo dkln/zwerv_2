@@ -10,9 +10,12 @@ extends CanvasLayer
 ##   chosen item on the right (rarity, name, kind, effects, text, use and drop buttons);
 ## - QUESTS: the quests of the HUD (hud.quests(), the format of set_quests) in two lists,
 ##   VERHAAL and ZIJMISSIES, the chosen one on the right with its steps and rewards;
+##   Enter (or VOLGEN) follows the chosen quest (hud.track_quest): its places on the minimap
+##   and the map, on top of the tracker;
 ## - KAART: the whole map of the HUD's minimap (hud.minimap_texture()) with the player as a
 ##   white triangle, the named places ("places" scene metadata) as markers that can be
-##   chosen, the neighbourhoods not visited yet (hud.visited_areas()) under a fog.
+##   chosen, the neighbourhoods not visited yet (hud.visited_areas()) under a fog, and the
+##   places the followed quest sends you to (hud.quest_targets()) as amber diamonds.
 ## Keys: Tab or I opens the inventory, J the quests, M the map; Q / E change tab; Tab or
 ## Escape closes; arrows / WASD and Enter choose; the mouse works too. While open the game
 ## stands still (the tree paused). It does not open while the pause menu has the game paused
@@ -24,6 +27,9 @@ extends CanvasLayer
 
 const UiStyle = preload("res://scripts/ui/ui_style.gd")
 const UiSounds = preload("res://scripts/ui/ui_sounds.gd")
+const QuestMarks = preload("res://scripts/ui/widgets/quest_marks.gd")
+## The colour of the XP a step gives (as the XP bar of the HUD).
+const XP_TEXT_COLOUR := Color("#47D6C2")
 const PixelIcon = preload("res://scripts/ui/widgets/pixel_icon.gd")
 const SegmentBar = preload("res://scripts/ui/widgets/segment_bar.gd")
 const PlayerArrow = preload("res://scripts/ui/widgets/player_arrow.gd")
@@ -35,6 +41,8 @@ const Iso = preload("res://scripts/camera/iso_camera.gd")
 ## Size of the design; the menu is laid out at this size and scaled to the window.
 const DESIGN_SIZE := Vector2(1280.0, 720.0)
 const TAB_BAR_HEIGHT := 64.0
+## Space left and right of a tab title, inside its amber background when chosen.
+const TAB_PADDING_X := 18
 const PAGE_MARGIN_X := 28
 const PAGE_MARGIN_Y := 22
 const PLAYER_NODE := "Speler"
@@ -43,7 +51,7 @@ const TABS := ["inventaris", "quests", "kaart"]
 const TAB_TITLES := {"inventaris": "INVENTARIS", "quests": "QUESTS", "kaart": "KAART"}
 
 ## Colours of the designs beyond the shared palette (UiStyle).
-const RAISED := Color("#1C2142")         # a chosen button or row
+const RAISED := UiStyle.RAISED          # a chosen button or row
 const SELECTED_SLOT := Color("#232A55")
 const EMPTY_SLOT := Color("#10132A")
 const EMPTY_BORDER := Color("#232850")
@@ -68,6 +76,8 @@ const GRID_COLUMNS := 6
 const GRID_ROWS := 5
 const SLOT_SIZE := 69.0
 const SLOT_GAP := 6
+## How much of a shut slot shows (beyond the room the player has).
+const LOCKED_SLOT_ALPHA := 0.3
 
 ## How the stats are called in the menu (the HUD's STATS give icon and colours), and the
 ## stats where less is better (a negative effect shows green).
@@ -453,6 +463,25 @@ func _quest_key(key: Key) -> void:
 				UiSounds.play(self, "kies")
 				_selected_quest = index
 				_refresh_quests()
+	elif _is_accept(key):
+		_track_selected_quest()
+
+
+## Follows the chosen quest (GameHud.track_quest).
+func _track_selected_quest() -> void:
+	var quests := _quests_of_kind(_quest_kind)
+	if quests.is_empty() or _hud == null or not _hud.has_method("track_quest"):
+		return
+	var id: String = GameHud.quest_id(quests[_selected_quest])
+	if id == _tracked_id():
+		return
+	UiSounds.play(self, "doe")
+	_hud.track_quest(id)
+	_refresh_quests()
+
+
+func _tracked_id() -> String:
+	return _hud.tracked_quest_id() if _hud and _hud.has_method("tracked_quest_id") else ""
 
 
 func _map_key(key: Key) -> void:
@@ -470,7 +499,7 @@ func _show_tab(tab_name: String, with_sound := true) -> void:
 	for name_of_tab: String in TABS:
 		var on := name_of_tab == tab_name
 		(_pages[name_of_tab] as Control).visible = on
-		(_tab_boxes[name_of_tab] as Box).style = UiStyle.box_style(UiStyle.ACCENT if on else Color(0, 0, 0, 0), UiStyle.ACCENT, 0)
+		(_tab_boxes[name_of_tab] as Box).style = _style(UiStyle.ACCENT if on else Color(0, 0, 0, 0), UiStyle.ACCENT, 0, TAB_PADDING_X)
 		var tab_label: Label = _tab_labels[name_of_tab]
 		tab_label.add_theme_font_override("font", _font_title if on else _font_title_medium)
 		tab_label.add_theme_color_override("font_color", UiStyle.INK if on else UiStyle.TEXT)
@@ -481,7 +510,7 @@ func _show_tab(tab_name: String, with_sound := true) -> void:
 func _refresh() -> void:
 	if not _is_open:
 		return
-	_money_label.text = GameHud._thousands(roundi(_money()))
+	_money_label.text = GameHud.money_text(_money())
 	match _current_tab:
 		"inventaris":
 			_header_info.text = "%d SPULLEN BIJ JE" % _item_total()
@@ -553,6 +582,17 @@ func _inventory() -> Dictionary:
 	if _player and "inventory" in _player:
 		return _player.inventory
 	return _fallback_inventory
+
+
+## How many kinds of item the player has room for (Items.BASE_SLOTS, more with a rucksack).
+func _slot_count() -> int:
+	if _player and _player.has_method("inventory_slots"):
+		return mini(int(_player.inventory_slots()), GRID_COLUMNS * GRID_ROWS)
+	return Items.BASE_SLOTS
+
+
+func _has_backpack() -> bool:
+	return _player != null and _player.get("has_backpack") == true
 
 
 func _item_total() -> int:
@@ -680,7 +720,7 @@ func _build_tab_bar() -> Control:
 	left_key.custom_minimum_size = Vector2(32, 0)
 	row.add_child(left_key)
 	for tab_name: String in TABS:
-		var tab := _box(_style(Color(0, 0, 0, 0), UiStyle.ACCENT, 0, 18), 0.0, true)
+		var tab := _box(_style(Color(0, 0, 0, 0), UiStyle.ACCENT, 0, TAB_PADDING_X), 0.0, true)
 		var tab_label := _label(TAB_TITLES[tab_name], _font_title_medium, 18)
 		tab_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		tab.add_child(tab_label)
@@ -701,7 +741,7 @@ func _build_tab_bar() -> Control:
 	gap.custom_minimum_size = Vector2(18, 0)
 	gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(gap)
-	# the money as in the HUD: a pixel euro sign and whole euros
+	# the money as in the HUD: a pixel euro sign and euros to the cent
 	var coin := PixelIcon.new()
 	coin.bitmap = ["...####", "..#....", "######.", ".#.....", "######.", "..#....", "...####"]
 	coin.colour = UiStyle.ACCENT
@@ -949,12 +989,14 @@ func _refresh_inventory() -> void:
 		var slot := _slots[slot_index]
 		var icon := _slot_icons[slot_index]
 		var count := _slot_counts[slot_index]
+		# the slots beyond the room it has (no rucksack: only the pockets) are shut
+		slot.modulate.a = 1.0 if slot_index < _slot_count() else LOCKED_SLOT_ALPHA
 		if slot_index >= _shown_items.size():
 			slot.style = _style(EMPTY_SLOT, EMPTY_BORDER, 2, 4, 1)
 			slot.shadow_offset = 0.0
 			icon.bitmap = []
 			count.text = ""
-			slot.tooltip_text = ""
+			slot.tooltip_text = "" if slot_index < _slot_count() else "Meer ruimte met een rugzak"
 			continue
 		var item_id := _shown_items[slot_index]
 		var rarity_colour := _rarity_colour(item_id)
@@ -967,7 +1009,7 @@ func _refresh_inventory() -> void:
 		count.text = str(amount) if amount > 1 else ""
 		slot.tooltip_text = _item_name(item_id)
 	var used := _items_in_category("").size()
-	_slots_used_label.text = "%d / %d VAKJES" % [used, GRID_COLUMNS * GRID_ROWS]
+	_slots_used_label.text = "%d / %d VAKJES" % [used, _slot_count()] + ("  · RUGZAK" if _has_backpack() else "")
 	_refresh_item_detail()
 
 
@@ -1157,7 +1199,7 @@ static func _take_one(inventory: Dictionary, item_id: String) -> void:
 # ------------------------------------------------------------------ quest page
 
 func _build_quest_page() -> Control:
-	var parts := _page("Quests", "[↑↓] KIEZEN   [←→] VERHAAL / ZIJMISSIES   [Q/E] TAB   [TAB] SLUITEN")
+	var parts := _page("Quests", "[↑↓] KIEZEN   [ENTER] VOLGEN   [←→] VERHAAL / ZIJMISSIES   [Q/E] TAB   [TAB] SLUITEN")
 	var content: HBoxContainer = parts[1]
 	_quest_content = content
 	var list_column := _vbox(12)
@@ -1286,7 +1328,8 @@ func _quest_row(quest: Dictionary, quest_index: int) -> Control:
 	title.clip_text = true
 	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	texts.add_child(title)
-	var status := _label(_quest_status(quest), _font_pixel, 10, UiStyle.MUTED)
+	var followed := GameHud.quest_id(quest) == _tracked_id()
+	var status := _label(("◆ VOLGT  " if followed else "") + _quest_status(quest), _font_pixel, 10, UiStyle.ACCENT if followed else UiStyle.MUTED)
 	status.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	line.add_child(status)
 	row.pressed.connect(func() -> void:
@@ -1359,6 +1402,7 @@ func _fill_quest_detail(quest: Dictionary) -> void:
 		goals.add_child(_label("DOELEN", UiStyle.spaced(_font_pixel, 2), 11, UiStyle.MUTED))
 		for step: Dictionary in steps:
 			var done: bool = step.get("done", false)
+			var locked: bool = step.get("locked", false) and not done
 			var step_colour := UiStyle.MUTED if done else UiStyle.TEXT
 			var row := _hbox(10)
 			var check := Panel.new()
@@ -1367,14 +1411,26 @@ func _fill_quest_detail(quest: Dictionary) -> void:
 			check.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			check.add_theme_stylebox_override("panel", UiStyle.box_style(step_colour if done else Color(0, 0, 0, 0), step_colour, 2))
 			row.add_child(check)
-			var step_text := _label(str(step.get("text", "")), _font_body, 14, step_colour)
+			var step_text := _label(str(step.get("text", "")) + ("  (eerst de stap hiervoor)" if locked else ""), _font_body, 14, step_colour)
 			step_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			step_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			row.add_child(step_text)
 			if step.has("progress"):
 				row.add_child(_label(str(step.progress), _font_pixel, 11, step_colour))
+			if int(step.get("xp", 0)) > 0:
+				row.add_child(_label("+%d XP" % int(step.xp), _font_pixel, 11, step_colour if done else XP_TEXT_COLOUR))
+			# a step that cannot be done yet: see-through
+			if locked:
+				row.modulate.a = GameHud.LOCKED_STEP_OPACITY
 			goals.add_child(row)
 		_quest_detail_column.add_child(goals)
+	var followed := GameHud.quest_id(quest) == _tracked_id()
+	var follow := _box(_style(RAISED if followed else UiStyle.INK, colour if followed else UiStyle.BORDER, 2, 12, 6), 0.0, not followed)
+	follow.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	follow.add_child(_label("◆ JE VOLGT DEZE OPDRACHT" if followed else "[ENTER] VOLGEN", _font_pixel, 11, colour if followed else UiStyle.TEXT))
+	if not followed:
+		follow.pressed.connect(_track_selected_quest)
+	_quest_detail_column.add_child(follow)
 	_quest_detail_column.add_child(_spacer())
 	var rewards: Array = quest.get("rewards", [])
 	if not rewards.is_empty():
@@ -1738,6 +1794,10 @@ func _draw_map_overlay() -> void:
 		_map_overlay.draw_rect(Rect2(at - Vector2(11, 11), Vector2(22, 22)), Color.WHITE)
 		_map_overlay.draw_rect(Rect2(at - Vector2(8, 8), Vector2(16, 16)), UiStyle.INK)
 		_map_overlay.draw_rect(Rect2(at - Vector2(5, 5), Vector2(10, 10)), _place_colour(chosen))
+	# where the followed quest sends you, over everything
+	if _hud and _hud.has_method("quest_targets"):
+		for target: Vector2 in _hud.quest_targets():
+			QuestMarks.draw_mark(_map_overlay, _world_to_map(target).round(), 8.0)
 
 
 func _place_colour(place: Dictionary) -> Color:

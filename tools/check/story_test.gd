@@ -1,7 +1,7 @@
 extends SceneTree
 ## Checks the story of the town headless: after waking up the prologue opens in the story box
 ## (the game paused, the text appearing word by word), Enter goes through it, mission 1 is in
-## the tracker, coins lie on the streets, picking them up gives money, and at € 2 earned the
+## the tracker and announced at the top with its jingle, coins lie on the streets, picking them up gives money, and at € 2 earned the
 ## thought shows and the step is ticked off.
 ## usage: Godot --headless --script tools/check/story_test.gd [-- <archetype>]
 
@@ -24,6 +24,7 @@ func _init() -> void:
 	var hud: Node = scene.get_node("HUD")
 	var loose_change: Node = scene.get_node("Kleingeld")
 	await process_frame   # _ready runs once the tree turns (not in _init)
+	scene.get_node("Volgcamera")._end_arrival()   # no descent from the sky first (arrival_test.gd)
 	var box: Control = hud._story_box
 	for frame_index in 900:
 		await process_frame
@@ -48,6 +49,11 @@ func _init() -> void:
 	_check(not box.is_showing() and not paused, "verhaal dicht, spel gaat door")
 	var quests: Array = hud.quests()
 	_check(quests.size() == 1 and String(quests[0].title).contains("kroket"), "missie 1 in de tracker")
+	_check(hud.quest_targets().is_empty(), "geldstap zonder plek op de kaart")
+	_check(bool(quests[0].steps[1].locked), "kroketstap op slot tot de twee euro er zijn")
+	_check(hud.is_showing_notice() and hud._area_heading.text.contains("NIEUWE MISSIE") and hud._area_name.text.contains("kroket"),
+		"de nieuwe missie bovenin in beeld (%s: %s)" % [hud._area_heading.text, hud._area_name.text])
+	_check(hud.has_node("MissieDeuntje") or not ResourceLoader.exists(hud.MISSION_JINGLE), "met het missiedeuntje")
 	await physics_frame
 	var coins: int = loose_change.coins_left()
 	print("munten op straat: ", coins)
@@ -69,6 +75,11 @@ func _init() -> void:
 	await Common.wait_frames(self, 3)
 	_check(box.is_showing() and box._pages[0].kind == "gedachte", "gedachte bij twee euro")
 	_check(bool(hud.quests()[0].steps[0].done), "stap afgevinkt")
+	var targets: Array = hud.quest_targets()
+	print("snackbars: ", targets)
+	_check(not bool(hud.quests()[0].steps[1].locked) and targets.size() > 0, "kroketstap open, snackbars op de kaart (%d)" % targets.size())
+	_check(hud._minimap_marks.points.size() == targets.size(), "en op het kaartje")
+	_check(is_equal_approx(player.xp, 50.0) and hud._xp_text.text.begins_with("50"), "50 XP voor de eerste stap (%.0f)" % player.xp)
 	print("verhaal ok" if _problems.is_empty() else "verhaal problemen: " + str(_problems))
 	quit(0 if _problems.is_empty() else 1)
 

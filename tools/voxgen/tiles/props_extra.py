@@ -256,6 +256,36 @@ def standing_table():
     return m
 
 
+@tile("props/terras/friet_puntzak")
+def fries_cone():
+    """The big fries cone outside a snack bar (Jan Blammage): a white paper cone with red
+    bands on a short post and a square foot, golden fries sticking out of it every which
+    height, a dollop of mayonnaise on the front."""
+    m = V(10, 10, 17)
+    centre = 5.0
+    # the foot and the post up to the tip of the cone
+    m.box(2, 2, 0, 8, 8, 1, "metaal3")
+    m.box(4, 4, 1, 6, 6, 3, "metaal3")
+    # the cone: narrow at the bottom (z 3), wide at its rim (z 11)
+    for z in range(3, 12):
+        radius = 0.8 + (z - 3) * 0.36
+        band = "lak_rood1" if (z - 3) % 3 == 2 else "lak_wit1"
+        m.cyl(centre, centre, radius, z, z + 1, band)
+    # the fries: sticks of one voxel, different heights, two shades
+    for x in range(2, 9):
+        for y in range(2, 9):
+            if (x + 0.5 - centre) ** 2 + (y + 0.5 - centre) ** 2 > 3.4 ** 2:
+                continue
+            top = 13 + (x * 7 + y * 3) % 4
+            shade = "lak_geel1" if (x + y) % 3 else "lak_geel2"
+            for z in range(12, top):
+                m.set(x, y, z, shade)
+    # a dollop of mayonnaise on the front (low y is the front)
+    m.cyl(centre, 3.0, 1.6, 13, 14, "bord_wit")
+    m.cyl(centre, 3.0, 0.9, 14, 15, "bord_wit")
+    return m
+
+
 @tile("props/terras/bloembak_terras")
 def flower_box_terrace():
     """Long wooden planter with a flowering shrub."""

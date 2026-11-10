@@ -17,9 +17,16 @@ extends Node
 ## Next to itself it makes the street lights (StreetLights, "Straatverlichting"): at night the
 ## lamps of the Props layer light the street.
 
+const IsoView = preload("res://scripts/camera/iso_camera.gd")
+
 @export_range(0.0, 24.0) var time_of_day := 13.0       ## hour of the day
-## Hours per second (0 = standing still); 0.08 = a day of 5 minutes.
+## Hours per second (0 = standing still), before the two factors below.
 @export var speed := 0.08
+## The light lasts long: by day the clock runs `daylight_slowdown` times slower, in the dark
+## `night_speedup` times faster, blended by how dark it is (`night`). At speed 0.08 that is
+## about 8 minutes of light and 1 minute of dusk and dark: ~9 minutes a day (it was 5, of which 3.3 light).
+@export var daylight_slowdown := 3.0
+@export var night_speedup := 1.6
 ## Hours the clock must have moved before the light is set again: the sky is baked anew on
 ## every change of its colours, so not every frame (0.02 h = four times a second at 0.08).
 const APPLY_STEP_HOURS := 0.02
@@ -115,11 +122,13 @@ func _ready() -> void:
 		get_parent().add_child.call_deferred(street_lights)
 
 
-## Advances the clock by `speed` hours per second (wrapping at 24) and reapplies.
+## Advances the clock by `speed` hours per second (slower by day, faster in the dark;
+## wrapping at 24) and reapplies.
 func _process(delta: float) -> void:
 	if speed == 0.0:
 		return
-	time_of_day = fposmod(time_of_day + delta * speed, 24.0)
+	var pace := lerpf(1.0 / maxf(daylight_slowdown, 0.01), night_speedup, night)
+	time_of_day = fposmod(time_of_day + delta * speed * pace, 24.0)
 	if absf(time_of_day - _applied_at) >= APPLY_STEP_HOURS:
 		_apply()
 
@@ -141,9 +150,11 @@ func _apply() -> void:
 	# brightness 0..1 of the sun: full from ~1/3 elevation, none while it is down
 	var light := clampf(true_elevation * 3.0, 0.0, 1.0) if time_of_day > SUNRISE and time_of_day < SUNSET else 0.0
 	# rotation around the vertical axis: 90 = light from the east, 0 = from the south.
-	# The camera looks from the southeast; the sun stays at an angle from the side
-	# (east to southeast) so shadows fall visibly in view and the facades stay lit.
-	var azimuth := lerpf(110.0, 55.0, day)
+	# The sun stays on the right of the camera's view, so the shadows fall to the left in the
+	# picture (at the start, 13:00, straight to the left and a little up; in the morning a
+	# little down, in the evening more up) and one of the two facades it sees stays lit; it
+	# turns with the camera (iso_camera.gd ROTATION.y).
+	var azimuth := lerpf(145.0, 90.0, day) + IsoView.ROTATION.y - 45.0
 	var elevation := lerpf(min_elevation, max_elevation, true_elevation)
 	_sun.rotation_degrees = Vector3(-elevation, azimuth, 0.0)
 	# the colours of this moment, blended between the moments of DAY_COLOURS

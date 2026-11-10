@@ -4,10 +4,12 @@
 // discard pixels is much slower on tile-based GPUs (Apple), so building_fade.gd gives
 // only the meshes of fading buildings a copy of their material with that define.
 // Per 4 x 4 m cell the texture holds how far the building on it has faded (0..1); every
-// cell of a building holds the same value, so a building fades as a whole. Faded
-// pixels are left out in an even screen-door pattern (the picture stays opaque: no
-// sorting, and the upscaler's smoothing turns the pattern into a see-through look).
-// The building's shadow stays: the shadow pass (an orthographic projection) is skipped.
+// cell of a building holds the same value (how far its hole has opened, 0..1). Of such a
+// building only a view hole is left out: a round tube from the player towards the camera
+// (its centre and radius in the last row of the texture, pixel 0: x, y, z, radius), so you
+// see the player through it and the rest of the building stays; its edge is dithered
+// (ZWERVR_HOLE_EDGE). Only what lies on the camera's side of the player is cut. The
+// building's shadow stays: the shadow pass (an orthographic projection) is skipped.
 // Bay windows, shop fronts, awnings and signs stick out of their building's cell into
 // the street; scripts/world/layer_baker.gd gives every vertex of the merged buildings
 // (and of the facade details baked into them) the centre of the cell it belongs to in
@@ -32,6 +34,9 @@ vec4 fade_owner_from(vec4 data) {
 	return vec4(bytes.r + bytes.g * 256.0 - 32768.0, 0.0, bytes.b + bytes.a * 256.0 - 32768.0, 1.0);
 }
 
+// The soft edge (metres) of the view hole: dithered, so it fades out instead of cutting off.
+#define ZWERVR_HOLE_EDGE 0.9
+
 // Ordered 4 x 4 dither threshold (0..1) for a screen pixel.
 float fade_threshold(vec2 pixel) {
 	ivec2 p = ivec2(mod(pixel, 4.0));
@@ -40,7 +45,7 @@ float fade_threshold(vec2 pixel) {
 	return (float(pattern[index]) + 0.5) / 16.0;
 }
 
-// True if this pixel of a faded building should be left out. view_position and
+// True if this pixel of a faded building should be left out (the screen-door way). view_position and
 // view_normal: VERTEX and NORMAL of the fragment (view space); owner: CUSTOM0 of the
 // vertex (vec4(0.0) if the shader does not pass it on).
 bool faded_out(vec3 view_position, vec3 view_normal, mat4 inv_view, mat4 projection, vec2 pixel, vec4 owner) {
@@ -60,6 +65,23 @@ bool faded_out(vec3 view_position, vec3 view_normal, mat4 inv_view, mat4 project
 	if (uv.x < 0.0 || uv.y < 0.0 || uv.x >= 1.0 || uv.y >= 1.0) {
 		return false;
 	}
-	float amount = textureLod(zwervr_fade_map, uv, 0.0).r;
-	return amount > 0.0 && fade_threshold(pixel) < amount;
+	ivec2 size = textureSize(zwervr_fade_map, 0);
+	ivec2 texel = ivec2(uv * vec2(size));
+	if (texel.y >= size.y - 1) {
+		return false;   // the last row holds the hole, not buildings
+	}
+	float amount = texelFetch(zwervr_fade_map, texel, 0).r;
+	if (amount <= 0.0) {
+		return false;
+	}
+	vec4 hole = texelFetch(zwervr_fade_map, ivec2(0, size.y - 1), 0);
+	vec3 from_player = world - hole.xyz;
+	vec3 towards_camera = normalize(inv_view[2].xyz);
+	float along = dot(from_player, towards_camera);
+	if (along < 0.4) {
+		return false;   // beside or behind the player: stays
+	}
+	float across = length(from_player - towards_camera * along);
+	float radius = hole.w * amount;
+	return across < radius - fade_threshold(pixel) * ZWERVR_HOLE_EDGE;
 }

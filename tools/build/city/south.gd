@@ -123,6 +123,12 @@ func _schilderswijk() -> void:
 	for x in [middle + 5, middle + 11]:
 		Pr(x * 4 + 2.0, (second + 12) * 4 + 2.0, "straat/bank_beton", "S")
 	Pr((middle + 10) * 4.0, (second + 11) * 4.0, "standbeelden/buste", "S")
+	# the market: two rows of stalls facing each other across an aisle
+	var stalls := ["kraam_groente", "kraam_fruit", "kraam_kaas", "kraam_vis", "kraam_bloemen", "kraam_stoffen"]
+	for index in stalls.size():
+		var x := middle + 3 + index
+		Pr(x * 4 + 2.0, (second + 9) * 4 + 2.0, "markt/" + stalls[index], "S")
+		Pr(x * 4 + 2.0, (second + 14) * 4 + 2.0, "markt/" + stalls[(index + 3) % stalls.size()], "N")
 	places["schilderswijk"] = Vector2((middle + 10) * 4.0, (second + 11) * 4.0)
 	# the school and its playground
 	block(east + 2, second + 2, east_width - 4, 4, "school", 2, {"front": "S", "gf": ["bg_entree", "bg_raam"], "gf_side": "bg_raam", "gf_corner": "bg_raam_hoek",

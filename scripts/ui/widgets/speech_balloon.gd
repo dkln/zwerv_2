@@ -3,7 +3,8 @@ extends Control
 ## like the story box (Typewriter: word by word), but without its cursor and silent: the
 ## shout itself is what you hear, the words come without blips.
 ## An ink panel with a border in the speaker's colour and a hard shadow, the text in the
-## pixel font, a tail pointing down at the speaker. It pops up, types, holds `hold` seconds
+## pixel font with the faux 3D of the game's texts (UiStyle.faux_3d: a darker copy
+## TEXT_SHADOW px lower), a tail pointing down at the speaker. It pops up, types, holds `hold` seconds
 ## once it is all there, then fades; `finished` fires when it is gone.
 ## Where: the node's position is the tip of the tail (the balloon stands above it).
 ## - In the UI (the character creation screen): set `position` yourself.
@@ -24,6 +25,8 @@ const Typewriter = preload("res://scripts/ui/widgets/typewriter.gd")
 const MAX_TEXT_WIDTH := 240.0
 const TEXT_SIZE := 13
 const PADDING := Vector2(12, 8)
+## How far the black copy under the text sits lower (px).
+const TEXT_SHADOW := 2
 ## The tail: how high and how wide at the panel.
 const TAIL_HEIGHT := 12.0
 const TAIL_WIDTH := 14.0
@@ -61,6 +64,7 @@ func _init() -> void:
 	_text.add_theme_font_size_override("normal_font_size", TEXT_SIZE)
 	_text.add_theme_color_override("default_color", UiStyle.TEXT)
 	_text.add_theme_constant_override("line_separation", 4)
+	UiStyle.faux_3d(_text, TEXT_SHADOW)
 	_panel.add_child(_text)
 	# the tail over the panel: its fill covers the panel's bottom border where they meet, so
 	# panel and tail are one shape with one outline

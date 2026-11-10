@@ -90,6 +90,7 @@ func _ready() -> void:
 		for position in rear_lamp_positions:
 			_tail_lights.append(_lamp(position, tail_light_size, _tail_material, _cars[-1]))
 		_car_boxes[-1] = _mesh_bounds(_cars[-1])
+	Outline.apply(self)   # the cars added after the first one
 	_put_whole_train_on_the_track()
 
 

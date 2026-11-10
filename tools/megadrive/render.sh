@@ -3,7 +3,7 @@
 # and the traffic sound effects to assets/audio/geluiden/*.ogg.
 # Usage: tools/megadrive/render.sh                       (everything)
 #        tools/megadrive/render.sh gevecht handelaar     (only these pieces)
-#        tools/megadrive/render.sh deuntjes dood         (one stinger: kaart_start, gewonnen,
+#        tools/megadrive/render.sh deuntjes dood         (one stinger: kaart_start, gewonnen, nieuwe_missie,
 #                                                         level_omhoog, verloren, dood)
 #        tools/megadrive/render.sh geluiden             (the traffic sound effects, see geluiden.py;
 #                                                         or some: render.sh geluiden tram_bel)

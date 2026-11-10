@@ -262,6 +262,8 @@ func _binnenhof() -> void:
 	places["lange_poten"] = Vector2(48 * 4.0, 50 * 4.0)
 	# the north side of the Grote Marktstraat, on the corner of the Buitenhof
 	_shops(Vector2i(27, 56), Vector2i(1, 0), 3, "S", 6, RETAIL)
+	# an ice-cream tricycle by the pond
+	Pr(31 * 4 + 2.0, 39 * 4 + 2.0, "markt/ijscokar", "N")
 	places["hofvijver"] = Vector2(38 * 4.0, 35 * 4.0)
 	places["binnenhof"] = Vector2(37 * 4.0, 47 * 4.0)
 	places["buitenhof"] = Vector2(28 * 4.0, 45 * 4.0)
@@ -424,6 +426,8 @@ func _spui() -> void:
 		"upper": ["verd_spitsraam"], "upper_corner": "verd_spitsraam_hoek", "roof": "sloped"})
 	tower(52, 68, "kerk_baksteen", ["toren_portaal", "toren_raam", "toren_galmgat", "toren_spits_onder", "toren_spits_boven"], "N")
 	_trees([Vector2i(51, 75), Vector2i(54, 74)], ["bomen/linde"])
+	# a street organ on the Spuiplein, playing to the people going by
+	Pr(53 * 4 + 2.0, 62 * 4 + 2.0, "markt/draaiorgel", "S")
 	# city hall: two white slabs of ten storeys, a glass hall between
 	for s in [[56, "W"], [60, "E"]]:
 		block(s[0], 69, 2, 15, "modern_wit", 10, {"front": s[1], "gf": ["bg_deur", "bg_raam"], "gf_side": "bg_raam", "gf_corner": "bg_raam_hoek",

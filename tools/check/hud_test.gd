@@ -35,7 +35,7 @@ func _init() -> void:
 		problems.append("geen kaartje")
 	else:
 		print("kaartje: ", hud._minimap_map.texture.get_size(), " pixels")
-	if hud._money_label.text != "1.284":
+	if hud._money_label.text != "1.284,00":
 		problems.append("geld: " + hud._money_label.text)
 	# the XP bar in line with the stat bars (same start, same width), its points under it
 	var stat_bar: Control = hud._stat_bars["uithoudingsvermogen"]

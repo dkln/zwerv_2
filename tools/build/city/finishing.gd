@@ -393,17 +393,26 @@ const STICKING_OUT := ["balkon", "erker", "loggia", "terras", "luifel"]
 const PLAIN_FACADES := ["verd_raam", "verd_glas", "verd_raam_groot", "verd_wand", "verd_dicht"]
 ## Details that may hang in front of a sign (the signs themselves are "tekst/").
 const SIGN_FREE_MARGIN := 0.5
+## Advertising boards and banners flat on the wall, kept free like the signs: a balcony,
+## bay window or flower box never goes over them, the banner wins.
+const BANNERS := ["gevel/reclamebord", "gevel/vlag_regenboog_hangend"]
 
 
-## Keeps every sign and logo on a facade (Details items "tekst/...") free: the building
-## pieces behind it that stick out become the plain facade of their style, and other
-## details hanging in front of it (flower boxes, flags, awnings) go.
+## A sign, logo or banner on the wall that the facade around it must leave free.
+func _keeps_facade_free(detail_name: String) -> bool:
+	return detail_name.begins_with("tekst/") or BANNERS.has(detail_name)
+
+
+## Keeps every sign, logo and banner on a facade (Details items "tekst/...", BANNERS) free:
+## the building pieces behind it that stick out (balconies, bay windows) become the plain
+## facade of their style, and other details hanging in front of it (flower boxes, flags,
+## awnings) go.
 func _clear_behind_signs() -> void:
 	var flattened := 0
 	var removed := 0
 	var signs: Array[Vector3i] = []
 	for cell in details.get_used_cells():
-		if details.mesh_library.get_item_name(details.get_cell_item(cell)).begins_with("tekst/"):
+		if _keeps_facade_free(details.mesh_library.get_item_name(details.get_cell_item(cell))):
 			signs.append(cell)
 	for sign_cell in signs:
 		var item := details.get_cell_item(sign_cell)
@@ -428,7 +437,7 @@ func _clear_behind_signs() -> void:
 			if other == sign_cell:
 				continue
 			var other_name := details.mesh_library.get_item_name(details.get_cell_item(other))
-			if other_name.begins_with("tekst/") or other_name.begins_with("deuren/"):
+			if _keeps_facade_free(other_name) or other_name.begins_with("deuren/"):
 				continue
 			var relative := Vector3(other) * 0.5 - wall
 			var sideways := absf(relative.dot(across))
@@ -609,7 +618,8 @@ func _camera(root: Node3D) -> void:
 ## SUV, scripts/vehicles/suv.gd, starting in the Bezuidenhout), the player (node Speler,
 ## scripts/player/player_controller.gd: the chosen zwerver walking round), the camera that
 ## follows it (node Volgcamera), the rest of the traffic (node Verkeer,
-## scripts/traffic/traffic.gd, spreads it at the start) and
+## scripts/traffic/traffic.gd, spreads it at the start), the pedestrians (node Voetgangers,
+## scripts/world/pedestrians.gd) and
 ## the see-through buildings while it follows (node Doorkijk,
 ## scripts/world/building_fade.gd). The car finds its lanes in the ground tiles themselves
 ## (their "traffic" metadata, scripts/traffic/road_network.gd).
@@ -642,6 +652,16 @@ func _car(root: Node3D) -> void:
 	loose_change.set_script(load("res://scripts/world/loose_change.gd"))
 	root.add_child(loose_change)
 	loose_change.owner = root
+	var backpacks := Node3D.new()
+	backpacks.name = "Rugzakken"   # rucksacks to pick up, more room (scripts/world/backpacks.gd)
+	backpacks.set_script(load("res://scripts/world/backpacks.gd"))
+	root.add_child(backpacks)
+	backpacks.owner = root
+	var pedestrians := Node3D.new()
+	pedestrians.name = "Voetgangers"   # people walking the pavements (scripts/world/pedestrians.gd)
+	pedestrians.set_script(load("res://scripts/world/pedestrians.gd"))
+	root.add_child(pedestrians)
+	pedestrians.owner = root
 	var story := Node.new()
 	story.name = "Verhaal"   # the prologue and the missions (scripts/story/story.gd)
 	story.set_script(load("res://scripts/story/story.gd"))

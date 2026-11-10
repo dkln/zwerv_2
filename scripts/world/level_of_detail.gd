@@ -102,6 +102,8 @@ var _progress := {}   # "<layer><suffix>" -> fraction done (0..1) of every merge
 var _generation := 0
 ## Extra layers baked into another layer's meshes (merge_with): name -> that layer.
 var _baked_into := {}
+## Still waiting for the wave of the scene change to settle before setting up.
+var _waiting_for_warp := false
 
 
 func _ready() -> void:
@@ -109,7 +111,20 @@ func _ready() -> void:
 		return
 	_cam = get_node_or_null(camera_path)
 	_sun = get_node_or_null(sun_path)
+	# coming out of the wave of a scene change (WarpTransition): the loading screen first,
+	# the heavy work after the wave has settled, so it does not stutter
+	var warp := get_tree().root.get_node_or_null(NodePath(WarpTransition.NODE_NAME))
+	if warp and loading_screen and not bake_only:
+		_waiting_for_warp = true
+		_open_screen()
+		while is_instance_valid(warp) and warp.is_inside_tree():
+			await get_tree().process_frame
+		await get_tree().process_frame
+		_waiting_for_warp = false
 	setup()
+	if _busy == 0 and _screen:
+		_screen.fade_out()
+		_screen = null
 
 
 ## Creates the LOD copies of each layer under the scene root and starts merging
@@ -148,11 +163,17 @@ func setup() -> void:
 	for merge in merges:
 		_merge(merge[0], merge[1], merge[2])
 	if _busy > 0 and loading_screen and not bake_only:
-		_screen = LoadingScreen.new()
-		_screen.text = loading_text
-		_screen.hud = root.get_node_or_null("HUD")
-		add_child(_screen)
+		_open_screen()
 		_set_progress("", 0.0)
+
+
+func _open_screen() -> void:
+	if _screen:
+		return
+	_screen = LoadingScreen.new()
+	_screen.text = loading_text
+	_screen.hud = get_parent().get_node_or_null("HUD")
+	add_child(_screen)
 
 
 ## Loads the libraries of every LOD level of `gm` (kept in _libraries).
@@ -198,7 +219,7 @@ func merge_progress() -> float:
 
 ## Busy merging? Then wait for the `merge_finished` signal.
 func is_merging() -> bool:
-	return _busy > 0
+	return _busy > 0 or _waiting_for_warp
 
 
 ## Path of the MeshLibrary of `gm` for an LOD suffix from LEVEL_SUFFIXES.

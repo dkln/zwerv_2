@@ -28,7 +28,7 @@ const CHARACTER_SCENE := "res://scenes/karakter.tscn"
 ## the menu opens (no fade in: it starts with a bang); its volume (dB) and the seconds it
 ## fades out when the town opens.
 const MUSIC := "res://assets/audio/muziek/nachtstad_menu_loop.ogg"
-const MUSIC_VOLUME_DB := -9.5
+const MUSIC_VOLUME_DB := -5.7
 const MUSIC_FADE_OUT := 2.0
 const DESIGN_SIZE := Vector2(1280, 720)
 const VERSION := "v0.1.0"
@@ -609,10 +609,7 @@ func _build_title() -> void:
 	title.add_theme_font_override("font", _font_title)
 	title.add_theme_font_size_override("font_size", 88)
 	title.add_theme_color_override("font_color", TITLE_COLOUR)
-	title.add_theme_color_override("font_shadow_color", UiStyle.INK)
-	title.add_theme_constant_override("shadow_offset_x", 6)
-	title.add_theme_constant_override("shadow_offset_y", 6)
-	title.add_theme_constant_override("shadow_outline_size", 0)
+	UiStyle.faux_3d(title, 6)
 	column.add_child(title)
 
 

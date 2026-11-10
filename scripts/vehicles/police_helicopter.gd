@@ -82,6 +82,7 @@ func _ready() -> void:
 	# the tail rotor stands upright on the side of the fin, its axle across
 	_tail_rotor = _rotor(TAIL_ROTOR_RADIUS, 2, Basis(Vector3.BACK, PI / 2.0), TAIL_ROTOR_AT)
 	_build_lights()
+	(load("res://scripts/effects/outline.gd") as GDScript).apply(self)
 
 
 func _process(delta: float) -> void:

@@ -18,6 +18,10 @@ Every file is mono (so a Godot AudioStreamPlayer3D can place it in the world), O
     auto_botsing_hard.ogg, auto_botsing_licht.ogg   crashes: a heavy one and a bump
     tram_bel.ogg, trein_hoorn.ogg, bus_remmen.ogg  signals and stops (the train horn: the two
                                tyfoons of an NS Koploper, 660 and 370 Hz)
+    auto_toeter.ogg, bus_toeter.ogg, brommer_toeter.ogg, fiets_bel.ogg   warning people on
+                               foot: a car's two-note "toet-toet", the deep horn of a bus or a
+                               lorry, a moped's thin beep, a bicycle's thumb bell ("tring-tring");
+                               scootmobiel_toeter.ogg: a mobility scooter's electronic beep
 
 Vehicles: auto (car), brommer (moped), bus, tram (also RandstadRail), trein (NS train).
 
@@ -32,9 +36,11 @@ so you can tell them apart):
     helikopter_loop.ogg        the police helicopter hovering (rotor chop, turbine, tail rotor)
     helikopter_voorbij.ogg     the helicopter flying over
     plons.ogg                  someone falling into the water: thump, splash, bubbles
+    springen.ogg               the player jumping: a short rising PSG blip, as in a platform game
 Loops are a whole number of engine cycles long (every frequency fits the loop exactly) and are
-filtered circularly, so they repeat without a click. One-shots peak at -1 dB, loops sit at
-about -16 dB RMS; set the in-game level with volume_db.
+filtered circularly, so they repeat without a click. Every file is at one loudness
+(loudness.py: a one-shot's loudest 400 ms and a loop's average at -16 LUFS, peaks under -1 dB);
+set the in-game level with volume_db.
 
 Render: tools/megadrive/render.sh geluiden  (or one: render.sh geluiden tram_bel bus_voorbij)
 """
@@ -43,6 +49,7 @@ import sys
 
 import numpy
 
+import loudness
 import megadrive
 import style
 from megadrive import FmPatch, Operator
@@ -154,11 +161,18 @@ def engine(kind: str, firing_hz: numpy.ndarray, seed: int = 1, phase_offset: flo
         turbo = 0.05 * numpy.sin(TWO_PI * phase * 80.0)
         rumble = 0.25 * band_noise(sample_count, 40.0, 500.0, seed)
         return numpy.tanh(2.2 * (tone + clatter)) * 0.8 + turbo + rumble
-    if kind in ("tram", "trein"):
+    if kind == "tram":
+        # electric, but soft: the HTM tram's whine is a round hum far under the rail roar
+        # (squares at 420 Hz were shrill and grating)
+        whine = 0.12 * numpy.sin(TWO_PI * phase) + 0.05 * numpy.sin(TWO_PI * phase * 1.5)
+        hum = 0.5 * numpy.sin(TWO_PI * phase / 4.0)
+        roar = 0.5 * band_noise(sample_count, 50.0, 700.0, seed)
+        return whine + hum + roar
+    if kind == "trein":
         # electric: the inverter's whine on two PSG squares a fifth apart, a low hum, rail roar
         whine = 0.35 * square(phase, 0.5) + 0.2 * square(phase * 1.5, 0.5)
         hum = 0.5 * numpy.sin(TWO_PI * phase / 4.0)
-        roar = (0.6 if kind == "trein" else 0.4) * band_noise(sample_count, 60.0, 900.0, seed)
+        roar = 0.6 * band_noise(sample_count, 60.0, 900.0, seed)
         return whine + hum + roar
     raise ValueError(kind)
 
@@ -168,7 +182,7 @@ ENGINES = {
     "auto": (48.0, 0.02, 14.0, 3.5),
     "brommer": (95.0, 0.03, 11.0, 2.5),
     "bus": (28.0, 0.01, 9.0, 4.0),
-    "tram": (420.0, 0.0, 8.0, 4.0),
+    "tram": (180.0, 0.0, 8.0, 4.0),
     "trein": (330.0, 0.0, 22.0, 8.0),
 }
 
@@ -498,20 +512,112 @@ def splash() -> numpy.ndarray:
     return fade_edges(low_pass(dac(numpy.tanh(1.5 * buffer), 16000.0, 8), 7000.0), 0.001, 0.15)
 
 
+## The two horns of a car (an electric disc horn pair, a major third apart), and of a bus or
+## a lorry (lower and longer).
+CAR_HORN_HZ = (410.0, 512.0)
+BUS_HORN_HZ = (277.0, 349.0)
+
+
+def horn_blast(frequencies, seconds: float, seed: int) -> numpy.ndarray:
+    """One blast of a pair of electric horns: two buzzing diaphragms (the tyfoon's membrane,
+    quicker on and off) sounding together."""
+    blast = sum(tyfoon(frequency, seconds, seed + index) for index, frequency in enumerate(frequencies))
+    return blast / len(frequencies)
+
+
+def car_horn() -> numpy.ndarray:
+    """A car warning someone on foot: two short blasts, "toet-toet"."""
+    buffer = numpy.zeros(int(0.75 * SAMPLE_RATE))
+    place(buffer, 0.0, horn_blast(CAR_HORN_HZ, 0.16, 61))
+    place(buffer, 0.27, horn_blast(CAR_HORN_HZ, 0.3, 63))
+    return fade_edges(low_pass(dac(low_pass(buffer, 7000.0)), 5000.0), 0.002, 0.08)
+
+
+def bus_horn() -> numpy.ndarray:
+    """A bus or a lorry: one long, deep blast."""
+    buffer = numpy.zeros(int(1.0 * SAMPLE_RATE))
+    place(buffer, 0.0, horn_blast(BUS_HORN_HZ, 0.75, 65))
+    return fade_edges(low_pass(dac(low_pass(buffer, 6000.0)), 4500.0), 0.002, 0.12)
+
+
+def moped_horn() -> numpy.ndarray:
+    """A moped's thin little horn: two short PSG beeps, "piep-piep", a little flat."""
+    buffer = numpy.zeros(int(0.55 * SAMPLE_RATE))
+    for start, seconds in ((0.0, 0.12), (0.2, 0.2)):
+        times = time_axis(seconds)
+        pitch = 790.0 * (1.0 - 0.03 * numpy.exp(-times / 0.02))
+        envelope = numpy.clip(times / 0.006, 0.0, 1.0) * numpy.clip((seconds - times) / 0.02, 0.0, 1.0)
+        place(buffer, start, square(phase_of(pitch), 0.35) * envelope * 0.8)
+    return fade_edges(low_pass(dac(low_pass(buffer, 5000.0)), 4000.0), 0.002, 0.05)
+
+
+def jump() -> numpy.ndarray:
+    """The player jumping: a short square-wave blip sweeping up (a PSG channel, as the old
+    platform games), with a soft octave under it and a tiny puff at the take-off."""
+    seconds = 0.16
+    times = time_axis(seconds)
+    sweep = 280.0 * (3.2 ** (times / seconds))
+    envelope = numpy.clip(times / 0.004, 0.0, 1.0) * (1.0 - times / seconds) ** 1.4
+    tone = square(phase_of(sweep), 0.25) * 0.55 + square(phase_of(sweep * 0.5), 0.5) * 0.2
+    puff = band_noise(len(times), 300.0, 2500.0, 11) * numpy.exp(-times / 0.015) * 0.25
+    return fade_edges(low_pass(dac(low_pass((tone * envelope + puff), 6000.0)), 5000.0), 0.002, 0.03)
+
+
+def scooter_beep() -> numpy.ndarray:
+    """A mobility scooter's horn: a little electronic buzzer, one high beep."""
+    beep_seconds = 0.22
+    buffer = numpy.zeros(int(0.3 * SAMPLE_RATE))
+    times = time_axis(beep_seconds)
+    envelope = numpy.clip(times / 0.004, 0.0, 1.0) * numpy.clip((beep_seconds - times) / 0.015, 0.0, 1.0)
+    place(buffer, 0.0, square(phase_of(numpy.full(len(times), 2350.0)), 0.5) * envelope * 0.6)
+    return fade_edges(low_pass(dac(low_pass(buffer, 7000.0)), 6000.0), 0.002, 0.04)
+
+
+## The thumb bell of a Dutch bicycle: two little domes a hair apart, struck fast by the
+## spinning clapper (BIKE_BELL_STRIKES a second) for a moment, twice.
+BIKE_BELL_HZ = (2650.0, 2790.0)
+BIKE_BELL_PARTIALS = ((1.0, 1.0, 0.45), (1.51, 0.4, 0.22), (2.14, 0.25, 0.12))
+BIKE_BELL_STRIKES = 26.0
+
+
+def bike_bell() -> numpy.ndarray:
+    """A bicycle's bell: "tring-tring", two bursts of quick strikes ringing on."""
+    buffer = numpy.zeros(int(1.1 * SAMPLE_RATE))
+    times = time_axis(0.6)
+    random = numpy.random.default_rng(71)
+    for burst_start in (0.0, 0.3):
+        for strike in range(5):
+            ring = numpy.zeros(len(times))
+            for dome in BIKE_BELL_HZ:
+                for ratio, level, decay in BIKE_BELL_PARTIALS:
+                    frequency = dome * ratio * (1.0 + random.uniform(-0.001, 0.001))
+                    ring += level * numpy.exp(-times / decay) * numpy.sin(TWO_PI * frequency * times + random.uniform(0.0, TWO_PI))
+            click = band_noise(len(times), 3000.0, 9000.0, 72 + strike) * numpy.exp(-times / 0.002) * 0.6
+            place(buffer, burst_start + strike / BIKE_BELL_STRIKES, (ring / 3.0 + click) * (1.0 - strike * 0.08))
+    return fade_edges(low_pass(dac(low_pass(numpy.tanh(1.4 * buffer), 9000.0)), 7000.0), 0.001, 0.2)
+
+
 # ----------------------------------------------------------------------------- output
 
 
-def write_mono(name: str, signal: numpy.ndarray, loop: bool, folder: str = OUTPUT_FOLDER) -> None:
+## Every file at one loudness (loudness.py, as the ear hears it): a one-shot's loudest moment
+## and a loop's average at loudness.TARGET_LUFS, the peaks softly held under ONE_SHOT_CEILING_DB,
+## so a bell, a crash, a cry and an engine sit at one level and the game sets their loudness
+## (scripts/audio/spatial_audio.gd) instead of the files.
+ONE_SHOT_CEILING_DB = loudness.CEILING_DB
+
+
+def level_one_shot(signal: numpy.ndarray) -> numpy.ndarray:
+    """The one-shot at the target loudness (its loudest 400 ms), peaks under the ceiling."""
+    return loudness.level(signal - signal.mean(), one_shot=True)
+
+
+def write_mono(name: str, signal: numpy.ndarray, loop: bool, folder: str = OUTPUT_FOLDER, levelled: bool = False) -> None:
     import soundfile
     if loop:
-        signal = signal - signal.mean()
-        signal *= 10.0 ** (-16.0 / 20.0) / numpy.sqrt(numpy.mean(signal ** 2))
-        peak = numpy.abs(signal).max()
-        ceiling = 10.0 ** (-1.5 / 20.0)
-        if peak > ceiling:
-            signal *= ceiling / peak
-    else:
-        signal = signal * 10.0 ** (-1.2 / 20.0) / (numpy.abs(signal).max() + 1e-9)
+        signal = loudness.level(signal - signal.mean(), one_shot=False)
+    elif not levelled:
+        signal = level_one_shot(signal)
     os.makedirs(folder, exist_ok=True)
     path = os.path.join(folder, name + ".ogg")
     with soundfile.SoundFile(path, "w", SAMPLE_RATE, 1, format="OGG", subtype="VORBIS", compression_level=0.3) as ogg_file:
@@ -547,6 +653,12 @@ SOUNDS = {
     "helikopter_loop": (helicopter_loop, True),
     "helikopter_voorbij": (helicopter_pass_by, False),
     "plons": (splash, False),
+    "auto_toeter": (car_horn, False),
+    "bus_toeter": (bus_horn, False),
+    "brommer_toeter": (moped_horn, False),
+    "fiets_bel": (bike_bell, False),
+    "scootmobiel_toeter": (scooter_beep, False),
+    "springen": (jump, False),
 }
 
 

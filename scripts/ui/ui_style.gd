@@ -13,6 +13,8 @@ const BORDER := Color("#343B70")
 const TEXT := Color("#E8E6F0")
 const MUTED := Color("#9AA0C8")
 const ACCENT := Color("#FFB547")
+## A chosen button, row or choice (lighter than PANEL), with an ACCENT border.
+const RAISED := Color("#1C2142")
 const SIDE_ACCENT := Color("#47D6C2")
 const TRANSLUCENT_INK := Color(11.0 / 255.0, 13.0 / 255.0, 26.0 / 255.0, 0.82)
 ## Pixels a hard panel shadow lies down and to the right.
@@ -28,18 +30,47 @@ const FONT_FALLBACK := "res://assets/fonts/Rubik.ttf"
 const CRT_SHADER := preload("res://scripts/ui/crt.gdshader")
 
 
-## The font at `path`, or Rubik (FONT_FALLBACK) when it is missing.
+## OpenType features switched off in every UI font: ligatures and contextual alternates
+## (JetBrains Mono turns runs of digits and signs into other shapes with them).
+const FEATURES_OFF := ["liga", "clig", "calt", "dlig"]
+
+
+## The font at `path` (ligatures off, FEATURES_OFF), or Rubik (FONT_FALLBACK) when it is missing.
 static func font(path: String) -> Font:
 	if ResourceLoader.exists(path):
-		return load(path)
+		var loaded: Font = load(path)
+		if loaded is FontFile:
+			var overrides := {}
+			var text_server := TextServerManager.get_primary_interface()
+			for feature: String in FEATURES_OFF:
+				overrides[text_server.name_to_tag(feature)] = 0
+			(loaded as FontFile).opentype_feature_overrides = overrides
+		return loaded
 	push_warning("ui: font %s missing, using Rubik" % path)
 	return load(FONT_FALLBACK)
 
 
-## A variable font at this weight (100..900).
+## Static weights of JetBrains Mono with their overlapping contours merged
+## (tools/fonts/static_body_font.py): the fonts are drawn as MSDF, which smears the "8" of
+## the variable font (two overlapping loops). Weight -> file.
+const BODY_WEIGHTS := {
+	400: "res://assets/fonts/JetBrainsMono-Regular.ttf",
+	600: "res://assets/fonts/JetBrainsMono-SemiBold.ttf",
+}
+
+
+## A variable font at this weight (100..900); JetBrains Mono at a weight in BODY_WEIGHTS
+## comes from its static file instead.
 static func weighted(base_font: Font, weight: int) -> Font:
 	var variation := FontVariation.new()
 	variation.base_font = base_font
+	if base_font.resource_path == FONT_BODY and BODY_WEIGHTS.has(weight) and ResourceLoader.exists(BODY_WEIGHTS[weight]):
+		var static_font := load(BODY_WEIGHTS[weight]) as FontFile
+		if static_font:   # not yet imported: the variable font below
+			static_font.opentype_feature_overrides = (base_font as FontFile).opentype_feature_overrides
+			static_font.fallbacks = base_font.fallbacks
+			variation.base_font = static_font
+			return variation
 	variation.variation_opentype = {TextServerManager.get_primary_interface().name_to_tag("wght"): weight}
 	return variation
 
@@ -72,6 +103,26 @@ static func menu_item_style(on: bool) -> StyleBoxFlat:
 	style.content_margin_top = MENU_ITEM_PADDING.y
 	style.content_margin_bottom = MENU_ITEM_PADDING.y
 	return style
+
+
+## The faux 3D of the texts of the game (no outlines round text): a copy of the text
+## `pixels` straight under it, in the text's own colour FAUX_3D_DARKEN darker. For a Label
+## (its "font_color") and a RichTextLabel (its "default_color"); set the colour first.
+const FAUX_3D_DARKEN := 0.5
+
+
+static func faux_3d(text: Control, pixels: int) -> void:
+	var colour_name := "default_color" if text is RichTextLabel else "font_color"
+	text.add_theme_color_override("font_shadow_color", faux_3d_colour(text.get_theme_color(colour_name)))
+	text.add_theme_constant_override("shadow_offset_x", 0)
+	text.add_theme_constant_override("shadow_offset_y", pixels)
+	text.add_theme_constant_override("shadow_outline_size", 0)
+	text.add_theme_constant_override("outline_size", 0)
+
+
+## The colour of the copy under a text of `colour` (faux_3d).
+static func faux_3d_colour(colour: Color) -> Color:
+	return colour.darkened(FAUX_3D_DARKEN)
 
 
 static func box_style(background: Color, border: Color, border_width: int, left_only := false) -> StyleBoxFlat:

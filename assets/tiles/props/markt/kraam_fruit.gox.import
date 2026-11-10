@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://cpaoltrvk6nnu"
+path="res://.godot/imported/kraam_fruit.gox-7dec0e2d4310f15e18206f7b5e029764.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/props/markt/kraam_fruit.gox"
+dest_files=["res://.godot/imported/kraam_fruit.gox-7dec0e2d4310f15e18206f7b5e029764.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(0, 0, 0)

@@ -18,7 +18,8 @@ Modules per category (later ones build on the helpers of earlier ones):
 - mixed later additions: extras_business_paths (business units, industrial fencing, paths,
   hills, verges, footbridges), extras_shops_lanes (themed shops, tunnel troughs, tram and
   bus lanes, luxury apartments, green roofs), traffic_lights_industry (traffic lights in
-  every state, sheds, warehouses, factories)
+  every state, sheds, warehouses, factories), street_carts (chip van, street organ,
+  spring-roll and ice-cream carts, market stalls)
 
 The import order below is the registration order and must stay as it is.
 """
@@ -44,3 +45,4 @@ from . import rail_vehicles  # noqa: F401
 from . import emergency_vehicles  # noqa: F401
 from . import small_vehicles  # noqa: F401
 from . import two_wheelers  # noqa: F401
+from . import street_carts  # noqa: F401

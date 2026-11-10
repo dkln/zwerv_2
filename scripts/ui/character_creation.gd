@@ -8,7 +8,8 @@ extends Control
 ## - right: the chosen one large: the whole figure in 3D, walking on the spot and turning
 ##   slowly round its axis (from the front each time it is chosen), the difficulty in the top right
 ##   corner (MOEILIJKHEID, five blocks green to red, its name), the name, what they are good at, the level, what only they
-##   have (the perk, in teal, if any), their story and the stats (leven, stamina,
+##   have (the perk, in teal, if any), their story (typed out word by word with a block
+##   cursor, widgets/typewriter.gd, as in the story box) and the stats (leven, stamina,
 ##   honger) as the HUD's segment bars, a share of
 ##   PlayerCharacter.STAT_CEILING, with the number.
 ## Keys: up/down (or left/right, or 1 to 9) choose, Enter begins, Escape goes back to the
@@ -30,16 +31,17 @@ const SpeechBalloon = preload("res://scripts/ui/widgets/speech_balloon.gd")
 const PixelIcon = preload("res://scripts/ui/widgets/pixel_icon.gd")
 const PlayerPortrait = preload("res://scripts/ui/widgets/player_portrait.gd")
 const PlayerCharacter = preload("res://scripts/player/player_character.gd")
+const Typewriter = preload("res://scripts/ui/widgets/typewriter.gd")
 
 const CITY_SCENE := "res://scenes/stad.tscn"
 const MENU_SCENE := "res://scenes/hoofdmenu.tscn"
 const MUSIC := "res://assets/audio/muziek/karakterkeuze_loop.ogg"
 ## Soft, in the background; it fades in over MUSIC_FADE_IN seconds.
-const MUSIC_VOLUME_DB := -19.0
+const MUSIC_VOLUME_DB := -9.8
 const MUSIC_FADE_IN := 2.5
 const MUSIC_FADE_OUT := 1.6
 const SHOUT_FOLDER := "res://assets/audio/kreten/"
-const SHOUT_VOLUME_DB := -12.0
+const SHOUT_VOLUME_DB := -6.5
 const SHOUT_FIRST_DELAY := 0.6
 ## The tip of the balloon's tail from the top of the head (px): a little to the side and up.
 const BALLOON_OFFSET := Vector2(26, -6)
@@ -80,7 +82,8 @@ var _detail_figure
 var _detail_name: Label
 var _detail_subtitle: Label
 var _detail_level: PanelContainer
-var _detail_story: Label
+var _detail_story: RichTextLabel
+var _story_typewriter: Typewriter    # types the story out, as the story box and the balloons do
 var _detail_perk: Label
 var _difficulty_blocks: Array[ColorRect] = []
 var _difficulty_name: Label
@@ -99,6 +102,11 @@ var _font_title_medium: Font
 var _font_pixel: Font
 var _font_pixel_bold: Font
 var _font_body: Font
+
+
+func _process(delta: float) -> void:
+	if _story_typewriter:
+		_story_typewriter.update(delta)
 
 
 func _ready() -> void:
@@ -224,7 +232,7 @@ func _show_detail(index: int) -> void:
 	_detail_name.text = archetype.name
 	_detail_subtitle.text = archetype.subtitle
 	_set_level_chip(_detail_level, int(archetype.level))
-	_detail_story.text = archetype.story
+	_story_typewriter.start(archetype.story)
 	_detail_perk.text = "EXTRA: " + String(archetype.get("perk", "")).to_upper()
 	_detail_perk.visible = archetype.has("perk")
 	for stat_name: String in PlayerCharacter.STAT_LABELS:
@@ -465,15 +473,36 @@ func _build_detail() -> void:
 	_detail_perk.custom_minimum_size = Vector2(column_width, 0)
 	column.add_child(_detail_perk)
 	column.add_child(_divider(column_width))
-	_detail_story = _label("", _font_body, 14, SOFT_TEXT, 0)
+	# the story, typed out word by word with the block cursor (Typewriter, as the story box)
+	_detail_story = RichTextLabel.new()
+	_detail_story.add_theme_font_override("normal_font", _font_body)
+	_detail_story.add_theme_font_size_override("normal_font_size", 14)
+	_detail_story.add_theme_color_override("default_color", SOFT_TEXT)
+	_detail_story.add_theme_constant_override("line_separation", 3)
 	_detail_story.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	# a long story (the Ufo Piloot) scrolls along by itself as it is typed, without a bar
+	_detail_story.scroll_active = true
+	_detail_story.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_detail_story.custom_minimum_size = Vector2(column_width, 136)
-	_detail_story.add_theme_constant_override("line_spacing", 3)
+	_hide_story_scroll_bar(_detail_story.get_v_scroll_bar())
 	column.add_child(_detail_story)
+	_story_typewriter = Typewriter.new(_detail_story, self)
+	_story_typewriter.follow_cursor = true
+	_story_typewriter.blink_when_done = false   # the cursor goes when the story is all there
 	column.add_child(_divider(column_width))
 	column.add_child(_small("STATS", SOFT_TEXT, 11, 4))
 	for stat_name: String in PlayerCharacter.STAT_LABELS:
 		column.add_child(_stat_row(stat_name))
+
+
+## The story scrolls by itself (Typewriter.follow_cursor): its scroll bar is not shown and
+## takes no room (empty styles, zero wide).
+func _hide_story_scroll_bar(scroll_bar: VScrollBar) -> void:
+	var nothing := StyleBoxEmpty.new()
+	for style_name in ["scroll", "scroll_focus", "grabber", "grabber_highlight", "grabber_pressed"]:
+		scroll_bar.add_theme_stylebox_override(style_name, nothing)
+	scroll_bar.modulate = Color(1, 1, 1, 0)
+	scroll_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 
 ## A stat as in the HUD: its icon and colour (GameHud.STATS), the label, a segment bar and
@@ -647,10 +676,7 @@ func _label(text: String, font: Font, size: int, colour := UiStyle.TEXT, shadow 
 	label.add_theme_font_size_override("font_size", size)
 	label.add_theme_color_override("font_color", colour)
 	if shadow > 0:
-		label.add_theme_color_override("font_shadow_color", UiStyle.INK)
-		label.add_theme_constant_override("shadow_offset_x", shadow)
-		label.add_theme_constant_override("shadow_offset_y", shadow)
-		label.add_theme_constant_override("shadow_outline_size", 0)
+		UiStyle.faux_3d(label, shadow)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return label
 

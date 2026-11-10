@@ -19,23 +19,38 @@ extends Node
 ## comes down into the open trough behind it and follows it as a chase camera; once out
 ## in the open again it glides back up (`tunnel_*`). A target that jumps (a respawn) gets a
 ## glide over (`switch_time`).
+## When buildings stand between the player and the camera, the view turns round the player
+## in whole steps of `turn_step` degrees (a quarter turn by default, so it stays isometric;
+## at most `turn_most` either way) to where they no longer hide it,
+## gliding there over `turn_glide_time` s; once the usual view is free again for
+## `turn_back_after` s it turns back (`view_yaw` is the turned view, for the walking keys).
 
+const CloudShroud = preload("res://scripts/effects/cloud_shroud.gd")
+const LoadingScreenScript = preload("res://scripts/ui/loading_screen.gd")
 const Iso = preload("res://scripts/camera/iso_camera.gd")
-const EdgeOutline = preload("res://scripts/effects/edge_outline.gd")
 const TunnelLights = preload("res://scripts/world/tunnel_lights.gd")
 ## Layer of the ground layer that tunnel tiles are placed on.
 const TUNNEL_LEVEL := -6
 ## Above this speed (m/s) between two frames the vehicle did not drive but jumped.
 const JUMP_SPEED := 80.0
+## The arrival: its speed in the clouds (share of the speed outside them), and the steps of
+## its sum (_arrival_descent).
+const ARRIVAL_CLOUD_SPEED := 0.35
+## From this share of the arrival on its speed runs out softly.
+const ARRIVAL_SETTLE_FROM := 0.7
+const ARRIVAL_STEPS := 128
 
 ## Follow at startup.
 @export var active := true
 ## What the camera follows (the player).
 @export var target: NodePath = ^"../Speler"
-## Metres in view when the target stands still.
-@export var zoom_still := 26.0
+## Metres in view when the target stands still (closer, so the figure shows well).
+@export var zoom_still := 18.0
+## Metres in view at `walk_pace` (walking), and the speed (m/s) that is.
+@export var zoom_walk := 38.0
+@export var walk_pace := 3.0
 ## Metres in view at `fast_speed` and above.
-@export var zoom_fast := 34.0
+@export var zoom_fast := 44.0
 ## Speed (m/s) at which the view is zoomed out furthest (running).
 @export var fast_speed := 7.0
 ## Seconds the view looks ahead of the target (times its average velocity), at most
@@ -44,9 +59,12 @@ const JUMP_SPEED := 80.0
 @export var max_lead := 0.12
 ## Seconds over which the vehicle's velocity is smoothed (for the point ahead and the zoom).
 @export var velocity_smoothing := 0.6
-## Seconds the view takes to catch up (about); the zoom takes `zoom_glide_time`.
+## Seconds the view takes to catch up (about); the zoom takes `zoom_glide_time` going out
+## (starting to walk) and `zoom_in_glide_time` coming back in (standing still again: quicker,
+## so the figure is soon close again).
 @export var glide_time := 0.6
 @export var zoom_glide_time := 2.0
+@export var zoom_in_glide_time := 0.8
 @export_group("Gliding over")
 ## Seconds the view takes to glide over to the target after it jumped.
 @export var switch_time := 2.0
@@ -73,6 +91,27 @@ const JUMP_SPEED := 80.0
 ## Field of view of the chase camera (degrees) and its near plane (metres).
 @export var tunnel_fov := 62.0
 @export var tunnel_near := 0.2
+@export_group("Turning round buildings")
+## Turn away from buildings that hide the player (see the top).
+@export var turn_round_buildings := true
+## The Gebouwen GridMap whose cells hide the player.
+@export var buildings_path: NodePath = ^"../Gebouwen"
+## The view only turns in whole steps of `turn_step` degrees from the usual one (and glides
+## from one step to the next, never stopping in between), at most `turn_most` either way.
+## 90 keeps the isometric look: the usual view looks diagonally across the grid (yaw 135),
+## so does every quarter turn from it (45, 225, 315), only from another corner; 45 would
+## also allow views straight along the streets, which look flat (not isometric).
+@export var turn_most := 180.0
+@export_range(15.0, 180.0, 15.0) var turn_step := 90.0
+## Seconds the turn takes (about), and how long the usual view has to be free before it turns back.
+@export var turn_glide_time := 2.8
+@export var turn_back_after := 1.5
+## Seconds between two looks round.
+@export var turn_check_interval := 0.2
+## Heights (metres over the feet) of the points that have to stay in sight, and the
+## metres beside the figure (across the view) that count too.
+@export var turn_test_heights := PackedFloat32Array([0.4, 1.0, 1.7])
+@export var turn_test_reach := 0.4
 @export_group("Close-ups")
 @export var closeups := false
 ## Seconds between close-ups (a random time between the two).
@@ -90,6 +129,25 @@ const JUMP_SPEED := 80.0
 ## and seconds it dies down over.
 @export var crash_shake := 0.6
 @export var crash_shake_time := 0.7
+@export_group("Dramatic")
+## A dramatic moment (the player run over and killed, PlayerController): the view zooms in
+## on what it follows to `dramatic_zoom` metres in view, settling in `dramatic_glide` seconds,
+## in real time also while the game runs slowed down (Engine.time_scale).
+## A conversation (PlayerController.talk_to, talk_close_up): the view glides slowly in on the
+## middle between the player and who it talks to, `talk_zoom` metres in view, in about
+## `talk_glide` seconds (also while the game stands still for the story box), and back after.
+@export var talk_zoom := 7.0
+@export var talk_glide := 2.6
+@export var dramatic_zoom := 6.0
+@export var dramatic_glide := 0.45
+@export_group("Arrival")
+## At the start of the game (once the loading screen has gone and the town is merged) the
+## view comes down from high in the sky onto the player: from `arrival_zoom` metres in view
+## to zoom_still in `arrival_seconds`, through a layer of clouds (scripts/effects/cloud_shroud.gd)
+## about halfway down.
+@export var arrival := true
+@export var arrival_zoom := 300.0
+@export var arrival_seconds := 8.0
 
 var _cam: Camera3D
 var _followed: Node3D
@@ -113,6 +171,17 @@ var _view_focus := Vector3.ZERO      # the point the view was placed around last
 var _glide_over_left := 0.0          # seconds left of gliding over to the vehicle
 var _glide_over_from := Vector3.ZERO # where the view started, as seen from the vehicle
 var _glide_over_zoom := 0.0          # extra metres in view while gliding over
+var _dramatic := false               # zoomed in on a dramatic moment (dramatic_close_up)
+var _talk_partner: Node3D            # who the player talks to (talk_close_up), else null
+var _arrival_clock := -1.0           # seconds into the arrival (< 0: waiting for the town)
+var _arriving := false               # the arrival is still to come or going on
+var _clouds: Node                    # the cloud layer of the arrival
+var _buildings: GridMap
+var _turn := 0.0                     # degrees the view is turned from Iso.ROTATION.y now
+var _turn_velocity := 0.0
+var _turn_goal := 0.0                # degrees it turns to
+var _turn_check_clock := 0.0
+var _usual_free_for := 0.0           # seconds the usual view (no turn) has been free
 
 ## The followed node (for scripts/world/building_fade.gd and the HUD).
 var target_node: Node3D:
@@ -127,11 +196,14 @@ func _ready() -> void:
 		set_process(false)
 		return
 	_ground = get_node_or_null(ground_path) as GridMap
-	# the outlines of the town on the camera (scripts/effects/edge_outline.gd)
-	if not _cam.has_node("Randjes"):
-		_cam.add_child.call_deferred(EdgeOutline.new())
+	_buildings = get_node_or_null(buildings_path) as GridMap
 	_focus = _followed.global_position
 	_zoom = zoom_still
+	if arrival and active:
+		_arriving = true
+		_zoom = arrival_zoom
+		_clouds = CloudShroud.new()
+		add_child(_clouds)
 	if active:
 		start.call_deferred()
 	else:
@@ -169,12 +241,99 @@ func _glide_over(target_position: Vector3) -> void:
 	_target_last = target_position
 
 
+## Zooms in close on what it follows (on) or back to the usual view (off), in real time.
+func dramatic_close_up(on: bool) -> void:
+	_dramatic = on
+	if on:
+		_end_arrival()
+
+
+## Stops the arrival where it is (a dramatic moment goes first) and takes the clouds away.
+func _end_arrival() -> void:
+	_arriving = false
+	if _clouds:
+		_clouds.queue_free()
+		_clouds = null
+
+
+## Zooms in slowly on the player and `partner` (a conversation), or back (null). Runs on
+## while the game stands still (the story box pauses it) until the view is back.
+func talk_close_up(partner: Node3D) -> void:
+	_talk_partner = partner
+	process_mode = Node.PROCESS_MODE_ALWAYS if partner else Node.PROCESS_MODE_INHERIT
+
+
+func is_dramatic() -> bool:
+	return _dramatic
+
+
+## True while the view still comes down from the sky at the start (for the tests).
+func is_arriving() -> bool:
+	return _arriving
+
+
+## The arrival: how much it is still zoomed out, waiting while the town loads, then down
+## through the clouds. Returns the view size it wants now (or -1 when it is over).
+func _advance_arrival(delta: float) -> float:
+	if not _arriving:
+		return -1.0
+	if _arrival_clock < 0.0:
+		var level_of_detail := get_node_or_null(^"../DetailNiveau")
+		var merging: bool = level_of_detail != null and level_of_detail.has_method("is_merging") and level_of_detail.is_merging()
+		if LoadingScreenScript.showing(get_tree()) or merging:
+			_set_clouds(0.0, arrival_zoom)   # (under the loading screen: as it will start)
+			return arrival_zoom
+		_arrival_clock = 0.0
+	_arrival_clock += minf(delta, 1.0 / 30.0)   # a hitch (the first frame after loading) skips nothing
+	var progress := clampf(_arrival_clock / maxf(arrival_seconds, 0.1), 0.0, 1.0)
+	var view_size := exp(lerpf(log(arrival_zoom), log(zoom_still), _arrival_descent(progress)))
+	_set_clouds(progress, view_size)
+	if progress >= 1.0:
+		_end_arrival()
+		return -1.0
+	return view_size
+
+
+## How far down (0..1, in a log scale of the heights) the view is at `progress` of the
+## arrival: the sum of its speed so far, the speed slowing down towards the end and to
+## ARRIVAL_CLOUD_SPEED in the clouds (the first part, high up), so you drift down through
+## them, and from ARRIVAL_SETTLE_FROM on settling softly onto the player.
+static func _arrival_descent(progress: float) -> float:
+	var done := 0.0
+	var total := 0.0
+	for step in ARRIVAL_STEPS:
+		var at := (step + 0.5) / ARRIVAL_STEPS
+		var in_clouds := 1.0 - smoothstep(0.3, 0.6, at)
+		var speed := pow(1.0 - at, 0.3) * lerpf(1.0, ARRIVAL_CLOUD_SPEED, in_clouds)
+		# the last part settling softly onto the player, the speed running out to nothing
+		speed *= 1.0 - smoothstep(ARRIVAL_SETTLE_FROM, 1.0, at)
+		total += speed
+		if at < progress:
+			done += speed * minf(1.0, (progress - at) * ARRIVAL_STEPS + 0.5)
+	return clampf(done / total, 0.0, 1.0)
+
+
+## The clouds at `progress` of the arrival, the view `view_size` metres: they go with the
+## zoom (`magnify`: as much bigger as the town has grown since the start), so zooming in
+## pushes them aside from the middle outwards (cloud_shroud.gdshader); only at the end they
+## thin out too (`cover`), so none are left when the view has come down.
+func _set_clouds(progress: float, view_size: float) -> void:
+	if _clouds == null:
+		return
+	_clouds.cover = 1.0 - smoothstep(0.5, 0.85, progress)
+	_clouds.dive = progress
+	_clouds.magnify = arrival_zoom / maxf(view_size, 0.01)
+
+
 ## True while the camera follows its target.
 func is_following() -> bool:
 	return _following
 
 
 func _process(delta: float) -> void:
+	if _dramatic:
+		# in real time, also when the game is slowed down
+		delta /= maxf(Engine.time_scale, 0.01)
 	var target_position := _target_position()
 	if delta > 0.0 and target_position.distance_to(_target_last) / delta > JUMP_SPEED:
 		_glide_over(target_position)
@@ -184,33 +343,129 @@ func _process(delta: float) -> void:
 		_target_velocity = _target_velocity.lerp(frame_velocity, 1.0 - exp(-delta / maxf(velocity_smoothing, 0.01)))
 	_target_last = target_position
 	# the point ahead; close by it only makes up for the spring's lag (the target in the middle)
-	var lead := (_target_velocity * lead_time).limit_length(_zoom * max_lead)
+	var lead := (_target_velocity * lead_time).limit_length(_zoom * max_lead) if not _dramatic else Vector3.ZERO
 	var goal := target_position + lead.lerp(Vector3.ZERO, closeness) + _target_velocity * glide_time
 	goal.y = target_position.y + _target_velocity.y * glide_time   # up and down ramps without lag
 	var speed := Vector2(_target_velocity.x, _target_velocity.z).length()
-	var goal_zoom := lerpf(zoom_still, zoom_fast, clampf(speed / fast_speed, 0.0, 1.0))
+	var goal_zoom := lerpf(zoom_still, zoom_walk, clampf(speed / walk_pace, 0.0, 1.0)) if speed < walk_pace \
+		else lerpf(zoom_walk, zoom_fast, clampf((speed - walk_pace) / maxf(fast_speed - walk_pace, 0.1), 0.0, 1.0))
 	_glide_over_left = maxf(_glide_over_left - delta, 0.0)
 	if _glide_over_left > 0.0:
 		goal_zoom += _glide_over_zoom
+	if _dramatic:
+		goal_zoom = dramatic_zoom
+		goal = target_position
+	var talking := _talk_partner != null and is_instance_valid(_talk_partner) and not _dramatic
+	if talking:
+		goal_zoom = talk_zoom
+		goal = (target_position + _talk_partner.global_position) * 0.5
+	var focus_time := dramatic_glide if _dramatic else (talk_glide if talking else glide_time)
 	for axis in 3:
-		var glided := _glide(_focus[axis], goal[axis], _focus_velocity[axis], glide_time, delta)
+		var glided := _glide(_focus[axis], goal[axis], _focus_velocity[axis], focus_time, delta)
 		_focus[axis] = glided.x
 		_focus_velocity[axis] = glided.y
-	var zoomed := _glide(_zoom, goal_zoom, _zoom_velocity, zoom_glide_time, delta)
+	var zoom_time := zoom_in_glide_time if goal_zoom < _zoom else zoom_glide_time
+	var zoomed := _glide(_zoom, goal_zoom, _zoom_velocity, dramatic_glide if _dramatic else (talk_glide if talking else zoom_time), delta)
 	_zoom = zoomed.x
 	_zoom_velocity = zoomed.y
+	var arrival_size := _advance_arrival(delta)
+	if arrival_size > 0.0:
+		_zoom = arrival_size
+		_zoom_velocity = 0.0
+		_focus = target_position
+		_focus_velocity = Vector3.ZERO
+		_glide_over_left = 0.0
 	var view_size := lerpf(_zoom, closeup_zoom, closeness)
 	var way_to_go := _glide_over_from * smoothstep(0.0, 1.0, _glide_over_left / maxf(switch_time, 0.01))
 	_view_focus = _focus + way_to_go
-	Iso.place(_cam, _view_focus, view_size)
+	_advance_turn(target_position, view_size, delta)
+	Iso.place(_cam, _view_focus, view_size, view_yaw())
 	if closeness > 0.0:
 		# lower and swung round the vehicle, at the same distance
 		var progress := _closeup_clock / closeup_time
 		var swing := closeup_orbit * (progress - 0.5) * _closeup_side * closeness
-		_cam.rotation_degrees = Vector3(lerpf(Iso.ROTATION.x, closeup_pitch, closeness), Iso.ROTATION.y + swing, 0.0)
+		_cam.rotation_degrees = Vector3(lerpf(Iso.ROTATION.x, closeup_pitch, closeness), view_yaw() + swing, 0.0)
 		_cam.global_position = _view_focus + _cam.global_basis.z * Iso.distance(view_size)
 	_place_in_tunnel(target_position, way_to_go, delta)
 	_shake_for_crash(view_size)
+
+
+## The yaw of the view (degrees round the vertical): Iso.ROTATION.y, turned round buildings.
+func view_yaw() -> float:
+	return Iso.ROTATION.y + _turn
+
+
+## Looks every turn_check_interval s whether buildings hide the player from the view turned
+## to its goal; if so, picks the nearest turn (within turn_most) from which they hide it least.
+## Back to the usual view once that has been free for turn_back_after s. Then glides there.
+func _advance_turn(target_position: Vector3, view_size: float, delta: float) -> void:
+	var may_turn := turn_round_buildings and _buildings != null and not _arriving and not _dramatic \
+			and _underground < 0.001 and _glide_over_left <= 0.0
+	if not may_turn:
+		_turn_goal = _turn_goal if _dramatic else 0.0
+	else:
+		_turn_check_clock -= delta
+		if _turn_check_clock <= 0.0:
+			_turn_check_clock = turn_check_interval
+			_choose_turn(target_position, view_size)
+	var glided := _glide(_turn, _turn_goal, _turn_velocity, turn_glide_time, delta)
+	_turn = glided.x
+	_turn_velocity = glided.y
+
+
+func _choose_turn(target_position: Vector3, view_size: float) -> void:
+	var distance := Iso.distance(view_size)
+	var usual_hidden := _hidden_points(target_position, 0.0, distance)
+	_usual_free_for = _usual_free_for + turn_check_interval if usual_hidden == 0 else 0.0
+	if _turn_goal != 0.0 and _usual_free_for >= turn_back_after:
+		_turn_goal = 0.0
+		return
+	var goal_hidden := usual_hidden if _turn_goal == 0.0 else _hidden_points(target_position, _turn_goal, distance)
+	if goal_hidden == 0:
+		return
+	# the nearest turn (from the usual view, then from where it is) that hides the least
+	var best_turn := _turn_goal
+	var best_hidden := goal_hidden
+	var steps := int(turn_most / maxf(turn_step, 1.0))
+	for step in range(1, steps + 1):
+		for side: float in [1.0, -1.0]:
+			var turn := side * step * turn_step
+			# half round is the same view either way: looked at once
+			if side < 0.0 and is_equal_approx(step * turn_step, 180.0):
+				continue
+			var hidden := _hidden_points(target_position, turn, distance)
+			if hidden < best_hidden or (hidden == best_hidden and hidden < goal_hidden
+					and absf(turn - _turn) < absf(best_turn - _turn)):
+				best_turn = turn
+				best_hidden = hidden
+		if best_hidden == 0:
+			break
+	_turn_goal = best_turn
+
+
+## How many of the test points round the target (turn_test_heights, and turn_test_reach to
+## either side across the view) a Gebouwen cell hides from a camera turned `turn` degrees.
+## Walks each line of sight in 1 m steps (cells are 4 m) up to the camera; only cells on the
+## camera's side of the target count (it never hides behind a building at its back).
+func _hidden_points(target_position: Vector3, turn: float, distance: float) -> int:
+	var towards_camera := Iso.direction(Iso.ROTATION.y + turn)
+	var across := Vector3.UP.cross(towards_camera).normalized()
+	var flat_towards := Vector2(towards_camera.x, towards_camera.z)
+	var to_map := _buildings.global_transform.affine_inverse()
+	var hidden := 0
+	for height in turn_test_heights:
+		for side: float in [-1.0, 0.0, 1.0]:
+			var start := target_position + Vector3.UP * height + across * side * turn_test_reach
+			for step in range(1, int(distance)):
+				var point := start + towards_camera * float(step)
+				var cell := _buildings.local_to_map(to_map * point)
+				if _buildings.get_cell_item(cell) == GridMap.INVALID_CELL_ITEM:
+					continue
+				var middle := _buildings.to_global(_buildings.map_to_local(cell))
+				if Vector2(middle.x - target_position.x, middle.z - target_position.z).dot(flat_towards) > 0.0:
+					hidden += 1
+					break
+	return hidden
 
 
 ## Shakes the view for a crash that just happened within it (harder the harder the crash,

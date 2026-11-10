@@ -9,9 +9,12 @@
 // (the warp), as the white weft of denim, and each thread differs a little in shade (slubs
 // in the yarn). Everything fades out where it would be smaller than a pixel, so it never
 // turns into noise at play distance. Its own roughness, specular and velvet edge.
-// Skin, eyes, leather, plastic, metal and glass have ordinary materials.
+// Every voxel has a bevel (voxel_bevel.gdshaderinc), so voxels of one colour still read apart.
+// Skin, eyes, leather, plastic, metal and glass: figure_plain.gdshader.
 shader_type spatial;
 render_mode cull_disabled;
+
+#include "res://scripts/player/voxel_bevel.gdshaderinc"
 
 // 1 plain weave (cotton, wool, nylon), 2 twill (denim), 3 knit (rows of stitches),
 // 4 strands (hair, fur)
@@ -122,7 +125,7 @@ void fragment() {
 		float thread_seed = warp ? cell.x : cell.y + 1000.0;
 		colour *= 1.0 + (hash(thread_seed) - 0.5) * 2.0 * slub_strength * visible;
 	}
-	ALBEDO = clamp(colour, 0.0, 1.0);
+	ALBEDO = clamp(colour * voxel_bevel(UV), 0.0, 1.0);
 	// the bumped normal from the slope of the height (a small step in thread units)
 	float step_size = 0.04;
 	float slope_x = (height_at(spot + vec2(step_size, 0.0)) - height_at(spot - vec2(step_size, 0.0))) / (2.0 * step_size);

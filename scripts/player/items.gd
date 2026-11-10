@@ -11,6 +11,11 @@ extends RefCounted
 ##   with a negative number); no "effect" = it cannot be used;
 ## - "action": the verb on the menu's button when it can be used ("ETEN", "DRINKEN", "GEBRUIKEN").
 ## What each archetype starts with: START_ITEMS (id -> count).
+## Room: every kind of item takes one slot ("vakje", however many of it), and a zwerver has
+## only BASE_SLOTS of them in his pockets; a rucksack picked up in the town
+## (scripts/world/backpacks.gd) adds BACKPACK_SLOTS. Nobody starts with a rucksack.
+const BASE_SLOTS := 4
+const BACKPACK_SLOTS := 8
 
 const ITEMS := {
 	"brood": {"name": "Oud brood", "kind": "eten", "rarity": "gewoon", "icon": "brood",

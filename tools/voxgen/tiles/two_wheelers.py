@@ -1,4 +1,4 @@
-"""The two-wheelers of the traffic with their riders, at half the usual voxel size: one voxel
+"""The two-wheelers of the traffic, at half the usual voxel size: one voxel
 here is 0.0625 m (FINE_VOXEL), so the riders get a real head (face, hair or a helmet with a
 visor), arms down to the hands on the grips, legs to the pedals or footrests, and the bikes
 thin tubes, a saddle, mudguards, a carrier and lamps:
@@ -10,7 +10,12 @@ These tiles are imported with the import option voxel_size = FINE_VOXEL (their
 auto_wiel, the scooter on klein_wiel (both 0.125 m voxels, small_vehicles.py).
 
 Like the cars they are drawn without their wheels, which scripts/vehicles/*.gd place and
-turn: x across (11 voxels, the frame in the middle column x = MIDDLE), y along with the
+turn. The moped, the scooters and the motorbike are drawn without their riders too: those
+are townspeople built in code (scripts/world/townsfolk_figure.gd, the size of the player
+figures), put on by scripts/vehicles/two_wheeler.gd, which takes the seat, footrests and
+grips of these tiles. The bicycles of the traffic are built in code as well
+(scripts/vehicles/bicycle_parts.gd, with a turning fork and cranks); the fietser and fatbike
+tiles here, with their riders, are no longer driven: x across (11 voxels, the frame in the middle column x = MIDDLE), y along with the
 front at y=0, z up; the hub positions are the *_HUBS constants (along, up, in fine voxels),
 which the vehicle scripts turn into metres."""
 from common import tile
@@ -232,7 +237,7 @@ def fatbike():
 def moped():
     """A classic Dutch moped (a Tomos): a red tank with a chrome stripe, a small engine with
     cooling fins, a long black seat, a chrome exhaust along the right side, chrome
-    mudguards, a round headlight and mirrors; the rider in a white open helmet."""
+    mudguards, a round headlight and mirrors (its rider: scripts/vehicles/moped.gd)."""
     model = V(WIDTH, 28, 30)
     paint = "lak_rood1"
     (front_along, hub_up), (rear_along, _) = MOPED_HUBS
@@ -260,15 +265,14 @@ def moped():
     model.set(MIDDLE, 27, 12, "signaal_rood")
     block(model, 1, 2, 16, 17, 3, 3, "metaal_donker")                 # footrests
     block(model, 8, 9, 16, 17, 3, 3, "metaal_donker")
-    rider(model, Outfit("stof1", "gordijn3", MATTE_BLACK, helmet="bord_wit"),
-          hip=(20, 14), knees=((13, 13), (13, 13)), feet=((16, 4), (16, 4)), shoulder=(17, 22), hands=(10, 19))
     return model
 
 
-def scooter_body(paint, outfit):
+def scooter_body(paint):
     """A 45 km/h scooter on small wheels (klein_wiel): a leg shield and a floor at the
     front, a handlebar cover with the headlight and mirrors, a fat rear body over the
-    engine with the seat on it, the exhaust under the right side; its rider."""
+    engine with the seat on it, the exhaust under the right side (its rider:
+    scripts/vehicles/scooter.gd)."""
     model = V(WIDTH, 28, 30)
     (front_along, hub_up), _ = SCOOTER_HUBS
     front_hub = (int(front_along), int(hub_up))
@@ -291,29 +295,27 @@ def scooter_body(paint, outfit):
     block(model, 4, 6, 27, 27, 8, 9, "signaal_rood")
     block(model, 4, 6, 27, 27, 5, 6, "bord_geel")
     block(model, 8, 9, 20, 26, 2, 3, "rvs")                           # the exhaust
-    rider(model, outfit, hip=(20, 13), knees=((13, 12), (13, 12)), feet=((11, 6), (12, 6)),
-          shoulder=(18, 21), hands=(8, 18))
     return model
 
 
 @tile("props/voertuigen/scooter")
 def scooter():
-    """A yellow scooter with a rider in a black open helmet and a cream coat."""
-    return scooter_body("lak_geel1", Outfit("stof3", "hout_donker1", "stof1", helmet="bord_zwart"))
+    """A yellow scooter."""
+    return scooter_body("lak_geel1")
 
 
 @tile("props/voertuigen/scooter_zwart")
 def scooter_black():
-    """A black scooter with a rider in a white open helmet and a red coat."""
-    return scooter_body("bord_zwart", Outfit("stof2", "gordijn2", "stof1", helmet="bord_wit"))
+    """A black scooter."""
+    return scooter_body("bord_zwart")
 
 
 @tile("props/voertuigen/motorfiets")
 def motorbike():
     """A naked motorbike on car-sized wheels (auto_wiel): a red tank with knee recesses, an
     engine with steel cooling fins and covers, a chrome exhaust and silencer, a short tail
-    with the tail light and plate, four indicators, mirrors; the rider leans forward in
-    black leathers with red cuffs and a red full-face helmet with a dark visor."""
+    with the tail light and plate, four indicators, mirrors (its rider:
+    scripts/vehicles/motorbike.gd)."""
     model = V(WIDTH, 34, 32)
     paint = "lak_rood1"
     (front_along, hub_up), (rear_along, _) = MOTORBIKE_HUBS
@@ -350,8 +352,6 @@ def motorbike():
     tube(model, (27, 15), (26, 7), "rvs", (3, 7))                     # rear shocks
     block(model, 1, 2, 22, 23, 6, 6, "metaal_donker")                 # footpegs
     block(model, 8, 9, 22, 23, 6, 6, "metaal_donker")
-    rider(model, Outfit(MATTE_BLACK, "stof2", MATTE_BLACK, helmet="bord_rood", full_face=True),
-          hip=(23, 17), knees=((17, 15), (17, 15)), feet=((22, 7), (22, 7)), shoulder=(15, 23), hands=(12, 21))
     return model
 
 

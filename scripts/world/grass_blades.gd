@@ -28,9 +28,11 @@ const GRASS_TOP := 0.375
 @export var density := 220.0
 ## Fine blades are shown below this view size (metres in view), fully below `full_from`.
 ## Further out such a blade is narrower than a pixel or two and the grass sparkles as the
-## view moves (and costs a lot of frame time): the medium and far tufts take over.
-@export var show_from := 36.0
-@export var full_from := 26.0
+## view moves (and costs a lot of frame time): the medium and far tufts take over. Fully up to
+## the follow camera's zoom while walking (FollowCamera.zoom_walk, 38 m), so the grass round
+## the player is always the real blades.
+@export var show_from := 48.0
+@export var full_from := 40.0
 ## Blade height (m); each blade gets 0.6 .. 1.3 x this, times the cell's grass height
 ## (short or tall grass, scripts/world/ground_map.gd).
 @export var blade_height := 0.32

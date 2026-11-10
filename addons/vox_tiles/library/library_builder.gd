@@ -25,13 +25,15 @@ const PREVIEW_SIZE := 96
 const PREVIEW_CACHE := "res://.godot/vox_tiles_previews"
 
 ## collision: "trimesh" (exact shape), "box" (bounding box; trees (TRUNK_TILES) only their
-## trunk, so you can walk under the crown), "none",
+## trunk, so you can walk under the crown), "blocks" (a few boxes that follow the model
+## coarsely: a lamppost a thin post with its head, a tree its trunk and its crown; _block_shapes),
+## "none",
 ## "auto" (buildings: solid blocks get a 4x3x4 m box, hollow/walkable tiles an exact shape)
 const CATEGORIES := {
 	"grond": {"collision": "trimesh"},
 	"gebouwen": {"collision": "auto"},
 	"details": {"collision": "none"},
-	"props": {"collision": "box"},
+	"props": {"collision": "blocks"},
 }
 
 
@@ -452,7 +454,7 @@ const TRUNK_TILES := ["bomen/"]
 ## Raise it when the way colliders are made changes: a library made with an older version gets
 ## its colliders made again (only those: the meshes, atlases and coarse versions stay).
 ## 2: trees collide with their trunk only.
-const COLLISION_VERSION := 2
+const COLLISION_VERSION := 3
 const TRUNK_HEIGHT := 1.6
 const TRUNK_COLLIDER_HEIGHT := 2.5
 
@@ -557,6 +559,8 @@ static func _shapes(mesh: Mesh, mode: String, key := "") -> Array:
 		"trimesh":
 			var s := mesh.create_trimesh_shape()
 			return [s, Transform3D()] if s else []
+		"blocks":
+			return _block_shapes(mesh)
 		"box":
 			for trunk_tile in TRUNK_TILES:
 				if key.begins_with(trunk_tile):
@@ -566,6 +570,112 @@ static func _shapes(mesh: Mesh, mode: String, key := "") -> Array:
 			b.size = aabb.size
 			return [b, Transform3D(Basis(), aabb.get_center())]
 	return []
+
+
+## The blocks of a prop (see CATEGORIES): the model cut in layers BLOCK_LAYER m high, in each
+## layer the rectangle round what is in it (the triangles of a voxel model are square to the
+## axes, so their boxes are exact), and layers whose rectangles differ less than BLOCK_SLACK m
+## on every side merged into one box; no more than MOST_BLOCKS boxes (then the two touching
+## blocks whose merge adds the least volume go together, so a thin trunk stays thin).
+## Coarse, not the exact shape: a post is a thin column, a lamp head a box on it.
+const BLOCK_LAYER := 0.25
+const BLOCK_SLACK := 0.12
+const MOST_BLOCKS := 7
+## Smaller than this (metres, across) a block is still this wide, so nothing slips through.
+const THINNEST_BLOCK := 0.12
+
+
+static func _block_shapes(mesh: Mesh) -> Array:
+	var aabb := mesh.get_aabb()
+	if aabb.size.y <= 0.0:
+		return []
+	var layer_count := maxi(1, ceili(aabb.size.y / BLOCK_LAYER))
+	var lows: Array[Vector2] = []
+	var highs: Array[Vector2] = []
+	lows.resize(layer_count)
+	highs.resize(layer_count)
+	lows.fill(Vector2(INF, INF))
+	highs.fill(Vector2(-INF, -INF))
+	for surface in mesh.get_surface_count():
+		var arrays := mesh.surface_get_arrays(surface)
+		var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+		var indices: PackedInt32Array = arrays[Mesh.ARRAY_INDEX] if arrays[Mesh.ARRAY_INDEX] != null else PackedInt32Array()
+		var corner_count := indices.size() if not indices.is_empty() else vertices.size()
+		for first in range(0, corner_count - 2, 3):
+			var low := Vector3(INF, INF, INF)
+			var high := -low
+			for corner in 3:
+				var vertex := vertices[indices[first + corner] if not indices.is_empty() else first + corner]
+				low = low.min(vertex)
+				high = high.max(vertex)
+			var from_layer := clampi(floori((low.y - aabb.position.y) / BLOCK_LAYER + 0.001), 0, layer_count - 1)
+			var to_layer := clampi(ceili((high.y - aabb.position.y) / BLOCK_LAYER - 0.001) - 1, from_layer, layer_count - 1)
+			for layer in range(from_layer, to_layer + 1):
+				lows[layer] = lows[layer].min(Vector2(low.x, low.z))
+				highs[layer] = highs[layer].max(Vector2(high.x, high.z))
+	var blocks := _merge_layers(lows, highs, BLOCK_SLACK)
+	while blocks.size() > MOST_BLOCKS:
+		var best := -1
+		var best_cost := INF
+		for index in blocks.size() - 1:
+			var lower: Array = blocks[index]
+			var upper: Array = blocks[index + 1]
+			if int(lower[3]) + 1 != int(upper[2]):
+				continue   # a gap between them: not merged
+			var cost := _block_volume(_merged(lower, upper)) - _block_volume(lower) - _block_volume(upper)
+			if cost < best_cost:
+				best_cost = cost
+				best = index
+		if best < 0:
+			break
+		blocks[best] = _merged(blocks[best], blocks[best + 1])
+		blocks.remove_at(best + 1)
+	var shapes := []
+	for block: Array in blocks:
+		var low: Vector2 = block[0]
+		var high: Vector2 = block[1]
+		var bottom := aabb.position.y + int(block[2]) * BLOCK_LAYER
+		var top := minf(aabb.position.y + (int(block[3]) + 1) * BLOCK_LAYER, aabb.end.y)
+		var size := Vector3(maxf(high.x - low.x, THINNEST_BLOCK), top - bottom, maxf(high.y - low.y, THINNEST_BLOCK))
+		var box := BoxShape3D.new()
+		box.size = size
+		shapes.append(box)
+		shapes.append(Transform3D(Basis(), Vector3((low.x + high.x) * 0.5, (bottom + top) * 0.5, (low.y + high.y) * 0.5)))
+	return shapes
+
+
+static func _merged(lower: Array, upper: Array) -> Array:
+	return [(lower[0] as Vector2).min(upper[0]), (lower[1] as Vector2).max(upper[1]), lower[2], upper[3]]
+
+
+## The volume of a block, in layers times square metres.
+static func _block_volume(block: Array) -> float:
+	var footprint: Vector2 = (block[1] as Vector2) - (block[0] as Vector2)
+	return footprint.x * footprint.y * (int(block[3]) - int(block[2]) + 1)
+
+
+## Runs of layers (from the bottom) whose rectangles differ less than `slack` on each side,
+## each [low, high (the rectangle round them all), first layer, last layer]; empty layers end
+## a run and are left out.
+static func _merge_layers(lows: Array[Vector2], highs: Array[Vector2], slack: float) -> Array:
+	var blocks := []
+	for layer in lows.size():
+		if lows[layer].x == INF:
+			continue
+		if not blocks.is_empty():
+			var last: Array = blocks[-1]
+			var low: Vector2 = last[0]
+			var high: Vector2 = last[1]
+			var touching := int(last[3]) == layer - 1
+			var alike := absf(lows[layer].x - low.x) < slack and absf(lows[layer].y - low.y) < slack \
+					and absf(highs[layer].x - high.x) < slack and absf(highs[layer].y - high.y) < slack
+			if touching and alike:
+				last[0] = low.min(lows[layer])
+				last[1] = high.max(highs[layer])
+				last[3] = layer
+				continue
+		blocks.append([lows[layer], highs[layer], layer, layer])
+	return blocks
 
 
 ## The collider of a tree: a box round its vertices in the lowest TRUNK_HEIGHT m (the trunk),

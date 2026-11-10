@@ -440,7 +440,7 @@ SHOP_NAMES = {
         (["HAAR", "KLOPT"], "luifel_wit", "bord_zwart", "bloem_paars", "luifel_wit", "rond")]),
     "snackbar": ("friet", [
         (["FRIETJE", "FATSOEN"], "bord_geel", "bord_rood", "bord_rood", "bord_geel", "rond"),
-        (["DE", "VETPOT"], "bord_rood", "bord_geel", "bord_geel", "bord_rood", "vierkant")]),
+        (["JAN", "BLAMMAGE"], "bord_rood", "bord_geel", "bord_geel", "bord_rood", "vierkant")]),
     "supermarkt": ("mandje", [
         (["BUURT", "SUPER"], "bord_groen", "bord_wit", "bord_wit", "bord_groen", "vierkant"),
         (["KOOPJE", "MARKT"], "bloem_oranje", "bord_wit", "bord_wit", "bloem_oranje", "rond")]),

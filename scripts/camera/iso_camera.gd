@@ -12,10 +12,12 @@ extends RefCounted
 
 ## Vertical field of view in degrees.
 const FOV := 20.0
-## Camera rotation in degrees (pitch, yaw, roll).
-const ROTATION := Vector3(-35.264, 45.0, 0.0)
+## Camera rotation in degrees (pitch, yaw, roll): the camera stands north-east of what it
+## looks at, so the north and east fronts face it (the front of Centraal Station with its
+## "DEN HAAG CENTRAAL" lettering faces north, onto the square).
+const ROTATION := Vector3(-35.264, 135.0, 0.0)
 ## Unit vector from the focus point to the camera (the inverse of the view direction).
-const DIRECTION := Vector3(0.57735, 0.57735, 0.57735)
+const DIRECTION := Vector3(0.57735, 0.57735, -0.57735)
 
 
 ## Camera distance (metres) from the focus point for a view size in metres.

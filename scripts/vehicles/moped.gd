@@ -1,11 +1,17 @@
 class_name Moped
-extends Vehicle
-## A moped ("brommer", like a Tomos) with its helmeted rider (props/voertuigen/brommer,
-## tools/voxgen/tiles/two_wheelers.py, 1.75 m long, 6 cm voxels) on two thin moped wheels
-## (brommer_wiel). A "brommer": on the road and on the cycle paths that allow mopeds; 45 km/h.
+extends TwoWheeler
+## A moped ("brommer", like a Tomos; props/voertuigen/brommer, tools/voxgen/tiles/two_wheelers.py,
+## 1.75 m long, 6 cm voxels) on two thin moped wheels (brommer_wiel), its rider a
+## townsperson in an open helmet (TwoWheeler: on the seat, feet on the footrests, hands on
+## the grips). A "brommer": on the road and on the cycle paths that allow mopeds; 45 km/h.
 
 
 func _init() -> void:
+	# the rider: on the seat (cells up 12..13), feet on the footrests, hands on the grips
+	rider_kind = "helm"
+	rider_hip = TwoWheeler.tile_point(20.5, 14.8, 0.0, 14.0)
+	rider_foot = TwoWheeler.tile_point(17.0, 4.0, 3.5, 14.0)
+	rider_grip = TwoWheeler.tile_point(10.5, 18.5, 4.5, 14.0)
 	model = "voertuigen/brommer"
 	model_lift = 0.125
 	wheel_model = "voertuigen/brommer_wiel"
@@ -27,3 +33,5 @@ func _init() -> void:
 	braking = 4.0
 	half_length = 0.9
 	mass_kg = 160.0
+	wheelie_degrees = 26.0
+	wheelie_kind = "brommer"

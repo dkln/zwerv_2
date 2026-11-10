@@ -299,7 +299,8 @@ def tile_animation(name):
 
     "float" for boats/buoys/water lilies (by base name prefix), "flowers" for flower beds
     in the ground (sway just above the ground), "wind" for trees,
-    plants, hedges, planters and reed (except reed roofs under /daken/), else None.
+    plants, hedges, planters and reed (a name starting 'riet' or with '_riet', so not the
+    frietkar; except reed roofs under /daken/), else None.
     """
     base = os.path.basename(name)
     if base.startswith(_FLOAT_PREFIXES):
@@ -308,7 +309,7 @@ def tile_animation(name):
     if "bloemperk" in base:
         return "flowers"
     if ("/bomen/" in path or "/planten/" in path or "/haag" in path or "bloembak" in path
-            or "riet" in path and "/daken/" not in path):
+            or ("/riet" in path or "_riet" in base) and "/daken/" not in path):
         return "wind"
     return None
 

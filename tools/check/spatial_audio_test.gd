@@ -7,6 +7,7 @@ extends SceneTree
 ## an emergency vehicle slowing down with its siren on switches to the yelp.
 ## usage: tools/godot.sh --headless --script tools/check/spatial_audio_test.gd
 
+const BABBLE = preload("res://scripts/audio/babble.gd")
 const Common = preload("res://tools/tool_common.gd")
 const SPATIAL_AUDIO = preload("res://scripts/audio/spatial_audio.gd")
 const PLAYER = preload("res://scripts/player/player_controller.gd")
@@ -62,6 +63,9 @@ func _check(condition: bool, label: String) -> void:
 ## Every sound file is imported (so an exported game has it), loads, and is named in the code.
 func _check_sound_files(spatial: Node) -> void:
 	var code := FileAccess.get_file_as_string(spatial.get_script().resource_path)
+	# the horns and bells are named by the vehicles and the pedestrians (play_signal)
+	for user_path in ["res://scripts/vehicles/vehicle.gd", "res://scripts/vehicles/fire_engine.gd", "res://scripts/world/pedestrian.gd"]:
+		code += FileAccess.get_file_as_string(user_path)
 	var unused: Array[String] = []
 	var not_imported: Array[String] = []
 	var broken: Array[String] = []
@@ -83,12 +87,18 @@ func _check_sound_files(spatial: Node) -> void:
 				or code.contains('"%s_sirene_loop"' % sound_name.trim_suffix("_voorbij"))):
 			named = true
 		# the cries of pain: pijn_<voice>_<1..3|hard> for a voice of a character, the thud of a hit
-		if sound_name in [PLAYER.BODY_HIT_SOUND, PLAYER.SPLASH_SOUND]:
+		if sound_name in [PLAYER.BODY_HIT_SOUND, PLAYER.SPLASH_SOUND, PLAYER.JUMP_SOUND]:
 			named = true
 		for voice in _voices():
 			var cry := sound_name.trim_prefix("pijn_%s_" % voice)
 			if sound_name.begins_with("pijn_%s_" % voice) and (cry == "hard" or int(cry) in range(1, PLAYER.SHORT_CRY_COUNT + 1)):
 				named = true
+		# the babble: brabbel_<voice>_<mood>_<n> (scripts/audio/babble.gd)
+		for voice: String in BABBLE.VOICES:
+			for mood: String in BABBLE.MOODS:
+				for variant in range(1, BABBLE.VARIANTS + 1):
+					if sound_name == "brabbel_%s_%s_%d" % [voice, mood, variant]:
+						named = true
 		if not named:
 			unused.append(sound_name)
 	for voice in _voices():

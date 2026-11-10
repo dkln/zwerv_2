@@ -10,6 +10,8 @@ extends RefCounted
 ##   ...in _process: typewriter.update(delta)
 ## When it is all there the cursor blinks (`blink_when_done`) or goes (false). `show_cursor`
 ## and `sound` off: no cursor and no blips (the speech balloons; the story box has both).
+## `follow_cursor`: a text taller than its label scrolls along by itself, so the line being
+## typed stays in view (the label needs scroll_active; the character creation screen).
 
 const UiSounds = preload("res://scripts/ui/ui_sounds.gd")
 const UiStyle = preload("res://scripts/ui/ui_style.gd")
@@ -24,12 +26,17 @@ const CURSOR_GAP := "\u00A0\u00A0"
 ## The blip: dB softer than the menu sounds, and how far its pitch wanders (share).
 const BLIP_SOFTER_DB := -12.0
 const BLIP_PITCH_SPREAD := 0.06
+## How fast the text scrolls after the cursor (share of the distance left per second, about).
+const FOLLOW_SPEED := 8.0
+## ...but never slower than this (pixels per second), so it does arrive.
+const FOLLOW_SLOWEST := 30.0
 
 var label: RichTextLabel
 var cursor_colour := UiStyle.ACCENT
 var blink_when_done := true
 var sound := true
 var show_cursor := true
+var follow_cursor := false
 ## The pitch of the blips (higher for a higher voice).
 var voice_pitch := 1.0
 var text := ""
@@ -40,6 +47,7 @@ var _words_shown := 0
 var _word_clock := 0.0
 var _blink_clock := 0.0
 var _random := RandomNumberGenerator.new()
+var _scroll := 0.0
 
 
 func _init(text_label: RichTextLabel, sound_owner: Node) -> void:
@@ -57,12 +65,29 @@ func start(new_text: String) -> void:
 	_word_clock = 0.15
 	_blink_clock = 0.0
 	_render()
+	if follow_cursor:
+		_scroll = 0.0
+		label.get_v_scroll_bar().value = 0.0
 
 
 ## The rest of the text at once.
 func finish() -> void:
 	_words_shown = _word_ends.size()
 	_render()
+
+
+## How much of the text has appeared (0..1, by characters).
+func shown_share() -> float:
+	if _word_ends.is_empty() or text.is_empty():
+		return 1.0
+	if _words_shown <= 0:
+		return 0.0
+	return clampf(float(_word_ends[mini(_words_shown, _word_ends.size()) - 1]) / float(text.length()), 0.0, 1.0)
+
+
+## How many words have not appeared yet.
+func words_left() -> int:
+	return _word_ends.size() - _words_shown
 
 
 func is_done() -> bool:
@@ -72,6 +97,8 @@ func is_done() -> bool:
 ## Call every frame.
 func update(delta: float) -> void:
 	_blink_clock += delta
+	if follow_cursor:
+		_follow(delta)
 	if is_done():
 		if blink_when_done:
 			_render()
@@ -100,6 +127,26 @@ func _render() -> void:
 	var rest := text.substr(shown)
 	label.text = _escaped(text.substr(0, shown)) + cursor \
 			+ ("[color=#00000000]%s[/color]" % _escaped(rest) if rest != "" else "")
+
+
+## Scrolls smoothly down until the line with the last word shown is in view (never back up).
+func _follow(delta: float) -> void:
+	var shown := _word_ends[_words_shown - 1] if _words_shown > 0 else 0
+	if shown <= 0:
+		return
+	var line := label.get_character_line(shown - 1)
+	if line < 0:
+		return
+	var line_bottom := label.get_line_offset(line + 1) if line + 1 < label.get_line_count() \
+			else float(label.get_content_height())
+	var scroll_bar := label.get_v_scroll_bar()
+	var target := clampf(line_bottom - label.size.y, 0.0, scroll_bar.max_value)
+	if target > _scroll:
+		# kept as a float of its own: the scroll bar rounds to whole pixels, and small steps
+		# (a high frame rate) would never get there
+		var step := maxf((target - _scroll) * FOLLOW_SPEED, FOLLOW_SLOWEST) * delta
+		_scroll = minf(_scroll + step, target)
+		scroll_bar.value = _scroll
 
 
 static func _escaped(plain: String) -> String:

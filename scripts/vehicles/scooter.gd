@@ -1,11 +1,17 @@
 class_name Scooter
-extends Vehicle
-## A 45 km/h scooter with its rider (props/voertuigen/scooter, also _zwart;
-## tools/voxgen/tiles/two_wheelers.py, 1.75 m long, 6 cm voxels) on two small wheels (klein_wiel). A
+extends TwoWheeler
+## A 45 km/h scooter (props/voertuigen/scooter, also _zwart; tools/voxgen/tiles/two_wheelers.py,
+## 1.75 m long, 6 cm voxels) on two small wheels (klein_wiel), its rider a townsperson in
+## an open helmet (TwoWheeler: on the seat, feet on the floor, hands on the grips). A
 ## "brommer": on the road and on the cycle paths that allow mopeds.
 
 
 func _init() -> void:
+	# the rider: on the seat (cells up 11..12), feet on the floor, hands on the grips
+	rider_kind = "helm"
+	rider_hip = TwoWheeler.tile_point(20.5, 13.8, 0.0, 14.0)
+	rider_foot = TwoWheeler.tile_point(13.5, 6.0, 2.5, 14.0)
+	rider_grip = TwoWheeler.tile_point(8.5, 17.5, 4.5, 14.0)
 	model = "voertuigen/scooter"
 	model_lift = 0.125
 	wheel_model = "voertuigen/klein_wiel"
@@ -27,3 +33,5 @@ func _init() -> void:
 	braking = 4.0
 	half_length = 0.9
 	mass_kg = 170.0
+	wheelie_degrees = 20.0
+	wheelie_kind = "brommer"

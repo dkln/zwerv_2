@@ -9,6 +9,8 @@ built on the motif on the FM lead:
                               motif in F major with bells, sparkle and crash
     deuntje_verloren.ogg      (4 s) lost: the motif begins, then sinks step by step over
                               Fm Gb Bbm C7 down to a low F
+    deuntje_nieuwe_missie.ogg (2.2 s) a new mission: the motif quick on bells, a brass stab on
+                              Db, then Eb, up to an open F with a little sparkle (a "go!")
     deuntje_dood.ogg          (4 s) death: a heavy low hit, a PSG pitch dive, the motif slowed
                               down an octave lower over a dark chord, dying away
 
@@ -100,6 +102,25 @@ def level_up() -> None:
     song.render(target_rms_db=-14.0, fade_out=0.8)
 
 
+def new_mission() -> None:
+    song = one_shot("deuntje_nieuwe_missie.ogg", 2.2)
+    tonic = Chord("F maj")
+    for pitch, step in zip(style.motif_notes(tonic, octave=1), (0, 1, 2, 3)):
+        song.piano.add(song.at(0, step), megadrive.fm_note(style.BELL, float(pitch), song.sixteenths(3), 0.9))
+        song.psg_two.add(song.at(0, step), megadrive.psg_square(pitch + 12, song.sixteenths(0.8), 0.4, decay=0.06))
+    for step, label in ((4, "Db maj"), (6, "Eb maj")):
+        chord = Chord(label)
+        song.brass.add(song.at(0, step), megadrive.fm_chord(style.BRASS_STAB, [note + 12 for note in chord.voicing],
+                                                             song.sixteenths(1.6), 0.9))
+        song.pcm.add(song.at(0, step), style.KICK, 0.7)
+        song.bass.add(song.at(0, step), megadrive.fm_note(style.SYNTH_BASS, float(chord.bass_root), song.sixteenths(1.6)))
+    style.big_hit(song, 0, 8, tonic, 8)
+    song.lead.add(song.at(0, 8), megadrive.fm_note(style.LEAD, float(tonic.melody_root + 12), song.sixteenths(6), 0.8))
+    for step, pitch in enumerate([84, 89, 93, 96]):
+        song.psg_one.add(song.at(0, 8 + step * 0.5), megadrive.psg_square(pitch, song.sixteenths(0.5), 0.45, decay=0.05))
+    song.render(target_rms_db=-14.0, fade_out=0.6)
+
+
 def lost() -> None:
     song = one_shot("deuntje_verloren.ogg", 4.0)
     sinking = style.chords(["F m", "Gb maj", "Bb m", "C 7", "F m"])
@@ -142,7 +163,7 @@ def death() -> None:
     song.render(target_rms_db=-15.0, fade_out=1.2)
 
 
-STINGERS = {"kaart_start": map_start, "gewonnen": won, "level_omhoog": level_up, "verloren": lost, "dood": death}
+STINGERS = {"kaart_start": map_start, "gewonnen": won, "level_omhoog": level_up, "verloren": lost, "nieuwe_missie": new_mission, "dood": death}
 
 
 def main() -> None:

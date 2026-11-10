@@ -14,4 +14,5 @@ func _init() -> void:
 	beacon_size = Vector3(0.65, 0.16, 0.4)
 	top_speed_kmh = 110.0
 	mass_kg = 14000.0
+	horn_sound = "brandweer_hoorn"
 	wheel_torque = 11000.0

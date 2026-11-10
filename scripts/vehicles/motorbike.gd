@@ -1,12 +1,19 @@
 class_name Motorbike
-extends Vehicle
-## A motorbike ("motorfiets") with its rider in leathers (props/voertuigen/motorfiets,
-## tools/voxgen/tiles/two_wheelers.py, 2.1 m long, 6 cm voxels) on the car wheels (auto_wiel). Drives
+extends TwoWheeler
+## A motorbike ("motorfiets"; props/voertuigen/motorfiets, tools/voxgen/tiles/two_wheelers.py,
+## 2.1 m long, 6 cm voxels) on the car wheels (auto_wiel), its rider a townsperson in black
+## leathers and a full-face helmet (TwoWheeler: leaning forward to the grips, feet on the pegs). Drives
 ## where cars drive ("auto"), up to 130 km/h, quick off the mark; a headlight, a tail light
 ## and four indicators.
 
 
 func _init() -> void:
+	# the rider: on the seat (cells up 15..16), feet on the pegs, hands on the grips
+	rider_kind = "helm_dicht"
+	rider_look = {"coat": Color("#1A1A1E"), "trim": Color("#8A2A2A"), "trousers": Color("#1A1A1E"), "shoes": Color("#141212")}
+	rider_hip = TwoWheeler.tile_point(23.5, 17.8, 0.0, 17.0)
+	rider_foot = TwoWheeler.tile_point(23.0, 7.0, 3.5, 17.0)
+	rider_grip = TwoWheeler.tile_point(12.5, 20.5, 4.5, 17.0)
 	model = "voertuigen/motorfiets"
 	model_lift = 0.25
 	wheel_model = "voertuigen/auto_wiel"
@@ -30,3 +37,5 @@ func _init() -> void:
 	braking = 5.0
 	half_length = 1.05
 	mass_kg = 300.0
+	wheelie_degrees = 32.0
+	wheelie_kind = "motor"

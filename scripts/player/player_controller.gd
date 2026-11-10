@@ -5,8 +5,11 @@ extends Node3D
 ## follows it (Volgcamera, follow_camera.gd); the HUD shows its stats (set_stat) and the game
 ## menu its inventory (scripts/ui/game_menu.gd).
 ##
-## Walking: WASD or the arrow keys, along the iso view (up = into the screen); Shift runs
-## while there is stamina. There is no CharacterBody: every physics step it tries the
+## Walking (`controls`): "tank" (the default): A/D or left/right turn the figure round
+## (`turn_speed`), W/S or up/down walk forwards or backwards the way it faces (backwards at
+## `backward_share` of the speed, no running); so a turning camera never changes where a key
+## takes you. "scherm": along the iso view (up = into the screen). Shift runs forwards while
+## there is stamina. There is no CharacterBody: every physics step it tries the
 ## move with the town's own colliders (the GridMap shapes the wrecks use too):
 ## - the ground: a ray straight down from `max_step` above the feet to `max_drop` below
 ##   them; a step up of at most `max_step` (kerbs, stairs) is taken, a drop of more than
@@ -17,6 +20,13 @@ extends Node3D
 ##   along the wall (the move split in x and z).
 ## The figure (PlayerModel) walks with its speed, turns towards where it goes, and its height
 ## follows steps smoothly (the node itself snaps, the figure glides).
+## Talking: someone on foot or in a chair within `talk_reach` m (and before it) shows
+## "[E] Praten" bottom left (GameHud.set_actions); E starts a conversation with them
+## (Conversations, in the story box: the game stands still meanwhile), they turn to you.
+## Space jumps (`jump_height` m, falling back at `jump_gravity`; it costs `jump_stamina`, not
+## when exhausted): in the air it still steers, may come down on something up to its jump
+## higher than where it left (a bench, a low wall), never over a drop or water it could not
+## walk off; the figure tucks its legs and throws up its arms meanwhile.
 ## The collider: an AnimatableBody3D box with the outer size of the figure (Botsvorm), so
 ## the wrecks of the traffic bump into it; the player's own tests leave it out.
 ##
@@ -49,11 +59,17 @@ extends Node3D
 ##
 ## Start: on the square by Centraal Station (START_PLACE, a key of the scene's "places"
 ## metadata; on a square tile, else pavement, else anything walkable), asleep: the figure
-## lies on its back with z's rising over it, and once the town is loaded (the DetailNiveau
+## lies on its back, and once the town is loaded (the DetailNiveau
 ## has merged) and `sleep_seconds` have passed, or a key is pressed, it wakes and gets up
 ## (`wake_time`). Asleep it cannot walk, and hunger and stamina stand still.
+## Experience: add_xp (missions and their steps give it, scripts/story/story.gd); a full
+## bar (`xp_for_level`) is a level up: the next level takes XP_GROWTH times as much, the HUD
+## shows the new level and plays the level jingle (GameHud.show_level_up).
 ## Inventory: `inventory` (item id -> count, scripts/player/items.gd), use_item applies an
-## item's effect to the stats.
+## item's effect to the stats. Room for only Items.BASE_SLOTS kinds of item (inventory_slots);
+## a rucksack picked up in the town (pick_up_backpack, scripts/world/backpacks.gd) adds
+## Items.BACKPACK_SLOTS and is worn on the figure's back (PlayerModel.backpack; the collider
+## grows with it). Nobody starts with one.
 
 signal stats_changed
 signal inventory_changed
@@ -63,11 +79,16 @@ signal died(cause: String)
 signal woke_up
 signal money_changed
 
+const GroundShadow = preload("res://scripts/effects/ground_shadow.gd")
 const PlayerCharacter = preload("res://scripts/player/player_character.gd")
 const PlayerModel = preload("res://scripts/player/player_model.gd")
 const Items = preload("res://scripts/player/items.gd")
 const WaterSplash = preload("res://scripts/effects/water_splash.gd")
 const Iso = preload("res://scripts/camera/iso_camera.gd")
+const Conversations = preload("res://scripts/story/conversations.gd")
+## How much more XP each next level takes, and the colour of "+50 XP".
+const XP_GROWTH := 1.5
+const XP_TEXT_COLOUR := Color("#47D6C2")
 
 const STAT_NAMES := ["gezondheid", "uithoudingsvermogen", "honger", "overprikkeldheid"]
 const OVERSTIMULATION_MAXIMUM := 100.0
@@ -77,10 +98,17 @@ const START_PLACE := "centraal"
 const PREFERRED_GROUND := [["plein/"], ["plein/", "stoep/"]]
 ## Collision layer of the town (GridMaps) and of the wrecks.
 const TOWN_LAYER := 1
+## Size of the figure in the town (PlayerModel.figure_scale): about 1.8 m tall (hair and
+## hats included), in proportion to the townspeople (TownsfolkFigure, 1.75 m), the
+## two-wheelers and the cars.
+const FIGURE_SCALE := 0.78
+const NightGlow = preload("res://scripts/player/night_glow.gd")
 ## Colour of the shards when the player is hit (cloth and dirt).
 const HIT_SHARD_COLOUR := Color("#6B5844")
 const BODY_HIT_SOUND := "lichaam_klap"
 const SPLASH_SOUND := "plons"
+## The blip of a jump (RuimtelijkGeluid, an event: right by you).
+const JUMP_SOUND := "springen"
 const SHORT_CRY_COUNT := 3
 
 @export_group("Walking")
@@ -88,6 +116,11 @@ const SHORT_CRY_COUNT := 3
 @export var walk_speed := 3.0
 @export var run_speed := 6.5
 ## Seconds the figure takes to turn towards where it goes (about).
+## "tank": turn and walk the way you face; "scherm": the keys along the screen (see the top).
+@export_enum("tank", "scherm") var controls := "tank"
+## Degrees a second the figure turns (tank), and how fast backwards is (share of walking).
+@export var turn_speed := 200.0
+@export_range(0.1, 1.0) var backward_share := 0.55
 @export var turn_time := 0.08
 ## Highest step up and deepest step down (metres) it walks over.
 @export var max_step := 0.6
@@ -96,6 +129,14 @@ const SHORT_CRY_COUNT := 3
 @export var max_slope := 50.0
 ## Seconds a step up or down takes the figure (the node snaps at once).
 @export var step_glide_time := 0.06
+@export_group("Talking")
+@export var talk_reach := 2.2
+## Seconds someone you talk to takes to turn round to you.
+const TALK_TURN_SECONDS := 0.35
+@export_group("Jumping")
+@export var jump_height := 0.9
+@export var jump_gravity := 24.0
+@export var jump_stamina := 6.0
 @export_group("Stats")
 @export var hunger_per_minute := 10.0
 @export var running_hunger_factor := 2.0
@@ -128,6 +169,9 @@ const SHORT_CRY_COUNT := 3
 @export var sleep_seconds := 3.0
 @export var wake_time := 1.1
 @export var detail_path := NodePath("../DetailNiveau")
+## The follow camera: while it still comes down from the sky at the start (its arrival) the
+## player sleeps on, so it wakes (and the story starts) once you see it.
+@export var follow_camera_path := NodePath("../Volgcamera")
 @export var hud_path := NodePath("../HUD")
 @export var ground_path := NodePath("../Grond")
 @export var buildings_path := NodePath("../Gebouwen")
@@ -141,6 +185,8 @@ var xp := 0.0
 var xp_for_level := 1000.0
 ## Item id -> how many (scripts/player/items.gd).
 var inventory := {}
+## Wears a rucksack (picked up in the town): more room in the inventory.
+var has_backpack := false
 ## Metres a second it moved over the last physics step.
 var velocity := Vector3.ZERO
 
@@ -157,7 +203,6 @@ var _buildings: GridMap
 var _placed := false             # put on the ground by physics (the first physics step)
 var _sleeping := false
 var _sleep_left := 0.0
-var _snore: Label3D
 var _dead := false
 var _running := false
 var _exhausted := false
@@ -172,6 +217,12 @@ var _last_safe_position := Vector3.ZERO
 var _water_items := {}           # Grond item -> is it water
 var _random := RandomNumberGenerator.new()
 var _water_push := 0.0            # seconds pushed against water
+var _airborne := false            # in a jump
+var _vertical_speed := 0.0        # metres a second up (in a jump)
+var _takeoff_height := 0.0        # world y it jumped from
+var _jump_key_was_down := false
+var _talk_key_was_down := false
+var _talk_partner: Node3D          # who "[E] Praten" is for now
 var _drowning := false
 var _voice := "man"               # the voice of the cries of pain: man, oude_man, vrouw
 var _last_cry := 0
@@ -179,6 +230,7 @@ var _last_cry := 0
 
 func _ready() -> void:
 	archetype_id = PlayerCharacter.current_id()
+	add_to_group(Vehicle.WALKERS_GROUP)   # vehicles brake, swerve and hoot for it
 	var archetype := PlayerCharacter.chosen_archetype()
 	level = int(archetype.get("level", 1))
 	_voice = String(archetype.get("voice", "man"))
@@ -193,12 +245,19 @@ func _ready() -> void:
 	_model = PlayerModel.new()
 	_model.name = "Figuur"
 	_model.archetype_id = archetype_id
+	_model.simple = true   # seen from afar in the town: fewer details
+	_model.figure_scale = FIGURE_SCALE
 	add_child(_model)
 	_figure_box = _outer_box(_model)
+	# a soft light over the figure in the dark, so it can be made out (night_glow.gd)
+	var night_light := OmniLight3D.new()
+	night_light.name = "Nachtlicht"
+	night_light.set_script(NightGlow)
+	add_child(night_light)
+	# a soft patch on the ground under it, so it stands apart from the street (ground_shadow.gd)
+	add_child(GroundShadow.new())
 	_build_collider()
-	var radius := maxf(_figure_box.size.x, _figure_box.size.z) * 0.5
-	_walk_shape.radius = clampf(radius, 0.2, 0.45)
-	_walk_shape.height = maxf(_figure_box.size.y - max_step - 0.05, 0.4)
+	_fit_collider(_figure_box)
 	_hud = get_node_or_null(hud_path)
 	_ground = get_node_or_null(ground_path) as GridMap
 	_buildings = get_node_or_null(buildings_path) as GridMap
@@ -235,6 +294,27 @@ func is_asleep() -> bool:
 
 
 ## Adds euros (a coin found, a sale; negative = paying).
+## More experience: "+50 XP" rising over the figure, the bar in the HUD; past the end of the
+## bar the next level (as often as it takes).
+func add_xp(points: float) -> void:
+	if points <= 0.0:
+		return
+	xp += points
+	var levelled := false
+	while xp >= xp_for_level:
+		xp -= xp_for_level
+		level += 1
+		xp_for_level = roundf(xp_for_level * XP_GROWTH / 50.0) * 50.0
+		levelled = true
+	if _hud:
+		if _hud.has_method("show_floating_number"):
+			_hud.show_floating_number(global_position + Vector3.UP * 2.3, "+%d XP" % roundi(points), XP_TEXT_COLOUR, 16)
+		if _hud.has_method("set_xp"):
+			_hud.set_xp(xp, xp_for_level)
+		if levelled and _hud.has_method("show_level_up"):
+			_hud.show_level_up(level)
+
+
 func add_money(euros: float) -> void:
 	money = maxf(money + euros, 0.0)
 	if euros > 0.0:
@@ -248,9 +328,37 @@ func is_dead() -> bool:
 	return _dead
 
 
-func add_item(item_id: String, count := 1) -> void:
+## How many kinds of item it can carry: its pockets, and more with a rucksack.
+func inventory_slots() -> int:
+	return Items.BASE_SLOTS + (Items.BACKPACK_SLOTS if has_backpack else 0)
+
+
+## True if there is room for one more of `item_id`: it has some already, or a slot is free.
+func has_room_for(item_id: String) -> bool:
+	return int(inventory.get(item_id, 0)) > 0 or inventory.size() < inventory_slots()
+
+
+## Adds items; false (and nothing added) if there is no room for them: the pockets full.
+func add_item(item_id: String, count := 1) -> bool:
+	if not has_room_for(item_id):
+		if _hud and _hud.has_method("show_floating_number"):
+			_hud.show_floating_number(global_position + Vector3.UP * 2.0, "Zakken vol", Color("#FF5D73"), 14)
+		return false
 	inventory[item_id] = int(inventory.get(item_id, 0)) + count
 	inventory_changed.emit()
+	return true
+
+
+## Puts on a rucksack found in the town: more room (Items.BACKPACK_SLOTS), worn on the back,
+## the collider round the figure grown with it. False if it wears one already.
+func pick_up_backpack() -> bool:
+	if has_backpack or _dead:
+		return false
+	has_backpack = true
+	_model.backpack = true
+	_fit_collider(_model.rest_bounds())
+	inventory_changed.emit()
+	return true
 
 
 func drop_item(item_id: String) -> void:
@@ -277,7 +385,7 @@ func use_item(item_id: String) -> bool:
 
 func _process(delta: float) -> void:
 	if _sleeping:
-		if _snore:
+		if _sleep_left < INF:   # not yet getting up
 			_update_sleep(delta)
 	elif not _dead:
 		_update_stats(delta)
@@ -288,7 +396,10 @@ func _process(delta: float) -> void:
 		_model.visible = true
 	if _ragdoll == null and not _dead and not _sleeping:
 		# steps: the node is on the new height at once, the figure glides after it
-		_figure_height = lerpf(_figure_height, global_position.y, 1.0 - exp(-delta / maxf(step_glide_time, 0.001)))
+		if _airborne:
+			_figure_height = global_position.y
+		else:
+			_figure_height = lerpf(_figure_height, global_position.y, 1.0 - exp(-delta / maxf(step_glide_time, 0.001)))
 		_model.position.y = _figure_height - global_position.y
 
 
@@ -304,6 +415,7 @@ func _physics_process(delta: float) -> void:
 		return
 	_walk(delta)
 	_check_vehicles()
+	_look_for_someone_to_talk_to()
 
 
 # ------------------------------------------------------------------ walking
@@ -320,22 +432,39 @@ func _walk(delta: float) -> void:
 		input.y += 1.0
 	var start := global_position
 	var direction := Vector3.ZERO
-	if input != Vector2.ZERO:
+	var backwards := false
+	if controls == "tank":
+		# turn round the own axis; forwards or backwards the way it faces
+		rotation.y -= input.x * deg_to_rad(turn_speed) * delta
+		if input.y != 0.0:
+			backwards = input.y > 0.0
+			direction = Vector3(sin(rotation.y), 0.0, cos(rotation.y)) * (-1.0 if backwards else 1.0)
+	elif input != Vector2.ZERO:
 		input = input.normalized()
-		var into_screen := -Vector3(Iso.DIRECTION.x, 0.0, Iso.DIRECTION.z).normalized()
+		# into the screen as the follow camera looks now (it turns a little round buildings)
+		var follow := get_node_or_null(follow_camera_path)
+		var towards_camera := Iso.direction(follow.view_yaw()) if follow and follow.has_method("view_yaw") else Iso.DIRECTION
+		var into_screen := -Vector3(towards_camera.x, 0.0, towards_camera.z).normalized()
 		var screen_right := into_screen.cross(Vector3.UP)
 		direction = screen_right * input.x - into_screen * input.y
 	var stamina: Vector2 = _stats.uithoudingsvermogen
-	_running = direction != Vector3.ZERO and Input.is_physical_key_pressed(KEY_SHIFT) \
+	_running = direction != Vector3.ZERO and not backwards and Input.is_physical_key_pressed(KEY_SHIFT) \
 		and not _exhausted and stamina.x > 0.0
 	var speed := run_speed if _running else walk_speed
+	if backwards:
+		speed *= backward_share
+	var jump_key := Input.is_physical_key_pressed(KEY_SPACE)
+	if jump_key and not _jump_key_was_down and not _airborne:
+		_start_jump()
+	_jump_key_was_down = jump_key
 	if direction != Vector3.ZERO:
 		var step := direction * speed * delta
-		if not _try_move(step):
-			if not _try_move(Vector3(step.x, 0.0, 0.0)):
-				_try_move(Vector3(0.0, 0.0, step.z))
+		var move := _try_move_in_air if _airborne else _try_move
+		if not move.call(step):
+			if not move.call(Vector3(step.x, 0.0, 0.0)):
+				move.call(Vector3(0.0, 0.0, step.z))
 		# pushing against water: in it goes, at once when running
-		var water := _water_point(global_position + direction * 0.6) if global_position.distance_squared_to(start) < 0.0001 else Vector3.INF
+		var water := _water_point(global_position + direction * 0.6) if global_position.distance_squared_to(start) < 0.0001 and not _airborne else Vector3.INF
 		if water != Vector3.INF:
 			_water_push += delta
 			if _running or _water_push >= water_push_time:
@@ -343,16 +472,136 @@ func _walk(delta: float) -> void:
 				return
 		else:
 			_water_push = 0.0
-		var facing := atan2(direction.x, direction.z)
-		rotation.y = lerp_angle(rotation.y, facing, 1.0 - exp(-delta / maxf(turn_time, 0.001)))
+		if controls != "tank":
+			var facing := atan2(direction.x, direction.z)
+			rotation.y = lerp_angle(rotation.y, facing, 1.0 - exp(-delta / maxf(turn_time, 0.001)))
 	else:
 		_water_push = 0.0
+	if _airborne:
+		_fall(delta)
 	velocity = (global_position - start) / maxf(delta, 0.0001)
 	var flat_speed := Vector2(velocity.x, velocity.z).length()
-	var walking := clampf(flat_speed / walk_speed, 0.0, 1.7)
+	var walking := 0.0 if _airborne else clampf(flat_speed / walk_speed, 0.0, 1.7)
 	_model.walking = lerpf(_model.walking, walking, 1.0 - exp(-delta / 0.08))
-	if flat_speed > 0.01:
+	if flat_speed > 0.01 and not _airborne:
 		_last_safe_position = global_position
+
+
+## Someone near enough to talk to (the nearest in reach, rather the one it faces), shown as
+## "[E] Praten"; E starts the conversation.
+func _look_for_someone_to_talk_to() -> void:
+	var nearest: Node3D = null
+	var best := INF
+	var facing := Vector2(sin(rotation.y), cos(rotation.y))
+	if not _airborne:
+		for person in get_tree().get_nodes_in_group(Vehicle.WALKERS_GROUP):
+			if person == self or not person is Pedestrian or (person as Pedestrian)._ragdoll != null:
+				continue
+			var offset := Vector2(person.global_position.x - global_position.x, person.global_position.z - global_position.z)
+			var distance := offset.length()
+			if distance > talk_reach or absf(person.global_position.y - global_position.y) > 1.2:
+				continue
+			# the one before it counts as nearer
+			var score := distance - 0.8 * maxf(facing.dot(offset / maxf(distance, 0.001)), 0.0)
+			if score < best:
+				best = score
+				nearest = person
+	if nearest != _talk_partner:
+		_talk_partner = nearest
+		if _hud and _hud.has_method("set_actions"):
+			_hud.set_actions([["E", "Praten"]] if nearest else [])
+	var talk_key := Input.is_physical_key_pressed(KEY_E)
+	if talk_key and not _talk_key_was_down and _talk_partner:
+		talk_to(_talk_partner)
+	_talk_key_was_down = talk_key
+
+
+## A conversation with `person` (Conversations) in the story box; they turn to face you.
+func talk_to(person: Node3D) -> void:
+	if _hud == null or not _hud.has_method("show_story"):
+		return
+	var towards := global_position - person.global_position
+	if Vector2(towards.x, towards.z).length_squared() > 0.0001:
+		# they turn round to you (smoothly, also while the story box holds the game), you to them
+		var from: float = person.rotation.y
+		var to := from + angle_difference(from, atan2(towards.x, towards.z))
+		var turn := person.create_tween().set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+		turn.tween_property(person, "rotation:y", to, TALK_TURN_SECONDS).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		rotation.y = atan2(-towards.x, -towards.z)
+	var talk := Conversations.new(person, self, _hud)
+	# the view glides in on the two of you, and back after
+	var follow := get_node_or_null(follow_camera_path)
+	if follow and follow.has_method("talk_close_up"):
+		follow.talk_close_up(person)
+	_hud.show_story(talk.opening(), func() -> void:
+		talk.finish()
+		if follow and follow.has_method("talk_close_up"):
+			follow.talk_close_up(null))
+
+
+## Off the ground, if there is the stamina for it (not when exhausted).
+func _start_jump() -> void:
+	var stamina: Vector2 = _stats.uithoudingsvermogen
+	if _exhausted or stamina.x < jump_stamina:
+		return
+	_stats.uithoudingsvermogen = Vector2(stamina.x - jump_stamina, stamina.y)
+	_seconds_since_running = 0.0
+	_airborne = true
+	_takeoff_height = global_position.y
+	_vertical_speed = sqrt(2.0 * jump_gravity * jump_height)
+	_jump_pose(true)
+	var audio := get_node_or_null("/root/RuimtelijkGeluid")
+	if audio and audio.has_method("play_event"):
+		audio.play_event(global_position, JUMP_SOUND)
+	_push_stats()
+
+
+## Up and down in a jump; lands on the ground under it (also higher than where it left).
+func _fall(delta: float) -> void:
+	_vertical_speed -= jump_gravity * delta
+	var height := global_position.y + _vertical_speed * delta
+	var ground := _ground_height(global_position, global_position.y, global_position.y - _takeoff_height + max_drop)
+	if is_nan(ground):
+		ground = _takeoff_height
+	if _vertical_speed <= 0.0 and height <= ground:
+		global_position.y = ground
+		_airborne = false
+		_vertical_speed = 0.0
+		_jump_pose(false)
+		return
+	global_position.y = maxf(height, ground)
+
+
+## Moves by `offset` in a jump, at its height: where there is ground it could come down on
+## (no drop deeper than it could walk off from where it jumped, no water) and nothing in the way.
+func _try_move_in_air(offset: Vector3) -> bool:
+	if offset.length_squared() < 0.00000001:
+		return false
+	var goal := global_position + offset
+	var ground := _ground_height(goal, global_position.y, global_position.y - _takeoff_height + max_drop)
+	if is_nan(ground):
+		return false
+	var feet := Vector3(goal.x, maxf(global_position.y, ground), goal.z)
+	if not _fits(feet) and _fits(global_position):
+		return false
+	global_position = feet
+	return true
+
+
+## The jump pose, as in the old platform games (on), or back to normal (off): the right arm
+## straight up, the left down and back bent square at the elbow; the left leg forward with
+## the knee bent, the right back with the foot kicked up.
+const JUMP_POSE := {
+	"arm_right": Vector3(-165.0, 0.0, 10.0), "forearm_right": Vector3(-10.0, 0.0, 0.0),
+	"arm_left": Vector3(40.0, 0.0, -12.0), "forearm_left": Vector3(-90.0, 0.0, 0.0),
+	"leg_left": Vector3(-60.0, 0.0, 0.0), "shin_left": Vector3(55.0, 0.0, 0.0),
+	"leg_right": Vector3(30.0, 0.0, 0.0), "shin_right": Vector3(70.0, 0.0, 0.0),
+}
+
+
+func _jump_pose(on: bool) -> void:
+	for limb: String in JUMP_POSE:
+		_model.pose_limb(limb, JUMP_POSE[limb] if on else Vector3.ZERO)
 
 
 ## Moves by `offset` if the ground there can be walked on and the figure fits; true if so.
@@ -415,6 +664,8 @@ func _water_point(point: Vector3) -> Vector3:
 
 ## Jumps into the water at `water`: a cry, a hop over the edge, then the splash and sinking.
 func _fall_into_water(water: Vector3) -> void:
+	_airborne = false
+	_jump_pose(false)
 	_drowning = true
 	_running = false
 	_model.walking = 0.0
@@ -434,7 +685,7 @@ func _sink(water: Vector3) -> void:
 	global_position = water
 	var audio := get_node_or_null("/root/RuimtelijkGeluid")
 	if audio:
-		audio.play_at(water, SPLASH_SOUND, 0.0)
+		audio.play_event(water, SPLASH_SOUND)
 	var splash := WaterSplash.new()
 	splash.bubble_seconds = drown_time
 	get_parent().add_child(splash)
@@ -546,7 +797,7 @@ func _place_on_ground() -> void:
 
 # ------------------------------------------------------------------ sleeping
 
-## Lies down on its back (at once) with z's rising over it.
+## Lies down on its back (at once).
 func _fall_asleep() -> void:
 	_sleeping = true
 	_sleep_left = sleep_seconds
@@ -556,17 +807,6 @@ func _fall_asleep() -> void:
 	# about where it stood
 	_model.rotation_degrees.x = -90.0
 	_model.position = Vector3(0.0, -_figure_box.position.z, _figure_box.size.y * 0.45)
-	_snore = Label3D.new()
-	_snore.name = "Snurken"
-	_snore.text = "z"
-	_snore.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	_snore.no_depth_test = true
-	_snore.font_size = 64
-	_snore.pixel_size = 0.006
-	_snore.outline_size = 12
-	_snore.modulate = Color("#E8E6F0")
-	_snore.outline_modulate = Color("#0B0D1A")
-	add_child(_snore)
 
 
 func _update_sleep(delta: float) -> void:
@@ -574,13 +814,11 @@ func _update_sleep(delta: float) -> void:
 	var level_of_detail := get_node_or_null(detail_path)
 	if level_of_detail and level_of_detail.has_method("is_merging") and level_of_detail.is_merging():
 		town_ready = false
+	var follow_camera := get_node_or_null(follow_camera_path)
+	if follow_camera and follow_camera.has_method("is_arriving") and follow_camera.is_arriving():
+		town_ready = false
 	if town_ready:
 		_sleep_left -= delta
-	# the z's: rising and growing over the head, one after the other
-	var cycle := fmod(Time.get_ticks_msec() / 1000.0, 1.6) / 1.6
-	_snore.text = ["z", "zZ", "zZz"][int(cycle * 3.0)]
-	_snore.position = Vector3(0.0, 0.7 + cycle * 0.5, -_figure_box.size.y * 0.5)
-	_snore.modulate.a = 1.0 - cycle * cycle
 	var key_pressed := false
 	for key in [KEY_W, KEY_A, KEY_S, KEY_D, KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT, KEY_SPACE, KEY_ENTER]:
 		if Input.is_physical_key_pressed(key):
@@ -592,8 +830,6 @@ func _update_sleep(delta: float) -> void:
 ## Gets up: sits up and stands, then can walk.
 func _wake_up() -> void:
 	_sleep_left = INF
-	_snore.queue_free()
-	_snore = null
 	var rise := create_tween().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	rise.tween_property(_model, "rotation_degrees:x", 0.0, wake_time)
 	rise.parallel().tween_property(_model, "position", Vector3.ZERO, wake_time)
@@ -664,6 +900,11 @@ func _push_stats(everything := false) -> void:
 		stats_changed.emit()
 
 
+## The damage indicator: the health lost, in red, floating up from over the head.
+const DAMAGE_COLOUR := Color("#FF4D5E")
+const DAMAGE_NUMBER_HEIGHT := 2.1
+
+
 func _hurt(amount: float, cause: String) -> void:
 	if _dead or amount <= 0.0:
 		return
@@ -671,9 +912,24 @@ func _hurt(amount: float, cause: String) -> void:
 	_stats.gezondheid = Vector2(maxf(health.x - amount, 0.0), health.y)
 	_blink_left = maxf(_blink_left, hurt_blink_time)
 	hurt.emit(amount)
+	if _hud and _hud.has_method("show_floating_number"):
+		_hud.show_floating_number(global_position + Vector3.UP * DAMAGE_NUMBER_HEIGHT,
+				"-%d" % maxi(roundi(amount), 1), DAMAGE_COLOUR, 18)
 	_push_stats()
 	if _stats.gezondheid.x <= 0.0:
 		_die(cause)
+
+
+## Run over and killed: the hit in slow motion. The game runs at DEATH_SLOW_MOTION of its
+## speed (the physics stepping as often in real time, so the figure flies smoothly; the sound
+## slowed down with it, at least DEATH_SLOWEST_SOUND) while the follow camera zooms in on the
+## figure, for DEATH_SLOW_SECONDS real seconds; then the speed comes back over
+## DEATH_SPEED_UP seconds and the death screen comes up.
+const DEATH_SLOW_MOTION := 0.15
+const DEATH_SLOWEST_SOUND := 0.45
+const DEATH_SLOW_SECONDS := 2.2
+const DEATH_SPEED_UP := 0.5
+var _normal_physics_ticks := 60
 
 
 func _die(cause: String) -> void:
@@ -687,8 +943,37 @@ func _die(cause: String) -> void:
 		fall.tween_property(_model, "rotation_degrees:x", -90.0, 0.45)
 		fall.parallel().tween_property(_model, "position:y", _model.position.y + _figure_box.size.z * 0.5, 0.45)
 	died.emit(cause)
-	if _hud and _hud.has_method("show_death"):
+	if cause == "aangereden":
+		_slow_motion_death(cause)
+	elif _hud and _hud.has_method("show_death"):
 		_hud.show_death(cause)
+
+
+func _slow_motion_death(cause: String) -> void:
+	var camera := get_parent().get_node_or_null("Volgcamera")
+	if camera and camera.has_method("dramatic_close_up"):
+		camera.dramatic_close_up(true)
+	_normal_physics_ticks = Engine.physics_ticks_per_second
+	_set_game_speed(DEATH_SLOW_MOTION)
+	var speed_up := create_tween().set_ignore_time_scale(true)
+	speed_up.tween_interval(DEATH_SLOW_SECONDS)
+	speed_up.tween_method(_set_game_speed, DEATH_SLOW_MOTION, 1.0, DEATH_SPEED_UP).set_trans(Tween.TRANS_SINE)
+	speed_up.tween_callback(func() -> void:
+		if _hud and _hud.has_method("show_death"):
+			_hud.show_death(cause))
+
+
+## The speed of the game (Engine.time_scale), the physics stepping with it and the sound.
+func _set_game_speed(speed: float) -> void:
+	Engine.time_scale = speed
+	Engine.physics_ticks_per_second = roundi(_normal_physics_ticks / speed)
+	AudioServer.playback_speed_scale = maxf(speed, DEATH_SLOWEST_SOUND) if speed < 1.0 else 1.0
+
+
+func _exit_tree() -> void:
+	# never leaves the game slowed down (a restart, back to the menu)
+	if Engine.time_scale != 1.0:
+		_set_game_speed(1.0)
 
 
 # ------------------------------------------------------------------ being hit
@@ -728,6 +1013,7 @@ func _hit_by(vehicle: Vehicle) -> void:
 	_knock_down(vehicle.velocity, impact)
 	_hurt(damage, "aangereden")
 	cry_out(strength >= hard_cry_strength or _dead, contact)
+	vehicle.shout_after_hit()
 	_invulnerable_left = maxf(_invulnerable_left, knock_down_time)
 
 
@@ -744,12 +1030,14 @@ func cry_out(heavy: bool, at: Vector3) -> void:
 			cry_number = cry_number % SHORT_CRY_COUNT + 1
 		_last_cry = cry_number
 		cry_name = "pijn_%s_%d" % [_voice, cry_number]
-	audio.play_at(at, BODY_HIT_SOUND, -3.0)
-	audio.play_at(at, cry_name, 0.0)
+	audio.play_event(at, BODY_HIT_SOUND)
+	audio.play_event(at, cry_name)
 
 
 ## The figure becomes a RigidBody3D with its own box, thrown along with `push`.
 func _knock_down(push: Vector3, impact: float) -> void:
+	_airborne = false
+	_jump_pose(false)
 	_ragdoll = RigidBody3D.new()
 	_ragdoll.name = "Valpartij"
 	_ragdoll.mass = body_mass
@@ -846,6 +1134,17 @@ func _build_collider() -> void:
 	_body_shape.position = _figure_box.get_center()
 	_body.add_child(_body_shape)
 	add_child(_body)
+
+
+## Fits the collider (Botsvorm) and the shape it walks with to `box` round the figure (in its
+## own space): at the start, and again when it puts on a rucksack.
+func _fit_collider(box: AABB) -> void:
+	_figure_box = box
+	(_body_shape.shape as BoxShape3D).size = box.size
+	_body_shape.position = box.get_center()
+	var radius := maxf(box.size.x, box.size.z) * 0.5
+	_walk_shape.radius = clampf(radius, 0.2, 0.45)
+	_walk_shape.height = maxf(box.size.y - max_step - 0.05, 0.4)
 
 
 ## The box round all meshes of the figure, in its own space (feet at y = 0, facing +z).

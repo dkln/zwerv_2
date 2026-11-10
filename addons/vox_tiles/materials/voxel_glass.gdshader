@@ -91,7 +91,7 @@ void vertex() {
 void fragment() {
 #ifdef ZWERVR_FADE
 	if (faded_out(VERTEX, NORMAL, INV_VIEW_MATRIX, PROJECTION_MATRIX, FRAGCOORD.xy, fade_owner)) {
-		discard;   // a building in front of the followed vehicle (voxel_fade.gdshaderinc)
+		discard;   // the view hole through a building in front of the player (voxel_fade.gdshaderinc)
 	}
 #endif
 	vec3 n = normalize((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz);

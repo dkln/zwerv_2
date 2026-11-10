@@ -14,7 +14,7 @@ alles klinkt als dezelfde game. De code staat in `tools/megadrive/`:
 ```sh
 tools/megadrive/render.sh                    # alles (ongeveer 20 s)
 tools/megadrive/render.sh gevecht handelaar  # alleen deze stukken
-tools/megadrive/render.sh deuntjes dood      # één deuntje: kaart_start, gewonnen, level_omhoog, verloren, dood
+tools/megadrive/render.sh deuntjes dood      # één deuntje: kaart_start, gewonnen, level_omhoog, nieuwe_missie, verloren, dood
 ```
 
 Draait Python via `uv` met numpy en soundfile; geen Godot nodig. De uitvoer gaat naar
@@ -97,7 +97,8 @@ voor de hele notatie (`F5:4`, `-:2`, `R:2`, `3:2`, `5:2`, ...).
 
 | Soort stuk | Tempo |
 |---|---|
-| intro, menu, handelaar, deuntjes | 128 BPM (maat = 1,875 s) |
+| intro, handelaar, deuntjes | 128 BPM (maat = 1,875 s) |
+| menu | 140 BPM (maat = 1,71 s) |
 | de stadsloops (achtergrondmuziek) | 104 BPM (maat = 2,31 s) |
 | gevecht | 150 BPM |
 | karakterkeuze (zacht) | 96 BPM |
@@ -128,17 +129,19 @@ akkoord uitkomt.
 
 ## Mixniveaus
 
-- gemiddeld (RMS) **-14 dB**; zachte stukken -15,5 tot -16 dB (groen, karakterkeuze),
-  droevige deuntjes -15 dB
-- piek rond **-1 dB** (de master begrenst op -1,5 dB vóór Vorbis), nooit clippend
-- per spoor de vaste niveaus in `Song`; de master stelt het gemiddelde in en begrenst zacht
+- elk bestand eindigt op **-16 LUFS** (geïntegreerd, zoals `ffmpeg -af ebur128` meet; zie
+  [Eén luidheid voor alle audio](#één-luidheid-voor-alle-audio)), pieken onder -1,5 dB
+- `target_rms_db` van `render()` bepaalt alleen nog hoe hard de mix de begrenzer in gaat (de
+  dichtheid: zachte stukken -16 tot -18,5 dB klinken luchtiger), niet hoe luid het bestand is
+- per spoor de vaste niveaus in `Song`; de master begrenst zacht, `loudness.level` zet daarna het
+  niveau
 
 ## Alle stukken en waar ze spelen
 
 | Bestand (`assets/audio/muziek/`) | Waar | Stuk |
 |---|---|---|
 | `zwervr_intro.ogg` | intro (`scripts/ui/intro.gd`) | 128 BPM, 64 maten, 120 s, geen lus |
-| `nachtstad_menu_loop.ogg` | hoofdmenu (`main_menu.gd`) | energiek en recht, 48 maten, 90 s |
+| `nachtstad_menu_loop.ogg` | hoofdmenu (`main_menu.gd`) | vol actie en recht, 140 BPM, de kick gaat altijd door, 48 maten, 82 s |
 | `karakterkeuze_loop.ogg` | karakterscherm (`character_creation.gd`) | zacht, 96 BPM, 16 maten, 40 s |
 | `deuntje_kaart_start.ogg` | start van de kaart, voor de stadsmuziek (`hud.gd`, `MAP_JINGLE`) | het motief als fanfare op Db en Eb naar F majeur, 6 s |
 | `stad_centrum_loop.ogg` | de stad: oude binnenstad | funky, levendig, 92 s |
@@ -151,10 +154,11 @@ akkoord uitkomt.
 | `stad_bos_loop.ogg` | de stad: bos | het rustigst, geen drums, vogels, 92 s |
 | `stad_dorp_loop.ogg` | de stad: dorp | folky, getokkeld, zachte brushes, 92 s |
 | `gevecht_loop.ogg` | zolang je in een gevecht bent (nog te koppelen) | 150 BPM, 32 maten, 51,2 s: de stoere variant van het motief op lead en koper, galopperende kick |
-| `laden_loop.ogg` | wachtmuziek onder het laadscherm (`scripts/ui/loading_screen.gd`), in en uit fadend | licht en huppelend: e-piano op de tegentijd, een tikkende PSG-klok, zachte gebroken beat, een vrolijk wijsje op het motief; 112 BPM, F mineur, 16 maten, 34 s |
+| `laden_loop.ogg` | wachtmuziek onder het laadscherm (`scripts/ui/loading_screen.gd`), in en uit fadend; zolang het laadscherm er is, is verder niets van de stad te horen (geen verkeer, geen wijkmuziek) | laid back zoals de handelaar: zware shuffle, FM-slapbas in new jack-stijl, e-piano die duwt en antwoordt, zachte gebroken beat met lome backbeat, een ontspannen wijsje met glijders, de tweede keer met PSG-antwoord; 92 BPM, F mineur, 16 maten, 41,7 s |
 | `handelaar_loop.ogg` | zolang je in een winkel bent, bij een handelaar (nog te koppelen) | relaxte new jack swing, 128 BPM in F mineur, 16 maten, 30 s (de stadsloops zijn nu 104 BPM: zet hem bij het koppelen op hun tempo, dan vloeit hij soepel over) |
 | `deuntje_gewonnen.ogg` | gewonnen | het motief snel omhoog, F majeur, 4 s |
 | `deuntje_level_omhoog.ogg` | genoeg XP voor een level | PSG-loopje omhoog, het motief in majeur met klokjes, 4 s |
+| `deuntje_nieuwe_missie.ogg` | een nieuwe missie (de melding bovenin, `GameHud.show_mission`) | het motief snel op klokjes, koperstoten op Db en Eb, een open F met wat glitter, 2,2 s |
 | `deuntje_verloren.ogg` | verloren | het motief begint en zakt weg naar een lage F, 4 s |
 | `deuntje_dood.ogg` | dood (`hud.gd`, `DEATH_JINGLE`) | lage klap, PSG-duik, het motief vertraagd een octaaf lager, 4 s |
 
@@ -178,7 +182,7 @@ de maat en met gelijk vermogen (geen gat halverwege), pas na 1,5 s in de nieuwe 
 
 Het zijn achtergrondmuziekjes om bij rond te lopen: rustig (104 BPM) en naar achteren gemengd
 (`stad_plan.finish`: drums, lead, hats en koper zachter dan in de andere stukken, de top wat
-afgerond, iets zachter in totaal), en in het spel op -22 dB.
+afgerond, iets zachter in totaal), en in het spel op -8,8 dB (gepauzeerd -16,8 dB).
 
 Het gedeelde plan (40 maten = 92 s, 104 BPM): A (Fm7 Gbmaj7 Bbm7 Fm7 Fm7 Gbmaj7 Ab6 C7),
 A' (idem), B (Bbm9 Bbm9 Gbmaj7 Gbmaj7 Abmaj7 Eb6 Csus C7), break (Gbmaj7 Gbmaj7 Bbm7 C7),
@@ -213,6 +217,11 @@ Generator: `tools/megadrive/geluiden.py`; renderen met `tools/megadrive/render.s
 | `tram_bel.ogg` | de trambel zoals van de GVB-trams in Amsterdam: de koepelgong, twee snelle slagen ("ding-ding") die naklinken; niet-harmonische boventonen van een geslagen koepel | 1,7 s |
 | `trein_hoorn.ogg` | de hoorn van een NS Koploper (ICM): de twee tyfoons (660 en 370 Hz, de Europese treintonen), een korte hoge en een lange lage stoot; een zoemend membraan door de trompet, met het aanzwellen van de luchtdruk | 1,75 s |
 | `bus_remmen.ogg` | stoppen: kort remgepiep, dan het sissen van de luchtrem | 1,6 s |
+| `auto_toeter.ogg` | een auto waarschuwt een voetganger: twee korte stoten ("toet-toet") van een paar elektrische schijftoeters, een grote terts uit elkaar (410 en 512 Hz) | 0,75 s |
+| `bus_toeter.ogg` | bus of vrachtwagen: één lange, lage stoot (277 en 349 Hz) | 1 s |
+| `brommer_toeter.ogg` | het dunne toetertje van een brommer: twee korte PSG-piepjes ("piep-piep"), net iets vals | 0,55 s |
+| `scootmobiel_toeter.ogg` | de zoemer van een scootmobiel: drie snelle hoge elektronische piepjes (2350 Hz) | 0,6 s |
+| `fiets_bel.ogg` | de duimbel van een fiets: twee koepeltjes (2650 en 2790 Hz), snel aangeslagen door de draaiende klepel, twee keer ("tring-tring") | 1,1 s |
 | `politie_sirene_loop.ogg` | sirene van politie (ook de ME-bus): Nederlandse twee-toon 600/450 Hz, 0,55 s per toon, heldere PSG-blokgolven; naadloze lus, naast de motorlus op het voertuig | 2,2 s |
 | `ambulance_sirene_loop.ogg` | sirene van de ambulance: twee-toon 660/495 Hz, 0,75 s per toon, rondere FM-hoorn; lus | 3 s |
 | `brandweer_sirene_loop.ogg` | sirene van de brandweer: twee-toon 392/294 Hz, 0,8 s per toon, diep en grommend FM; lus | 3,2 s |
@@ -222,7 +231,7 @@ Generator: `tools/megadrive/geluiden.py`; renderen met `tools/megadrive/render.s
 | `helikopter_loop.ogg` | de politiehelikopter die stilhangt: rotorslagen (13 per seconde), turbine, staartrotor; lus | 2 s |
 | `helikopter_voorbij.ogg` | de helikopter die overvliegt, met Doppler | 8 s |
 
-Niveaus: losse geluiden piek -1 dB, motorlussen gemiddeld -16 dB; het niveau in het spel zet je
+Niveaus: alles op -16 LUFS (zie hieronder), pieken onder -1 dB; het niveau in het spel zet je
 met `volume_db`. De tram geldt ook voor de RandstadRail. De hulpdiensten hebben elk een eigen
 toonhoogte, ritme en klankkleur, zodat je ze uit elkaar hoort; een nieuwe sirene volgt dat.
 
@@ -273,3 +282,35 @@ Dopplerverschuiving. Bewust eenvoudig: geen raycasts, geen demping achter gebouw
 of galm; op de bus `Verkeer` alleen een compressor en een limiter tegen uitschieters. Een nieuw voertuiggeluid: zet het in `MOTOR_SOUNDS` (op de
 `vehicle_kind`) of maak er een gebeurtenis bij in `_signals`; de muziek gaat niet door die bus.
 
+
+
+## Eén luidheid voor alle audio
+
+Elk audiobestand van het spel (muziek, deuntjes, effecten, lussen, pijnkreten, kreten) staat op
+dezelfde luidheid, gemeten zoals het oor hoort (K-weging van ITU-R BS.1770 / EBU R128, LUFS;
+`tools/megadrive/loudness.py`, gebruikt door `style.py`, `geluiden.py` en `stemmen.py`):
+
+- muziek, deuntjes en lussen (motoren, sirenes, helikopter): **geïntegreerd -16 LUFS**;
+- eenmalige geluiden (effecten, pijnkreten, kreten): hun **luidste moment** (momentane luidheid,
+  400 ms) op **-16 LUFS**; een korte klap is op zijn hardst zo luid als een lus gemiddeld;
+- pieken zacht onder -1 dB (muziek -1,5 dB), alleen de pieken die erboven zouden komen.
+
+Een getal in het spel is dus de echte verhouding: twee spelers op `volume_db` 0 klinken even hard.
+Controleren: `ffmpeg -i bestand.ogg -af ebur128 -f null -` (I: voor lussen en muziek, de hoogste
+M: voor eenmalige geluiden).
+
+Hoe hard iets in het spel klinkt, bepaalt alleen het spel. In `scripts/audio/spatial_audio.gd`:
+gebeurtenissen (aangereden worden, een botsing, een kreet, een plons) op `EVENT_DB` (+5,5 dB,
+`play_event`), signalen van het verkeer (toeters, bellen, hoorns) op `SIGNAL_DB` (+2,5 dB,
+`play_signal`), de achtergrond (voorbijrijden, remmen) op `BACKGROUND_DB` (-0,5 dB), de motoren
+per voertuig in `MOTOR_VOLUME_DB`, de sirenes op `SIREN_VOLUME_DB`. De muziek: de `MUSIC_VOLUME_DB`
+van intro, menu, laden en karakterkeuze, en in `hud.gd` de stad en de deuntjes.
+
+Toen de bestanden gelijk werden getrokken (nov. 2026) zijn die getallen meeverschoven, zodat de
+mix in het spel gelijk bleef aan hoe hij was afgesteld.
+
+Een diepe stem en een heldere met veel s-klanken klinken zo even hard. Het "Sega-filter" van de stemmen
+(`megadrive_voice`) snijdt de stem steil af onder de helft van de samplerate (11025 Hz) voor de
+8-bit DAC, en filtert erna de spiegelbeelden van de trapjes weg (`RECONSTRUCTION_HZ`, 5 kHz):
+die gaven elke s en elke medeklinker een metalig gefluit. De korrel van de 8 bits blijft. De
+sis van de medeklinkers staat zachter dan de stem (`BREATH_GAIN`).

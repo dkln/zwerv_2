@@ -39,7 +39,7 @@ const MENU_SCENE := "res://scenes/hoofdmenu.tscn"
 ## The music of the intro, its volume (dB), and the seconds it fades out in when the intro
 ## ends or is broken off.
 const MUSIC := "res://assets/audio/muziek/zwervr_intro.ogg"
-const MUSIC_VOLUME_DB := -4.0
+const MUSIC_VOLUME_DB := 0.0
 const MUSIC_FADE_OUT := 2.0
 ## Seconds of the wave on the way to the menu (WarpTransition).
 const FADE_TO_MENU := 1.0

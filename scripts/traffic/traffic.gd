@@ -39,7 +39,7 @@ const MIX := [
 	[SCOOTER, ""],
 	[VAN, ""],
 	[HATCHBACK, "voertuigen/auto_hatchback_zilver"],
-	[CYCLIST, "voertuigen/fietser_rood"],
+	[CYCLIST, ""],
 	[CITY_BUS, ""],
 	[MOTORBIKE, ""],
 	[CAR, "voertuigen/auto_sedan_zilver"],
@@ -62,7 +62,7 @@ const MIX := [
 const ROAD_CELLS_NEEDED := 60
 
 ## How many vehicles it adds to the ones in the scene.
-@export var vehicle_count := 30
+@export var vehicle_count := 50
 ## How many of the SERVICES it adds on top of those.
 @export var services_count := 7
 ## Fewest metres between the start spots (a bus is 10.5 m long).

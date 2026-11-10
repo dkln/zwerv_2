@@ -28,11 +28,26 @@ func _init() -> void:
 		await physics_frame
 		if player._placed:
 			break
+	# without the descent from the sky at the start (the player sleeps on through it; arrival_test.gd)
+	follow._end_arrival()
 	_check(player._placed, "op de grond gezet")
 	print("start: ", player.archetype_id, " bij ", player.global_position, ", figuur ", player._figure_box.size)
 	_check(player._fits(player.global_position), "staat vrij")
 	_check(follow.is_following() and follow.target_node == player, "camera volgt de speler")
 	_check(player._sleeping, "begint slapend")
+	# the light over the figure in the dark (night_glow.gd): on at night, off by day
+	var night_light: OmniLight3D = player.get_node("Nachtlicht")
+	var day_cycle: Node = scene.get_node("Dagcyclus")
+	var hour_before: float = day_cycle.time_of_day
+	day_cycle.set_time(1.0)
+	await process_frame
+	await process_frame
+	_check(night_light.visible and night_light.light_energy > 0.5, "nachtlicht aan in het donker (%.2f)" % night_light.light_energy)
+	day_cycle.set_time(13.0)
+	await process_frame
+	await process_frame
+	_check(not night_light.visible, "nachtlicht uit overdag")
+	day_cycle.set_time(hour_before)
 	var station: Vector2 = scene.get_meta("places")["centraal"]
 	var from_station := Vector2(player.global_position.x, player.global_position.z).distance_to(station)
 	_check(from_station < 40.0, "begint bij Centraal (%.0f m)" % from_station)
@@ -42,22 +57,44 @@ func _init() -> void:
 			break
 	_check(not player._sleeping, "wordt wakker")
 
-	# walking: D (screen right), then W into the town for a while: never stuck in anything
+	# the tank controls (PlayerController `controls`): D turns it round on the spot, W walks
+	# the way it faces, S backwards and slower
 	var start := player.global_position
-	await _hold_key(KEY_D, 1.0, player)
-	var walked := Vector2(player.global_position.x - start.x, player.global_position.z - start.z).length()
+	var heading_before: float = player.rotation.y
+	await _hold_key(KEY_D, 0.4, player)
+	var turned := absf(angle_difference(player.rotation.y, heading_before))
+	var stepped := Vector2(player.global_position.x - start.x, player.global_position.z - start.z).length()
+	_check(turned > deg_to_rad(30.0) and stepped < 0.05, "D draait om de as (%.0f graden, %.2f m)" % [rad_to_deg(turned), stepped])
+	start = player.global_position
+	await _hold_key(KEY_W, 1.0, player)
+	var moved := player.global_position - start
+	var walked := Vector2(moved.x, moved.z).length()
 	print("na 1 s lopen: %.2f m" % walked)
 	_check(walked > 1.0, "loopt met de toetsen (%.2f m)" % walked)
-	# it turns to face where it walks
-	var moved := player.global_position - start
-	var facing: float = atan2(moved.x, moved.z)
-	var off_by := absf(angle_difference(player.rotation.y, facing))
-	_check(off_by < deg_to_rad(20.0), "draait in de looprichting (%.0f graden ernaast)" % rad_to_deg(off_by))
+	var off_by := absf(angle_difference(player.rotation.y, atan2(moved.x, moved.z)))
+	_check(off_by < deg_to_rad(10.0), "W loopt de kant op die hij kijkt (%.0f graden ernaast)" % rad_to_deg(off_by))
+	start = player.global_position
+	await _hold_key(KEY_S, 1.0, player)
+	moved = player.global_position - start
+	var backed := Vector2(moved.x, moved.z).length()
+	var facing_now := Vector3(sin(player.rotation.y), 0.0, cos(player.rotation.y))
+	_check(backed > 0.3 and backed < walked * 0.8 and moved.dot(facing_now) < 0.0, "S loopt achteruit, langzamer (%.2f m)" % backed)
+	# jumping: Space lifts it off the ground and it comes down again where it can stand
+	var ground_before: float = player.global_position.y
+	press(KEY_SPACE, true)
+	var highest := 0.0
+	for step_index in 60:
+		await physics_frame
+		highest = maxf(highest, player.global_position.y - ground_before)
+	press(KEY_SPACE, false)
+	print("sprong: %.2f m hoog" % highest)
+	_check(highest > 0.5, "springt met spatie (%.2f m)" % highest)
+	_check(not player._airborne and absf(player.global_position.y - ground_before) < 0.7, "landt weer op de grond")
 	await _hold_key(KEY_W, 4.0, player)
 	print("na nog 4 s: ", player.global_position)
 	var stamina_before: float = player.stat("uithoudingsvermogen").x
 	press(KEY_SHIFT, true)
-	await _hold_key(KEY_S, 1.5, player)
+	await _hold_key(KEY_W, 1.5, player)
 	press(KEY_SHIFT, false)
 	_check(player.stat("uithoudingsvermogen").x < stamina_before, "rennen kost uithoudingsvermogen")
 

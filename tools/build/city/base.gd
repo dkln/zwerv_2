@@ -140,9 +140,9 @@ func _make_scene(node_name: String) -> Node3D:
 	root.add_child(env)
 	var sun := DirectionalLight3D.new()
 	sun.name = "Zon"
-	# sun from south-southeast: in the isometric view (looking northwest)
-	# both the south and east facades get light, with clear shadows.
-	sun.rotation_degrees = Vector3(-62, 27, 0)
+	# sun from east-northeast: in the isometric view (looking southwest)
+	# both the north and east facades get light, with clear shadows.
+	sun.rotation_degrees = Vector3(-40, 210, 0)   # as DayCycle sets it at 13:00
 	sun.light_energy = 1.55
 	sun.light_color = Color(1.0, 0.93, 0.82)
 	sun.shadow_enabled = true
@@ -156,7 +156,7 @@ func _make_scene(node_name: String) -> Node3D:
 	# soft fill light from the other side (without shadows), so shadow sides don't turn black
 	var fill := DirectionalLight3D.new()
 	fill.name = "Vullicht"
-	fill.rotation_degrees = Vector3(-35, 200, 0)
+	fill.rotation_degrees = Vector3(-35, 290, 0)
 	fill.light_energy = 0.22
 	fill.light_color = Color(0.62, 0.74, 1.0)
 	fill.shadow_enabled = false

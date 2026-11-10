@@ -3,7 +3,10 @@ extends Node3D
 ## main menu) flies over the town: in from far off, in a gentle curve over the spot the
 ## camera looks at (within PASS_OFFSET metres of it, so it is seen), and away on the other
 ## side; then it is gone until the next flight. The first comes FIRST_AFTER seconds into
-## the game, then one every EVERY (from .. to) seconds. Its search light goes on at night
+## the game, then one every EVERY (from .. to) seconds. About LOW_SHARE of the flights are
+## low passes: it comes in high and dips to LOW_HEIGHT over that spot, then climbs away;
+## a ray down keeps it at least ROOF_CLEARANCE above whatever roof is under it.
+## Its search light goes on at night
 ## (the Dagcyclus, day_cycle_path).
 ## Placed by tools/build/build_city.gd (_helicopter_flights).
 
@@ -17,6 +20,12 @@ const REACH := 380.0
 const HEIGHT := Vector2(38.0, 55.0)
 const SPEED := 32.0
 const PASS_OFFSET := 50.0
+## Low passes: how many of the flights (share), how low over the spot (metres, from .. to),
+## how far above roofs it stays at least, and how fast it follows that roof line (per s).
+const LOW_SHARE := 0.4
+const LOW_HEIGHT := Vector2(14.0, 22.0)
+const ROOF_CLEARANCE := 8.0
+const ROOF_FOLLOW := 2.5
 ## How much the curve bows (share of the flight's length to the side), and how far it
 ## banks into it (degrees at most) and dips its nose.
 const BOW := 0.12
@@ -32,6 +41,8 @@ var _clock := 0.0
 ## The flight under way (empty when none): start, bend (the curve's middle control point),
 ## end (all metres, at the height), its length in seconds and the time it began.
 var _flight := {}
+## The height it actually flies at (the curve, lifted above roofs, smoothed).
+var _flown_height := 0.0
 
 
 func _ready() -> void:
@@ -51,7 +62,12 @@ func _process(delta: float) -> void:
 		_next_at = _clock + _random.randf_range(EVERY.x, EVERY.y)
 		return
 	var here := _on_curve(share)
-	var ahead := _on_curve(minf(share + 0.01, 1.0)) - here
+	var wanted := maxf(here.y, _roof_below(here) + ROOF_CLEARANCE)
+	# climbs quickly, sinks gently
+	var follow := ROOF_FOLLOW * (3.0 if wanted > _flown_height else 1.0)
+	_flown_height = lerpf(_flown_height, wanted, minf(1.0, follow * delta))
+	here.y = _flown_height
+	var ahead := _on_curve(minf(share + 0.01, 1.0)) - _on_curve(share)
 	ahead.y = 0.0
 	if ahead.length() < 0.001:
 		return
@@ -77,6 +93,11 @@ func _start_flight() -> void:
 	var start := passing - direction * REACH
 	var end := passing + direction * REACH
 	var bend := passing + beside * REACH * 2.0 * BOW * (1.0 if _random.randf() < 0.5 else -1.0)
+	if _random.randf() < LOW_SHARE:
+		# the curve's middle is (start + 2 * bend + end) / 4, so to pass at `low`
+		# over the spot the bend sits at 2 * low - height.
+		var low := _random.randf_range(LOW_HEIGHT.x, LOW_HEIGHT.y)
+		bend.y = 2.0 * low - height
 	_flight = {"start": start, "bend": bend, "end": end, "seconds": start.distance_to(end) / SPEED, "began": _clock}
 	if _helicopter == null:
 		_helicopter = PoliceHelicopter.new()
@@ -85,6 +106,7 @@ func _start_flight() -> void:
 		add_child(_helicopter)
 	_helicopter.global_position = start
 	_helicopter.visible = true
+	_flown_height = start.y
 
 
 ## Where on the quadratic curve start - bend - end it is at `share` (0 .. 1).
@@ -93,6 +115,14 @@ func _on_curve(share: float) -> Vector3:
 	var bend: Vector3 = _flight.bend
 	var end: Vector3 = _flight.end
 	return start.lerp(bend, share).lerp(bend.lerp(end, share), share)
+
+
+## The height of the highest thing (roof, tree, ground) straight under `point`; 0 if none.
+func _roof_below(point: Vector3) -> float:
+	var space := get_world_3d().direct_space_state
+	var query := PhysicsRayQueryParameters3D.create(Vector3(point.x, 300.0, point.z), Vector3(point.x, -5.0, point.z))
+	var hit := space.intersect_ray(query)
+	return float(hit.position.y) if not hit.is_empty() else 0.0
 
 
 ## The spot on the ground (y = 0) the current camera looks at; under the camera if it

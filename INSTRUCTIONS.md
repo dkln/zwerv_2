@@ -90,7 +90,7 @@ De speler (node `Speler`, `scripts/player/player_controller.gd`)
 ------------------------------------------------------------------
 - Het karakter van het karakterscherm (`PlayerCharacter.current_id()`), als voxelfiguur
   (`PlayerModel`). Iedereen begint op het Stationsplein bij Centraal (`START_PLACE`, op een
-  pleintegel), slapend op zijn rug met opstijgende z'tjes; als de stad geladen is en
+  pleintegel), slapend op zijn rug; als de stad geladen is en
   `sleep_seconds` (3 s) voorbij zijn, of bij een toets, wordt hij wakker en staat op
   (`wake_time`). Slapend loopt hij niet en lopen honger en uithoudingsvermogen niet terug
   (`start_asleep` uit = staand beginnen).
@@ -108,7 +108,12 @@ De speler (node `Speler`, `scripts/player/player_controller.gd`)
   `starvation_damage` 2 gezondheid. Rennen kost uithoudingsvermogen, dat na 0,8 s weer
   aanvult; leeggerend ben je uitgeput tot 25% terug is. Bij 0 gezondheid ga je dood: de
   figuur valt om, de HUD toont het doodsscherm ("JE BENT DOOD", het dood-deuntje; Enter =
-  opnieuw met hetzelfde karakter, Escape = hoofdmenu).
+  opnieuw met hetzelfde karakter, Escape = hoofdmenu). Dood door een aanrijding gaat in
+  slow motion (`_slow_motion_death`): het spel loopt 2,2 s (echte tijd) op 15 % van zijn
+  snelheid (`Engine.time_scale`; de physics stapt dan even vaak per echte seconde, dus de
+  wegvliegende figuur blijft vloeiend; het geluid vertraagt mee tot 45 %), de Volgcamera
+  zoomt in echte tijd in tot 6 m in beeld (`dramatic_close_up`), daarna komt de snelheid in
+  0,5 s terug en het doodsscherm op. Controle: `tools/check/death_slowmo_test.gd`.
 - Aangereden: overlapt de voetafdruk van een voertuig (`Vehicle.footprints`) die van de
   speler bij meer dan 1,2 m/s, dan verliest hij `damage_per_speed` × v +
   `damage_per_speed_squared` × v² gezondheid (50 km/h ≈ 55), vliegen er scherven en stof
@@ -136,7 +141,16 @@ Verhaal, missies en kleingeld
   bent, je achtergrondverhaal uit het archetype, twee gedachten bij het wakker worden), dan
   missie 1: € 2 kleingeld bemachtigen voor een kroket bij Jan Blammage. Wat je bij de start
   al hebt telt niet mee (`money_earned`). Bij € 2 een gedachte en de stap is afgevinkt; de
-  kroket kopen is de volgende stap (Jan Blammage staat nog niet op de kaart).
+  kroket kopen is de volgende stap: die staat op slot tot de € 2 er zijn (doorschijnend) en wijst
+  dan naar de drie dichtstbijzijnde Jan Blammages (de snackbars met het bord `naam_snackbar_2`,
+  "JAN BLAMMAGE", en een grote puntzak friet `props/terras/friet_puntzak` op de stoep) op het
+  kaartje en de kaart. Elke missie en elke stap heeft eigen XP (`add_xp`, level omhoog met
+  deuntje); in het questlog kies je met Enter welke missie je volgt.
+- Praten (`scripts/story/conversations.gd`): bij iemand in de buurt "[E] Praten" linksonder;
+  een gesprek met keuzes in het verhaalvenster, passend bij het uiterlijk (9 typen). Ze
+  brabbelen in hun stem en stemming (`scripts/audio/babble.gd`, `brabbel_<stem>_<stemming>_<n>`
+  uit `tools/megadrive/stemmen.py`; een vraag gaat omhoog) en hun lichaam beweegt mee
+  (`scripts/world/emote.gd`: boos schudt, blij huppelt, verdrietig hangt voorover).
 - Kleingeld (node `Kleingeld`, `scripts/world/loose_change.gd`): 20 munten (10, 20, 50 cent,
   soms een euro) op pleinen en stoepen tot 110 m van de start, drie dichtbij. Eroverheen lopen
   raapt ze op (`add_money`, geluid "munt", het bedrag stijgt op).
@@ -172,7 +186,7 @@ van een licht volgt uit zijn draaiing; tijden zijn instelbaar op de node.
 
 Er rijdt verkeer door de stad: een sedan, node `Auto` (`scripts/vehicles/car.gd`), en een
 SUV, node `SUV` (`scripts/vehicles/suv.gd`), staan in de scène; de node `Verkeer`
-(`scripts/traffic/traffic.gd`) zet er bij het starten nog `vehicle_count` (30) voertuigen bij,
+(`scripts/traffic/traffic.gd`) zet er bij het starten nog `vehicle_count` (50) voertuigen bij,
 verspreid over het wegennet (`spacing`, `traffic_seed`, de mix in `MIX`), en daarna
 `services_count` (7) hulpdiensten en dienstauto's (`SERVICES`, nodes `Dienst1`..). Soorten:
 
@@ -190,28 +204,97 @@ verspreid over het wegennet (`spacing`, `traffic_seed`, de mix in `MIX`), en daa
 | `riot_van.gd` (ME-busje) | `auto_politie_busje` | 5 m | 3200 kg | 2300 Nm |
 | `ambulance.gd` | `auto_ambulance` | 5 m | 3500 kg | 2500 Nm |
 | `fire_engine.gd` (brandweer) | `auto_brandweer` | 7 m | 14000 kg | 11000 Nm |
-| `cyclist.gd` (fietser, 20 km/h, soort `fiets`) | `fietser`, `_rood` + `fiets_wiel` | 1,8 m | 95 kg | 36 Nm |
-| `fatbike.gd` (30 km/h, soort `fiets`) | `fatbike` + `auto_wiel` | 1,8 m | 110 kg | 62 Nm |
+| `cyclist.gd` (fietser, 20 km/h, soort `fiets`) | fiets in code (`bicycle_parts.gd`) + `fiets_wiel` | 2 m | 95 kg | 36 Nm |
+| `fatbike.gd` (30 km/h, soort `fiets`) | fatbike in code (`bicycle_parts.gd`) + `auto_wiel` | 1,9 m | 110 kg | 62 Nm |
 | `moped.gd` (brommer, 45 km/h, soort `brommer`) | `brommer` + `brommer_wiel` | 1,8 m | 160 kg | 90 Nm |
 | `scooter.gd` (45 km/h, soort `brommer`) | `scooter`, `_zwart` + `klein_wiel` | 1,8 m | 170 kg | 76 Nm |
 | `motorbike.gd` (motorfiets, 130 km/h) | `motorfiets` + `auto_wiel` | 2 m | 300 kg | 450 Nm |
 | `microcar.gd` (gehandicaptenauto/brommobiel, 45 km/h) | `gehandicaptenauto`, `_blauw` + `klein_wiel` | 2,5 m | 450 kg | 135 Nm |
 | `tractor.gd` (trekker, 25 km/h) | `trekker`, `_rood` + `tractor_wiel` (achter) en `auto_wiel` (voor) | 3,75 m | 4500 kg | 2250 Nm |
 
-De tweewielers (fietser, fatbike, brommer, scooter, motorfiets; `tools/voxgen/tiles/two_wheelers.py`)
-zijn één model met de berijder erop, met voxels van 6,25 cm in plaats van 12,5 cm: de import-optie
+De tweewielers zijn allemaal een `TwoWheeler` (`scripts/vehicles/two_wheeler.gd`) met een
+berijder: een stadsbewoner (`scripts/world/townsfolk_figure.gd`, in code gebouwd uit voxels van
+5 cm zoals de spelerfiguren, 1,75 m), zijn uiterlijk uit de `route_seed` (`rider_kind`: bloot
+hoofd of pet op de fiets, open helm op brommer en scooter, integraalhelm en zwart leer op de
+motor). Heupen op het zadel, handen aan de handvatten (het lijf leunt zo ver voorover als de
+armen nodig hebben), voeten op de trappers of steunen; de benen buigen in de knie (twee-bot-IK).
+- De fietsen (fietser, fatbike) worden in code gebouwd (`scripts/vehicles/bicycle_parts.gd`):
+  frame, stuur (vork, voorspatbord, koplamp, stuurpen en stuur) en trapas (cranks en trappers)
+  apart. Het stuur draait om de schuin naar achter staande balhoofdbuis met het voorwiel en de
+  koplamp erin; de berijder trapt (de cranks draaien mee met het achterwiel, `PEDAL_GEAR`, en
+  staan stil bij remmen en uitrollen) en zijn handen volgen het stuur. Kleuren en lage instap
+  per fiets uit de seed. De oude tiles `fietser`, `_rood` en `fatbike` (met berijder erop)
+  rijden niet meer mee.
+- Brommer, scooter en motorfiets zijn tiles (`tools/voxgen/tiles/two_wheelers.py`) zonder
+  berijder; `two_wheeler.gd` zet de stadsbewoner erop op zadel, voetsteunen en handvatten van
+  die tile (`TwoWheeler.tile_point`).
+- Alle tweewielers hellen in de bocht en sturen in: de helling begint al vóór de bocht
+  (`LEAN_LEAD`, de bocht die het over 0,35 s rijdt) en om naar links te gaan hellen draait het
+  voorwiel eerst even naar rechts (`countersteer`, `Vehicle._turn_wheels`).
+
+De tiles van de tweewielers hebben voxels van 6,25 cm in plaats van 12,5 cm: de import-optie
 `voxel_size` = 0,0625 in hun `<naam>.gox.import` (lijst `FINE_TILES`, ook `fiets_wiel` en
 `brommer_wiel`; een nieuwe `.import` krijgt eerst de standaard 0,125, zet hem dan weer op 0,0625).
-De berijder heeft een hoofd met ogen en haar of een helm (open of integraal met vizier), armen
-tot de handen op de handvatten, benen op de trappers of steunen, schoenen, riem, rits en kraag;
-de fietsen dunne buizen, zadel, spatborden, kettingkast, bagagedrager en lampen. Materialen:
-frames, tanks, kappen en helmen gelakt (`painted`: `lak_*`, `bord_*`), chroom en staal `metal`
-(`rvs`, `metaal*`), banden, zadels, zitjes, kleding, huid en haar mat (`opaque`: `rubber`,
-`fiets_zadel`, `auto_interieur`, `stof*`, `gordijn*`), vizier `glass` (`glas2`), lampen en
-reflectoren `emit` (`lamp_wit`, `signaal_rood`). Ze hebben een andere `vehicle_kind`: `fiets`
+Materialen: frames, tanks, kappen en helmen gelakt (`painted`: `lak_*`, `bord_*`), chroom en
+staal `metal` (`rvs`, `metaal*`), banden en zitjes mat (`opaque`), lampen en reflectoren
+`emit` (`lamp_wit`, `signaal_rood`). Ze hebben een andere `vehicle_kind`: `fiets`
 (fietser, fatbike) en `brommer` (brommer, scooter) mogen ook over de fietspaden die dat toestaan
-(`RoadNetwork.allows`); motor en brommobiel zijn `auto`. Het voorwiel stuurt maar weinig
-(`max_steering_degrees` 15), fietsen hebben geen remlicht en richtingaanwijzers.
+(`RoadNetwork.allows`); motor en brommobiel zijn `auto`. Het voorwiel van brommer, scooter en
+motor stuurt hooguit 15 graden, van de fietsen 25; fietsen hebben geen remlicht en
+richtingaanwijzers.
+
+Voetgangers (node `Voetgangers`, `scripts/world/pedestrians.gd` en `pedestrian.gd`): 64
+stadsbewoners lopen over de stoep- en pleintiles (`stoep/`, `plein/`, zonder gebouw erop) in de
+buurt van de speler, van cel naar cel, nu en dan even stilstaand; een plek waar ze niet in een
+rechte lijn kunnen komen zonder tegen iets van de stad te lopen (lantaarnpaal, bank, boom)
+kiezen ze niet. Wie verder dan `reach` (110 m) van de speler raakt, komt buiten beeld terug.
+Bij een zebrapad (`weg/zebrapad`) steken ze recht over, haaks op de rijstroken: bij de
+stoeprand claimen ze het zebrapad (de auto's stoppen ervoor, `Vehicle._someone_crossing`), ze
+wachten zolang er een voertuig te dichtbij en te snel aankomt, en een auto die al gewacht heeft
+rijdt pas door als er niemand meer op staat. Bij een kruising met voetgangerslichten
+(`Verkeerslichten`, `pedestrian_phase`; `Pedestrians.walk_light`) wachten ze op groen zonder
+het zebrapad te claimen (het verkeer met groen rijdt door) en claimen het pas als ze oversteken
+(afslaand verkeer wacht dan). Voertuigen letten op mensen te voet (voetgangers en de speler, de
+groep `lopers`, `Vehicle._watch_people`): ze kijken hun remweg plus 2,5 s vooruit, remmen tot
+2 m voor iemand op hun pad, wijken (niet op rails) tot 0,9 m uit voor iemand aan de rand van
+hun pad en waarschuwen met hun toeter: `auto_toeter`, `bus_toeter` (bus en vrachtwagen, boven
+3500 kg), `brommer_toeter`, `fiets_bel` (fiets, fatbike), `tram_bel`, `trein_hoorn`,
+`brandweer_hoorn` (`horn_sound` of `_horn()`), als iemand binnen 2,5 s op hun pad is of na 3 s
+nog in de weg staat, hooguit elke 5 s. Controle: `tools/check/people_traffic_test.gd`. Eén op de `mobility_every` (9) zit in een
+rolstoel en één op een scootmobiel (`Pedestrian.mobility`, `scripts/world/mobility_aid.gd`, in code
+gebouwd in voxels, de berijder een zittende stadsbewoner): ze rijden de kant op waar ze naar kijken en
+draaien hooguit `TURN_RATE` per seconde; de wielen zijn de wielmodellen van de voertuigen
+(`fiets_wiel`, `klein_wiel`, verkleind) en draaien via de wielshader (`voxel_wheel.gdshader`,
+`roll`), de zwenkwieltjes van de rolstoel draaien om hun staande as achter de beweging van hun
+punt aan, het voorwiel van de scootmobiel stuurt met de stuurkolom in (de handen gaan mee). De
+scootmobiel mag ook over de fietspaden (`Pedestrians.may_use`: cellen waar fietsen mogen en
+auto's niet) en toetert (`scootmobiel_toeter`) als iemand voor hem blijft staan. De botsvorm
+omvat stoel en berijder. Controle: `tools/check/mobility_test.gd`.
+De meters van de HUD (`scripts/ui/widgets/segment_bar.gd`) laten zien dat ze veranderen,
+zonder te bewegen: wat een klap eraf haalt blijft even rood-oranje staan (knipperend, 0,45 s)
+en loopt dan leeg naar het nieuwe niveau; een kleine daling (honger) laat het randsegment
+knipperen; een sprong omhoog (eten, xp) laat de gewonnen segmenten oplichten, langzaam
+bijvullen niet. Het getal ernaast licht kort op (rood bij omlaag). Controle:
+`tools/check/segment_bar_test.gd`. Er zijn geen randjes om dingen of figuren. De speler en de voetgangers hebben een zachte
+donkere vlek op de grond recht onder zich (`scripts/effects/ground_shadow.gd`, een Decal), zodat
+ze van elke kant loskomen van de straat; de figuren zelf staan op visuele laag 2
+(`FIGURE_LAYER`), waar die vlek niet op valt. In de stad zijn de figuren eenvoudiger dan op het
+karakterscherm (`PlayerModel.simple`, `VoxelFigure.simplify`): bijna gelijke kleuren worden
+één kleur en losse spikkels (knopen, steken, vlekjes) nemen de kleur eromheen aan; de vorm en
+de ogen blijven. Controle: `tools/check/simple_figure_test.gd`. De bio op het
+karakterscherm typt zich uit met de blokcursor, zoals het verhaal (`widgets/typewriter.gd`).
+Buiten beeld kosten ze minder CPU-tijd (`scripts/world/sight.gd`): wat in beeld is (met 30 %
+marge rond het scherm) doet elke physics-stap, wat erbuiten is om de 2 stappen en wat ook nog
+verder dan 150 m van het kijkpunt (of 300 m van de camera) is om de 4, telkens met de tijd van
+alle overgeslagen stappen; dan draaien ook wielen, trappers en ledematen niet mee. Voertuigen
+(`vehicle.gd`) en voetgangers (`pedestrian.gd`) kijken elke 15 stappen opnieuw waar ze zijn, elk
+op een eigen moment. Controle: `tools/check/sight_test.gd`. Elke voetganger heeft een botsvorm zo groot als de
+figuur (`Botsvorm`), net als de speler: de speler loopt er niet doorheen en wrakken botsen erop.
+De spelerfiguur staat in de stad op 0,78 (`PlayerController.FIGURE_SCALE`, ongeveer 1,75 m, Willem
+krom 1,55 m), zodat spelers, voetgangers, berijders en voertuigen in verhouding zijn; de
+schermen (portret, karakterkeuze) tekenen hem op ware grootte. Controle:
+`tools/godot.sh --headless --script tools/check/townsfolk_test.gd` (maten, trappen, sturen,
+insturen, handen en voeten, voetgangers, zebra en alle botsvormen).
 De trekker heeft grote achterwielen (`wheel_model`/`wheel_radius` van `Vehicle`) en kleinere
 voorwielen (`front_wheel_model`/`front_wheel_radius`: elk voertuig kan voorwielen van een andere maat
 krijgen; die rollen in hun eigen tempo).
@@ -298,8 +381,18 @@ Hij jaagt de speler niet zelf na, maar een punt dat doorlopend vóór hem ligt: 
 tot `max_lead` van het beeld). Daar volgt hij op een kritisch gedempte veer
 (`glide_time`), zodat de camera bij een constante snelheid even gelijkmatig meebeweegt
 en bij optrekken en remmen geleidelijk meegaat.
-Hij zoomt van 18 m in beeld bij stilstand (`zoom_still`) tot 24 m bij rennen (`zoom_fast`,
-`fast_speed`) en gaat mee de tunnelbak in: gaat de speler onder iets door, dan zakt de camera in
+Hij zoomt van 18 m in beeld bij stilstand (`zoom_still`, dichtbij: de figuur goed te zien)
+via 38 m bij lopen (`zoom_walk` bij `walk_pace`, 3 m/s) tot 44 m bij rennen (`zoom_fast`,
+`fast_speed`). Bij de start van het spel (zodra het laadscherm weg is) komt hij hoog uit de
+lucht naar de speler toe (`arrival`: van 300 m in beeld naar `zoom_still` in 8 s; de speler slaapt door tot hij beneden is, pas
+dan wordt hij wakker en begint het verhaal), dwars door
+een wolkenlaag van vierkante voxelblokken (`scripts/effects/cloud_shroud.gd`/`.gdshader`: twee
+lagen losse blokken die vanuit het midden groeien, bovenkant licht, de zijkant eronder
+donkerder; het dikst bovenin, waar hij begint (hooguit ongeveer de helft van het beeld), en
+steeds dunner naarmate hij zakt, weg op 60 % van de afdaling; in de wolken gaat de camera op
+ruim een derde van zijn snelheid, `ARRIVAL_CLOUD_SPEED`, en vanaf 70 % (`ARRIVAL_SETTLE_FROM`) loopt
+hij zacht uit tot stilstand bij de speler; 's nachts donker blauwgrijs); een dramatisch moment breekt de afdaling af.
+Controle: `tools/check/arrival_test.gd`. Hij gaat mee de tunnelbak in: gaat de speler onder iets door, dan zakt de camera in
 de open bak erachter en volgt als achtervolgcamera (`tunnel_*`; de tunnel heeft eigen lampen,
 node `Tunnelverlichting`). Close-ups kunnen nog (`closeups`, standaard uit). Springt het doel
 (opstaan na een aanrijding), dan glijdt het beeld er in `switch_time` s heen. Er zijn geen
@@ -308,12 +401,18 @@ zit alleen nog in `tools/check/crash_test.gd`). De auto rijdt met een vaste
 stap van 60 Hz; zijn carrosserie (node `Carrosserie`) wordt elk frame tussen de laatste
 twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
 - Doorkijk (node `Doorkijk`, `scripts/world/building_fade.gd`): zolang de camera de speler
-  volgt, vervaagt elk gebouw (aaneengesloten cellen van de laag Gebouwen) dat tussen de
-  speler en de camera staat als geheel, en komt terug als het zicht weer vrij is. Alles wat
+  volgt, krijgt elk gebouw (aaneengesloten cellen van de laag Gebouwen) dat tussen de
+  speler en de camera staat een rond kijkgat (`hole_radius`, 3,5 m): een buis van de speler
+  naar de camera, met een geditherde rand; alleen wat aan de camerakant van de speler ligt
+  wordt weggesneden, de rest van het gebouw blijft staan. Het gat gaat open en dicht in
+  `fade_time`. Middelpunt en straal staan in de laatste rij van de fade-kaart. Alles wat
   uit hun cel steekt (erkers, winkelpuien, luifels) en hun gevel-details vervaagt mee: de
   samengevoegde gebouwen dragen per vertex de cel waar ze bij horen (`layer_baker.gd`,
   CUSTOM0) en de shader kijkt die cel op in een fade-kaart (`voxel_fade.gdshaderinc`).
   Objecten op straat (props: bushokjes, lantaarnpalen, bomen) vervagen niet.
+  Getest wordt vanuit een vierkant rond het gevolgde in beeld: `test_reach` (3 m) rond een
+  voertuig, `walker_reach` (0,5 m) rond iemand te voet, zodat een gevel waar je naast staat
+  (die alleen de ruimte naast je in beeld bedekt, niet jezelf) blijft staan.
   Viaducten vervagen ook: elke kolom van de laag Grond met een cel vanaf `deck_level` telt als
   een eigen klein gebouw, dus alleen het stuk dek boven het voertuig gaat open. Een dek vervaagt
   alleen als het minstens `deck_clearance` boven het voertuig ligt.
@@ -519,7 +618,7 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
   `scripts/ui/widgets/player_portrait.gd` toont een poppetje in een eigen SubViewport: warm
   hoofdlicht met schaduw (ook op een onzichtbare vloer die alleen de schaduw toont), zacht
   vul- en tegenlicht, een lage grijze ambient en een eenvoudige lucht voor de reflecties.
-  Muziek: `karakterkeuze_loop.ogg` (zacht: strijkers, FM-piano, het motief rustig; 96 BPM, 40 s, lus), zacht (-19 dB) en
+  Muziek: `karakterkeuze_loop.ogg` (zacht: strijkers, FM-piano, het motief rustig; 96 BPM, 40 s, lus), op -12 dB en
   infadend. Test: `tools/check/character_test.gd` (`-- figures`: alleen de poppetjes).
 - Hoofdmenu (`scenes/hoofdmenu.tscn`, `scripts/ui/main_menu.gd`), naar het ontwerp
   "Titelscherm" in de HUD-stijl: titel ZWERVR, menu (VERDERGAAN en LADEN uitgegrijsd tot er
@@ -602,7 +701,7 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
   kaartdeuntje (`deuntje_kaart_start.ogg`) infadend, bij een wijkwissel in 3 s overvloeiend
   op dezelfde plek in de maat (gelijk vermogen: sinus/cosinus op de amplitude, dus geen gat
   halverwege), pas na `CITY_MUSIC_SETTLE` s in de nieuwe wijk (langs een grens lopen wisselt
-  niet steeds), buiten elke wijk ("Den Haag") blijft de muziek zoals hij was; op -19 dB en
+  niet steeds), buiten elke wijk ("Den Haag") blijft de muziek zoals hij was; op -10 dB en
   zachter zolang het spel stilstaat (pauzemenu, spelmenu, verhaalvak; `CITY_MUSIC_VOLUME_DB`,
   `CITY_MUSIC_PAUSED_DB`). Test: `tools/check/city_music_test.gd`. Alle vijf: 128 BPM, F mineur, 40 maten = 75 s, dezelfde akkoorden
   per maat (`tools/megadrive/stad_plan.py`), naadloze lussen:
@@ -626,7 +725,8 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
   tram, trein) een langsrij-geluid (`*_voorbij.ogg`, met Doppler) en een naadloze motorlus
   (`*_motor_loop.ogg`, voor een AudioStreamPlayer3D op het voertuig), botsingen
   (`auto_botsing_hard.ogg`, `auto_botsing_licht.ogg`), `tram_bel.ogg`, `trein_hoorn.ogg` en
-  `bus_remmen.ogg`, en voor de hulpdiensten een eigen twee-toonsirene per dienst
+  `bus_remmen.ogg`, toeters om voetgangers te waarschuwen (`auto_toeter.ogg`, `bus_toeter.ogg`,
+  `brommer_toeter.ogg`, `fiets_bel.ogg`, `scootmobiel_toeter.ogg`), en voor de hulpdiensten een eigen twee-toonsirene per dienst
   (`politie_sirene_loop.ogg`, `ambulance_sirene_loop.ogg`, `brandweer_sirene_loop.ogg`, plus
   `sirene_yelp_loop.ogg`), voorbijrazen met sirene (`*_voorbij.ogg`), `brandweer_hoorn.ogg` en
   de politiehelikopter (`helikopter_loop.ogg`, `helikopter_voorbij.ogg`); zie `docs/MUZIEK.md`.
@@ -723,8 +823,12 @@ Projectstructuur
                            clash_test, intro_test, menu_test, mesh_audit, offscreen_audit,
                            overlap_test, rail_stop_test, triangle_count, speech_balloon_test,
                            street_lights_test, drown_test, building_fade_test,
-                           edge_outline_test (met venster)
+                           arrival_test, simple_figure_test,
+                           loading_after_warp_test
       shots/               shot_tiles, shot_iso, shot_scene, shot_vehicles
+    tests/                 unit tests: kleine onderdelen los, zonder de stad (snel);
+                           tests/unit/test_*.gd, elke functie test_* een test;
+                           tools/godot.sh --headless --script tests/run_unit_tests.gd [-- <filter>]
       voxgen/              Python-generator van de tiles (zie "Tiles (opnieuw) genereren")
       megadrive/           Python-generator van alle muziek en de verkeersgeluiden in Mega Drive-stijl (FM, PSG, PCM-drums)
     docs/                  Goxel-handleiding (GOXEL.md -> handleiding_goxel.html), MUZIEK.md (de muzikale huisstijl)
@@ -740,7 +844,8 @@ Snel starten
 4. F5 start de stad (`scenes/stad.tscn`, zie boven). Je loopt rond met het gekozen
    karakter (WASD of pijltjes, Shift = rennen, Tab/I = spelmenu, Escape = pauze); de camera
    volgt je in isometrische stand: een perspectiefcamera met een smalle kijkhoek (20°),
-   45 graden gedraaid en ~35 graden naar beneden (`scripts/camera/iso_camera.gd`). Een
+   135 graden gedraaid (de camera staat in het noordoosten, zodat je de voorkant van Centraal
+   met de letters DEN HAAG CENTRAAL ziet) en ~35 graden naar beneden (`scripts/camera/iso_camera.gd`). Een
    echte perspectiefcamera, omdat Godot schaduwsplits en SSR alleen daarmee goed berekent.
    De vrije camera (`scripts/camera/free_camera.gd`, op de Camera-node: schuiven, zoomen,
    draaien) is in het spel uit: de Volgcamera neemt hem bij de start over. Hij werkt nog
@@ -1237,8 +1342,8 @@ Hoe het werkt (techniek)
   screenshots van tiles of scenes, ook isometrisch (voor controle).
 
 Belichting (in `tools/build/city/base.gd`, functie `_make_scene`): een zon
-uit het zuid-zuidoosten met schaduwen (in de isometrische stand krijgen zowel
-de zuid- als de oostgevels licht), een zacht blauwig vullicht zonder schaduw,
+uit het oost-noordoosten met schaduwen (in de isometrische stand, de camera in het
+noordoosten, krijgen zowel de noord- als de oostgevels licht), een zacht blauwig vullicht zonder schaduw,
 lucht-ambient, SSAO, glow en een lichte kleur/contrast-correctie. Pas
 `Zon`, `Vullicht` en `Omgeving` in de scene aan voor een andere sfeer.
 
@@ -1286,7 +1391,9 @@ Prestaties en uiterlijk
   grote meshes (chunks van 8x8 cellen, per LOD-niveau). Zijden die tegen een
   dichte buurcel liggen en alle onderkanten vallen daarbij weg. De importer
   groepeert de driehoeken daarvoor per celzijde (import-optie `cell_block`: 4x3x4 voor
-  gebouwen, 4x1,5x4 voor grond). Tot het samenvoegen klaar is, staat er een laadscherm
+  gebouwen, 4x1,5x4 voor grond). Komt de stad uit de golf van een scèneovergang
+  (`WarpTransition`), dan staat het laadscherm er meteen maar begint het samenvoegen pas als de
+  golf is uitgedeind, zodat die niet schokt. Tot het samenvoegen klaar is, staat er een laadscherm
   (export `loading_screen`; in de stijl van de HUD: inktblauw, "ZWERVR", een blokjesbalk met
   percentage, en hetzelfde CRT-beeld met de instellingen van de HUD, `UiStyle.make_crt_overlay`,
   dat met het scherm mee uitfadet; `scripts/ui/loading_screen.gd`); het resultaat wordt
@@ -1302,8 +1409,10 @@ Prestaties en uiterlijk
   ramen, lampen, borden, koplampen) volgen hem, met de kleuren van het moment (`DAY_COLOURS`:
   blauw uur, roodoranje zonsopkomst, gouden uren, wit middaglicht, rode zonsondergang onder
   violet, diepblauwe nacht met maanlicht; ertussen vloeiend gemengd); dat wordt elke `APPLY_STEP_HOURS` (0,02 uur)
-  bijgewerkt, niet elk frame, omdat de lucht bij elke kleurwijziging opnieuw wordt gebakken. De zon komt schuin van opzij (oost tot zuidoost, gezien vanuit de
-  isometrische camera), zodat de schaduwen in beeld vallen en de gevels licht
+  bijgewerkt, niet elk frame, omdat de lucht bij elke kleurwijziging opnieuw wordt gebakken. De zon staat rechts in beeld (ze draait mee met
+  `ROTATION.y` van `scripts/camera/iso_camera.gd`), zodat de schaduwen naar links vallen (bij de
+  start, 13:00, recht naar links en iets omhoog; 's ochtends iets omlaag, 's avonds meer
+  omhoog) en de gevels licht
   houden, en blijft tussen `min_elevation` (36°) en `max_elevation` (44°) hoog: geen
   lange schaduwen. Alle licht is realtime.
 - Ruis van ver (`voxel.gdshader`, sterkte in de shader-global `zwervr_far_noise`,
@@ -1325,7 +1434,8 @@ Prestaties en uiterlijk
   klein is, dus van ver is grind egaal, zonder flikkeren.
 - Echte grassprieten (node `Grassprieten`, `scripts/world/grass_blades.gd`, shader
   `materials/grass_blade.gdshader`) in drie detailniveaus die in elkaar overgroeien:
-  fijne sprieten tot `show_from` (36 m in beeld, helemaal vol tot `full_from`, 26 m), daarna dikkere plukken (`medium_*`, tot
+  fijne sprieten tot `show_from` (48 m in beeld, helemaal vol tot `full_from`, 40 m: ook bij de
+  loopzoom van de Volgcamera, 38 m), daarna dikkere plukken (`medium_*`, tot
   55 m) en nog grovere, schaarse plukken (`far_*`, tot 220 m, die twee over het hele beeld;
   uit met `low_detail`). Ingezoomd groeien hoekige sprieten in voxelstijl uit het gras (drie vierkante blokjes van 3 x 3 cm
   op elkaar, getrapt in de buigrichting, elk een eigen tint, alleen in kwartslagen gedraaid) rond het punt waar de camera
@@ -1388,7 +1498,9 @@ Prestaties en uiterlijk
     met eigen icoon en kleur: `gezondheid`, `uithoudingsvermogen`, `honger`,
     `overprikkeldheid` (`set_stat(naam, waarde, maximum)`, `get_stat`; nieuwe stats in `STATS`).
     Daaronder de ervaring: een dunne balk (teal) met "XP 6.420 / 10.000" (`set_xp(punten, punten_voor_niveau)`).
-  - Midden boven: "nieuw gebied ontdekt" met de naam, in- en uitfaden (`show_area(naam)`).
+  - Midden boven: de melding, in- en uitfaden: "nieuw gebied ontdekt" met de naam
+    (`show_area(naam)`) of "nieuwe missie" met de titel en het missiedeuntje
+    (`show_mission(titel)`, `deuntje_nieuwe_missie.ogg`); één tegelijk, de volgende wacht.
   - Rechtsboven: kaartje van 200 x 200, noord boven, pijl in het midden (de gevolgde auto van
     de `Volgcamera`, anders het punt waar de camera naar kijkt). Geen extra camera: één
     afbeelding, één pixel per cel van 4 m, gemaakt bij het starten uit `Grond` (kleur per soort

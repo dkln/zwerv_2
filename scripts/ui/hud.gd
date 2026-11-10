@@ -9,21 +9,25 @@ extends CanvasLayer
 ##   honger, overprikkeldheid), set with set_stat(name, value, maximum), and under them the
 ##   experience: "XP" and a segment bar as the stats, "6.420 / 10.000" under the bar
 ##   (set_xp(points, points_for_level));
-## - top centre: "nieuw gebied ontdekt" with the name of the area, fading in and out
-##   (show_area);
+## - top centre: the notice, fading in and out: "nieuw gebied ontdekt" with the name of the
+##   area (show_area), or "nieuwe missie" with its title and a jingle (show_mission); one at a
+##   time, the next waits until the one before has gone;
 ## - top right: a minimap of 200 x 200 (north up, the player arrow in the middle) with the
 ##   day and the time below it. The map is one Image built once from the Grond GridMap (a
 ##   colour per kind of ground) and the Gebouwen GridMap (dark), no extra camera; it shows
 ##   the area round the followed vehicle (Volgcamera) or the point the camera looks at. The
 ##   time comes from the Dagcyclus node (time_of_day; a day passes when it goes round), or
 ##   from set_time when there is none;
-## - right: the quest tracker (set_quests), hidden while there are no quests;
+## - right: the quest tracker (set_quests), hidden while there are no quests; the tracked
+##   quest (track_quest, chosen in the game menu; else the first) on top with how far its
+##   nearest place is, and those places (quest_targets) on the minimap (QuestMarks);
 ## - under the minimap: where the player is (the followed vehicle, else the point the
 ##   camera looks at): the neighbourhood (scene metadata "wijken" from the city builder),
 ##   the street ("straten", with the pavement beside it) and the nearest named place
 ##   ("places") within place_near metres, in a box as wide as the minimap over it; entering a
 ##   neighbourhood for the first time shows it as a new area (show_area);
 ## - bottom right: the money in euros (set_money);
+## - bottom left: the context actions (ActionPrompts, set_actions: "[E] Praten" near someone);
 ## - the pause menu (Escape: the game stands still; VERDER SPELEN, HOOFDMENU, AFSLUITEN);
 ## - the game menu as a child (Spelmenu, scripts/ui/game_menu.gd: inventory, quests, map);
 ## - the death screen (show_death, when the player dies);
@@ -36,8 +40,9 @@ extends CanvasLayer
 ## one is missing.
 
 ## The tune that opens the map when the game starts (max 6 s), and how loud.
+const LoadingScreenScript = preload("res://scripts/ui/loading_screen.gd")
 const MAP_JINGLE := "res://assets/audio/muziek/deuntje_kaart_start.ogg"
-const MAP_JINGLE_VOLUME_DB := -8.0
+const MAP_JINGLE_VOLUME_DB := -4.5
 ## The music while roaming the city (tools/megadrive/): a loop per kind of neighbourhood
 ## (CITY_MUSIC_BY_AREA, the names of the "wijken" metadata; others play CITY_MUSIC_DEFAULT).
 ## It starts when the jingle ends, fading in; going into a neighbourhood with other music
@@ -63,8 +68,8 @@ const CITY_MUSIC_BY_AREA := {
 	"Binckhorst": "stad_industrie_loop.ogg", "A12": "stad_industrie_loop.ogg",
 }
 const CITY_MUSIC_CROSSFADE := 3.0
-const CITY_MUSIC_VOLUME_DB := -22.0
-const CITY_MUSIC_PAUSED_DB := -30.0
+const CITY_MUSIC_VOLUME_DB := -15.0
+const CITY_MUSIC_PAUSED_DB := -22.0
 const CITY_MUSIC_FADE_IN := 3.0
 const CITY_MUSIC_SETTLE := 1.5
 ## How fast (dB per second) the level follows pausing and going on.
@@ -81,7 +86,9 @@ const PixelIcon = preload("res://scripts/ui/widgets/pixel_icon.gd")
 const SegmentBar = preload("res://scripts/ui/widgets/segment_bar.gd")
 const CheckSquare = preload("res://scripts/ui/widgets/check_square.gd")
 const PlayerArrow = preload("res://scripts/ui/widgets/player_arrow.gd")
+const QuestMarks = preload("res://scripts/ui/widgets/quest_marks.gd")
 const PlayerPortrait = preload("res://scripts/ui/widgets/player_portrait.gd")
+const FloatingNumbers = preload("res://scripts/ui/widgets/floating_numbers.gd")
 const PlayerCharacter = preload("res://scripts/player/player_character.gd")
 
 ## Size of the design; the HUD is laid out at this size and scaled to the window.
@@ -99,6 +106,8 @@ const STATS := {
 ## The experience bar: a segment bar as the stats (their segments, the height of the
 ## slimmer ones), its colours (teal: the purple of the design is taken by overprikkeldheid).
 const XP_COLOUR := Color("#47D6C2")
+## How see-through a quest step is that cannot be done yet (the one before it first).
+const LOCKED_STEP_OPACITY := 0.35
 const XP_EMPTY_COLOUR := Color("#173733")
 const XP_SEGMENTS := 20
 const XP_SEGMENT_HEIGHT := 8
@@ -198,7 +207,7 @@ var _has_focus := false
 var _current_wijk := ""
 var _visited_wijken := {}
 var _quests: Array = []
-var _stat_rows := {}      # stat name -> its row (icon, bar, value), shaken on a change
+var _stat_rows := {}      # stat name -> its row (icon, bar, value)
 var _stat_shakes := {}    # stat name -> the running shake tween
 var _font_title: Font        # Pixelify Sans, bold
 var _font_title_medium: Font # Pixelify Sans, semibold
@@ -207,6 +216,7 @@ var _font_pixel_bold: Font   # Silkscreen bold
 var _font_body: Font         # JetBrains Mono
 
 var _root: Control
+var _floating_numbers: FloatingNumbers
 var _ui_viewport: SubViewport   # the HUD's own picture (see _build_crt)
 var _player_frame: Control
 var _portrait: PlayerPortrait
@@ -218,8 +228,10 @@ var _stat_bars := {}         # stat name -> SegmentBar
 var _stat_texts := {}        # stat name -> Label
 var _stat_values := {}       # stat name -> Vector2(value, maximum)
 var _area_banner: Control
+var _area_heading: Label
 var _area_name: Label
 var _area_tween: Tween
+var _notices: Array[Dictionary] = []   # waiting: {"heading", "name", "seconds", "jingle"}
 var _minimap_box: Control
 var _minimap_map: TextureRect
 var _minimap_arrow: PlayerArrow
@@ -229,6 +241,10 @@ var _day_label: Label
 var _time_label: Label
 var _time_icon: PixelIcon
 var _quest_list: VBoxContainer
+var _tracked_quest_id := ""
+var _tracked_distance: Label         # the distance in the tracked quest's panel
+var _minimap_marks: QuestMarks
+var _action_prompts: ActionPrompts
 var _money_panel: Control
 var _money_label: Label
 var _crt_overlay: ColorRect
@@ -260,9 +276,18 @@ func _ready() -> void:
 	_root.name = "Ontwerp"
 	_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_ui_viewport.add_child(_root)
+	# under everything else of the HUD: money picked up and damage, floating up
+	_floating_numbers = FloatingNumbers.new()
+	_floating_numbers.name = "ZwevendeGetallen"
+	_floating_numbers.font = _font_pixel_bold
+	_floating_numbers.world_viewport = get_viewport()
+	_root.add_child(_floating_numbers)
 	_build_player_frame()
 	_build_area_banner()
 	_build_minimap()
+	_action_prompts = ActionPrompts.new()
+	_action_prompts.name = "Acties"
+	_root.add_child(_action_prompts)
 	_build_quest_tracker()
 	_build_money()
 	_build_pause_menu()
@@ -298,6 +323,9 @@ func _play_map_jingle_when_ready() -> void:
 	var level_of_detail := get_node_or_null(DETAIL_PATH)
 	if level_of_detail and level_of_detail.has_method("is_merging") and level_of_detail.is_merging():
 		await level_of_detail.merge_finished
+	# and until the loading screen is gone: meanwhile only its waiting music plays
+	while LoadingScreenScript.showing(get_tree()):
+		await get_tree().process_frame
 	var stream: AudioStream = null
 	if ResourceLoader.exists(MAP_JINGLE):
 		stream = load(MAP_JINGLE)
@@ -421,6 +449,7 @@ func _process(delta: float) -> void:
 	if _location_clock <= 0.0:
 		_location_clock = LOCATION_INTERVAL
 		_update_location()
+		_update_quest_distance()
 
 
 # ------------------------------------------------------------------ API
@@ -442,34 +471,26 @@ func set_stat(stat_name: String, value: float, maximum := -1.0) -> void:
 	(_stat_texts[stat_name] as Label).text = "%d/%d" % [roundi(clamped), roundi(top)]
 
 
-## A change of a stat of at least this many points in one go shakes its row (a hit, eating,
-## hunger biting); the slow running down and filling up of the meters does not.
+## A change of a stat of at least this many points in one go lights its value up (a hit,
+## eating, hunger biting); the slow running down and filling up of the meters does not.
 const STAT_SHAKE_FROM := 1.5
-const STAT_SHAKE_SECONDS := 0.35
-const STAT_SHAKE_PIXELS := 4.0
+const STAT_FLASH_SECONDS := 0.6
 var _stat_values_set := {}
 
 
-## Shakes the row of a stat side to side for a moment and lights it up: brighter when it
-## went up, reddish when it went down, so you see it did something to you.
+## Lights the value of a stat up for a moment: brighter when it went up, reddish when it
+## went down (the bar itself shows what changed, scripts/ui/widgets/segment_bar.gd).
 func _shake_stat(stat_name: String, gained: bool) -> void:
-	var row: Control = _stat_rows.get(stat_name)
-	if row == null:
+	var text: Label = _stat_texts.get(stat_name)
+	if text == null:
 		return
 	var running: Tween = _stat_shakes.get(stat_name)
 	if running and running.is_valid():
 		running.kill()
-	var rest_x := 0.0   # the column lays its rows out at x = 0
-	var shake := create_tween()
-	var steps := 6
-	for step_index in steps:
-		var side := -1.0 if step_index % 2 == 0 else 1.0
-		var fade := 1.0 - float(step_index) / steps
-		shake.tween_property(row, "position:x", rest_x + side * STAT_SHAKE_PIXELS * fade, STAT_SHAKE_SECONDS / (steps + 1))
-	shake.tween_property(row, "position:x", rest_x, STAT_SHAKE_SECONDS / (steps + 1))
-	row.modulate = Color(1.7, 1.7, 1.7) if gained else Color(1.6, 0.55, 0.6)
-	create_tween().tween_property(row, "modulate", Color.WHITE, STAT_SHAKE_SECONDS)
-	_stat_shakes[stat_name] = shake
+	text.modulate = Color(1.7, 1.7, 1.7) if gained else Color(1.6, 0.45, 0.4)
+	var flash := create_tween()
+	flash.tween_property(text, "modulate", Color.WHITE, STAT_FLASH_SECONDS)
+	_stat_shakes[stat_name] = flash
 
 
 ## The value and maximum of a stat (Vector2).
@@ -486,6 +507,16 @@ func set_xp(points: float, points_for_level: float) -> void:
 	_xp_text.text = "%s / %s" % [_thousands(roundi(clamped)), _thousands(roundi(top))]
 
 
+const LEVEL_JINGLE := "res://assets/audio/muziek/deuntje_level_omhoog.ogg"
+const LEVEL_JINGLE_VOLUME_DB := -1.0
+
+
+## A level up: the new level on the badge, "LEVEL 3" announced at the top with the jingle.
+func show_level_up(level: int) -> void:
+	set_player(player_name, level)
+	_queue_notice({"heading": "— LEVEL OMHOOG —", "name": "Level %d" % level, "seconds": 3.5, "jingle": LEVEL_JINGLE})
+
+
 func set_player(new_name: String, level: int) -> void:
 	player_name = new_name
 	player_level = level
@@ -493,30 +524,148 @@ func set_player(new_name: String, level: int) -> void:
 	_level_badge.text = "LEVEL %d" % level
 
 
+const AREA_HEADING := "— NIEUW GEBIED ONTDEKT —"
+const MISSION_HEADING := "— NIEUWE MISSIE —"
+const MISSION_JINGLE := "res://assets/audio/muziek/deuntje_nieuwe_missie.ogg"
+const MISSION_JINGLE_VOLUME_DB := 0.5
+## Width of the notice (a mission title is longer than an area name).
+const NOTICE_WIDTH := 720.0
+
+
 ## Shows "nieuw gebied ontdekt" with the name of the area for a few seconds.
 func show_area(area_name: String, seconds := 4.0) -> void:
-	_area_name.text = area_name
+	_queue_notice({"heading": AREA_HEADING, "name": area_name, "seconds": seconds, "jingle": ""})
+
+
+## Shows "nieuwe missie" with the title of the mission and plays the mission jingle.
+func show_mission(title: String, seconds := 4.5) -> void:
+	_queue_notice({"heading": MISSION_HEADING, "name": title, "seconds": seconds, "jingle": MISSION_JINGLE})
+
+
+## True while a notice is up (for the tests).
+func is_showing_notice() -> bool:
+	return _area_banner.visible
+
+
+func _queue_notice(notice: Dictionary) -> void:
+	# the same area twice in a row is one notice
+	if _area_banner.visible and _area_name.text == notice["name"]:
+		return
+	_notices.append(notice)
+	if not _area_banner.visible:
+		_next_notice()
+
+
+func _next_notice() -> void:
+	if _notices.is_empty():
+		_area_banner.visible = false
+		return
+	var notice: Dictionary = _notices.pop_front()
+	_area_heading.text = notice["heading"]
+	_area_name.text = notice["name"]
+	if notice["jingle"] != "":
+		_play_jingle(notice["jingle"], MISSION_JINGLE_VOLUME_DB, "MissieDeuntje")
 	if _area_tween:
 		_area_tween.kill()
 	_area_banner.visible = true
 	_area_banner.modulate.a = 0.0
 	_area_tween = create_tween()
 	_area_tween.tween_property(_area_banner, "modulate:a", 1.0, 0.6)
-	_area_tween.tween_interval(seconds)
+	_area_tween.tween_interval(notice["seconds"])
 	_area_tween.tween_property(_area_banner, "modulate:a", 0.0, 0.9)
-	_area_tween.tween_callback(func() -> void: _area_banner.visible = false)
+	_area_tween.tween_callback(_next_notice)
+
+
+## Plays a jingle once over the music (nothing without the file).
+func _play_jingle(path: String, volume_db: float, player_name: String) -> void:
+	var stream: AudioStream = load(path) if ResourceLoader.exists(path) else null
+	if stream == null:
+		push_warning("hud: no jingle at %s" % path)
+		return
+	if stream is AudioStreamOggVorbis:
+		(stream as AudioStreamOggVorbis).loop = false
+	var jingle := AudioStreamPlayer.new()
+	jingle.name = player_name
+	jingle.stream = stream
+	jingle.volume_db = volume_db
+	add_child(jingle)
+	jingle.play()
+	jingle.finished.connect(jingle.queue_free)
 
 
 ## The quests in the tracker, top to bottom; empty = no tracker. Each a Dictionary:
 ## "kind": "verhaal" (a main quest: "label", "title", "distance", "steps" = [{"text",
-## "done"}]) or "zij" (a side quest: "label" and "title" on one line).
+## "done"}]) or "zij" (a side quest: "label" and "title" on one line); "id" names it (else
+## its title). A step may have "targets" (Array of world x, z: where to go for it, shown on
+## the minimap and the map while it is the step under way of the tracked quest) and
+## "locked" (it can only be done after the steps before it: shown muted, no targets yet).
 func set_quests(quests: Array) -> void:
 	_quests = quests.duplicate(true)
+	if quest_by_id(_tracked_quest_id).is_empty():
+		_tracked_quest_id = quest_id(_quests[0]) if not _quests.is_empty() else ""
+	_rebuild_quest_tracker()
+
+
+func _rebuild_quest_tracker() -> void:
 	for child in _quest_list.get_children():
 		child.queue_free()
-	for quest: Dictionary in quests:
+	_tracked_distance = null
+	# the tracked one on top
+	var ordered := _quests.duplicate()
+	var tracked := quest_by_id(_tracked_quest_id)
+	if not tracked.is_empty():
+		ordered.erase(tracked)
+		ordered.push_front(tracked)
+	for quest: Dictionary in ordered:
 		_quest_list.add_child(_main_quest_panel(quest) if quest.get("kind", "verhaal") == "verhaal" else _side_quest_panel(quest))
-	_quest_list.visible = not quests.is_empty()
+	_quest_list.visible = not _quests.is_empty()
+	_update_quest_distance()
+
+
+static func quest_id(quest: Dictionary) -> String:
+	return str(quest.get("id", quest.get("title", "")))
+
+
+func quest_by_id(id: String) -> Dictionary:
+	for quest: Dictionary in _quests:
+		if quest_id(quest) == id:
+			return quest
+	return {}
+
+
+## Follows this quest (its places on the minimap and the map, on top of the tracker).
+func track_quest(id: String) -> void:
+	if quest_by_id(id).is_empty() or id == _tracked_quest_id:
+		return
+	_tracked_quest_id = id
+	_rebuild_quest_tracker()
+
+
+func tracked_quest_id() -> String:
+	return _tracked_quest_id
+
+
+## Where the tracked quest sends the player now: the targets of its first step not done
+## (none while that step is locked), as world x, z.
+func quest_targets() -> Array:
+	var quest := quest_by_id(_tracked_quest_id)
+	for step: Dictionary in quest.get("steps", []):
+		if step.get("done", false):
+			continue
+		if step.get("locked", false):
+			return []
+		return step.get("targets", [])
+	return []
+
+
+## How far the nearest place of the tracked quest is, in its panel ("120 M").
+func _update_quest_distance() -> void:
+	if _tracked_distance == null or not is_instance_valid(_tracked_distance) or not _has_focus:
+		return
+	var nearest := INF
+	for target: Vector2 in quest_targets():
+		nearest = minf(nearest, target.distance_to(Vector2(_focus.x, _focus.z)))
+	_tracked_distance.text = "%d M" % roundi(nearest) if nearest < INF else ""
 
 
 ## The quests as last given to set_quests (for the game menu, scripts/ui/game_menu.gd).
@@ -543,9 +692,23 @@ func minimap_metres_per_pixel() -> float:
 	return _minimap_cell
 
 
-## The money in the bottom right corner (whole euros, Dutch thousands separator).
+## A number floating up from `world_position` and fading (widgets/floating_numbers.gd): the
+## money picked up, the damage taken.
+func show_floating_number(world_position: Vector3, text: String, colour: Color, font_size := 16) -> void:
+	if _floating_numbers:
+		_floating_numbers.spawn(world_position, text, colour, font_size)
+
+
+## The money in the bottom right corner, to the cent (Dutch: "1.284,50"), so a coin of
+## 10 cents shows too.
 func set_money(euros: float) -> void:
-	_money_label.text = _thousands(roundi(euros))   # the euro sign is the icon before it
+	_money_label.text = money_text(euros)   # the euro sign is the icon before it
+
+
+## Euros as Dutch write them, without the sign: thousands with a point, cents after a comma.
+static func money_text(euros: float) -> String:
+	var cents := roundi(euros * 100.0)
+	return ("-" if cents < 0 else "") + _thousands(absi(cents) / 100) + ",%02d" % (absi(cents) % 100)
 
 
 ## The clock, when there is no Dagcyclus (or to override it): hour 0..24, and the day if >= 1.
@@ -585,10 +748,7 @@ func _label(text: String, font: Font, size: int, colour := UiStyle.TEXT, shadow 
 	label.add_theme_font_size_override("font_size", size)
 	label.add_theme_color_override("font_color", colour)
 	if shadow > 0:
-		label.add_theme_color_override("font_shadow_color", UiStyle.INK)
-		label.add_theme_constant_override("shadow_offset_x", shadow)
-		label.add_theme_constant_override("shadow_offset_y", shadow)
-		label.add_theme_constant_override("shadow_outline_size", 0)
+		UiStyle.faux_3d(label, shadow)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return label
 
@@ -738,11 +898,11 @@ func _build_area_banner() -> void:
 	_area_banner = VBoxContainer.new()
 	_area_banner.name = "NieuwGebied"
 	_area_banner.add_theme_constant_override("separation", 4)
-	_area_banner.size = Vector2(400, 0)
+	_area_banner.size = Vector2(NOTICE_WIDTH, 0)
 	_area_banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var heading := _label("— NIEUW GEBIED ONTDEKT —", UiStyle.spaced(_font_pixel, 3), 12, UiStyle.ACCENT)
-	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_area_banner.add_child(heading)
+	_area_heading = _label(AREA_HEADING, UiStyle.spaced(_font_pixel, 3), 12, UiStyle.ACCENT)
+	_area_heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_area_banner.add_child(_area_heading)
 	_area_name = _label("", _font_title, 34, UiStyle.TEXT, 3)
 	_area_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_area_banner.add_child(_area_name)
@@ -771,6 +931,9 @@ func _build_minimap() -> void:
 	_minimap_map.stretch_mode = TextureRect.STRETCH_SCALE
 	_minimap_map.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	clip.add_child(_minimap_map)
+	_minimap_marks = QuestMarks.new()
+	_minimap_marks.size = clip.size
+	clip.add_child(_minimap_marks)
 	_minimap_arrow = PlayerArrow.new()
 	_minimap_arrow.position = clip.size * 0.5
 	clip.add_child(_minimap_arrow)
@@ -872,7 +1035,10 @@ func _main_quest_panel(quest: Dictionary) -> Control:
 	var label := _label("◆ " + str(quest.get("label", "VERHAAL")), UiStyle.spaced(_font_pixel, 2), 11, UiStyle.ACCENT, 0)
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(label)
-	header.add_child(_label(str(quest.get("distance", "")), _font_pixel, 11, UiStyle.MUTED, 0))
+	var distance := _label(str(quest.get("distance", "")), _font_pixel, 11, UiStyle.MUTED, 0)
+	header.add_child(distance)
+	if quest_id(quest) == _tracked_quest_id:
+		_tracked_distance = distance
 	column.add_child(header)
 	var title := _label(str(quest.get("title", "")), _font_title_medium, 19, UiStyle.TEXT, 0)
 	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -882,6 +1048,7 @@ func _main_quest_panel(quest: Dictionary) -> Control:
 	steps.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	for step: Dictionary in quest.get("steps", []):
 		var done: bool = step.get("done", false)
+		var locked: bool = step.get("locked", false) and not done
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 8)
 		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -902,6 +1069,13 @@ func _main_quest_panel(quest: Dictionary) -> Control:
 		var escaped := str(step.get("text", "")).replace("[", "[lb]")
 		text.text = "[s]%s[/s]" % escaped if done else escaped
 		row.add_child(text)
+		if int(step.get("xp", 0)) > 0:
+			var points := _label("+%d XP" % int(step.xp), _font_pixel, 10, UiStyle.MUTED if done else XP_COLOUR, 0)
+			points.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			row.add_child(points)
+		# a step that cannot be done yet: see-through
+		if locked:
+			row.modulate.a = LOCKED_STEP_OPACITY
 		steps.add_child(row)
 	column.add_child(steps)
 	return parts[0]
@@ -1112,7 +1286,7 @@ func is_showing_story() -> bool:
 ## fades out and the death tune plays once. Enter starts again with the same zwerver
 ## (the scene reloaded), Escape goes to the main menu.
 const DEATH_JINGLE := "res://assets/audio/muziek/deuntje_dood.ogg"
-const DEATH_JINGLE_VOLUME_DB := -6.0
+const DEATH_JINGLE_VOLUME_DB := -3.9
 const DEATH_CAUSES := {
 	"honger": "%s is van de honger omgekomen.",
 	"aangereden": "%s is aangereden en niet meer opgestaan.",
@@ -1147,11 +1321,13 @@ func _build_death_screen() -> void:
 	column.add_theme_constant_override("separation", 14)
 	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_death_layer.add_child(column)
-	var title := _label("JE BENT DOOD", _font_title, 72, Color("#FF5D73"), 5)
+	var title := _label("JE BENT DOOD", _font_title, 72, Color("#FF5D73"), 0)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	UiStyle.faux_3d(title, 7)
 	column.add_child(title)
-	_death_reason = _label("", _font_body, 18, UiStyle.TEXT, 2)
+	_death_reason = _label("", _font_body, 18, UiStyle.TEXT, 0)
 	_death_reason.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	UiStyle.faux_3d(_death_reason, 3)
 	column.add_child(_death_reason)
 	_death_keys = _label("[ENTER] OPNIEUW   [ESC] HOOFDMENU", _font_pixel, 12, UiStyle.MUTED, 2)
 	_death_keys.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -1174,17 +1350,7 @@ func show_death(cause := "") -> void:
 	fade.tween_property(_death_keys, "modulate:a", 1.0, 0.4).set_delay(DEATH_KEYS_AFTER - 0.6)
 	_city_music_on = false
 	_fade_city_music_to("", 0.8)
-	var stream: AudioStream = load(DEATH_JINGLE) if ResourceLoader.exists(DEATH_JINGLE) else null
-	if stream:
-		if stream is AudioStreamOggVorbis:
-			(stream as AudioStreamOggVorbis).loop = false
-		var jingle := AudioStreamPlayer.new()
-		jingle.name = "DoodDeuntje"
-		jingle.stream = stream
-		jingle.volume_db = DEATH_JINGLE_VOLUME_DB
-		add_child(jingle)
-		jingle.play()
-		jingle.finished.connect(jingle.queue_free)
+	_play_jingle(DEATH_JINGLE, DEATH_JINGLE_VOLUME_DB, "DoodDeuntje")
 
 
 func _death_input(event: InputEvent) -> void:
@@ -1261,10 +1427,25 @@ func _place_corners() -> void:
 	if _root == null or _money_panel == null:
 		return
 	var area := _root.size
-	_area_banner.position = Vector2((area.x - 400.0) * 0.5, 34.0)
+	_area_banner.position = Vector2((area.x - NOTICE_WIDTH) * 0.5, 34.0)
 	_minimap_box.position = Vector2(area.x - MARGIN - 200.0, MARGIN)
 	_quest_list.position = Vector2(area.x - MARGIN - 300.0, 290.0 + MAP_TOP)
 	_money_panel.position = area - Vector2(MARGIN, 28.0) - _money_panel.size
+	_place_action_prompts()
+
+
+func _place_action_prompts() -> void:
+	if _action_prompts and _root:
+		_action_prompts.reset_size()
+		_action_prompts.position = Vector2(MARGIN, _root.size.y - 28.0 - _action_prompts.size.y)
+
+
+## The context actions bottom left: [key text, action text] each; empty hides them.
+func set_actions(actions: Array) -> void:
+	if _action_prompts == null:
+		return
+	_action_prompts.set_actions(actions)
+	_place_action_prompts.call_deferred()
 
 
 static func _thousands(amount: int) -> String:
@@ -1382,6 +1563,10 @@ func _update_minimap() -> void:
 	var flat := Vector2(heading.x, heading.z)
 	if flat.length_squared() > 0.0001:
 		_minimap_arrow.rotation = atan2(flat.x, -flat.y)
+	var marks := []
+	for target: Vector2 in quest_targets():
+		marks.append(_minimap_arrow.position + (target - Vector2(focus.x, focus.z)) * pixels_per_metre)
+	_minimap_marks.points = marks
 
 
 ## Height of the box with where the player is, over the minimap, and where the map starts

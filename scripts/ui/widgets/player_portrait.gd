@@ -10,6 +10,8 @@ extends SubViewportContainer
 ## kept hard (nearest filter, rendered at PIXEL_SCALE of the size and scaled up), as the
 ## rest of the pixel UI.
 
+## `townsfolk_look` (a TownsfolkFigure look; empty: the player figure) shows a townsperson
+## instead: someone in the street you talk to (the story box), framed the same way.
 ## play_gesture() makes the figure do its own move (PlayerModel.play_gesture); `gesture_cue`
 ## fires at the moment for its shout. `silhouette` (a colour with alpha) draws only its outline.
 
@@ -61,9 +63,16 @@ var walking := 0.0:
 		if _model:
 			_model.walking = value
 
+var townsfolk_look := {}:
+	set(value):
+		townsfolk_look = value
+		_show_townsfolk()
+
 var _viewport: SubViewport
 var _camera: Camera3D
 var _model: Node3D
+var _townsfolk: Node3D
+var _townsfolk_face := 1.6           # the height of its face in this picture (metres)
 
 
 func _init() -> void:
@@ -145,6 +154,51 @@ func _ready() -> void:
 	_frame()
 
 
+## The townsperson of `townsfolk_look` in place of the player figure (or back to it), as
+## big as a player figure is here.
+func _show_townsfolk() -> void:
+	if _viewport == null:
+		return
+	if _townsfolk:
+		_townsfolk.queue_free()
+		_townsfolk = null
+	_model.visible = townsfolk_look.is_empty()
+	if not townsfolk_look.is_empty():
+		_townsfolk = TownsfolkFigure.create(townsfolk_look)
+		_viewport.add_child(_townsfolk)
+		var bounds := _bounds_of(_townsfolk)
+		var grow: float = (float(_model.height()) / maxf(bounds.size.y, 0.1)) * 0.92
+		_townsfolk.scale = Vector3.ONE * grow
+		# the face a little under the top of the head
+		_townsfolk_face = (bounds.end.y - 0.17) * grow
+	_frame()
+
+
+## The box round the meshes under `node`, in its own space (it need not be in the tree).
+static func _bounds_of(node: Node3D) -> AABB:
+	var bounds := AABB()
+	var first := true
+	for child in node.find_children("*", "MeshInstance3D", true, false):
+		var mesh_instance := child as MeshInstance3D
+		if mesh_instance.mesh == null:
+			continue
+		var box: AABB = _transform_to(node, mesh_instance) * mesh_instance.mesh.get_aabb()
+		bounds = box if first else bounds.merge(box)
+		first = false
+	return bounds
+
+
+## The transform of `child` in the space of `ancestor` (without the tree).
+static func _transform_to(ancestor: Node3D, child: Node3D) -> Transform3D:
+	var result := Transform3D.IDENTITY
+	var node: Node = child
+	while node != null and node != ancestor:
+		if node is Node3D:
+			result = (node as Node3D).transform * result
+		node = node.get_parent()
+	return result
+
+
 ## Where the top of the figure's head is in this picture (local pixels), for a speech balloon.
 func head_point() -> Vector2:
 	if _model == null or _camera == null:
@@ -170,7 +224,7 @@ func _frame() -> void:
 		full_view *= 0.75 / aspect
 	var full_target := Vector3(0.0, FULL_HEIGHT * 0.5, 0.0)
 	var full_eye := Vector3(0.0, FULL_HEIGHT * 0.5 + 0.9, 4.0)
-	var face := PlayerModel.face_height(archetype_id)
+	var face := PlayerModel.face_height(archetype_id) if _townsfolk == null else _townsfolk_face
 	var face_target := Vector3(0.0, face, 0.0)
 	var face_eye := Vector3(0.0, face + 0.3, 3.0)
 	var eased := zoom * zoom * (3.0 - 2.0 * zoom)
