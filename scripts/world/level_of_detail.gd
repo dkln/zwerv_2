@@ -1,10 +1,10 @@
 extends Node
 ## Level of detail and performance for the world scene (the "DetailNiveau" node).
 ##
-## - LOD switching: for each GridMap in `layers` a coarse ("_lod") and a very coarse
-##   ("_lod2") copy are created at startup with the LOD MeshLibraries that
-##   library_builder.gd writes next to the normal one. Depending on the zoom (view size,
-##   see iso_camera.gd) exactly one of the three is visible.
+## - LOD switching, two levels at most: for each GridMap in `layers` a coarse ("_lod") copy
+##   is created at startup with the LOD MeshLibrary that library_builder.gd writes next to the
+##   normal one. Depending on the zoom (view size, see iso_camera.gd) exactly one of the two
+##   is visible. (The very coarse "_lod2" libraries are only for the menu's map.)
 ## - Merging: the layers in `merge_layers` are additionally baked into chunk meshes
 ##   without hidden faces (layer_baker.gd), per LOD level. The baked nodes replace the
 ##   GridMap rendering; the GridMap itself stays (hidden) for collisions and editing.
@@ -23,8 +23,8 @@ const Bakker = preload("res://scripts/world/layer_baker.gd")
 const Iso = preload("res://scripts/camera/iso_camera.gd")
 const LoadingScreen = preload("res://scripts/ui/loading_screen.gd")
 const CACHE_DIR := "user://merged"
-## File-name suffixes of the MeshLibraries per LOD level: normal, coarse, very coarse.
-const LEVEL_SUFFIXES := ["", "_lod", "_lod2"]
+## File-name suffixes of the MeshLibraries per LOD level: normal, coarse (two levels at most).
+const LEVEL_SUFFIXES := ["", "_lod"]
 ## Chunk size in cells of the baked finest level: it is only shown up close (below
 ## `coarse_from`), where a 32 m chunk is as big as the whole view and mostly drawn off
 ## screen; the coarse levels keep the bigger Bakker.CHUNK (fewer draw calls far out).
@@ -55,8 +55,6 @@ signal merge_finished
 @export var hide_top_layers: Array[String] = ["Gebouwen"]
 ## From this zoom size (metres in view, see scripts/camera/iso_camera.gd) coarse tiles are used.
 @export var coarse_from := 100.0
-## From this zoom size the very coarse tiles (25 cm blocks).
-@export var very_coarse_from := 130.0
 ## From this zoom size (metres in view) the Details layer is hidden.
 @export var details_until := 120.0
 ## From this zoom size (metres in view) the Props layer is hidden.
@@ -82,7 +80,7 @@ var bake_only := false
 
 var _cam: Camera3D
 var _sun: DirectionalLight3D
-## Per layer the nodes per LOD level: [normal, coarse, very coarse]; null = level missing.
+## Per layer the nodes per LOD level: [normal, coarse]; null = level missing.
 ## Before merging these are GridMaps, after merging the baked Node3Ds.
 var _pairs := []
 ## Layer name per entry of _pairs.
@@ -93,6 +91,7 @@ var _level := -1
 var _culled := {}
 ## Number of layers still being merged.
 var _busy := 0
+var _holds := 0                     # others still at work under the loading screen (hold_screen)
 var _screen: LoadingScreen
 ## Libraries of every level, loaded before any merge starts (see setup).
 var _libraries: Array[MeshLibrary] = []
@@ -127,9 +126,7 @@ func _ready() -> void:
 			return
 		_waiting_for_swipe = false
 	setup()
-	if _busy == 0 and _screen:
-		_screen.fade_out()
-		_screen = null
+	_close_screen_when_done()
 
 
 ## Creates the LOD copies of each layer under the scene root and starts merging
@@ -273,7 +270,27 @@ func _layer_finished() -> void:
 	if _busy > 0:
 		return
 	merge_finished.emit()
-	if _screen:
+	_close_screen_when_done()
+
+
+## Keeps the loading screen up for work of someone else (Interiors: building and warming up
+## the interiors under it), until release_screen.
+func hold_screen() -> void:
+	_holds += 1
+
+
+func release_screen() -> void:
+	_holds = maxi(_holds - 1, 0)
+	_close_screen_when_done()
+
+
+## Whether the loading screen is there now (so work under it is not seen).
+func screen_is_up() -> bool:
+	return _screen != null
+
+
+func _close_screen_when_done() -> void:
+	if _busy == 0 and _holds == 0 and _screen:
 		_screen.fade_out()
 		_screen = null
 
@@ -408,11 +425,7 @@ func _process(_delta: float) -> void:
 		return
 	var zoom := Iso.view_size(_cam)
 	var distance := Iso.distance_to_ground(_cam)
-	var level := 0
-	if zoom > very_coarse_from:
-		level = 2
-	elif zoom > coarse_from:
-		level = 1
+	var level := 1 if zoom > coarse_from else 0
 	var culled := {"Details": zoom >= details_until, "Props": zoom >= props_until}
 	if level != _level or culled != _culled:
 		_level = level

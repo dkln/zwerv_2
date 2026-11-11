@@ -24,7 +24,7 @@ func _init() -> void:
 	_check_station_prices()
 	PlayerCharacter.choose("martin")
 	var scene := Common.instantiate(Common.CITY, false)
-	for node_name in ["DetailNiveau", "Rook", "Grassprieten"]:
+	for node_name in ["DetailNiveau", "Rook"]:
 		if scene.has_node(node_name):
 			scene.get_node(node_name).free()
 	scene.get_node("Verkeer").vehicle_count = 0
@@ -77,6 +77,7 @@ func _init() -> void:
 	var goods: Array = shop._rows.filter(func(row: Dictionary) -> bool: return row.kind == "kopen")
 	print("snackbar: %s / %s: %s" % [shop._kind_label.text, shop._name_label.text, goods.map(func(row: Dictionary) -> String: return "%s € %.2f" % [row.item, row.price])])
 	_check(shop._name_label.text == String(bars[0].name).to_upper(), "de naam van de snackbar bovenin (%s)" % shop._name_label.text)
+	_check(shop._logo_badge.visible and shop._logo_icon.bitmap == GameMenu.ITEM_ICONS["kroket"].rows, "het logo van de snackbar in het scherm (een kroket)")
 	_check(goods.size() == 3 and goods[0].item == "kroket" and is_equal_approx(goods[0].price, 2.0), "de kaart van snackbarhouder.json (kroket € 2)")
 	_check(shop._rows.any(func(row: Dictionary) -> bool: return row.kind == "weg"), "een rij om weg te gaan")
 	print("  begroeting: ", shop.spoken_text())

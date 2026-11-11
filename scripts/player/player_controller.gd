@@ -30,8 +30,9 @@ extends Node3D
 ## and E goes through it; teleport puts the player on the other side.
 ## Space jumps (`jump_height` m, falling back at `jump_gravity`; it costs `jump_stamina`, not
 ## when exhausted): in the air it still steers, may come down on something up to its jump
-## higher than where it left (a bench, a low wall) or anywhere lower (off a platform), never
-## onto water; the figure tucks its legs and throws up its arms meanwhile.
+## higher than where it left (a bench, a low wall, a raised square) or anywhere lower (off a
+## platform), or into the water (it jumps in: the splash); the figure tucks its legs and
+## throws up its arms meanwhile.
 ## The collider: an AnimatableBody3D box with the outer size of the figure (Botsvorm), so
 ## the wrecks of the traffic bump into it; the player's own tests leave it out.
 ##
@@ -151,7 +152,7 @@ const SHORT_CRY_COUNT := 3
 ## Seconds someone you talk to takes to turn round to you.
 const TALK_TURN_SECONDS := 0.35
 @export_group("Jumping")
-@export var jump_height := 0.9
+@export var jump_height := 1.4
 @export var jump_gravity := 24.0
 @export var jump_stamina := 6.0
 @export_group("Stats")
@@ -445,6 +446,11 @@ func _physics_process(delta: float) -> void:
 		return
 	if _dead or _sleeping or _drowning:
 		return
+	if _rising_left > 0.0:
+		# still getting up: no walking yet (it can be hit, though)
+		_rising_left = maxf(_rising_left - delta, 0.0)
+		_check_vehicles()
+		return
 	_walk(delta)
 	_check_vehicles()
 	_look_for_someone_to_talk_to()
@@ -638,7 +644,12 @@ func _fall(delta: float) -> void:
 	var height := global_position.y + _vertical_speed * delta
 	var ground := _ground_height(global_position, global_position.y, global_position.y - _takeoff_height + max_fall)
 	if is_nan(ground):
-		ground = _takeoff_height
+		# coming down over water: in it goes
+		var water := _water_point(global_position)
+		if water != Vector3.INF and _vertical_speed <= 0.0 and height <= water.y + 0.3:
+			_fall_into_water(water)
+			return
+		ground = water.y if water != Vector3.INF else _takeoff_height
 	if _vertical_speed <= 0.0 and height <= ground:
 		global_position.y = ground
 		_airborne = false
@@ -656,7 +667,11 @@ func _try_move_in_air(offset: Vector3) -> bool:
 	var goal := global_position + offset
 	var ground := _ground_height(goal, global_position.y, global_position.y - _takeoff_height + max_fall)
 	if is_nan(ground):
-		return false
+		# over water it may fly on too: it comes down in it (_fall)
+		if _water_point(goal) == Vector3.INF:
+			return false
+		global_position = Vector3(goal.x, global_position.y, goal.z)
+		return true
 	var feet := Vector3(goal.x, maxf(global_position.y, ground), goal.z)
 	if not _fits(feet) and _fits(global_position):
 		return false
@@ -1172,16 +1187,20 @@ func cry_out(heavy: bool, at: Vector3) -> void:
 
 
 ## Thrown out of a building (Interiors.throw_out): out of the door with `push` (m/s, the way
-## out), tumbling onto the pavement; it gets up again by itself (no harm done, only pride).
+## out) in a pike dive, tumbling over the pavement as it lands, THROW_DAMAGE health off; it
+## gets up again by itself.
 func thrown_out(push: Vector3) -> void:
 	if _ragdoll or _dead:
 		return
 	var audio := get_node_or_null("/root/RuimtelijkGeluid")
 	if audio:
 		audio.play_event(global_position + Vector3.UP * 1.0, KICK_SOUND)
-	_knock_down(push, push.length())
+	# flung out head first, a pike dive, tumbling over as it lands; it hurts when it lands
+	_knock_down(push, push.length(), true)
 	_invulnerable_left = maxf(_invulnerable_left, knock_down_time)
 	_thrown_groan_pending = true
+	if _ragdoll.has_signal("hit_hard"):
+		_ragdoll.connect("hit_hard", _land_after_throw, CONNECT_ONE_SHOT)
 	_thrown_close_up = true
 	# dramatic: the camera in close, the flight in slow motion, then up to speed again
 	var camera := get_parent().get_node_or_null("Volgcamera")
@@ -1194,10 +1213,18 @@ func thrown_out(push: Vector3) -> void:
 	speed_up.tween_method(_set_game_speed, THROW_SLOW_MOTION, 1.0, THROW_SPEED_UP).set_trans(Tween.TRANS_SINE)
 
 
+## Getting up after being knocked over (_stand_up): seconds from lying to standing, in which
+## it cannot walk yet.
+const STAND_UP_SECONDS := 0.9
+var _rising_left := 0.0
+
+
 ## Thrown out (thrown_out): the kick, the slow motion (game speed, real seconds it holds and
 ## takes to come back), and when the groan comes (seconds of game time after the kick: about
-## when it lands).
+## when it lands, at the latest three times this).
 const KICK_SOUND := "schop"
+## How much health being thrown out costs (it hurts).
+const THROW_DAMAGE := 12.0
 const THROW_SLOW_MOTION := 0.3
 const THROW_SLOW_SECONDS := 1.4
 const THROW_SPEED_UP := 0.6
@@ -1206,20 +1233,35 @@ var _thrown_groan_pending := false
 var _thrown_close_up := false
 
 
+## Thrown out and landing (the body's first hard blow, KnockDownBody.hit_hard): only now it
+## hurts (THROW_DAMAGE off, the figure blinks) and it groans.
+func _land_after_throw(_speed: float) -> void:
+	if not _thrown_groan_pending:
+		return
+	_thrown_groan_pending = false
+	_hurt(THROW_DAMAGE, "eruit_gegooid")
+	var audio := get_node_or_null("/root/RuimtelijkGeluid")
+	if audio:
+		audio.play_event(global_position + Vector3.UP * 0.4, "pijn_%s_kreun" % _voice)
+
+
 ## The figure becomes a RigidBody3D with its own box, thrown along with `push`.
-func _knock_down(push: Vector3, impact: float) -> void:
+func _knock_down(push: Vector3, impact: float, dive := false) -> void:
 	_airborne = false
 	_jump_pose(false)
 	var box := BoxShape3D.new()
 	box.size = _figure_box.size
 	_ragdoll = KnockDown.throw(get_parent(), Transform3D(Basis(Vector3.UP, rotation.y), global_position),
-			box, _figure_box.get_center(), body_mass, push, impact, _random, 1.1)
+			box, _figure_box.get_center(), body_mass, push, impact, _random, 1.1, 0.0, -1, dive)
 	_ragdoll.add_collision_exception_with(_body)
 	_body_shape.set_deferred("disabled", true)
 	_model.walking = 0.0
 	_model.idle = false
 	_model.position = Vector3.ZERO
-	_model.reparent(_ragdoll, true)
+	_model.reparent(_ragdoll, not dive)
+	if dive:
+		# the figure lies along the body from the start (head first, flat)
+		_model.transform = Transform3D.IDENTITY
 	_ragdoll_clock = 0.0
 
 
@@ -1228,12 +1270,9 @@ func _knock_down(push: Vector3, impact: float) -> void:
 func _follow_ragdoll(delta: float) -> void:
 	_ragdoll_clock += delta
 	global_position = _ragdoll.global_position
-	# thrown out of a building: a groan as it lands
-	if _thrown_groan_pending and _ragdoll_clock >= THROW_GROAN_AFTER:
-		_thrown_groan_pending = false
-		var audio := get_node_or_null("/root/RuimtelijkGeluid")
-		if audio:
-			audio.play_event(global_position + Vector3.UP * 0.4, "pijn_%s_kreun" % _voice)
+	# thrown out of a building and it never hit hard: still the landing, a little later
+	if _thrown_groan_pending and _ragdoll_clock >= THROW_GROAN_AFTER * 3.0:
+		_land_after_throw(0.0)
 	if _dead:
 		return
 	var lies_still := _ragdoll.sleeping or _ragdoll.linear_velocity.length() < 0.3
@@ -1270,9 +1309,7 @@ func _stand_up() -> void:
 	var spot := _walkable_near(lying_at, 1.5, 10.0)
 	if spot == Vector3.INF:
 		spot = _last_safe_position
-	_model.reparent(self, false)
-	_model.transform = Transform3D.IDENTITY
-	_model.idle = true
+	var lying := _model.global_transform
 	_ragdoll.queue_free()
 	_ragdoll = null
 	_body_shape.set_deferred("disabled", false)
@@ -1282,6 +1319,18 @@ func _stand_up() -> void:
 		rotation.y = atan2(heading.x, heading.z)
 	_invulnerable_left = invulnerable_time
 	_blink_left = maxf(_blink_left, invulnerable_time)
+	# up again from how it lies: the figure turns and rises to standing (not in one frame)
+	_model.reparent(self, false)
+	_model.global_transform = lying
+	var from := _model.transform
+	_model.idle = false
+	_rising_left = STAND_UP_SECONDS
+	var rise := create_tween().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	rise.tween_method(func(share: float) -> void: _model.transform = from.interpolate_with(Transform3D.IDENTITY, share),
+			0.0, 1.0, STAND_UP_SECONDS)
+	rise.tween_callback(func() -> void:
+		_model.transform = Transform3D.IDENTITY
+		_model.idle = true)
 
 
 # ------------------------------------------------------------------ building

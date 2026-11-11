@@ -121,3 +121,16 @@ Een diepe stem en een heldere met veel s-klanken klinken zo even hard. Het "Sega
 8-bit DAC, en filtert erna de spiegelbeelden van de trapjes weg (`RECONSTRUCTION_HZ`, 5 kHz):
 die gaven elke s en elke medeklinker een metalig gefluit. De korrel van de 8 bits blijft. De
 sis van de medeklinkers staat zachter dan de stem (`BREATH_GAIN`).
+
+## Achtergrondgeluid van de plekken
+
+Zacht onder alles klinkt het geroezemoes van waar je bent: buiten de straat, in Den Haag Centraal
+de stationshal, in een winkel (de snackbar) een winkel. Het zijn opnames uit een vrije bron
+(Wikimedia Commons, publiek domein of CC BY; zie `assets/audio/omgeving/BRONNEN.md`),
+bewerkt tot naadloze lussen: een stuk eruit, het eind 3 s in het begin overgevloeid, op
+-16 LUFS. Maken: `uv run --with numpy --with soundfile python3 tools/megadrive/omgeving.py`
+(downloadt de opnames één keer; decoderen via ffmpeg). In het spel: `scripts/audio/ambience.gd`
+(per plek een lus en een niveau, `PLACES`; bij een wissel 2 s overvloeien), aangestuurd door
+`scripts/world/interiors.gd` (`AMBIENCE_OF`). Een plek erbij: een opname in `RECORDINGS` van
+omgeving.py, een regel in `PLACES` en in `AMBIENCE_OF`.
+

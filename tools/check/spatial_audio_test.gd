@@ -25,7 +25,7 @@ func _init() -> void:
 		get_root().add_child(spatial)
 	await process_frame
 	var scene := Common.instantiate(Common.CITY)
-	for node_name in ["DetailNiveau", "Rook", "Grassprieten"]:
+	for node_name in ["DetailNiveau", "Rook"]:
 		if scene.has_node(node_name):
 			scene.get_node(node_name).free()
 	get_root().add_child(scene)

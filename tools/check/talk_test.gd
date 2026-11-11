@@ -23,7 +23,7 @@ func _init() -> void:
 		_check(complete, "persona %s compleet" % persona)
 	PlayerCharacter.choose("martin")
 	var scene := Common.instantiate(Common.CITY, false)
-	for node_name in ["DetailNiveau", "Rook", "Grassprieten", "Verhaal"]:
+	for node_name in ["DetailNiveau", "Rook", "Verhaal"]:
 		if scene.has_node(node_name):
 			scene.get_node(node_name).free()
 	scene.get_node("Verkeer").vehicle_count = 0

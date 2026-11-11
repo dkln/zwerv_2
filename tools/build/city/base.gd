@@ -21,7 +21,7 @@ extends SceneTree
 ##
 ## HOW IT WORKS
 ## The scene gets its root setup from _make_scene: environment, sun and fill light,
-## camera, helper nodes (DetailNiveau, Dagcyclus, Rook, TintKaart, GrondKaart, Grassprieten)
+## camera, helper nodes (DetailNiveau, Dagcyclus, Rook, TintKaart, GrondKaart, VerreBlokjes)
 ## and four GridMaps,
 ## one per tile library. The town is then written cell by cell into those GridMaps and
 ## the scene is packed and saved. Placement is fully deterministic (no RNG; variation
@@ -211,10 +211,10 @@ func _make_scene(node_name: String) -> Node3D:
 	overhead.name = "Bovenleiding"   # contact wires over the tram and train tracks
 	overhead.set_script(load("res://scripts/world/overhead_lines.gd"))
 	root.add_child(overhead)
-	var gb := Node3D.new()
-	gb.name = "Grassprieten"
-	gb.set_script(load("res://scripts/world/grass_blades.gd"))
-	root.add_child(gb)
+	var far_boxes := Node3D.new()
+	far_boxes.name = "VerreBlokjes"   # far out the people and vehicles as blocks (far_boxes.gd)
+	far_boxes.set_script(load("res://scripts/world/far_boxes.gd"))
+	root.add_child(far_boxes)
 	var hud := CanvasLayer.new()
 	hud.name = "HUD"   # player stats, minimap, clock, quests, money (scripts/ui/hud.gd)
 	hud.set_script(load("res://scripts/ui/hud.gd"))

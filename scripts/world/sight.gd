@@ -11,8 +11,8 @@ const Iso = preload("res://scripts/camera/iso_camera.gd")
 const OFF_SCREEN_MARGIN := 0.3
 const FAR_METRES := 150.0
 const FARTHEST_METRES := 300.0
-const NEAR_STEPS := 2
-const FAR_STEPS := 4
+const NEAR_STEPS := 4
+const FAR_STEPS := 8
 const LOOK_STEPS := 15
 
 

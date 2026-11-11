@@ -91,9 +91,6 @@ func say(line: String, hold := 1.6) -> void:
 	style.content_margin_right = PADDING.x
 	style.content_margin_top = PADDING.y
 	style.content_margin_bottom = PADDING.y
-	# the faux 3D: a darker copy of the balloon (in the border's colour) straight under it
-	style.shadow_color = UiStyle.faux_3d_colour(accent)
-	style.shadow_offset = Vector2(0, BALLOON_DEPTH)
 	_panel.add_theme_stylebox_override("panel", style)
 	# as wide as the whole line needs (up to MAX_TEXT_WIDTH), so it does not grow while typing
 	var font := UiStyle.font(UiStyle.FONT_PIXEL_BOLD)
@@ -156,9 +153,11 @@ func _place() -> void:
 	_tail.queue_redraw()
 
 
-## The faux 3D of the tail, under the panel (the panel's own is its stylebox's shadow): the
-## tail's shape with its border, BALLOON_DEPTH px lower, in the darker colour.
+## The faux 3D of the balloon, drawn under the panel and the tail (this node draws before its
+## children): the panel's rectangle and the tail's shape with its border, BALLOON_DEPTH px
+## lower, in the border's colour half as light.
 func _draw() -> void:
+	draw_rect(Rect2(_panel.position + Vector2(0, BALLOON_DEPTH), _panel.size), UiStyle.faux_3d_colour(accent))
 	var half := TAIL_WIDTH * 0.5 + BORDER_WIDTH
 	var depth := Vector2(0, BALLOON_DEPTH)
 	draw_colored_polygon(PackedVector2Array([Vector2(-half, -TAIL_HEIGHT) + depth, Vector2(half, -TAIL_HEIGHT) + depth,

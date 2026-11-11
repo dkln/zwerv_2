@@ -194,16 +194,15 @@ Controle: `tools/godot.sh --headless --script tools/check/shop_test.gd`.
 ## Eruit gegooid worden — `gesprekken/uitzetten.json`
 
 Wie in een binnenruimte te vaak iets doet wat niet mag, wordt eruit gegooid: de swipe, en de
-speler vliegt de deur uit en tuimelt de straat op; als hij weer staat, vertelt wie hem eruit
-zette waarom (een gesprek zonder keuzes), en een tijdje (`terug_na` seconden) mag hij er niet in.
+speler vliegt de deur uit en tuimelt de straat op; als hij weer staat, vertelt de verteller
+wat er gebeurde, en een tijdje (`terug_na` seconden) mag hij er niet in.
 Herbruikbaar voor elke plek (`scripts/world/interiors.gd`: `Interiors.note_offence(tree, overtreding)`).
 
 | veld | wat |
 |---|---|
 | `plekken` | per soort binnenruimte (`snackbar`, `centraal`) zijn `overtredingen` |
 | `na` | hoeveel keer in één bezoek genoeg is (1: meteen) |
-| `wie` | wie het zegt: `snackbarhouder`, of iemand in dienst uit `personeel.json` (`handhaver`, `conducteur`: in hun stijl) |
-| `stemming`, `tekst` | de stemming en de bladzijden die na elkaar komen |
+| `tekst` | de bladzijden van de verteller, na elkaar |
 | `terug_na`, `niet_binnen` | seconden dat je er niet in mag, en wat er dan boven je zweeft |
 
 Overtredingen nu: `bedelen` (om kleingeld vragen), `geen_geld` (iets kopen zonder genoeg geld),

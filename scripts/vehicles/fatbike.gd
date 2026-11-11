@@ -32,5 +32,5 @@ func _init() -> void:
 	braking = 3.5
 	half_length = 0.9
 	mass_kg = 110.0
-	wheelie_degrees = 22.0
+	wheelie_degrees = 55.0
 	wheelie_kind = "fatbike"

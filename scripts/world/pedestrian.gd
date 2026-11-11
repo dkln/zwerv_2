@@ -97,7 +97,7 @@ const CHAIR_DAREDEVIL_PACE := 2.2
 ## The group of the player (PlayerController.PLAYER_GROUP).
 const PLAYER_GROUP := "speler"
 ## How far a wheelchair's front comes up in a wheelie, and the most it may turn meanwhile (rad/s).
-const CHAIR_WHEELIE_DEGREES := 24.0
+const CHAIR_WHEELIE_DEGREES := 55.0
 const CHAIR_WHEELIE_MOST_TURN := 0.6
 const HORN_SOUND := "scootmobiel_toeter"
 const HORN_PAUSE := 5.0

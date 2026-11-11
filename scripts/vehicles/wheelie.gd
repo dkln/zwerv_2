@@ -57,7 +57,7 @@ func step(delta: float, allowed: bool) -> bool:
 			_bounce = 0.0
 	elif allowed and angle < 0.01 and _random.randf() < delta / MEAN_PAUSE:
 		_up_left = _random.randf_range(UP_SECONDS.x, UP_SECONDS.y)
-		_height = most_angle * _random.randf_range(0.7, 1.0)
+		_height = most_angle * _random.randf_range(0.9, 1.0)
 		started = true
 	if _up_left > 0.0:
 		var wanted := _height * (1.0 + WOBBLE_SHARE * sin(_clock * WOBBLE_SPEED))

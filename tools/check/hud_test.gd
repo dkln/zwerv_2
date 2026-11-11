@@ -10,7 +10,7 @@ const HUD_SCRIPT = preload("res://scripts/ui/hud.gd")
 func _init() -> void:
 	Common.watchdog(self, 300)
 	var scene := Common.instantiate(Common.CITY)
-	for node_name in ["DetailNiveau", "Rook", "Grassprieten"]:
+	for node_name in ["DetailNiveau", "Rook"]:
 		if scene.has_node(node_name):
 			scene.get_node(node_name).free()
 	var hud: Node = scene.get_node_or_null("HUD")

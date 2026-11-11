@@ -43,5 +43,10 @@
 		"zakken_vol": "neutraal",
 		"tip": "opgewonden",
 		"dag": "blij"
+	},
+	"logo": {
+		"icoon": "kroket",
+		"kleur": "#E8C21A",
+		"tekst": "#B82A2A"
 	}
 }

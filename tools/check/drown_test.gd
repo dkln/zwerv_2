@@ -12,7 +12,7 @@ var _problems := []
 func _init() -> void:
 	Common.watchdog(self, 200)
 	var scene := Common.instantiate(Common.CITY, false)
-	for node_name in ["DetailNiveau", "Rook", "Grassprieten", "Verhaal"]:
+	for node_name in ["DetailNiveau", "Rook", "Verhaal"]:
 		if scene.has_node(node_name):
 			scene.get_node(node_name).free()
 	scene.get_node("Verkeer").vehicle_count = 0
@@ -40,7 +40,18 @@ func _init() -> void:
 	_check(water != Vector3.INF, "water gevonden onder de speler")
 	var causes := []
 	player.died.connect(func(cause: String) -> void: causes.append(cause))
-	player._fall_into_water(water if water != Vector3.INF else over_water)
+	# jumping in: in the air over the water it comes down in it by itself
+	player.global_position = over_water + Vector3.UP * 2.0
+	player._takeoff_height = player.global_position.y
+	player._airborne = true
+	player._vertical_speed = 0.0
+	for frame_index in 90:
+		await physics_frame
+		if player._drowning:
+			break
+	_check(player._drowning, "in het water gesprongen: erin")
+	if not player._drowning:
+		player._fall_into_water(water if water != Vector3.INF else over_water)
 	await create_timer(0.6).timeout
 	_check(scene.find_children("*", "CPUParticles3D", true, false).size() > 0, "plons: druppels en bellen")
 	await create_timer(player.drown_time + 0.5).timeout

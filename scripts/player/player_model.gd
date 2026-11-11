@@ -115,13 +115,17 @@ const PARENT_LIMB := {"forearm_left": "arm_left", "forearm_right": "arm_right", 
 ## (depth), how much lighter the weft shows than the warp (weft), how much each thread
 ## differs in shade (slub), roughness, specular and velvet edge:
 const CLOTH := {
-	"cloth": {"pattern": 1, "strength": 0.12, "scale": 2.0, "depth": 0.4, "weft": 0.05, "slub": 0.05,
-			"roughness": 0.92, "specular": 0.3, "rim": 0.35},
-	"denim": {"pattern": 2, "strength": 0.12, "scale": 2.0, "depth": 0.45, "weft": 0.22, "slub": 0.06,
+	# clothes: canvas / jute (a coarse basket weave, about a thread per voxel, so it reads as
+	# real cloth also from the game's distance)
+	"cloth": {"pattern": 5, "strength": 0.2, "scale": 1.0, "depth": 0.55, "weft": 0.06, "slub": 0.09,
+			"roughness": 0.95, "specular": 0.25, "rim": 0.35},
+	# all the fabrics coarse enough to read as cloth from the game's distance (about a thread
+	# or a stitch per voxel): denim's twill ribs, the stitches of knitwear, a ripstop nylon
+	"denim": {"pattern": 2, "strength": 0.18, "scale": 1.0, "depth": 0.5, "weft": 0.22, "slub": 0.07,
 			"roughness": 0.85, "specular": 0.35, "rim": 0.25},
-	"knit": {"pattern": 3, "strength": 0.15, "scale": 1.0, "depth": 0.5, "weft": 0.0, "slub": 0.0,
+	"knit": {"pattern": 3, "strength": 0.22, "scale": 0.6, "depth": 0.6, "weft": 0.0, "slub": 0.0,
 			"roughness": 0.97, "specular": 0.2, "rim": 0.5},
-	"nylon": {"pattern": 1, "strength": 0.05, "scale": 3.0, "depth": 0.15, "weft": 0.02, "slub": 0.02,
+	"nylon": {"pattern": 1, "strength": 0.1, "scale": 1.5, "depth": 0.25, "weft": 0.03, "slub": 0.03,
 			"roughness": 0.42, "specular": 0.6, "rim": 0.15},
 	"hair": {"pattern": 4, "strength": 0.12, "scale": 1.0, "depth": 0.3, "weft": 0.0, "slub": 0.0,
 			"roughness": 0.55, "specular": 0.5, "rim": 0.3},

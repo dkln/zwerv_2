@@ -1,5 +1,5 @@
 {
-	"uitleg": "Eruit gegooid worden (scripts/world/interiors.gd, throw_out): wie in een binnenruimte te vaak iets doet wat niet mag, wordt het gebouw uit gegooid (door de deur, tuimelend de straat op) en krijgt daarna te horen waarom: een gesprek zonder keuzes. Per plek ('plekken': de soort binnenruimte, 'snackbar' of 'centraal') per overtreding ('overtredingen'): 'na' hoeveel keer (in één bezoek) het genoeg is, 'wie' het zegt (een rol: 'snackbarhouder', of iemand in dienst uit personeel.json: 'handhaver', 'conducteur'), 'stemming' en 'tekst' (de bladzijden, na elkaar). Overtredingen: 'bedelen' (om kleingeld vragen), 'geen_geld' (iets kopen zonder genoeg geld), 'boete_onbetaald' (betrapt op zwartrijden en de boete niet kunnen betalen). Daarna mag je er 'terug_na' seconden niet meer in ('niet_binnen' zweeft dan boven je). Zie data/LEESMIJ.md.",
+	"uitleg": "Eruit gegooid worden (scripts/world/interiors.gd, throw_out): wie in een binnenruimte te vaak iets doet wat niet mag, wordt het gebouw uit gegooid (door de deur, in een snoekduik de straat op, een beetje in een willekeurige richting) en daarna vertelt de verteller wat er gebeurde. Per plek ('plekken': de soort binnenruimte, 'snackbar' of 'centraal') per overtreding ('overtredingen'): 'na' hoeveel keer (in één bezoek) het genoeg is, en 'tekst' (de bladzijden van de verteller, na elkaar). Overtredingen: 'bedelen' (om kleingeld vragen), 'geen_geld' (iets kopen zonder genoeg geld), 'boete_onbetaald' (betrapt op zwartrijden en de boete niet kunnen betalen). Daarna mag je er 'terug_na' seconden niet meer in ('niet_binnen' zweeft dan boven je). Zie data/LEESMIJ.md.",
 	"terug_na": 90,
 	"niet_binnen": "Je mag hier voorlopig niet meer in",
 	"plekken": {
@@ -7,20 +7,16 @@
 			"overtredingen": {
 				"bedelen": {
 					"na": 3,
-					"wie": "snackbarhouder",
-					"stemming": "boos",
 					"tekst": [
-						"Zo. Nou is het mooi geweest. Je zit al de hele tijd mijn klanten lastig te vallen om kleingeld.",
-						"Dit is een snackbar, geen loket van de Sociale Dienst. Eruit! En kom pas terug als je iets komt kopen."
+						"Bij de derde klant die je om kleingeld vroeg, kwam de snackbarhouder achter de toonbank vandaan. Zonder een woord pakte hij je bij je kraag.",
+						"\"Dit is een snackbar, geen loket van de Sociale Dienst,\" bromde hij nog, en toen vloog je door de deur naar buiten. Op de stoep rook je nog even de frituur."
 					]
 				},
 				"geen_geld": {
 					"na": 3,
-					"wie": "snackbarhouder",
-					"stemming": "boos",
 					"tekst": [
-						"Voor de derde keer: een kroket kost geld. Geld! Geen verhaaltjes, geen 'morgen betaal ik'.",
-						"Ik heb een zaak te runnen. Wegwezen, jij. Kom maar terug met centen in je zak."
+						"Drie keer bestellen zonder een cent op zak: dat was één keer te veel. De snackbarhouder legde de schep neer en kwam op je af.",
+						"Voor je het wist lag je buiten op de stoep. \"Kom maar terug met centen,\" riep hij je na, en de deur viel achter je dicht."
 					]
 				}
 			}
@@ -29,29 +25,23 @@
 			"overtredingen": {
 				"bedelen": {
 					"na": 3,
-					"wie": "handhaver",
-					"stemming": "boos",
 					"tekst": [
-						"Handhaving. U spreekt al de hele tijd reizigers aan om geld. Dat is bedelen, en dat is in het station verboden.",
-						"Ik heb u gewaarschuwd. U wordt verwijderd uit het station. Vandaag niet meer terugkomen, begrepen?"
+						"Reiziger na reiziger had je om geld gevraagd, tot een handhaver je op de schouder tikte. \"Bedelen is hier verboden, dat weet u.\"",
+						"Hij liep met je mee naar de uitgang, en het laatste stukje ging je zonder hem. Door de lucht. Vandaag kom je het station niet meer in."
 					]
 				},
 				"geen_geld": {
 					"na": 3,
-					"wie": "handhaver",
-					"stemming": "neutraal",
 					"tekst": [
-						"De winkeliers hebben over u geklaagd. Steeds iets bestellen en dan niet kunnen betalen, dat noemen we overlast.",
-						"Kom op, naar buiten. Een rondje lopen, frisse lucht. En als u terugkomt, neem dan geld mee."
+						"De winkeliers van het station hadden over je geklaagd: steeds bestellen en dan niet kunnen betalen. Handhaving kwam kijken.",
+						"\"Een rondje frisse lucht,\" zei de handhaver vriendelijk. Toen zette hij je buiten, iets minder vriendelijk."
 					]
 				},
 				"boete_onbetaald": {
 					"na": 1,
-					"wie": "conducteur",
-					"stemming": "boos",
 					"tekst": [
-						"Zwartrijden, en dan de boete niet eens kunnen betalen. Dan houdt het op.",
-						"U verlaat nu het station. De boete komt per post, en ik wil u hier vandaag niet meer zien."
+						"De conducteur schreef de boete uit, keek in je lege hand en zuchtte. Even later stond er een handhaver naast je.",
+						"Met z'n tweeën brachten ze je naar de uitgang, en daar hielpen ze je een handje. Een flink handje. Zo verliet je Den Haag Centraal: met je gezicht vooruit."
 					]
 				}
 			}

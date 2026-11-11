@@ -24,7 +24,7 @@ func _init() -> void:
 	var seconds := Common.arg_float(0, 300.0)
 	var scene := Common.instantiate("res://scenes/stad.tscn")
 	# Verhaal too: its prologue holds the game (the story box pauses the tree)
-	for node_name in ["DetailNiveau", "Rook", "Grassprieten", "Verhaal"]:
+	for node_name in ["DetailNiveau", "Rook", "Verhaal"]:
 		if scene.has_node(node_name):
 			scene.get_node(node_name).free()
 	# the whole network, all kept (not the set round the player): every road is tried

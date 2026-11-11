@@ -135,9 +135,10 @@ float is_grass(vec3 k) {
 
 // Suggested grass texture on a top face (p = world xz in metres, amount 0..1): changes
 // only the colour. An even grain (60 and 20 cm), each layer only while it is a few
-// pixels big, so there is texture at the usual zoom and no patches from afar; up close,
-// gusts drifting over the grass as lighter bands (t = TIME). The blades themselves are
-// real geometry (scripts/world/grass_blades.gd).
+// pixels big, so there is texture at the usual zoom and no patches from afar; finer still a
+// streaky grain of blades (about 5 x 12 cm, while big enough), and soft tufts of about 1.5 m
+// at every distance; up close, gusts drifting over the grass as lighter bands (t = TIME).
+// There are no blades of geometry: this flat texture is the grass.
 void grass_feel(vec2 p, float amount, float t, inout vec3 c) {
 	float fw = max(length(fwidth(p)), 1e-4);   // metres per pixel
 	// even grain (no patches): soft noise of 60 and 20 cm, each only while it is at least
@@ -146,7 +147,11 @@ void grass_feel(vec2 p, float amount, float t, inout vec3 c) {
 	float g2 = (noise(p / 0.2 + 7.9) - 0.5) * smoothstep(2.0, 4.0, 0.2 / fw);
 	// zoomed out the grain gets calmer (less light and dark), up close it keeps its detail
 	float calm = 1.0 - 0.6 * smoothstep(0.02, 0.08, fw);
-	c *= 1.0 + (g1 * 0.2 + g2 * 0.16) * amount * calm;
+	// blades: a streaky grain, longer one way than the other, only while it is big enough
+	float blades = (noise(p * vec2(20.0, 8.0) + 11.3) - 0.5) * smoothstep(1.5, 3.0, 0.05 / fw);
+	// tufts: soft lighter and darker patches, so a meadow is not one flat colour
+	float tufts = noise(p / 1.5 + 5.7) - 0.5;
+	c *= 1.0 + (g1 * 0.22 + g2 * 0.18 + blades * 0.16) * amount * calm + tufts * 0.1 * amount;
 	// gusts of wind: lighter bands (the grass bends and shows its lighter side) drifting
 	// slowly in the wind direction, at every distance
 	vec2 wind = normalize(vec2(1.0, -0.5));

@@ -1,0 +1,6 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/debug/quick_start.gd" id="1_snel"]
+
+[node name="SnelStarten" type="Node"]
+script = ExtResource("1_snel")

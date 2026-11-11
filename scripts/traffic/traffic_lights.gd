@@ -16,7 +16,7 @@ extends Node
 ## stream's green and rood otherwise.
 ##
 ## Changing a cell swaps the prop for the one with the other state; the LOD copies of the
-## layer (Props_lod, Props_lod2, see level_of_detail.gd) are updated as well. In the
+## layer (Props_lod, see level_of_detail.gd) are updated as well. In the
 ## editor nothing moves: the scene keeps the states it was built with.
 
 ## Seconds of green per stream.
@@ -219,7 +219,7 @@ func _layer() -> GridMap:
 	return get_parent().get_node_or_null(layer) as GridMap
 
 
-## The layer and its LOD copies (Props_lod, Props_lod2), whichever exist.
+## The layer and its LOD copy (Props_lod), whichever exist.
 func _layers() -> Array[GridMap]:
 	var out: Array[GridMap] = []
 	for n in get_parent().get_children():

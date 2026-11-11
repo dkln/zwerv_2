@@ -18,7 +18,7 @@ func _init() -> void:
 	PlayerCharacter.choose("martin")
 	# no camera: nothing is out of sight, so everyone is drawn moving
 	var scene := Common.instantiate(Common.CITY, true)
-	for node_name in ["DetailNiveau", "Rook", "Grassprieten", "Verhaal", "Camera", "Doorkijk"]:
+	for node_name in ["DetailNiveau", "Rook", "Verhaal", "Camera", "Doorkijk"]:
 		if scene.has_node(node_name):
 			scene.get_node(node_name).free()
 	get_root().add_child(scene)

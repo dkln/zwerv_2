@@ -21,7 +21,7 @@ func _init() -> void:
 	Common.watchdog(self, 500)
 	var seconds := Common.arg_float(0, 2400.0)
 	var scene := Common.instantiate("res://scenes/stad.tscn", false)
-	for node_name in ["DetailNiveau", "Rook", "Grassprieten"]:
+	for node_name in ["DetailNiveau", "Rook"]:
 		if scene.has_node(node_name):
 			scene.get_node(node_name).free()
 	get_root().add_child(scene)

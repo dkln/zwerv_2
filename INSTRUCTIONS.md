@@ -725,8 +725,7 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
   tot `FULL_SIZE` keer een dak, met meer vlammen, meer rook en een feller, verder licht; na
   45 tot 75 s dooft hij, de rook trekt langzaam weg, en na een pauze breekt
   er ergens anders brand uit (`Trekkers` en `Politie` in het kaartje). De voorgrond tot Centraal is grasland
-  (grastiles in de grove `_lod2`-versie, met wuivende grasplukjes van de grassprieten-shader in
-  drie banden naar afstand, over de hele strook; de voorste strook, van de camera tot zo'n
+  (grastiles in de grove `_lod2`-versie, over de hele strook; de voorste strook, van de camera tot zo'n
   65 m, is water met reflectie en een oever aan de overkant, `DITCH_ROWS`; alleen gewoon water,
   met hogere golven, meer glinstering en een spiegeling die tot de skyline reikt: `MENU_WATER`), de zon heeft schaduw tot 900 m. Achter de skyline staan, bewust
   niet op hun echte plek, de Malietoren, de toren van de Grote Kerk, de Paulussen-schoorsteen en
@@ -785,6 +784,12 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
   (`politie_sirene_loop.ogg`, `ambulance_sirene_loop.ogg`, `brandweer_sirene_loop.ogg`, plus
   `sirene_yelp_loop.ogg`), voorbijrazen met sirene (`*_voorbij.ogg`), `brandweer_hoorn.ogg` en
   de politiehelikopter (`helikopter_loop.ogg`, `helikopter_voorbij.ogg`); zie `docs/GELUIDEN.md`.
+  Ver uitgezoomd (vanaf 95 m in beeld, terug onder 85 m) zijn voetgangers en voertuigen blokjes
+  (`scripts/world/far_boxes.gd`, node VerreBlokjes): hun eigen modellen verborgen, per soort één
+  MultiMesh met een blok in hun maat en kleur. Test: `tools/check/far_boxes_test.gd`.
+  Achtergrondgeluid (`scripts/audio/ambience.gd`, vanuit `interiors.gd`): zacht het geroezemoes van
+  de straat, de stationshal of een winkel, uit vrije opnames (`assets/audio/omgeving/`, bronnen in
+  `BRONNEN.md`, gemaakt met `tools/megadrive/omgeving.py`), overvloeiend bij elke overgang.
   Ruimtelijk geluid (`scripts/audio/spatial_audio.gd`, autoload `RuimtelijkGeluid`, alleen
   actief als de speler er is): het oor (AudioListener3D) zit bij de speler of het gevolgde
   voertuig en draait mee met de camera, zodat links en rechts op het scherm ook links en rechts
@@ -882,8 +887,8 @@ buiten de kaart (`at`), staat stil en is onzichtbaar zolang je buiten bent.
     Verkoper_<n> (metadata `kind`, `shop_name`), Uithangbord_<n>, Automaat_<n>.
   - Eruit gegooid worden (`Interiors.throw_out`, herbruikbaar per plek, `data/gesprekken/uitzetten.json`):
     te vaak bedelen of zonder geld proberen te kopen (snackbar, station) of de boete voor
-    zwartrijden niet kunnen betalen (station, meteen): de swipe, de speler vliegt de deur uit en tuimelt de straat op, daarna zegt wie hem
-    eruit zette waarom (een gesprek zonder keuzes); een tijdje niet naar binnen. Test:
+    zwartrijden niet kunnen betalen (station, meteen): de swipe, de speler vliegt de deur uit en tuimelt de straat op, daarna vertelt de verteller
+    wat er gebeurde; een tijdje niet naar binnen. Test:
     `tools/check/throw_out_test.gd`.
   - Test: `tools/check/station_test.gd` (ingangen, sporen, poortjes met en zonder kaart,
     een vertrekkende trein, instappen, niemand vast, naar buiten bij deur 3).
@@ -927,7 +932,7 @@ Projectstructuur
                            (archetypes), player_model (voxelfiguur), items
       player/              player_character (archetypes en keuze), player_model (voxelpoppetjes)
       world/               de kaart zelf: level_of_detail, layer_baker, building_fade,
-                           ground_map, grass_blades, tint_map, tint_area, day_cycle,
+                           ground_map, tint_map, tint_area, day_cycle,
                            overhead_lines, tunnel_lights, zebra_clock
       traffic/             wegennet en verkeer: road_network, traffic, traffic_lights,
                            lane_arrows, helicopter_flights
@@ -1496,8 +1501,8 @@ Prestaties en uiterlijk
   buur-texels), zodat het patroon de structuur draagt en niet het voxelraster.
 - `DetailNiveau` (`scripts/world/level_of_detail.gd`): schakelt bij het uitzoomen naar
   grove tiles (`coarse_from`, standaard 100 m in beeld: daar is een voxel al kleiner
-  dan een pixel) en heel grove tiles (`very_coarse_from`, 130 m), voor Grond,
-  Gebouwen en Props (bomen: een plataan 9.500 / 5.800 / 1.500 driehoeken), verbergt
+  dan een pixel), voor Grond, Gebouwen en Props: **hooguit twee niveaus**, gewoon en grof
+  (`_lod`; de heel grove `_lod2` gebruikt alleen nog de kaart achter het menu), verbergt
   Details (vanaf 120 m) en Props (vanaf 300 m), past de schaduwafstand aan het
   zoomniveau aan. De grove versies
   maakt de importer zelf: gelijkende kleuren samengevoegd (`lod`) en blokjes
@@ -1565,22 +1570,11 @@ Prestaties en uiterlijk
   die de normaal kantelt en donkere spleten. Daaronder grovere stenen (~12 cm) in rustige
   tinten en zachte vlekken van ~25 cm. Elke laag vervaagt zodra hij een pixel of twee
   klein is, dus van ver is grind egaal, zonder flikkeren.
-- Echte grassprieten (node `Grassprieten`, `scripts/world/grass_blades.gd`, shader
-  `materials/grass_blade.gdshader`) in drie detailniveaus die in elkaar overgroeien:
-  fijne sprieten tot `show_from` (48 m in beeld, helemaal vol tot `full_from`, 40 m: ook bij de
-  loopzoom van de Volgcamera, 38 m), daarna dikkere plukken (`medium_*`, tot
-  55 m) en nog grovere, schaarse plukken (`far_*`, tot 220 m, die twee over het hele beeld;
-  uit met `low_detail`). Ingezoomd groeien hoekige sprieten in voxelstijl uit het gras (drie vierkante blokjes van 3 x 3 cm
-  op elkaar, getrapt in de buigrichting, elk een eigen tint, alleen in kwartslagen gedraaid) rond het punt waar de camera
-  naar kijkt, met een MultiMesh per stuk van 8 x 8 m. Ze buigen met dezelfde wind en
-  windvlagen als de grasshader, staan in plukken (dicht, dun, kaal) en groeien alleen
-  op het grasdeel van een tile (`GrondKaart` houdt per grastile een masker bij), dus
-  niet op paden, oevers onder water of waterlelies. Instelbaar: `density` (220 sprieten
-  per m², vol en dicht), `blade_height`, `blade_width` (3 cm, dun), `show_from`/
-  `full_from`. Uitgezoomd worden de sprieten rustiger (shader-parameter `calm`, van 30 tot 90 m
-  in beeld): de zijkanten worden bijna zo licht als de toppen en het verschil per spriet en
-  van voet tot top wordt kleiner, zodat een grasveld van ver niet spikkelt. Kost op 2560 x 1440 ongeveer 20% framerate zolang ze in beeld zijn; een
-  lagere `density` is de snelste winst.
+- Gras is plat: geen sprieten van geometrie (die waren te dicht en te duur), alleen de
+  grastextuur van de voxel-shader (`grass_feel` in `voxel.gdshader`, sterkte `zwervr_grass`):
+  korrel van 60 en 20 cm, een fijne streperige korrel van sprietjes (ongeveer 5 x 12 cm, alleen
+  zolang hij groot genoeg is), zachte pollen van ongeveer 1,5 m op elke afstand, en dichtbij
+  windvlagen als lichtere banden.
 - Randen tussen grondtiles (`zwervr_ground_edges`, 0 = uit): waar een grondtile een
   andere soort grond raakt (gras, weg, fietspad, stoep, grind, klinkers, ...), tekent de
   shader een rand die leest als een klein hoogteverschil, zonder echte geometrie. De

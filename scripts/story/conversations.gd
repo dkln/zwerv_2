@@ -426,6 +426,12 @@ func shop_kind_label() -> String:
 	return str(_data().get("soort", "SNACKBAR"))
 
 
+## The shop's logo ("logo": "icoon" a pixel icon of the game's menus, "kleur" its board,
+## "tekst" the colour of the icon): the board over a stall and the badge on the shop screen.
+func shop_logo() -> Dictionary:
+	return _data().get("logo", {})
+
+
 ## The name over the conversation: a shop's or official's own "spreker", a passer-by's what
 ## they look like (name_of).
 func speaker() -> String:

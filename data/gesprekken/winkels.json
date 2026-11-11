@@ -1,5 +1,5 @@
 {
-	"uitleg": "De verkopers in de winkels en kiosken van Den Haag Centraal, per soort zaak (de 'kind' van Verkoper_<n> in scenes/binnen/centraal.tscn). Dezelfde velden als snackbarhouder.json; wat een zaak weglaat komt uit snackbarhouder.json. {zaak} is de naam van de zaak, {wat} wat je kocht, {prijs} wat het kost. 'item' is een item uit scripts/player/items.gd. Op het station is alles duurder dan in de stad: wat de snackbar in de stad ook verkoopt, kost hier minstens 1,3 keer zoveel (Conversations.STATION_MARKUP, het spel rondt dat af en houdt het aan als hier minder staat). 'kleding' is wat de verkoper draagt, passend bij de zaak: 'jas' en 'rand' (kraag, schort, boord), 'broek', en 'pet' (een muts of pet in die kleur). Zie data/LEESMIJ.md.",
+	"uitleg": "De verkopers in de winkels en kiosken van Den Haag Centraal, per soort zaak (de 'kind' van Verkoper_<n> in scenes/binnen/centraal.tscn). Dezelfde velden als snackbarhouder.json; wat een zaak weglaat komt uit snackbarhouder.json. {zaak} is de naam van de zaak, {wat} wat je kocht, {prijs} wat het kost. 'item' is een item uit scripts/player/items.gd. Op het station is alles duurder dan in de stad: wat de snackbar in de stad ook verkoopt, kost hier minstens 1,3 keer zoveel (Conversations.STATION_MARKUP, het spel rondt dat af en houdt het aan als hier minder staat). 'kleding' is wat de verkoper draagt, passend bij de zaak: 'jas' en 'rand' (kraag, schort, boord), 'broek', en 'pet' (een muts of pet in die kleur). 'logo' is het bord boven het stalletje: 'icoon' (een pixelicoon van de spelmenu's), 'kleur' van het bord en 'tekst' (de kleur van de naam). Zie data/LEESMIJ.md.",
 	"winkels": {
 		"koffie": {
 			"spreker": "BARISTA",
@@ -50,6 +50,11 @@
 				"jas": "#22242A",
 				"rand": "#7A4A2A",
 				"broek": "#22242A"
+			},
+			"logo": {
+				"icoon": "beker",
+				"kleur": "#3A2418",
+				"tekst": "#FFE9B8"
 			}
 		},
 		"broodjes": {
@@ -102,6 +107,11 @@
 				"rand": "#C8C4BA",
 				"pet": "#E8E6E0",
 				"broek": "#5A5E64"
+			},
+			"logo": {
+				"icoon": "broodje",
+				"kleur": "#E8D9B8",
+				"tekst": "#5A3A22"
 			}
 		},
 		"kiosk": {
@@ -165,6 +175,11 @@
 				"jas": "#B82A2A",
 				"rand": "#E8E6E0",
 				"broek": "#22242A"
+			},
+			"logo": {
+				"icoon": "krant",
+				"kleur": "#B82A2A",
+				"tekst": "#FFFFFF"
 			}
 		},
 		"bloemen": {
@@ -210,6 +225,11 @@
 				"jas": "#3E5E3A",
 				"rand": "#283E26",
 				"broek": "#4E3A2A"
+			},
+			"logo": {
+				"icoon": "bloem",
+				"kleur": "#3E5E3A",
+				"tekst": "#F4E6F0"
 			}
 		},
 		"boeken": {
@@ -261,6 +281,11 @@
 				"jas": "#7A4A2A",
 				"rand": "#C8B48A",
 				"broek": "#3E5A86"
+			},
+			"logo": {
+				"icoon": "boek",
+				"kleur": "#22304A",
+				"tekst": "#E8D9B8"
 			}
 		},
 		"stroopwafels": {
@@ -307,6 +332,11 @@
 				"rand": "#B82A2A",
 				"pet": "#B82A2A",
 				"broek": "#22242A"
+			},
+			"logo": {
+				"icoon": "wafel",
+				"kleur": "#E0A030",
+				"tekst": "#3A2418"
 			}
 		},
 		"snoep": {
@@ -358,6 +388,11 @@
 				"jas": "#B85A78",
 				"rand": "#E8E6E0",
 				"broek": "#22242A"
+			},
+			"logo": {
+				"icoon": "snoep",
+				"kleur": "#B85A78",
+				"tekst": "#FFFFFF"
 			}
 		},
 		"smikkels": {
@@ -391,7 +426,12 @@
 			"geen_geld": "Op het station is het {prijs}, jongen. Buiten is het goedkoper, maar daar is het nou eenmaal buiten.",
 			"tip_vraag": "Waarom is het hier duurder?",
 			"tip": "De huur van het station, jongen. Bij de snackbar om de hoek betaal je minder. Maar hier ben je al.",
-			"dag": "Goede reis! En niet eten in de stiltecoupé."
+			"dag": "Goede reis! En niet eten in de stiltecoupé.",
+			"logo": {
+				"icoon": "kroket",
+				"kleur": "#E8C21A",
+				"tekst": "#B82A2A"
+			}
 		}
 	}
 }

@@ -80,6 +80,11 @@ const FINE_COLOUR := Color("#FF5A4A")
 ## The arrow over a shop (InteriorPerson.place_mark_ahead): this far before its front (m),
 ## its point between these heights (under the shop sign at 3 m).
 const SHOP_MARK_AHEAD := 0.6
+## Travellers added per frame when the hall is topped up (_top_up).
+const POPULATE_PER_FRAME := 3
+## The board over a stall (_shop_board): its size (m) and how tall the logo on it is.
+const SHOP_BOARD_SIZE := Vector3(2.4, 0.6, 0.06)
+const SHOP_LOGO_HEIGHT := 0.42
 const SHOP_MARK_BOTTOM := 1.9
 const SHOP_MARK_TOP := 2.4
 ## The chase goes along the floor: on the player's platform (or in the hall with them)
@@ -194,6 +199,7 @@ var _track_departure := {}           # track -> its departure
 var _next_id := 0
 var _gates: Array[StationGates] = []
 var _walkers: Array[StationPerson] = []
+var _topping_up := false            # _top_up under way
 var _keepers: Array[InteriorPerson] = []
 var _patrol_leaders: Array[StationPerson] = []
 var _platform_patrol: StationPerson
@@ -270,8 +276,20 @@ func player_came_in(who: Node3D) -> void:
 	_player = who
 	_player_side = 0
 	_ensure_setup()
-	if _walkers.size() < _target_travellers() / 2:
-		_populate()
+	# topped up a few at a time (each figure is built of voxels: all at once stalls the game)
+	if _walkers.size() < _target_travellers() / 2 and not _topping_up:
+		_top_up()
+
+
+## Fills the hall up to the travellers the hour wants, POPULATE_PER_FRAME a frame.
+func _top_up() -> void:
+	_topping_up = true
+	var wanted := _target_travellers()
+	while is_inside_tree() and _travellers() < wanted:
+		for index in POPULATE_PER_FRAME:
+			_spawn_one_traveller()
+		await get_tree().process_frame
+	_topping_up = false
 
 
 func player_went_out() -> void:
@@ -366,11 +384,65 @@ func _make_shops() -> void:
 			keeper.place_mark_ahead(keeper_marker.position.distance_to(front.position) + SHOP_MARK_AHEAD, SHOP_MARK_BOTTOM, SHOP_MARK_TOP)
 		var sign_marker := get_node_or_null("Uithangbord_%d" % number) as Node3D
 		if sign_marker:
-			var sign := _label(String(keeper_marker.get_meta("shop_name", "")).to_upper(), 40, 0.0045, Color.WHITE)
-			sign.name = "Naam"
-			sign.transform = sign_marker.transform
-			add_child(sign)
+			var logo: Dictionary = ((Conversations.shops().get("winkels", {}) as Dictionary).get(kind, {}) as Dictionary).get("logo", {})
+			var board := _shop_board(String(keeper_marker.get_meta("shop_name", "")), logo)
+			board.transform = sign_marker.transform
+			add_child(board)
 		number += 1
+
+
+## The board over a stall (winkels.json "logo"): a plate in the shop's colour ("kleur"), on
+## it the logo (the pixel icon "icoon" of the game's menus, GameMenu.ITEM_ICONS, in the text
+## colour) and the shop's name ("tekst" colour); its front to the node's +z.
+func _shop_board(shop_name: String, logo: Dictionary) -> Node3D:
+	var board := Node3D.new()
+	board.name = "Uithangbord"
+	var plate := MeshInstance3D.new()
+	plate.name = "Bord"
+	var box := BoxMesh.new()
+	box.size = SHOP_BOARD_SIZE
+	plate.mesh = box
+	var plate_material := StandardMaterial3D.new()
+	plate_material.albedo_color = Color(str(logo.get("kleur", "#22304A")))
+	plate_material.roughness = 0.7
+	plate.material_override = plate_material
+	plate.position = Vector3(0.0, 0.0, -SHOP_BOARD_SIZE.z * 0.5 - 0.01)
+	board.add_child(plate)
+	var text_colour := Color(str(logo.get("tekst", "#FFFFFF")))
+	var icon_name := str(logo.get("icoon", ""))
+	var has_icon := GameMenu.ITEM_ICONS.has(icon_name)
+	if has_icon:
+		var sprite := Sprite3D.new()
+		sprite.name = "Logo"
+		sprite.texture = _icon_texture(GameMenu.ITEM_ICONS[icon_name].rows, text_colour)
+		sprite.pixel_size = SHOP_LOGO_HEIGHT / float(sprite.texture.get_height())
+		sprite.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+		sprite.shaded = false
+		sprite.position = Vector3(-SHOP_BOARD_SIZE.x * 0.5 + SHOP_LOGO_HEIGHT * 0.5 + 0.12, 0.0, 0.005)
+		board.add_child(sprite)
+	var name_label := _label(shop_name.to_upper(), 40, 0.0045, text_colour)
+	name_label.name = "Naam"
+	var name_room := SHOP_BOARD_SIZE.x - (SHOP_LOGO_HEIGHT + 0.3 if has_icon else 0.2)
+	name_label.text = ""   # _fit_text does nothing for the text it already has
+	_fit_text(name_label, shop_name.to_upper(), name_room)
+	name_label.position = Vector3((SHOP_LOGO_HEIGHT + 0.2) * 0.5 if has_icon else 0.0, 0.0, 0.006)
+	board.add_child(name_label)
+	return board
+
+
+## A pixel icon ("#" coloured, anything else clear) as a small texture.
+static func _icon_texture(rows: Array, colour: Color) -> ImageTexture:
+	var width := 0
+	for row: String in rows:
+		width = maxi(width, row.length())
+	var image := Image.create(width + 2, rows.size() + 2, false, Image.FORMAT_RGBA8)
+	image.fill(Color(0, 0, 0, 0))
+	for row_index in rows.size():
+		var row: String = rows[row_index]
+		for column in row.length():
+			if row[column] == "#":
+				image.set_pixel(column + 1, row_index + 1, colour)
+	return ImageTexture.create_from_image(image)
 
 
 ## The OV-chipkaart machines: buy a card there.
@@ -1618,34 +1690,34 @@ func _platform_round(officer: StationPerson) -> Array[Dictionary]:
 
 ## When the player comes in to a quiet station: people already about (waiting on the
 ## platforms, walking in the hall).
-func _populate() -> void:
-	var wanted := _target_travellers()
-	for index in wanted:
-		if _random.randf() < 0.5:
-			var departure := _pick_departure(1.0, 12.0)
-			if not departure.is_empty():
-				var person := _spawn(_pick_role(), Vector3.ZERO)
-				var steps := _to_train(person, Vector3.ZERO, departure)
-				# straight onto the spot it would wait at
-				var waiting: Dictionary = steps[-1]
-				var spot := Vector3.ZERO
-				for step in steps:
-					if String(step.type) == "walk":
-						spot = step.to
-				person.position = spot
-				var only_waiting: Array[Dictionary] = [waiting]
-				person.steps = only_waiting
-				continue
-		var at := _free_hall_point()
-		var person := _spawn(_pick_role(), at)
-		var steps: Array[Dictionary] = []
-		if _random.randf() < 0.6:
-			var departure := _pick_departure(1.5, 12.0)
-			if not departure.is_empty():
-				steps = _to_train(person, at, departure)
-		if steps.is_empty():
-			steps = _out_of_the_station(person, at)
-		person.steps = steps
+## One traveller somewhere in the station, on its way: half waiting at a platform for a train,
+## the others in the hall going to a train or out.
+func _spawn_one_traveller() -> void:
+	if _random.randf() < 0.5:
+		var departure := _pick_departure(1.0, 12.0)
+		if not departure.is_empty():
+			var person := _spawn(_pick_role(), Vector3.ZERO)
+			var steps := _to_train(person, Vector3.ZERO, departure)
+			# straight onto the spot it would wait at
+			var waiting: Dictionary = steps[-1]
+			var spot := Vector3.ZERO
+			for step in steps:
+				if String(step.type) == "walk":
+					spot = step.to
+			person.position = spot
+			var only_waiting: Array[Dictionary] = [waiting]
+			person.steps = only_waiting
+			return
+	var at := _free_hall_point()
+	var person := _spawn(_pick_role(), at)
+	var steps: Array[Dictionary] = []
+	if _random.randf() < 0.6:
+		var departure := _pick_departure(1.5, 12.0)
+		if not departure.is_empty():
+			steps = _to_train(person, at, departure)
+	if steps.is_empty():
+		steps = _out_of_the_station(person, at)
+	person.steps = steps
 
 
 func _free_hall_point() -> Vector3:

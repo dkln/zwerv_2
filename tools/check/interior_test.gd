@@ -17,7 +17,7 @@ func _init() -> void:
 	Common.watchdog(self, 300)
 	PlayerCharacter.choose("martin")
 	var scene := Common.instantiate(Common.CITY, false)
-	for node_name in ["DetailNiveau", "Rook", "Grassprieten"]:
+	for node_name in ["DetailNiveau", "Rook"]:
 		if scene.has_node(node_name):
 			scene.get_node(node_name).free()
 	scene.get_node("Verkeer").vehicle_count = 0
@@ -68,6 +68,8 @@ func _init() -> void:
 	await create_timer(0.8, true).timeout
 	var interior: Node3D = interiors._interior
 	_check(interiors.is_inside() and interior != null, "binnen")
+	_check(interiors._ambience.place == "winkel" and interiors._ambience._player != null and interiors._ambience._player.playing,
+			"binnen het geroezemoes van de winkel")
 	_check(player.global_position.distance_to(interior.global_position) < 8.0, "de speler is binnen (%.1f m van het midden)" % player.global_position.distance_to(interior.global_position))
 	_check(follow._view_focus.distance_to(player.global_position) < 3.0, "de camera is meteen mee")
 	_check(not follow.turn_round_buildings, "binnen draait de camera niet om gebouwen")
@@ -114,6 +116,8 @@ func _init() -> void:
 	player._talk_partner.go_through()
 	await create_timer(1.2, true).timeout
 	_check(not interiors.is_inside() and player.global_position.distance_to(bar.door) < 2.0, "weer buiten voor de deur")
+	_check(interiors._ambience.place == "straat" and interiors._ambience._player != null and interiors._ambience._player.playing,
+			"buiten weer het geroezemoes van de straat")
 	_check(follow.turn_round_buildings, "buiten draait de camera weer om gebouwen")
 	print("binnenruimte ok" if _problems.is_empty() else "problemen: " + str(_problems))
 	quit(0 if _problems.is_empty() else 1)

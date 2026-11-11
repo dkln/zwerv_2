@@ -1347,6 +1347,7 @@ const DEATH_CAUSES := {
 	"honger": "%s is van de honger omgekomen.",
 	"aangereden": "%s is aangereden en niet meer opgestaan.",
 	"verdronken": "%s is in het water gevallen en verdronken.",
+	"eruit_gegooid": "%s is een gebouw uit gesmeten en niet meer opgestaan.",
 }
 ## Seconds before the keys work (so a key held while dying does not skip it).
 const DEATH_KEYS_AFTER := 1.2

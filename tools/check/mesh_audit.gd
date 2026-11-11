@@ -74,7 +74,7 @@ func _audit_library(library_name: String) -> void:
 
 func _audit_bake() -> void:
 	var scene := Common.instantiate("res://scenes/stad.tscn")
-	for node_name in ["DetailNiveau", "Rook", "Grassprieten"]:
+	for node_name in ["DetailNiveau", "Rook"]:
 		if scene.has_node(node_name):
 			scene.get_node(node_name).free()
 	get_root().add_child(scene)

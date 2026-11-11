@@ -17,7 +17,7 @@ func _init() -> void:
 	Common.watchdog(self, 300)
 	PlayerCharacter.choose(Common.arg(0, "martin"))
 	var scene := Common.instantiate(Common.CITY, false)
-	for node_name in ["DetailNiveau", "Rook", "Grassprieten"]:
+	for node_name in ["DetailNiveau", "Rook"]:
 		if scene.has_node(node_name):
 			scene.get_node(node_name).free()
 	scene.get_node("Verkeer").vehicle_count = 0

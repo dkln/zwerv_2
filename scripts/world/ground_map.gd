@@ -29,7 +29,7 @@ const TYPE_GRASS := 200
 ## Lowest height (m, tile-local) of grass that counts for the mask: the top of a grass
 ## tile is at 0.375 m.
 const GRASS_LEVEL := 0.3
-## Blade height factors (scripts/world/grass_blades.gd blade_height): short and tall grass.
+## Height factors of short and tall grass (kept for the ground's data; there are no blades now).
 const SHORT_GRASS := 1.0
 const TALL_GRASS := 2.0
 ## Resolution of a tile's grass mask (one per voxel of a 4 m tile).
@@ -51,7 +51,7 @@ var _types: ImageTexture
 ## [mask, basis, height]: mask = PackedByteArray of MASK x MASK (1 = grass at that spot of
 ## the tile's top, in tile-local voxels), basis = the cell's rotation, height = blade
 ## height factor (TALL_GRASS on tiles named "gras_hoog", else SHORT_GRASS). The grass blades grow
-## only on the grass parts (scripts/world/grass_blades.gd), so also along paths and banks but
+## only on the grass parts, so also along paths and banks but
 ## never through gravel or water.
 var grass_cells := {}
 var _time := 0.0

@@ -1,9 +1,9 @@
 extends SceneTree
 ## The Zebraklok (scripts/world/zebra_clock.gd): a black pole with the head on it (its size),
-## a diamond (widest in the middle, straight to the points), striped black and white across
-## with a white dial round the hands, its white really white (no grey shading), the hands
-## turning clockwise as seen from in front of a face, pointing at the time and staying on
-## the face, and its collider round the pole, the foot and the head.
+## a flat square stood on its point (45 degrees), with straight black and white stripes and a white dial
+## round the hands on both faces, its white really white (no grey shading), the hands
+## turning clockwise as seen from in front of a face, pointing at the time, and its collider
+## round the pole, the foot and the head.
 ## usage: tools/godot.sh --headless --script tools/check/zebra_clock_test.gd
 
 const Common = preload("res://tools/tool_common.gd")
@@ -22,16 +22,28 @@ func _init() -> void:
 	var box: AABB = head.transform * head.get_aabb()
 	print("kop ", box)
 	_check(absf(box.size.y - ZebraClock.HEAD_HEIGHT) < 0.25, "kop %.2f m hoog" % box.size.y)
-	_check(box.size.x > 2.2 and box.size.x < 3.2 and box.size.z > 2.2 and box.size.z < 3.2, "kop %.2f x %.2f m breed" % [box.size.x, box.size.z])
+	_check(absf(box.size.x - ZebraClock.HEAD_HEIGHT) < 0.25 and absf(box.size.z - ZebraClock.HEAD_DEPTH) < 0.2, "kop %.2f m breed, %.2f m dik" % [box.size.x, box.size.z])
 	_check(box.end.y > 8.0 and box.end.y < 9.5, "klok %.2f m hoog" % box.end.y)
-	# a diamond: widest in the middle, straight lines to both points
-	_check(is_equal_approx(ZebraClock._profile(ZebraClock.WIDEST_AT), 1.0) and is_equal_approx(ZebraClock._profile(0.25), 0.5)
-			and is_equal_approx(ZebraClock._profile(0.75), 0.5), "ruitvorm (breedst in het midden, recht naar de punten)")
-	# striped: black and white bands in turn, white on the dial
-	var band := ZebraClock.STRIPE_HEIGHT
-	_check(ZebraClock._is_stripe(1.0, 0.0, band * 1.5) and not ZebraClock._is_stripe(1.0, 0.0, band * 2.5)
-			and ZebraClock._is_stripe(1.0, 0.0, band * 3.5), "zwart-wit gestreept")
-	_check(not ZebraClock._is_stripe(0.0, 0.0, band * 1.5) and not ZebraClock._is_stripe(0.5, 0.3, band * 5.5), "witte wijzerplaat om de wijzers")
+	# a square on its point: the corners top, bottom, left and right, not in the corners of its box
+	var half := ZebraClock.HEAD_HEIGHT * 0.5
+	_check(ZebraClock._in_head(0.0, half * 0.95) and ZebraClock._in_head(half * 0.95, 0.0) and not ZebraClock._in_head(half * 0.6, half * 0.6),
+			"een vierkant op zijn punt (45 graden gedraaid)")
+	# stripes: black and white, straight across, white on the dial
+	var black := 0
+	var white := 0
+	var straight := true
+	for step in 40:
+		var up := -half + step * half / 20.0
+		var row_black := ZebraClock._is_stripe(-0.9, up, false)
+		if row_black != ZebraClock._is_stripe(0.9, up, false):
+			straight = false
+		if row_black:
+			black += 1
+		else:
+			white += 1
+	_check(black > 5 and white > 5, "zwart en wit (%d / %d)" % [black, white])
+	_check(straight, "rechte strepen")
+	_check(not ZebraClock._is_stripe(0.0, 0.0) and not ZebraClock._is_stripe(0.3, 0.3), "witte wijzerplaat om de wijzers")
 	# white, not grey: every corner of the head pure white or the black
 	var greys := 0
 	var whites := 0
@@ -46,10 +58,10 @@ func _init() -> void:
 				greys += 1
 	print("kop: %d wit, %d zwart, %d grijs" % [whites, blacks, greys])
 	_check(greys == 0 and whites > blacks and blacks > 0, "wit (niet grijs) en zwart")
-	# the hands: the minute hand's tip in the direction of the minutes on face 1
+	# the hands: the minute hand's tip in the direction of the minutes, on both faces
 	var now := Time.get_time_dict_from_system()
 	var minutes := float(now.minute) + float(now.second) / 60.0
-	for face_index in 3:
+	for face_index in 2:
 		var outwards := ZebraClock.face_direction(face_index)
 		var right := Vector3(outwards.z, 0.0, -outwards.x)
 		var pivot: Node3D = clock._hand_pivots[face_index][1]
@@ -58,20 +70,12 @@ func _init() -> void:
 		var expected := right * sin(angle) + Vector3.UP * cos(angle)
 		_check(tip.normalized().dot(expected) > 0.98, "grote wijzer van wijzerplaat %d wijst naar de minuten" % (face_index + 1))
 		var face_middle := pivot.global_position - clock.global_position
-		_check(face_middle.normalized().dot((outwards + Vector3.UP * face_middle.y / face_middle.length()).normalized()) > 0.0, "wijzers voor wijzerplaat %d" % (face_index + 1))
-		# the hands stay on the face where it slopes back: the back of each tip inside the head,
-		# at every hour round the dial
-		var face_node: Node3D = pivot.get_parent()
-		for hand_pivot: Node3D in clock._hand_pivots[face_index]:
-			var hand: MeshInstance3D = hand_pivot.get_child(0)
-			var hand_box := hand.mesh as BoxMesh
-			var shallowest := INF
-			for hour in 12:
-				var turned := Basis(Vector3.BACK, -TAU * hour / 12.0)
-				var tip_back := face_node.global_transform * (turned * Vector3(0.0, hand_box.size.y - hand_box.size.x * 0.5, hand.position.z - hand_box.size.z * 0.5))
-				var local := tip_back - clock.global_position - Vector3.UP * (ZebraClock.GROUND_TOP + ZebraClock.HEAD_BOTTOM)
-				shallowest = minf(shallowest, float(ZebraClock._on_face(local)[3]))
-			_check(shallowest > 0.0, "wijzer van wijzerplaat %d blijft op de kop (punt minstens %.2f m erin)" % [face_index + 1, shallowest])
+		_check(face_middle.dot(outwards) > 0.0, "wijzers voor wijzerplaat %d" % (face_index + 1))
+		# the hands stand just out of the face, not inside the head and not floating off it
+		var face_at := box.get_center().z + outwards.z * box.size.z * 0.5
+		var hand_front := face_middle.z + outwards.z * ZebraClock.HAND_OUT
+		_check(absf(hand_front - face_at) < ZebraClock.HAND_OUT + 0.05 and (hand_front - face_at) * outwards.z > 0.0,
+				"wijzers van wijzerplaat %d net voor de kop" % (face_index + 1))
 	# the collider: the pole and the head
 	var space := clock.get_world_3d().direct_space_state
 	await physics_frame
@@ -85,7 +89,7 @@ func _init() -> void:
 	_check(pole_material.metallic > 0.5 and (clock.get_node("Sokkel").material_override as StandardMaterial3D).metallic > 0.5, "paal en sokkel van metaal")
 	ray = PhysicsRayQueryParameters3D.create(Vector3(0.0, box.position.y + box.size.y * 0.52, -4.0), Vector3(0.0, box.position.y + box.size.y * 0.52, 0.0))
 	hit = space.intersect_ray(ray)
-	_check(not hit.is_empty() and hit.position.z < -ZebraClock.FACE_REACH * 0.85, "botsvorm om de kop (%s)" % hit.get("position"))
+	_check(not hit.is_empty() and hit.position.z < -ZebraClock.HEAD_DEPTH * 0.4, "botsvorm om de kop (%s)" % hit.get("position"))
 	print("zebraklok ok" if _problems.is_empty() else "FOUT: %s" % [_problems])
 	quit()
 

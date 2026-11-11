@@ -69,6 +69,7 @@ cam_omlaag={
 lights_and_shadows/directional_shadow/soft_shadow_filter_quality=1
 driver/depth_prepass/enable=false
 environment/ssao/quality=1
+environment/ssao/half_size=true
 anti_aliasing/quality/use_debanding=true
 scaling_3d/mode=2
 scaling_3d/mode.macos=4

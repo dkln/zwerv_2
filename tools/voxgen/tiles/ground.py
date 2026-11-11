@@ -781,14 +781,14 @@ def grass_tile(base=GRASS):
 
 @tile("grond/natuur/gras")
 def grass():
-    """Default grass tile: short grass (scripts/world/grass_blades.gd grows short blades on it)."""
+    """Default grass tile: short grass."""
     return grass_tile()
 
 
 @tile("grond/natuur/gras_hoog")
 def grass_tall():
     """Tall grass: the same tile as gras, but the grass blades grow tall on it
-    (scripts/world/grass_blades.gd, by tile name)."""
+    (by tile name)."""
     return grass_tile()
 
 

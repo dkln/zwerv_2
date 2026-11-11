@@ -37,5 +37,5 @@ func _init() -> void:
 	braking = 5.0
 	half_length = 1.05
 	mass_kg = 300.0
-	wheelie_degrees = 32.0
+	wheelie_degrees = 60.0
 	wheelie_kind = "motor"

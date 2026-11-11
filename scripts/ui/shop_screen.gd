@@ -32,6 +32,8 @@ const UiSounds = preload("res://scripts/ui/ui_sounds.gd")
 const Interiors = preload("res://scripts/world/interiors.gd")
 const PlayerPortrait = preload("res://scripts/ui/widgets/player_portrait.gd")
 const PixelIcon = preload("res://scripts/ui/widgets/pixel_icon.gd")
+## Screen pixels per pixel of the logo in the header.
+const LOGO_PIXEL := 3.0
 const Typewriter = preload("res://scripts/ui/widgets/typewriter.gd")
 const Babble = preload("res://scripts/audio/babble.gd")
 const Items = preload("res://scripts/player/items.gd")
@@ -80,6 +82,8 @@ var _typewriter: Typewriter
 var _speech: RichTextLabel
 var _kind_label: Label
 var _name_label: Label
+var _logo_badge: PanelContainer
+var _logo_icon: PixelIcon
 var _money_label: Label
 var _money_euro: Label
 var _pockets_label: Label
@@ -132,6 +136,7 @@ func open(talk: RefCounted, player: Node, hud: Node, done := Callable()) -> void
 	if hud and hud.has_method("set_indoor_music") and _music_before != SHOP_MUSIC:
 		hud.set_indoor_music(SHOP_MUSIC)
 	_kind_label.text = String(talk.call("shop_kind_label"))
+	_show_logo(talk.call("shop_logo") if talk.has_method("shop_logo") else {})
 	_name_label.text = String(talk.call("shop_name")).to_upper()
 	_speaker_label.text = String(talk.call("speaker"))
 	_portrait = PlayerPortrait.new()
@@ -500,6 +505,23 @@ func _build() -> void:
 
 
 ## The kind of shop and its name on the left, your money on the right, a line under them.
+## The logo badge of the header: the shop's colour, its icon in the text colour; hidden
+## without a logo.
+func _show_logo(logo: Dictionary) -> void:
+	var icon_name := String(logo.get("icoon", ""))
+	_logo_badge.visible = GameMenu.ITEM_ICONS.has(icon_name)
+	if not _logo_badge.visible:
+		return
+	var style := UiStyle.box_style(Color(String(logo.get("kleur", "#22304A"))), UiStyle.INK, 2)
+	style.content_margin_left = 6
+	style.content_margin_right = 6
+	style.content_margin_top = 5
+	style.content_margin_bottom = 5
+	_logo_badge.add_theme_stylebox_override("panel", style)
+	_logo_icon.bitmap = GameMenu.ITEM_ICONS[icon_name].rows
+	_logo_icon.colour = Color(String(logo.get("tekst", "#FFFFFF")))
+
+
 func _build_header(panel: Control) -> void:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 14)
@@ -522,6 +544,14 @@ func _build_header(panel: Control) -> void:
 	_kind_label = _make_label("", font_pixel, 13, UiStyle.ACCENT)
 	_kind_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(_kind_label)
+	# the shop's logo (Conversations.shop_logo): a badge in its colour with its pixel icon
+	_logo_badge = PanelContainer.new()
+	_logo_badge.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_logo_badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_logo_icon = PixelIcon.new()
+	_logo_icon.pixel = LOGO_PIXEL
+	_logo_badge.add_child(_logo_icon)
+	row.add_child(_logo_badge)
 	_name_label = _make_label("", font_title, 30, UiStyle.TEXT)
 	UiStyle.faux_3d(_name_label, 3)
 	_name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL

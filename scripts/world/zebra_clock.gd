@@ -1,11 +1,9 @@
 extends Node3D
-## The Zebraklok on the Koningin Julianaplein before Centraal Station (Jaap Karman, 1977):
-## a big white head striped in black, like a zebra, on a slender black pole, about 8.5 m
-## tall. The head is a diamond: three flat faces round it, one clock each, meeting in sharp
-## ridges, widest in the middle and running in straight lines up to a point on top and down
-## to one on the pole. Kept simple for the iso view: broad black and white stripes across
-## the whole head (STRIPE_HEIGHT), and on each face a plain white dial (DIAL_RADIUS) with the
-## black hands sticking out of its middle, showing the real time (the computer's clock).
+## The Zebraklok on the Koningin Julianaplein before Centraal Station (Jaap Karman, 1977), kept
+## simple: on a slender black pole a flat square head stood on its point (turned 45 degrees: a
+## diamond), white with straight black stripes across it, as a zebra crossing (_is_stripe),
+## and on both sides of it a plain white dial (DIAL_RADIUS) with the black
+## hands sticking out of its middle, showing the real time (the computer's clock).
 ## Built here in code: the head in voxels (VOXEL) as the rest of the town
 ## (PlayerModel.VoxelFigure), of white and black plastic without the voxel shading (so the
 ## white is white, not grey); the pole and its foot of metal.
@@ -25,20 +23,18 @@ const HEAD_BOTTOM := 5.6
 ## The metal foot the pole stands in: its width (square) and height above the square.
 const PLINTH_WIDTH := 0.6
 const PLINTH_HEIGHT := 0.25
-## The head: its height, at its widest the distance from its axis to the flat of a face
-## (`FACE_REACH`), and at which share of its height it is widest (the middle of the clocks).
+## The head: a square stood on its point, HEAD_HEIGHT from point to point (so as wide), and
+## HEAD_DEPTH thick; its two faces look out along the node's -z and +z.
 const HEAD_HEIGHT := 2.9
-const FACE_REACH := 0.8
-const WIDEST_AT := 0.5
-## The stripes: the height of each band (metres, two voxels), black and white in turn; the
-## white dial round the hands: its radius (metres) on the face.
-const STRIPE_HEIGHT := 0.3
-const DIAL_RADIUS := 0.75
-## The hands: length, width and depth (metres), and how far their front stands out of the
-## face; they reach deep into the head, so they stay on the face where it slopes back.
-const HOUR_HAND := Vector3(0.42, 0.12, 0.6)
-const MINUTE_HAND := Vector3(0.64, 0.09, 0.6)
-const HAND_OUT := 0.15
+const HEAD_DEPTH := 0.45
+## The stripes: straight across, one black and one white band every STRIPE_SPACING metres.
+const STRIPE_SPACING := 0.6
+## The white dial round the hands on each face: its radius (metres).
+const DIAL_RADIUS := 0.6
+## The hands: length, width and depth (metres), and how far their front stands out of the face.
+const HOUR_HAND := Vector3(0.36, 0.11, 0.3)
+const MINUTE_HAND := Vector3(0.54, 0.08, 0.3)
+const HAND_OUT := 0.06
 const WHITE := Color("#FFFFFF")
 const BLACK := Color("#16161A")
 
@@ -48,7 +44,7 @@ var _hand_pivots: Array = []   # per face: [hour pivot, minute pivot]
 func _ready() -> void:
 	_build_pole()
 	_build_head()
-	for face_index in 3:
+	for face_index in 2:
 		_add_hands(face_index)
 	_build_collider()
 	_show_time()
@@ -58,45 +54,24 @@ func _process(_delta: float) -> void:
 	_show_time()
 
 
-## The direction (on the ground) face `face_index` looks out to; the first towards -z.
+## The direction face `face_index` (0 or 1) looks out to: -z and +z.
 static func face_direction(face_index: int) -> Vector3:
-	var angle := deg_to_rad(-90.0 + 120.0 * face_index)
-	return Vector3(cos(angle), 0.0, sin(angle))
+	return Vector3(0.0, 0.0, -1.0 if face_index == 0 else 1.0)
 
 
-## How wide the head is at height share `share` (0 bottom .. 1 top): 0 at both points,
-## 1 at WIDEST_AT, in straight lines between (a diamond).
-static func _profile(share: float) -> float:
-	if share <= 0.0 or share >= 1.0:
-		return 0.0
-	if share < WIDEST_AT:
-		return share / WIDEST_AT
-	return (1.0 - share) / (1.0 - WIDEST_AT)
+## Inside the head: a square on its point, |across| + |up| at most half its height (`across`,
+## `up` in metres from its middle).
+static func _in_head(across: float, up: float) -> bool:
+	return absf(across) + absf(up) <= HEAD_HEIGHT * 0.5
 
 
-## Where on its face a point of the head lies: [face index, across (metres, + to the right as
-## seen from in front of it), up from the middle of the dial (metres), how far inside the
-## face (metres, < 0 outside)].
-static func _on_face(point: Vector3) -> Array:
-	var reach := FACE_REACH * _profile(point.y / HEAD_HEIGHT)
-	var best := [0, 0.0, 0.0, -INF]
-	var nearest := INF
-	for face_index in 3:
-		var outwards := face_direction(face_index)
-		var right := Vector3(outwards.z, 0.0, -outwards.x)
-		var inside := reach - point.dot(outwards)
-		if inside < nearest:
-			nearest = inside
-			best = [face_index, point.dot(right), point.y - WIDEST_AT * HEAD_HEIGHT, inside]
-	return best
-
-
-## Black where a stripe lies: every other band of STRIPE_HEIGHT up the head (`height`: metres
-## above its bottom point), except on the white dial (`across`, `up`: from its middle).
-static func _is_stripe(across: float, up: float, height: float) -> bool:
-	if Vector2(across, up).length() < DIAL_RADIUS:
+## Black where a zebra stripe lies (`across`, `up`: metres from the middle of the head), white
+## on the dial (`on_face`: the voxel is on one of the two faces, where the dial is).
+static func _is_stripe(across: float, up: float, on_face := true) -> bool:
+	if on_face and Vector2(across, up).length() < DIAL_RADIUS:
 		return false
-	return posmod(floori(height / STRIPE_HEIGHT), 2) == 1
+	# straight bands across, black and white in turn
+	return fposmod(up / STRIPE_SPACING, 1.0) < 0.5
 
 
 func _build_pole() -> void:
@@ -121,20 +96,19 @@ func _build_pole() -> void:
 
 func _build_head() -> void:
 	var figure := PlayerModel.VoxelFigure.new()
-	var reach := int(ceil((FACE_REACH * 2.0 + 0.2) / VOXEL))
-	var rows := int(ceil(HEAD_HEIGHT / VOXEL))
-	for row in rows:
-		for column_x in range(-reach, reach):
-			for column_z in range(-reach, reach):
-				# z of the cells runs backwards (VoxelFigure.to_parts)
-				var point := Vector3((column_x + 0.5) * VOXEL, (row + 0.5) * VOXEL, -(column_z + 0.5) * VOXEL)
-				var place: Array = _on_face(point)
-				# the four voxels round the axis always: the points, narrower than a voxel
-				var on_axis := column_x in [-1, 0] and column_z in [-1, 0]
-				if place[3] < 0.0 and not on_axis:
-					continue
-				var colour := BLACK if _is_stripe(place[1], place[2], point.y) else WHITE
-				figure.put(column_x, row, column_z, colour)
+	var half := int(ceil(HEAD_HEIGHT * 0.5 / VOXEL))
+	var depth := maxi(int(round(HEAD_DEPTH / VOXEL)), 2)
+	for row in range(-half, half):
+		for column in range(-half, half):
+			var across := (column + 0.5) * VOXEL
+			var up := (row + 0.5) * VOXEL
+			if not _in_head(across, up):
+				continue
+			for layer in depth:
+				var on_face := layer == 0 or layer == depth - 1
+				var colour := BLACK if _is_stripe(across, up, on_face) else WHITE
+				# z of the cells runs backwards (VoxelFigure.to_parts): centred on the pole
+				figure.put(column, row + half, layer - depth / 2, colour)
 	figure.centre_cell = Vector2.ZERO
 	figure.flat_shading = true
 	figure.mark("plastic", [WHITE, BLACK])
@@ -145,14 +119,16 @@ func _build_head() -> void:
 	var head := MeshInstance3D.new()
 	head.name = "Kop"
 	head.mesh = parts.meshes.body
-	head.position = Vector3(0.0, GROUND_TOP + HEAD_BOTTOM, 0.0)
+	# centred on the pole front to back, so both faces lie at HEAD_DEPTH / 2 (the hands' place)
+	var off_centre := head.mesh.get_aabb().get_center().z
+	head.position = Vector3(0.0, GROUND_TOP + HEAD_BOTTOM, -off_centre)
 	add_child(head)
 
 
 ## The hour and the minute hand of face `face_index`, sticking out of the middle of its dial.
 func _add_hands(face_index: int) -> void:
 	var outwards := face_direction(face_index)
-	var middle := outwards * FACE_REACH + Vector3.UP * (GROUND_TOP + HEAD_BOTTOM + WIDEST_AT * HEAD_HEIGHT)
+	var middle := outwards * HEAD_DEPTH * 0.5 + Vector3.UP * (GROUND_TOP + HEAD_BOTTOM + HEAD_HEIGHT * 0.5)
 	var face := Node3D.new()
 	face.name = "Wijzers%d" % (face_index + 1)
 	# its +z out of the face, +y up, +x to the right as seen from in front
@@ -194,7 +170,7 @@ func _build_collider() -> void:
 	body.add_child(foot_shape)
 	var head_shape := CollisionShape3D.new()
 	head_shape.shape = (get_node("Kop") as MeshInstance3D).mesh.create_convex_shape(true, true)
-	head_shape.position = Vector3(0.0, GROUND_TOP + HEAD_BOTTOM, 0.0)
+	head_shape.position = (get_node("Kop") as MeshInstance3D).position
 	body.add_child(head_shape)
 	add_child(body)
 

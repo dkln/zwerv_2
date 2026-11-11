@@ -61,9 +61,24 @@ const GROUP := "binnenruimtes"
 ## Thrown out (throw_out): who says what for which offence where (data/gesprekken/uitzetten.json),
 ## how hard the player is thrown out of the door (m/s), and the colour of "niet_binnen".
 const THROW_OUT_FILE := "res://data/gesprekken/uitzetten.json"
-const THROW_SPEED := 6.5
+const THROW_SPEED := 10.0
+## The level-of-detail node (its loading screen), and how many frames an interior is drawn
+## under it to warm up (_warm_up).
+const DETAIL_PATH := NodePath("../DetailNiveau")
+const WARM_UP_FRAMES := 3
+## How far the throw may turn from straight out of the door (radians, either way).
+const THROW_SPREAD := deg_to_rad(18.0)
+## The bang before the throw (_bang_at): its sound, the colour of its burst, how bright its
+## flash is, and how long all stands still before the flight (seconds).
+const BANG_SOUND := "klap"
+const BANG_COLOUR := Color("#FFE9B8")
+const BANG_FLASH_ENERGY := 6.0
+const BANG_HOLD := 0.15
 const BARRED_COLOUR := Color("#FF5A4A")
 const Conversations = preload("res://scripts/story/conversations.gd")
+const Ambience = preload("res://scripts/audio/ambience.gd")
+## The background sound of each kind of interior (Ambience); outside "straat".
+const AMBIENCE_OF := {"centraal": "station", "snackbar": "winkel"}
 ## Where the snack bar is, far off the map (metres; KINDS has it too).
 const INTERIOR_AT := Vector3(-600.0, 0.0, -600.0)
 ## How far from a door point you can go through (metres).
@@ -98,6 +113,7 @@ var _offences := {}                 # offence -> times in this visit (note_offen
 var _barred_until := {}             # kind -> msec until which the player may not come in
 var _throwing := false              # a throw-out under way
 var _throw_out_data := {}
+var _ambience: Ambience             # the background sound of where the player is
 var _last_swipe: Node                # the swipe of the last way out (_go_out), to wait for its end
 
 
@@ -141,6 +157,15 @@ class Entrance:
 
 func _ready() -> void:
 	add_to_group(GROUP)
+	# the interiors built and drawn once under the loading screen, so going in never stalls
+	var detail := get_node_or_null(DETAIL_PATH)
+	if detail and detail.has_method("hold_screen"):
+		detail.hold_screen()
+	_prepare_interiors.call_deferred(detail)
+	_ambience = Ambience.new()
+	_ambience.name = "Omgevingsgeluid"
+	add_child(_ambience)
+	_ambience.set_place("straat")
 	_player = get_node_or_null(player_path)
 	_find_snack_bars()
 	_find_door_tiles()
@@ -165,6 +190,44 @@ func ways_in() -> Array[Dictionary]:
 
 func is_inside() -> bool:
 	return not _inside.is_empty()
+
+
+## Under the loading screen: every interior made (and prepared: the station built), and
+## drawn once by a camera of its own (WARM_UP_FRAMES frames: the GPU gets its meshes and
+## compiles its shaders now, not on the first walk in, which would stall the game); then the
+## loading screen may go (LevelOfDetail.release_screen).
+func _prepare_interiors(detail: Node) -> void:
+	for frame_index in 2:
+		await get_tree().process_frame
+	var screen_up: bool = detail != null and detail.has_method("screen_is_up") and detail.call("screen_is_up")
+	for kind: String in KINDS:
+		var interior := interior_of(kind)
+		if interior.has_method("prepare"):
+			interior.call("prepare")
+		await get_tree().process_frame
+		if screen_up:
+			await _warm_up(interior)
+	if detail and detail.has_method("release_screen"):
+		detail.release_screen()
+
+
+## Draws `interior` a few frames from above by a camera of its own (under the loading screen),
+## then puts it to rest again and the camera back.
+func _warm_up(interior: Node3D) -> void:
+	var before := get_viewport().get_camera_3d()
+	var camera := Camera3D.new()
+	camera.name = "Opwarmcamera"
+	add_child(camera)
+	camera.global_position = interior.global_position + Vector3(0.0, 40.0, 40.0)
+	camera.look_at(interior.global_position, Vector3.UP)
+	camera.make_current()
+	_rest(interior, false)
+	for frame_index in WARM_UP_FRAMES:
+		await get_tree().process_frame
+	_rest(interior, true)
+	if before and is_instance_valid(before):
+		before.make_current()
+	camera.queue_free()
 
 
 ## The interior of a kind (KINDS), made the first time it is asked for.
@@ -212,6 +275,7 @@ func enter(bar: Dictionary) -> void:
 	await swipe.covered
 	var kind: String = bar.get("kind", "snackbar")
 	_set_music(String(KINDS[kind].get("music", "")))
+	_ambience.set_place(String(AMBIENCE_OF.get(kind, "winkel")))
 	_set_location(String(KINDS[kind].get("location", "")))
 	_interior = interior_of(kind)
 	_rest(_interior, false)
@@ -247,6 +311,7 @@ func _go_out(door_index: int) -> Dictionary:
 	await swipe.covered
 	_set_music("")
 	_set_location("")
+	_ambience.set_place("straat")
 	var bar := _inside
 	# an interior with more doors (KINDS "doors"): out before the way in of that door
 	if KINDS.get(String(bar.kind), {}).has("doors") and door_index > 0:
@@ -308,9 +373,10 @@ func offence(offence_name: String) -> void:
 
 ## Thrown out of the interior for `offence_name`: once the conversation or the shop screen
 ## is closed (closing the shop at once), the swipe, and once it is through out of the door the
-## player flies (a kick, a close-up in slow motion, a groan as they land), tumbling onto the
-## pavement; once up again, who threw them out says why (a conversation
-## without choices: uitzetten.json "tekst"); for "terug_na" seconds they may not come back in.
+## player flies (a KLAP and a bang at the door, a kick, a close-up in slow motion, a groan as
+## they land), tumbling onto the
+## pavement; once up again, the narrator tells what happened (story pages: uitzetten.json
+## "tekst"); for "terug_na" seconds they may not come back in.
 func throw_out(offence_name: String) -> void:
 	if not is_inside() or _throwing:
 		return
@@ -326,16 +392,25 @@ func throw_out(offence_name: String) -> void:
 			or (hud.has_method("is_showing_shop") and hud.is_showing_shop())):
 		await get_tree().process_frame
 	var bar := await _go_out(0)
+	# not seen standing before the door: out of sight until the throw starts
+	_player.visible = false
 	_barred_until[kind] = Time.get_ticks_msec() + int(float(_throw_outs().get("terug_na", 90)) * 1000.0)
 	_offences = {}
 	# the throw only once the swipe is through, so it is seen whole
 	if is_instance_valid(_last_swipe) and _last_swipe.is_inside_tree():
 		await _last_swipe.finished
+	_player.visible = true
+	# the BANG at the door before it flies: a KLAP, a burst and a flash, a moment's stillness
+	await _bang_at(_player.global_position + Vector3.UP * 1.0)
 	if _player.has_method("thrown_out"):
-		_player.call("thrown_out", (bar.outward as Vector3) * THROW_SPEED)
+		# out of the entrance, a little to the left or right each time
+		var turn := randf_range(-THROW_SPREAD, THROW_SPREAD)
+		_player.call("thrown_out", (bar.outward as Vector3).rotated(Vector3.UP, turn) * THROW_SPEED)
 	# once the player is up again
 	var waited := 0.0
-	while _player.get("_ragdoll") != null and waited < 8.0:
+	# and standing (its rise played out: the story box would pause it halfway)
+	while (_player.get("_ragdoll") != null or float(_player.get("_rising_left") if _player.get("_rising_left") != null else 0.0) > 0.0) \
+			and waited < 10.0:
 		await get_tree().process_frame
 		waited += get_process_delta_time()
 	if hud and hud.has_method("show_story"):
@@ -343,20 +418,30 @@ func throw_out(offence_name: String) -> void:
 	_throwing = false
 
 
-## The pages of being told why: who ("wie": a role of personeel.json, shown as on duty, or the
-## snack bar's keeper), each line of "tekst" a page, in the mood "stemming".
+## The bang of being flung out (throw_out): the KLAP, a burst of shards and a white flash at
+## `at`, and BANG_HOLD seconds (real time) of stillness before the flight.
+func _bang_at(at: Vector3) -> void:
+	var audio := get_node_or_null("/root/RuimtelijkGeluid")
+	if audio and audio.has_method("play_event"):
+		audio.play_event(at, BANG_SOUND)
+	CrashBurst.spawn(get_parent(), at, BANG_COLOUR, 1.0)
+	var flash := OmniLight3D.new()
+	flash.light_color = Color("#FFF4D8")
+	flash.light_energy = BANG_FLASH_ENERGY
+	flash.omni_range = 6.0
+	get_parent().add_child(flash)
+	flash.global_position = at
+	var fade := flash.create_tween()
+	fade.tween_property(flash, "light_energy", 0.0, 0.25)
+	fade.tween_callback(flash.queue_free)
+	await get_tree().create_timer(BANG_HOLD, true, false, true).timeout
+
+
+## The pages of what happened, told by the narrator (story pages): each line of "tekst" one.
 func _throw_out_pages(rule: Dictionary) -> Array:
-	var who := String(rule.get("wie", "snackbarhouder"))
-	var staff: Dictionary = (Conversations.staff().get("personen", {}) as Dictionary).get(who, {})
-	var speaker := String(staff.get("spreker", Conversations.counter().get("spreker", who.to_upper())))
-	var official := Conversations.official_style_of(who)
 	var pages := []
 	for line: String in rule.get("tekst", []):
-		var page := {"kind": "gesprek", "speaker": speaker, "text": line, "mood": String(rule.get("stemming", "boos")),
-			"voice": "man"}
-		if not official.is_empty():
-			page["official"] = official
-		pages.append(page)
+		pages.append({"kind": "verhaal", "text": line})
 	return pages
 
 

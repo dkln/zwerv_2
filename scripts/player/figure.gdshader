@@ -15,7 +15,8 @@ render_mode cull_disabled;
 
 
 // 1 plain weave (cotton, wool, nylon), 2 twill (denim), 3 knit (rows of stitches),
-// 4 strands (hair, fur)
+// 4 strands (hair, fur), 5 canvas / jute (a coarse basket weave: the threads two by two over
+// and under, each thread uneven in thickness, with a fuzz of loose fibres)
 uniform int pattern = 1;
 // how much the structure lightens and darkens the colour
 uniform float pattern_strength : hint_range(0.0, 0.5) = 0.09;
@@ -69,6 +70,11 @@ float thread_profile(float across) {
 
 // Is the warp (the thread running along y) on top in this cell of the weave?
 bool warp_on_top(vec2 cell) {
+	if (pattern == 5) {
+		// basket weave: pairs of threads over a pair, under a pair
+		vec2 pair = floor(cell * 0.5);
+		return mod(pair.x + pair.y, 2.0) < 1.0;
+	}
 	if (pattern == 2) {
 		// a 2/1 twill: the warp goes over two wefts and under one, shifted a cell per row,
 		// so the floats line up in diagonal ribs
@@ -91,6 +97,16 @@ float height_at(vec2 spot) {
 	}
 	vec2 cell = floor(spot);
 	vec2 inside = fract(spot);
+	if (pattern == 5) {
+		// jute: every thread its own thickness, and loose fibres over it
+		float fuzz = (hash(dot(floor(spot * 7.0), vec2(1.0, 57.0))) - 0.5) * 0.22;
+		if (warp_on_top(cell)) {
+			float thick = 0.7 + 0.3 * hash(cell.x);
+			return clamp(thread_profile((inside.x - 0.5) / thick + 0.5) * (0.75 + 0.25 * sin(inside.y * PI)) + fuzz, 0.0, 1.0);
+		}
+		float thick = 0.7 + 0.3 * hash(cell.y + 500.0);
+		return clamp(thread_profile((inside.y - 0.5) / thick + 0.5) * (0.75 + 0.25 * sin(inside.x * PI)) + fuzz, 0.0, 1.0);
+	}
 	if (warp_on_top(cell)) {
 		// the warp runs up through the cell, arching over the weft under it
 		return thread_profile(inside.x) * (0.7 + 0.3 * sin(inside.y * PI));
@@ -114,7 +130,7 @@ void fragment() {
 	float height = height_at(spot);
 	float relief = (height - 0.6) * pattern_strength * visible;
 	vec3 colour = to_linear(COLOR.rgb) * (1.0 + relief * 2.0);
-	if (pattern == 1 || pattern == 2) {
+	if (pattern == 1 || pattern == 2 || pattern == 5) {
 		vec2 cell = floor(spot);
 		bool warp = warp_on_top(cell);
 		// the weft lighter (or darker) than the warp where it shows

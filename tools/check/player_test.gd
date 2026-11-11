@@ -17,7 +17,7 @@ func _init() -> void:
 	PlayerCharacter.choose(Common.arg(0, "martin"))
 	var scene := Common.instantiate(Common.CITY, false)
 	# without the story (its prologue would pause the game), tested in story_test.gd
-	for node_name in ["DetailNiveau", "Rook", "Grassprieten", "Verhaal"]:
+	for node_name in ["DetailNiveau", "Rook", "Verhaal"]:
 		if scene.has_node(node_name):
 			scene.get_node(node_name).free()
 	scene.get_node("Verkeer").vehicle_count = 0

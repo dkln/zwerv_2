@@ -880,6 +880,18 @@ def gate_paddles_close() -> numpy.ndarray:
     return _gate_swing(closing=True)
 
 
+def smack() -> numpy.ndarray:
+    """The KLAP of being flung out of a door: a heavy boom (a low punch that drops) under a
+    sharp crack (a slap of noise), hard and short, as in a beat-'em-up."""
+    seconds = 0.6
+    times = time_axis(seconds)
+    pitch = 48.0 + 140.0 * numpy.exp(-times / 0.03)
+    boom = numpy.sin(TWO_PI * numpy.cumsum(pitch) / SAMPLE_RATE) * numpy.exp(-times / 0.16)
+    crack = band_noise(len(times), 1200.0, 7000.0, 151) * numpy.exp(-times / 0.018) * 0.9
+    body = band_noise(len(times), 150.0, 900.0, 152) * numpy.exp(-times / 0.06) * 0.5
+    return fade_edges(low_pass(dac(low_pass(numpy.tanh(2.6 * (boom + crack + body)), 7500.0)), 6500.0), 0.001, 0.08)
+
+
 def kick() -> numpy.ndarray:
     """A boot kick (someone thrown out of the door): the swing through the air, then the heavy
     dull thump of the boot on a body, a slap of cloth on top."""
@@ -942,6 +954,7 @@ SOUNDS = {
     "ov_geweigerd": (ov_refused, False),
     "poortje_open": (gate_paddles, False),
     "schop": (kick, False),
+    "klap": (smack, False),
     "poortje_dicht": (gate_paddles_close, False),
 }
 

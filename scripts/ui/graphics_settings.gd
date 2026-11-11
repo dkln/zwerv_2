@@ -12,10 +12,12 @@ extends RefCounted
 
 const SETTINGS_PATH := "user://instellingen.cfg"
 const ANTI_ALIASING := ["UIT", "FXAA", "MSAA 2X", "MSAA 4X", "MSAA 8X", "TAA"]
-## By default sharp: MSAA (FXAA and TAA soften the whole picture a little), at full size.
-const DEFAULT_ANTI_ALIASING := "MSAA 2X"
+## By default the upscaler smooths the edges (MSAA on top would double the edge work).
+const DEFAULT_ANTI_ALIASING := "UIT"
 const RENDER_SCALES := [0.5, 0.67, 0.75, 0.85, 1.0]
-const DEFAULT_RENDER_SCALE := 1.0
+## By default three quarters (44 % fewer pixels for the heavy voxel shader), upscaled sharp
+## by the project's temporal upscaler (MetalFX on a Mac, FSR 2 elsewhere).
+const DEFAULT_RENDER_SCALE := 0.75
 
 
 static func anti_aliasing() -> String:
@@ -72,6 +74,9 @@ static func apply(tree: SceneTree) -> void:
 		viewport.scaling_3d_mode = Viewport.SCALING_3D_MODE_FSR
 	else:
 		viewport.scaling_3d_mode = int(ProjectSettings.get_setting_with_override("rendering/scaling_3d/mode")) as Viewport.Scaling3DMode
+	# the temporal upscalers (FSR 2, MetalFX temporal) do their own TAA: not a second pass
+	if viewport.scaling_3d_mode in [Viewport.SCALING_3D_MODE_FSR2, Viewport.SCALING_3D_MODE_METALFX_TEMPORAL]:
+		viewport.use_taa = false
 
 
 static func _config() -> ConfigFile:

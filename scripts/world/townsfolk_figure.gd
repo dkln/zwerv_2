@@ -393,7 +393,7 @@ static func _build_voxels(figure: PlayerModel.VoxelFigure, figure_look: Dictiona
 	figure.mark("hair", [hair])
 	figure.mark("leather", [shoes])
 	figure.mark("denim", [trousers])
-	figure.mark("nylon", [coat, trim])
+	figure.mark("cloth", [coat, trim])
 	figure.mark("cloth", [figure_look.cap, (figure_look.cap as Color).darkened(0.45)])
 	figure.mark("plastic", [figure_look.helmet])
 	figure.mark("glass", [Color("#20242E")])

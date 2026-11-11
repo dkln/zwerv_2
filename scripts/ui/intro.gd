@@ -37,6 +37,8 @@ const UiStyle = preload("res://scripts/ui/ui_style.gd")
 const GraphicsSettings = preload("res://scripts/ui/graphics_settings.gd")
 
 const MENU_SCENE := "res://scenes/hoofdmenu.tscn"
+## Debug: straight into the game (scripts/debug/quick_start.gd), with `-- --snel`.
+const QUICK_START_SCENE := "res://scenes/snel_starten.tscn"
 ## The music of the intro, its volume (dB), and the seconds it fades out in when the intro
 ## ends or is broken off.
 const MUSIC := "res://assets/audio/muziek/zwervr_intro.ogg"
@@ -167,6 +169,10 @@ const TWINKLE_PACE := Vector2(1.2, 4.5)
 
 
 func _ready() -> void:
+	# debug: `-- --snel` goes straight into the game as Martin (scenes/snel_starten.tscn)
+	if "--snel" in OS.get_cmdline_user_args():
+		get_tree().change_scene_to_file.call_deferred(QUICK_START_SCENE)
+		return
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	var black := ColorRect.new()
 	black.color = Color.BLACK

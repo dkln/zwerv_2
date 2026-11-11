@@ -13,7 +13,7 @@ var _problems: Array[String] = []
 func _init() -> void:
 	Common.watchdog(self, 200)
 	var scene := Common.instantiate(Common.CITY, true)
-	for node_name in ["DetailNiveau", "Rook", "Grassprieten", "Verhaal", "Camera", "Doorkijk"]:
+	for node_name in ["DetailNiveau", "Rook", "Verhaal", "Camera", "Doorkijk"]:
 		if scene.has_node(node_name):
 			scene.get_node(node_name).free()
 	scene.get_node("Verkeer").vehicle_count = 0
