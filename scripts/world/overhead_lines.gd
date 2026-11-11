@@ -327,6 +327,9 @@ static func _between(found: Array, support_distances: Dictionary) -> bool:
 ## ([support key, support key] -> metres).
 func _two_nearest_supports(sources: Array, neighbours: Dictionary, support_distances := {}) -> Dictionary:
 	var found := {}
+	var is_support := {}
+	for source: Vector3i in sources:
+		is_support[source] = true
 	for source: Vector3i in sources:
 		if not neighbours.has(source):
 			continue
@@ -341,7 +344,7 @@ func _two_nearest_supports(sources: Array, neighbours: Dictionary, support_dista
 			var key: Vector3i = frontier[closest_index]
 			frontier.remove_at(closest_index)
 			var metres: float = reached[key]
-			if key != source and sources.has(key):
+			if key != source and is_support.has(key):
 				support_distances[[source, key]] = metres
 			var labels: Array = found.get_or_add(key, [])
 			labels.append([metres, source])
