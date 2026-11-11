@@ -12,7 +12,10 @@ extends Node
 ##   shows where to go on the minimap and the map ("plekken": the nearest "snackbars", one
 ##   "plek" or a list of "plekken" of the map), the later ones are locked (see-through).
 ##   A step is done when its goal ("doel") is met:
-##     geld_verdiend  {"bedrag": 2.0}       found or earned money since the start
+##     geld_verdiend  {"bedrag": 2.0}       money found or earned since the start that is
+##                                            still in the wallet (money_towards_goal: what
+##                                            you spend counts off again, what you started
+##                                            with does not count)
 ##     kopen          {"item": "kroket"}    bought (a snack bar: PlayerController.bought)
 ##     praten_met     {"persoon": "toerist"} talked to (a kind of passer-by from
 ##                                            data/gesprekken/voorbijgangers.json, or "iemand")
@@ -195,7 +198,7 @@ func _goal_met(kind: String, what: Dictionary) -> void:
 func _meets(goal: Dictionary, what: Dictionary) -> bool:
 	match str(goal.get("soort", "")):
 		"geld_verdiend":
-			return float(_player.money_earned) >= float(goal.get("bedrag", 0.0))
+			return money_towards_goal() + 0.001 >= float(goal.get("bedrag", 0.0))
 		"kopen":
 			return str(what.get("item", "")) == str(goal.get("item", ""))
 		"praten_met":
@@ -236,6 +239,18 @@ func _complete(data: Dictionary, step: Dictionary) -> void:
 
 func _start_missions_later(trigger: String) -> void:
 	_start_missions(trigger)
+
+
+## The money that counts for a goal "geld_verdiend": what was found or earned since the
+## start and is still in the wallet. Spent money counts off (the mission and the wallet in
+## the corner never disagree: found € 1,50, spent € 0,50, then both say € 1,00), and the
+## money a character starts with never counts (the found money can be no more than what
+## the player has now, and no more than what was found). The goal allows a tenth of a cent
+## for the sums of coins (ten coins of € 0,20 add up to 1.9999... in floats).
+func money_towards_goal() -> float:
+	if _player == null:
+		return 0.0
+	return maxf(minf(float(_player.money_earned), float(_player.money)), 0.0)
 
 
 func _on_money_changed() -> void:
@@ -388,7 +403,7 @@ func _fill(text: String, data: Dictionary, step: Dictionary) -> String:
 		var goal: Dictionary = step.get("doel", {})
 		var progress := ""
 		if str(goal.get("soort", "")) == "geld_verdiend" and _player:
-			progress = _euros(minf(float(_player.money_earned), float(goal.get("bedrag", 0.0))))
+			progress = _euros(minf(money_towards_goal(), float(goal.get("bedrag", 0.0))))
 		text = text.replace("{voortgang}", progress)
 	return text
 

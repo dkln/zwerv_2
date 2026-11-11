@@ -51,7 +51,7 @@ Soorten **doel**:
 
 | soort | velden | klaar als |
 |---|---|---|
-| `geld_verdiend` | `bedrag` | je zoveel geld gevonden of gekregen hebt |
+| `geld_verdiend` | `bedrag` | je zoveel gevonden of gekregen geld nog op zak hebt (wat je uitgeeft telt weer af, je startgeld telt niet mee; hetzelfde bedrag als in je portemonnee) |
 | `kopen` | `item` | je het gekocht hebt (een item uit `scripts/player/items.gd`) |
 | `praten_met` | `persoon` | je met zo iemand praat (een `id` uit de gesprekken, of `"iemand"`) |
 | `naar_plek` | `plek`, `straal` | je binnen `straal` meter van die plek bent |

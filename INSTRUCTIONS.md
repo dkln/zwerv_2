@@ -140,7 +140,8 @@ Verhaal, missies en kleingeld
 - Verhaal (node `Verhaal`, `scripts/story/story.gd`): na het wakker worden de proloog (waar je
   bent, je achtergrondverhaal uit het archetype, twee gedachten bij het wakker worden), dan
   missie 1: € 2 kleingeld bemachtigen voor een kroket bij Jan Blammage. Wat je bij de start
-  al hebt telt niet mee (`money_earned`). Bij € 2 een gedachte en de stap is afgevinkt; de
+  al hebt telt niet mee, en wat je uitgeeft telt weer af: de missie telt het gevonden geld dat
+  je nog op zak hebt (`Story.money_towards_goal`), dus hetzelfde bedrag als je portemonnee. Bij € 2 een gedachte en de stap is afgevinkt; de
   kroket kopen is de volgende stap: die staat op slot tot de € 2 er zijn (doorschijnend) en wijst
   dan naar de drie dichtstbijzijnde Jan Blammages (de snackbars met het bord `naam_snackbar_2`,
   "JAN BLAMMAGE", en een grote puntzak friet `props/terras/friet_puntzak` op de stoep) op het
@@ -154,7 +155,8 @@ Verhaal, missies en kleingeld
 - Kleingeld (node `Kleingeld`, `scripts/world/loose_change.gd`): 20 munten (10, 20, 50 cent,
   soms een euro) op pleinen en stoepen tot 110 m van de start, drie dichtbij. Eroverheen lopen
   raapt ze op (`add_money`, geluid "munt", het bedrag stijgt op).
-- Test: `tools/check/story_test.gd`.
+- Test: `tools/check/story_test.gd`; portemonnee en geldmissie (snel, zonder de stad):
+  `tools/check/wallet_test.gd`.
 - Statbalken: verandert een stat in één keer met minstens 1,5 punt (aanrijding, honger die
   bijt, eten), dan trilt de rij van die balk kort en licht op (wit bij erbij, rood bij eraf;
   `STAT_SHAKE_*` in hud.gd). Het langzame leeglopen en bijvullen trilt niet.
