@@ -46,7 +46,12 @@ const GRAB_SECONDS := 0.9
 const LIFT := 0.35
 const HOLD_AHEAD := 0.5
 const CARRY_SPEED := 1.9
-const CAMERA_OFFSET := Vector3(6.5, 7.5, -10.5)
+## The camera: from the side (the action runs along x, the camera stands before it, low and
+## close), following the middle between the two along x; how fast it follows.
+const CAMERA_OFFSET := Vector3(0.6, 1.55, -4.6)
+const CAMERA_LOOK := Vector3(0.0, 1.0, 0.0)
+const CAMERA_FOV := 42.0
+const CAMERA_FOLLOW := 4.0
 
 var _bouncer: InteriorPerson
 var _stand_in: Node3D               # the player's figure (PlayerModel)
@@ -58,6 +63,7 @@ var _walk_phase := 0.0
 var _way: Array = []
 var _shouts: Array = []
 var _hud: Node
+var _focus := Vector3.ZERO           # what the camera follows (between the two)
 
 
 ## Builds the stage for `kind` and starts: `rules` the place's entry of uitzetten.json (its
@@ -89,10 +95,10 @@ func start(kind: String, rules: Dictionary, player: Node3D, hud: Node) -> void:
 	_bouncer.position = COMES_FROM
 	_camera = Camera3D.new()
 	_camera.name = "Camera"
-	_camera.fov = 36.0
+	_camera.fov = CAMERA_FOV
 	add_child(_camera)
-	_camera.position = PLAYER_AT + CAMERA_OFFSET
-	_camera.look_at(global_transform * (PLAYER_AT + Vector3(-1.5, 0.9, -0.5)), Vector3.UP)
+	_focus = (PLAYER_AT + COMES_FROM) * 0.5
+	_aim_camera(1.0)
 	_camera_before = get_viewport().get_camera_3d()
 	_camera.make_current()
 	_phase = "naar"
@@ -113,6 +119,9 @@ func _process(delta: float) -> void:
 	if _phase == "" or _phase == "klaar" or _bouncer == null:
 		return
 	_clock += delta
+	# the camera along with the two of them
+	_focus = _focus.lerp((_bouncer.position + _stand_in.position) * 0.5, 1.0 - exp(-CAMERA_FOLLOW * delta))
+	_aim_camera(1.0)
 	match _phase:
 		"naar":
 			# up to the player, beside them on their right
@@ -145,6 +154,13 @@ func _process(delta: float) -> void:
 			_stand_in.rotation.y = _bouncer.rotation.y
 			_reach_for_collar()
 			_struggle(1.0)
+
+
+## The camera before the action at `_focus`, from the side, close.
+func _aim_camera(_weight: float) -> void:
+	var at := Vector3(_focus.x, 0.0, _focus.z)
+	_camera.position = at + CAMERA_OFFSET
+	_camera.look_at(global_transform * (at + CAMERA_LOOK), Vector3.UP)
 
 
 ## A step towards `target` at `speed`, walking; true once there.

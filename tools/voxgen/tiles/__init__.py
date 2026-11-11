@@ -22,7 +22,7 @@ Modules per category (later ones build on the helpers of earlier ones):
   spring-roll and ice-cream carts, market stalls)
 - interiors: interior (category binnen: the rooms you walk into, scenes/binnen/; the snack bar
   and Den Haag Centraal), interior_supermarket (DERREK and ALFRED STEYHN), interior_city_hall
-  (the city hall on the Spui, five floors)
+  (the city hall on the Spui, five floors), interior_lift (the lift cabin, for any building)
 
 The import order below is the registration order and must stay as it is.
 """
@@ -52,3 +52,4 @@ from . import street_carts  # noqa: F401
 from . import interior  # noqa: F401
 from . import interior_supermarket  # noqa: F401
 from . import interior_city_hall  # noqa: F401
+from . import interior_lift  # noqa: F401
