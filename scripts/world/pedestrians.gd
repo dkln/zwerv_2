@@ -28,6 +28,15 @@ extends Node3D
 ## At an intersection with pedestrian lights (Verkeerslichten, walk_light) they wait at the
 ## kerb for green without claiming the zebra (the traffic with green drives on) and claim it
 ## once they cross (a vehicle turning in then waits for them).
+## Den Haag Centraal (the station's ways in, Interiors.ways_in of kind STATION_KIND): near it
+## people come out of its doors and go into them, most in the rush hours (the hour's
+## "station" share, data/drukte.json). Within STATION_REACH metres of a door a newcomer comes
+## out of a door (that share times STATION_OUT_SHARE of them, seen or not: they come from the
+## station), and someone within STATION_PULL_STEPS cells' walk of a door now and then sets off
+## for it (STATION_PULL_PER_SECOND times that share), walks there cell by cell (each step one
+## nearer, _station_steps) and is gone through the door (into_station): freed, not kept
+## resting (someone else comes instead). A way between two cells found blocked on the way
+## there (a fence, a bike rack: station_way_blocked) is left out of the walk from then on.
 
 const PedestrianScript = preload("res://scripts/world/pedestrian.gd")
 const Crowd = preload("res://scripts/world/crowd.gd")
@@ -48,6 +57,16 @@ const WALK_GROUND := ["stoep/", "plein/"]
 @export var renew_beyond := 30.0
 @export var changes_per_second := 3
 @export var interiors_path := NodePath("../Binnenruimtes")
+## Den Haag Centraal: see the top.
+const STATION_KIND := "centraal"
+const STATION_REACH := 140.0
+const STATION_OUT_SHARE := 0.75
+const STATION_PULL_STEPS := 25
+const STATION_PULL_PER_SECOND := 0.03
+## Only who is at least this many cells from a door sets off for it (who just came out walks on first).
+const STATION_PULL_FROM_STEPS := 3
+## How far off a door (m) the nearest walkable cell may lie to count as its cell.
+const STATION_DOOR_CELL_REACH := 6.0
 ## Without a camera everything counts as seen (nothing is sent off for being old or far);
 ## true lets a tool test the coming and going without one.
 @export var unseen_without_camera := false
@@ -83,6 +102,14 @@ var _return_clock := 0.0
 var _interiors: Node
 var _ring: Array[Vector3i] = []            # walkable cells in the ring round the player (_find_ring)
 var _ring_around := Vector3.INF
+var _station_doors: Array[Vector3] = []    # the station's door spots (Interiors), on the street
+var _station_door_cells: Array[Vector3i] = []
+var _station_steps := {}                   # walkable cell -> cells to walk to the nearest door
+var _station_blocked := {}                 # [from cell, to cell] -> true: no way through there
+var _station_looks_left := 5               # tries left to find the doors (Interiors sets them up)
+## How many came out of the station and went into it so far (for the tests).
+var came_out_of_station := 0
+var went_into_station := 0
 
 
 func _ready() -> void:
@@ -230,6 +257,7 @@ func _keep_round_player() -> void:
 				and _unseen(person.global_position):
 			_go_or_renew(person, wanted)
 			changes_left -= 1
+	_send_to_station(player_spot)
 	var failures := 0
 	while _people.size() < wanted and changes_left > 0 and failures < 8:
 		if _bring_someone():
@@ -249,7 +277,11 @@ func _go_or_renew(person: Pedestrian, wanted: int) -> void:
 	if _people.size() > wanted:
 		_rest(person)
 		return
-	_dress_for_now(person, true)
+	var door_cell := _station_door_cell()
+	_dress_for_now(person, true, cell_middle(door_cell) if door_cell != RoadNetwork.NONE else Vector3.INF)
+	if door_cell != RoadNetwork.NONE and person.restart_at(door_cell):
+		came_out_of_station += 1   # someone else, out of the station
+		return
 	if not bring_back(person):
 		_rest(person)
 
@@ -263,7 +295,10 @@ func start_again(person: Pedestrian) -> void:
 ## Someone more round the player: one who rested, or a new one (up to `most`), out of sight in
 ## the ring round the player; false if there is no spot.
 func _bring_someone() -> bool:
-	var cell := _ring_cell()
+	var cell := _station_door_cell()
+	var from_station := cell != RoadNetwork.NONE
+	if not from_station:
+		cell = _ring_cell()
 	if cell == RoadNetwork.NONE:
 		return false
 	if not _resting.is_empty():
@@ -271,13 +306,18 @@ func _bring_someone() -> bool:
 		_dress_for_now(person, true, cell_middle(cell))
 		add_child(person)
 		_people.append(person)
-		if not person.restart_at(cell) and not bring_back(person):
-			_rest(person)
-			return false
+		if not person.restart_at(cell):
+			if not bring_back(person):
+				_rest(person)
+				return false
+		elif from_station:
+			came_out_of_station += 1
 		return true
 	if _people.size() + _resting.size() >= most:
 		return false
 	_add_person(cell)
+	if from_station:
+		came_out_of_station += 1
 	return true
 
 
@@ -517,3 +557,126 @@ func bring_back(person: Pedestrian) -> bool:
 		if person.restart_at(cell):
 			return true
 	return false
+
+
+# ------------------------------------------------------------------ Den Haag Centraal
+
+## The station's doors and the walk to them (from Interiors, once it has them).
+func _find_station() -> void:
+	if not _station_doors.is_empty() or _station_looks_left <= 0 or _interiors == null or not _interiors.has_method("ways_in"):
+		return
+	_station_looks_left -= 1
+	for way_in: Dictionary in _interiors.ways_in():
+		if way_in.get("kind", "") != STATION_KIND:
+			continue
+		var door: Vector3 = way_in.door
+		var nearest := RoadNetwork.NONE
+		var nearest_distance := STATION_DOOR_CELL_REACH
+		for cell in _walkable_cells:
+			var distance := cell_middle(cell).distance_to(door)
+			if distance < nearest_distance:
+				nearest = cell
+				nearest_distance = distance
+		if nearest != RoadNetwork.NONE:
+			_station_doors.append(door)
+			_station_door_cells.append(nearest)
+	_walk_to_station()
+
+
+## How many cells' walk from each walkable cell to the nearest door (breadth first, over the
+## links not found blocked).
+func _walk_to_station() -> void:
+	_station_steps.clear()
+	var frontier: Array[Vector3i] = []
+	for cell in _station_door_cells:
+		if not _station_steps.has(cell):
+			_station_steps[cell] = 0
+			frontier.append(cell)
+	while not frontier.is_empty():
+		var next_frontier: Array[Vector3i] = []
+		for cell in frontier:
+			var steps: int = _station_steps[cell] + 1
+			if steps > STATION_PULL_STEPS * 2:
+				continue
+			for way: Vector3i in links(cell):
+				# walked backwards from the doors: someone goes from `way` to `cell`
+				if not _station_steps.has(way) and not _station_blocked.has([way, cell]):
+					_station_steps[way] = steps
+					next_frontier.append(way)
+		frontier = next_frontier
+
+
+## The hour's share of the station's coming and going (0..1; the rush hours most).
+func station_share() -> float:
+	return clampf(Crowd.station_share(Crowd.hour_of(get_parent())), 0.0, 1.0)
+
+
+## True if the player is near the station (within STATION_REACH metres of a door).
+func _near_station(spot: Vector3) -> bool:
+	for door in _station_doors:
+		if door.distance_to(spot) <= STATION_REACH:
+			return true
+	return false
+
+
+## Cells to walk from `cell` to the nearest station door (0 at a door), -1 out of reach.
+func station_steps(cell: Vector3i) -> int:
+	return int(_station_steps.get(cell, -1))
+
+
+## The station door nearest `spot` (where someone going in disappears).
+func station_door_near(spot: Vector3) -> Vector3:
+	var nearest := spot
+	var nearest_distance := INF
+	for door in _station_doors:
+		if door.distance_to(spot) < nearest_distance:
+			nearest = door
+			nearest_distance = door.distance_to(spot)
+	return nearest
+
+
+## The cell of a station door for a newcomer to come out of, when it does (near the station,
+## by the hour's share); NONE otherwise.
+func _station_door_cell() -> Vector3i:
+	_find_station()
+	if _station_door_cells.is_empty() or _player == null or not _near_station(_player.global_position):
+		return RoadNetwork.NONE
+	if _random.randf() >= station_share() * STATION_OUT_SHARE:
+		return RoadNetwork.NONE
+	return _station_door_cells[_random.randi() % _station_door_cells.size()]
+
+
+## Now and then someone near a door sets off into the station (see the top).
+func _send_to_station(player_spot: Vector3) -> void:
+	_find_station()
+	if _station_steps.is_empty() or not _near_station(player_spot):
+		return
+	var chance := STATION_PULL_PER_SECOND * station_share()
+	for person in _people:
+		# not the one the player stands with (talking, perhaps), nor staff on duty
+		if person.heading_to_station or person._ragdoll or person.role != "" or person.global_position.distance_to(player_spot) < 4.0:
+			continue
+		var steps := station_steps(person.cell)
+		if steps >= STATION_PULL_FROM_STEPS and steps <= STATION_PULL_STEPS and _random.randf() < chance:
+			person.heading_to_station = true
+
+
+## No way through from `from` to `to` (someone heading for the station could not go there):
+## the walk to the doors goes round it from now on.
+func station_way_blocked(from: Vector3i, to: Vector3i) -> void:
+	if _station_blocked.has([from, to]):
+		return
+	_station_blocked[[from, to]] = true
+	_walk_to_station()
+
+
+## `person` went in through a station door: gone for good (freed; someone else comes instead).
+func into_station(person: Pedestrian) -> void:
+	person.heading_to_station = false
+	if not person in _people:
+		return
+	went_into_station += 1
+	_people.erase(person)
+	_leaves_at.erase(person)
+	Pedestrians.claim_zebra(person, [], false)
+	person.queue_free()

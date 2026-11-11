@@ -62,12 +62,13 @@ func _show_map(packed: PackedScene) -> void:
 		_map_camera.current = true
 		_camera_start = _map_camera.transform
 
-	# time flies in the menu: the whole day in about a minute, starting at sunset
+	# time flies in the menu: the whole day in about a minute, starting at sunset; the light
+	# lingers there too, the dark goes by quicker (MENU_DAYLIGHT_SLOWDOWN, MENU_NIGHT_SPEEDUP)
 	_day_cycle = map.get_node_or_null("Dagcyclus")
 	if _day_cycle:
 		_day_cycle.set("speed", MENU_HOURS_PER_SECOND)
-		_day_cycle.set("daylight_slowdown", 1.0)   # the menu shows the whole day evenly
-		_day_cycle.set("night_speedup", 1.0)
+		_day_cycle.set("daylight_slowdown", MENU_DAYLIGHT_SLOWDOWN)
+		_day_cycle.set("night_speedup", MENU_NIGHT_SPEEDUP)
 		_day_cycle.call("set_time", MENU_START_HOUR)
 	_period = float(map.get_meta("periode", 0.0))
 	if _period > 0.0:
@@ -725,8 +726,11 @@ var _sun_disc: Node3D
 var _day_cycle: Node
 
 
-## The day in the menu: hours per second (0.4: a day in a minute) and the hour it starts.
-const MENU_HOURS_PER_SECOND := 0.4
+## The day in the menu: hours per second (before the two factors below) and the hour it starts.
+const MENU_HOURS_PER_SECOND := 0.6
+## In the menu as well the light goes slower than the dark: ~1 minute light, 12 s dark.
+const MENU_DAYLIGHT_SLOWDOWN := 2.5
+const MENU_NIGHT_SPEEDUP := 1.5
 
 
 const MENU_START_HOUR := 21.5

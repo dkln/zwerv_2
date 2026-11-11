@@ -12,12 +12,11 @@ extends RefCounted
 
 const SETTINGS_PATH := "user://instellingen.cfg"
 const ANTI_ALIASING := ["UIT", "FXAA", "MSAA 2X", "MSAA 4X", "MSAA 8X", "TAA"]
-## By default the upscaler smooths the edges (MSAA on top would double the edge work).
-const DEFAULT_ANTI_ALIASING := "UIT"
+## By default sharp: MSAA (FXAA and TAA soften the whole picture a little), at full size.
+const DEFAULT_ANTI_ALIASING := "MSAA 2X"
 const RENDER_SCALES := [0.5, 0.67, 0.75, 0.85, 1.0]
-## By default three quarters (44 % fewer pixels for the heavy voxel shader), upscaled sharp
-## by the project's temporal upscaler (MetalFX on a Mac, FSR 2 elsewhere).
-const DEFAULT_RENDER_SCALE := 0.75
+## By default full size: below it the upscalers leave the fine voxel pattern grainy.
+const DEFAULT_RENDER_SCALE := 1.0
 
 
 static func anti_aliasing() -> String:

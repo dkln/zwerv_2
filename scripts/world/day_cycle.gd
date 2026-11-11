@@ -22,13 +22,13 @@ extends Node
 
 const IsoView = preload("res://scripts/camera/iso_camera.gd")
 
-@export_range(0.0, 24.0) var time_of_day := 13.0       ## hour of the day
+@export_range(0.0, 24.0) var time_of_day := 6.0        ## hour of the day (the game starts at six in the morning; the main menu sets its own)
 ## Hours per second (0 = standing still), before the two factors below.
 @export var speed := 0.08
 ## The light lasts long: by day the clock runs `daylight_slowdown` times slower, in the dark
 ## `night_speedup` times faster, blended by how dark it is (`night`). At speed 0.08 that is
-## about 8 minutes of light and 1 minute of dusk and dark: ~9 minutes a day (it was 5, of which 3.3 light).
-@export var daylight_slowdown := 3.0
+## about 11 minutes of light (6 to 21 h) and 1.5 minutes of dusk and dark: ~12.5 minutes a day.
+@export var daylight_slowdown := 4.0
 @export var night_speedup := 1.6
 ## Hours the clock must have moved before the light is set again: the sky is baked anew on
 ## every change of its colours, so not every frame (0.02 h = four times a second at 0.08).

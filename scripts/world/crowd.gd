@@ -83,6 +83,12 @@ static func traffic_share(hour: float, area: String) -> float:
 	return _hour_value(hour, "verkeer") * float(_area(area).get("verkeer", 1.0))
 
 
+## How much comes and goes through Den Haag Centraal at `hour` (0..1, the hour's "station":
+## the rush hours most; Pedestrians, people coming out of its doors and going in).
+static func station_share(hour: float) -> float:
+	return _hour_value(hour, "station")
+
+
 ## Only the hour's share of the traffic (for the emergency services, everywhere the same).
 static func traffic_hour_share(hour: float) -> float:
 	return _hour_value(hour, "verkeer")

@@ -1,12 +1,13 @@
 extends Control
 ## The places a quest sends the player to (GameHud.quest_targets: the tracked quest's step
 ## under way), on the minimap of the HUD: an amber diamond with an ink rim where each one is;
-## one off the minimap sits on its edge as an arrow pointing the way. The big map of the game
+## one off the minimap sits on its edge as an arrow with a tail pointing the way. The big map of the game
 ## menu draws the same diamond (draw_mark).
 ##   marks.points = [Vector2(120, 40)]   # in this control's pixels
 ## `colour` sets another colour (the exits of an interior on the minimap).
 
 const UiStyle = preload("res://scripts/ui/ui_style.gd")
+const PlayerArrow = preload("res://scripts/ui/widgets/player_arrow.gd")
 const COLOUR := Color("#FFB830")
 ## Half the size of the diamond, and how far from the edge an arrow for a far place sits (px).
 const MARK_SIZE := 6.0
@@ -58,9 +59,6 @@ static func draw_mark(canvas: CanvasItem, at: Vector2, half: float, pulse := 1.0
 
 
 func _draw_arrow(at: Vector2, way: Vector2, pulse: float) -> void:
-	var across := Vector2(-way.y, way.x)
-	var tip := at + way * 6.0
-	var back := at - way * 5.0
 	var lit := colour.lerp(Color.WHITE, 0.35 * pulse)
-	draw_colored_polygon(PackedVector2Array([tip + way * 3.0, back + across * 9.0 - way * 2.0, back - across * 9.0 - way * 2.0]), UiStyle.INK)
-	draw_colored_polygon(PackedVector2Array([tip, back + across * 6.0, back - across * 6.0]), lit)
+	draw_colored_polygon(PlayerArrow.shape(at + way * 9.0, way, 19.0, 12.0, 9.0, 4.0), UiStyle.INK)
+	draw_colored_polygon(PlayerArrow.shape(at + way * 6.0, way, 14.0, 8.0, 6.0, 2.0), lit)

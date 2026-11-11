@@ -18,6 +18,9 @@ func _init() -> void:
 		if scene.has_node(node_name):
 			scene.get_node(node_name).free()
 	scene.get_node("Verkeer").vehicle_count = 0
+	# by day (the game starts at six, when few are out and hardly anyone rides an aid)
+	scene.get_node("Dagcyclus").speed = 0.0
+	scene.get_node("Dagcyclus").time_of_day = 13.0
 	get_root().add_child(scene)
 	var walkers: Pedestrians = scene.get_node("Voetgangers")
 	for frame_index in 300:

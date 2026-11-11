@@ -280,7 +280,12 @@ Wie er `renew_after` (45 tot 110 s) rondloopt, buiten beeld is en verder dan `re
 (30 m) van de speler, gaat ook: dan komt er iemand anders (of niemand, als er minder nodig zijn).
 Wie niet nodig is rust uit de boom (`_resting`) tot er weer meer moeten. Per seconde hooguit
 `changes_per_second` (3) wissels, na een sprong van de speler alles; in een binnenruimte staat
-het stil. Wie er komt is een soort mens van dat uur en van de wijk waar hij verschijnt
+het stil. Bij Den Haag Centraal (binnen `STATION_REACH`, 140 m van een stationsdeur) komen
+nieuwkomers en vernieuwden uit de deuren (het aandeel `station` van het uur in `drukte.json`,
+in de spits het meest), en gaan mensen binnen `STATION_PULL_STEPS` (25) cellen lopen nu en
+dan naar een deur, cel voor cel dichterbij; bij de deur verdwijnen ze echt (vrijgegeven, niet
+in `_resting`). Een doorgang die ze niet blijken te kunnen nemen (hek, fietsenrek) slaat de
+route daarna over. Test: `tools/check/station_flow_test.gd`. Wie er komt is een soort mens van dat uur en van de wijk waar hij verschijnt
 (`Crowd.person_kind`): forenzen, kantoormensen en zakenmensen (in pak, met aktetas) in de spits,
 scholieren na school, winkelend publiek, ouderen, toeristen (rolkoffer, rugzak) en wandelaars
 overdag, werklui in geel in de Binckhorst, uitgaanspubliek 's avonds en nachtbrakers 's nachts;
@@ -1517,7 +1522,7 @@ Prestaties en uiterlijk
   komt uit de shader (`voxel_noise`). Gras en boomkruinen hebben hun detail in de
   kleur van de voxels, niet in uitstekende voxels.
 - Schaduwen: vlakke tiles (lager dan 0,7 m) en kleine details werpen geen
-  schaduw; de zon gebruikt 4 schaduwsplits (4096 px). Bij het samenvoegen werpen
+  schaduw; de zon gebruikt 2 schaduwsplits (2048 px; SSAO laag en op halve resolutie: het beeld zelf blijft op volle resolutie). Bij het samenvoegen werpen
   ook de lage driehoeken (minder dan 0,7 m boven de onderkant van hun tile, op de
   onderste rij cellen) van schaduwwerpende tiles geen schaduw: een sloot of kade
   werpt alleen nog de schaduw van zijn riet of muur. De schaduwpass tekent de
@@ -1540,7 +1545,7 @@ Prestaties en uiterlijk
   Je bewerkt gewoon de GridMaps; botsingen blijven daar ook. Tiles met een vlag
   blijven losse meshes (de vlag-shader rekent in lokale coördinaten).
 - `Dagcyclus` (`scripts/world/day_cycle.gd`): basis voor dag en nacht (`time_of_day`,
-  start 13:00; `speed` 0,08 uur per seconde: een dag duurt 5 minuten, 0 = stilstaan; een
+  start 6:00 (het hoofdmenu heeft zijn eigen tijd); `speed` 0,08 uur per seconde, overdag `daylight_slowdown` 4× langzamer en in het donker `night_speedup` 1,6× sneller: ~11 minuten licht en ~1,5 minuut schemer en nacht, 0 = stilstaan; in het menu ~1 minuut licht en 12 s donker; een
   Nederlandse zomerdag: zon op `SUNRISE` 5:30, onder `SUNSET` 22:00, blauw uur tot ruim tien,
   pas rond half twaalf echt donker). De tijd
   loopt en zon, vullicht, omgevingslicht, lucht en de shader-global `zwervr_night` (verlichte

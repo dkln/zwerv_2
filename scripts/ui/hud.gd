@@ -58,8 +58,8 @@ const CITY_MUSIC := "spel_loop.ogg"
 ## Inside a building: how fast its music takes over; how much softer the music is under a jingle.
 const INDOOR_MUSIC_FADE := 1.2
 const JINGLE_DUCK_DB := 8.0
-const CITY_MUSIC_VOLUME_DB := -15.0
-const CITY_MUSIC_PAUSED_DB := -22.0
+const CITY_MUSIC_VOLUME_DB := -13.5
+const CITY_MUSIC_PAUSED_DB := -20.5
 ## The city's own loop (CITY_MUSIC) plays this much softer still: it runs quietly in the
 ## background, under the sounds of the town; music of a building (the merchant's) does not.
 const CITY_LOOP_SOFTER_DB := 3.0

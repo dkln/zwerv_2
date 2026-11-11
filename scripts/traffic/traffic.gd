@@ -91,7 +91,7 @@ const NEAR_REFRESH := 25.0
 
 ## How many vehicles there are at a share of 1.0 (Crowd.traffic_share), and the most.
 @export var vehicle_count := 50
-@export var most_vehicles := 70
+@export var most_vehicles := 90   # the rush hours round Centraal (1.6 x 1.1 x 50)
 ## How many of the SERVICES at a share of 1.0, and the fewest.
 @export var services_count := 7
 @export var fewest_services := 2

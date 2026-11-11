@@ -218,7 +218,7 @@ een groter getal komt vaker voor, `0` nooit; een soort die niet genoemd wordt te
 
 | deel | wat |
 |---|---|
-| `uren` | momenten van de dag, op volgorde van `uur` (0 tot 24). Elk: `voetgangers` en `verkeer` (hoe druk: 1,0 = normaal, 0,1 = bijna niemand), `mensen` (welke soorten mensen er dan zijn) en `voertuigen` (welke voertuigsoorten). Tussen twee momenten loopt het geleidelijk over. |
+| `uren` | momenten van de dag, op volgorde van `uur` (0 tot 24). Elk: `voetgangers` en `verkeer` (hoe druk: 1,0 = normaal, 0,1 = bijna niemand; het verkeer gaat in de spits tot 1,6), `station` (hoeveel mensen er bij Den Haag Centraal uit de deuren komen en erin verdwijnen: 1,0 = de spits, 0 = niemand), `mensen` (welke soorten mensen er dan zijn) en `voertuigen` (welke voertuigsoorten). Tussen twee momenten loopt het geleidelijk over. |
 | `gebieden` | per wijk (de namen die de HUD linksonder toont, bv. `"Centraal Station"`, `"Binckhorst"`, `"A12"`): `voetgangers` en `verkeer` keer zoveel als het uur zegt, en `mensen` en `voertuigen` als extra gewichten. Een wijk die er niet in staat telt als 1. |
 | `voertuig_basis` | hoe vaak elke voertuigsoort voorkomt voor uur en wijk erbij komen. |
 | `mensen` | de soorten mensen (zie hieronder). |

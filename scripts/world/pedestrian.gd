@@ -135,6 +135,13 @@ var crowd_kind := ""
 ## Someone on duty on the street ("agent", "handhaver": their crowd_kind), talked to as staff
 ## (Conversations.is_official, data/gesprekken/personeel.json); "" for everyone else.
 var role := ""
+## On its way into Den Haag Centraal (Pedestrians._send_to_station): each step a cell nearer a
+## door, at the door it is gone (Pedestrians.into_station).
+var heading_to_station := false
+var _entering_station := false
+var _station_misses := 0            # choices in a row that got it no nearer the station
+## After this many choices in a row without a way nearer the station it gives up going there.
+const STATION_GIVE_UP := 6
 var _carried_item: Node3D
 var _carried_pose := false
 
@@ -290,6 +297,9 @@ func restart_at(new_cell: Vector3i) -> bool:
 	Pedestrians.claim_zebra(self, [], false)
 	_crossing.clear()
 	_on_zebra = false
+	heading_to_station = false
+	_entering_station = false
+	_station_misses = 0
 	cell = new_cell
 	_came_from = new_cell
 	_next_cell = new_cell
@@ -519,6 +529,13 @@ func _near_player(metres: float) -> bool:
 
 ## Reached its spot: on to the next cell (or a pause first).
 func _arrive() -> void:
+	if _entering_station:
+		_entering_station = false
+		town.into_station(self)
+		return
+	if heading_to_station:
+		_choose_next()
+		return
 	if not town.is_zebra(cell) and _random.randf() < PAUSE_CHANCE:
 		_pause = _random.randf_range(0.6, PAUSE_LONGEST)
 	_choose_next()
@@ -532,6 +549,26 @@ func _choose_next() -> void:
 	var order: Array[Vector3i] = []
 	if town.is_zebra(cell) and _crossing_side != Vector3i.ZERO and (cell + _crossing_side) in ways:
 		order.append(cell + _crossing_side)
+	if heading_to_station and order.is_empty():
+		var steps_here := town.station_steps(cell)
+		if steps_here == 0:
+			# at the door: in through it
+			_target = town.station_door_near(global_position)
+			_next_cell = cell
+			_entering_station = true
+			return
+		# a cell nearer the door (the way there); one it cannot get to is blocked for all, and
+		# who keeps getting nowhere gives up (STATION_GIVE_UP)
+		for way: Vector3i in ways:
+			var steps := town.station_steps(way)
+			if steps >= 0 and steps < steps_here:
+				if _head_for(way):
+					_station_misses = 0
+					return
+				town.station_way_blocked(cell, way)
+		_station_misses += 1
+		if _station_misses > STATION_GIVE_UP:
+			heading_to_station = false
 	var straight := cell + (cell - _came_from)
 	if straight != cell and straight in ways and _random.randf() < STRAIGHT_CHANCE:
 		order.append(straight)
@@ -681,6 +718,11 @@ func _turn_on_the_spot(heading: float, delta: float) -> void:
 ## Blocked too long: turns round to a spot back where it came from (or another one in its cell).
 func _go_elsewhere() -> void:
 	if _on_zebra:
+		return
+	if _entering_station:
+		# held up right at the door: in through it all the same
+		_entering_station = false
+		town.into_station(self)
 		return
 	Pedestrians.claim_zebra(self, [], false)
 	_crossing.clear()

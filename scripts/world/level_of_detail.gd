@@ -290,7 +290,9 @@ func screen_is_up() -> bool:
 
 
 func _close_screen_when_done() -> void:
-	if _busy == 0 and _holds == 0 and _screen:
+	# still waiting for the swipe: the merging has not even started (setup() follows), so
+	# a release by someone else (Interiors) must not close it in between
+	if _busy == 0 and _holds == 0 and not _waiting_for_swipe and _screen:
 		_screen.fade_out()
 		_screen = null
 
