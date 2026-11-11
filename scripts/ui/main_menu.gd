@@ -578,7 +578,7 @@ func _choose_in_panel(index: int) -> void:
 static func _read_settings() -> Dictionary:
 	var config := ConfigFile.new()
 	config.load(SETTINGS_PATH)
-	return {"crt": config.get_value("beeld", "crt", true), "scanlines": config.get_value("beeld", "scanlijnen", true)}
+	return {"crt": config.get_value("beeld", "crt", true), "scanlines": config.get_value("beeld", "scanlijnen", false)}
 
 
 static func _write_settings(settings: Dictionary) -> void:

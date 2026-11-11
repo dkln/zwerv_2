@@ -625,11 +625,10 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
   het logo ZWERVR in grote amberkleurige omlijnde letters dat even blijft staan (`LOGO_HOLD`) en dan langzaam de diepte in krimpt, dan
   het verhaal (`STORY`) dat in amber schuin wegrolt de verte in (op de muziek, `CRAWL_CUES`; de tekst
   in een eigen SubViewport, door een shader in perspectief gelegd), dan het hoofdmenu
-  (al op de achtergrond geladen): het beeld fadet in 2,4 s naar zwart met een trackingstoring
-  (`FADE_TO_MENU`) en het menu komt daar in 3,5 s uit omhoog (`UP_FROM_BLACK`), terwijl de
+  (al op de achtergrond geladen), onder de swipe (`SwipeTransition`), terwijl de
   muziek van intro naar menu overvloeit. Alleen de spatiebalk breekt hem af en gaat naar het
   hoofdmenu (andere toetsen, zoals de volumetoetsen, en de muis doen niets). Rechtsonder staan, zoals in het hoofdmenu en het karakterscherm, de toetsen
-  op één regel: "[SPATIE] OVERSLAAN  [ENTER] SNELLER". De sterren fonkelen. Muziek: `assets/audio/muziek/zwervr_intro.ogg` (128 BPM, 64 maten van 1,875 s, 120 s, geen lus); de intro loopt op die
+  op één regel: "[SPATIE] OVERSLAAN  [ENTER] SNELLER". De sterren fonkelen. Muziek: `assets/audio/muziek/zwervr_intro.ogg` (128 BPM, 64 maten van 1,875 s, 120 s, geen lus; de huidige muziek komt uit tools/muziek/, zie hieronder); de intro loopt op die
   muziek (de klok is waar de muziek is): het logo fadet in van 5 tot 6,0 s, heel groot, bijna buiten
   beeld, en krimpt langzaam naar zijn normale formaat tot de drop (maat 9, 15,0 s):
   daar wijkt het in 2,5 s de diepte in en fadet het daarbij uit (`LOGO_SECONDS`), met een
@@ -687,7 +686,7 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
 - Hoofdmenu (`scenes/hoofdmenu.tscn`, `scripts/ui/main_menu.gd`), naar het ontwerp
   "Titelscherm" in de HUD-stijl: titel ZWERVR, menu (VERDERGAAN en LADEN uitgegrijsd tot er
   opslag is; NIEUW SPEL toont "LADEN…" en opent het karakterscherm (hieronder), dat daarna de stad opent (op de hoofdthread: op een achtergrondthread crashte het met het LOD-systeem; daarna het laadscherm van de stad);
-  INSTELLINGEN: CRT-beeld en scanlijnen aan/uit in `user://instellingen.cfg`, die de HUD ook
+  INSTELLINGEN: CRT-beeld (standaard aan) en scanlijnen (standaard uit) aan/uit in `user://instellingen.cfg`, die de HUD ook
   leest; CREDITS; AFSLUITEN), pijltjes/Enter/Esc of de muis, en het CRT-beeld. Erachter het
   kleine 3D-kaartje (meteen staat er de nachtkleur; het kaartje laadt op de achtergrond en
   vloeit er in 1,5 s overheen). Zon en maan, gloeiende schijven met een zachte gloed ver weg,
@@ -753,17 +752,19 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
   Bij aankomst komt het menu langzaam binnen, in twee delen: eerst het logo (de titel schuift
   met een fade van links in, `TITLE_SECONDS`), en als dat er bijna is (`MENU_AFTER`) volgen
   de knoppen een voor een, dan de voettekst; het beeld verliest even zijn tracking alsof de band
-  start (`_play_entrance`, `ENTRANCE_*`). Het menu werkt meteen. Bij NIEUW SPEL gaat het
-  omgekeerd (`_play_exit`): de knoppen faden weg, de titel schuift naar links uit beeld, alles
-  vervaagt naar inktblauw met een sterke trackingstoring, en het laadscherm van de stad (ook
-  inktblauw) neemt het over.
+  start (`_play_entrance`, `ENTRANCE_*`). Het menu werkt meteen. Bij NIEUW SPEL veegt de swipe
+  het menu weg naar de karakterkeuze (`_play_exit`).
+  **Eén overgang in het hele spel: de swipe** (`scripts/ui/swipe_transition.gd`, de "Star
+  Wars-wipe": het oude beeld blijft staan en een harde rand veegt het weg). Tussen intro, menu,
+  karakterkeuze en stad, het pauzemenu naar het hoofdmenu, opnieuw beginnen na de dood, en een
+  gebouw in en uit; geen andere fades of golven.
   Muziek: `assets/audio/muziek/nachtstad_menu_loop.ogg` (afgeleid van de compositie, zie hieronder), heel en in een lus, die bij het openen meteen op vol volume
   begint (geen infade) en bij het verlaten (NIEUW SPEL, AFSLUITEN) in 2 s uitfadet, ook als de
   stad al opent (`MUSIC`, `MUSIC_VOLUME_DB`, `MUSIC_FADE_OUT`).
   Stadsmuziek: één lus overal, `spel_loop.ogg` (`CITY_MUSIC` in `scripts/ui/hud.gd`; geen
   wijkmuziek), na het kaartdeuntje (`deuntje_kaart_start.ogg`) infadend; in een gebouw met eigen
   muziek (de handelaar, `set_indoor_music`) vloeit hij over en terug; de spel-lus zelf zacht op de
-  achtergrond (`CITY_LOOP_SOFTER_DB`, 6 dB onder de handelaarsmuziek); op -10 dB en zachter zolang
+  achtergrond (`CITY_LOOP_SOFTER_DB`, 3 dB onder de handelaarsmuziek); op -10 dB en zachter zolang
   het spel stilstaat (pauzemenu, spelmenu, verhaalvak; `CITY_MUSIC_VOLUME_DB`, `CITY_MUSIC_PAUSED_DB`).
   Test: `tools/check/city_music_test.gd`.
   **Alle muziek komt uit één compositie** (nu "Blast Processing Overdrive" van Gemini, 136 BPM, bijgesteld naar 144 en een house-groove,
@@ -874,11 +875,16 @@ buiten de kaart (`at`), staat stil en is onzichtbaar zolang je buiten bent.
     winkels en obstakels heen, wachten bij een poortje tot het open is, checken in, wachten
     op het perron, stappen in als de deuren open zijn; uit een binnengekomen trein stappen
     mensen uit en gaan naar buiten of een winkel in. Conducteurs (NS-blauw met pet) lopen naar
-    hun trein en fluiten; handhavers (zwart met geel) lopen in paren door de hal en één over
+    hun trein en fluiten; handhavers (blauw uniform) lopen in paren door de hal en één over
     de perrons. Onzichtbare randen langs de perrons: niemand valt op het spoor.
   - Markers in de scène (verplaatsbaar in de editor, ook voor missies): Deur1..3,
     Dienstdeur, Poortjes_<n>, Vertrekbord_<n>, Perronscherm_<spoor>, Klok, Winkel_<n>,
     Verkoper_<n> (metadata `kind`, `shop_name`), Uithangbord_<n>, Automaat_<n>.
+  - Eruit gegooid worden (`Interiors.throw_out`, herbruikbaar per plek, `data/gesprekken/uitzetten.json`):
+    te vaak bedelen of zonder geld proberen te kopen (snackbar, station) of de boete voor
+    zwartrijden niet kunnen betalen (station, meteen): de swipe, de speler vliegt de deur uit en tuimelt de straat op, daarna zegt wie hem
+    eruit zette waarom (een gesprek zonder keuzes); een tijdje niet naar binnen. Test:
+    `tools/check/throw_out_test.gd`.
   - Test: `tools/check/station_test.gd` (ingangen, sporen, poortjes met en zonder kaart,
     een vertrekkende trein, instappen, niemand vast, naar buiten bij deur 3).
 
@@ -929,7 +935,7 @@ Projectstructuur
                            voertuigsoorten (auto's, RandstadRail, NS-trein, helikopter, ...)
       effects/             crash_burst, vehicle_fire, menu_fire, death_blink, smoke, vignette
       ui/                  hud, intro, main_menu (+ menu/: de 3D-kaart erachter),
-                           loading_screen, action_prompts, warp_transition, crt_disturbance,
+                           loading_screen, action_prompts, swipe_transition, crt_disturbance,
                            ui_sounds, ui_style (kleuren, fonts, panelen, CRT) + crt.gdshader,
                            widgets/ (pixel_icon, segment_bar, check_square, player_arrow,
                            speech_balloon: tekstballon voor kreten, typewriter: tekst die
@@ -949,7 +955,7 @@ Projectstructuur
                            overlap_test, rail_stop_test, triangle_count, speech_balloon_test,
                            street_lights_test, drown_test, building_fade_test,
                            arrival_test, simple_figure_test,
-                           loading_after_warp_test
+                           loading_after_swipe_test
       shots/               shot_tiles, shot_iso, shot_scene, shot_vehicles
     data/                  het verhaal, de missies en de gesprekken als JSON (zelf aan te passen
                            en uit te breiden; uitleg in data/LEESMIJ.md)
@@ -1518,9 +1524,9 @@ Prestaties en uiterlijk
   grote meshes (chunks van 8x8 cellen, per LOD-niveau). Zijden die tegen een
   dichte buurcel liggen en alle onderkanten vallen daarbij weg. De importer
   groepeert de driehoeken daarvoor per celzijde (import-optie `cell_block`: 4x3x4 voor
-  gebouwen, 4x1,5x4 voor grond). Komt de stad uit de golf van een scèneovergang
-  (`WarpTransition`), dan staat het laadscherm er meteen maar begint het samenvoegen pas als de
-  golf is uitgedeind, zodat die niet schokt. Tot het samenvoegen klaar is, staat er een laadscherm
+  gebouwen, 4x1,5x4 voor grond). Komt de stad onder de swipe van een scèneovergang
+  binnen (`SwipeTransition`), dan staat het laadscherm er meteen maar begint het samenvoegen pas als de
+  swipe erdoor is, zodat die niet schokt. Tot het samenvoegen klaar is, staat er een laadscherm
   (export `loading_screen`; in de stijl van de HUD: inktblauw, "ZWERVR", een blokjesbalk met
   percentage, en hetzelfde CRT-beeld met de instellingen van de HUD, `UiStyle.make_crt_overlay`,
   dat met het scherm mee uitfadet; `scripts/ui/loading_screen.gd`); het resultaat wordt

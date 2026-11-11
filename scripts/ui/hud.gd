@@ -43,6 +43,7 @@ extends CanvasLayer
 
 ## The tune that opens the map when the game starts (max 6 s), and how loud.
 const LoadingScreenScript = preload("res://scripts/ui/loading_screen.gd")
+const SwipeTransition = preload("res://scripts/ui/swipe_transition.gd")
 const MAP_JINGLE := "res://assets/audio/muziek/deuntje_kaart_start.ogg"
 const MAP_JINGLE_VOLUME_DB := -4.5
 ## The music while roaming the city: one loop everywhere (CITY_MUSIC, tools/muziek/: made from
@@ -61,7 +62,7 @@ const CITY_MUSIC_VOLUME_DB := -15.0
 const CITY_MUSIC_PAUSED_DB := -22.0
 ## The city's own loop (CITY_MUSIC) plays this much softer still: it runs quietly in the
 ## background, under the sounds of the town; music of a building (the merchant's) does not.
-const CITY_LOOP_SOFTER_DB := 6.0
+const CITY_LOOP_SOFTER_DB := 3.0
 const CITY_MUSIC_FADE_IN := 3.0
 ## How fast (dB per second) the level follows pausing and going on.
 const CITY_MUSIC_LEVEL_SPEED := 30.0
@@ -147,7 +148,7 @@ const EXAMPLE_QUESTS := [
 ]
 
 ## Faint CRT scanlines over the picture.
-@export var scanlines := true:
+@export var scanlines := false:
 	set(value):
 		scanlines = value
 		_update_crt()
@@ -1266,8 +1267,8 @@ func _choose_pause_item(index: int) -> void:
 		"resume":
 			set_paused(false)
 		"menu":
-			# into the wave (the menu comes out of it), then the menu
-			await WarpTransition.leave(get_tree(), 0.8).covered
+			# the swipe (the one transition of the game) over it, then the menu
+			await SwipeTransition.swipe(get_tree()).covered
 			get_tree().paused = false
 			get_tree().change_scene_to_file(MAIN_MENU_SCENE)
 		"quit":
@@ -1414,12 +1415,12 @@ func _death_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_accept"):
 		get_viewport().set_input_as_handled()
 		UiSounds.play(self, "doe")
-		await WarpTransition.leave(get_tree(), 0.5).covered
+		await SwipeTransition.swipe(get_tree()).covered
 		get_tree().reload_current_scene()
 	elif event.is_action_pressed("ui_cancel"):
 		get_viewport().set_input_as_handled()
 		UiSounds.play(self, "doe")
-		await WarpTransition.leave(get_tree(), 0.5).covered
+		await SwipeTransition.swipe(get_tree()).covered
 		get_tree().change_scene_to_file(MAIN_MENU_SCENE)
 
 
@@ -1447,8 +1448,8 @@ func _read_menu_settings() -> void:
 	if not config.get_value("beeld", "crt", true):
 		crt_curvature = 0.0
 		crt_ui_curvature = 0.0
-	if not config.get_value("beeld", "scanlijnen", true):
-		scanlines = false
+	# scanlines are off unless switched on in the settings
+	scanlines = config.get_value("beeld", "scanlijnen", false)
 
 
 ## Hands the CRT settings to its shader; off altogether when it would change nothing.

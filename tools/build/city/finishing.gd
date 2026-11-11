@@ -580,6 +580,20 @@ func _fill_grass_all() -> void:
 				G(x, z, "natuur/gras")
 
 
+## Never grass under a building: the grass shader would draw blades no one sees (CPU and
+## GPU for nothing). Every grass cell with a building standing on it becomes paving.
+func _no_grass_under_buildings() -> void:
+	var grass := ground.mesh_library.find_item_by_name("natuur/gras")
+	var paved := 0
+	for cell in ground.get_used_cells_by_item(grass):
+		if cell.y != 0:
+			continue
+		if buildings.get_cell_item(Vector3i(cell.x, 0, cell.z)) != GridMap.INVALID_CELL_ITEM:
+			G(cell.x, cell.z, UNDER_BUILDING_TILE)
+			paved += 1
+	print("geen gras onder gebouwen: %d cellen bestraat" % paved)
+
+
 ## The camera over the old centre (the follow camera takes it over at the start, see _car)
 ## and the vignette (node Vignet, scripts/effects/vignette.gd).
 func _camera(root: Node3D) -> void:

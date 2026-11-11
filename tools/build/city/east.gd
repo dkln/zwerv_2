@@ -245,9 +245,10 @@ func _centraal() -> void:
 		"gf_corner": "verd_vliesgevel_hoek", "upper": ["verd_vliesgevel"], "upper_corner": "verd_vliesgevel_hoek", "roof": "flat"})
 	# half a metre in front of the hall: on the glass wall itself the glass drew over it
 	D(83 * 4 + 2.0, 69 * 4.0 - 0.5, CENTRAAL_HALL_STOREYS * 3.0 - 3.9, "tekst/tekst_den_haag_centraal", "N")
-	D(83 * 4 + 2.0, 69 * 4.0, 0.0, "luifels/luifel_glas", "N")
-	D(77 * 4 + 2.0, 69 * 4.0, 0.0, "luifels/luifel_glas", "N")
-	D(89 * 4 + 2.0, 69 * 4.0, 0.0, "luifels/luifel_glas", "N")
+	# the glass canopies over the doors (the tile is the flat pane: up above the doorway)
+	D(83 * 4 + 2.0, 69 * 4.0, GLASS_CANOPY_HEIGHT, "luifels/luifel_glas", "N")
+	D(77 * 4 + 2.0, 69 * 4.0, GLASS_CANOPY_HEIGHT, "luifels/luifel_glas", "N")
+	D(89 * 4 + 2.0, 69 * 4.0, GLASS_CANOPY_HEIGHT, "luifels/luifel_glas", "N")
 	_fill(72, 69, 73, 90, "plein/plein_tegels")
 	_fill(93, 69, 94, 90, "plein/plein_tegels")
 	# the square

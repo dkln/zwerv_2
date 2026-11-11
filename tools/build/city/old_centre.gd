@@ -70,7 +70,7 @@ func _lange_voorhout() -> void:
 	block(44, 23, 3, 5, "klassiek_geel", 5, {"front": "N", "gf": ["bg_deur", "bg_raam"], "gf_side": "bg_raam",
 		"upper": ["verd_raam", "verd_balkon", "verd_drie_ramen"], "roof": "cornice"})
 	D(45 * 4 + 2.0, 23 * 4.0, 12.0, "tekst/tekst_hotel", "N")
-	D(45 * 4 + 2.0, 23 * 4.0, 0.0, "luifels/luifel_glas", "N")
+	D(45 * 4 + 2.0, 23 * 4.0, GLASS_CANOPY_HEIGHT, "luifels/luifel_glas", "N")
 	D(47 * 4.0, 25 * 4 + 2.0, 9.0, "tekst/lichtreclame_hotel", "E")
 	for x in range(27, 47):
 		_g(x, 10, "weg/straat_klinkers", "E")

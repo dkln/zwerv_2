@@ -29,6 +29,7 @@ signal finished
 
 const UiStyle = preload("res://scripts/ui/ui_style.gd")
 const UiSounds = preload("res://scripts/ui/ui_sounds.gd")
+const Interiors = preload("res://scripts/world/interiors.gd")
 const PlayerPortrait = preload("res://scripts/ui/widgets/player_portrait.gd")
 const PixelIcon = preload("res://scripts/ui/widgets/pixel_icon.gd")
 const Typewriter = preload("res://scripts/ui/widgets/typewriter.gd")
@@ -287,6 +288,8 @@ func buy(index: int) -> String:
 		"geld":
 			UiSounds.play(self, "terug", -4.0)
 			_show_notice("TE WEINIG GELD")
+			# trying to buy without the money, again and again: thrown out (Interiors)
+			Interiors.note_offence(get_tree(), "geen_geld")
 		"vol":
 			UiSounds.play(self, "terug", -4.0)
 			_show_notice("ZAKKEN VOL")

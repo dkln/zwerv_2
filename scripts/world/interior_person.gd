@@ -26,6 +26,8 @@ const MERCHANT_ROLES := ["snackbarhouder", "verkoper"]
 ## heights over the floor (metres), over the head.
 const MARK_BOTTOM := 2.3
 const MARK_TOP := 2.9
+## Who sells is talked to only from before them: the player within this cos of their facing.
+const FRONT_SIDE := 0.2
 ## The group of the player (PlayerController.PLAYER_GROUP).
 const PLAYER_GROUP := "speler"
 const InteractionMark = preload("res://scripts/world/interaction_mark.gd")
@@ -40,7 +42,10 @@ var _mark: InteractionMark
 
 ## Someone of `person_role` with the look of `look_seed`; `sit`: on a chair at its origin
 ## (facing +z), else standing.
-static func create(person_role: String, look_seed: int, sit: bool, on_seat_at := SEAT_HEIGHT) -> InteriorPerson:
+## `outfit`: what a seller wears for their shop (winkels.json "kleding": "jas", "rand",
+## "broek", "pet" as colours), over the look and the role's own clothes.
+static func create(person_role: String, look_seed: int, sit: bool, on_seat_at := SEAT_HEIGHT,
+		outfit := {}) -> InteriorPerson:
 	var person := InteriorPerson.new()
 	person.seat_height = on_seat_at
 	person.name = "Snackbarhouder" if person_role == "snackbarhouder" else "Klant"
@@ -54,6 +59,7 @@ static func create(person_role: String, look_seed: int, sit: bool, on_seat_at :=
 		look["hair_style"] = "pet"
 		look["cap"] = Color("#E8E6E0")
 		look["skirt"] = false
+	_dress_for_work(look, outfit)
 	person.figure = TownsfolkFigure.create(look)
 	person.figure.name = "Figuur"
 	person.add_child(person.figure)
@@ -62,7 +68,7 @@ static func create(person_role: String, look_seed: int, sit: bool, on_seat_at :=
 		person._sit()
 	if person_role in MERCHANT_ROLES:
 		# who sells can be used like a way in: the same arrow over them
-		person._mark = InteractionMark.create(MARK_BOTTOM, MARK_TOP)
+		person._mark = InteractionMark.create(MARK_BOTTOM, MARK_TOP, false)
 		person.add_child(person._mark)
 	person.set_process(person._mark != null)
 	return person
@@ -70,7 +76,45 @@ static func create(person_role: String, look_seed: int, sit: bool, on_seat_at :=
 
 func _process(_delta: float) -> void:
 	if _mark:
-		_mark.follow(get_tree().get_first_node_in_group(PLAYER_GROUP) as Node3D)
+		var player := get_tree().get_first_node_in_group(PLAYER_GROUP) as Node3D
+		_mark.follow(player, player != null and can_talk_from(player.global_position))
+
+
+## The arrow `forward` metres before them (the side they face) between `low` and `high`, in
+## place of over their head: in front of a shop where its roof would cover it (Den Haag Centraal).
+func place_mark_ahead(forward: float, low: float, high: float) -> void:
+	if _mark == null:
+		return
+	_mark.position = Vector3(0.0, 0.0, forward)
+	_mark.bottom = low
+	_mark.top = high
+
+
+## Whether the player at `at` can talk to them: anyone from all sides, who sells only from
+## before the counter (the side they face: their back is a wall, PlayerController asks this).
+func can_talk_from(at: Vector3) -> bool:
+	if not role in MERCHANT_ROLES:
+		return true
+	var towards := at - global_position
+	towards.y = 0.0
+	return towards.length_squared() < 0.0001 or towards.normalized().dot(global_basis.z) > FRONT_SIDE
+
+
+## The clothes of a shop (`outfit`, see create) over `look`: the coat with its trim (collar,
+## apron, cuffs), the trousers, a cap or bonnet; no skirt behind the counter.
+static func _dress_for_work(look: Dictionary, outfit: Dictionary) -> void:
+	if outfit.is_empty():
+		return
+	var keys := {"jas": "coat", "rand": "trim", "broek": "trousers"}
+	for key: String in keys:
+		if outfit.has(key):
+			look[keys[key]] = Color(str(outfit[key]))
+	if outfit.has("pet"):
+		look["hair_style"] = "pet"
+		look["cap"] = Color(str(outfit.pet))
+	elif look.get("hair_style", "") in ["pet", "hoed"]:
+		look["hair_style"] = "kort"
+	look["skirt"] = false
 
 
 ## Sitting on the chair: the hips on the seat, the feet on the floor before it, the hands on

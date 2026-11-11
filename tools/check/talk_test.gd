@@ -36,6 +36,13 @@ func _init() -> void:
 		if player._placed and not player._sleeping:
 			break
 	player._wake_up()
+	for attempt in 30:
+		if not player._sleeping:
+			break
+		await create_timer(0.1, true).timeout
+	var to_camera := get_root().get_viewport().get_camera_3d().global_position - player.global_position
+	var woke_facing := Vector2(sin(player.rotation.y), cos(player.rotation.y))
+	_check(woke_facing.dot(Vector2(to_camera.x, to_camera.z).normalized()) > 0.9, "na het opstaan met het gezicht naar de camera")
 	for frame_index in 120:
 		await physics_frame
 	var walkers: Pedestrians = scene.get_node("Voetgangers")
@@ -45,6 +52,37 @@ func _init() -> void:
 		personas[Conversations.persona_of(someone)] = true
 	print("personas in de stad: ", personas.keys())
 	_check(personas.size() >= 4, "verschillende soorten mensen (%d)" % personas.size())
+	# everyone is something you can see: "OUDE DAME", "MAN MET HOED", never just a passer-by
+	var names := {}
+	var nameless := 0
+	for someone: Pedestrian in walkers.people():
+		var persona_id := Conversations.persona_of(someone)
+		var data: Dictionary = Conversations.personas().get(persona_id, {})
+		var shown := Conversations.name_of(someone, data)
+		if shown == "" or shown == "VOORBIJGANGER":
+			nameless += 1
+		names[shown] = names.get(shown, 0) + 1
+	print("namen in de stad: ", names)
+	_check(nameless == 0 and names.size() >= 5, "iedereen heeft een beschrijving (%d soorten namen, %d zonder)" % [names.size(), nameless])
+	# a passer-by of a kind talks as that kind; someone on duty as the police
+	var kinds_fit := true
+	for someone: Pedestrian in walkers.people():
+		if someone.crowd_kind != "" and someone.role == "" and someone.mobility == "":
+			var persona_id := Conversations.persona_of(someone)
+			var rules: Dictionary = Conversations.personas().get(persona_id, {}).get("herkennen", {})
+			if str(rules.get("soort", "")) != someone.crowd_kind:
+				kinds_fit = false
+				print("past niet: %s praat als %s" % [someone.crowd_kind, persona_id])
+	_check(kinds_fit, "het gesprek past bij de soort mens")
+	var officer: Pedestrian = walkers.people()[1]
+	var was := [officer.role, officer.crowd_kind]
+	officer.role = "agent"
+	officer.crowd_kind = "agent"
+	var police := Conversations.new(officer, player, hud)
+	_check(Conversations.is_official(officer) and police.speaker() == "POLITIE" and police.official_style().get("emblem") == "POLITIE",
+			"een agent op straat praat als politie")
+	officer.role = was[0]
+	officer.crowd_kind = was[1]
 	# stand right before them
 	person._pause = 100.0
 	player.global_position = person.global_position + Vector3(1.2, 0.0, 0.0)
@@ -53,6 +91,9 @@ func _init() -> void:
 	_check(player._talk_partner == person, "iemand in de buurt om mee te praten")
 	_check(hud._action_prompts.visible and hud._action_prompts.actions() == [["E", "Praten"]], "[E] Praten linksonder")
 	player.talk_to(person)
+	var body: Node3D = person.figure.get("_body")
+	_check(person.get("_walking") == 0.0 and body != null and body.position.is_zero_approx(),
+			"de voorbijganger staat stil en recht (geen been in de lucht)")
 	await process_frame
 	var box: Node = hud._story_box
 	_check(box.is_showing() and paused, "gesprek open, spel staat stil")

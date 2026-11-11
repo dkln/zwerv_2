@@ -48,9 +48,8 @@ The station (Den Haag Centraal, scripts/world/station.gd):
     trein_deuren_open.ogg      the doors of a train opening: the air letting go, the leaves sliding
     ov_inchecken.ogg, ov_uitchecken.ogg   an OV-chipkaart at a reader: one middle beep in, two out
     ov_geweigerd.ogg           a reader saying no: high, middle, high
-    poortje_open.ogg           the glass paddles of a gate swinging open: the motor humming up
-                               and down, a soft thud against the stops
-    poortje_dicht.ogg          and swinging shut again, the paddles meeting in the middle
+    poortje_open.ogg           the glass paddles of a gate swinging open: a swoosh gliding up
+    poortje_dicht.ogg          and swinging shut again: the swoosh gliding down
 Loops are a whole number of engine cycles long (every frequency fits the loop exactly) and are
 filtered circularly, so they repeat without a click. Every file is at one loudness
 (loudness.py: a one-shot's loudest 400 ms and a loop's average at -16 LUFS, peaks under -1 dB);
@@ -187,11 +186,13 @@ def engine(kind: str, firing_hz: numpy.ndarray, seed: int = 1, phase_offset: flo
         roar = 0.5 * band_noise(sample_count, 50.0, 700.0, seed)
         return whine + hum + roar
     if kind == "trein":
-        # electric: the inverter's whine on two PSG squares a fifth apart, a low hum, rail roar
-        whine = 0.35 * square(phase, 0.5) + 0.2 * square(phase * 1.5, 0.5)
-        hum = 0.5 * numpy.sin(TWO_PI * phase / 4.0)
-        roar = 0.6 * band_noise(sample_count, 60.0, 900.0, seed)
-        return whine + hum + roar
+        # electric, deep and droning: the inverter's whine only a soft round tone (two sines a
+        # fifth apart, no squares: those were shrill), under it a heavy hum an octave and two
+        # down, saturated a little so it growls, and the low rumble of the rails
+        whine = 0.08 * numpy.sin(TWO_PI * phase) + 0.04 * numpy.sin(TWO_PI * phase * 1.5)
+        hum = numpy.tanh(1.6 * (0.55 * numpy.sin(TWO_PI * phase / 4.0) + 0.3 * numpy.sin(TWO_PI * phase / 8.0)))
+        roar = 0.6 * band_noise(sample_count, 35.0, 450.0, seed)
+        return whine + 0.8 * hum + roar
     raise ValueError(kind)
 
 
@@ -842,27 +843,31 @@ def ov_refused() -> numpy.ndarray:
 GATE_SWING_SECONDS = 0.45
 
 
+## The bands of noise a swoosh glides through (Hz): low to high.
+SWOOSH_BANDS = ((350.0, 700.0), (700.0, 1400.0), (1400.0, 2800.0), (2800.0, 5600.0))
+
+
 def _gate_swing(closing: bool) -> numpy.ndarray:
-    """The glass paddles of a gate swinging: the geared motor in the cabinet speeding up and
-    slowing down again (a smooth hum gliding up and back, a faint rustle of the gears), and at
-    the end the paddles stopping against their rubber stops (opening) or meeting each other
-    (closing): a soft, damped thud with a little click."""
+    """The glass paddles of a gate swinging: a swoosh, air pushed aside by the panes: noise
+    swelling up and dying away with the speed of the paddles, its pitch gliding up as they
+    open (down as they close), and at the end only a very soft tick of the stops."""
     swing = GATE_SWING_SECONDS
-    seconds = swing + 0.3
+    seconds = swing + 0.2
     times = time_axis(seconds)
     progress = numpy.clip(times / swing, 0.0, 1.0)
-    # speed of the paddles: zero at both ends, fastest halfway
-    speed = numpy.sin(numpy.pi * progress) * (times < swing)
-    base_hz = 150.0 if closing else 170.0
-    motor_hz = base_hz + 90.0 * speed
-    motor_phase = TWO_PI * numpy.cumsum(motor_hz) / SAMPLE_RATE
-    hum = (numpy.sin(motor_phase) + 0.35 * numpy.sin(2.0 * motor_phase) + 0.12 * numpy.sin(3.0 * motor_phase)) * speed * 0.22
-    gears = band_noise(len(times), 900.0, 2600.0, 102 if closing else 101) * speed * 0.05
+    # how fast the paddles go: nothing at both ends, fastest just before halfway
+    speed = numpy.sin(numpy.pi * progress ** 0.8) * (times < swing)
+    # where in the bands the swoosh is: up while opening, down while closing
+    glide = (1.0 - progress) if closing else progress
+    position = 0.6 + glide * (len(SWOOSH_BANDS) - 1.6)
+    swoosh = numpy.zeros(len(times))
+    for band_index, (low, high) in enumerate(SWOOSH_BANDS):
+        weight = numpy.clip(1.0 - numpy.abs(position - band_index), 0.0, 1.0)
+        swoosh += band_noise(len(times), low, high, 121 + band_index + (10 if closing else 0)) * weight
+    swoosh *= speed ** 1.5 * 0.55
     after_stop = numpy.maximum(times - swing, 0.0) * (times >= swing)
-    thud_hz = 110.0 if closing else 130.0
-    thud = numpy.sin(TWO_PI * thud_hz * after_stop) * numpy.exp(-after_stop / 0.045) * (times >= swing) * (0.5 if closing else 0.35)
-    click = band_noise(len(times), 2000.0, 4500.0, 103) * numpy.exp(-after_stop / 0.008) * (times >= swing) * 0.18
-    return fade_edges(low_pass(dac(low_pass(hum + gears + thud + click, 6000.0)), 5000.0), 0.004, 0.08)
+    tick = band_noise(len(times), 1500.0, 4000.0, 131) * numpy.exp(-after_stop / 0.006) * (times >= swing) * 0.08
+    return fade_edges(low_pass(dac(low_pass(swoosh + tick, 7000.0)), 6000.0), 0.004, 0.06)
 
 
 def gate_paddles() -> numpy.ndarray:
@@ -873,6 +878,19 @@ def gate_paddles() -> numpy.ndarray:
 def gate_paddles_close() -> numpy.ndarray:
     """The paddles of a gate swinging shut again, meeting each other in the middle."""
     return _gate_swing(closing=True)
+
+
+def kick() -> numpy.ndarray:
+    """A boot kick (someone thrown out of the door): the swing through the air, then the heavy
+    dull thump of the boot on a body, a slap of cloth on top."""
+    seconds = 0.45
+    times = time_axis(seconds)
+    swing = band_noise(len(times), 600.0, 3500.0, 141) * numpy.clip(times / 0.06, 0.0, 1.0) * (times < 0.09) * 0.35
+    at = numpy.maximum(times - 0.09, 0.0) * (times >= 0.09)
+    pitch = 55.0 + 90.0 * numpy.exp(-at / 0.025)
+    thump = numpy.sin(TWO_PI * numpy.cumsum(pitch) / SAMPLE_RATE) * numpy.exp(-at / 0.09) * (times >= 0.09)
+    slap = band_noise(len(times), 900.0, 5000.0, 142) * numpy.exp(-at / 0.012) * (times >= 0.09) * 0.6
+    return fade_edges(low_pass(dac(low_pass(numpy.tanh(2.0 * (swing + thump + slap)), 7000.0)), 6000.0), 0.002, 0.05)
 
 
 SOUNDS = {
@@ -923,6 +941,7 @@ SOUNDS = {
     "ov_uitchecken": (ov_check_out, False),
     "ov_geweigerd": (ov_refused, False),
     "poortje_open": (gate_paddles, False),
+    "schop": (kick, False),
     "poortje_dicht": (gate_paddles_close, False),
 }
 

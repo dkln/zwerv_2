@@ -29,6 +29,7 @@ extends Control
 ## main menu).
 
 const UiSounds = preload("res://scripts/ui/ui_sounds.gd")
+const SwipeTransition = preload("res://scripts/ui/swipe_transition.gd")
 const ProtestFlag = preload("res://scripts/vehicles/protest_flag.gd")
 const PlayerModel = preload("res://scripts/player/player_model.gd")
 const PlayerCharacter = preload("res://scripts/player/player_character.gd")
@@ -41,8 +42,6 @@ const MENU_SCENE := "res://scenes/hoofdmenu.tscn"
 const MUSIC := "res://assets/audio/muziek/zwervr_intro.ogg"
 const MUSIC_VOLUME_DB := 0.0
 const MUSIC_FADE_OUT := 2.0
-## Seconds of the wave on the way to the menu (WarpTransition).
-const FADE_TO_MENU := 1.0
 const DESIGN_SIZE := Vector2(1280, 720)
 const OPENING_LINE := "Niet zo lang geleden, in een stad hier niet ver vandaan…"
 ## The story that rolls away after the logo, a paragraph per entry (an optional "\n"
@@ -335,8 +334,8 @@ func _to_menu() -> void:
 		var fade := get_tree().create_tween()
 		fade.tween_property(music, "volume_db", -60.0, MUSIC_FADE_OUT)
 		fade.tween_callback(music.queue_free)
-	# into the wave (the menu comes out of it)
-	await WarpTransition.leave(get_tree(), FADE_TO_MENU).covered
+	# the swipe (the one transition of the game) over it, the menu behind it
+	await SwipeTransition.swipe(get_tree()).covered
 	while ResourceLoader.exists(MainMenu.MAP_SCENE) \
 			and ResourceLoader.load_threaded_get_status(MainMenu.MAP_SCENE) == ResourceLoader.THREAD_LOAD_IN_PROGRESS:
 		await get_tree().process_frame

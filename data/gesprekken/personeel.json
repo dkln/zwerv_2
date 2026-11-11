@@ -38,9 +38,9 @@
 		"handhaver": {
 			"spreker": "HANDHAVING",
 			"embleem": "BOA",
-			"kleur": "#E8C21A",
-			"naamkaartje": "#16181C",
-			"tekstkleur": "#E8C21A",
+			"kleur": "#9FC4EC",
+			"naamkaartje": "#2A4A8A",
+			"tekstkleur": "#E8E6E0",
 			"stemhoogte": 0.86,
 			"begroetingen": [
 				"Goedendag. Handhaving. Mag ik even uw legitimatie zien?",
@@ -53,7 +53,7 @@
 				"doorvraag": "En als ik toch blijf liggen?",
 				"doorantwoord": "Dan schrijf ik een bekeuring voor overlast. Honderd euro, plus kosten. En dan zet ik u buiten, en morgen zien we elkaar weer. Zo gaat dat. Maak het ons allebei niet moeilijk."
 			},
-			"kleingeld_nee": "Kleingeld vragen in het station? Dat heet bedelen, en dat is hier niet toegestaan. Ik laat het bij een waarschuwing. Deze keer.",
+			"kleingeld_nee": "Kleingeld vragen? Dat heet bedelen, en dat is hier niet toegestaan. Ik laat het bij een waarschuwing. Deze keer.",
 			"nog_iets": [
 				"Verder nog iets?",
 				"Was dat alles?"
@@ -65,6 +65,38 @@
 				"doorvraag": "boos",
 				"kleingeld_nee": "boos",
 				"dag": "neutraal"
+			}
+		},
+		"agent": {
+			"spreker": "POLITIE",
+			"embleem": "POLITIE",
+			"kleur": "#2A4A9A",
+			"naamkaartje": "#1C2A4E",
+			"tekstkleur": "#E8E6E0",
+			"stemhoogte": 0.82,
+			"begroetingen": [
+				"Goedendag. Politie. Alles goed met u?",
+				"Hé, rustig aan. Is er iets waar ik u mee kan helpen?",
+				"Politie Den Haag. U kijkt alsof u iets kwijt bent. Klopt dat?"
+			],
+			"onderwerp": {
+				"vraag": "Is het rustig vandaag?",
+				"antwoord": "Rustig? In Den Haag? Er is een demonstratie op het Malieveld, een fatbike op de stoep bij het Plein en iemand heeft een meeuw met een patatzak gevoerd. Dat laatste is eigenlijk het ergst.",
+				"doorvraag": "En waar moet ik slapen vannacht?",
+				"doorantwoord": "Niet in een portiek, en niet op een bankje in het Haagse Bos, daar komt handhaving langs. Bij de nachtopvang aan de Lange Beestenmarkt is vaak nog plek. Zeg maar dat ik je stuur."
+			},
+			"kleingeld_nee": "Ik ben in dienst, ik geef geen geld. Maar als u honger heeft: de voedselbank zit in de Schilderswijk. Daar helpen ze u verder.",
+			"nog_iets": [
+				"Verder nog iets?",
+				"Kan ik nog iets voor u doen?"
+			],
+			"dag": "Goed. Pas een beetje op uzelf, hè. En niet over het spoor lopen.",
+			"stemmingen": {
+				"begroeting": "neutraal",
+				"onderwerp": "neutraal",
+				"doorvraag": "neutraal",
+				"kleingeld_nee": "neutraal",
+				"dag": "blij"
 			}
 		}
 	}

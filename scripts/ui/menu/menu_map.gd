@@ -13,8 +13,6 @@ const UiStyle = preload("res://scripts/ui/ui_style.gd")
 ## background, and the seconds in which it fades in over the drawn backdrop.
 const MAP_SCENE := "res://scenes/menu_kaart.scn"
 const MAP_FADE_SECONDS := 1.5
-## Seconds the menu takes to come up out of the black of the intro.
-const UP_FROM_BLACK := 3.5
 
 ## The skyline glides by on and on: the camera of the map moves sideways at this speed
 ## (metres a second); the map repeats sideways (its metadata "periode": copies are laid
@@ -112,12 +110,10 @@ func _show_map(packed: PackedScene) -> void:
 	add_child(shade)
 	move_child(shade, 1)
 	if seconds <= 0.0:
-		# loaded in the intro: the menu comes up out of the intro's black
-		_sky.color = Color.BLACK
-		_sky.modulate.a = 1.0
+		# loaded in the intro: there at once (the swipe from the intro shows it, no fade of its own)
+		_sky.modulate.a = 0.0
+		_backdrop.modulate.a = 0.0
 		shade.modulate.a = 1.0
-		var up := create_tween()
-		up.tween_property(_sky, "modulate:a", 0.0, UP_FROM_BLACK)
 		return
 	var fade := create_tween().set_parallel(true)
 	fade.tween_property(_sky, "modulate:a", 0.0, seconds)

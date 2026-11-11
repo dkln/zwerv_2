@@ -35,9 +35,16 @@ const ACCELERATION := 0.6
 const HIDE_BEYOND := 6.0
 ## Where it starts coming in: this far behind the back wall (its nose).
 const START_BEHIND := 8.0
+## Running into someone on the track (_hit_who_is_in_the_way): this much room beside and
+## before it (m), and up to what height over the rails someone counts as on the track (above
+## it they stand on the platform).
+const HIT_SIDE_ROOM := 0.15
+const HIT_HIGHEST := 1.0
+## The group of the player (PlayerController.PLAYER_GROUP).
+const PLAYER_GROUP := "speler"
 ## The engine: its loop and level, and the brakes near the stop.
 const MOTOR_SOUND := "trein_motor_loop"
-const MOTOR_DB := -6.0
+const MOTOR_DB := -9.0
 
 var track := 1
 var car_count := 3
@@ -45,6 +52,8 @@ var nose_z := 0.0
 var speed := 0.0
 ## "binnenkomend" (coming in), "staat" (standing at the platform), "vertrekkend", "weg".
 var state := "weg"
+## The width of the train (from its cars' model), for who it runs into (_hit_who_is_in_the_way).
+var _width := 2.9
 
 var _cars: Array[Node3D] = []
 var _leaves: Array[Dictionary] = []    # {node, closed: Vector3, slide: Vector3, outward: Vector3}
@@ -183,6 +192,8 @@ func _physics_process(delta: float) -> void:
 					if _motor:
 						_motor.stop()
 					gone.emit()
+	if speed > 0.0 and (state == "binnenkomend" or state == "vertrekkend"):
+		_hit_who_is_in_the_way()
 	if _motor and _motor.playing:
 		_motor.volume_db = MOTOR_DB - 10.0 * (1.0 - speed / TOP_SPEED)
 		_motor.pitch_scale = 0.55 + 0.6 * speed / TOP_SPEED
@@ -192,6 +203,25 @@ func _physics_process(delta: float) -> void:
 	if amount != _door_amount:
 		_door_amount = amount
 		_set_doors()
+
+
+## Who is on the track where the train is while it moves (the player, someone fallen off
+## the platform) is hit, as by any vehicle in the town (hit_by_moving on the player and on a
+## StationPerson: knocked over along the way it goes).
+func _hit_who_is_in_the_way() -> void:
+	var going := Vector3(0.0, 0.0, -speed if state == "binnenkomend" else speed)
+	var train_velocity := global_basis * going
+	var people: Array = get_tree().get_nodes_in_group(PLAYER_GROUP) + get_tree().get_nodes_in_group(StationPerson.TALKABLE_GROUP)
+	for someone in people:
+		var person := someone as Node3D
+		if person == null or not person.has_method("hit_by_moving") or not person.is_visible_in_tree():
+			continue
+		var at := to_local(person.global_position)
+		if absf(at.x) > _width * 0.5 + HIT_SIDE_ROOM or at.y < -0.6 or at.y > HIT_HIGHEST:
+			continue
+		if at.z < nose_z - HIT_SIDE_ROOM or at.z > nose_z + length() + HIT_SIDE_ROOM:
+			continue
+		person.call("hit_by_moving", train_velocity, person.global_position - going.normalized())
 
 
 func _car_middle_z(index: int) -> float:
@@ -226,6 +256,7 @@ func _add_car(props: MeshLibrary, item_name: String, turned_round: bool) -> void
 	car.add_child(instance)
 	_cars.append(car)
 	_add_doors(props, car, box.size.x)
+	_width = box.size.x
 
 
 ## The leaves of the doors on the platform side of a car (two doors, two leaves each).

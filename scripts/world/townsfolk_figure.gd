@@ -5,7 +5,8 @@ extends Node3D
 ## VoxelFigure, its materials and colour grade), at VOXEL metres: about as big as a player
 ## figure in the town (PlayerModel at PlayerController.FIGURE_SCALE), 1.75 m tall, standing
 ## on y = 0, the face towards +z.
-## A look (look_for(seed)) picks the skin, the hair (short, long, bald, a cap) or a helmet
+## A look (look_for(seed)) picks the skin, the hair (short, long, bald, a cap; a hat only
+## through the crowd's kinds of people, data/drukte.json "kapsels": "hoed") or a helmet
 ## (open or full face, for riders), a coat, trousers or a skirt and shoes, from colours seen
 ## in the street. Kept simple, with few details: big areas of one colour, no zips, hems,
 ## soles or strands; nobody carries a rucksack.
@@ -393,7 +394,7 @@ static func _build_voxels(figure: PlayerModel.VoxelFigure, figure_look: Dictiona
 	figure.mark("leather", [shoes])
 	figure.mark("denim", [trousers])
 	figure.mark("nylon", [coat, trim])
-	figure.mark("cloth", [figure_look.cap])
+	figure.mark("cloth", [figure_look.cap, (figure_look.cap as Color).darkened(0.45)])
 	figure.mark("plastic", [figure_look.helmet])
 	figure.mark("glass", [Color("#20242E")])
 
@@ -438,3 +439,10 @@ static func _hair(figure: PlayerModel.VoxelFigure, figure_look: Dictionary, hair
 				var cap: Color = figure_look.cap
 				figure.box(Vector3i(2, 34, -1), Vector3i(9, 35, 6), cap)
 				figure.box(Vector3i(3, 34, -3), Vector3i(8, 34, -2), cap)   # the peak
+			elif style == "hoed":
+				# a hat with a brim all round (a trilby / bowler): the brim over the hair, the
+				# crown on top with a darker band
+				var hat: Color = figure_look.cap
+				figure.box(Vector3i(1, 34, -2), Vector3i(10, 34, 7), hat)
+				figure.box(Vector3i(3, 35, 0), Vector3i(8, 35, 5), hat.darkened(0.45))
+				figure.box(Vector3i(3, 36, 0), Vector3i(8, 37, 5), hat)

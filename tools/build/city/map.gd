@@ -177,6 +177,10 @@ func _kerb_path(x: int, z: int, towards: String) -> void:
 
 
 const OPPOSITE := {"S": "N", "N": "S", "E": "W", "W": "E"}
+## What lies under a building where there would have been grass (_no_grass_under_buildings),
+## and how high the flat glass canopy (luifels/luifel_glas) hangs over a doorway (metres).
+const UNDER_BUILDING_TILE := "plein/plein_tegels"
+const GLASS_CANOPY_HEIGHT := 2.8
 const AWNINGS := ["luifels/luifel_rood", "luifels/luifel_groen", "luifels/luifel_blauw", "luifels/luifel_geel",
 	"luifels/luifel_effen_rood", "luifels/luifel_effen_groen", "zonwering/knikarmscherm_streep", "zonwering/uitvalscherm_blauw",
 	"zonwering/knikarmscherm_groen", "zonwering/uitvalscherm_oranje"]

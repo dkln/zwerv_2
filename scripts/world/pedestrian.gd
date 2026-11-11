@@ -87,7 +87,15 @@ const RIDE_ARRIVE_WITHIN := 0.35
 const STEER_PER_TURN := 0.45
 const DriverShout = preload("res://scripts/vehicles/driver_shout.gd")
 const TALKABLE_GROUP := "aanspreekbaar"
+## The kinds of people in the crowd that are on duty (role): police and handhaving.
+const ON_DUTY_KINDS := ["agent", "handhaver"]
 const Wheelie = preload("res://scripts/vehicles/wheelie.gd")
+const KnockDown = preload("res://scripts/world/knock_down.gd")
+## In a wheelie a wheelchair is a daredevil (is_daredevil): this many times as fast, waiting
+## for no one and nothing; what it runs into, both go down (_stunt_crash).
+const CHAIR_DAREDEVIL_PACE := 2.2
+## The group of the player (PlayerController.PLAYER_GROUP).
+const PLAYER_GROUP := "speler"
 ## How far a wheelchair's front comes up in a wheelie, and the most it may turn meanwhile (rad/s).
 const CHAIR_WHEELIE_DEGREES := 24.0
 const CHAIR_WHEELIE_MOST_TURN := 0.6
@@ -124,6 +132,9 @@ var pace_factor := 1.0
 ## (data/drukte.json "mensen"; "" none in particular).
 var carried := ""
 var crowd_kind := ""
+## Someone on duty on the street ("agent", "handhaver": their crowd_kind), talked to as staff
+## (Conversations.is_official, data/gesprekken/personeel.json); "" for everyone else.
+var role := ""
 var _carried_item: Node3D
 var _carried_pose := false
 
@@ -247,6 +258,7 @@ func become(new_seed: int, new_look: Dictionary, new_mobility: String, new_pace_
 	pace_factor = new_pace_factor
 	carried = new_carried
 	crowd_kind = new_kind
+	role = new_kind if new_kind in ON_DUTY_KINDS else ""
 	health = MAX_HEALTH
 	_held_up = 0.0
 	_ghost_left = 0.0
@@ -324,7 +336,7 @@ func _physics_process(delta: float) -> void:
 		_arrive()
 		_walk_figure(delta, 0.0)
 		return
-	if not _may_go():
+	if not is_daredevil() and not _may_go():
 		_walk_figure(delta, 0.0)
 		return
 	var towards := flat_to.normalized()
@@ -335,8 +347,14 @@ func _physics_process(delta: float) -> void:
 		if facing.dot(towards) > 0.5:
 			looking = facing
 	_ghost_left = maxf(_ghost_left - delta, 0.0)
+	# a daredevil in a wheelie stops for no one: what is in its way, it crashes into
+	if is_daredevil():
+		var in_the_way := _who_is_ahead(looking)
+		if in_the_way:
+			_stunt_crash(in_the_way, looking)
+			return
 	# walking through the others (untangling) it still stops for the player
-	if (_ghost_left <= 0.0 and _someone_ahead(looking)) or (_ghost_left > 0.0 and _player_ahead(looking)):
+	if not is_daredevil() and ((_ghost_left <= 0.0 and _someone_ahead(looking)) or (_ghost_left > 0.0 and _player_ahead(looking))):
 		_blocked += delta
 		_held_up += delta
 		if mobility == "scootmobiel" and _blocked > HORN_AFTER and _horn_clock <= 0.0 and not _honked_while_blocked:
@@ -358,7 +376,7 @@ func _physics_process(delta: float) -> void:
 	_blocked = 0.0
 	_held_up = maxf(_held_up - delta * 0.5, 0.0)
 	_honked_while_blocked = false
-	_speed = _pace * (CROSSING_HURRY if _on_zebra else 1.0)
+	_speed = _pace * (CROSSING_HURRY if _on_zebra else 1.0) * (daredevil_pace() if is_daredevil() else 1.0)
 	var direction := flat_to.normalized()
 	var heading := atan2(direction.x, direction.y)
 	if aid:
@@ -420,6 +438,69 @@ func _walk_figure(delta: float, walking: float) -> void:
 	figure.walk(_phase, _walking)
 	if _carried_pose and _carried_item:
 		Crowd.carried_items().call("pose", figure, carried)
+
+
+## Standing still and straight at once (both feet on the ground, the arms down), as when the
+## player starts talking to it (PlayerController.talk_to): a conversation pauses the game,
+## so mid-stride a leg would stay in the air. A rider (aid) keeps its pose.
+func stand_neutral() -> void:
+	_walking = 0.0
+	_phase = 0.0
+	if aid or figure == null:
+		return
+	figure.walk(0.0, 0.0)
+	if _carried_pose and _carried_item:
+		Crowd.carried_items().call("pose", figure, carried)
+
+
+## A wheelchair in a wheelie: a daredevil (see CHAIR_DAREDEVIL_PACE).
+func is_daredevil() -> bool:
+	return _wheelie != null and _wheelie.is_up() and _ragdoll == null
+
+
+func daredevil_pace() -> float:
+	return CHAIR_DAREDEVIL_PACE
+
+
+## Who is right ahead of it in `direction` (another one on foot or riding, or the player), or null.
+func _who_is_ahead(direction: Vector2) -> Node3D:
+	if _all.is_empty():
+		_all = town.people()
+	for other in _all:
+		if other == self or other._ragdoll:
+			continue
+		var offset := Vector2(other.global_position.x - global_position.x, other.global_position.z - global_position.z)
+		if offset.length() < _keep_clear() and offset.dot(direction) > 0.2 and absf(other.global_position.y - global_position.y) < 1.5:
+			return other
+	if _player_ahead(direction):
+		return get_tree().get_first_node_in_group(PLAYER_GROUP) as Node3D
+	return null
+
+
+## A daredevil's crash: it runs into `other` at full speed; another one on foot goes down
+## with it (hit as by something that fast), and the chair tips over forwards, its rider
+## thrown out.
+func _stunt_crash(other: Node3D, direction: Vector2) -> void:
+	var forward := Vector3(direction.x, 0.0, direction.y)
+	var impact := _speed
+	if other is Pedestrian:
+		(other as Pedestrian)._hit_by_stunt(forward * impact, impact)
+	DriverShout.shout(self, "rolstoel", "gevallen", 1.9)
+	var contact := global_position + forward * 0.5 + Vector3.UP * 0.8
+	CrashBurst.spawn(get_parent(), contact, HIT_SHARD_COLOUR, clampf(impact / 6.0, 0.3, 1.0))
+	_cry_out(true, contact)
+	health = maxf(health - DAMAGE_PER_SPEED * impact * 4.0, 0.0)
+	_knock_down(forward * impact * 1.5 + Vector3.UP * impact * 0.6, impact * 3.0)
+
+
+## Run into by a daredevil (a wheelchair in a wheelie): down, as by a slow vehicle.
+func _hit_by_stunt(push: Vector3, impact: float) -> void:
+	if _ragdoll or health <= 0.0:
+		return
+	var contact := global_position + Vector3.UP * 1.0
+	health = maxf(health - DAMAGE_PER_SPEED * impact * 3.0, 0.0)
+	_cry_out(true, contact)
+	_knock_down(push + Vector3.UP * impact * 0.4, impact * 3.0)
 
 
 ## Now and then back on the big wheels (Wheelie), only riding on going (nearly) straight;
@@ -762,29 +843,10 @@ func _knock_down(push: Vector3, impact: float) -> void:
 	_on_zebra = false
 	remove_from_group(Vehicle.WALKERS_GROUP)
 	var collider := _body.get_node("Doos") as CollisionShape3D
-	_ragdoll = RigidBody3D.new()
-	_ragdoll.name = "Valpartij"
-	_ragdoll.mass = BODY_MASS
-	_ragdoll.continuous_cd = true
-	_ragdoll.collision_layer = 0
-	_ragdoll.collision_mask = TOWN_LAYER
-	var material := PhysicsMaterial.new()
-	material.friction = 0.9
-	material.bounce = 0.2
-	_ragdoll.physics_material_override = material
-	var shape := CollisionShape3D.new()
-	shape.shape = collider.shape
-	shape.position = collider.position
-	_ragdoll.add_child(shape)
-	get_parent().add_child(_ragdoll)
-	_ragdoll.global_transform = Transform3D(Basis(Vector3.UP, rotation.y), global_position + Vector3.UP * 0.05)
+	_ragdoll = KnockDown.throw(get_parent(), Transform3D(Basis(Vector3.UP, rotation.y), global_position),
+			collider.shape, collider.position, BODY_MASS, push, impact, _random, 1.0, 2.0, TOWN_LAYER)
 	_ragdoll.add_collision_exception_with(_body)
 	collider.set_deferred("disabled", true)
-	var flat_push := Vector3(push.x, 0.0, push.z)
-	var thrown_towards := flat_push.normalized() if flat_push.length_squared() > 0.01 else global_basis.z
-	_ragdoll.linear_velocity = flat_push + Vector3.UP * minf(1.5 + impact * 0.22, 7.0)
-	_ragdoll.angular_velocity = Vector3.UP.cross(thrown_towards) * minf(impact * 0.6 + 2.0, 14.0) \
-		+ Vector3.UP * _random.randf_range(-3.0, 3.0)
 	_drawn.position = Vector3.ZERO
 	_drawn.reparent(_ragdoll, true)
 	_ragdoll_clock = 0.0

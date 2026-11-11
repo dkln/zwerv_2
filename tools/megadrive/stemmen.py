@@ -111,6 +111,8 @@ CRIES = {
     2: {"length": 0.26, "vowels": [("ng", 0.0), ("uh", 0.35), ("ng", 1.0)], "drop": 1.0, "onset": "glottal"},
     3: {"length": 0.36, "vowels": [("u", 0.0), ("a", 0.3), ("uh", 1.0)], "drop": 2.2, "onset": "h"},
     "hard": {"length": 0.85, "vowels": [("a", 0.0), ("a", 0.55), ("uh", 0.85), ("ng", 1.0)], "drop": 0.8, "onset": "h"},
+    # a groan: low and drawn out, the breath pressed out of you (thrown out of a building)
+    "kreun": {"length": 0.9, "vowels": [("uh", 0.0), ("u", 0.45), ("ng", 1.0)], "drop": 0.5, "onset": "glottal"},
 }
 
 
@@ -171,6 +173,9 @@ def cry(voice_name: str, cry_key) -> numpy.ndarray:
     start_pitch, end_pitch = voice["pitch"]
     if cry_key == "hard":
         start_pitch *= 1.25   # a scream starts higher
+    if cry_key == "kreun":
+        start_pitch *= 0.8    # a groan stays low
+        end_pitch *= 0.75
     # pitch: a jump up at the start (the shock), then falling away
     pitch = end_pitch + (start_pitch - end_pitch) * (1.0 - share) ** shape["drop"]
     pitch *= 1.0 + 0.08 * numpy.exp(-times / 0.025)

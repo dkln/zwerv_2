@@ -1,5 +1,6 @@
 extends RefCounted
-## A wheelie now and then: the front up on the rear wheel for a few seconds, wobbling a
+## A wheelie now and then: the front up on the rear wheel for several seconds (a daredevil's
+## stunt: the rider then races and looks out for nothing, Vehicle.daredevil), wobbling a
 ## little, then down again with a small bounce. For the fatbikes, mopeds, scooters and
 ## motorbikes (TwoWheeler `wheelie_degrees`) and the wheelchairs (MobilityAid, Pedestrian).
 ## While `allowed` (going straight at speed, not braking) one starts on average every
@@ -13,7 +14,7 @@ extends RefCounted
 ## Mean seconds between two wheelies of one rider while it may do one.
 const MEAN_PAUSE := 45.0
 ## Seconds the front stays up (shortest, longest).
-const UP_SECONDS := Vector2(1.4, 3.0)
+const UP_SECONDS := Vector2(4.0, 7.0)
 ## How fast the front goes up and comes down (1/s), and the wobble while up.
 const RISE_RATE := 5.0
 const DROP_RATE := 7.0

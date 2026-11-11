@@ -32,15 +32,21 @@ void fragment() {
 }
 """
 
+## True once `covered` has fired.
+var has_covered := false
 var _still: TextureRect
 var _material: ShaderMaterial
 
 
-## Starts a wipe over everything (one at a time: a running one is returned).
+## Starts a wipe over everything. A running one that has not covered yet is returned (so two
+## calls in one frame make one wipe); one that already covered (its edge under way) makes way
+## for a new one, so `covered` of what is returned always still comes.
 static func swipe(tree: SceneTree) -> CanvasLayer:
 	var running := tree.root.get_node_or_null(NODE_NAME) as CanvasLayer
 	if running:
-		return running
+		if not running.get("has_covered"):
+			return running
+		running.name = NODE_NAME + "_vorige"
 	var transition: CanvasLayer = (load("res://scripts/ui/swipe_transition.gd") as GDScript).new()
 	tree.root.add_child(transition)
 	transition.call("_run")
@@ -75,6 +81,7 @@ func _run() -> void:
 	if image and not image.is_empty():
 		_still.texture = ImageTexture.create_from_image(image)
 	_set_edge(0.0)
+	has_covered = true
 	covered.emit()
 	for frame_index in SETTLE_FRAMES:
 		await get_tree().process_frame

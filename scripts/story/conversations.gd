@@ -31,6 +31,7 @@ extends RefCounted
 ##   hud.show_story(talk.opening(), talk.finish)      # or, for a seller: hud.show_shop(talk, ...)
 
 const Emote = preload("res://scripts/world/emote.gd")
+const Interiors = preload("res://scripts/world/interiors.gd")
 const STREET_FILE := "res://data/gesprekken/voorbijgangers.json"
 const COUNTER_FILE := "res://data/gesprekken/snackbarhouder.json"
 const COUNTER_PERSONA := "snackbarhouder"
@@ -39,11 +40,15 @@ const SHOPS_FILE := "res://data/gesprekken/winkels.json"
 const MERCHANT_ROLES := ["snackbarhouder", "verkoper"]
 const STAFF_FILE := "res://data/gesprekken/personeel.json"
 ## The roles (StationPerson.role) of who is on duty: their own conversation and look.
-const OFFICIAL_ROLES := ["conducteur", "handhaver"]
+const OFFICIAL_ROLES := ["conducteur", "handhaver", "agent"]
 ## Who you talk to when nothing else fits, and the mood of a line with none set.
 const FALLBACK_PERSONA := "forens"
 const FALLBACK_MOOD := "neutraal"
 const GAVE_META := "gaf_kleingeld"
+## Hair that makes someone look old (TownsfolkFigure.HAIRS: grey, white).
+const GREY_HAIRS := [Color("#8A8680"), Color("#D8D4CC")]
+## At the station everything costs at least this many times the town's price (station_menu).
+const STATION_MARKUP := 1.3
 const MONEY_COLOUR := Color("#E8B83A")
 
 static var _street := {}
@@ -139,34 +144,74 @@ static func question(key: String) -> String:
 
 
 ## Who `someone` is to talk to: the id of the first person of the data whose "herkennen"
-## fits how it looks (see the top).
+## fits who it is (its kind of person in the crowd, data/drukte.json "mensen") and how it
+## looks (see the top).
 static func persona_of(someone: Node) -> String:
 	if someone == null:
 		return FALLBACK_PERSONA
-	var mobility := str(someone.get("mobility")) if someone.get("mobility") != null else ""
-	var figure: Node = someone.get("figure")
-	var look: Dictionary = figure.get("look") if figure and figure.get("look") is Dictionary else {}
+	var traits := traits_of(someone)
 	for entry: Dictionary in street().get("personen", []):
-		if _fits(entry.get("herkennen", {}), mobility, look):
+		if _fits(entry.get("herkennen", {}), traits):
 			return str(entry.get("id", FALLBACK_PERSONA))
 	return FALLBACK_PERSONA
 
 
-static func _fits(rules: Dictionary, mobility: String, look: Dictionary) -> bool:
-	if rules.has("vervoer") and str(rules.vervoer) != mobility:
+## What can be seen of `someone`, for "herkennen" and "namen": {"soort" (its kind of person
+## in the crowd, "" when none), "vervoer" (what it rides), "haar" (hair style), "rok", "vrouw"
+## (long hair or a skirt), "grijs" (grey or white hair), "draagt" (what it carries), "jas"
+## (the coat's colour)}.
+static func traits_of(someone: Node) -> Dictionary:
+	var figure: Node = someone.get("figure") if someone else null
+	var look: Dictionary = figure.get("look") if figure and figure.get("look") is Dictionary else {}
+	var hair_style := str(look.get("hair_style", "kort"))
+	var hair: Color = look.get("hair", Color.BLACK)
+	var skirt := bool(look.get("skirt", false))
+	return {
+		"soort": str(someone.get("crowd_kind")) if someone and someone.get("crowd_kind") != null else "",
+		"vervoer": str(someone.get("mobility")) if someone and someone.get("mobility") != null else "",
+		"haar": hair_style,
+		"rok": skirt,
+		"vrouw": hair_style == "lang" or skirt,
+		"grijs": GREY_HAIRS.any(func(grey: Color) -> bool: return hair.is_equal_approx(grey)),
+		"draagt": str(someone.get("carried")) if someone and someone.get("carried") != null else "",
+		"jas": look.get("coat", Color.WHITE),
+	}
+
+
+## Whether `traits` (traits_of) fit `rules`: every rule must hold. Rules: "soort", "vervoer",
+## "haar", "draagt" (one value or a list of them), "rok", "vrouw", "grijs" (true/false), "jas"
+## (a colour or a list). Someone riding fits only rules that name its "vervoer".
+static func _fits(rules: Dictionary, traits: Dictionary) -> bool:
+	if not rules.has("vervoer") and str(traits.vervoer) != "":
 		return false
-	if not rules.has("vervoer") and mobility != "":
-		return false   # someone riding is only who says so
-	if rules.has("haar") and str(rules.haar) != str(look.get("hair_style", "kort")):
-		return false
-	if rules.has("rok") and bool(rules.rok) != bool(look.get("skirt", false)):
-		return false
-	if rules.has("jas"):
-		var coat: Color = look.get("coat", Color.WHITE)
-		var colours: Array = rules.jas if rules.jas is Array else [rules.jas]
-		if not colours.any(func(colour: Variant) -> bool: return coat.is_equal_approx(Color(str(colour)))):
-			return false
+	for key: String in rules:
+		var wanted: Variant = rules[key]
+		match key:
+			"soort", "vervoer", "haar", "draagt":
+				var values: Array = wanted if wanted is Array else [wanted]
+				if not values.has(str(traits.get(key, ""))):
+					return false
+			"rok", "vrouw", "grijs":
+				if bool(wanted) != bool(traits.get(key, false)):
+					return false
+			"jas":
+				var coat: Color = traits.jas
+				var colours: Array = wanted if wanted is Array else [wanted]
+				if not colours.any(func(colour: Variant) -> bool: return coat.is_equal_approx(Color(str(colour)))):
+					return false
 	return true
+
+
+## The name above what someone says: what they look like ("OUDE DAME", "MAN MET HOED",
+## "ZAKENVROUW MET ROLKOFFER"): the first of the person's own "namen", then of the general
+## "namen" of voorbijgangers.json, whose "als" fits them (traits_of); else its "spreker".
+static func name_of(someone: Node, data: Dictionary) -> String:
+	var traits := traits_of(someone)
+	var choices: Array = data.get("namen", []) + street().get("namen", [])
+	for choice: Dictionary in choices:
+		if _fits(choice.get("als", {}), traits):
+			return str(choice.get("naam", ""))
+	return str(data.get("spreker", ""))
 
 
 func _data() -> Dictionary:
@@ -229,9 +274,16 @@ func _with_mood(page: Dictionary, line_kind: String) -> Dictionary:
 ## "colour" of the frame and cursor, the name plate's "plate" and "plate_text" colours, the
 ## babble's "pitch". Empty for anyone else.
 func official_style() -> Dictionary:
-	if not persona in OFFICIAL_ROLES:
+	return official_style_of(persona)
+
+
+## official_style for someone of `role` (OFFICIAL_ROLES), empty for anyone else.
+static func official_style_of(role: String) -> Dictionary:
+	if not role in OFFICIAL_ROLES:
 		return {}
-	var data := _data()
+	var data: Dictionary = (staff().get("personen", {}) as Dictionary).get(role, {})
+	if data.is_empty():
+		return {}
 	var colour := Color(str(data.get("kleur", "#FFB547")))
 	return {"emblem": str(data.get("embleem", "")), "colour": colour,
 		"plate": Color(str(data.get("naamkaartje", data.get("kleur", "#FFB547")))),
@@ -276,7 +328,7 @@ func _page(text: String, line_kind: String, follow_up := {}) -> Dictionary:
 		options.append(["kleingeld", question("kleingeld")])
 	options.append(["dag", question("dag")])
 	var texts: Array = options.map(func(option: Array) -> String: return option[1])
-	return _with_mood({"kind": "gesprek", "speaker": str(data.get("spreker", "")), "text": text, "choices": texts,
+	return _with_mood({"kind": "gesprek", "speaker": speaker(), "text": text, "choices": texts,
 		"on_choice": func(index: int) -> Array: return _answer(options[index], follow_up)}, line_kind)
 
 
@@ -292,9 +344,12 @@ func _answer(option: Array, follow_up: Dictionary) -> Array:
 		"kleingeld":
 			_asked["kleingeld"] = true
 			var gave := _ask_for_money()
+			# begging counts inside: too much of it and you are thrown out (Interiors)
+			if person and person.is_inside_tree():
+				Interiors.note_offence(person.get_tree(), "bedelen")
 			return [_page(str(data.get("kleingeld_ja" if gave else "kleingeld_nee", "")) + " " + _again(), "kleingeld_ja" if gave else "kleingeld_nee")]
 	# goodbye: their last word, then the box closes
-	return [_with_mood({"kind": "gesprek", "speaker": str(data.get("spreker", "")), "text": str(data.get("dag", ""))}, "dag")]
+	return [_with_mood({"kind": "gesprek", "speaker": speaker(), "text": str(data.get("dag", ""))}, "dag")]
 
 
 ## Asked for change: once per person maybe some ("gulheid": "kans" in 100, "bedrag" in
@@ -329,7 +384,26 @@ static func shop_data_of(someone: Node) -> Dictionary:
 	var kind := str(someone.get_meta("kind", "")) if someone else ""
 	var own: Dictionary = (shops().get("winkels", {}) as Dictionary).get(kind, {})
 	merged.merge(own, true)
+	if kind != "":
+		merged["menu"] = station_menu(merged.get("menu", []))
 	return merged
+
+
+## Everything at the station costs more than in the town (it is the station): a shop of Den
+## Haag Centraal asks at least STATION_MARKUP times what the town's snack bar asks for the same
+## thing (rounded up to 5 cents); what the town does not sell keeps the price of winkels.json.
+static func station_menu(menu: Array) -> Array:
+	var town_prices := {}
+	for entry: Dictionary in counter().get("menu", []):
+		town_prices[str(entry.get("item", ""))] = float(entry.get("prijs", 0.0))
+	var result := []
+	for entry: Dictionary in menu:
+		var priced := entry.duplicate()
+		var town_price: float = town_prices.get(str(entry.get("item", "")), 0.0)
+		var lowest := ceilf(town_price * STATION_MARKUP * 20.0 - 0.0001) / 20.0
+		priced["prijs"] = maxf(float(entry.get("prijs", 0.0)), lowest)
+		result.append(priced)
+	return result
 
 
 func is_shop() -> bool:
@@ -352,8 +426,12 @@ func shop_kind_label() -> String:
 	return str(_data().get("soort", "SNACKBAR"))
 
 
+## The name over the conversation: a shop's or official's own "spreker", a passer-by's what
+## they look like (name_of).
 func speaker() -> String:
-	return str(_data().get("spreker", ""))
+	if is_shop() or persona in OFFICIAL_ROLES:
+		return str(_data().get("spreker", ""))
+	return name_of(person, _data())
 
 
 ## The look of who you talk to (a TownsfolkFigure look), empty when unknown.

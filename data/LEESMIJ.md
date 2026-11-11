@@ -102,14 +102,24 @@ Een **persoon**:
 }
 ```
 
-`herkennen` kan hebben: `vervoer` (`"rolstoel"`, `"scootmobiel"`), `haar` (`"kort"`,
-`"lang"`, `"kaal"`, `"pet"`), `rok` (`true`/`false`), `jas` (een lijst kleuren, bv.
-`["#22242A"]`). `gulheid`: de kans in 100 dat ze wat kleingeld geven, en hoeveel euro.
+`herkennen` kan hebben: `soort` (de soort mens uit `drukte.json`, bv. `"oudere"`: zo praat
+iedereen op straat als wat hij is), `vervoer` (`"rolstoel"`, `"scootmobiel"`), `haar` (`"kort"`,
+`"lang"`, `"kaal"`, `"pet"`, `"hoed"`), `rok` en `vrouw` en `grijs` (`true`/`false`), `draagt`
+(`"rugzak"`, `"rolkoffer"`, `"aktetas"`, `"handtas"`, `"schoudertas"`), `jas` (een lijst
+kleuren, bv. `["#22242A"]`). `gulheid`: de kans in 100 dat ze wat kleingeld geven, en hoeveel euro.
 
-## Personeel: conducteurs en handhavers — `gesprekken/personeel.json`
+**Wat ze zijn.** Boven het gesprek staat niet "voorbijganger" maar wat je ziet: "OUDE DAME",
+"MAN MET HOED", "ZAKENVROUW MET ROLKOFFER". Dat komt uit `namen`: een lijst van
+`{"als": {...}, "naam": "..."}` (dezelfde voorwaarden als `herkennen`), eerst die van de persoon
+zelf, dan de algemene `namen` bovenin het bestand; de eerste die klopt. Zet de precieze
+(met meer voorwaarden) bovenaan en eindig met een `{"als": {}, ...}`. `vrouw` is lang haar of
+een rok, `grijs` grijs of wit haar.
+
+## Personeel: conducteurs, handhavers en agenten — `gesprekken/personeel.json`
 
 In Den Haag Centraal lopen conducteurs van de NS (blauw uniform met pet) en handhavers
-(zwart met geel). Spreek je ze aan, dan praten ze niet als een voorbijganger maar als
+(blauw uniform); op straat lopen handhavers en agenten van de politie (donkerblauw, embleem
+`POLITIE`) mee in de drukte (de soorten `handhaver` en `agent` in `drukte.json`). Spreek je ze aan, dan praten ze niet als een voorbijganger maar als
 iemand in dienst: over treinen, vertraging, inchecken en zwartrijden (conducteur), over
 regels, rondhangen, boetes en "even uw legitimatie" (handhaver). Om kleingeld vragen heeft
 geen zin: ze weigeren, in stijl. Het gespreksvak laat zien dat het personeel is: hun titel
@@ -151,6 +161,14 @@ weggaan), `nog_iets` (achter wat ze zeggen na een aankoop), `stemmingen` (per so
 
 ## De winkels van Den Haag Centraal — `gesprekken/winkels.json`
 
+Elke zaak heeft `kleding`: wat de verkoper draagt, passend bij de zaak (`jas`, `rand` voor
+kraag of schort, `broek`, en eventueel `pet` voor een muts of pet), bv. de barista in zwart met een
+bruin schort, de bloemist in groen, de broodjesmaker in het wit.
+
+Op het station is alles duurder dan in de stad: wat de snackbar in de stad ook verkoopt, kost
+hier minstens 1,3 keer zoveel (`STATION_MARKUP` in `scripts/story/conversations.gd`; staat er in
+winkels.json minder, dan houdt het spel die ondergrens aan).
+
 In het station staat achter elke winkel en kiosk een verkoper; je spreekt ze aan vóór de
 toonbank (`[E] Winkelen`; bij een snackbar `[E] Bestellen`) en dan opent hetzelfde winkelscherm. Onder `winkels` staat per
 **soort zaak** (de `kind` van de markers `Verkoper_<n>` in `scenes/binnen/centraal.tscn`,
@@ -172,6 +190,26 @@ met **dezelfde velden** als `snackbarhouder.json`. Wat een zaak weglaat komt uit
 Een nieuw product: zet het item in `scripts/player/items.gd` (naam, soort, tekst, effect;
 een eigen icoon in `GameMenu.ITEM_ICONS`) en een regel in het `menu` van de zaak.
 Controle: `tools/godot.sh --headless --script tools/check/shop_test.gd`.
+
+## Eruit gegooid worden — `gesprekken/uitzetten.json`
+
+Wie in een binnenruimte te vaak iets doet wat niet mag, wordt eruit gegooid: de swipe, en de
+speler vliegt de deur uit en tuimelt de straat op; als hij weer staat, vertelt wie hem eruit
+zette waarom (een gesprek zonder keuzes), en een tijdje (`terug_na` seconden) mag hij er niet in.
+Herbruikbaar voor elke plek (`scripts/world/interiors.gd`: `Interiors.note_offence(tree, overtreding)`).
+
+| veld | wat |
+|---|---|
+| `plekken` | per soort binnenruimte (`snackbar`, `centraal`) zijn `overtredingen` |
+| `na` | hoeveel keer in één bezoek genoeg is (1: meteen) |
+| `wie` | wie het zegt: `snackbarhouder`, of iemand in dienst uit `personeel.json` (`handhaver`, `conducteur`: in hun stijl) |
+| `stemming`, `tekst` | de stemming en de bladzijden die na elkaar komen |
+| `terug_na`, `niet_binnen` | seconden dat je er niet in mag, en wat er dan boven je zweeft |
+
+Overtredingen nu: `bedelen` (om kleingeld vragen), `geen_geld` (iets kopen zonder genoeg geld),
+`boete_onbetaald` (betrapt op zwartrijden en de boete niet kunnen betalen: meteen eruit; wie
+wel kan betalen, betaalt alleen). Een nieuwe: meld hem met `Interiors.note_offence`
+waar hij gebeurt en zet hem per plek in dit bestand.
 
 ## Drukte op straat — `drukte.json`
 
@@ -195,7 +233,8 @@ Een **soort mens** (bv. `"forens"`):
 | veld | wat |
 |---|---|
 | `jassen`, `broeken`, `schoenen`, `haarkleuren` | kleuren (`"#22242A"`) waaruit gekozen wordt; weggelaten = elke kleur |
-| `kapsels` | gewichten van `kort`, `lang`, `kaal`, `pet` |
+| `kapsels` | gewichten van `kort`, `lang`, `kaal`, `pet`, `hoed` |
+| `uniform` | vaste kleding (`coat`, `trim`, `trousers`, `cap`, `shoes`: kleuren), bv. van de politie |
 | `rok` | kans op een rok (alleen bij lang haar), 0 tot 1 |
 | `tempo` | hoe snel ze lopen, 1,0 = gewoon |
 | `rolstoel`, `scootmobiel` | welk deel in een rolstoel of op een scootmobiel zit, 0 tot 1 |
@@ -203,5 +242,6 @@ Een **soort mens** (bv. `"forens"`):
 | `pak` | `true`: in pak (donker colbert en broek) |
 
 Een nieuwe soort mens: voeg hem toe onder `mensen` en geef hem een gewicht bij de `uren`
-waarop hij buiten is (en eventueel bij een paar `gebieden`). Let op: de gesprekken herkennen
-een ambtenaar aan een jas `#22242A` of `#6A6E74` en een toerist aan `#C8B48A`.
+waarop hij buiten is (en eventueel bij een paar `gebieden`), en een persoon in
+`gesprekken/voorbijgangers.json` met `"herkennen": {"soort": "<naam>"}` en zijn `namen`, zodat hij
+praat als wat hij is. Iemand in dienst (`agent`, `handhaver`) praat uit `personeel.json`.

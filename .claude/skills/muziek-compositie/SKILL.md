@@ -1,6 +1,6 @@
 ---
 name: muziek-compositie
-description: Gebruik als de gebruiker een nieuwe compositie aanlevert (een uitgeschreven nummer van Gemini of een andere componist: tempo, toonsoort, instrumenten, akkoorden en noten per maat; geplakt of in een bestand zoals nieuwe_muziek.txt) en vraagt daar de muziek van ZWERVR van te maken; zet de compositie letterlijk om naar tools/muziek/composities/<naam>.py, rendert de intro en alle afgeleide stukken (menu, karakterkeuze, handelaar, laadscherm, spel, deuntjes) in Mega Drive-klank en controleert ze.
+description: Gebruik als de gebruiker een nieuwe compositie aanlevert (een uitgeschreven nummer van Gemini of een andere componist: tempo, toonsoort, instrumenten, akkoorden en noten per maat; in tools/muziek/composition.md of geplakt) en vraagt daar de muziek van ZWERVR van te maken; zet de compositie letterlijk om naar tools/muziek/composities/<naam>.py, rendert de intro en alle afgeleide stukken (menu, karakterkeuze, handelaar, laadscherm, spel, deuntjes) in Mega Drive-klank en controleert ze.
 ---
 
 # Een nieuwe compositie wordt de muziek van ZWERVR
@@ -12,9 +12,10 @@ vragen.
 
 ## Stappen
 
-1. **Bewaar het origineel**: de tekst ongewijzigd als `tools/muziek/composities/<naam>.txt`
-   (`<naam>`: de titel in kleine letters met underscores). Een bestand dat de gebruiker in de
-   projectmap zette (zoals `nieuwe_muziek.txt`) laat je staan.
+1. **Lees de compositie** uit `tools/muziek/composition.md` (daar levert de gebruiker hem aan;
+   geplakt: zet hem daar neer). **Bewaar het origineel** ook ongewijzigd als
+   `tools/muziek/composities/<naam>.txt`
+   (`<naam>`: de titel in kleine letters met underscores); `composition.md` zelf laat je staan.
 2. **Zet het letterlijk over** naar `tools/muziek/composities/<naam>.py`, maat voor maat:
    - `TITEL`, `TEMPO`, `TELLEN_PER_MAAT`, `TOONSOORT` zoals de tekst ze geeft;
    - `KLANKEN`: elke partij (kanaal) van de tekst een klank uit `tools/muziek/instruments.py`

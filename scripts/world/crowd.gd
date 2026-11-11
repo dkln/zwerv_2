@@ -117,6 +117,10 @@ static func person_kinds() -> Array:
 	return (data().get("mensen", {}) as Dictionary).keys()
 
 
+## The colours of a hat ("kapsels": "hoed"): black, brown, grey and navy felt, and a tweed.
+const HAT_COLOURS := [Color("#1E1E22"), Color("#4E3A2A"), Color("#5A5E64"), Color("#22304A"), Color("#7A6A4E")]
+
+
 ## The look of someone of `kind` (TownsfolkFigure.look_for, then dressed as that kind).
 static func look_for(kind: String, look_seed: int) -> Dictionary:
 	var profile := _person(kind)
@@ -154,10 +158,17 @@ static func look_for(kind: String, look_seed: int) -> Dictionary:
 		if shoes != null:
 			look["shoes"] = shoes
 	look["skirt"] = look.get("hair_style", "") == "lang" and random.randf() < float(profile.get("rok", 0.3))
+	# a uniform (police, handhaving): those colours, whatever was drawn
+	var uniform: Dictionary = profile.get("uniform", {})
+	for key: String in uniform:
+		look[key] = Color(str(uniform[key]))
 	if look.get("hair_style", "") == "pet":
 		var cap: Variant = _colour_from(profile, "jassen", random)
 		if cap != null:
 			look["cap"] = cap
+	elif look.get("hair_style", "") == "hoed":
+		# hats are dark felt or tweed, whatever the coat
+		look["cap"] = HAT_COLOURS[random.randi() % HAT_COLOURS.size()]
 	return look
 
 

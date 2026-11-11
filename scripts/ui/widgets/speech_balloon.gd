@@ -2,9 +2,10 @@ extends Control
 ## A speech balloon: a short spoken line or a shout of someone, over their head, typed out
 ## like the story box (Typewriter: word by word), but without its cursor and silent: the
 ## shout itself is what you hear, the words come without blips.
-## An ink panel with a border in the speaker's colour and a hard shadow, the text in the
-## pixel font with the faux 3D of the game's texts (UiStyle.faux_3d: a darker copy
-## TEXT_SHADOW px lower), a tail pointing down at the speaker. It pops up, types, holds `hold` seconds
+## An ink panel with a border in the speaker's colour, the text in the pixel font, a tail
+## pointing down at the speaker; the balloon (not its text) with the faux 3D of the game's
+## texts (UiStyle.faux_3d): a darker copy straight under it, in the border's colour half as
+## light, BALLOON_DEPTH px lower. It pops up, types, holds `hold` seconds
 ## once it is all there, then fades; `finished` fires when it is gone.
 ## Where: the node's position is the tip of the tail (the balloon stands above it).
 ## - In the UI (the character creation screen): set `position` yourself.
@@ -25,8 +26,8 @@ const Typewriter = preload("res://scripts/ui/widgets/typewriter.gd")
 const MAX_TEXT_WIDTH := 320.0
 const TEXT_SIZE := 18
 const PADDING := Vector2(12, 8)
-## How far the black copy under the text sits lower (px).
-const TEXT_SHADOW := 2
+## How far the darker copy under the balloon sits lower (px).
+const BALLOON_DEPTH := 4
 ## The tail: how high and how wide at the panel.
 const TAIL_HEIGHT := 12.0
 const TAIL_WIDTH := 14.0
@@ -64,7 +65,8 @@ func _init() -> void:
 	_text.add_theme_font_size_override("normal_font_size", TEXT_SIZE)
 	_text.add_theme_color_override("default_color", UiStyle.TEXT)
 	_text.add_theme_constant_override("line_separation", 4)
-	UiStyle.faux_3d(_text, TEXT_SHADOW)
+	# the text plain (only the balloon has the faux 3D)
+	_text.add_theme_constant_override("outline_size", 0)
 	_panel.add_child(_text)
 	# the tail over the panel: its fill covers the panel's bottom border where they meet, so
 	# panel and tail are one shape with one outline
@@ -89,8 +91,9 @@ func say(line: String, hold := 1.6) -> void:
 	style.content_margin_right = PADDING.x
 	style.content_margin_top = PADDING.y
 	style.content_margin_bottom = PADDING.y
-	style.shadow_color = UiStyle.INK
-	style.shadow_offset = Vector2(4, 4)
+	# the faux 3D: a darker copy of the balloon (in the border's colour) straight under it
+	style.shadow_color = UiStyle.faux_3d_colour(accent)
+	style.shadow_offset = Vector2(0, BALLOON_DEPTH)
 	_panel.add_theme_stylebox_override("panel", style)
 	# as wide as the whole line needs (up to MAX_TEXT_WIDTH), so it does not grow while typing
 	var font := UiStyle.font(UiStyle.FONT_PIXEL_BOLD)
@@ -153,11 +156,13 @@ func _place() -> void:
 	_tail.queue_redraw()
 
 
-## The shadow of the tail, under the panel (the panel's own shadow is its stylebox's).
+## The faux 3D of the tail, under the panel (the panel's own is its stylebox's shadow): the
+## tail's shape with its border, BALLOON_DEPTH px lower, in the darker colour.
 func _draw() -> void:
-	var half := TAIL_WIDTH * 0.5
-	var shadow := Vector2(4, 4)
-	draw_colored_polygon(PackedVector2Array([Vector2(-half, -TAIL_HEIGHT) + shadow, Vector2(half, -TAIL_HEIGHT) + shadow, shadow]), UiStyle.INK)
+	var half := TAIL_WIDTH * 0.5 + BORDER_WIDTH
+	var depth := Vector2(0, BALLOON_DEPTH)
+	draw_colored_polygon(PackedVector2Array([Vector2(-half, -TAIL_HEIGHT) + depth, Vector2(half, -TAIL_HEIGHT) + depth,
+			Vector2(0, BORDER_WIDTH) + depth]), UiStyle.faux_3d_colour(accent))
 
 
 ## The tail, over the panel, pixel-hard: the outline in the accent from the panel's bottom

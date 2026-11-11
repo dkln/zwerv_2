@@ -230,7 +230,9 @@ func _animate(roll: float, _steering_now: float, delta: float) -> void:
 	_pose_rider(_crank_angle)
 
 
-## Now and then the front up (Wheelie): only going straight at speed, not braking; the
+## Now and then the front up (Wheelie): only going straight at speed, not braking; while it
+## is up the rider is a daredevil (Vehicle.daredevil: far too fast, no braking or swerving for
+## anyone, so it may well crash hard); the
 ## body (drawn between the physics steps by Vehicle._process) is turned about the rear
 ## wheel's contact point, so the rider and the wheels go up with it.
 func _do_wheelie(delta: float) -> void:
@@ -238,5 +240,7 @@ func _do_wheelie(delta: float) -> void:
 			and acceleration_now > -0.2 and absf(_lean) < WHEELIE_MOST_LEAN
 	if _wheelie.step(delta, allowed):
 		DriverShout.shout(self, wheelie_kind, "wheelie", _outer_box.end.y + 0.6)
+	# with the front up it is a daredevil: flat out, looking out for nothing (Vehicle.daredevil)
+	daredevil = _wheelie.is_up() and not crashed
 	if _wheelie.angle > 0.0:
 		_body.global_transform = _body.global_transform * _wheelie.tilt_about(_rear_contact)

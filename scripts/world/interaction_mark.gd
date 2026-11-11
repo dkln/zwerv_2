@@ -2,8 +2,9 @@ extends Node3D
 ## The big arrow bobbing over something you can use (a way in, someone who sells): a flat
 ## "->" arrow (a shaft with a head) pointing down at it, always facing the camera, in the
 ## colour of the game's accents, with the faux 3D of the texts (UiStyle.faux_3d): a darker
-## copy a little under it, drawn behind. Drawn over everything (no depth test), so a tree or
-## an awning before it never hides it. It shows only when the player is within MARK_FROM and
+## copy a little under it, drawn behind. Outside drawn over everything (no depth test), so a
+## tree or an awning before it never hides it; inside (`through_walls` false) as anything
+## else, so the arrow of a shop behind a wall does not show through it. It shows only when the player is within MARK_FROM and
 ## bobs between `bottom` and `top` (the height of its point).
 ##   const InteractionMark = preload("res://scripts/world/interaction_mark.gd")
 ##   var mark := InteractionMark.create(2.5, 3.3)
@@ -33,14 +34,14 @@ var _clock := 0.0
 
 
 ## An arrow bobbing between `low` and `high` over its parent (its point at those heights).
-static func create(low: float, high: float) -> InteractionMark:
+static func create(low: float, high: float, through_walls := true) -> InteractionMark:
 	var mark := InteractionMark.new()
 	mark.name = "Aanwijzer"
 	mark.bottom = low
 	mark.top = high
 	var shape := _arrow_mesh()
-	mark._arrow = mark._make_arrow("Pijl", shape, MARK_COLOUR, 1)
-	mark._arrow_shadow = mark._make_arrow("Pijl_schaduw", shape, UiStyle.faux_3d_colour(MARK_COLOUR), 0)
+	mark._arrow = mark._make_arrow("Pijl", shape, MARK_COLOUR, 1, through_walls)
+	mark._arrow_shadow = mark._make_arrow("Pijl_schaduw", shape, UiStyle.faux_3d_colour(MARK_COLOUR), 0, through_walls)
 	return mark
 
 
@@ -85,7 +86,7 @@ static func _arrow_mesh() -> ArrayMesh:
 
 ## One arrow of `shape` in `colour`: unshaded, facing the camera (billboard), both sides
 ## drawn, over everything; in `priority` order: the darker copy first, the arrow over it.
-func _make_arrow(arrow_name: String, shape: ArrayMesh, colour: Color, priority: int) -> MeshInstance3D:
+func _make_arrow(arrow_name: String, shape: ArrayMesh, colour: Color, priority: int, through_walls: bool) -> MeshInstance3D:
 	var arrow := MeshInstance3D.new()
 	arrow.name = arrow_name
 	arrow.mesh = shape
@@ -95,7 +96,7 @@ func _make_arrow(arrow_name: String, shape: ArrayMesh, colour: Color, priority: 
 	material.cull_mode = BaseMaterial3D.CULL_DISABLED
 	material.billboard_mode = BaseMaterial3D.BILLBOARD_FIXED_Y
 	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	material.no_depth_test = true
+	material.no_depth_test = through_walls
 	material.render_priority = priority
 	arrow.material_override = material
 	arrow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF

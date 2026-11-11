@@ -632,7 +632,6 @@ static func material_for(kind: String, outlined := false) -> Material:
 				glow.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 				_materials[kind] = glow
 			else:
-				# the bevel of each voxel too (figure_plain.gdshader)
 				var settings: Dictionary = MATERIALS.get(kind, MATERIALS.leather)
 				var plain := ShaderMaterial.new()
 				plain.shader = PLAIN_SHADER
@@ -923,8 +922,7 @@ class VoxelFigure:
 		for index: int in order:
 			tool.set_normal(normal)
 			tool.set_color(shades[index])
-			# where in the voxel's face this corner is (0..1, v up the sides): for the bevel
-			# of each voxel (voxel_bevel.gdshaderinc)
+			# where in the voxel's face this corner is (0..1, v up the sides)
 			var point: Vector3 = points[index]
 			tool.set_custom(0, _outward(cell + Vector3i(point), part_set, normal))
 			if side.x != 0:

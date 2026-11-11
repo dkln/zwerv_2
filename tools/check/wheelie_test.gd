@@ -61,6 +61,26 @@ func _init() -> void:
 	_check(most_pitch > deg_to_rad(5.0), "tweewielers gaan op het achterwiel")
 	_check(worst_rear_lift < 0.01, "achterwiel blijft op de weg")
 	_check(most_chair > deg_to_rad(5.0), "rolstoelen gaan op de grote wielen")
+	# in a wheelie a daredevil: far over its usual speed, braking for nothing
+	var up := riders.filter(func(rider: TwoWheeler) -> bool: return rider._wheelie.is_up())
+	var all_daredevils := not up.is_empty()
+	var faster := true
+	for rider: TwoWheeler in up:
+		all_daredevils = all_daredevils and rider.daredevil
+		var usual := minf(rider.top_speed_kmh / 3.6, rider.speed_limit)
+		faster = faster and rider.daredevil_speed() > usual * 1.2
+	_check(all_daredevils, "in een wheelie een waaghals (%d)" % up.size())
+	_check(faster, "de waaghals rijdt veel harder dan normaal")
+	var stunting := up[0] as TwoWheeler if not up.is_empty() else null
+	if stunting:
+		stunting._people_limit = 0.0
+		stunting._traffic_limit = 0.0
+		var target := stunting._target_speed(1.0 / 60.0)
+		_check(target > 1.0, "de waaghals remt niet voor verkeer of voetgangers (%.1f m/s)" % target)
+	for chair: Pedestrian in chairs:
+		if chair._wheelie.is_up():
+			_check(chair.is_daredevil() and chair.daredevil_pace() > 1.5, "een rolstoel in een wheelie scheurt (x%.1f)" % chair.daredevil_pace())
+			break
 	print("wheelie ok" if _problems.is_empty() else "problemen: " + str(_problems))
 	quit(0 if _problems.is_empty() else 1)
 

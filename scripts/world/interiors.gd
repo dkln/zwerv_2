@@ -56,6 +56,14 @@ const NAMES := {"tekst/naam_snackbar_1": "Frietje Fatsoen", "tekst/naam_snackbar
 const PLACE_NAMES := {"snackbar_de_vrijheid": "Snackbar De Vrijheid"}
 ## Who can go through a door (PlayerController looks in it): entrances and the way out.
 const DOORS_GROUP := "deuren"
+## Interiors itself, so others can report an offence (note_offence) without a path to it.
+const GROUP := "binnenruimtes"
+## Thrown out (throw_out): who says what for which offence where (data/gesprekken/uitzetten.json),
+## how hard the player is thrown out of the door (m/s), and the colour of "niet_binnen".
+const THROW_OUT_FILE := "res://data/gesprekken/uitzetten.json"
+const THROW_SPEED := 6.5
+const BARRED_COLOUR := Color("#FF5A4A")
+const Conversations = preload("res://scripts/story/conversations.gd")
 ## Where the snack bar is, far off the map (metres; KINDS has it too).
 const INTERIOR_AT := Vector3(-600.0, 0.0, -600.0)
 ## How far from a door point you can go through (metres).
@@ -86,6 +94,11 @@ var _exits := {}                    # kind -> Array[Entrance]: its ways out
 var _inside: Dictionary = {}        # the way in the player came through (empty: outside)
 ## The ways in: {"kind", "name", "seed", "door" (Vector3), "outward" (Vector3), "door_index"}.
 var _bars: Array[Dictionary] = []
+var _offences := {}                 # offence -> times in this visit (note_offence)
+var _barred_until := {}             # kind -> msec until which the player may not come in
+var _throwing := false              # a throw-out under way
+var _throw_out_data := {}
+var _last_swipe: Node                # the swipe of the last way out (_go_out), to wait for its end
 
 
 ## A door: an entrance from the pavement, or the way out of an interior.
@@ -127,6 +140,7 @@ class Entrance:
 
 
 func _ready() -> void:
+	add_to_group(GROUP)
 	_player = get_node_or_null(player_path)
 	_find_snack_bars()
 	_find_door_tiles()
@@ -182,8 +196,17 @@ func interior_of(kind: String) -> Node3D:
 ## Goes in through `bar` (a way in): the swipe, and under it into the dressed interior, at
 ## the door that matches the way in.
 func enter(bar: Dictionary) -> void:
-	if is_inside() or _player == null:
+	if is_inside() or _player == null or _throwing:
 		return
+	var kind_barred := String(bar.get("kind", "snackbar"))
+	if Time.get_ticks_msec() < int(_barred_until.get(kind_barred, 0)):
+		# thrown out a little while ago: not yet back in
+		var hud := get_node_or_null(hud_path)
+		if hud and hud.has_method("show_floating_number"):
+			hud.show_floating_number(_player.global_position + Vector3.UP * 2.2,
+					String(_throw_outs().get("niet_binnen", "Je mag hier niet in")), BARRED_COLOUR, 14)
+		return
+	_offences = {}
 	_play_sound(DOOR_IN_SOUND)
 	var swipe := SwipeTransition.swipe(get_tree())
 	await swipe.covered
@@ -209,10 +232,18 @@ func enter(bar: Dictionary) -> void:
 ## Goes back out through door `door_index` of the interior: the swipe, and under it onto the
 ## pavement before the matching way in (or the one you came in through), facing the street.
 func leave(door_index := 0) -> void:
-	if not is_inside():
+	if not is_inside() or _throwing:
 		return
+	await _go_out(door_index)
+
+
+## Out through door `door_index` (0: the one of the way in): the swipe, and under it onto
+## the pavement before it, the camera, light and minimap back as outside. Returns the way in
+## it came out of (its "door" and "outward").
+func _go_out(door_index: int) -> Dictionary:
 	_play_sound(DOOR_OUT_SOUND)
 	var swipe := SwipeTransition.swipe(get_tree())
+	_last_swipe = swipe
 	await swipe.covered
 	_set_music("")
 	_set_location("")
@@ -230,6 +261,103 @@ func leave(door_index := 0) -> void:
 	_camera_indoors(false)
 	_light_indoors(false)
 	_minimap_indoors([])
+	return bar
+
+
+# ------------------------------------------------------------------ thrown out
+
+static func _read_json(path: String) -> Dictionary:
+	if not FileAccess.file_exists(path):
+		return {}
+	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
+	return parsed if parsed is Dictionary else {}
+
+
+func _throw_outs() -> Dictionary:
+	if _throw_out_data.is_empty():
+		_throw_out_data = _read_json(THROW_OUT_FILE)
+	return _throw_out_data
+
+
+## What the place of `kind` does about `offence` (uitzetten.json), empty when nothing.
+func _rule(kind: String, offence: String) -> Dictionary:
+	var places: Dictionary = _throw_outs().get("plekken", {})
+	return ((places.get(kind, {}) as Dictionary).get("overtredingen", {}) as Dictionary).get(offence, {})
+
+
+## Someone reports an offence of the player (anywhere: it only counts inside an interior
+## whose uitzetten.json knows it): "bedelen", "geen_geld", "zwartrijden".
+static func note_offence(tree: SceneTree, offence: String) -> void:
+	var interiors := tree.get_first_node_in_group(GROUP) if tree else null
+	if interiors and interiors.has_method("offence"):
+		interiors.call("offence", offence)
+
+
+## Counts `offence` in this visit; at the number the place allows ("na"), the player is
+## thrown out (throw_out).
+func offence(offence_name: String) -> void:
+	if not is_inside() or _throwing:
+		return
+	var rule := _rule(String(_inside.kind), offence_name)
+	if rule.is_empty():
+		return
+	_offences[offence_name] = int(_offences.get(offence_name, 0)) + 1
+	if int(_offences[offence_name]) >= int(rule.get("na", 1)):
+		throw_out(offence_name)
+
+
+## Thrown out of the interior for `offence_name`: once the conversation or the shop screen
+## is closed (closing the shop at once), the swipe, and once it is through out of the door the
+## player flies (a kick, a close-up in slow motion, a groan as they land), tumbling onto the
+## pavement; once up again, who threw them out says why (a conversation
+## without choices: uitzetten.json "tekst"); for "terug_na" seconds they may not come back in.
+func throw_out(offence_name: String) -> void:
+	if not is_inside() or _throwing:
+		return
+	_throwing = true
+	var kind := String(_inside.kind)
+	var rule := _rule(kind, offence_name)
+	var hud := get_node_or_null(hud_path)
+	if hud and hud.has_method("is_showing_shop") and hud.is_showing_shop():
+		var shop: Node = hud.get("_shop_screen")
+		if shop and shop.has_method("leave"):
+			shop.call("leave")
+	while hud and ((hud.has_method("is_showing_story") and hud.is_showing_story())
+			or (hud.has_method("is_showing_shop") and hud.is_showing_shop())):
+		await get_tree().process_frame
+	var bar := await _go_out(0)
+	_barred_until[kind] = Time.get_ticks_msec() + int(float(_throw_outs().get("terug_na", 90)) * 1000.0)
+	_offences = {}
+	# the throw only once the swipe is through, so it is seen whole
+	if is_instance_valid(_last_swipe) and _last_swipe.is_inside_tree():
+		await _last_swipe.finished
+	if _player.has_method("thrown_out"):
+		_player.call("thrown_out", (bar.outward as Vector3) * THROW_SPEED)
+	# once the player is up again
+	var waited := 0.0
+	while _player.get("_ragdoll") != null and waited < 8.0:
+		await get_tree().process_frame
+		waited += get_process_delta_time()
+	if hud and hud.has_method("show_story"):
+		hud.show_story(_throw_out_pages(rule))
+	_throwing = false
+
+
+## The pages of being told why: who ("wie": a role of personeel.json, shown as on duty, or the
+## snack bar's keeper), each line of "tekst" a page, in the mood "stemming".
+func _throw_out_pages(rule: Dictionary) -> Array:
+	var who := String(rule.get("wie", "snackbarhouder"))
+	var staff: Dictionary = (Conversations.staff().get("personen", {}) as Dictionary).get(who, {})
+	var speaker := String(staff.get("spreker", Conversations.counter().get("spreker", who.to_upper())))
+	var official := Conversations.official_style_of(who)
+	var pages := []
+	for line: String in rule.get("tekst", []):
+		var page := {"kind": "gesprek", "speaker": speaker, "text": line, "mood": String(rule.get("stemming", "boos")),
+			"voice": "man"}
+		if not official.is_empty():
+			page["official"] = official
+		pages.append(page)
+	return pages
 
 
 ## An interior no one is in stands still and is not drawn.

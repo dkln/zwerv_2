@@ -88,6 +88,7 @@ signal bought(item_id: String)
 ## A conversation started with someone (talk_to), the kind of person (Conversations.persona).
 signal talked(persona: String)
 
+const KnockDown = preload("res://scripts/world/knock_down.gd")
 const GroundShadow = preload("res://scripts/effects/ground_shadow.gd")
 const PlayerCharacter = preload("res://scripts/player/player_character.gd")
 const PlayerModel = preload("res://scripts/player/player_model.gd")
@@ -531,6 +532,9 @@ func _look_for_someone_to_talk_to() -> void:
 			var thing := candidate as Node3D
 			if thing == null or thing == self or not thing.is_visible_in_tree() or thing.get("_ragdoll") != null:
 				continue
+			# who sells behind a counter only from its front (InteriorPerson.can_talk_from)
+			if thing.has_method("can_talk_from") and not thing.call("can_talk_from", global_position):
+				continue
 			var reach: float = thing.call("reach") if thing.has_method("reach") else talk_reach
 			var offset := Vector2(thing.global_position.x - global_position.x, thing.global_position.z - global_position.z)
 			var distance := offset.length()
@@ -574,10 +578,14 @@ func teleport(at: Vector3, yaw: float) -> void:
 
 
 ## A conversation with `person` (Conversations) in the story box, or with someone who sells
-## (Conversations.is_merchant) the shop screen (GameHud.show_shop); they turn to face you.
+## (Conversations.is_merchant) the shop screen (GameHud.show_shop); they stand still and
+## straight first (stand_neutral), then turn to face you.
 func talk_to(person: Node3D) -> void:
 	if _hud == null or not _hud.has_method("show_story"):
 		return
+	# whoever was walking stands still and straight first (no leg left in the air)
+	if person.has_method("stand_neutral"):
+		person.stand_neutral()
 	var towards := global_position - person.global_position
 	# someone sitting at a table stays on its chair (only you turn to them)
 	var stays_seated: bool = person.get("sitting") == true
@@ -929,10 +937,28 @@ func _wake_up() -> void:
 	var rise := create_tween().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	rise.tween_property(_model, "rotation_degrees:x", 0.0, wake_time)
 	rise.parallel().tween_property(_model, "position", Vector3.ZERO, wake_time)
+	# up on its feet facing the camera (its face to you, not its back)
+	var facing_camera := _yaw_towards_camera()
+	if not is_nan(facing_camera):
+		var from_yaw := rotation.y
+		var to_yaw := from_yaw + angle_difference(from_yaw, facing_camera)
+		rise.parallel().tween_property(self, "rotation:y", to_yaw, wake_time).set_trans(Tween.TRANS_SINE)
 	rise.tween_callback(func() -> void:
 		_sleeping = false
 		_model.idle = true
 		woke_up.emit())
+
+
+## The heading (rotation.y) that turns the figure's face to the camera; NAN without one.
+func _yaw_towards_camera() -> float:
+	var camera := get_viewport().get_camera_3d() if get_viewport() else null
+	if camera == null:
+		return NAN
+	var towards := camera.global_position - global_position
+	towards.y = 0.0
+	if towards.length_squared() < 0.0001:
+		return NAN
+	return atan2(towards.x, towards.z)
 
 
 ## The nearest spot round `around` (searched from `above` metres over it, `max_drop` + 6 m
@@ -1097,25 +1123,35 @@ func _check_vehicles() -> void:
 
 
 func _hit_by(vehicle: Vehicle) -> void:
-	var closing := vehicle.velocity - velocity
+	if hit_by_moving(vehicle.velocity, vehicle.global_position):
+		vehicle.shout_after_hit()
+
+
+## Hit by something moving at `mover_velocity` from `from` (a vehicle, a train in the station):
+## a slow nudge only steps aside; else damage by the speed, shards, knocked over along its way,
+## a cry, and a moment no one can hit it again. Returns whether it was a real hit.
+func hit_by_moving(mover_velocity: Vector3, from: Vector3) -> bool:
+	if _ragdoll or _dead or _invulnerable_left > 0.0:
+		return false
+	var closing := mover_velocity - velocity
 	var impact := closing.length()
 	if impact < hit_speed_threshold:
 		# a slow nudge: stepped out of its way
-		var away := global_position - vehicle.global_position
+		var away := global_position - from
 		away.y = 0.0
 		if away.length_squared() > 0.0001:
 			_try_move(away.normalized() * 0.08)
-		return
+		return false
 	var damage := damage_per_speed * impact + damage_per_speed_squared * impact * impact
 	var strength := clampf(impact / 20.0, 0.15, 1.0)
 	var contact := global_position + Vector3.UP * _figure_box.get_center().y
 	CrashBurst.spawn(get_parent(), contact, HIT_SHARD_COLOUR, strength)
 	Vehicle.last_crash = {"at": contact, "strength": strength, "time": Time.get_ticks_msec() / 1000.0}
-	_knock_down(vehicle.velocity, impact)
+	_knock_down(mover_velocity, impact)
 	_hurt(damage, "aangereden")
 	cry_out(strength >= hard_cry_strength or _dead, contact)
-	vehicle.shout_after_hit()
 	_invulnerable_left = maxf(_invulnerable_left, knock_down_time)
+	return true
 
 
 ## The thud of the hit and a cry of pain at `at`: the long one if `heavy`, else one of the
@@ -1135,33 +1171,51 @@ func cry_out(heavy: bool, at: Vector3) -> void:
 	audio.play_event(at, cry_name)
 
 
+## Thrown out of a building (Interiors.throw_out): out of the door with `push` (m/s, the way
+## out), tumbling onto the pavement; it gets up again by itself (no harm done, only pride).
+func thrown_out(push: Vector3) -> void:
+	if _ragdoll or _dead:
+		return
+	var audio := get_node_or_null("/root/RuimtelijkGeluid")
+	if audio:
+		audio.play_event(global_position + Vector3.UP * 1.0, KICK_SOUND)
+	_knock_down(push, push.length())
+	_invulnerable_left = maxf(_invulnerable_left, knock_down_time)
+	_thrown_groan_pending = true
+	_thrown_close_up = true
+	# dramatic: the camera in close, the flight in slow motion, then up to speed again
+	var camera := get_parent().get_node_or_null("Volgcamera")
+	if camera and camera.has_method("dramatic_close_up"):
+		camera.dramatic_close_up(true)
+	_normal_physics_ticks = Engine.physics_ticks_per_second
+	_set_game_speed(THROW_SLOW_MOTION)
+	var speed_up := create_tween().set_ignore_time_scale(true)
+	speed_up.tween_interval(THROW_SLOW_SECONDS)
+	speed_up.tween_method(_set_game_speed, THROW_SLOW_MOTION, 1.0, THROW_SPEED_UP).set_trans(Tween.TRANS_SINE)
+
+
+## Thrown out (thrown_out): the kick, the slow motion (game speed, real seconds it holds and
+## takes to come back), and when the groan comes (seconds of game time after the kick: about
+## when it lands).
+const KICK_SOUND := "schop"
+const THROW_SLOW_MOTION := 0.3
+const THROW_SLOW_SECONDS := 1.4
+const THROW_SPEED_UP := 0.6
+const THROW_GROAN_AFTER := 0.5
+var _thrown_groan_pending := false
+var _thrown_close_up := false
+
+
 ## The figure becomes a RigidBody3D with its own box, thrown along with `push`.
 func _knock_down(push: Vector3, impact: float) -> void:
 	_airborne = false
 	_jump_pose(false)
-	_ragdoll = RigidBody3D.new()
-	_ragdoll.name = "Valpartij"
-	_ragdoll.mass = body_mass
-	_ragdoll.continuous_cd = true
-	var material := PhysicsMaterial.new()
-	material.friction = 0.9
-	material.bounce = 0.2
-	_ragdoll.physics_material_override = material
-	var shape := CollisionShape3D.new()
 	var box := BoxShape3D.new()
 	box.size = _figure_box.size
-	shape.shape = box
-	shape.position = _figure_box.get_center()
-	_ragdoll.add_child(shape)
-	get_parent().add_child(_ragdoll)
-	_ragdoll.global_transform = Transform3D(Basis(Vector3.UP, rotation.y), global_position + Vector3.UP * 0.05)
+	_ragdoll = KnockDown.throw(get_parent(), Transform3D(Basis(Vector3.UP, rotation.y), global_position),
+			box, _figure_box.get_center(), body_mass, push, impact, _random, 1.1)
 	_ragdoll.add_collision_exception_with(_body)
 	_body_shape.set_deferred("disabled", true)
-	var flat_push := Vector3(push.x, 0.0, push.z)
-	var thrown_towards := flat_push.normalized() if flat_push.length_squared() > 0.01 else global_basis.z
-	_ragdoll.linear_velocity = flat_push * 1.1 + Vector3.UP * minf(1.5 + impact * 0.22, 7.0)
-	_ragdoll.angular_velocity = Vector3.UP.cross(thrown_towards) * minf(impact * 0.6, 14.0) \
-		+ Vector3.UP * _random.randf_range(-3.0, 3.0)
 	_model.walking = 0.0
 	_model.idle = false
 	_model.position = Vector3.ZERO
@@ -1174,6 +1228,12 @@ func _knock_down(push: Vector3, impact: float) -> void:
 func _follow_ragdoll(delta: float) -> void:
 	_ragdoll_clock += delta
 	global_position = _ragdoll.global_position
+	# thrown out of a building: a groan as it lands
+	if _thrown_groan_pending and _ragdoll_clock >= THROW_GROAN_AFTER:
+		_thrown_groan_pending = false
+		var audio := get_node_or_null("/root/RuimtelijkGeluid")
+		if audio:
+			audio.play_event(global_position + Vector3.UP * 0.4, "pijn_%s_kreun" % _voice)
 	if _dead:
 		return
 	var lies_still := _ragdoll.sleeping or _ragdoll.linear_velocity.length() < 0.3
@@ -1200,6 +1260,11 @@ func _drown_from_ragdoll(water: Vector3) -> void:
 
 
 func _stand_up() -> void:
+	if _thrown_close_up:
+		_thrown_close_up = false
+		var camera := get_parent().get_node_or_null("Volgcamera")
+		if camera and camera.has_method("dramatic_close_up"):
+			camera.dramatic_close_up(false)
 	var lying_at := _ragdoll.global_position
 	var heading := _ragdoll.global_basis.z
 	var spot := _walkable_near(lying_at, 1.5, 10.0)

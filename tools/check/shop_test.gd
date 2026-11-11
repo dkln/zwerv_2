@@ -21,6 +21,7 @@ var _problems: Array[String] = []
 
 func _init() -> void:
 	Common.watchdog(self, 300)
+	_check_station_prices()
 	PlayerCharacter.choose("martin")
 	var scene := Common.instantiate(Common.CITY, false)
 	for node_name in ["DetailNiveau", "Rook", "Grassprieten"]:
@@ -233,3 +234,24 @@ func _check(condition: bool, label: String) -> void:
 	print(("ok   " if condition else "FOUT ") + label)
 	if not condition:
 		_problems.append(label)
+
+
+## Everything at the station costs more than in the town: what the town's snack bar sells
+## too costs at least STATION_MARKUP times as much in every shop of Den Haag Centraal.
+func _check_station_prices() -> void:
+	var town := {}
+	for entry: Dictionary in Conversations.counter().get("menu", []):
+		town[str(entry.item)] = float(entry.prijs)
+	var dearer := true
+	var compared := 0
+	for kind: String in (Conversations.shops().get("winkels", {}) as Dictionary):
+		var seller := Node3D.new()
+		seller.set_meta("kind", kind)
+		for entry: Dictionary in Conversations.shop_data_of(seller).get("menu", []):
+			if town.has(str(entry.item)):
+				compared += 1
+				if float(entry.prijs) < town[str(entry.item)] * Conversations.STATION_MARKUP - 0.001:
+					dearer = false
+					print("goedkoper op het station: %s bij %s (%.2f, stad %.2f)" % [entry.item, kind, entry.prijs, town[str(entry.item)]])
+		seller.free()
+	_check(dearer and compared > 0, "op het station is alles duurder dan in de stad (%d vergeleken)" % compared)

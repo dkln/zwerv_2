@@ -14,8 +14,8 @@ extends Control
 ##   PlayerCharacter.STAT_CEILING, with the number.
 ## Keys: up/down (or left/right, or 1 to 9) choose, Enter begins, Escape goes back to the
 ## main menu; the mouse: a click chooses, a click on the chosen one or on BEGIN begins.
-## Beginning stores the choice (PlayerCharacter.choose) and opens the town through the
-## warp; its own loading screen takes over from there.
+## Beginning stores the choice (PlayerCharacter.choose) and opens the town under the swipe;
+## its own loading screen takes over from there.
 ## Music: a soft loop of its own (karakterkeuze_loop.ogg), fading in.
 ## When you look at a character (when chosen, and the first one SHOUT_FIRST_DELAY s after the
 ## screen opens) they first do their own move facing you (PlayerModel.play_gesture) and only
@@ -72,7 +72,6 @@ const WALK_IN := 0.6
 ## The difficulty in the top right corner: a block per step, green to red.
 const DIFFICULTY_COLOURS := [Color("#8BE36B"), Color("#C8E35A"), Color("#FFB547"), Color("#FF8A4A"), Color("#FF5D73")]
 const DIFFICULTY_EMPTY := Color("#2A2E4A")
-const WARP_SECONDS := 0.9
 
 var _design: Control
 var _scroll: ScrollContainer
@@ -254,30 +253,27 @@ func begin() -> void:
 	UiSounds.play(self, "doe")
 	PlayerCharacter.choose(PlayerCharacter.ORDER[_selected])
 	_begin_button.text = "→  LADEN…"
-	await _leave(false)
+	await _leave()
 	get_tree().change_scene_to_file(CITY_SCENE)
 
 
 func _back_to_menu() -> void:
 	_leaving = true
 	UiSounds.play(self, "terug")
-	await _leave(true)
+	await _leave()
 	get_tree().change_scene_to_file(MENU_SCENE)
 
 
-## The list and the detail fade away, the music fades, the picture goes into the warp (to
-## the town: its loading screen comes out of it) or, back to the menu, the swipe.
-func _leave(swipe := false) -> void:
+## The list and the detail fade away, the music fades, and the swipe (the one transition of
+## the game) sweeps over it: to the town (its loading screen behind it) or back to the menu.
+func _leave() -> void:
 	var exit := create_tween().set_parallel(true).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
 	for index in _entries.size():
 		exit.tween_property(_entries[index], "modulate:a", 0.0, 0.4).set_delay(0.06 * index)
 	exit.tween_property(_detail, "modulate:a", 0.0, 0.5)
 	exit.tween_property(_detail, "position:x", _detail.position.x + 30.0, 0.5)
 	_fade_out_music()
-	if swipe:
-		await SwipeTransition.swipe(get_tree()).covered
-	else:
-		await WarpTransition.leave(get_tree(), WARP_SECONDS).covered
+	await SwipeTransition.swipe(get_tree()).covered
 
 
 # ------------------------------------------------------------------ building

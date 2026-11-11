@@ -18,6 +18,7 @@ extends Node
 ## You just edit the normal GridMaps; all copies are created automatically. When the
 ## layers are replaced, clear() drops everything made for the old layers and setup() starts over.
 
+const SwipeTransition = preload("res://scripts/ui/swipe_transition.gd")
 const Bakker = preload("res://scripts/world/layer_baker.gd")
 const Iso = preload("res://scripts/camera/iso_camera.gd")
 const LoadingScreen = preload("res://scripts/ui/loading_screen.gd")
@@ -102,8 +103,8 @@ var _progress := {}   # "<layer><suffix>" -> fraction done (0..1) of every merge
 var _generation := 0
 ## Extra layers baked into another layer's meshes (merge_with): name -> that layer.
 var _baked_into := {}
-## Still waiting for the wave of the scene change to settle before setting up.
-var _waiting_for_warp := false
+## Still waiting for the swipe of the scene change to go through before setting up.
+var _waiting_for_swipe := false
 
 
 func _ready() -> void:
@@ -111,16 +112,20 @@ func _ready() -> void:
 		return
 	_cam = get_node_or_null(camera_path)
 	_sun = get_node_or_null(sun_path)
-	# coming out of the wave of a scene change (WarpTransition): the loading screen first,
-	# the heavy work after the wave has settled, so it does not stutter
-	var warp := get_tree().root.get_node_or_null(NodePath(WarpTransition.NODE_NAME))
-	if warp and loading_screen and not bake_only:
-		_waiting_for_warp = true
+	# coming in under the swipe of a scene change (SwipeTransition): the loading screen first,
+	# the heavy work once the swipe is through, so it does not stutter
+	var swipe := get_tree().root.get_node_or_null(NodePath(SwipeTransition.NODE_NAME))
+	if swipe and loading_screen and not bake_only:
+		_waiting_for_swipe = true
 		_open_screen()
-		while is_instance_valid(warp) and warp.is_inside_tree():
+		while is_instance_valid(swipe) and swipe.is_inside_tree():
 			await get_tree().process_frame
+			if not is_inside_tree():
+				return   # the town is gone again before the swipe was through
 		await get_tree().process_frame
-		_waiting_for_warp = false
+		if not is_inside_tree():
+			return
+		_waiting_for_swipe = false
 	setup()
 	if _busy == 0 and _screen:
 		_screen.fade_out()
@@ -219,7 +224,7 @@ func merge_progress() -> float:
 
 ## Busy merging? Then wait for the `merge_finished` signal.
 func is_merging() -> bool:
-	return _busy > 0 or _waiting_for_warp
+	return _busy > 0 or _waiting_for_swipe
 
 
 ## Path of the MeshLibrary of `gm` for an LOD suffix from LEVEL_SUFFIXES.

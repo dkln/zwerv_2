@@ -310,6 +310,10 @@ const QUEUE_CHECK := 24
 const TOW_SEARCH_CELLS := 12
 ## Speed (m/s) of a vehicle sent down another one's route (drive_into).
 const RECKLESS_SPEED := 11.0
+## A daredevil (`daredevil`) goes at its top speed times this, but at most this many times the
+## speed limit where it is.
+const DAREDEVIL_TOP_FACTOR := 1.4
+const DAREDEVIL_LIMIT_FACTOR := 2.0
 ## Seconds in which it closes a gap between its speed and the speed it may drive.
 const SPEED_SETTLE := 0.5
 ## Metres per second over the speed it may drive from which it brakes without easing in.
@@ -487,6 +491,11 @@ var _fire: Node3D                    # its fire while it burns as a wreck (vehic
 var crashed := false
 ## Drives without looking: no lights, no other vehicles (drive_into).
 var reckless := false
+## A daredevil: in a wheelie (TwoWheeler) it goes far faster than it should (daredevil_speed)
+## and looks out for nothing: no other vehicles, no people on foot, no lights or zebras, no
+## swerving; only the corners of the road it still follows. What it meets, it hits (a crash
+## whatever the difference in speed): that is the whole point of a stunt.
+var daredevil := false
 var _wreck: RigidBody3D
 var _wreck_clock := 0.0
 var _roll_on_clock := 0.0            # seconds the wreck still rolls on
@@ -1691,6 +1700,12 @@ func _target_speed(delta: float) -> float:
 	var target := minf(top_speed, speed_limit)
 	if reckless:
 		return minf(target, RECKLESS_SPEED)
+	if daredevil:
+		# full throttle, only the corners still slow it (else it would leave the road)
+		target = daredevil_speed()
+		_people_limit = INF
+		_dodge = 0.0
+		return minf(target, _corner_speed_ahead(index, last))
 	if yielding:
 		var close := _yielding_to != null and is_instance_valid(_yielding_to) \
 				and _yielding_to.global_position.distance_to(global_position) < YIELD_STAND_DISTANCE
@@ -1701,17 +1716,8 @@ func _target_speed(delta: float) -> float:
 		var limit := minf(top_speed, _limit_of(_route_cells[ahead_index]))
 		if limit < speed:
 			target = minf(target, _approach_speed(limit, cell_start - speed * LIMIT_LEAD))
-	# corners: a change of heading in cell `corner_index`
-	for corner_index in range(maxi(index, 1), last + 1):
-		if _route_headings[corner_index - 1] == _route_headings[corner_index]:
-			continue
-		var corner_at := _route_distances[corner_index]
-		if _distance > corner_at + CORNER_REACH:   # the front axle is round it by then
-			continue
-		var tight := (corner_index < last and _route_headings[corner_index] != _route_headings[corner_index + 1]) \
-				or (corner_index >= 2 and _route_headings[corner_index - 2] != _route_headings[corner_index - 1])
-		var through_corner := (tight_corner_speed if tight else corner_speed) * CORNER_SPEED_FACTOR
-		target = minf(target, _approach_speed(through_corner, corner_at - _corner_lead))
+	# corners: a change of heading ahead
+	target = minf(target, _corner_speed_ahead(index, last))
 	if avoids_others and not (_squeeze_clock > 0.0 and _squeeze_through):
 		_look_countdown -= 1
 		if _look_countdown < 0:
@@ -1753,6 +1759,30 @@ func _target_speed(delta: float) -> float:
 					_zebra_waiting = 0.0
 		break
 	return target
+
+
+## The highest speed now from which it still gets round the corners ahead (a change of
+## heading in a cell of the route) at its corner speed.
+func _corner_speed_ahead(index: int, last: int) -> float:
+	var highest := INF
+	for corner_index in range(maxi(index, 1), last + 1):
+		if _route_headings[corner_index - 1] == _route_headings[corner_index]:
+			continue
+		var corner_at := _route_distances[corner_index]
+		if _distance > corner_at + CORNER_REACH:   # the front axle is round it by then
+			continue
+		var tight := (corner_index < last and _route_headings[corner_index] != _route_headings[corner_index + 1]) \
+				or (corner_index >= 2 and _route_headings[corner_index - 2] != _route_headings[corner_index - 1])
+		var through_corner := (tight_corner_speed if tight else corner_speed) * CORNER_SPEED_FACTOR
+		highest = minf(highest, _approach_speed(through_corner, corner_at - _corner_lead))
+	return highest
+
+
+## How fast a daredevil goes (m/s): DAREDEVIL_TOP_FACTOR over its top speed, at most
+## DAREDEVIL_LIMIT_FACTOR times the speed limit (never under its own top speed).
+func daredevil_speed() -> float:
+	var top_speed := top_speed_kmh / 3.6
+	return maxf(top_speed, minf(top_speed * DAREDEVIL_TOP_FACTOR, maxf(speed_limit, 1.0) * DAREDEVIL_LIMIT_FACTOR))
 
 
 ## The planned cell the vehicle is on: the one whose centre is nearest along the route.
@@ -2359,7 +2389,8 @@ func _check_crash() -> void:
 			continue
 		if _passes(other) or other._passes(self):
 			continue   # a siren going by one that pulled over for it
-		if (reckless or other.reckless or (velocity - other.velocity).length() >= CRASH_SPEED) and _overlaps(other):
+		var careless := reckless or other.reckless or daredevil or other.daredevil
+		if (careless or (velocity - other.velocity).length() >= CRASH_SPEED) and _overlaps(other):
 			_crash_with(other)
 
 
@@ -2402,6 +2433,7 @@ func _crash_with(other: Vehicle) -> void:
 func _take_hit(jolt: float) -> bool:
 	health -= jolt * DAMAGE_PER_SPEED
 	reckless = false
+	daredevil = false
 	if health <= 0.0:
 		return true
 	speed *= BUMP_SLOWDOWN
@@ -2527,6 +2559,7 @@ static func _rectangle(frame: Transform3D, middle: Vector3, width: float, length
 func _become_wreck(impact: Vector3, spin := 0.0, pushed := Vector3.ZERO, jolt := 0.0) -> void:
 	crashed = true
 	reckless = false
+	daredevil = false
 	speed = 0.0
 	braking_now = false
 	indicating = 0

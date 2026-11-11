@@ -24,6 +24,8 @@ extends "res://scripts/world/interior.gd"
 ## Klok, Winkel_<n>, Verkoper_<n> (metadata "kind", "shop_name"), Uithangbord_<n>, Automaat_<n>;
 ## the OV posts are the props/ov/ov_incheckpaal in the GridMap Props.
 
+const Conversations = preload("res://scripts/story/conversations.gd")
+const Interiors = preload("res://scripts/world/interiors.gd")
 const Layout = preload("res://scripts/world/station_layout.gd")
 const OverheadLines = preload("res://scripts/world/overhead_lines.gd")
 const Typewriter = preload("res://scripts/ui/widgets/typewriter.gd")
@@ -75,6 +77,11 @@ const GIVE_UP_SECONDS := 3.0
 const CHASE_SECONDS := 30.0
 const CONDUCTOR_NOTICE_RANGE := 35.0
 const FINE_COLOUR := Color("#FF5A4A")
+## The arrow over a shop (InteriorPerson.place_mark_ahead): this far before its front (m),
+## its point between these heights (under the shop sign at 3 m).
+const SHOP_MARK_AHEAD := 0.6
+const SHOP_MARK_BOTTOM := 1.9
+const SHOP_MARK_TOP := 2.4
 ## The chase goes along the floor: on the player's platform (or in the hall with them)
 ## straight at them, else along the travellers' route (through the gates); with the player
 ## down on the rails he waits at the edge above them and shouts (never onto the rails).
@@ -341,7 +348,9 @@ func _make_shops() -> void:
 		var keeper_marker := get_node("Verkoper_%d" % number) as Node3D
 		var kind := String(keeper_marker.get_meta("kind", "kiosk"))
 		var role := "snackbarhouder" if kind == "smikkels" else "verkoper"
-		var keeper := InteriorPerson.create(role, 4000 + number * 17, false)
+		# dressed for the shop (winkels.json "kleding": the barista in black, the florist in green)
+		var outfit: Dictionary = ((Conversations.shops().get("winkels", {}) as Dictionary).get(kind, {}) as Dictionary).get("kleding", {})
+		var keeper := InteriorPerson.create(role, 4000 + number * 17, false, InteriorPerson.SEAT_HEIGHT, outfit)
 		keeper.name = "Verkoper"
 		keeper.set_meta("shop_name", keeper_marker.get_meta("shop_name", ""))
 		# what it sells: the shop of this kind in data/gesprekken/winkels.json (the shop screen)
@@ -352,6 +361,9 @@ func _make_shops() -> void:
 		var front := get_node_or_null("Winkel_%d" % number) as Node3D
 		if front:
 			_shop_fronts.append(front)
+			# the arrow out in front of the shop, where you stand to buy (over the seller it
+			# would stick out of the shop's roof)
+			keeper.place_mark_ahead(keeper_marker.position.distance_to(front.position) + SHOP_MARK_AHEAD, SHOP_MARK_BOTTOM, SHOP_MARK_TOP)
 		var sign_marker := get_node_or_null("Uithangbord_%d" % number) as Node3D
 		if sign_marker:
 			var sign := _label(String(keeper_marker.get_meta("shop_name", "")).to_upper(), 40, 0.0045, Color.WHITE)
@@ -658,8 +670,8 @@ func _make_subtitle() -> void:
 	_subtitle.add_theme_font_override("normal_font", UiStyle.font(UiStyle.FONT_PIXEL_BOLD))
 	_subtitle.add_theme_font_size_override("normal_font_size", 18)
 	_subtitle.add_theme_color_override("default_color", Color("#FFE9B8"))
-	_subtitle.add_theme_color_override("font_outline_color", Color("#101018"))
-	_subtitle.add_theme_constant_override("outline_size", 6)
+	# the faux 3D of the game's texts (a darker copy straight under it), no outline
+	UiStyle.faux_3d(_subtitle, 3)
 	_subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_subtitle.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_subtitle.scroll_active = false
@@ -1532,6 +1544,9 @@ func _fine_the_player() -> void:
 		line += " (je had maar € %s)" % ("%.2f" % paid).replace(".", ",")
 	say(to_local(_player.global_position) + Vector3.UP * 2.2, line, FINE_COLOUR)
 	_chaser_goes_back()
+	# who cannot pay the fine is put out of the station at once (Interiors: uitzetten.json)
+	if paid < FINE_EUROS:
+		Interiors.note_offence(get_tree(), "boete_onbetaald")
 
 
 ## The chase is over (the player got away): the conductor goes back.

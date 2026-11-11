@@ -13,10 +13,10 @@ een distortion-gitaar), dan worden dat FM-klanken die op de chip passen.
 
 ## Een nieuwe compositie aanleveren
 
-1. Plak de tekst van de componist in een bestand (bijvoorbeeld `nieuwe_muziek.txt`) en vraag om
-   er de muziek van te maken; de skill **`/muziek-compositie`** doet de stappen hieronder.
-2. De tekst wordt bewaard als `tools/muziek/composities/<naam>.txt` (het origineel, niets
-   veranderd) en overgezet in `tools/muziek/composities/<naam>.py` (de notatie hieronder).
+1. Zet de tekst van de componist in **`tools/muziek/composition.md`** (de vorige eruit) en vraag
+   om er de muziek van te maken; de skill **`/muziek-compositie`** doet de stappen hieronder.
+2. De tekst wordt ook bewaard als `tools/muziek/composities/<naam>.txt` (het origineel, niets
+   veranderd, zodat het blijft als `composition.md` later een andere is) en overgezet in `tools/muziek/composities/<naam>.py` (de notatie hieronder).
 3. `tools/muziek/composities/actief.py`: `ACTIEF = "<naam>"`.
 4. `tools/muziek/render.sh` maakt alles in `assets/audio/muziek/` en schrijft
    `scripts/ui/intro_timing.gd`; `tools/muziek/render.sh --controle` kijkt alles na.
@@ -46,7 +46,7 @@ renderen. Eerst luisteren zonder iets te vervangen: `tools/muziek/render.sh --ui
   handelaar (elektrische piano), met afwisseling tussen de secties en hun invulling zoals de
   handelaarslus, zonder gitaar, felle lead, crashes, doorlopende arpeggio of shuffle; de melodie
   af en toe. In het spel staat hij zachter dan de andere muziek (`CITY_LOOP_SOFTER_DB` in
-  `hud.gd`, 6 dB), zodat hij de geluiden van de stad niet overstemt. De energie zit in de intro,
+  `hud.gd`, 3 dB), zodat hij de geluiden van de stad niet overstemt. De energie zit in de intro,
   het menu en de deuntjes.
 - **Mega Drive-grenzen.** FM-klanken (4 operatoren, de 8 algoritmen, feedback), PSG-blokgolven
   met de stappen van de chip, drums als 8-bit samples. Het aantal stemmen tegelijk is niet
@@ -184,5 +184,6 @@ De bestanden staan in `tools/muziek/`:
 - `derive.py`: de afgeleide stukken;
 - `build.py`: alles maken (via `render.sh`), en `intro_timing.gd`;
 - `check.py`: de controle (via `render.sh --controle`);
+- `composition.md`: de tekst van de componist die nu aan de beurt is (hier lever je aan);
 - `composities/`: de composities (`<naam>.txt` het origineel, `<naam>.py` de notatie) en
   `actief.py`.

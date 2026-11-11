@@ -1,5 +1,5 @@
 {
-	"uitleg": "Gesprekken met voorbijgangers: wie je aanspreekt (de eerste in 'personen' waarvan 'herkennen' klopt), wat ze zeggen en in welke stemming. Zie data/LEESMIJ.md.",
+	"uitleg": "Gesprekken met voorbijgangers: wie je aanspreekt (de eerste in 'personen' waarvan 'herkennen' klopt: 'soort' is de soort mens uit data/drukte.json, verder 'vervoer', 'haar', 'rok', 'jas'), wat ze zeggen en in welke stemming. Boven het gesprek staat wat ze zijn: de eerste van hun eigen 'namen', dan van de algemene 'namen' hieronder, waarvan 'als' klopt ('vrouw', 'grijs', 'rok', 'haar' (kort, lang, kaal, pet, hoed), 'draagt' (rugzak, rolkoffer, aktetas, handtas, schoudertas), 'jas', 'vervoer', 'soort'). Zie data/LEESMIJ.md.",
 	"vragen": {
 		"kleingeld": "Heeft u misschien wat kleingeld voor me?",
 		"dag": "Laat maar. Fijne dag nog."
@@ -45,7 +45,29 @@
 				"begroeting": "blij",
 				"onderwerp": "boos",
 				"doorvraag": "opgewonden"
-			}
+			},
+			"namen": [
+				{
+					"als": {
+						"vervoer": "rolstoel",
+						"vrouw": true
+					},
+					"naam": "VROUW IN ROLSTOEL"
+				},
+				{
+					"als": {
+						"vervoer": "rolstoel",
+						"grijs": true
+					},
+					"naam": "OUDE MAN IN ROLSTOEL"
+				},
+				{
+					"als": {
+						"vervoer": "rolstoel"
+					},
+					"naam": "MAN IN ROLSTOEL"
+				}
+			]
 		},
 		{
 			"id": "scootmobiel",
@@ -73,7 +95,793 @@
 			"stemmingen": {
 				"begroeting": "boos",
 				"doorvraag": "boos"
+			},
+			"namen": [
+				{
+					"als": {
+						"vervoer": "scootmobiel",
+						"vrouw": false
+					},
+					"naam": "MENEER OP SCOOTMOBIEL"
+				},
+				{
+					"als": {
+						"vervoer": "scootmobiel"
+					},
+					"naam": "MEVROUW OP SCOOTMOBIEL"
+				}
+			]
+		},
+		{
+			"id": "zakenmens",
+			"herkennen": {
+				"soort": "zakenmens"
+			},
+			"spreker": "ZAKENMAN",
+			"namen": [
+				{
+					"als": {
+						"vrouw": true,
+						"draagt": "rolkoffer"
+					},
+					"naam": "ZAKENVROUW MET ROLKOFFER"
+				},
+				{
+					"als": {
+						"draagt": "rolkoffer"
+					},
+					"naam": "ZAKENMAN MET ROLKOFFER"
+				},
+				{
+					"als": {
+						"haar": "hoed"
+					},
+					"naam": "HEER IN PAK MET HOED"
+				},
+				{
+					"als": {
+						"vrouw": true
+					},
+					"naam": "ZAKENVROUW"
+				},
+				{
+					"als": {
+						"grijs": true
+					},
+					"naam": "GRIJZE ZAKENMAN"
+				},
+				{
+					"als": {},
+					"naam": "ZAKENMAN"
+				}
+			],
+			"begroetingen": [
+				"Ja? Ik sta op het punt te bellen met Singapore. Snel graag.",
+				"Sorry, ik heb geen tijd. Mijn trein naar Schiphol gaat over zes minuten.",
+				"Hm? O. U bent geen koerier. Wat wilt u?"
+			],
+			"onderwerp": {
+				"vraag": "Druk dag gehad?",
+				"antwoord": "Druk? Ik heb vandaag drie fusies, twee lunches en een conference call met mensen die ik nooit gezien heb. En het is pas elf uur.",
+				"doorvraag": "Wat doet u eigenlijk precies?",
+				"doorantwoord": "Ik adviseer bedrijven over hun strategie. Meestal zeg ik dat ze moeten groeien. Of juist krimpen. Dat hangt af van het uurtarief."
+			},
+			"kleingeld_ja": "Alstublieft. Een kleine investering. Ik verwacht er niets van terug, dat is nieuw voor mij.",
+			"kleingeld_nee": "Ik heb alleen een creditcard. En die geef ik u niet, hoe vriendelijk u ook kijkt.",
+			"dag": "Ik moet echt gaan. Succes met... uw onderneming.",
+			"gulheid": {
+				"kans": 35,
+				"bedrag": 1.0
+			},
+			"stemmingen": {
+				"begroeting": "neutraal",
+				"onderwerp": "opgewonden",
+				"kleingeld_nee": "neutraal",
+				"dag": "neutraal"
 			}
+		},
+		{
+			"id": "kantoormens",
+			"herkennen": {
+				"soort": "kantoormens"
+			},
+			"spreker": "AMBTENAAR",
+			"begroetingen": [
+				"Ja? Ik heb om negen uur een overleg op het ministerie. Kort graag.",
+				"Goedemorgen. Heeft u een afspraak? O nee, dit is de straat."
+			],
+			"onderwerp": {
+				"vraag": "Wat doet u op het ministerie?",
+				"antwoord": "Ik schrijf beleid over het schrijven van beleid. Het is een belangrijke notitie. Volgend jaar is hij af.",
+				"doorvraag": "Wat staat erin?",
+				"doorantwoord": "Dat valt nog onder embargo. Maar tussen ons: er komt een werkgroep. Die gaat een advies schrijven. Over de notitie."
+			},
+			"kleingeld_ja": "Hier. Ik zet het wel op de declaratie onder 'maatschappelijke betrokkenheid'.",
+			"kleingeld_nee": "Daar is geen budget voor, vrees ik. Probeert u het volgend kwartaal nog eens.",
+			"dag": "Ik moet door. Fijne dag nog, en vergeet uw formulieren niet.",
+			"gulheid": {
+				"kans": 45,
+				"bedrag": 0.2
+			},
+			"stemmingen": {
+				"begroeting": "neutraal",
+				"kleingeld_nee": "neutraal",
+				"dag": "neutraal"
+			},
+			"namen": [
+				{
+					"als": {
+						"haar": "hoed"
+					},
+					"naam": "AMBTENAAR MET HOED"
+				},
+				{
+					"als": {
+						"vrouw": true,
+						"draagt": "handtas"
+					},
+					"naam": "AMBTENARE MET HANDTAS"
+				},
+				{
+					"als": {
+						"draagt": "aktetas"
+					},
+					"naam": "AMBTENAAR MET AKTETAS"
+				},
+				{
+					"als": {
+						"vrouw": true
+					},
+					"naam": "AMBTENARE"
+				},
+				{
+					"als": {},
+					"naam": "AMBTENAAR"
+				}
+			]
+		},
+		{
+			"id": "scholier",
+			"herkennen": {
+				"soort": "scholier"
+			},
+			"spreker": "SCHOLIER",
+			"namen": [
+				{
+					"als": {
+						"haar": "pet",
+						"vrouw": false
+					},
+					"naam": "JONGEN MET PET"
+				},
+				{
+					"als": {
+						"draagt": "rugzak",
+						"vrouw": true
+					},
+					"naam": "MEISJE MET RUGZAK"
+				},
+				{
+					"als": {
+						"draagt": "rugzak"
+					},
+					"naam": "JONGEN MET RUGZAK"
+				},
+				{
+					"als": {
+						"vrouw": true
+					},
+					"naam": "SCHOLIERE"
+				},
+				{
+					"als": {},
+					"naam": "SCHOLIER"
+				}
+			],
+			"begroetingen": [
+				"Wollah, schrik je me dood! Wat moet je?",
+				"Hé, ben jij die gast van TikTok? Nee? Jammer.",
+				"Yo. Ik moet naar school, maar eigenlijk heb ik een tussenuur. Wat is er?"
+			],
+			"onderwerp": {
+				"vraag": "Waarom ben je niet op school?",
+				"antwoord": "Tussenuur, man. Drie uur lang. Dus ik ga naar de Grote Markt, patat halen. Dat is ook leren, toch? Over geld.",
+				"doorvraag": "Wat wil je later worden?",
+				"doorantwoord": "Influencer. Of advocaat. Iets waar je veel praat en weinig hoeft te tillen. Mijn moeder zegt advocaat."
+			},
+			"kleingeld_ja": "Hier, twintig cent. Meer heb ik echt niet, ik zweer het.",
+			"kleingeld_nee": "Kleingeld? Ik heb zelf nog geen geld voor een Fristi, broer.",
+			"dag": "Doei! En kijk een beetje uit voor die fatbikes, die rijden je gewoon omver.",
+			"gulheid": {
+				"kans": 30,
+				"bedrag": 0.2
+			},
+			"stemmingen": {
+				"begroeting": "opgewonden",
+				"onderwerp": "blij",
+				"doorvraag": "opgewonden"
+			}
+		},
+		{
+			"id": "oudere",
+			"herkennen": {
+				"soort": "oudere"
+			},
+			"spreker": "OUDERE",
+			"namen": [
+				{
+					"als": {
+						"haar": "hoed"
+					},
+					"naam": "OUDE HEER MET HOED"
+				},
+				{
+					"als": {
+						"rok": true,
+						"draagt": "handtas"
+					},
+					"naam": "OUDE DAME MET HANDTAS"
+				},
+				{
+					"als": {
+						"rok": true
+					},
+					"naam": "OUDE DAME"
+				},
+				{
+					"als": {
+						"vrouw": true
+					},
+					"naam": "OUDE VROUW"
+				},
+				{
+					"als": {
+						"haar": "kaal"
+					},
+					"naam": "OUDE HAGENAAR"
+				},
+				{
+					"als": {
+						"haar": "pet"
+					},
+					"naam": "OUDE MAN MET PET"
+				},
+				{
+					"als": {},
+					"naam": "OUDE MAN"
+				}
+			],
+			"begroetingen": [
+				"Ollah. Wat mot je, jongen?",
+				"Goeiemiddag. Je loopt me bijna omver. Kijk een beetje uit, hè.",
+				"Zo. Jij ziet eruit alsof je het koud hebt. Gaat het wel?"
+			],
+			"onderwerp": {
+				"vraag": "Hoe was Den Haag vroeger?",
+				"antwoord": "Vroeger? Toen reed de tram nog met een conducteur en kostte een kroket een kwartje. En op zondag ging je naar Scheveningen, in je nette goed.",
+				"doorvraag": "Was het beter toen?",
+				"doorantwoord": "Beter? Nee hoor, wel goedkoper. En de mensen groetten je nog. Ik groet nog steeds iedereen. Ze kijken me aan alsof ik gek ben."
+			},
+			"kleingeld_ja": "Ach jongen, hier. Koop er wat warms van, hè. En niet aan de drank.",
+			"kleingeld_nee": "Kleingeld? Van m'n AOW? Daar betaal ik net de huur en de kapper van.",
+			"dag": "Dag jongen. Hou je haaks, en doe je jas dicht.",
+			"gulheid": {
+				"kans": 55,
+				"bedrag": 0.5
+			},
+			"stemmingen": {
+				"begroeting": "neutraal",
+				"onderwerp": "verdrietig",
+				"kleingeld_nee": "boos",
+				"dag": "blij"
+			}
+		},
+		{
+			"id": "toerist_op_straat",
+			"herkennen": {
+				"soort": "toerist"
+			},
+			"spreker": "TOERIST",
+			"begroetingen": [
+				"Oh, hello! Eh, hallo! Is this the way to the beach? Het strand?",
+				"Hallo! Ik kom uit Groningen. Waar is hier dat Binnenhof?"
+			],
+			"onderwerp": {
+				"vraag": "Waar komt u vandaan?",
+				"antwoord": "Uit Groningen! Ik ben hier voor het Binnenhof, maar dat zit helemaal in de steigers. Ik zie alleen maar bouwdoek.",
+				"doorvraag": "Dat is al jaren zo.",
+				"doorantwoord": "Jaren? Nou, dan kom ik wel terug als ik met pensioen ben. Of mijn kleinkinderen."
+			},
+			"kleingeld_ja": "Ach, natuurlijk! Hier, en nog een fijne dag in uw mooie stad.",
+			"kleingeld_nee": "Oh, alles is op aan de parkeergarage. Twintig euro! Voor twee uur!",
+			"dag": "Dag! Doei! Bye!",
+			"gulheid": {
+				"kans": 70,
+				"bedrag": 1.0
+			},
+			"stemmingen": {
+				"begroeting": "opgewonden",
+				"onderwerp": "verdrietig",
+				"doorvraag": "blij"
+			},
+			"namen": [
+				{
+					"als": {
+						"draagt": "rolkoffer",
+						"vrouw": true
+					},
+					"naam": "TOERISTE MET ROLKOFFER"
+				},
+				{
+					"als": {
+						"draagt": "rolkoffer"
+					},
+					"naam": "TOERIST MET ROLKOFFER"
+				},
+				{
+					"als": {
+						"haar": "hoed"
+					},
+					"naam": "TOERIST MET HOED"
+				},
+				{
+					"als": {
+						"draagt": "rugzak"
+					},
+					"naam": "TOERIST MET RUGZAK"
+				},
+				{
+					"als": {
+						"vrouw": true
+					},
+					"naam": "TOERISTE"
+				},
+				{
+					"als": {},
+					"naam": "TOERIST"
+				}
+			]
+		},
+		{
+			"id": "wandelaar",
+			"herkennen": {
+				"soort": "wandelaar"
+			},
+			"spreker": "WANDELAAR",
+			"namen": [
+				{
+					"als": {
+						"haar": "hoed"
+					},
+					"naam": "WANDELAAR MET HOED"
+				},
+				{
+					"als": {
+						"draagt": "rugzak",
+						"vrouw": true
+					},
+					"naam": "WANDELAARSTER MET RUGZAK"
+				},
+				{
+					"als": {
+						"draagt": "rugzak"
+					},
+					"naam": "WANDELAAR MET RUGZAK"
+				},
+				{
+					"als": {
+						"vrouw": true
+					},
+					"naam": "WANDELAARSTER"
+				},
+				{
+					"als": {},
+					"naam": "WANDELAAR"
+				}
+			],
+			"begroetingen": [
+				"Goeiedag! Mooi weer om te lopen, hè?",
+				"Ha, ook een ommetje? Ik loop elke dag tien kilometer, zegt mijn horloge.",
+				"Hallo! Weet jij of de herten in het Haagse Bos er vandaag zijn?"
+			],
+			"onderwerp": {
+				"vraag": "Waar loopt u naartoe?",
+				"antwoord": "Door het Haagse Bos naar Wassenaar en weer terug. Langs de herten van de Koekamp. Die kennen me inmiddels, geloof ik.",
+				"doorvraag": "Herkennen herten mensen?",
+				"doorantwoord": "Nou, ze herkennen m'n broodzak. Dat is ook een soort vriendschap, toch?"
+			},
+			"kleingeld_ja": "Hier, alsjeblieft. Een stukje lopen doet wonderen, en een broodje ook.",
+			"kleingeld_nee": "Ik heb alleen een appel en m'n pinpas bij me. Wil je de appel?",
+			"dag": "Fijne dag! En ga eens een stukje lopen, dat helpt overal tegen.",
+			"gulheid": {
+				"kans": 50,
+				"bedrag": 0.3
+			},
+			"stemmingen": {
+				"begroeting": "blij",
+				"onderwerp": "blij",
+				"doorvraag": "blij"
+			}
+		},
+		{
+			"id": "werkman",
+			"herkennen": {
+				"soort": "werkman"
+			},
+			"spreker": "WERKMAN",
+			"namen": [
+				{
+					"als": {
+						"jas": "#E0A030"
+					},
+					"naam": "BOUWVAKKER"
+				},
+				{
+					"als": {
+						"haar": "pet"
+					},
+					"naam": "STRATENMAKER MET PET"
+				},
+				{
+					"als": {
+						"haar": "kaal"
+					},
+					"naam": "KALE KLUSJESMAN"
+				},
+				{
+					"als": {},
+					"naam": "KLUSJESMAN"
+				}
+			],
+			"begroetingen": [
+				"Hé maat! Kijk uit, hier wordt gewerkt.",
+				"Wat is er, makker? Ik heb pauze, maar maak het kort.",
+				"Ollah! Kom je helpen? Haha, nee, grapje."
+			],
+			"onderwerp": {
+				"vraag": "Wat zijn jullie aan het bouwen?",
+				"antwoord": "De zoveelste kantoortoren bij het station. Glas, glas en nog eens glas. Mijn opa heeft hier nog huizen gemetseld.",
+				"doorvraag": "Kan ik niet bij jullie komen werken?",
+				"doorantwoord": "Heb je een VCA-diploma? Nee? Dan mag je niet eens op de bouwplaats. Maar je mag me wel helpen deze koffie op te drinken."
+			},
+			"kleingeld_ja": "Hier, makker. Gewoon tussen ons, hè.",
+			"kleingeld_nee": "Kleingeld? Alles is cash naar m'n vrouw. Sorry, maat.",
+			"dag": "Zie je, makker. Kop op, hè!",
+			"gulheid": {
+				"kans": 45,
+				"bedrag": 0.5
+			},
+			"stemmingen": {
+				"begroeting": "blij",
+				"onderwerp": "verdrietig",
+				"doorvraag": "opgewonden"
+			}
+		},
+		{
+			"id": "uitgaanspubliek",
+			"herkennen": {
+				"soort": "uitgaanspubliek"
+			},
+			"spreker": "STAPPER",
+			"namen": [
+				{
+					"als": {
+						"rok": true
+					},
+					"naam": "FEESTGANGSTER"
+				},
+				{
+					"als": {
+						"vrouw": true
+					},
+					"naam": "STAPSTER"
+				},
+				{
+					"als": {
+						"haar": "pet"
+					},
+					"naam": "STAPPER MET PET"
+				},
+				{
+					"als": {},
+					"naam": "STAPPER"
+				}
+			],
+			"begroetingen": [
+				"Heyyy! Ga je mee naar de Grote Markt? Daar is het feest!",
+				"Oh my god, je schrikt me dood. Wat is er, schat?",
+				"Hé! Jij bent de eerste die vanavond normaal tegen me doet. Wat wil je?"
+			],
+			"onderwerp": {
+				"vraag": "Waar gaan jullie heen?",
+				"antwoord": "Naar de Grote Markt, en daarna naar de Paard. Of andersom. Hangt af van de rij en van hoeveel ik nog op m'n telefoon heb.",
+				"doorvraag": "Kan ik mee?",
+				"doorantwoord": "Haha, met die jas? Ze laten je er niet in, schat. Maar ik neem een frikandel voor je mee terug, beloofd."
+			},
+			"kleingeld_ja": "Hier, schat! Neem er een patatje van, op mij.",
+			"kleingeld_nee": "Alles zit op m'n telefoon, en die is bijna leeg. Sorry!",
+			"dag": "Doei! Liefs! Proost!",
+			"gulheid": {
+				"kans": 55,
+				"bedrag": 0.5
+			},
+			"stemmingen": {
+				"begroeting": "opgewonden",
+				"onderwerp": "blij",
+				"doorvraag": "blij",
+				"dag": "opgewonden"
+			}
+		},
+		{
+			"id": "nachtbraker",
+			"herkennen": {
+				"soort": "nachtbraker"
+			},
+			"spreker": "NACHTBRAKER",
+			"namen": [
+				{
+					"als": {
+						"haar": "pet"
+					},
+					"naam": "NACHTBRAKER MET PET"
+				},
+				{
+					"als": {
+						"vrouw": true
+					},
+					"naam": "NACHTBRAAKSTER"
+				},
+				{
+					"als": {},
+					"naam": "NACHTBRAKER"
+				}
+			],
+			"begroetingen": [
+				"Hm? Ollah... wat is het, man. Ik ben moe.",
+				"Jij bent ook nog op, hè. Wij zijn de enigen.",
+				"Ssst. Niet zo hard. Mijn hoofd."
+			],
+			"onderwerp": {
+				"vraag": "Waarom ben jij nog wakker?",
+				"antwoord": "Nachtdienst gehad. Of feest. Weet ik eigenlijk niet meer. Het voelt allebei hetzelfde om deze tijd.",
+				"doorvraag": "Waar ga je nu heen?",
+				"doorantwoord": "Naar de eerste tram. Of de shoarmazaak, als die nog open is. Of gewoon dit bankje. Jij mag naast me zitten."
+			},
+			"kleingeld_ja": "Hier, man. Neem m'n laatste euro. Ik heb toch niks meer nodig vannacht.",
+			"kleingeld_nee": "Ik heb alles uitgegeven, man. Echt alles.",
+			"dag": "Slaap lekker. Als je slaapt. Ik niet.",
+			"gulheid": {
+				"kans": 40,
+				"bedrag": 0.5
+			},
+			"stemmingen": {
+				"begroeting": "verdrietig",
+				"onderwerp": "verdrietig",
+				"doorvraag": "neutraal",
+				"dag": "verdrietig"
+			}
+		},
+		{
+			"id": "winkelpubliek",
+			"herkennen": {
+				"soort": "winkelpubliek"
+			},
+			"spreker": "WINKELEND PUBLIEK",
+			"namen": [
+				{
+					"als": {
+						"haar": "hoed"
+					},
+					"naam": "MAN MET HOED"
+				},
+				{
+					"als": {
+						"rok": true,
+						"jas": [
+							"#22242A",
+							"#5A3A6A",
+							"#8A2A2A",
+							"#2E4A78"
+						]
+					},
+					"naam": "SJIEKE DAME"
+				},
+				{
+					"als": {
+						"rok": true,
+						"draagt": "handtas"
+					},
+					"naam": "NETTE DAME MET HANDTAS"
+				},
+				{
+					"als": {
+						"rok": true
+					},
+					"naam": "NETTE DAME"
+				},
+				{
+					"als": {
+						"vrouw": true,
+						"draagt": "handtas"
+					},
+					"naam": "VROUW MET HANDTAS"
+				},
+				{
+					"als": {
+						"draagt": "schoudertas"
+					},
+					"naam": "SHOPPER MET TAS"
+				},
+				{
+					"als": {
+						"grijs": true,
+						"vrouw": true
+					},
+					"naam": "GRIJZE MEVROUW"
+				},
+				{
+					"als": {
+						"grijs": true
+					},
+					"naam": "GRIJZE HEER"
+				},
+				{
+					"als": {
+						"vrouw": true
+					},
+					"naam": "WINKELENDE VROUW"
+				},
+				{
+					"als": {
+						"haar": "kaal"
+					},
+					"naam": "KALE MAN MET BOODSCHAPPEN"
+				},
+				{
+					"als": {
+						"haar": "pet",
+						"vrouw": false
+					},
+					"naam": "MAN MET PET"
+				},
+				{
+					"als": {
+						"draagt": "rugzak"
+					},
+					"naam": "MAN MET RUGZAK"
+				},
+				{
+					"als": {
+						"jas": [
+							"#C8B48A",
+							"#D8D2C4",
+							"#7A4A2A"
+						]
+					},
+					"naam": "MAN IN REGENJAS"
+				},
+				{
+					"als": {
+						"jas": [
+							"#8A2A2A",
+							"#E0A030",
+							"#2A7A8A",
+							"#B85A78"
+						]
+					},
+					"naam": "MAN IN FELLE JAS"
+				},
+				{
+					"als": {},
+					"naam": "WINKELENDE MAN"
+				}
+			],
+			"begroetingen": [
+				"Oh! U laat me schrikken. Kan ik u ergens mee helpen?",
+				"Goedendag. Ik zoek de Bijenkorf, weet u waar die is?",
+				"Ja? Ik heb nog drie winkels te gaan en de parkeermeter loopt."
+			],
+			"onderwerp": {
+				"vraag": "Wat gaat u kopen?",
+				"antwoord": "Een nieuwe jas. Mijn oude is pas twee jaar, maar die is zó vorig seizoen, zegt mijn dochter.",
+				"doorvraag": "Ik heb maar één jas.",
+				"doorantwoord": "Oh. Oh lieverd. Nou... misschien heeft de kringloop aan de Prinsegracht iets voor u. Daar kom ik ook weleens. Niet verder vertellen."
+			},
+			"kleingeld_ja": "Hier, alstublieft. Gebruik het verstandig, beloofd?",
+			"kleingeld_nee": "Ik betaal tegenwoordig alles met mijn telefoon, het spijt me werkelijk.",
+			"dag": "Een fijne dag nog. En doe uw jas dicht, het wordt koud.",
+			"gulheid": {
+				"kans": 55,
+				"bedrag": 0.5
+			},
+			"stemmingen": {
+				"begroeting": "verdrietig",
+				"onderwerp": "opgewonden",
+				"doorvraag": "verdrietig"
+			}
+		},
+		{
+			"id": "forens_op_straat",
+			"herkennen": {
+				"soort": "forens"
+			},
+			"spreker": "VOORBIJGANGER",
+			"begroetingen": [
+				"Hm? Sorry, ik moet m'n tram halen. Wat is er?",
+				"Hé. Gaat het wel met je?"
+			],
+			"onderwerp": {
+				"vraag": "Waar moet u heen?",
+				"antwoord": "Naar Zoetermeer, met de RandstadRail. Elke dag. Al twaalf jaar. Ik ken alle haltes uit m'n hoofd.",
+				"doorvraag": "Noem ze dan eens op.",
+				"doorantwoord": "Centraal, Laan van NOI, Voorburg 't Loo, Leidschendam-Voorburg... ach, daar gaat m'n tram. Bedankt, hoor."
+			},
+			"kleingeld_ja": "Hier. Een paar muntjes. Sterkte, hè.",
+			"kleingeld_nee": "Ik heb alleen m'n ov-kaart bij me. Sorry.",
+			"dag": "Ik moet gaan. Pas goed op jezelf.",
+			"gulheid": {
+				"kans": 30,
+				"bedrag": 0.2
+			},
+			"stemmingen": {
+				"doorvraag": "verdrietig",
+				"dag": "neutraal"
+			},
+			"namen": [
+				{
+					"als": {
+						"haar": "hoed"
+					},
+					"naam": "MAN MET HOED"
+				},
+				{
+					"als": {
+						"draagt": "rugzak",
+						"vrouw": true
+					},
+					"naam": "VROUW MET RUGZAK"
+				},
+				{
+					"als": {
+						"draagt": "rugzak"
+					},
+					"naam": "MAN MET RUGZAK"
+				},
+				{
+					"als": {
+						"draagt": "aktetas"
+					},
+					"naam": "FORENS MET AKTETAS"
+				},
+				{
+					"als": {
+						"draagt": "schoudertas"
+					},
+					"naam": "FORENS MET TAS"
+				},
+				{
+					"als": {
+						"haar": "pet"
+					},
+					"naam": "MAN MET PET"
+				},
+				{
+					"als": {
+						"haar": "kaal"
+					},
+					"naam": "KALE FORENS"
+				},
+				{
+					"als": {
+						"vrouw": true
+					},
+					"naam": "HAASTIGE VROUW"
+				},
+				{
+					"als": {},
+					"naam": "HAASTIGE MAN"
+				}
+			]
 		},
 		{
 			"id": "oude_hagenaar",
@@ -279,6 +1087,120 @@
 				"doorvraag": "verdrietig",
 				"dag": "neutraal"
 			}
+		}
+	],
+	"namen": [
+		{
+			"als": {
+				"haar": "hoed",
+				"grijs": true
+			},
+			"naam": "OUDE HEER MET HOED"
+		},
+		{
+			"als": {
+				"haar": "hoed"
+			},
+			"naam": "MAN MET HOED"
+		},
+		{
+			"als": {
+				"grijs": true,
+				"rok": true
+			},
+			"naam": "OUDE DAME"
+		},
+		{
+			"als": {
+				"grijs": true,
+				"vrouw": true
+			},
+			"naam": "OUDE VROUW"
+		},
+		{
+			"als": {
+				"grijs": true
+			},
+			"naam": "OUDE MAN"
+		},
+		{
+			"als": {
+				"rok": true,
+				"jas": [
+					"#22242A",
+					"#5A3A6A",
+					"#8A2A2A",
+					"#2E4A78"
+				]
+			},
+			"naam": "SJIEKE DAME"
+		},
+		{
+			"als": {
+				"rok": true
+			},
+			"naam": "NETTE DAME"
+		},
+		{
+			"als": {
+				"haar": "pet",
+				"vrouw": false
+			},
+			"naam": "MAN MET PET"
+		},
+		{
+			"als": {
+				"haar": "pet"
+			},
+			"naam": "VROUW MET PET"
+		},
+		{
+			"als": {
+				"draagt": "rolkoffer"
+			},
+			"naam": "REIZIGER MET ROLKOFFER"
+		},
+		{
+			"als": {
+				"draagt": "rugzak",
+				"vrouw": true
+			},
+			"naam": "VROUW MET RUGZAK"
+		},
+		{
+			"als": {
+				"draagt": "rugzak"
+			},
+			"naam": "MAN MET RUGZAK"
+		},
+		{
+			"als": {
+				"draagt": "aktetas"
+			},
+			"naam": "MAN MET AKTETAS"
+		},
+		{
+			"als": {
+				"vrouw": true,
+				"draagt": "handtas"
+			},
+			"naam": "VROUW MET HANDTAS"
+		},
+		{
+			"als": {
+				"haar": "kaal"
+			},
+			"naam": "KALE MAN"
+		},
+		{
+			"als": {
+				"vrouw": true
+			},
+			"naam": "JONGE VROUW"
+		},
+		{
+			"als": {},
+			"naam": "MAN IN DE STRAAT"
 		}
 	]
 }

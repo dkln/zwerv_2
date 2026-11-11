@@ -1,20 +1,22 @@
 extends SceneTree
-## Into the town out of the wave of a scene change (scripts/world/level_of_detail.gd): while the
-## wave (WarpTransition) still settles, the loading screen is already up (its waiting music
-## playing) and nothing heavy is started; the merging starts once the wave is gone.
-## usage: tools/godot.sh --headless --script tools/check/loading_after_warp_test.gd
+## Into the town under the swipe of a scene change (scripts/world/level_of_detail.gd): while the
+## swipe (SwipeTransition) still runs, the loading screen is already up (its waiting music
+## playing) and nothing heavy is started; the merging starts once the swipe is through.
+## usage: tools/godot.sh --headless --script tools/check/loading_after_swipe_test.gd
 
 const Common = preload("res://tools/tool_common.gd")
 const LoadingScreenScript = preload("res://scripts/ui/loading_screen.gd")
+const SwipeTransition = preload("res://scripts/ui/swipe_transition.gd")
 
 var _problems: Array[String] = []
 
 
 func _init() -> void:
 	Common.watchdog(self, 200)
-	var warp := WarpTransition.new()
-	warp.name = WarpTransition.NODE_NAME
-	get_root().add_child(warp)
+	# a stand-in for the swipe of the scene change (only its node, so it is not through yet)
+	var swipe := CanvasLayer.new()
+	swipe.name = SwipeTransition.NODE_NAME
+	get_root().add_child(swipe)
 	var scene := Common.instantiate(Common.CITY, false)
 	scene.get_node("Verkeer").vehicle_count = 0
 	get_root().add_child(scene)
@@ -24,7 +26,7 @@ func _init() -> void:
 	_check(LoadingScreenScript.showing(self), "het laadscherm staat er meteen")
 	_check(detail.is_merging(), "de stad telt als nog niet klaar")
 	_check(detail._busy == 0 and detail._pairs.is_empty(), "het zware werk wacht op de overgang")
-	warp._arrive()
+	swipe.queue_free()
 	var started := Time.get_ticks_msec()
 	while detail._pairs.is_empty() and Time.get_ticks_msec() - started < 5000:
 		await process_frame

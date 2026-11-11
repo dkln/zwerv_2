@@ -60,7 +60,7 @@ const MOTOR_SOUNDS := {"auto": "auto_motor_loop", "brommer": "brommer_motor_loop
 const CRUISE_SPEED := {"auto": 13.0, "brommer": 10.0, "bus": 9.0, "tram": 8.0, "trein": 20.0}
 ## The files are all equally loud (-16 LUFS, tools/megadrive/loudness.py), so these numbers are
 ## the real balance between the engines.
-const MOTOR_VOLUME_DB := {"auto": -11.0, "brommer": -10.0, "bus": -10.0, "tram": -7.0, "trein": -5.0}
+const MOTOR_VOLUME_DB := {"auto": -11.0, "brommer": -10.0, "bus": -10.0, "tram": -7.0, "trein": -8.0}
 ## How near (m) a source is at full loudness (unit_size), per kind; bigger is heard further.
 const UNIT_SIZE := {"auto": 10.0, "brommer": 8.0, "bus": 14.0, "tram": 14.0, "trein": 22.0}
 const IDLE_PITCH := 0.7

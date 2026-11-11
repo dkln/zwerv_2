@@ -35,6 +35,15 @@ extends Node3D
 ## station gives it another way (station.person_stuck).
 
 const TALKABLE_GROUP := "aanspreekbaar"
+const KnockDown = preload("res://scripts/world/knock_down.gd")
+## Hit by a train (hit_by_moving, as the player and the people on the street): from this
+## speed (m/s) it is knocked over, its body this heavy (kg), as big as this box (m); it lies
+## LIE_SECONDS and is then taken away (the station counts it gone).
+const HIT_FROM_SPEED := 1.5
+const BODY_MASS := 70.0
+const BODY_BOX := Vector3(0.6, 1.8, 0.4)
+const LIE_SECONDS := 5.0
+const HIT_SHARD_COLOUR := Color("#6B5844")
 const TURN_SPEED := 7.0
 const ARRIVED := 0.15
 const PLAYER_GAP := 0.75
@@ -58,7 +67,7 @@ const STUCK_SECONDS := 6.0
 
 const UNIFORMS := {
 	"conducteur": {"coat": Color("#1E2C55"), "trim": Color("#9FC4EC"), "trousers": Color("#1E2C55"), "cap": Color("#1E2C55")},
-	"handhaver": {"coat": Color("#16181C"), "trim": Color("#E8C21A"), "trousers": Color("#16181C"), "cap": Color("#16181C")},
+	"handhaver": {"coat": Color("#2A4A8A"), "trim": Color("#9FC4EC"), "trousers": Color("#1E3050"), "cap": Color("#2A4A8A")},
 }
 const SPEEDS := {"reiziger": 1.35, "zakenman": 1.55, "toerist": 1.1, "student": 1.45, "conducteur": 1.3, "handhaver": 1.05}
 
@@ -83,6 +92,8 @@ var _arm := ""                 # "" / "tikken" / "fluiten": the arm up for that
 var _arm_clock := 0.0
 var _blocked_clock := 0.0
 var _falling := false
+var _ragdoll: RigidBody3D      # knocked over by a train (hit_by_moving)
+var _ragdoll_clock := 0.0
 var _fall_speed := 0.0
 var _climb_from := Vector3.ZERO
 var _edge_rolled := false       # at this edge it has had its one chance of stumbling over
@@ -185,6 +196,9 @@ func blow_whistle() -> void:
 
 
 func _process(delta: float) -> void:
+	if _ragdoll:
+		_follow_ragdoll(delta)
+		return
 	var moved := 0.0
 	if _falling:
 		_fall(delta)
@@ -194,6 +208,50 @@ func _process(delta: float) -> void:
 		moved = _do_step(delta)
 	_watch_headway(delta, moved)
 	_animate(delta, moved)
+
+
+## Hit by something moving at `mover_velocity` from `from` (a train coming in or going out):
+## as PlayerController.hit_by_moving, the same knock-over (KnockDown), a cry and shards.
+## Returns whether it was a real hit.
+func hit_by_moving(mover_velocity: Vector3, from: Vector3) -> bool:
+	if _ragdoll or figure == null:
+		return false
+	var impact := mover_velocity.length()
+	if impact < HIT_FROM_SPEED:
+		return false
+	_falling = false
+	steps.clear()
+	follow = null
+	_leave_lane()
+	var box := BoxShape3D.new()
+	box.size = BODY_BOX
+	var side := global_position - from
+	side.y = 0.0
+	var push := mover_velocity * 0.8 + (side.normalized() if side.length_squared() > 0.001 else Vector3.ZERO) * (impact * 0.3 + 1.0)
+	var random := RandomNumberGenerator.new()
+	random.seed = get_instance_id()
+	_ragdoll = KnockDown.throw(get_parent(), Transform3D(Basis(Vector3.UP, rotation.y), global_position),
+			box, Vector3(0.0, BODY_BOX.y * 0.5, 0.0), BODY_MASS, push, impact, random, 1.0, 2.0)
+	figure.reparent(_ragdoll, true)
+	var contact := global_position + Vector3.UP * 1.0
+	CrashBurst.spawn(get_parent(), contact, HIT_SHARD_COLOUR, clampf(impact / 20.0, 0.15, 1.0))
+	StationAudio.play_at(station, "lichaam_klap", station.to_local(contact), 0.0)
+	StationAudio.play_at(station, "pijn_%s_hard" % voice(), station.to_local(contact), 0.0)
+	_ragdoll_clock = 0.0
+	return true
+
+
+## While knocked over: it stays with its body; after LIE_SECONDS it is taken away.
+func _follow_ragdoll(delta: float) -> void:
+	_ragdoll_clock += delta
+	if is_instance_valid(_ragdoll):
+		global_position = _ragdoll.global_position
+	if _ragdoll_clock >= LIE_SECONDS:
+		if station and station.has_method("person_left"):
+			station.person_left(self)
+		if is_instance_valid(_ragdoll):
+			_ragdoll.queue_free()
+		queue_free()
 
 
 ## Falling off a platform edge (by accident): down onto the rails, a cry; then the station
@@ -497,6 +555,19 @@ func _player_in_the_way(direction: Vector3) -> bool:
 	var offset := player.global_position - global_position
 	offset.y = 0.0
 	return offset.length() < PLAYER_GAP and offset.dot(direction) > 0.2
+
+
+## Standing still and straight at once, as when the player starts talking to them
+## (PlayerController.talk_to): the conversation pauses the game, so mid-stride a leg would
+## stay in the air.
+func stand_neutral() -> void:
+	_walk_amount = 0.0
+	_phase = 0.0
+	if figure == null:
+		return
+	figure.walk(0.0, 0.0)
+	for kind in carries:
+		CarriedItems.pose(figure, kind)
 
 
 func _animate(delta: float, moved: float) -> void:
