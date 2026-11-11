@@ -28,6 +28,9 @@ Generator: `tools/megadrive/geluiden.py`; renderen met `tools/megadrive/render.s
 | `bus_toeter.ogg` | bus of vrachtwagen: één lange, lage stoot (277 en 349 Hz) | 1 s |
 | `brommer_toeter.ogg` | het dunne toetertje van een brommer: twee korte PSG-piepjes ("piep-piep"), net iets vals | 0,55 s |
 | `scootmobiel_toeter.ogg` | de zoemer van een scootmobiel: drie snelle hoge elektronische piepjes (2350 Hz) | 0,6 s |
+| `kassa_piep.ogg` | de scanner van een supermarktkassa: één korte, hoge, droge piep (2637 Hz), hoger dan de OV-lezer | 0,22 s |
+| `winkel_alarm.ogg` | de beveiligingspoortjes van een supermarkt die afgaan: zes paar snelle hoog-laag-piepen | 2 s |
+| `lift_ding.ogg` | de lift van het stadhuis komt aan: "ding-dong", twee zachte belletonen een grote terts omlaag | 1,6 s |
 | `fiets_bel.ogg` | de duimbel van een fiets: twee koepeltjes (2650 en 2790 Hz), snel aangeslagen door de draaiende klepel, twee keer ("tring-tring") | 1,1 s |
 | `politie_sirene_loop.ogg` | sirene van politie (ook de ME-bus): Nederlandse twee-toon 600/450 Hz, 0,55 s per toon, heldere PSG-blokgolven; naadloze lus, naast de motorlus op het voertuig | 2,2 s |
 | `ambulance_sirene_loop.ogg` | sirene van de ambulance: twee-toon 660/495 Hz, 0,75 s per toon, rondere FM-hoorn; lus | 3 s |

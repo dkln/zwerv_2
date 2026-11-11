@@ -191,6 +191,25 @@ Een nieuw product: zet het item in `scripts/player/items.gd` (naam, soort, tekst
 een eigen icoon in `GameMenu.ITEM_ICONS`) en een regel in het `menu` van de zaak.
 Controle: `tools/godot.sh --headless --script tools/check/shop_test.gd`.
 
+## De supermarkten — `gesprekken/supermarkten.json`
+
+DERREK en ALFRED STEYHN (`scripts/world/supermarket.gd`). Je pakt bij de ingang een karretje of
+een mandje, uit elk schap één product, en rekent af bij de kassa. Per keten (`ketens`):
+
+| veld | wat |
+|---|---|
+| `naam`, `kleur`, `tekstkleur` | de naam en de huisstijl: de borden boven de gangpaden, de kassanummers, het naamkaartje van de caissière |
+| `karretje`, `mandje` | hoeveel dingen erin passen |
+| `kleding` | wat het personeel draagt (`jas`, `rand`, `broek`, eventueel `pet`) |
+| `producten` | per soort schap (`droog`, `ontbijt`, `snoep`, `drank`, `verzorging`, `conserven`, `zuivel`, `diepvries`, `brood`, `bakkerij`, `groente`, `bloemen`, `actie`) het `item` (uit `scripts/player/items.gd`), de `prijs` en de `naam` op het schap; een soort die een keten niet heeft, verkoopt daar niets |
+| `bonus` | (ALFRED STEYHN) `aantal` soorten schappen per filiaal met `korting` (0,25 = een kwart eraf), met het bordje `tekst` |
+| `kassa` | wat de caissière zegt: `begroetingen`, `totaal` ({prijs}, {aantal}), `betaald`, `terugleggen` en `zakken_vol` ({wat}), `niets` (geen geld voor ook maar één ding: telt als `geen_geld`), `leeg`, `laat_maar`, `stemmingen` |
+| `zelfscan` | (ALFRED STEYHN) hetzelfde voor de zelfscankassa |
+
+De medewerkers in de winkel (`medewerker_derrek`, `medewerker_alfred_steyhn`) praten uit
+`personeel.json`, net als de mensen in het stadhuis (`receptioniste`, `beveiliger`,
+`ambtenaar`, `raadslid`, `burgemeester`).
+
 ## Eruit gegooid worden — `gesprekken/uitzetten.json`
 
 Wie in een binnenruimte te vaak iets doet wat niet mag, wordt eruit gegooid: de swipe, en de
@@ -200,14 +219,15 @@ Herbruikbaar voor elke plek (`scripts/world/interiors.gd`: `Interiors.note_offen
 
 | veld | wat |
 |---|---|
-| `plekken` | per soort binnenruimte (`snackbar`, `centraal`) zijn `overtredingen` |
+| `plekken` | per soort binnenruimte (`snackbar`, `centraal`, `derrek`, `alfred_steyhn`, `stadhuis`) zijn `overtredingen` |
 | `na` | hoeveel keer in één bezoek genoeg is (1: meteen) |
 | `tekst` | de bladzijden van de verteller, na elkaar |
 | `terug_na`, `niet_binnen` | seconden dat je er niet in mag, en wat er dan boven je zweeft |
 
 Overtredingen nu: `bedelen` (om kleingeld vragen), `geen_geld` (iets kopen zonder genoeg geld),
 `boete_onbetaald` (betrapt op zwartrijden en de boete niet kunnen betalen: meteen eruit; wie
-wel kan betalen, betaalt alleen). Een nieuwe: meld hem met `Interiors.note_offence`
+wel kan betalen, betaalt alleen), `winkeldiefstal` (met onbetaalde spullen in je karretje of
+mandje een supermarkt uit lopen: meteen eruit). Een nieuwe: meld hem met `Interiors.note_offence`
 waar hij gebeurt en zet hem per plek in dit bestand.
 
 ## Drukte op straat — `drukte.json`

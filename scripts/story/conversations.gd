@@ -40,7 +40,11 @@ const SHOPS_FILE := "res://data/gesprekken/winkels.json"
 const MERCHANT_ROLES := ["snackbarhouder", "verkoper"]
 const STAFF_FILE := "res://data/gesprekken/personeel.json"
 ## The roles (StationPerson.role) of who is on duty: their own conversation and look.
-const OFFICIAL_ROLES := ["conducteur", "handhaver", "agent"]
+## Who is on duty and has a conversation of their own in personeel.json (shown as such: the
+## name plate in their colours, their emblem): the NS and enforcement at Den Haag Centraal,
+## the staff of the supermarkets, the people of the city hall.
+const OFFICIAL_ROLES := ["conducteur", "handhaver", "agent", "medewerker_derrek", "medewerker_alfred_steyhn",
+	"receptioniste", "beveiliger", "ambtenaar", "raadslid", "burgemeester"]
 ## Who you talk to when nothing else fits, and the mood of a line with none set.
 const FALLBACK_PERSONA := "forens"
 const FALLBACK_MOOD := "neutraal"

@@ -15,7 +15,10 @@ extends CanvasLayer
 ## - KAART: the whole map of the HUD's minimap (hud.minimap_texture()) with the player as a
 ##   white triangle, the named places ("places" scene metadata) as markers that can be
 ##   chosen, the neighbourhoods not visited yet (hud.visited_areas()) under a fog, and the
-##   places the followed quest sends you to (hud.quest_targets()) as amber diamonds.
+##   places the followed quest sends you to (hud.quest_targets()) as amber diamonds; the
+##   supermarkets in the colour and shape of their chain (SUPERMARKETS: DERREK a red
+##   square, ALFRED STEYHN a light blue disc, as their emblems), also in neighbourhoods not
+##   visited yet, so you can always find the nearest; the legend has them too.
 ## Keys: Tab or I opens the inventory, J the quests, M the map; Q / E change tab; Tab or
 ## Escape closes; arrows / WASD and Enter choose; the mouse works too. While open the game
 ## stands still (the tree paused). It does not open while the pause menu has the game paused
@@ -132,6 +135,13 @@ const QUEST_KINDS := [["verhaal", "VERHAAL"], ["zij", "ZIJMISSIES"]]
 ## covers everything; never fogged).
 const PLACE_COLOUR := Color("#47D6C2")
 const UNKNOWN_PLACE_COLOUR := Color("#5A6090")
+## The supermarket chains on the map: the colour of the chain and whether its marker is round
+## (the shape of its emblem), and the name in the place panel. Their places are "derrek",
+## "derrek_2", ... (tools/build/city/map.gd _supermarket).
+const SUPERMARKETS := {
+	"derrek": {"colour": Color("#DE1828"), "round": false, "name": "DERREK"},
+	"alfred_steyhn": {"colour": Color("#2CA8E4"), "round": true, "name": "ALFRED STEYHN"},
+}
 const FOG := Color(20.0 / 255.0, 24.0 / 255.0, 58.0 / 255.0, 0.86)
 const WHOLE_CITY := "Den Haag"
 ## Map cells are 4 m (the "wijken" table counts in cells).
@@ -1581,6 +1591,15 @@ func _build_map_side() -> Control:
 	legend_column.add_child(legend_grid)
 	legend_grid.add_child(_legend_entry(_legend_square(PLACE_COLOUR, PLACE_COLOUR), "Plek"))
 	legend_grid.add_child(_legend_entry(_legend_square(UNKNOWN_PLACE_COLOUR, UNKNOWN_PLACE_COLOUR), "Nog onbekend"))
+	for chain: String in SUPERMARKETS:
+		var marker := _legend_square(SUPERMARKETS[chain].colour, Color.WHITE)
+		if SUPERMARKETS[chain].round:
+			var round_style := UiStyle.box_style(SUPERMARKETS[chain].colour, Color.WHITE, 1) as StyleBoxFlat
+			if round_style:
+				round_style = round_style.duplicate()
+				round_style.set_corner_radius_all(5)
+				marker.add_theme_stylebox_override("panel", round_style)
+		legend_grid.add_child(_legend_entry(marker, String(SUPERMARKETS[chain].name).capitalize()))
 	legend_grid.add_child(_legend_entry(_legend_square(Color(FOG, 1.0), UiStyle.BORDER), "Onontdekte wijk"))
 	var arrow_holder := Control.new()
 	arrow_holder.custom_minimum_size = Vector2(12, 12)
@@ -1801,17 +1820,52 @@ func _draw_map_overlay() -> void:
 			chosen = place
 			continue
 		var at := _world_to_map(place.position).round()
+		if supermarket_chain(place.key) != "":
+			_draw_supermarket(at, supermarket_chain(place.key), false)
+			continue
 		_map_overlay.draw_rect(Rect2(at - Vector2(5, 5), Vector2(10, 10)), UiStyle.INK)
 		_map_overlay.draw_rect(Rect2(at - Vector2(3, 3), Vector2(6, 6)), _place_colour(place))
 	if not chosen.is_empty():
 		var at := _world_to_map(chosen.position).round()
-		_map_overlay.draw_rect(Rect2(at - Vector2(11, 11), Vector2(22, 22)), Color.WHITE)
-		_map_overlay.draw_rect(Rect2(at - Vector2(8, 8), Vector2(16, 16)), UiStyle.INK)
-		_map_overlay.draw_rect(Rect2(at - Vector2(5, 5), Vector2(10, 10)), _place_colour(chosen))
+		if supermarket_chain(chosen.key) != "":
+			_draw_supermarket(at, supermarket_chain(chosen.key), true)
+		else:
+			_map_overlay.draw_rect(Rect2(at - Vector2(11, 11), Vector2(22, 22)), Color.WHITE)
+			_map_overlay.draw_rect(Rect2(at - Vector2(8, 8), Vector2(16, 16)), UiStyle.INK)
+			_map_overlay.draw_rect(Rect2(at - Vector2(5, 5), Vector2(10, 10)), _place_colour(chosen))
 	# where the followed quest sends you, over everything
 	if _hud and _hud.has_method("quest_targets"):
 		for target: Vector2 in _hud.quest_targets():
 			QuestMarks.draw_mark(_map_overlay, _world_to_map(target).round(), 8.0)
+
+
+## The chain of a supermarket place ("derrek_3" -> "derrek"), "" for any other place.
+static func supermarket_chain(place_key: String) -> String:
+	var words := place_key.split("_", false)
+	if words.size() > 1 and words[-1].is_valid_int():
+		words.resize(words.size() - 1)
+	var chain := "_".join(words)
+	return chain if SUPERMARKETS.has(chain) else ""
+
+
+## The marker of a supermarket at `at`: a square (DERREK) or a disc (ALFRED STEYHN) in the
+## chain's colour with a white rim and a white dot; `chosen`: larger, ringed white.
+func _draw_supermarket(at: Vector2, chain: String, chosen: bool) -> void:
+	var colour: Color = SUPERMARKETS[chain].colour
+	var size := 8.0 if chosen else 5.5
+	if SUPERMARKETS[chain].round:
+		if chosen:
+			_map_overlay.draw_circle(at, size + 4.0, Color.WHITE)
+		_map_overlay.draw_circle(at, size + 2.0, UiStyle.INK)
+		_map_overlay.draw_circle(at, size + 1.0, Color.WHITE)
+		_map_overlay.draw_circle(at, size, colour)
+	else:
+		if chosen:
+			_map_overlay.draw_rect(Rect2(at - Vector2.ONE * (size + 4.0), Vector2.ONE * (size + 4.0) * 2.0), Color.WHITE)
+		_map_overlay.draw_rect(Rect2(at - Vector2.ONE * (size + 2.0), Vector2.ONE * (size + 2.0) * 2.0), UiStyle.INK)
+		_map_overlay.draw_rect(Rect2(at - Vector2.ONE * (size + 1.0), Vector2.ONE * (size + 1.0) * 2.0), Color.WHITE)
+		_map_overlay.draw_rect(Rect2(at - Vector2.ONE * size, Vector2.ONE * size * 2.0), colour)
+	_map_overlay.draw_rect(Rect2(at - Vector2(1.5, 1.5), Vector2(3, 3)), Color.WHITE)
 
 
 func _place_colour(place: Dictionary) -> Color:
@@ -1843,10 +1897,13 @@ func _fill_place_panel() -> void:
 		return
 	var known := _visited.has(place.wijk)
 	var colour := PLACE_COLOUR if known else UNKNOWN_PLACE_COLOUR
+	var chain := supermarket_chain(place.key)
+	if chain != "":
+		colour = SUPERMARKETS[chain].colour
 	_place_box.style = _style(UiStyle.PANEL, colour, 3, 18, 18)
-	_place_kind.text = "◆ PLEK" if known else "? NOG ONBEKEND"
+	_place_kind.text = "◆ SUPERMARKT" if chain != "" else ("◆ PLEK" if known else "? NOG ONBEKEND")
 	_place_kind.add_theme_color_override("font_color", colour)
-	_place_name.text = place.name
+	_place_name.text = String(SUPERMARKETS[chain].name) if chain != "" else place.name
 	_place_wijk.text = "In %s" % place.wijk if place.wijk != WHOLE_CITY else "In Den Haag"
 	var distance := (place.position as Vector2).distance_to(_player_position())
 	_place_distance.text = "%d M" % roundi(distance)

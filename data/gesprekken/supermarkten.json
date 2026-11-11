@@ -1,0 +1,122 @@
+{
+	"uitleg": "De supermarkten van de stad, DERREK en ALFRED STEYHN (scripts/world/supermarket.gd). Binnen pak je bij de ingang een karretje of een mandje, uit de schappen pak je wat je wilt (per soort schap één product: 'producten', met 'item' uit scripts/player/items.gd, 'prijs' en 'naam' zoals het op het schap staat, 'kleur' van het pakje in je karretje) en bij de kassa reken je af. 'kassa' is wat de caissière zegt: {prijs} het totaal, {aantal} hoeveel dingen, {wat} wat ze terug moet leggen. 'zelfscan' (alleen ALFRED STEYHN) is wat de zelfscankassa zegt. 'kleding' is wat het personeel draagt (de huisstijl). 'karretje' en 'mandje': hoeveel erin past. 'bonus' (ALFRED STEYHN): in elk filiaal zoveel soorten schappen met korting (per filiaal anders). Wie met spullen in zijn karretje naar buiten loopt zonder te betalen, wordt eruit gegooid (uitzetten.json, 'winkeldiefstal'). Zie data/LEESMIJ.md.",
+	"ketens": {
+		"derrek": {
+			"naam": "DERREK",
+			"kleur": "#DE1828",
+			"tekstkleur": "#FFFFFF",
+			"karretje": 12,
+			"mandje": 6,
+			"kleding": {
+				"jas": "#DE1828",
+				"rand": "#F2F2F2",
+				"broek": "#22242A"
+			},
+			"producten": {
+				"droog": {"item": "crackers", "prijs": 0.89, "naam": "DERREK crackers"},
+				"ontbijt": {"item": "ontbijtkoek", "prijs": 1.19, "naam": "DERREK ontbijtkoek"},
+				"snoep": {"item": "zak_chips", "prijs": 0.99, "naam": "DERREK chips naturel"},
+				"drank": {"item": "bier", "prijs": 0.59, "naam": "DERREK pils, blikje"},
+				"verzorging": {"item": "pleister", "prijs": 1.49, "naam": "DERREK pleisters"},
+				"conserven": {"item": "blik_soep", "prijs": 1.29, "naam": "DERREK erwtensoep"},
+				"zuivel": {"item": "pak_melk", "prijs": 0.99, "naam": "DERREK halfvolle melk"},
+				"diepvries": {"item": "ijsje", "prijs": 0.39, "naam": "DERREK raketje"},
+				"brood": {"item": "vers_brood", "prijs": 1.39, "naam": "DERREK volkorenbrood"},
+				"actie": {"item": "pak_stroopwafels", "prijs": 0.99, "naam": "Stroopwafels, LAAGSTE PRIJS"}
+			},
+			"kassa": {
+				"spreker": "KASSA DERREK",
+				"begroetingen": [
+					"Goeiemiddag! Heeft u alles kunnen vinden?",
+					"Hoi. Zet maar op de band, hoor.",
+					"Volgende! O, sorry. Hallo, welkom bij DERREK."
+				],
+				"totaal": "Piep, piep, piep. Dat wordt dan {prijs} voor {aantal} dingen. Pinnen of contant?",
+				"betaald": [
+					"Alsjeblieft, en hier is je bonnetje. Fijne dag nog!",
+					"Dankjewel! Tot de volgende keer bij DERREK."
+				],
+				"terugleggen": "Hmm, dat is te weinig. Dan leg ik {wat} even terug, goed?",
+				"niets": "Eh, dat is niet genoeg voor ook maar één ding. Sorry, dan kan ik je niet helpen.",
+				"leeg": "Je hebt niks in je karretje. Wil je iets kopen? De schappen zijn daar.",
+				"zakken_vol": "Dat {wat} past niet meer in je zakken. Die zet ik wel even terug.",
+				"laat_maar": "Ook goed. Dan zet ik het wel terug.",
+				"stemmingen": {
+					"begroeting": "blij",
+					"totaal": "neutraal",
+					"betaald": "blij",
+					"terugleggen": "neutraal",
+					"niets": "verdrietig",
+					"leeg": "neutraal"
+				}
+			}
+		},
+		"alfred_steyhn": {
+			"naam": "ALFRED STEYHN",
+			"kleur": "#2CA8E4",
+			"tekstkleur": "#FFFFFF",
+			"karretje": 12,
+			"mandje": 6,
+			"bonus": {
+				"aantal": 2,
+				"korting": 0.25,
+				"tekst": "BONUS"
+			},
+			"kleding": {
+				"jas": "#2CA8E4",
+				"rand": "#18244E",
+				"broek": "#18244E"
+			},
+			"producten": {
+				"droog": {"item": "crackers", "prijs": 1.29, "naam": "Steyhn volkoren crackers"},
+				"ontbijt": {"item": "ontbijtkoek", "prijs": 1.79, "naam": "Steyhn ontbijtkoek"},
+				"snoep": {"item": "zak_chips", "prijs": 1.49, "naam": "Steyhn Excellent chips"},
+				"drank": {"item": "mineraalwater", "prijs": 0.89, "naam": "Steyhn bronwater"},
+				"verzorging": {"item": "pleister", "prijs": 2.19, "naam": "Steyhn pleisters"},
+				"conserven": {"item": "blik_soep", "prijs": 1.89, "naam": "Steyhn erwtensoep"},
+				"zuivel": {"item": "pak_melk", "prijs": 1.19, "naam": "Steyhn halfvolle melk"},
+				"diepvries": {"item": "ijsje", "prijs": 0.59, "naam": "Steyhn waterijsje"},
+				"brood": {"item": "vers_brood", "prijs": 2.29, "naam": "Steyhn desembrood"},
+				"bakkerij": {"item": "croissant", "prijs": 0.79, "naam": "Roomboter croissant"},
+				"groente": {"item": "banaan", "prijs": 0.29, "naam": "Banaan, per stuk"},
+				"bloemen": {"item": "tulpen", "prijs": 3.99, "naam": "Bos tulpen"}
+			},
+			"kassa": {
+				"spreker": "KASSA ALFRED STEYHN",
+				"begroetingen": [
+					"Goedemiddag! Spaart u zegeltjes?",
+					"Hallo! Heeft u een Steyhnkaart?",
+					"Welkom bij ALFRED STEYHN. Zet het maar neer."
+				],
+				"totaal": "Dat is dan {prijs} voor {aantal} dingen. Mét bonus, hoor. Wilt u pinnen?",
+				"betaald": [
+					"Dank u wel! Uw bonnetje zit in de tas. Prettige dag nog.",
+					"Alstublieft. Fijne dag, en tot ziens bij ALFRED STEYHN!"
+				],
+				"terugleggen": "Oei, dat is net niet genoeg. Zal ik {wat} dan terugleggen?",
+				"niets": "Daar kunt u helaas niks van kopen. Het spijt me.",
+				"leeg": "U heeft nog niks uitgekozen, geloof ik? De bonusaanbiedingen liggen achterin.",
+				"zakken_vol": "{wat} past niet meer in uw zakken. Die leg ik wel terug.",
+				"laat_maar": "Geen probleem, dan zetten wij het terug.",
+				"stemmingen": {
+					"begroeting": "blij",
+					"totaal": "neutraal",
+					"betaald": "blij",
+					"terugleggen": "neutraal",
+					"niets": "verdrietig",
+					"leeg": "neutraal"
+				}
+			},
+			"zelfscan": {
+				"spreker": "ZELFSCAN",
+				"totaal": "Piep. Piep. Piep. Scan uw artikelen. Totaal: {prijs}, {aantal} artikelen. Betalen?",
+				"betaald": "Betaling geslaagd. Vergeet uw bon niet. Bedankt voor uw bezoek aan ALFRED STEYHN.",
+				"terugleggen": "Onvoldoende saldo. Artikel verwijderd: {wat}.",
+				"niets": "Betaling geweigerd. Vraag een medewerker om hulp.",
+				"leeg": "Scan uw eerste artikel of kies een product zonder barcode.",
+				"zakken_vol": "Onverwacht artikel in het afpakgebied: {wat}. Een medewerker komt eraan.",
+				"laat_maar": "Transactie geannuleerd."
+			}
+		}
+	}
+}

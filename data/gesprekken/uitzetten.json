@@ -1,5 +1,5 @@
 {
-	"uitleg": "Eruit gegooid worden (scripts/world/interiors.gd, throw_out): wie in een binnenruimte te vaak iets doet wat niet mag, wordt het gebouw uit gegooid (door de deur, in een snoekduik de straat op, een beetje in een willekeurige richting) en daarna vertelt de verteller wat er gebeurde. Per plek ('plekken': de soort binnenruimte, 'snackbar' of 'centraal') per overtreding ('overtredingen'): 'na' hoeveel keer (in één bezoek) het genoeg is, en 'tekst' (de bladzijden van de verteller, na elkaar). Overtredingen: 'bedelen' (om kleingeld vragen), 'geen_geld' (iets kopen zonder genoeg geld), 'boete_onbetaald' (betrapt op zwartrijden en de boete niet kunnen betalen). Daarna mag je er 'terug_na' seconden niet meer in ('niet_binnen' zweeft dan boven je). Zie data/LEESMIJ.md.",
+	"uitleg": "Eruit gegooid worden (scripts/world/interiors.gd, throw_out): wie in een binnenruimte te vaak iets doet wat niet mag, wordt het gebouw uit gegooid (door de deur, in een snoekduik de straat op, een beetje in een willekeurige richting) en daarna vertelt de verteller wat er gebeurde. Per plek ('plekken': de soort binnenruimte: 'snackbar', 'centraal', 'derrek', 'alfred_steyhn' of 'stadhuis') per overtreding ('overtredingen'): 'na' hoeveel keer (in één bezoek) het genoeg is, en 'tekst' (de bladzijden van de verteller, na elkaar). Overtredingen: 'bedelen' (om kleingeld vragen), 'geen_geld' (iets kopen zonder genoeg geld), 'boete_onbetaald' (betrapt op zwartrijden en de boete niet kunnen betalen), 'winkeldiefstal' (met onbetaalde spullen in je karretje of mandje de supermarkt uit lopen). Daarna mag je er 'terug_na' seconden niet meer in ('niet_binnen' zweeft dan boven je). Zie data/LEESMIJ.md.",
 	"terug_na": 90,
 	"niet_binnen": "Je mag hier voorlopig niet meer in",
 	"plekken": {
@@ -42,6 +42,67 @@
 					"tekst": [
 						"De conducteur schreef de boete uit, keek in je lege hand en zuchtte. Even later stond er een handhaver naast je.",
 						"Met z'n tweeën brachten ze je naar de uitgang, en daar hielpen ze je een handje. Een flink handje. Zo verliet je Den Haag Centraal: met je gezicht vooruit."
+					]
+				}
+			}
+		},
+		"derrek": {
+			"overtredingen": {
+				"winkeldiefstal": {
+					"na": 1,
+					"tekst": [
+						"Je liep met je boodschappen langs de kassa's naar de deur, zonder te betalen. De poortjes piepten, en voor je buiten was stond een beveiliger in een rood jasje al naast je.",
+						"\"Dat is winkeldiefstal, vriend.\" De boodschappen bleven binnen. Jij niet: je vloog de deur uit, de stoep op. Bij DERREK kom je voorlopig niet meer binnen."
+					]
+				},
+				"bedelen": {
+					"na": 3,
+					"tekst": [
+						"Klant na klant had je om kleingeld gevraagd, tussen de schappen door. Iemand ging naar de servicebalie.",
+						"Even later stond de bedrijfsleider van DERREK voor je. \"Hier wordt niet gebedeld.\" En toen stond je buiten, met je gezicht op de tegels."
+					]
+				},
+				"geen_geld": {
+					"na": 3,
+					"tekst": [
+						"Drie keer bij de kassa staan zonder genoeg geld: de rij achter je begon te mopperen.",
+						"De bedrijfsleider van DERREK liep met je mee naar de deur. Het laatste stukje ging sneller dan je wilde."
+					]
+				}
+			}
+		},
+		"alfred_steyhn": {
+			"overtredingen": {
+				"winkeldiefstal": {
+					"na": 1,
+					"tekst": [
+						"Je liep met je boodschappen langs de kassa's naar de deur, zonder te betalen. De poortjes piepten, en voor je buiten was stond een beveiliger met een lichtblauw pasje al naast je.",
+						"\"Dat is winkeldiefstal, vriend.\" De boodschappen bleven binnen. Jij niet: je vloog de deur uit, de stoep op. Bij ALFRED STEYHN kom je voorlopig niet meer binnen."
+					]
+				},
+				"bedelen": {
+					"na": 3,
+					"tekst": [
+						"Klant na klant had je om kleingeld gevraagd, tussen de schappen door. Iemand ging naar de servicebalie.",
+						"Even later stond de bedrijfsleider van ALFRED STEYHN voor je. \"Hier wordt niet gebedeld.\" En toen stond je buiten, met je gezicht op de tegels."
+					]
+				},
+				"geen_geld": {
+					"na": 3,
+					"tekst": [
+						"Drie keer bij de kassa staan zonder genoeg geld: de rij achter je begon te mopperen.",
+						"De bedrijfsleider van ALFRED STEYHN liep met je mee naar de deur. Het laatste stukje ging sneller dan je wilde."
+					]
+				}
+			}
+		},
+		"stadhuis": {
+			"overtredingen": {
+				"bedelen": {
+					"na": 3,
+					"tekst": [
+						"Bezoeker na bezoeker had je om geld gevraagd, in de wachtrij, bij de lift, zelfs bij de koffieautomaat. De beveiliger van het stadhuis had het gezien.",
+						"\"Meneer, mevrouw, wat het ook is: niet hier.\" Hij bracht je naar de draaideur en duwde. Hard. Het Spui lag ineens heel dichtbij."
 					]
 				}
 			}

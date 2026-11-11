@@ -23,11 +23,23 @@ extends SceneTree
 ## Winkel_<n> and Verkoper_<n> (the front of a shop and who works in it; metadata "kind" and
 ## "shop_name"), Automaat_<n> (before a ticket machine).
 ##   tools/godot.sh --headless --script tools/build/build_interiors.gd [-- opnieuw] [-- centraal]
-## Names after "--" pick the scenes (snackbar, centraal; none = both).
+## The supermarket (scenes/binnen/supermarkt.tscn, script scripts/world/supermarket.gd): only
+## its root: every branch lays itself out as you walk in (scripts/world/supermarket_layout.gd).
+## The city hall (scenes/binnen/stadhuis.tscn, script scripts/world/city_hall.gd): the five
+## floors of CityHallLayout (scripts/world/city_hall_layout.gd) side by side, Etage0..Etage4
+## (each its GridMaps Vloer and Inrichting, its lamps and markers: Lift (where you call it,
+## facing out of it), Liftdeur (the middle of its doors), Persoon_<n> (metadata "role",
+## "sit", "seat"), Bord_<n> (metadata "text": a sign), Loket_<n> (the number board of a
+## counter), Nummerautomaat), and Deur (the entrance, on floor 0).
+## Names after "--" pick the scenes (snackbar, centraal, supermarkt, stadhuis; none = all).
 
 const Common = preload("res://tools/tool_common.gd")
 const SCENE := "res://scenes/binnen/snackbar.tscn"
 const STATION_SCENE := "res://scenes/binnen/centraal.tscn"
+const SUPERMARKET_SCENE := "res://scenes/binnen/supermarkt.tscn"
+const CITY_HALL_SCENE := "res://scenes/binnen/stadhuis.tscn"
+const CityHallLayout = preload("res://scripts/world/city_hall_layout.gd")
+const SCENES := {"snackbar": SCENE, "centraal": STATION_SCENE, "supermarkt": SUPERMARKET_SCENE, "stadhuis": CITY_HALL_SCENE}
 const LIBRARY := "res://assets/libraries/binnen.res"
 const GROUND_LIBRARY := "res://assets/libraries/grond.res"
 const PROPS_LIBRARY := "res://assets/libraries/props.res"
@@ -58,17 +70,21 @@ func _init() -> void:
 		elif word != "":
 			wanted.append(word)
 	if wanted.is_empty():
-		wanted = ["snackbar", "centraal"]
+		wanted.assign(SCENES.keys())
 	var library: MeshLibrary = load(LIBRARY)
 	for scene_name in wanted:
-		var path := SCENE if scene_name == "snackbar" else STATION_SCENE
-		if ResourceLoader.exists(path) and not rebuild:
+		var path: String = SCENES.get(scene_name, "")
+		if path != "" and ResourceLoader.exists(path) and not rebuild:
 			print("interiors: %s is er al (handwerk blijft staan; -- opnieuw bouwt hem over)" % path)
 			continue
 		if scene_name == "snackbar":
 			_build_snack_bar(library)
 		elif scene_name == "centraal":
 			_build_station(library)
+		elif scene_name == "supermarkt":
+			_build_supermarket()
+		elif scene_name == "stadhuis":
+			_build_city_hall(library)
 		else:
 			push_error("interiors: onbekende binnenruimte %s" % scene_name)
 			_failed = true
@@ -404,3 +420,87 @@ func _marker_at(root: Node3D, marker_name: String, at: Vector3, turn: float) -> 
 	marker.rotation.y = turn
 	root.add_child(marker)
 	return marker
+
+
+# ------------------------------------------------------------------ the supermarket
+
+func _build_supermarket() -> void:
+	var root := Node3D.new()
+	root.name = "Supermarkt"
+	root.set_script(load("res://scripts/world/supermarket.gd"))
+	_save(root, SUPERMARKET_SCENE, "elk filiaal deelt zich zelf in")
+
+
+# ------------------------------------------------------------------ the city hall
+
+func _build_city_hall(library: MeshLibrary) -> void:
+	var root := Node3D.new()
+	root.name = "Stadhuis"
+	root.set_script(load("res://scripts/world/city_hall.gd"))
+	var missing := []
+	var people := 0
+	for plan: Dictionary in CityHallLayout.floors():
+		var number := int(plan.number)
+		var floor_node := Node3D.new()
+		floor_node.name = "Etage%d" % number
+		floor_node.position = Vector3(number * CityHallLayout.FLOOR_SPACING, 0.0, 0.0)
+		root.add_child(floor_node)
+		var floor_map := _grid("Vloer", library, Vector3(0.0, -0.125, 0.0))
+		var furniture := _grid("Inrichting", library, Vector3.ZERO)
+		floor_node.add_child(floor_map)
+		floor_node.add_child(furniture)
+		var width := float(plan.width)
+		var depth := float(plan.depth)
+		for column in int(width / 4.0):
+			for row in int(depth / 4.0):
+				_put_item(floor_map, library, "stadhuis/" + String(plan.floor),
+					Vector3(-width * 0.5 + 2.0 + column * 4.0, 0.0, -depth * 0.5 + 2.0 + row * 4.0), 0.0, missing)
+		for entry: Array in plan.tiles:
+			_put_item(furniture, library, "stadhuis/" + String(entry[0]), entry[1], float(entry[2]), missing)
+		_marker_at(floor_node, "Lift", plan.lift_spot, PI)
+		_marker_at(floor_node, "Liftdeur", (plan.lift as Vector3) + Vector3(0.0, 0.0, -CityHallLayout.LIFT_DEPTH * 0.5 + 0.06), PI)
+		for index in plan.people.size():
+			var person: Dictionary = plan.people[index]
+			var marker := _marker_at(floor_node, "Persoon_%d" % (index + 1), person.at, float(person.turn))
+			marker.set_meta("role", person.role)
+			marker.set_meta("sit", person.sit)
+			marker.set_meta("seat", person.seat)
+			people += 1
+		for index in plan.signs.size():
+			var sign: Dictionary = plan.signs[index]
+			var marker := _marker_at(floor_node, "Bord_%d" % (index + 1), sign.at, float(sign.turn))
+			marker.set_meta("text", sign.text)
+		for counter: Dictionary in plan.counters:
+			_marker_at(floor_node, "Loket_%d" % int(counter.number), counter.board_at, PI)
+		if plan.has("dispenser"):
+			_marker_at(floor_node, "Nummerautomaat", plan.dispenser, PI)
+		if plan.has("door"):
+			_marker_at(root, "Deur", (plan.door as Vector3) + floor_node.position, 0.0)
+		for index in plan.lamps.size():
+			var lamp := OmniLight3D.new()
+			lamp.name = "Lamp%d" % (index + 1)
+			lamp.position = plan.lamps[index]
+			lamp.light_color = Color("#FFF6E8")
+			lamp.light_energy = 1.2
+			lamp.omni_range = 10.0
+			floor_node.add_child(lamp)
+	if not missing.is_empty():
+		push_error("interiors: tiles ontbreken in de bibliotheek binnen (eerst importeren en build_libraries): %s" % ", ".join(missing))
+		root.free()
+		_failed = true
+		return
+	_save(root, CITY_HALL_SCENE, "%d etages, %d mensen" % [CityHallLayout.FLOORS, people])
+
+
+## Every node owned by `root` (so it is saved), the scene packed and saved at `path`.
+func _save(root: Node3D, path: String, what: String) -> void:
+	for child in root.find_children("*", "", true, false):
+		child.owner = root
+	var packed := PackedScene.new()
+	packed.pack(root)
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(path.get_base_dir()))
+	var error := ResourceSaver.save(packed, path)
+	print("interiors: %s %s (%s)" % [path, "bewaard" if error == OK else "FOUT %d" % error, what])
+	root.free()
+	if error != OK:
+		_failed = true

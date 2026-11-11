@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://boy6rkk3ncasg"
+path="res://.godot/imported/zelfscan_alfred_steyhn.gox-fc2c2b6bcb87d94bc5bbc3a666c3f0ac.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/binnen/supermarkt/zelfscan_alfred_steyhn.gox"
+dest_files=["res://.godot/imported/zelfscan_alfred_steyhn.gox-fc2c2b6bcb87d94bc5bbc3a666c3f0ac.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(0, 0, 0)

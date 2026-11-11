@@ -80,7 +80,7 @@ func _run() -> void:
 	var world := Node3D.new()
 	world.name = "Wereld"
 	world.set_meta("places", {"hoftoren": Vector2(100, 100), "het_plein": Vector2(140, 60),
-			"verkeerslichten_test": Vector2(20, 20)})
+			"verkeerslichten_test": Vector2(20, 20), "derrek_2": Vector2(150, 170)})
 	world.set_meta("wijken", [["Centrum", 0, 0, 29, 49], ["Laak", 30, 0, 49, 49], ["Den Haag", 0, 0, 49, 49]])
 	var hud := CanvasLayer.new()
 	hud.name = "HUD"
@@ -156,7 +156,7 @@ func _run() -> void:
 	print("kaart")
 	await _press(KEY_E)
 	_check(menu.current_tab() == "kaart", "E gaat naar de kaart")
-	_check(menu._places.size() == 2, "twee plekken (verkeerslichten niet): %d" % menu._places.size())
+	_check(menu._places.size() == 3, "drie plekken (verkeerslichten niet): %d" % menu._places.size())
 	_check(menu._selected_place == "hoftoren", "dichtstbijzijnde plek gekozen: " + menu._selected_place)
 	_check(menu._map_picture.texture != null and menu._map_fog.texture != null, "kaart en mist")
 	_check(menu._place_distance.text == "0 M", "afstand: " + menu._place_distance.text)
@@ -166,6 +166,12 @@ func _run() -> void:
 	await _press(KEY_RIGHT)
 	_check(menu._selected_place == "het_plein", "pijl rechts kiest de plek rechtsboven: " + menu._selected_place)
 	_check(menu._place_name.text == "Het Plein", "naam van de plek: " + menu._place_name.text)
+	# a supermarket: its own marker in the chain's colour, "SUPERMARKT" and the chain's name
+	_check(menu.supermarket_chain("derrek_2") == "derrek" and menu.supermarket_chain("alfred_steyhn") == "alfred_steyhn"
+		and menu.supermarket_chain("hoftoren") == "", "supermarkten herkend aan hun plek (derrek_2, alfred_steyhn)")
+	menu._choose_place("derrek_2")
+	_check(menu._place_kind.text == "◆ SUPERMARKT" and menu._place_name.text == "DERREK", "een supermarkt gekozen: %s %s" % [menu._place_kind.text, menu._place_name.text])
+	_check(menu._place_distance.text == "86 M", "afstand tot de supermarkt: " + menu._place_distance.text)
 	await _press(KEY_Q)
 	_check(menu.current_tab() == "quests", "Q gaat terug")
 

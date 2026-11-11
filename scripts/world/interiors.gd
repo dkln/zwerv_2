@@ -1,6 +1,8 @@
 extends Node3D
 ## The buildings you can walk into (the node "Binnenruimtes" of scenes/stad.tscn), one entry
-## of KINDS each: the snack bars and Den Haag Centraal. Every way in on the map gets an
+## of KINDS each: the snack bars, Den Haag Centraal, the supermarkets (DERREK and ALFRED
+## STEYHN: one interior, laid out anew for every branch: scripts/world/supermarket.gd) and the
+## city hall on the Spui (five floors and a lift: scripts/world/city_hall.gd). Every way in on the map gets an
 ## entrance on the pavement before it (a door point, the side of the facade with no building:
 ## Entrance), with a big arrow bobbing up and down over it as you come near (InteractionMark:
 ## so you see that you can go in; above the roof of a low building, so trees don't hide it)
@@ -21,8 +23,10 @@ extends Node3D
 ## tools/voxgen/tiles/interior.py (binnen/<name>/), a builder in tools/build/build_interiors.gd,
 ## its scene in scenes/binnen/, and a line in KINDS saying where its ways in are:
 ##   "front": a fragment of the name of the facade tile (Gebouwen) that is a way in: every
-##            such shop front is one (the snack bars); its name from the name signs (NAMES)
-##            or the place on the map (PLACE_NAMES);
+##            such shop front is one (the snack bars, the entrances of the supermarkets); its
+##            name from "name", else the name signs (NAMES) or the place on the map
+##            (PLACE_NAMES); "front_width": the fragment of every tile of that shop front, to
+##            count how wide it is (the way in gets "width": the cells of the front);
 ##   "doors": the name of a door tile (Gebouwen) and "place" with "place_reach": the door
 ##            tiles within that many metres of that place of the map are its ways in, from
 ##            west to east door 1, 2, ... (Den Haag Centraal: the three doors of the hall).
@@ -31,6 +35,15 @@ extends Node3D
 ## camera's indoor_zoom: the big hall of Den Haag Centraal is seen from further out),
 ## "location" (the neighbourhood, a key of the "wijken" metadata, the HUD shows under the
 ## minimap while inside: GameHud.set_indoor_location; else the name of the spot off the map).
+## What an interior may do besides dress(name, seed) (Interior):
+##   dress_way_in(way_in)   dressed for the whole way in (its kind, seed, width: a supermarket
+##                          lays itself out from them); its doors may move (they are read
+##                          again after dressing);
+##   leave_offence()        "" or an offence (uitzetten.json) for going out now: a supermarket
+##                          with unpaid goods in the trolley says "winkeldiefstal";
+##   plan_root()            the node whose GridMaps make the floor plan on the minimap (the
+##                          floor you are on in the city hall; GameHud.show_interior_plan).
+## And it can call back: move_inside (the lift of the city hall) and show_plan.
 
 const SwipeTransition = preload("res://scripts/ui/swipe_transition.gd")
 const SNACK_BAR_SCENE := "res://scenes/binnen/snackbar.tscn"
@@ -44,7 +57,15 @@ const KINDS := {
 	"centraal": {"scene": "res://scenes/binnen/centraal.tscn", "music": "", "name": "Den Haag Centraal",
 		"doors": "hallen/hal_glas_wand_deur_dak", "place": "centraal", "place_reach": 70.0,
 		"at": Vector3(-900.0, 0.0, 300.0), "zoom": 20.0, "location": "Centraal Station"},
+	"derrek": {"scene": SUPERMARKET_SCENE, "music": "", "name": "DERREK", "front": "_bg_derrek_ingang",
+		"front_width": "_bg_derrek_", "at": Vector3(-600.0, 0.0, -1000.0), "zoom": 15.0},
+	"alfred_steyhn": {"scene": SUPERMARKET_SCENE, "music": "", "name": "ALFRED STEYHN", "front": "_bg_alfred_steyhn_ingang",
+		"front_width": "_bg_alfred_steyhn_", "at": Vector3(-600.0, 0.0, -1400.0), "zoom": 15.0},
+	"stadhuis": {"scene": "res://scenes/binnen/stadhuis.tscn", "music": "", "name": "Stadhuis",
+		"doors": "modern_wit/modern_wit_bg_deur", "place": "stadhuis", "place_reach": 36.0,
+		"at": Vector3(-1500.0, 0.0, 900.0), "zoom": 16.0, "location": "Stadhuis"},
 }
+const SUPERMARKET_SCENE := "res://scenes/binnen/supermarkt.tscn"
 const SOUND_FOLDER := "res://assets/audio/geluiden/"
 const DOOR_IN_SOUND := "deur_binnen"
 const DOOR_OUT_SOUND := "deur_buiten"
@@ -78,7 +99,8 @@ const BARRED_COLOUR := Color("#FF5A4A")
 const Conversations = preload("res://scripts/story/conversations.gd")
 const Ambience = preload("res://scripts/audio/ambience.gd")
 ## The background sound of each kind of interior (Ambience); outside "straat".
-const AMBIENCE_OF := {"centraal": "station", "snackbar": "winkel"}
+const AMBIENCE_OF := {"centraal": "station", "snackbar": "winkel", "derrek": "winkel", "alfred_steyhn": "winkel",
+	"stadhuis": "winkel"}
 ## Where the snack bar is, far off the map (metres; KINDS has it too).
 const INTERIOR_AT := Vector3(-600.0, 0.0, -600.0)
 ## How far from a door point you can go through (metres).
@@ -167,7 +189,7 @@ func _ready() -> void:
 	add_child(_ambience)
 	_ambience.set_place("straat")
 	_player = get_node_or_null(player_path)
-	_find_snack_bars()
+	_find_shop_fronts()
 	_find_door_tiles()
 
 
@@ -181,6 +203,12 @@ func _process(_delta: float) -> void:
 ## The snack bars you can walk into (name, seed, door point and the way out to the street).
 func snack_bars() -> Array:
 	return _bars.filter(func(spot: Dictionary) -> bool: return spot.kind == "snackbar")
+
+
+## The supermarkets you can walk into (kind "derrek" or "alfred_steyhn", "width": the cells
+## of their shop front).
+func supermarkets() -> Array:
+	return _bars.filter(func(spot: Dictionary) -> bool: return spot.kind in ["derrek", "alfred_steyhn"])
 
 
 ## Every way in of every interior (see _bars).
@@ -236,6 +264,9 @@ func interior_of(kind: String) -> Node3D:
 		return _interiors[kind]
 	var settings: Dictionary = KINDS[kind]
 	var interior := (load(settings.scene) as PackedScene).instantiate() as Node3D
+	interior.name = kind.capitalize().replace(" ", "")
+	# one scene for more kinds (the supermarkets): it knows which it is before it is ready
+	interior.set_meta("kind", kind)
 	add_child(interior)
 	interior.global_position = settings.at
 	var exits: Array[Entrance] = []
@@ -279,7 +310,11 @@ func enter(bar: Dictionary) -> void:
 	_set_location(String(KINDS[kind].get("location", "")))
 	_interior = interior_of(kind)
 	_rest(_interior, false)
-	_interior.call("dress", String(bar.name), int(bar.seed))
+	if _interior.has_method("dress_way_in"):
+		_interior.call("dress_way_in", bar)
+	else:
+		_interior.call("dress", String(bar.name), int(bar.seed))
+	_place_exits(kind)
 	var exits: Array = _exits[kind]
 	var door_index := clampi(int(bar.get("door_index", 1)), 1, exits.size())
 	_exit = exits[0]
@@ -298,7 +333,42 @@ func enter(bar: Dictionary) -> void:
 func leave(door_index := 0) -> void:
 	if not is_inside() or _throwing:
 		return
+	# not out with what is not paid for (a supermarket): that is an offence (uitzetten.json)
+	var offence_now := String(_interior.call("leave_offence")) if _interior and _interior.has_method("leave_offence") else ""
+	if offence_now != "":
+		offence(offence_now)
+		return
 	await _go_out(door_index)
+
+
+## The ways out of the interior of `kind` where its doors are now (a supermarket moves its
+## entrance with its layout).
+func _place_exits(kind: String) -> void:
+	var interior: Node3D = _interiors.get(kind)
+	if interior == null:
+		return
+	var doors: Array = interior.call("doors") if interior.has_method("doors") else [interior.call("door")]
+	var exits: Array = _exits.get(kind, [])
+	for index in mini(doors.size(), exits.size()):
+		(exits[index] as Node3D).global_transform = doors[index]
+
+
+## Puts the player elsewhere inside the interior (the lift of the city hall takes you to
+## another floor): at `at`, facing `facing`, the camera with it at once, the minimap showing
+## the floor plan with `points` (where the ways out or the lift are).
+func move_inside(at: Vector3, facing: Vector3, points: Array[Vector3]) -> void:
+	if not is_inside():
+		return
+	_put_player(at, facing)
+	_camera_indoors(true, float(KINDS[String(_inside.kind)].get("zoom", 0.0)))
+	show_plan(points)
+
+
+## The floor plan of the interior on the minimap again, with `points` marked (GameHud).
+func show_plan(points: Array[Vector3]) -> void:
+	var hud := get_node_or_null(hud_path)
+	if hud and hud.has_method("show_interior_plan") and _interior:
+		hud.show_interior_plan(_interior, points)
 
 
 ## Out through door `door_index` (0: the one of the way in): the swipe, and under it onto
@@ -313,8 +383,9 @@ func _go_out(door_index: int) -> Dictionary:
 	_set_location("")
 	_ambience.set_place("straat")
 	var bar := _inside
-	# an interior with more doors (KINDS "doors"): out before the way in of that door
-	if KINDS.get(String(bar.kind), {}).has("doors") and door_index > 0:
+	# an interior with more doors (KINDS "doors"): out before the way in of that door; one
+	# with a single door for many ways in (the city hall): out where you came in
+	if KINDS.get(String(bar.kind), {}).has("doors") and door_index > 0 and (_exits.get(String(bar.kind), []) as Array).size() > 1:
 		for other in _bars:
 			if other.kind == bar.kind and int(other.get("door_index", 1)) == door_index:
 				bar = other
@@ -525,28 +596,51 @@ func _camera_indoors(indoors: bool, zoom_in_view := 0.0) -> void:
 
 # ------------------------------------------------------------------ finding the snack bars
 
-func _find_snack_bars() -> void:
+## The ways in by shop fronts (KINDS "front"): every facade tile with that fragment in its
+## name is one (one per 6 m: a front of more cells is one way in).
+func _find_shop_fronts() -> void:
 	var buildings := get_node_or_null(buildings_path) as GridMap
 	if buildings == null or buildings.mesh_library == null:
 		return
 	var library := buildings.mesh_library
 	var signs := _name_signs()
 	var places: Dictionary = (owner if owner else get_parent()).get_meta("places", {})
-	for item in library.get_item_list():
-		if not library.get_item_name(item).contains(SNACK_BAR_FRONT):
+	for kind: String in KINDS:
+		var settings: Dictionary = KINDS[kind]
+		if not settings.has("front"):
 			continue
-		for cell in buildings.get_used_cells_by_item(item):
-			var centre := buildings.to_global(buildings.map_to_local(cell))
-			var spot := Vector2(centre.x, centre.z)
-			if _bars.any(func(other: Dictionary) -> bool: return Vector2(other.door.x, other.door.z).distance_to(spot) < 6.0):
+		for item in library.get_item_list():
+			if not library.get_item_name(item).contains(String(settings.front)):
 				continue
-			var outward := _outward(buildings, cell)
-			if outward == Vector3.ZERO:
-				continue
-			var door := Vector3(centre.x, buildings.global_position.y, centre.z) + outward * (buildings.cell_size.x * 0.5 + 0.9)
-			var bar := {"kind": "snackbar", "name": _name_for(spot, signs, places), "seed": absi(cell.x * 73856093 ^ cell.z * 19349663) % 100000,
-				"door": door, "outward": outward, "door_index": 1}
-			_add_way_in(bar)
+			for cell in buildings.get_used_cells_by_item(item):
+				var centre := buildings.to_global(buildings.map_to_local(cell))
+				var spot := Vector2(centre.x, centre.z)
+				if _bars.any(func(other: Dictionary) -> bool: return Vector2(other.door.x, other.door.z).distance_to(spot) < 6.0):
+					continue
+				var outward := _outward(buildings, cell)
+				if outward == Vector3.ZERO:
+					continue
+				var door := Vector3(centre.x, buildings.global_position.y, centre.z) + outward * (buildings.cell_size.x * 0.5 + 0.9)
+				var way_name := String(settings.name) if settings.has("name") else _name_for(spot, signs, places)
+				var bar := {"kind": kind, "name": way_name, "seed": absi(cell.x * 73856093 ^ cell.z * 19349663) % 100000,
+					"door": door, "outward": outward, "door_index": 1}
+				if settings.has("front_width"):
+					bar["width"] = _front_width(buildings, cell, outward, String(settings.front_width))
+				_add_way_in(bar)
+
+
+## How many cells wide the shop front through `cell` is: the cells beside it along the facade
+## (square to `outward`) whose tile has `fragment` in its name, and the corner on each end.
+static func _front_width(buildings: GridMap, cell: Vector3i, outward: Vector3, fragment: String) -> int:
+	var library := buildings.mesh_library
+	var along := Vector3i(roundi(-outward.z), 0, roundi(outward.x))
+	var count := 1
+	for direction: int in [1, -1]:
+		var next: Vector3i = cell + along * direction
+		while buildings.get_cell_item(next) >= 0 and library.get_item_name(buildings.get_cell_item(next)).contains(fragment):
+			count += 1
+			next += along * direction
+	return count + 2
 
 
 ## The ways in by door tiles near a place (KINDS "doors"): from west to east door 1, 2, ...

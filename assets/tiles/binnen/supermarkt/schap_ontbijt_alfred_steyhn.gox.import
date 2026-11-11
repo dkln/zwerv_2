@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://dxmmaxaec3vpu"
+path="res://.godot/imported/schap_ontbijt_alfred_steyhn.gox-99b538f7f17b4f6d20757cd9387fea6a.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/binnen/supermarkt/schap_ontbijt_alfred_steyhn.gox"
+dest_files=["res://.godot/imported/schap_ontbijt_alfred_steyhn.gox-99b538f7f17b4f6d20757cd9387fea6a.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(0, 0, 0)

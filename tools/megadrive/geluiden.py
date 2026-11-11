@@ -48,6 +48,9 @@ The station (Den Haag Centraal, scripts/world/station.gd):
     trein_deuren_open.ogg      the doors of a train opening: the air letting go, the leaves sliding
     ov_inchecken.ogg, ov_uitchecken.ogg   an OV-chipkaart at a reader: one middle beep in, two out
     ov_geweigerd.ogg           a reader saying no: high, middle, high
+    kassa_piep.ogg             the scanner of a supermarket checkout: one short high beep
+    winkel_alarm.ogg           the security gates of a supermarket: a fast high-low alarm
+    lift_ding.ogg              the lift of the city hall arriving: "ding-dong", two soft bells
     poortje_open.ogg           the glass paddles of a gate swinging open: a swoosh gliding up
     poortje_dicht.ogg          and swinging shut again: the swoosh gliding down
 Loops are a whole number of engine cycles long (every frequency fits the loop exactly) and are
@@ -839,6 +842,36 @@ def ov_refused() -> numpy.ndarray:
     return fade_edges(low_pass(dac(low_pass(buffer, 7000.0)), 6000.0), 0.001, 0.04)
 
 
+def checkout_beep() -> numpy.ndarray:
+    """The scanner of a supermarket checkout: one short beep, higher and drier than the OV
+    reader's."""
+    buffer = numpy.zeros(int(0.22 * SAMPLE_RATE))
+    place(buffer, 0.0, _reader_beep(2637.0, 0.07))
+    return fade_edges(low_pass(dac(low_pass(buffer, 7500.0)), 6500.0), 0.001, 0.02)
+
+
+def shop_alarm() -> numpy.ndarray:
+    """The security gates of a supermarket: high and low beeps fast after each other, six
+    pairs, the alarm everyone in the shop turns round for."""
+    buffer = numpy.zeros(int(2.0 * SAMPLE_RATE))
+    for pair in range(6):
+        place(buffer, pair * 0.3, _reader_beep(3136.0, 0.13))
+        place(buffer, pair * 0.3 + 0.15, _reader_beep(2349.0, 0.13))
+    return fade_edges(low_pass(dac(low_pass(buffer, 7500.0)), 6500.0), 0.001, 0.05)
+
+
+def lift_ding() -> numpy.ndarray:
+    """The lift arriving: "ding-dong", two soft bell tones (a major third down), ringing out."""
+    seconds = 1.6
+    buffer = numpy.zeros(int(seconds * SAMPLE_RATE))
+    for start, frequency in ((0.0, 1318.5), (0.42, 1046.5)):
+        times = time_axis(seconds - start)
+        tone = (numpy.sin(TWO_PI * frequency * times) + 0.3 * numpy.sin(TWO_PI * frequency * 2.0 * times)
+                + 0.12 * numpy.sin(TWO_PI * frequency * 3.01 * times))
+        place(buffer, start, tone * numpy.exp(-times / 0.45) * numpy.clip(times / 0.004, 0.0, 1.0) * 0.45)
+    return fade_edges(low_pass(dac(low_pass(buffer, 7000.0)), 6000.0), 0.001, 0.2)
+
+
 ## How long the paddles of a gate take to swing (as SWING_TIME in station_gates.gd).
 GATE_SWING_SECONDS = 0.45
 
@@ -956,6 +989,9 @@ SOUNDS = {
     "schop": (kick, False),
     "klap": (smack, False),
     "poortje_dicht": (gate_paddles_close, False),
+    "kassa_piep": (checkout_beep, False),
+    "winkel_alarm": (shop_alarm, False),
+    "lift_ding": (lift_ding, False),
 }
 
 

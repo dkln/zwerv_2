@@ -1,5 +1,5 @@
 {
-	"uitleg": "Mensen in dienst: de conducteurs van de NS en de handhavers in Den Haag Centraal (scripts/world/station_person.gd, 'role'). Dezelfde velden als een persoon in voorbijgangers.json, plus hoe het gespreksvak ze laat zien ('titel', 'embleem', 'kleur', 'naamkaartje', 'tekstkleur', 'stemhoogte') en voor de conducteur 'betrapt': wat hij zegt als je met hem praat terwijl hij je achternazit omdat je zwart reed ({boete}: het bedrag). Zie data/LEESMIJ.md.",
+	"uitleg": "Mensen in dienst: de conducteurs van de NS en de handhavers in Den Haag Centraal (scripts/world/station_person.gd, 'role'), de medewerkers van DERREK en ALFRED STEYHN (scripts/world/supermarket.gd) en de mensen in het stadhuis (receptioniste, beveiliger, ambtenaar, raadslid, burgemeester: scripts/world/city_hall.gd). Dezelfde velden als een persoon in voorbijgangers.json, plus hoe het gespreksvak ze laat zien ('titel', 'embleem', 'kleur', 'naamkaartje', 'tekstkleur', 'stemhoogte') en voor de conducteur 'betrapt': wat hij zegt als je met hem praat terwijl hij je achternazit omdat je zwart reed ({boete}: het bedrag). Zie data/LEESMIJ.md.",
 	"personen": {
 		"conducteur": {
 			"spreker": "CONDUCTEUR NS",
@@ -93,6 +93,230 @@
 			"dag": "Goed. Pas een beetje op uzelf, hè. En niet over het spoor lopen.",
 			"stemmingen": {
 				"begroeting": "neutraal",
+				"onderwerp": "neutraal",
+				"doorvraag": "neutraal",
+				"kleingeld_nee": "neutraal",
+				"dag": "blij"
+			}
+		},
+		"medewerker_derrek": {
+			"spreker": "MEDEWERKER DERREK",
+			"embleem": "D",
+			"kleur": "#DE1828",
+			"naamkaartje": "#DE1828",
+			"tekstkleur": "#FFFFFF",
+			"stemhoogte": 1.0,
+			"begroetingen": [
+				"Hoi! Zoek je iets? De chips liggen bij de dranken, ik weet het, niemand snapt het.",
+				"Momentje, ik ben de pakken melk aan het spiegelen. Wat kan ik voor je doen?",
+				"Goeiemiddag. Alles naar wens bij DERREK?"
+			],
+			"onderwerp": {
+				"vraag": "Waarom is alles hier zo goedkoop?",
+				"antwoord": "Geen poespas, zegt de baas. Geen muziek, geen bakkerij, geen bloemen bij de deur. Gewoon schappen en de laagste prijs. En wij vullen ze 's ochtends om zes uur.",
+				"doorvraag": "En wat is vandaag in de aanbieding?",
+				"doorantwoord": "Kijk bij de pallets bij de ingang, met het rode bord. Stroopwafels, voor een prikkie. Op is op."
+			},
+			"kleingeld_nee": "Kleingeld? Ik verdien hier ook geen kapitalen, hoor. Maar het brood van gisteren gaat vanavond in de container, als je snapt wat ik bedoel.",
+			"nog_iets": [
+				"Nog iets? Ik moet door met de koeling.",
+				"Verder nog wat?"
+			],
+			"dag": "Doei! Vergeet je karretje niet terug te zetten.",
+			"stemmingen": {
+				"begroeting": "blij",
+				"onderwerp": "neutraal",
+				"doorvraag": "neutraal",
+				"kleingeld_nee": "neutraal",
+				"dag": "blij"
+			}
+		},
+		"medewerker_alfred_steyhn": {
+			"spreker": "MEDEWERKER ALFRED STEYHN",
+			"embleem": "AS",
+			"kleur": "#2CA8E4",
+			"naamkaartje": "#18244E",
+			"tekstkleur": "#FFFFFF",
+			"stemhoogte": 1.0,
+			"begroetingen": [
+				"Goedemiddag! Kan ik u ergens mee helpen?",
+				"Hallo! Weet u dat de croissants vandaag in de bonus zijn? O nee, wacht, dat was gisteren.",
+				"Welkom bij ALFRED STEYHN. Zoekt u iets speciaals?"
+			],
+			"onderwerp": {
+				"vraag": "Wat is die bonus eigenlijk?",
+				"antwoord": "Elke week andere aanbiedingen, met het blauwe bordje erbij. Een kwart eraf, soms twee halen één betalen. Kijk maar naar de borden boven de schappen.",
+				"doorvraag": "En die zelfscankassa's?",
+				"doorantwoord": "Gewoon piepen en betalen. En als hij zegt dat er een onverwacht artikel in het afpakgebied ligt: dan komen wij. Dat zegt hij vaak."
+			},
+			"kleingeld_nee": "Kleingeld vragen kan ik niet goedkeuren, sorry. Maar de bakkerij geeft aan het eind van de dag wel eens wat weg.",
+			"nog_iets": [
+				"Kan ik nog ergens mee helpen?",
+				"Verder nog vragen?"
+			],
+			"dag": "Prettige dag nog, en tot ziens!",
+			"stemmingen": {
+				"begroeting": "blij",
+				"onderwerp": "neutraal",
+				"doorvraag": "neutraal",
+				"kleingeld_nee": "neutraal",
+				"dag": "blij"
+			}
+		},
+		"receptioniste": {
+			"spreker": "RECEPTIE STADHUIS",
+			"embleem": "DH",
+			"kleur": "#F2C200",
+			"naamkaartje": "#2E7D32",
+			"tekstkleur": "#FFFFFF",
+			"stemhoogte": 1.06,
+			"begroetingen": [
+				"Goedemiddag, welkom in het stadhuis. Waarmee kan ik u helpen?",
+				"Hallo! Heeft u een afspraak? Zo niet: trek een nummertje voor Burgerzaken.",
+				"Welkom. De lift is achter mij, links. Waar moet u zijn?"
+			],
+			"onderwerp": {
+				"vraag": "Wat zit er op welke verdieping?",
+				"antwoord": "Hier op de begane grond de hal en de receptie. Eerste etage Burgerzaken, voor paspoorten en verhuizen. Tweede etage de kantoortuin, derde de vergaderzalen en het archief, en helemaal bovenin de raadzaal.",
+				"doorvraag": "Kan ik bij de burgemeester langs?",
+				"doorantwoord": "Alleen op afspraak, en er staat een wachtlijst van drie maanden. Maar de raadsvergadering is openbaar: de publieke tribune is op de vierde."
+			},
+			"kleingeld_nee": "Geld kan ik u niet geven. Maar voor een warme plek en een kop koffie kunt u bij het inloophuis terecht. Zal ik het adres opschrijven?",
+			"nog_iets": [
+				"Kan ik u verder nog helpen?",
+				"Nog een vraag?"
+			],
+			"dag": "Graag gedaan. Een fijne dag nog!",
+			"stemmingen": {
+				"begroeting": "blij",
+				"onderwerp": "neutraal",
+				"doorvraag": "neutraal",
+				"kleingeld_nee": "neutraal",
+				"dag": "blij"
+			}
+		},
+		"beveiliger": {
+			"spreker": "BEVEILIGING",
+			"embleem": "BEV",
+			"kleur": "#22242A",
+			"naamkaartje": "#F2C200",
+			"tekstkleur": "#22242A",
+			"stemhoogte": 0.86,
+			"begroetingen": [
+				"Goedemiddag. Even kijken in uw tas mag?",
+				"Alles in orde? U loopt hier al een tijdje rond.",
+				"Beveiliging. Waar gaat u naartoe?"
+			],
+			"onderwerp": {
+				"vraag": "Is het hier altijd zo druk?",
+				"antwoord": "Op maandag de paspoorten, op woensdag de raad, en op vrijdag iedereen die zijn parkeerboete komt aanvechten. Ik sta hier elke dag.",
+				"doorvraag": "En als ik hier gewoon even ga zitten?",
+				"doorantwoord": "Op de bankjes bij de wachtruimte mag dat. Liggen niet, en niet bij de lift. Daar kom ik op af."
+			},
+			"kleingeld_nee": "Kleingeld? Nee. En niet de bezoekers lastigvallen, hè, dan sta je zo weer buiten.",
+			"nog_iets": [
+				"Verder nog iets?",
+				"Was dat het?"
+			],
+			"dag": "Goedemiddag.",
+			"stemmingen": {
+				"begroeting": "neutraal",
+				"onderwerp": "neutraal",
+				"doorvraag": "boos",
+				"kleingeld_nee": "boos",
+				"dag": "neutraal"
+			}
+		},
+		"ambtenaar": {
+			"spreker": "GEMEENTE DEN HAAG",
+			"embleem": "DH",
+			"kleur": "#2E7D32",
+			"naamkaartje": "#2E7D32",
+			"tekstkleur": "#FFFFFF",
+			"stemhoogte": 0.95,
+			"begroetingen": [
+				"Goedemiddag. Welk nummer heeft u?",
+				"Ja, zegt u het maar. Heeft u uw formulieren bij u?",
+				"Hallo. Waar kan ik u mee helpen? Even geduld, het systeem is traag vandaag."
+			],
+			"onderwerp": {
+				"vraag": "Kan ik me hier inschrijven zonder adres?",
+				"antwoord": "Dat kan, met een briefadres. Dan moet iemand of een instelling uw post voor u bewaren. Daar is een formulier voor. Daar zijn er heel veel van.",
+				"doorvraag": "En hoe lang duurt dat?",
+				"doorantwoord": "Zes tot acht weken. Soms twaalf. Maar u krijgt een ontvangstbevestiging, dat is ook wat."
+			},
+			"kleingeld_nee": "Ik mag niets aannemen en niets geven, meneer, mevrouw. Regels. Maar het formulier voor bijzondere bijstand is gratis.",
+			"nog_iets": [
+				"Was er nog iets?",
+				"Kan ik u verder nog helpen?"
+			],
+			"dag": "Tot ziens. En bewaar uw nummertje, voor de zekerheid.",
+			"stemmingen": {
+				"begroeting": "blij",
+				"onderwerp": "neutraal",
+				"doorvraag": "neutraal",
+				"kleingeld_nee": "neutraal",
+				"dag": "blij"
+			}
+		},
+		"raadslid": {
+			"spreker": "RAADSLID",
+			"embleem": "DH",
+			"kleur": "#F2C200",
+			"naamkaartje": "#2E7D32",
+			"tekstkleur": "#FFFFFF",
+			"stemhoogte": 0.95,
+			"begroetingen": [
+				"Goedemiddag! Komt u de vergadering volgen? Wat fijn, er komt bijna nooit iemand.",
+				"Hallo. Ik moet zo een motie indienen, maar zeg het maar.",
+				"Ah, een burger! Waar ligt u wakker van?"
+			],
+			"onderwerp": {
+				"vraag": "Waar gaat de vergadering over?",
+				"antwoord": "Over de nieuwe parkeertarieven, de tramlijn naar Scheveningen, en of de duiven op het Plein weg moeten. Dat laatste duurt het langst.",
+				"doorvraag": "En doet de raad iets voor daklozen?",
+				"doorantwoord": "Er ligt een motie voor meer opvangplekken in de winter. Ik stem voor. Of de wethouder ook geld heeft, is een ander verhaal."
+			},
+			"kleingeld_nee": "Ik heb alleen een stapel moties bij me, geen kleingeld. Sorry.",
+			"nog_iets": [
+				"Verder nog iets? De voorzitter tikt zo met de hamer.",
+				"Nog een vraag?"
+			],
+			"dag": "Dank voor uw komst. Democratie is van iedereen!",
+			"stemmingen": {
+				"begroeting": "blij",
+				"onderwerp": "neutraal",
+				"doorvraag": "neutraal",
+				"kleingeld_nee": "neutraal",
+				"dag": "blij"
+			}
+		},
+		"burgemeester": {
+			"spreker": "DE BURGEMEESTER",
+			"embleem": "DH",
+			"kleur": "#C9A23A",
+			"naamkaartje": "#2E7D32",
+			"tekstkleur": "#FFFFFF",
+			"stemhoogte": 0.9,
+			"begroetingen": [
+				"Goedemiddag. Ik heb eigenlijk geen tijd, maar zegt u het maar.",
+				"Ah. U bent hier zonder afspraak, merk ik. Wat kan ik voor u doen?",
+				"Welkom in de raadzaal. Gaat u zitten, de vergadering begint zo."
+			],
+			"onderwerp": {
+				"vraag": "Wat doet een burgemeester eigenlijk de hele dag?",
+				"antwoord": "Lintjes knippen, raadsvergaderingen leiden, de politie aansturen, en luisteren naar mensen die vinden dat de tram te laat is. Vooral dat laatste.",
+				"doorvraag": "En wat doet u voor mensen zoals ik?",
+				"doorantwoord": "Ik heb een plan. Een groot plan, met een werkgroep. Over twee jaar komt het rapport. Neem gerust een folder mee."
+			},
+			"kleingeld_nee": "Kleingeld? Ik draag een ambtsketen, beste mens, geen portemonnee.",
+			"nog_iets": [
+				"Nog iets? Mijn agenda zit vol.",
+				"Was er verder nog iets?"
+			],
+			"dag": "Goedemiddag. De beveiliging laat u wel uit.",
+			"stemmingen": {
+				"begroeting": "blij",
 				"onderwerp": "neutraal",
 				"doorvraag": "neutraal",
 				"kleingeld_nee": "neutraal",

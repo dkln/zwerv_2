@@ -884,8 +884,8 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
   te scherp draait.
 
 
-Binnenruimtes (snackbars, Den Haag Centraal)
---------------------------------------------
+Binnenruimtes (snackbars, Den Haag Centraal, supermarkten, stadhuis)
+--------------------------------------------------------------------
 Gebouwen waar je in kunt lopen staan in `scripts/world/interiors.gd` (node `Binnenruimtes`),
 één regel per soort in `KINDS`. Voor elke ingang op de kaart staat een deinende oranje pijl
 (groot, op en neer, met de nep-3D-schaduw van de teksten) en "[E] Naar binnen". Naar binnen
@@ -939,6 +939,52 @@ buiten de kaart (`at`), staat stil en is onzichtbaar zolang je buiten bent.
     `tools/check/throw_out_test.gd`.
   - Test: `tools/check/station_test.gd` (ingangen, sporen, poortjes met en zonder kaart,
     een vertrekkende trein, instappen, niemand vast, naar buiten bij deur 3).
+
+- Supermarkten, DERREK en ALFRED STEYHN (`scenes/binnen/supermarkt.tscn`,
+  `scripts/world/supermarket.gd`; KINDS `derrek` en `alfred_steyhn`): elke gevel
+  `_bg_<keten>_ingang` is een ingang, met de breedte van de winkelpui (`width`, in cellen). Er is
+  één scène voor beide; elk filiaal deelt zich bij binnenkomst opnieuw in
+  (`scripts/world/supermarket_layout.gd`, uit keten, seed en breedte), dus geen twee filialen
+  zijn gelijk: zo breed als de pui (16-28 m), 16, 20 of 24 m diep, de ingang (DERREK ergens in de
+  pui, ALFRED STEYHN naast een hoek), de kassa's aan de brede kant ervan, karretjes, mandjes en
+  wat je het eerst ziet aan de andere (DERREK actiepallets met LAAGSTE PRIJS, ALFRED STEYHN
+  bloemen en groente en fruit), de gondels (DERREK altijd van voor naar achter, ALFRED STEYHN
+  beide kanten op), soms een diepvriesrij, langs de linkerwand wandschappen (ALFRED STEYHN de
+  bakkerij ertussen), achterin de koelwand met de personeelsdeur. De huisstijl zit in de tiles
+  (`binnen/supermarkt/*_<keten>`, `tools/voxgen/tiles/interior_supermarket.py`: rood-wit met het
+  mandje, lichtblauw met de tulp), de borden boven de gangpaden, de kassanummers en de kleding
+  van het personeel.
+  - Winkelen: bij de ingang `[E] Karretje pakken` of `Mandje pakken` (het karretje duw je voor
+    je uit, het mandje hangt aan je arm; nog eens: terugzetten). Bij een schap `[E] Pakken:
+    <product> € <prijs>` (per soort schap één product, uit `data/gesprekken/supermarkten.json`;
+    ALFRED STEYHN heeft per filiaal twee soorten schappen in de BONUS, een kwart eraf). Bij de
+    kassa (of de zelfscan van ALFRED STEYHN) `[E] Afrekenen`: piep-piep (`kassa_piep`), wat het
+    kost, betalen of laat maar. Te weinig geld: het duurste gaat terug tot het past; wat niet in
+    je zakken past gaat terug. Met onbetaalde spullen de deur uit: het alarm (`winkel_alarm`) en
+    je wordt eruit gegooid (`winkeldiefstal` in `uitzetten.json`).
+  - Winkelende mensen komen binnenlopen, lopen langs een paar schappen (met mandje of karretje),
+    sluiten aan bij een kassa, rekenen af en gaan weer weg; sommigen kijken alleen. Ze lopen over
+    een rooster van de vrije vloer (`AStarGrid2D`) om de schappen heen en wachten als je in de
+    weg staat. Caissières zitten aan de kassa, medewerkers (`personeel.json`) vullen de schappen.
+  - Tests: `tools/check/supermarket_layout_test.gd` (snel, zonder de stad: 180 filialen,
+    alles bereikbaar, niets in elkaar) en `tools/check/supermarket_test.gd` (in de stad).
+- Het stadhuis aan het Spui (`scenes/binnen/stadhuis.tscn`, `scripts/world/city_hall.gd`,
+  indeling `scripts/world/city_hall_layout.gd`, tiles `binnen/stadhuis/` in
+  `tools/voxgen/tiles/interior_city_hall.py`): de deuren in de begane grond van de twee witte
+  schijven zijn de ingangen (naar buiten bij de deur waar je binnenkwam). Vijf etages, elk met
+  een eigen indeling en maat, naast elkaar in de scène (`Etage0..4`, alleen de etage waar je
+  bent is te zien): 0 de hal met de receptie (twee receptionistes, het wapen van de stad en de
+  vlaggen, een wachthoek, de beveiliger), 1 Burgerzaken (vier loketten met ambtenaren, wachtbanken,
+  de nummertjesautomaat en borden die de nummers omroepen), 2 de kantoortuin (bureau-eilanden,
+  kasten, koffieautomaat), 3 vergaderzalen achter glas en het archief, 4 de raadzaal (de
+  voorzittersbank met de burgemeester, de raad in een U, de publieke tribune). De lift staat op
+  elke etage op dezelfde plek: `[E] Lift`, je kiest de etage, de deuren schuiven dicht, de swipe,
+  en je stapt uit op de andere etage (`lift_ding`, de etage bovenin beeld). De mensen praten als
+  zichzelf (`personeel.json`: receptioniste, beveiliger, ambtenaar, raadslid, burgemeester).
+  Test: `tools/check/city_hall_test.gd`.
+- Voor allebei: `InteriorSpot` (`scripts/world/interior_spot.gd`, een plek met `[E] <tekst>`) en
+  `SignBoard` (`scripts/world/sign_board.gd`, een bord met tekst). Een binnenruimte kan
+  `dress_way_in(ingang)`, `leave_offence()` en `plan_root()` hebben (zie `interiors.gd`).
 
 Binnenruimtes maken (dezelfde opzet als de snackbar):
 

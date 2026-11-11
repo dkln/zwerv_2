@@ -557,6 +557,12 @@ func show_area(area_name: String, seconds := 4.0) -> void:
 	_queue_notice({"heading": AREA_HEADING, "name": area_name, "seconds": seconds, "jingle": ""})
 
 
+## Shows a notice of its own at the top ("heading" over "text"): the floor the lift of the
+## city hall has brought you to.
+func show_notice(heading: String, text: String, seconds := 3.0) -> void:
+	_queue_notice({"heading": heading, "name": text, "seconds": seconds, "jingle": ""})
+
+
 ## Shows "nieuwe missie" with the title of the mission and plays the mission jingle.
 func show_mission(title: String, seconds := 4.5) -> void:
 	_queue_notice({"heading": MISSION_HEADING, "name": title, "seconds": seconds, "jingle": MISSION_JINGLE})
@@ -1560,9 +1566,14 @@ func show_interior_plan(interior: Node3D, exits: Array[Vector3]) -> void:
 	await get_tree().physics_frame
 	if _exit_points != exits or not is_instance_valid(interior):
 		return   # out again meanwhile
-	var key := interior.get_instance_id()
+	# an interior can say which part of it is the plan (the floor you are on in the city hall,
+	# the layout of this branch of a supermarket: plan_root); a new part is a new plan
+	var plan_source: Node3D = interior.call("plan_root") if interior.has_method("plan_root") else interior
+	if plan_source == null:
+		plan_source = interior
+	var key := plan_source.get_instance_id()
 	if not _interior_plans.has(key):
-		_interior_plans[key] = InteriorPlan.build(interior)
+		_interior_plans[key] = InteriorPlan.build(plan_source)
 	var plan: Dictionary = _interior_plans[key]
 	if plan.is_empty() or _minimap_map == null:
 		return

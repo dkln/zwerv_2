@@ -129,6 +129,13 @@ func _sit() -> void:
 		figure.aim_arm(side, Vector3(shoulder.x * 0.8, seat_height + 0.15, 0.4) - figure.position)
 
 
+## Standing still and straight at once (PlayerController.talk_to: the conversation pauses
+## the game, so someone walking would keep a leg in the air): the shoppers of a supermarket.
+func stand_neutral() -> void:
+	if figure and not sitting:
+		figure.walk(0.0, 0.0)
+
+
 ## How far off the player can talk to them: across the counter for who sells.
 func reach() -> float:
 	return COUNTER_REACH if role in MERCHANT_ROLES else TALK_REACH
