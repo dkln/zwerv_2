@@ -44,7 +44,8 @@ extends Node3D
 ##   at `exhausted_until` of the maximum;
 ## - gezondheid: at 0 the player is dead (died, the HUD shows the death screen);
 ## - overprikkeldheid: starts at 0 (of 100), only items change it so far.
-## Every hurt makes the figure blink as in old games (`hurt_blink_time`).
+## Every hurt makes the figure blink as in old games (`hurt_blink_time`), but not the one it
+## dies of: dying (the slow motion, the fall) and dead it never blinks.
 ##
 ## Hit by a vehicle: when its footprint (Vehicle.footprints) overlaps the player's at more
 ## than `hit_speed_threshold` m/s closing speed, the player loses
@@ -422,6 +423,8 @@ func _process(delta: float) -> void:
 			_update_sleep(delta)
 	elif not _dead:
 		_update_stats(delta)
+	if _dead:
+		_blink_left = 0.0   # dying (and dead) it never blinks
 	if _blink_left > 0.0:
 		_blink_left = maxf(_blink_left - delta, 0.0)
 		_model.visible = _blink_left <= 0.0 or fmod(_blink_left, 0.14) > 0.07
@@ -1051,7 +1054,9 @@ func _hurt(amount: float, cause: String) -> void:
 		return
 	var health: Vector2 = _stats.gezondheid
 	_stats.gezondheid = Vector2(maxf(health.x - amount, 0.0), health.y)
-	_blink_left = maxf(_blink_left, hurt_blink_time)
+	# the blow it dies of does not blink: the death (in slow motion) is seen whole
+	if _stats.gezondheid.x > 0.0:
+		_blink_left = maxf(_blink_left, hurt_blink_time)
 	hurt.emit(amount)
 	if _hud and _hud.has_method("show_floating_number"):
 		_hud.show_floating_number(global_position + Vector3.UP * DAMAGE_NUMBER_HEIGHT,
@@ -1075,6 +1080,8 @@ var _normal_physics_ticks := 60
 
 func _die(cause: String) -> void:
 	_dead = true
+	_blink_left = 0.0
+	_model.visible = true
 	_running = false
 	_model.walking = 0.0
 	_model.idle = false

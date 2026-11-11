@@ -1,9 +1,17 @@
 {
-	"uitleg": "Eruit gegooid worden (scripts/world/interiors.gd, throw_out): wie in een binnenruimte te vaak iets doet wat niet mag, wordt het gebouw uit gegooid (door de deur, in een snoekduik de straat op, een beetje in een willekeurige richting) en daarna vertelt de verteller wat er gebeurde. Per plek ('plekken': de soort binnenruimte: 'snackbar', 'centraal', 'derrek', 'alfred_steyhn' of 'stadhuis') per overtreding ('overtredingen'): 'na' hoeveel keer (in één bezoek) het genoeg is, en 'tekst' (de bladzijden van de verteller, na elkaar). Overtredingen: 'bedelen' (om kleingeld vragen), 'geen_geld' (iets kopen zonder genoeg geld), 'boete_onbetaald' (betrapt op zwartrijden en de boete niet kunnen betalen), 'winkeldiefstal' (met onbetaalde spullen in je karretje of mandje de supermarkt uit lopen). Daarna mag je er 'terug_na' seconden niet meer in ('niet_binnen' zweeft dan boven je). Zie data/LEESMIJ.md.",
+	"uitleg": "Eruit gegooid worden (scripts/world/interiors.gd, throw_out): wie in een binnenruimte te vaak iets doet wat niet mag, wordt het gebouw uit gegooid (door de deur, in een snoekduik de straat op, een beetje in een willekeurige richting) en daarna vertelt de verteller wat er gebeurde. Per plek ('plekken': de soort binnenruimte: 'snackbar', 'centraal', 'derrek', 'alfred_steyhn' of 'stadhuis') per overtreding ('overtredingen'): 'na' hoeveel keer (in één bezoek) het genoeg is, en 'tekst' (de bladzijden van de verteller, na elkaar). Overtredingen: 'bedelen' (om kleingeld vragen), 'geen_geld' (iets kopen zonder genoeg geld), 'boete_onbetaald' (betrapt op zwartrijden en de boete niet kunnen betalen), 'winkeldiefstal' (met onbetaalde spullen in je karretje of mandje de supermarkt uit lopen). Eerst een tussenscène (scripts/world/throw_out_scene.gd): 'uitzetter' van de plek ('wie': snackbarhouder, handhaver, kassamedewerker of beveiliger, in de kleding van de plek; 'kreten': wat die roept) komt naar je toe, pakt je bij je kraag, tilt je op en draagt je naar de deur. Daarna mag je er 'terug_na' seconden niet meer in ('niet_binnen' zweeft dan boven je). Zie data/LEESMIJ.md.",
 	"terug_na": 90,
 	"niet_binnen": "Je mag hier voorlopig niet meer in",
 	"plekken": {
 		"snackbar": {
+			"uitzetter": {
+				"wie": "snackbarhouder",
+				"kreten": [
+					"Eruit jij!",
+					"Wegwezen, en snel!",
+					"Dit is een snackbar, geen hotel!"
+				]
+			},
 			"overtredingen": {
 				"bedelen": {
 					"na": 3,
@@ -22,6 +30,14 @@
 			}
 		},
 		"centraal": {
+			"uitzetter": {
+				"wie": "handhaver",
+				"kreten": [
+					"Handhaving. U gaat nu mee naar buiten.",
+					"Meekomen, jij. Nu.",
+					"Zo, wij gaan een stukje lopen."
+				]
+			},
 			"overtredingen": {
 				"bedelen": {
 					"na": 3,
@@ -47,6 +63,14 @@
 			}
 		},
 		"derrek": {
+			"uitzetter": {
+				"wie": "kassamedewerker",
+				"kreten": [
+					"Hé! Dat had je gedacht!",
+					"Eruit! En niet meer terugkomen!",
+					"Bij DERREK betaal je, vriend!"
+				]
+			},
 			"overtredingen": {
 				"winkeldiefstal": {
 					"na": 1,
@@ -72,6 +96,14 @@
 			}
 		},
 		"alfred_steyhn": {
+			"uitzetter": {
+				"wie": "kassamedewerker",
+				"kreten": [
+					"Meneer, mevrouw, u gaat nu naar buiten!",
+					"Niet bij ALFRED STEYHN!",
+					"Eruit, en snel een beetje!"
+				]
+			},
 			"overtredingen": {
 				"winkeldiefstal": {
 					"na": 1,
@@ -97,6 +129,14 @@
 			}
 		},
 		"stadhuis": {
+			"uitzetter": {
+				"wie": "beveiliger",
+				"kreten": [
+					"Beveiliging. Meekomen.",
+					"Niet hier, beste mens. Naar buiten.",
+					"Ik breng u even naar de uitgang."
+				]
+			},
 			"overtredingen": {
 				"bedelen": {
 					"na": 3,

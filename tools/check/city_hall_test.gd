@@ -3,8 +3,9 @@ extends SceneTree
 ## in the ground floor of its two white slabs are ways in (out again where you came in); inside you are on floor 0 by the entrance (only that floor shown),
 ## the reception staffed; the five floors each have their own layout (no two the same, not
 ## all the same size) and the lift stands at the same place on all of them, free to walk to
-## from where you come out of it; at the lift [E] Lift asks which floor; the lift takes you
-## there (the floor shown, you before its doors, the doors open, the minimap the plan of
+## from where you come out of it; at the lift [E] Lift asks which floor; the ride is a scene of
+## its own (the cabin, the camera from the front, close in, you in it, the motor humming, the
+## display showing the floor the lift is at); out at that floor (the floor shown, you before its doors, the doors open, the minimap the plan of
 ## that floor, the people of that floor there: Burgerzaken its civil servants at the counters,
 ## the council chamber its mayor); a number from the machine; back down and out of the door.
 ## usage: tools/godot.sh --headless --script tools/check/city_hall_test.gd
@@ -78,7 +79,7 @@ func _init() -> void:
 	_player._talk_partner = null
 	for frame_index in 4:
 		await physics_frame
-	_check(_actions() == [["E", "Lift (begane grond)"]], "bij de lift: [E] Lift (%s)" % [_actions()])
+	_check(_actions() == [["E", "Lift"]], "bij de lift: [E] Lift (%s)" % [_actions()])
 	_use()
 	await process_frame
 	var box: Control = _hud._story_box
@@ -87,6 +88,39 @@ func _init() -> void:
 	box.hide()
 	box._pages = []
 	paused = false
+	# the ride as it goes: a scene of its own, the camera from the front, the display counting
+	var cabin: Node3D = hall.get_node("Liftcabine")
+	var camera_before := get_root().get_viewport().get_camera_3d()
+	hall.ride(2, true)
+	for wait in 30:
+		await create_timer(0.1, true).timeout
+		if hall.in_cabin:
+			break
+	await create_timer(0.6, true).timeout
+	var camera := get_root().get_viewport().get_camera_3d()
+	_check(hall.in_cabin and cabin.visible and not hall.floor_node(0).visible, "in de lift: alleen de cabine te zien")
+	_check(camera != null and camera.name == "Liftcamera", "met de camera van de lift (%s)" % (camera.name if camera else "geen"))
+	_check(cabin.has_node("Speler") and not _player.visible, "jij in de lift (een stand-in), de echte speler weg")
+	if camera and cabin.has_node("Speler"):
+		var to_player := (cabin.get_node("Speler") as Node3D).global_position - camera.global_position
+		_check(to_player.length() < 3.0 and camera.global_basis.z.dot(Vector3(0.0, 0.0, 1.0)) < -0.8,
+			"ingezoomd, van voren (%.1f m)" % to_player.length())
+	for wait in 20:
+		if hall.motor_running():
+			break
+		await create_timer(0.1, true).timeout
+	_check(hall.motor_running(), "de liftmotor zoemt (zodra de swipe weg is)")
+	var seen := {}
+	for wait in 80:
+		seen[hall.display_text()] = true
+		if not hall.is_riding():
+			break
+		await create_timer(0.1, true).timeout
+	print("  display onderweg: ", seen.keys())
+	_check(seen.has("▲ 0") and seen.has("▲ 1") and seen.has("2"), "het display toont waar de lift is: ▲ 0, ▲ 1, 2")
+	_check(not hall.in_cabin and hall.current_floor == 2 and _player.visible, "uitgestapt op etage 2")
+	_check(get_root().get_viewport().get_camera_3d() == camera_before, "de gewone camera weer")
+	_check(not hall.motor_running(), "de motor stil")
 	for floor_number in [1, 4, 2, 3, 0]:
 		await _ride(hall, floor_number)
 	# a number at Burgerzaken
@@ -114,7 +148,7 @@ func _init() -> void:
 
 ## The lift to `number` (at once), and what should be true there.
 func _ride(hall: Node3D, number: int) -> void:
-	hall.ride(false, number)
+	hall.ride(number, false)
 	for frame_index in 6:
 		await physics_frame
 	var floor_node: Node3D = hall.floor_node(number)

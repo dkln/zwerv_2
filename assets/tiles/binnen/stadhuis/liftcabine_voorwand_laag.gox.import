@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://j6u2qj2t66xu"
+path="res://.godot/imported/liftcabine_voorwand_laag.gox-7fa0c54fd729f8589a6d8205b5f9fa19.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/binnen/stadhuis/liftcabine_voorwand_laag.gox"
+dest_files=["res://.godot/imported/liftcabine_voorwand_laag.gox-7fa0c54fd729f8589a6d8205b5f9fa19.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(0, 0, 0)

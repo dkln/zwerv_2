@@ -46,6 +46,9 @@ extends Node3D
 ## And it can call back: move_inside (the lift of the city hall) and show_plan.
 
 const SwipeTransition = preload("res://scripts/ui/swipe_transition.gd")
+const ThrowOutScene = preload("res://scripts/world/throw_out_scene.gd")
+## Where the scene of being carried off stands (far off the map, away from the interiors).
+const ARREST_AT := Vector3(-2400.0, 0.0, 0.0)
 const SoundVariation = preload("res://scripts/audio/sound_variation.gd")
 const SNACK_BAR_SCENE := "res://scenes/binnen/snackbar.tscn"
 const SNACK_BAR_FRONT := "_bg_snackbar"
@@ -138,6 +141,7 @@ var _throwing := false              # a throw-out under way
 var _throw_out_data := {}
 var _ambience: Ambience             # the background sound of where the player is
 var _last_swipe: Node                # the swipe of the last way out (_go_out), to wait for its end
+var _arrest: Node3D                  # the scene of being carried off (ThrowOutScene), while it plays
 
 
 ## A door: an entrance from the pavement, or the way out of an interior.
@@ -444,7 +448,9 @@ func offence(offence_name: String) -> void:
 
 
 ## Thrown out of the interior for `offence_name`: once the conversation or the shop screen
-## is closed (closing the shop at once), the swipe, and once it is through out of the door the
+## is closed (closing the shop at once), a scene of its own (ThrowOutScene: someone of the place
+## grabs the player, lifts them and carries them to the door: uitzetten.json "uitzetter"),
+## then the swipe, and once it is through out of the door the
 ## player flies (a KLAP and a bang at the door, a kick, a close-up in slow motion, a groan as
 ## they land), tumbling onto the
 ## pavement; once up again, the narrator tells what happened (story pages: uitzetten.json
@@ -463,7 +469,13 @@ func throw_out(offence_name: String) -> void:
 	while hud and ((hud.has_method("is_showing_story") and hud.is_showing_story())
 			or (hud.has_method("is_showing_shop") and hud.is_showing_shop())):
 		await get_tree().process_frame
+	# first the scene of being taken away: grabbed, lifted and carried to the door
+	await _carried_off(kind, hud)
 	var bar := await _go_out(0)
+	if _arrest and is_instance_valid(_arrest):
+		_arrest.finish()
+		_arrest.queue_free()
+	_arrest = null
 	# not seen standing before the door: out of sight until the throw starts
 	_player.visible = false
 	_barred_until[kind] = Time.get_ticks_msec() + int(float(_throw_outs().get("terug_na", 90)) * 1000.0)
@@ -488,6 +500,20 @@ func throw_out(offence_name: String) -> void:
 	if hud and hud.has_method("show_story"):
 		hud.show_story(_throw_out_pages(rule))
 	_throwing = false
+
+
+## The scene of being carried off (ThrowOutScene, far off the map: ARREST_AT): the swipe, and
+## under it the scene starts; returns once the player has been carried to its door.
+func _carried_off(kind: String, hud: Node) -> void:
+	var rules: Dictionary = (_throw_outs().get("plekken", {}) as Dictionary).get(kind, {})
+	var swipe := SwipeTransition.swipe(get_tree())
+	await swipe.covered
+	_arrest = ThrowOutScene.new()
+	add_child(_arrest)
+	_arrest.global_position = ARREST_AT
+	_arrest.start(kind, rules, _player, hud)
+	_player.visible = false
+	await _arrest.carried_out
 
 
 ## The bang of being flung out (throw_out): the KLAP, a burst of shards and a white flash at

@@ -31,6 +31,7 @@ Generator: `tools/megadrive/geluiden.py`; renderen met `tools/megadrive/render.s
 | `kassa_piep.ogg` | de scanner van een supermarktkassa: één korte, hoge, droge piep (2637 Hz), hoger dan de OV-lezer | 0,22 s |
 | `winkel_alarm.ogg` | de beveiligingspoortjes van een supermarkt die afgaan: zes paar snelle hoog-laag-piepen | 2 s |
 | `lift_ding.ogg` | de lift van het stadhuis komt aan: "ding-dong", twee zachte belletonen een grote terts omlaag | 1,6 s |
+| `lift_rijden_loop.ogg` | de lift die rijdt: het lage zoemen van de motor (55 Hz en boventonen), lucht in de schacht, zacht geratel van de kabels; naadloze lus | 2 s |
 | `fiets_bel.ogg` | de duimbel van een fiets: twee koepeltjes (2650 en 2790 Hz), snel aangeslagen door de draaiende klepel, twee keer ("tring-tring") | 1,1 s |
 | `politie_sirene_loop.ogg` | sirene van politie (ook de ME-bus): Nederlandse twee-toon 600/450 Hz, 0,55 s per toon, heldere PSG-blokgolven; naadloze lus, naast de motorlus op het voertuig | 2,2 s |
 | `ambulance_sirene_loop.ogg` | sirene van de ambulance: twee-toon 660/495 Hz, 0,75 s per toon, rondere FM-hoorn; lus | 3 s |

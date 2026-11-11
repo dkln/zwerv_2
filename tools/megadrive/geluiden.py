@@ -51,6 +51,8 @@ The station (Den Haag Centraal, scripts/world/station.gd):
     kassa_piep.ogg             the scanner of a supermarket checkout: one short high beep
     winkel_alarm.ogg           the security gates of a supermarket: a fast high-low alarm
     lift_ding.ogg              the lift of the city hall arriving: "ding-dong", two soft bells
+    lift_rijden_loop.ogg       the lift moving: the low hum of its motor, the hiss of air in the
+                               shaft, a soft rattle of the cables; a seamless loop
     poortje_open.ogg           the glass paddles of a gate swinging open: a swoosh gliding up
     poortje_dicht.ogg          and swinging shut again: the swoosh gliding down
 Loops are a whole number of engine cycles long (every frequency fits the loop exactly) and are
@@ -872,6 +874,23 @@ def lift_ding() -> numpy.ndarray:
     return fade_edges(low_pass(dac(low_pass(buffer, 7000.0)), 6000.0), 0.001, 0.2)
 
 
+def lift_moving_loop() -> numpy.ndarray:
+    """The lift moving, a seamless loop of 2 s: the motor's low hum (a fundamental and its
+    second harmonic in whole cycles), air rushing past in the shaft (band noise, the loop's
+    ends crossfaded) and a soft periodic rattle of the cables."""
+    seconds = 2.0
+    times = time_axis(seconds)
+    hum = numpy.sin(TWO_PI * 55.0 * times) * 0.35 + numpy.sin(TWO_PI * 110.0 * times) * 0.18 \
+        + numpy.sin(TWO_PI * 165.0 * times) * 0.06
+    air = band_noise(len(times), 200.0, 1400.0, 171) * 0.12
+    # crossfade the noise into its own start, so the loop has no seam
+    fade = int(0.25 * SAMPLE_RATE)
+    ramp = numpy.linspace(0.0, 1.0, fade)
+    air[:fade] = air[:fade] * ramp + air[-fade:] * (1.0 - ramp)
+    rattle = band_noise(len(times), 1500.0, 4000.0, 172) * (0.5 + 0.5 * numpy.sin(TWO_PI * 4.0 * times)) ** 8 * 0.05
+    return low_pass(dac(low_pass(hum + air + rattle, 5000.0)), 4500.0)
+
+
 ## How long the paddles of a gate take to swing (as SWING_TIME in station_gates.gd).
 GATE_SWING_SECONDS = 0.45
 
@@ -992,6 +1011,7 @@ SOUNDS = {
     "kassa_piep": (checkout_beep, False),
     "winkel_alarm": (shop_alarm, False),
     "lift_ding": (lift_ding, False),
+    "lift_rijden_loop": (lift_moving_loop, True),
 }
 
 

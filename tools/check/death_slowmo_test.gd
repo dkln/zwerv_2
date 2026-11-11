@@ -39,7 +39,13 @@ func _init() -> void:
 	_check(Engine.physics_ticks_per_second > ticks_before * 5, "physics stapt even vaak in echte tijd (%d per spelseconde)" % Engine.physics_ticks_per_second)
 	_check(camera.is_dramatic(), "de camera zoomt in")
 	_check(not hud._death_layer.visible, "nog geen doodsscherm tijdens de slow motion")
-	await create_timer(1.2, true, false, true).timeout
+	# the figure does not blink while it dies: always visible through the slow motion
+	var blinked := false
+	for wait in 24:
+		await create_timer(0.05, true, false, true).timeout
+		if not player._model.visible or player._blink_left > 0.0:
+			blinked = true
+	_check(not blinked, "geen geknipper tijdens het dramatisch doodgaan")
 	_check(camera._zoom < zoom_before * 0.5, "ingezoomd op de speler (%.1f m in beeld, was %.1f)" % [camera._zoom, zoom_before])
 	await create_timer(PlayerControllerScript.DEATH_SLOW_SECONDS + PlayerControllerScript.DEATH_SPEED_UP, true, false, true).timeout
 	await process_frame

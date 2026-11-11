@@ -7,7 +7,8 @@ archive, and at the top the council chamber.
 
 White everywhere, as the real building: white panels on a grid, white stone floors in the
 hall, blue-grey carpet in the offices, oak in the council chamber; the city's colours
-(yellow and green) and its coat of arms (a black stork on gold) where the city shows itself.
+(yellow and green: lak_geel1 and bord_groen; the vlag_ colours are flag cloth and wave in the
+wind, so only the flag itself has them) and its coat of arms (a black stork on gold) where the city shows itself.
 
 Voxels of 0.125 m; the pivot is the middle of the bottom of the frame, the front the side
 with the lowest y (Godot +z).
@@ -109,8 +110,8 @@ def reception_desk():
     model = V(CELL, 12, 12)
     model.box(0, 0, 0, CELL, 3, 9, "lak_wit1")
     model.box(0, 0, 0, CELL, 3, 1, "beton2")
-    model.box(0, 0, 4, CELL, 1, 5, "vlag_geel")                            # a line in the city's colours
-    model.box(0, 0, 5, CELL, 1, 6, "vlag_groen")
+    model.box(0, 0, 4, CELL, 1, 5, "lak_geel1")                            # a line in the city's colours
+    model.box(0, 0, 5, CELL, 1, 6, "bord_groen")
     model.box(0, 0, 9, CELL, 4, 10, "hout2")
     model.box(0, 3, 0, CELL, 10, 6, "lak_wit2")                            # the desk behind
     model.box(0, 3, 6, CELL, 10, 7, "hout3")
@@ -295,8 +296,8 @@ def chair_bench():
     model.box(0, 0, 0, CELL, 12, 2, "hout_donker2")
     model.box(0, 0, 2, CELL, 3, 11, "hout_donker1")
     model.box(0, 0, 11, CELL, 5, 12, "hout2")
-    model.box(4, 0, 6, CELL - 4, 1, 7, "vlag_geel")
-    model.box(4, 0, 5, CELL - 4, 1, 6, "vlag_groen")
+    model.box(4, 0, 6, CELL - 4, 1, 7, "lak_geel1")
+    model.box(4, 0, 5, CELL - 4, 1, 6, "bord_groen")
     for middle in (8, 16, 24):
         model.box(middle, 4, 12, middle + 1, 5, 12, "metaal_donker")
     return model
@@ -388,8 +389,8 @@ def info_pillar():
     model = V(4, 3, 14)
     model.box(0, 0, 0, 4, 3, 14, "lak_wit1")
     model.box(0, 0, 6, 4, 1, 12, "scherm")
-    model.box(0, 0, 12, 4, 3, 13, "vlag_geel")
-    model.box(0, 0, 13, 4, 3, 14, "vlag_groen")
+    model.box(0, 0, 12, 4, 3, 13, "lak_geel1")
+    model.box(0, 0, 13, 4, 3, 14, "bord_groen")
     return model
 
 
@@ -400,7 +401,7 @@ def doormat():
     for x in range(16):
         for y in range(8):
             rim = x in (0, 15) or y in (0, 7)
-            model.set(x, y, 0, "vlag_groen" if rim else ("antraciet1" if (x + y) % 2 else "antraciet2"))
+            model.set(x, y, 0, "bord_groen" if rim else ("antraciet1" if (x + y) % 2 else "antraciet2"))
     return model
 
 
@@ -413,3 +414,69 @@ register("binnen/stadhuis/muur_laag_half", lambda: _wall(WALL_LOW, width=10))
 register("binnen/stadhuis/glaswand", lambda: _glass_wall())
 # beside a door in a glass partition: 1.25 m of glass (the door 1.5 m)
 register("binnen/stadhuis/glaswand_kort", lambda: _glass_wall(10))
+
+
+# ---------------------------------------------------------------------------------------------
+# The lift cabin (Liftcabine in the scene): 3 m wide, 2 m deep, 2.6 m high, brushed steel,
+# a mirror at the back, a handrail, the button panel on the left wall; low at the front and
+# the right like every interior (the iso view looks in), its doors low too. Separate pieces,
+# so the player can stand inside (the colliders are the blocks of each piece).
+
+CABIN_WIDTH = 24       # 3 m
+CABIN_DEPTH = 16       # 2 m
+CABIN_HIGH = 21        # 2.6 m
+CABIN_LOW = 8          # 1 m
+
+
+@tile("binnen/stadhuis/liftcabine_vloer")
+def cabin_floor():
+    """The floor of the cabin: black rubber with raised studs."""
+    model = V(CABIN_WIDTH, CABIN_DEPTH, 1)
+    for x in range(CABIN_WIDTH):
+        for y in range(CABIN_DEPTH):
+            model.set(x, y, 0, "rubber" if (x + y) % 3 else "metaal_donker")
+    return model
+
+
+def _cabin_wall(width, height, mirror=False):
+    """A wall of the cabin, one deep: brushed steel panels, a handrail at 0.9 m on a high one,
+    a mirror in the middle of the back one."""
+    model = V(width, 1, height)
+    for x in range(width):
+        for z in range(height):
+            model.set(x, 0, z, "lak_zilver2" if x % 5 == 0 else ("rvs" if z % 4 else "lak_zilver1"))
+    if height > CABIN_LOW:
+        model.box(1, 0, 7, width - 1, 1, 8, "messing")
+        model.box(0, 0, height - 1, width, 1, height, "lamp_wit")
+    if mirror:
+        model.box(4, 0, 9, width - 4, 1, height - 3, "glas_kantoor")
+    return model
+
+
+register("binnen/stadhuis/liftcabine_achterwand", lambda: _cabin_wall(CABIN_WIDTH, CABIN_HIGH, mirror=True))
+register("binnen/stadhuis/liftcabine_zijwand", lambda: _cabin_wall(CABIN_DEPTH, CABIN_HIGH))
+register("binnen/stadhuis/liftcabine_zijwand_laag", lambda: _cabin_wall(CABIN_DEPTH, CABIN_LOW))
+# beside the doors at the front: 1 m each side (the doors 1 m between them)
+register("binnen/stadhuis/liftcabine_voorwand_laag", lambda: _cabin_wall(8, CABIN_LOW))
+
+
+@tile("binnen/stadhuis/liftcabine_deur")
+def cabin_door():
+    """One leaf of the cabin doors, low as the front (0.5 m wide): steel, a dark edge."""
+    model = V(4, 1, CABIN_LOW)
+    model.box(0, 0, 0, 4, 1, CABIN_LOW, "rvs")
+    model.box(0, 0, 0, 1, 1, CABIN_LOW, "lak_zilver2")
+    return model
+
+
+@tile("binnen/stadhuis/liftcabine_paneel")
+def cabin_panel():
+    """The button panel on the wall (0.375 m wide, 1 m high, from 0.75 m up): steel with a
+    column of round lit buttons, a little screen over them and the alarm bell in yellow."""
+    model = V(3, 1, 14)
+    model.box(0, 0, 6, 3, 1, 14, "metaal3")
+    for row in range(5):
+        model.set(1, 0, 7 + row * 1, "lamp_warm")
+    model.box(0, 0, 12, 3, 1, 13, "scherm")
+    model.set(1, 0, 13, "lak_geel1")
+    return model

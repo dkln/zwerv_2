@@ -56,9 +56,24 @@ func _init() -> void:
 	var hurt_before_landing := false
 	var flew := false
 	var farthest := 0.0
+	var arrest_seen := {}   # what the scene of being carried off showed (ThrowOutScene)
+	var arrest_camera: Camera3D = null
 	var started := Time.get_ticks_msec()
-	while Time.get_ticks_msec() - started < 15000 and not hud.is_showing_story():
+	while Time.get_ticks_msec() - started < 20000 and not hud.is_showing_story():
 		await process_frame
+		var arrest: Node = interiors.get("_arrest")
+		if arrest and is_instance_valid(arrest):
+			arrest_seen["scène"] = true
+			arrest_seen["fase_" + String(arrest.phase())] = true
+			if get_root().get_viewport().get_camera_3d() == arrest.get("_camera"):
+				arrest_seen["camera"] = true
+				arrest_camera = arrest.get("_camera")
+			var thrower: Node = arrest.get("_bouncer")
+			if thrower:
+				arrest_seen["wie_" + String(thrower.role)] = true
+			var stand_in: Node3D = arrest.get("_stand_in")
+			if stand_in and stand_in.position.y > 0.3:
+				arrest_seen["opgetild"] = true
 		slowest = minf(slowest, Engine.time_scale)
 		for number: Dictionary in hud._floating_numbers._numbers:
 			var shown_text: String = (number.label as Label).text
@@ -84,6 +99,13 @@ func _init() -> void:
 		if player._ragdoll != null:
 			flew = true
 			farthest = maxf(farthest, Vector2(player.global_position.x - bar.door.x, player.global_position.z - bar.door.z).length())
+	print("  meegenomen: ", arrest_seen.keys())
+	_check(arrest_seen.has("scène") and arrest_seen.has("camera"), "eerst een eigen scène met een eigen camera")
+	_check(arrest_seen.has("wie_snackbarhouder"), "de snackbarhouder komt je halen")
+	_check(arrest_seen.has("fase_pakken") and arrest_seen.has("fase_dragen") and arrest_seen.has("opgetild"),
+		"die pakt je bij je kraag, tilt je op en draagt je naar de deur")
+	_check(interiors.get("_arrest") == null and get_root().get_viewport().get_camera_3d() != arrest_camera,
+		"daarna weer de gewone camera, de scène weg")
 	_check(not interiors.is_inside(), "eruit gegooid: weer buiten")
 	_check(flew, "de deur uit gesmeten (tuimelend)")
 	_check(slowest < 0.5, "in slow motion (%.2f)" % slowest)
