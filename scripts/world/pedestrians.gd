@@ -92,6 +92,7 @@ var _lights: Node
 var _random := RandomNumberGenerator.new()
 var _people: Array[Pedestrian] = []        # who walks the town now (Pedestrian._all holds this same array)
 var _resting: Array[Pedestrian] = []       # who is not needed now, out of the tree
+var _arriving: Array[Pedestrian] = []      # new ones waiting for their figure (built on a thread)
 var _leaves_at := {}                       # person -> _clock when it may go
 var _ride_debt := {}                       # "kind/aid" -> share of a rider owed (Crowd.ride_share)
 var _made := 0
@@ -125,10 +126,11 @@ func _ready() -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_PREDELETE:
 		# who rests is out of the tree: it goes with this node
-		for person in _resting:
+		for person in _resting + _arriving:
 			if is_instance_valid(person):
 				person.free()
 		_resting.clear()
+		_arriving.clear()
 
 
 func _physics_process(delta: float) -> void:
@@ -139,6 +141,7 @@ func _physics_process(delta: float) -> void:
 			_spread_people()
 		return
 	_clock += delta
+	_let_arrive()
 	_return_clock -= delta
 	if _return_clock <= 0.0 and _player:
 		_return_clock = 1.0
@@ -259,7 +262,7 @@ func _keep_round_player() -> void:
 			changes_left -= 1
 	_send_to_station(player_spot)
 	var failures := 0
-	while _people.size() < wanted and changes_left > 0 and failures < 8:
+	while _people.size() + _arriving.size() < wanted and changes_left > 0 and failures < 8:
 		if _bring_someone():
 			changes_left -= 1
 		else:
@@ -313,25 +316,43 @@ func _bring_someone() -> bool:
 		elif from_station:
 			came_out_of_station += 1
 		return true
-	if _people.size() + _resting.size() >= most:
+	if _people.size() + _resting.size() + _arriving.size() >= most:
 		return false
-	_add_person(cell)
+	_add_person(cell, true)
 	if from_station:
 		came_out_of_station += 1
 	return true
 
 
-## A new pedestrian on `cell`, of the hour and the neighbourhood there.
-func _add_person(cell: Vector3i) -> Pedestrian:
+## A new pedestrian on `cell`, of the hour and the neighbourhood there. `wait_for_figure`: its
+## figure is built on a thread first (TownsfolkFigure.prepare) and it comes once that is done
+## (_let_arrive), so bringing someone new costs no stutter; otherwise it is built here and now
+## (the town at the start, behind the loading screen).
+func _add_person(cell: Vector3i, wait_for_figure := false) -> Pedestrian:
 	var person: Pedestrian = PedestrianScript.new()
 	_made += 1
 	person.name = "Voetganger%d" % _made
 	person.town = self
 	_dress_for_now(person, false, cell_middle(cell))
 	person.start_cell = cell
+	if wait_for_figure and not person.figure_is_prepared():
+		person.prepare_figure()
+		_arriving.append(person)
+		return person
 	add_child(person)
 	_people.append(person)
 	return person
+
+
+## The new ones whose figure is built (_add_person) come into the town.
+func _let_arrive() -> void:
+	if _arriving.is_empty():
+		return
+	for person: Pedestrian in _arriving.duplicate():
+		if person.figure_is_prepared():
+			_arriving.erase(person)
+			add_child(person)
+			_people.append(person)
 
 
 ## Out of the town until it is wanted again (out of the tree: not drawn, not stepped, no

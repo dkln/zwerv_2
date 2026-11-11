@@ -107,8 +107,10 @@ const NEAR_REFRESH := 25.0
 @export var appear_within := 230.0
 @export var renew_after := Vector2(90.0, 200.0)
 @export var renew_beyond := 70.0
-@export var tick_seconds := 0.5
-@export var changes_per_tick := 4
+## One change a tick, eight ticks a second: bringing a vehicle costs some 5 ms, four in one
+## frame were a stutter.
+@export var tick_seconds := 0.125
+@export var changes_per_tick := 1
 ## Vehicles kept out of the town to be used again at most (the rest are freed).
 @export var parked_kept := 30
 @export var player_path := NodePath("../Speler")
@@ -306,11 +308,16 @@ func _bring_town_vehicle(from: float, to: float, unseen_only: bool) -> bool:
 				break
 			if usable[entry_index] > 0.0:
 				chosen = entry_index
-		var vehicle := _parked_like(chosen)
+		# while playing (out of sight) a rider is built on a thread first; the town at the
+		# start (behind the loading screen) is filled at once
+		var vehicle := _parked_like(chosen, unseen_only)
 		if vehicle == null:
 			if _town.size() + _parked_count(false) >= most_vehicles:
 				return false
 			vehicle = _make(chosen, MIX[chosen][0], false)
+			if unseen_only and not _ready_to_come(vehicle):
+				_parked.append(vehicle)   # it waits there till its rider is built
+				return false
 		_put_in_town(vehicle, cell)
 		return true
 	return false
@@ -399,12 +406,26 @@ func _furthest_unseen(group: Array, player_spot: Vector3) -> Vehicle:
 
 
 ## A parked one of MIX entry `entry_index` (the same script, the same model), or null.
-func _parked_like(entry_index: int) -> Vehicle:
+func _parked_like(entry_index: int, only_ready := false) -> Vehicle:
 	for vehicle in _parked:
 		var parked_entry := int(_entry_of.get(vehicle, -1))
-		if parked_entry >= 0 and MIX[parked_entry][0] == MIX[entry_index][0] and MIX[parked_entry][1] == MIX[entry_index][1]:
+		if parked_entry >= 0 and MIX[parked_entry][0] == MIX[entry_index][0] and MIX[parked_entry][1] == MIX[entry_index][1] \
+				and (not only_ready or _ready_to_come(vehicle)):
 			return vehicle
 	return null
+
+
+## True if `vehicle` can come into the town without a slow build first: it was in the town
+## before, or has no rider, or its rider is built. Otherwise its rider is built on a thread
+## now (TownsfolkFigure.prepare, some 20 ms that would be a stutter) and it is not ready yet.
+func _ready_to_come(vehicle: Vehicle) -> bool:
+	if vehicle.is_node_ready() or not vehicle.has_method("rider_figure_look"):
+		return true
+	var look: Dictionary = vehicle.rider_figure_look()
+	if look.is_empty() or TownsfolkFigure.is_prepared(look):
+		return true
+	TownsfolkFigure.prepare(look)
+	return false
 
 
 func _parked_service(script_path: String) -> Vehicle:

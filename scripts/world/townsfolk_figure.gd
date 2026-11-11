@@ -74,6 +74,10 @@ static var _parts := {}   # look key -> parts (VoxelFigure.to_parts)
 ## Looks whose parts are kept at most (the pedestrians keep changing, Pedestrians): beyond this
 ## the oldest go (the figures built from them keep their meshes).
 const PARTS_KEPT := 160
+static var _figure_materials := {}   # kind -> Material (_materials)
+static var _preparing := {}   # look key -> WorkerThreadPool task building it (prepare)
+static var _prepared := {}    # look key -> its faces, built on a thread (behind _prepared_lock)
+static var _prepared_lock := Mutex.new()
 
 ## The look this figure is built from (look_for).
 var look := {}
@@ -339,21 +343,87 @@ func copy_pose_from(other: TownsfolkFigure) -> void:
 		_body.transform = other._body.transform
 
 
-## The meshes and joints of a look, built once per look and shared.
+## The meshes and joints of a look, built once per look and shared. A look being built on a
+## thread (prepare) is waited for; any other is built here and now (some 20 ms).
 static func parts_of(figure_look: Dictionary) -> Dictionary:
 	var key := str(figure_look)
-	if not _parts.has(key) and _parts.size() >= PARTS_KEPT:
-		_parts.erase(_parts.keys()[0])   # the oldest (a Dictionary keeps the order things went in)
+	_collect_prepared()
+	if not _parts.has(key) and _preparing.has(key):
+		WorkerThreadPool.wait_for_task_completion(_preparing[key])
+		_collect_prepared()
 	if not _parts.has(key):
-		var figure := PlayerModel.VoxelFigure.new()
-		_build_voxels(figure, figure_look)
-		figure.centre_cell = Vector2(6.0, 2.0)
-		figure.simplify()   # seen from afar: fewer details
-		var materials := {}
-		for kind: String in PlayerModel.CLOTH.keys() + PlayerModel.MATERIALS.keys() + ["glow"]:
-			materials[kind] = PlayerModel.material_for(kind, true)
-		_parts[key] = figure.to_parts(VOXEL, RIG, materials, PlayerModel.graded)
+		_keep_parts(key, PlayerModel.VoxelFigure.parts_from(_faces_of(figure_look), _materials()))
 	return _parts[key]
+
+
+## Starts building the parts of this look on a thread of its own (WorkerThreadPool), so a
+## figure of it can be made later without a stutter (is_prepared tells when); nothing if
+## they are there or on their way already.
+static func prepare(figure_look: Dictionary) -> void:
+	var key := str(figure_look)
+	if _parts.has(key) or _preparing.has(key):
+		return
+	_materials()   # made here, on the main thread (the thread only makes faces)
+	PlayerModel.VoxelFigure.fill_face_tables()   # filled here: the thread only reads them
+	_preparing[key] = WorkerThreadPool.add_task(_prepare_on_thread.bind(key, figure_look.duplicate(true)),
+		false, "figuur bouwen")
+
+
+## True if the parts of this look are built (parts_of and create then cost no building).
+static func is_prepared(figure_look: Dictionary) -> bool:
+	_collect_prepared()
+	return _parts.has(str(figure_look))
+
+
+## On the thread: the voxels and the faces of a look (no meshes, no materials: those are made
+## on the main thread, _collect_prepared).
+static func _prepare_on_thread(key: String, figure_look: Dictionary) -> void:
+	var faces := _faces_of(figure_look)
+	_prepared_lock.lock()
+	_prepared[key] = faces
+	_prepared_lock.unlock()
+
+
+## The looks built on a thread into meshes (quick: the faces are there already).
+static func _collect_prepared() -> void:
+	if _preparing.is_empty():
+		return
+	for key: String in _preparing.keys():
+		var task: int = _preparing[key]
+		if not WorkerThreadPool.is_task_completed(task):
+			continue
+		WorkerThreadPool.wait_for_task_completion(task)
+		_preparing.erase(key)
+		_prepared_lock.lock()
+		var faces: Dictionary = _prepared.get(key, {})
+		_prepared.erase(key)
+		_prepared_lock.unlock()
+		if not faces.is_empty() and not _parts.has(key):
+			_keep_parts(key, PlayerModel.VoxelFigure.parts_from(faces, _materials()))
+
+
+static func _keep_parts(key: String, parts: Dictionary) -> void:
+	if _parts.size() >= PARTS_KEPT:
+		_parts.erase(_parts.keys()[0])   # the oldest (a Dictionary keeps the order things went in)
+	_parts[key] = parts
+
+
+## The voxels of a look made into faces (VoxelFigure.to_faces): no meshes, no materials, so
+## it can run on a thread.
+static func _faces_of(figure_look: Dictionary) -> Dictionary:
+	var figure := PlayerModel.VoxelFigure.new()
+	_build_voxels(figure, figure_look)
+	figure.centre_cell = Vector2(6.0, 2.0)
+	figure.simplify()   # seen from afar: fewer details
+	return figure.to_faces(VOXEL, RIG, PlayerModel.graded)
+
+
+## The material of each kind of voxel, with the outline (shared by all townspeople).
+static func _materials() -> Dictionary:
+	if _figure_materials.is_empty():
+		for kind: String in PlayerModel.CLOTH.keys() + PlayerModel.MATERIALS.keys() + ["glow"]:
+			_figure_materials[kind] = PlayerModel.material_for(kind, true)
+	return _figure_materials
 
 
 ## The voxels of a townsperson: x 0..11 across (the middle between 5 and 6), y up from the

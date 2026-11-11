@@ -180,6 +180,8 @@ var _honked_while_blocked := false   # a scooter hoots once each time it is held
 ## Its health (see hit_by_vehicle); at 0 it lies dead a while.
 var health := MAX_HEALTH
 var _ragdoll: RigidBody3D           # its thrown body while knocked down
+var _waiting_become: Array = []     # become's arguments while its figure is built on a thread
+var _waiting_look := {}             # the look being built for it then
 var _ragdoll_clock := 0.0
 var _last_cry := 0
 
@@ -241,11 +243,43 @@ func _carry() -> void:
 	_carried_pose = Crowd.has_function(items, "pose")
 
 
+## The look its figure (or the rider of its mobility aid) is built from: `wanted_look`, or
+## else the one of its seed (as MobilityAid.create picks it for a rider).
+func figure_look() -> Dictionary:
+	return _look_for(walker_seed, wanted_look, mobility)
+
+
+static func _look_for(look_seed: int, look_wanted: Dictionary, aid_kind: String) -> Dictionary:
+	if not look_wanted.is_empty():
+		return look_wanted
+	return TownsfolkFigure.look_for(look_seed * 13 + 7 if aid_kind != "" else look_seed)
+
+
+## True if its figure can be made without building it first (built on a thread,
+## prepare_figure).
+func figure_is_prepared() -> bool:
+	return TownsfolkFigure.is_prepared(figure_look())
+
+
+## Starts building its figure on a thread (TownsfolkFigure.prepare).
+func prepare_figure() -> void:
+	TownsfolkFigure.prepare(figure_look())
+
+
 ## Becomes someone else (Pedestrians: someone who goes and someone who comes, without a new
 ## node): another look, pace, way of going about and what it carries; where it stands it
-## leaves to Pedestrians (restart_at, bring_back).
+## leaves to Pedestrians (restart_at, bring_back). A figure not built yet is built on a
+## thread first: till then it stays who it was (out of sight, as Pedestrians renews only
+## those), then it changes (_physics_process), so that costs no stutter.
 func become(new_seed: int, new_look: Dictionary, new_mobility: String, new_pace_factor := 1.0, new_carried := "",
 		new_kind := "") -> void:
+	var look_wanted := _look_for(new_seed, new_look, new_mobility)
+	if _ragdoll == null and _drawn != null and not TownsfolkFigure.is_prepared(look_wanted):
+		TownsfolkFigure.prepare(look_wanted)
+		_waiting_become = [new_seed, new_look, new_mobility, new_pace_factor, new_carried, new_kind]
+		_waiting_look = look_wanted
+		return
+	_waiting_become = []
 	if _ragdoll:
 		_end_ragdoll()
 	if _drawn:
@@ -325,6 +359,8 @@ func _physics_process(delta: float) -> void:
 	if _ragdoll:
 		_follow_ragdoll(delta)
 		return
+	if not _waiting_become.is_empty() and TownsfolkFigure.is_prepared(_waiting_look):
+		callv("become", _waiting_become)
 	# out of sight it walks in fewer, longer steps (Sight), its limbs left alone
 	_sight_countdown -= 1
 	if _sight_countdown < 0:

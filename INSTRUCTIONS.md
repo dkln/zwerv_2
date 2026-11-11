@@ -344,7 +344,18 @@ zonder te bewegen: wat een klap eraf haalt blijft even rood-oranje staan (knippe
 en loopt dan leeg naar het nieuwe niveau; een kleine daling (honger) laat het randsegment
 knipperen; een sprong omhoog (eten, xp) laat de gewonnen segmenten oplichten, langzaam
 bijvullen niet. Het getal ernaast licht kort op (rood bij omlaag). Controle:
-`tools/check/segment_bar_test.gd`. Er zijn geen randjes om dingen of figuren. De speler en de voetgangers hebben een zachte
+`tools/check/segment_bar_test.gd`. De figuren (speler, voetgangers, berijders) hebben een harde donkere
+omlijning van 2,5 pixel (`scripts/player/figure_outline.gdshader`, kleur #06070F). Hun vlakken zijn
+samengevoegd (`VoxelFigure.merge_faces`, greedy meshing): voxelzijden naast elkaar in één vlak, met
+dezelfde kleur, hetzelfde materiaal en een gelijke schaduw (geen AO-verloop) worden één rechthoek
+(Martin: 553 in plaats van 1338 vlakken); waar zo een hoek op de rand van een ander vlak ligt
+(een T) krijgt die hoek de richting van die rand, zodat de omlijning dicht blijft. Bekijken:
+`tools/godot.sh --script tools/shots/shot_figure_faces.gd -- uit.png [martin|stad]` (oud en
+samengevoegd naast elkaar, ook als wireframe). Een voorbijganger, een nieuwe voetganger of een
+nieuwe fietser/scooter krijgt zijn figuur op een eigen thread gebouwd
+(`TownsfolkFigure.prepare`, ~25 ms die anders een hapering waren) en verschijnt of verandert
+pas als die klaar is. Controle: `tests/unit/test_figure_build.gd`; haperingen meten per
+onderdeel: `tools/godot.sh --headless --script tools/check/stutter_profile.gd -- 30`. De speler en de voetgangers hebben een zachte
 donkere vlek op de grond recht onder zich (`scripts/effects/ground_shadow.gd`, een Decal), zodat
 ze van elke kant loskomen van de straat; de figuren zelf staan op visuele laag 2
 (`FIGURE_LAYER`), waar die vlek niet op valt. In de stad zijn de figuren eenvoudiger dan op het
@@ -963,10 +974,11 @@ Projectstructuur
                            axle_test, player_test, hud_test, lane_choice_test, traffic_test,
                            clash_test, intro_test, menu_test, mesh_audit, offscreen_audit,
                            overlap_test, rail_stop_test, triangle_count, speech_balloon_test,
+                           stutter_profile (wat een frame traag maakt, per onderdeel),
                            street_lights_test, drown_test, building_fade_test,
                            arrival_test, simple_figure_test,
                            loading_after_swipe_test
-      shots/               shot_tiles, shot_iso, shot_scene, shot_vehicles
+      shots/               shot_tiles, shot_iso, shot_scene, shot_vehicles, shot_figure_faces
     data/                  het verhaal, de missies en de gesprekken als JSON (zelf aan te passen
                            en uit te breiden; uitleg in data/LEESMIJ.md)
     tests/                 unit tests: kleine onderdelen los, zonder de stad (snel);
@@ -1437,7 +1449,10 @@ Hoe het werkt (techniek)
 - `addons/vox_tiles/importer/vox_import_plugin.gd`: importer voor `.gox` (en `.vox`).
   Leest het model (`gox_parser.gd` of `vox_parser.gd` naar `voxel_model.gd`, dat
   ook het materiaal per kleur bepaalt) en maakt een mesh (`vox_mesher.gd`) met greedy
-  meshing, vertex-kleuren en ingebakken ambient occlusion. Per materiaaltype
+  meshing (voxelzijden naast elkaar met dezelfde kleur, hetzelfde materiaal en dezelfde AO
+  worden één vlak; bij `textured` tiles ongeacht de kleur), vertex-kleuren en ingebakken
+  ambient occlusion. Getest in `tests/unit/test_gox_import.gd` (eigen kleine .gox-bestanden:
+  inlezen, lagen, materialen, samenvoegen, plus echte tiles). Per materiaaltype
   een eigen surface en shader (`materials/`: opaque, metal, glass, emit,
   water, vlag).
 - `addons/vox_tiles/library/library_builder.gd`: bouwt per map onder `assets/tiles/`

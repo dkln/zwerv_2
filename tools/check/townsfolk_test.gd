@@ -88,10 +88,11 @@ func _init() -> void:
 	await _check_zebra(walkers)
 	var walked := 0
 	for person in people:
-		if person.global_position.distance_to(starts[person]) > 3.0:
+		# (who came later, while this ran, has no start)
+		if starts.has(person) and person.global_position.distance_to(starts[person]) > 3.0:
 			walked += 1
-	print("gelopen (> 3 m): %d van %d, in iets vast (metingen): %d, zebra geclaimd in %d metingen" % [walked, people.size(), stuck_inside, claims_seen])
-	_check(walked >= people.size() * 0.6, "de meeste voetgangers lopen rond (%d van %d)" % [walked, people.size()])
+	print("gelopen (> 3 m): %d van %d, in iets vast (metingen): %d, zebra geclaimd in %d metingen" % [walked, starts.size(), stuck_inside, claims_seen])
+	_check(walked >= starts.size() * 0.6, "de meeste voetgangers lopen rond (%d van %d)" % [walked, starts.size()])
 	_check(stuck_inside <= 2, "voetgangers lopen niet door de stad heen (%d keer vast)" % stuck_inside)
 	var standing := 0
 	for person in people:

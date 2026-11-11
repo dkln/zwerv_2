@@ -155,12 +155,20 @@ func _add_lamps() -> void:
 		_beam.reparent(_steering_pivot, true)
 
 
+## The look of its rider (empty without one): one of its route_seed and rider_kind, with
+## rider_look over it. Traffic builds it on a thread before it comes (TownsfolkFigure.prepare).
+func rider_figure_look() -> Dictionary:
+	if rider_kind == "":
+		return {}
+	var look := TownsfolkFigure.look_for(route_seed * 7 + 3, rider_kind)
+	look.merge(rider_look, true)
+	return look
+
+
 func _add_rider() -> void:
 	if rider_kind == "":
 		return
-	var look := TownsfolkFigure.look_for(route_seed * 7 + 3, rider_kind)
-	look.merge(rider_look, true)
-	_rider = TownsfolkFigure.create(look)
+	_rider = TownsfolkFigure.create(rider_figure_look())
 	_rider.name = "Berijder"
 	_body.add_child(_rider)
 	_rider.position = rider_hip - _rider.hip_middle()

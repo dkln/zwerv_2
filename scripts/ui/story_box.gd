@@ -25,7 +25,7 @@ extends Control
 ##   A page with choices splits the text in two (TALK_SPLIT): on the left the conversation,
 ##   what was said before (dimmed: their lines and what you answered) over the new line, kept
 ##   scrolling along with the new line as its words appear (FOLLOW_RATE), so what types out
-##   is always in view, no mouse wheel needed (▲ on its left while there is more above);
+##   is always in view, no mouse wheel needed;
 ##   on the right the choices. Each scrolls on its own when it does not fit
 ##   (the mouse wheel too); a yellow arrow blinks on the right while there are more choices
 ##   below (▼) or above (▲), and choosing scrolls the chosen one into view. The box keeps its
@@ -117,7 +117,6 @@ var _scroll: ScrollContainer        # scrolls the column when it does not fit
 var _history_text: RichTextLabel    # what was said before in this conversation, dimmed
 var _history: Array[String] = []    # its lines (BBCode)
 var _follow_left := 0.0             # seconds the conversation still keeps its newest line in view
-var _said_before: Label             # ▲ on the left: more of the conversation above
 var _more_below: Label              # the blinking arrows: more to scroll to
 var _more_above: Label
 var _box: Control                  # the box at the bottom (portrait and text)
@@ -226,7 +225,6 @@ func _process(delta: float) -> void:
 		if next == int(now) and absf(wanted - now) >= 1.0:
 			next += int(signf(wanted - now))
 		_scroll.scroll_vertical = next
-	_said_before.visible = history_room > 1.0 and _scroll.scroll_vertical > 1.0 and fmod(_blink_clock, 0.8) < 0.5
 	# more choices to scroll to: a blinking arrow on the right
 	var room := _choices_box.size.y - _choices_scroll.size.y if choosing else 0.0
 	var blink := fmod(_blink_clock, 0.8) < 0.5
@@ -607,11 +605,6 @@ func _build() -> void:
 	_more.offset_right = -20
 	_more.offset_bottom = -14
 	_text_panel.add_child(_more)
-	# ▲ at the top left of a conversation: more of it above
-	_said_before = _make_label("▲", font_body, 16, UiStyle.ACCENT)
-	_said_before.position = Vector2(6, 30)
-	_said_before.visible = false
-	_text_panel.add_child(_said_before)
 	for below in [true, false]:
 		var arrow := _make_label("▼" if below else "▲", font_body, 16, UiStyle.ACCENT)
 		arrow.anchor_left = 1.0

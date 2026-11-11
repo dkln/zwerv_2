@@ -679,6 +679,10 @@ class VoxelFigure:
 	## face its colour as it is, so white stays white (the Zebraklok); the light of the
 	## scene still shades it.
 	var flat_shading := false
+	## Faces side by side in one plane, of one colour and material and an even shade (no
+	## ambient occlusion across them), drawn as one rectangle (greedy meshing): far fewer
+	## triangles, the same look. Off: a face per voxel side (to compare).
+	var merge_faces := true
 
 	func put(x: int, y: int, z: int, colour: Color, glow := false) -> void:
 		var cell := Vector3i(x, y, z)
@@ -778,6 +782,26 @@ class VoxelFigure:
 	## the top of it, in its middle.
 	## `materials`: kind -> Material; `grade`: a Callable(Color) -> Color for every colour.
 	func to_parts(voxel: float, rig: Dictionary, materials: Dictionary, grade: Callable) -> Dictionary:
+		return VoxelFigure.parts_from(to_faces(voxel, rig, grade), materials)
+
+	## The meshes of `faces` (to_faces), each surface in its material from `materials` (kind ->
+	## Material; cloth where the kind has none): {"meshes", "pivots", "height"} as to_parts.
+	static func parts_from(faces: Dictionary, materials: Dictionary) -> Dictionary:
+		var meshes := {}
+		for key: String in faces.surfaces:
+			var part := key.get_slice("/", 0)
+			var kind := key.get_slice("/", 1)
+			if not meshes.has(part):
+				meshes[part] = ArrayMesh.new()
+			(faces.surfaces[key] as FaceArrays).commit(meshes[part], materials.get(kind, materials.cloth))
+		if not meshes.has("body"):
+			meshes["body"] = ArrayMesh.new()
+		return {"meshes": meshes, "pivots": faces.pivots, "height": faces.height}
+
+	## The work of to_parts without making any meshes or materials (so it can run on a thread
+	## of its own, TownsfolkFigure.prepare): {"surfaces": "part/kind" -> FaceArrays, "pivots",
+	## "height"}; parts_from makes the meshes of it.
+	func to_faces(voxel: float, rig: Dictionary, grade: Callable) -> Dictionary:
 		var lowest := Vector3i(1 << 20, 1 << 20, 1 << 20)
 		var highest := -lowest
 		for cell: Vector3i in cells:
@@ -810,7 +834,14 @@ class VoxelFigure:
 		# the faces, by part and kind
 		var kind_cache := {}          # Color -> kind
 		var grade_cache := {}         # Color -> graded Color
-		var tools := {}               # "part/kind" -> SurfaceTool
+		var surfaces := {}            # "part/kind" -> FaceArrays
+		var outward_caches := {}      # part -> {grid corner -> outward direction}
+		var part_rects := {}          # part -> its faces as rectangles (FaceRect)
+		for part_name: String in part_sets:
+			outward_caches[part_name] = {}
+			part_rects[part_name] = []
+		# faces of one colour and an even shade, by surface, side and layer (merge_faces)
+		var to_merge := {}            # [key, side, layer] -> {Vector2i (u, v) -> [cell, colour, level]}
 		for cell: Vector3i in cells:
 			var colour: Color = cells[cell]
 			if not kind_cache.has(colour):
@@ -819,28 +850,32 @@ class VoxelFigure:
 			var kind: String = "glow" if glowing.has(cell) else kind_cache[colour]
 			var part: String = part_of[cell]
 			var key := part + "/" + kind
-			if not tools.has(key):
-				var tool := SurfaceTool.new()
-				tool.begin(Mesh.PRIMITIVE_TRIANGLES)
-				# CUSTOM0: each corner's outward direction, for the outline (figure_outline.gdshader)
-				tool.set_custom_format(0, SurfaceTool.CUSTOM_RGB_FLOAT)
-				tools[key] = tool
-			for side: Vector3i in [Vector3i.RIGHT, Vector3i.LEFT, Vector3i.UP, Vector3i.DOWN, Vector3i.BACK, Vector3i.FORWARD]:
+			if not surfaces.has(key):
+				surfaces[key] = FaceArrays.new()
+			for side: Vector3i in SIDES:
 				var next := cell + side
 				if cells.has(next) and part_of[next] == part:
 					continue
-				_add_face(tools[key], cell, Vector3(cell) - centre, side, grade_cache[colour], voxel, cells, flat_shading, part_sets[part])
-		var meshes := {}
-		for key: String in tools:
-			var part := key.get_slice("/", 0)
-			var kind := key.get_slice("/", 1)
-			if not meshes.has(part):
-				meshes[part] = ArrayMesh.new()
-			var tool: SurfaceTool = tools[key]
-			tool.set_material(materials.get(kind, materials.cloth))
-			tool.commit(meshes[part])
-		if not meshes.has("body"):
-			meshes["body"] = ArrayMesh.new()
+				var levels := _corner_levels(cell, side, cells, flat_shading)
+				var even := levels[0] == levels[1] and levels[1] == levels[2] and levels[2] == levels[3]
+				if merge_faces and even:
+					var table: Dictionary = _face_table(side)
+					var plane_key := [key, side, cell[table.axis]]
+					if not to_merge.has(plane_key):
+						to_merge[plane_key] = {}
+					to_merge[plane_key][Vector2i(cell[table.u_axis], cell[table.v_axis])] = [cell, grade_cache[colour], levels[0]]
+				else:
+					part_rects[part].append(FaceRect.new(key, side, cell, Vector3i.ONE, grade_cache[colour], levels))
+		for plane_key: Array in to_merge:
+			var part: String = (plane_key[0] as String).get_slice("/", 0)
+			_merge_plane(to_merge[plane_key], plane_key[0], plane_key[1], part_rects[part])
+		for part_name: String in part_rects:
+			var rects: Array = part_rects[part_name]
+			for rect: FaceRect in rects:
+				rect.find_outwards(outward_caches[part_name], part_sets[part_name])
+			_close_outline(rects)
+			for rect: FaceRect in rects:
+				rect.add_to(surfaces[rect.key], centre, voxel, flat_shading)
 		# the joints: the middle of the top of each limb
 		var pivots := {}
 		for limb: String in rig:
@@ -858,7 +893,10 @@ class VoxelFigure:
 					high = Vector3(maxf(high.x, cell.x + 1), 0, maxf(high.z, cell.z + 1))
 			var joint := Vector3((low.x + high.x) * 0.5, top + 0.5, (low.z + high.z) * 0.5) - centre
 			pivots[limb] = Vector3(joint.x, joint.y, -joint.z) * voxel
-		return {"meshes": meshes, "pivots": pivots, "height": (highest.y + 1 - lowest.y) * voxel}
+		return {"surfaces": surfaces, "pivots": pivots, "height": (highest.y + 1 - lowest.y) * voxel}
+
+	## The six sides of a voxel, in the order its faces are added.
+	const SIDES: Array[Vector3i] = [Vector3i.RIGHT, Vector3i.LEFT, Vector3i.UP, Vector3i.DOWN, Vector3i.BACK, Vector3i.FORWARD]
 
 	## The light on each kind of face: the top full, the front and back less, the left and
 	## right sides less again, the bottom least (strong steps: blocks of one colour stay apart).
@@ -868,12 +906,177 @@ class VoxelFigure:
 	## How much each level of corner occlusion darkens a vertex (0 = open .. 3 = shut in).
 	const OCCLUSION := [1.0, 0.8, 0.66, 0.52]
 
+	## The ambient occlusion level (0 open .. 3 shut in) of each corner of the face of `cell` on
+	## `side`, in the order of its table (_face_table); all 0 for flat shading.
+	static func _corner_levels(cell: Vector3i, side: Vector3i, cells: Dictionary, flat: bool) -> PackedInt32Array:
+		var levels := PackedInt32Array([0, 0, 0, 0])
+		if flat:
+			return levels
+		var table: Dictionary = _face_table(side)
+		var outside := cell + side
+		for corner_index in 4:
+			var along: Vector3i = table.along[corner_index]
+			var across: Vector3i = table.across[corner_index]
+			var first := cells.has(outside + along)
+			var second := cells.has(outside + across)
+			levels[corner_index] = 3 if first and second else int(first) + int(second) + int(cells.has(outside + along + across))
+		return levels
+
+	## Greedy meshing of the even faces in one plane (`faces`: (u, v) -> [cell, colour, level]):
+	## runs of the same colour and level along u, then grown along v while every row matches,
+	## each a FaceRect in `rects`.
+	static func _merge_plane(faces: Dictionary, key: String, side: Vector3i, rects: Array) -> void:
+		var table: Dictionary = _face_table(side)
+		var spots: Array = faces.keys()
+		spots.sort_custom(func(first: Vector2i, second: Vector2i) -> bool:
+			return first.y < second.y or (first.y == second.y and first.x < second.x))
+		var used := {}
+		for spot: Vector2i in spots:
+			if used.has(spot):
+				continue
+			var face: Array = faces[spot]
+			var same := func(other: Vector2i) -> bool:
+				if used.has(other) or not faces.has(other):
+					return false
+				var other_face: Array = faces[other]
+				return other_face[1] == face[1] and other_face[2] == face[2]
+			var width := 1
+			while same.call(spot + Vector2i(width, 0)):
+				width += 1
+			var height := 1
+			var growing := true
+			while growing:
+				for step in width:
+					if not same.call(spot + Vector2i(step, height)):
+						growing = false
+						break
+				if growing:
+					height += 1
+			for row in height:
+				for step in width:
+					used[spot + Vector2i(step, row)] = true
+			var extent := Vector3i.ONE
+			extent[table.u_axis] = width
+			extent[table.v_axis] = height
+			var level: int = face[2]
+			rects.append(FaceRect.new(key, side, face[0], extent, face[1], PackedInt32Array([level, level, level, level])))
+
+	## Where a corner of one rectangle lies on the edge of another (a T-junction, now that
+	## faces are merged), its outward direction becomes the one of that edge there, so the
+	## outline's shell (figure_outline.gdshader pushes every corner out along it) stays closed
+	## without cracks. Pass after pass till nothing changes (at most 12), as such corners can
+	## lie on such edges in turn.
+	static func _close_outline(rects: Array) -> void:
+		# the edges by the line they lie on: [axis, the two other coordinates]
+		var lines := {}
+		for rect: FaceRect in rects:
+			for corner_index in 4:
+				var next_index := (corner_index + 1) % 4
+				var start: Vector3i = rect.corners[corner_index]
+				var end: Vector3i = rect.corners[next_index]
+				var axis := 0 if start.x != end.x else (1 if start.y != end.y else 2)
+				var line_key := _line_key(start, axis)
+				if not lines.has(line_key):
+					lines[line_key] = []
+				if start[axis] < end[axis]:
+					lines[line_key].append([start[axis], end[axis], rect, corner_index, next_index])
+				else:
+					lines[line_key].append([end[axis], start[axis], rect, next_index, corner_index])
+		# the corners in a T, once: [rect, corner, the edge's rect, its first and last corner, how far along]
+		var junctions := []
+		for rect: FaceRect in rects:
+			for corner_index in 4:
+				var point: Vector3i = rect.corners[corner_index]
+				for axis in 3:
+					for edge: Array in lines.get(_line_key(point, axis), []):
+						if point[axis] > edge[0] and point[axis] < edge[1]:
+							junctions.append([rect, corner_index, edge[2], edge[3], edge[4],
+								float(point[axis] - edge[0]) / float(edge[1] - edge[0])])
+		for pass_index in 12:
+			var changed := false
+			for junction: Array in junctions:
+				var rect: FaceRect = junction[0]
+				var edge_rect: FaceRect = junction[2]
+				var way: Vector3 = edge_rect.outwards[junction[3]].lerp(edge_rect.outwards[junction[4]], junction[5])
+				if not way.is_equal_approx(rect.outwards[junction[1]]):
+					rect.outwards[junction[1]] = way
+					changed = true
+			if not changed:
+				return
+
+	static func _line_key(point: Vector3i, axis: int) -> Vector3i:
+		var line_key := point
+		line_key[axis] = -(1 << 20) + axis   # the same for every point on the line
+		return line_key
+
+
 	## One face of the voxel `cell` (placed at `corner`, in voxels, z running backwards) on
 	## `side`, each of its corners darkened by the voxels round it (ambient occlusion: in a
 	## corner or a gap it gets less light), as voxel art does.
-	static func _add_face(tool: SurfaceTool, cell: Vector3i, corner: Vector3, side: Vector3i, colour: Color,
-			voxel: float, cells: Dictionary, flat := false, part_set := {}) -> void:
-		# the face's four corners in the voxel (0..1)
+	static func _add_face(faces: FaceArrays, cell: Vector3i, corner: Vector3, side: Vector3i, colour: Color,
+			voxel: float, cells: Dictionary, flat := false, part_set := {}, outward_cache := {}) -> void:
+		var table: Dictionary = _face_table(side)
+		var normal: Vector3 = table.normal
+		# light from above, each kind of face its own level (FACE_LIGHT), so faces of one colour
+		# that meet at an edge still read apart
+		var light := 1.0 if flat else float(table.light)
+		var points: Array = table.points
+		var grid: Array = table.grid
+		var alongs: Array = table.along
+		var acrosses: Array = table.across
+		var placed: Array[Vector3] = []
+		var shades: Array[Color] = []
+		var outwards: Array[Color] = []
+		var outside := cell + side
+		for corner_index in 4:
+			var at: Vector3 = corner + points[corner_index]
+			placed.append(Vector3(at.x, at.y, -at.z) * voxel)
+			# the two neighbours along the face at this corner and the one diagonal to it
+			var level := 0
+			if not flat:
+				var along: Vector3i = alongs[corner_index]
+				var across: Vector3i = acrosses[corner_index]
+				var first := cells.has(outside + along)
+				var second := cells.has(outside + across)
+				level = 3 if first and second else int(first) + int(second) + int(cells.has(outside + along + across))
+			var shade: float = light * OCCLUSION[level]
+			shades.append(Color(colour.r * shade, colour.g * shade, colour.b * shade))
+			# each corner's outward direction, for the outline (figure_outline.gdshader); a
+			# grid corner is shared by several faces, so it is worked out once
+			var grid_point: Vector3i = cell + grid[corner_index]
+			if not outward_cache.has(grid_point):
+				outward_cache[grid_point] = _outward_way(grid_point, part_set)
+			var way: Vector3 = outward_cache[grid_point]
+			if way.length_squared() < 0.0001:
+				way = normal   # not clear here: the face's own normal
+			way = way.normalized()
+			outwards.append(Color(way.x, way.y, way.z))
+		# the mirror flips the winding: draw the triangles the other way round; split the
+		# quad along the diagonal that keeps the occlusion smooth
+		var order: Array = FACE_ORDER
+		if shades[0].v + shades[2].v < shades[1].v + shades[3].v:
+			order = FACE_ORDER_TURNED
+		faces.add_face(order, placed, normal, shades, table.uvs, outwards)
+
+
+	## The two ways of cutting a face into triangles (see _add_face).
+	const FACE_ORDER := [0, 2, 1, 0, 3, 2]
+	const FACE_ORDER_TURNED := [1, 3, 2, 1, 0, 3]
+	static var _face_tables := {}
+
+	## Fills the tables of all six sides (_face_table) at once: a thread building faces
+	## (TownsfolkFigure.prepare) then only reads them.
+	static func fill_face_tables() -> void:
+		for side: Vector3i in SIDES:
+			_face_table(side)
+
+	## What stays the same for every face on `side`: its four corners in the voxel (0..1), the
+	## grid corners, per corner the neighbours along and across the face (ambient occlusion),
+	## where in the face each corner is (uv: 0..1, v up the sides), the normal (z mirrored, so
+	## the front, z = 0, faces +z) and its light (FACE_LIGHT).
+	static func _face_table(side: Vector3i) -> Dictionary:
+		if _face_tables.has(side):
+			return _face_tables[side]
 		var points: Array
 		match side:
 			Vector3i.RIGHT:
@@ -888,60 +1091,33 @@ class VoxelFigure:
 				points = [Vector3(1, 0, 1), Vector3(1, 1, 1), Vector3(0, 1, 1), Vector3(0, 0, 1)]
 			_:
 				points = [Vector3(0, 0, 0), Vector3(0, 1, 0), Vector3(1, 1, 0), Vector3(1, 0, 0)]
-		# z runs backwards in the figure: mirror it so the front (z = 0) faces +z
-		var normal := Vector3(side.x, side.y, -side.z)
-		# light from above, each kind of face its own level (FACE_LIGHT), so faces of one colour
-		# that meet at an edge still read apart
-		var light := 1.0 if flat else float(FACE_LIGHT.get(side, 0.8))
-		var placed: Array[Vector3] = []
-		var shades: Array[Color] = []
-		var outside := cell + side
+		# the axis across the face (its layer) and the two along it
+		var axis := 0 if side.x != 0 else (1 if side.y != 0 else 2)
+		var table := {"points": points, "grid": [], "along": [], "across": [], "uvs": PackedVector2Array(),
+			"normal": Vector3(side.x, side.y, -side.z), "light": float(FACE_LIGHT.get(side, 0.8)),
+			"axis": axis, "u_axis": (axis + 1) % 3, "v_axis": (axis + 2) % 3}
 		for point: Vector3 in points:
-			var at := corner + point
-			placed.append(Vector3(at.x, at.y, -at.z) * voxel)
-			# the two neighbours along the face at this corner and the one diagonal to it
-			var along := Vector3i.ZERO
-			var across := Vector3i.ZERO
+			table.grid.append(Vector3i(point))
 			if side.x != 0:
-				along = Vector3i(0, int(point.y) * 2 - 1, 0)
-				across = Vector3i(0, 0, int(point.z) * 2 - 1)
+				table.along.append(Vector3i(0, int(point.y) * 2 - 1, 0))
+				table.across.append(Vector3i(0, 0, int(point.z) * 2 - 1))
+				table.uvs.append(Vector2(point.z, point.y))
 			elif side.y != 0:
-				along = Vector3i(int(point.x) * 2 - 1, 0, 0)
-				across = Vector3i(0, 0, int(point.z) * 2 - 1)
+				table.along.append(Vector3i(int(point.x) * 2 - 1, 0, 0))
+				table.across.append(Vector3i(0, 0, int(point.z) * 2 - 1))
+				table.uvs.append(Vector2(point.x, point.z))
 			else:
-				along = Vector3i(int(point.x) * 2 - 1, 0, 0)
-				across = Vector3i(0, int(point.y) * 2 - 1, 0)
-			var first := cells.has(outside + along)
-			var second := cells.has(outside + across)
-			var level := 3 if first and second else int(first) + int(second) + int(cells.has(outside + along + across))
-			if flat:
-				level = 0
-			var shade: float = light * OCCLUSION[level]
-			shades.append(Color(colour.r * shade, colour.g * shade, colour.b * shade))
-		# the mirror flips the winding: draw the triangles the other way round; split the
-		# quad along the diagonal that keeps the occlusion smooth
-		var order: Array = [0, 2, 1, 0, 3, 2]
-		if shades[0].v + shades[2].v < shades[1].v + shades[3].v:
-			order = [1, 3, 2, 1, 0, 3]
-		for index: int in order:
-			tool.set_normal(normal)
-			tool.set_color(shades[index])
-			# where in the voxel's face this corner is (0..1, v up the sides)
-			var point: Vector3 = points[index]
-			tool.set_custom(0, _outward(cell + Vector3i(point), part_set, normal))
-			if side.x != 0:
-				tool.set_uv(Vector2(point.z, point.y))
-			elif side.y != 0:
-				tool.set_uv(Vector2(point.x, point.z))
-			else:
-				tool.set_uv(Vector2(point.x, point.y))
-			tool.add_vertex(placed[index])
+				table.along.append(Vector3i(int(point.x) * 2 - 1, 0, 0))
+				table.across.append(Vector3i(0, int(point.y) * 2 - 1, 0))
+				table.uvs.append(Vector2(point.x, point.y))
+		_face_tables[side] = table
+		return table
 
 
 	## The outward direction at the grid corner `grid_point` (the corner between the eight
-	## voxels round it): towards the empty ones of its part, mirrored in z as the faces are;
-	## as a Color (CUSTOM0). `fallback`: the face's normal, when it is not clear.
-	static func _outward(grid_point: Vector3i, part_set: Dictionary, fallback: Vector3) -> Color:
+	## voxels round it): towards the empty ones of its part, mirrored in z as the faces are,
+	## not normalised; zero when it is not clear (then the face's normal is used).
+	static func _outward_way(grid_point: Vector3i, part_set: Dictionary) -> Vector3:
 		var way := Vector3.ZERO
 		if not part_set.is_empty():
 			for dx in [-1, 0]:
@@ -950,11 +1126,112 @@ class VoxelFigure:
 						var around := grid_point + Vector3i(dx, dy, dz)
 						if not part_set.has(around):
 							way += Vector3(dx + 0.5, dy + 0.5, dz + 0.5)
-		way = Vector3(way.x, way.y, -way.z)
-		if way.length_squared() < 0.0001:
-			way = fallback
-		way = way.normalized()
-		return Color(way.x, way.y, way.z)
+		return Vector3(way.x, way.y, -way.z)
+
+
+## One face of a figure as a rectangle of `extent` voxel faces (1 x 1: a single one) from
+## the voxel `cell` on `side`: its four grid corners (in the order of VoxelFigure._face_table),
+## the shade level of each and their outward directions for the outline.
+class FaceRect:
+	var key: String
+	var side: Vector3i
+	var colour: Color
+	var levels: PackedInt32Array
+	var corners: Array[Vector3i] = []
+	var outwards: Array[Vector3] = []
+	var extent: Vector3i
+
+	func _init(surface_key: String, face_side: Vector3i, cell: Vector3i, face_extent: Vector3i, face_colour: Color,
+			corner_levels: PackedInt32Array) -> void:
+		key = surface_key
+		side = face_side
+		colour = face_colour
+		levels = corner_levels
+		extent = face_extent
+		var table: Dictionary = VoxelFigure._face_table(side)
+		for corner_index in 4:
+			var grid: Vector3i = table.grid[corner_index]
+			corners.append(cell + Vector3i(grid.x * extent.x, grid.y * extent.y, grid.z * extent.z))
+
+	## Each corner's outward direction (VoxelFigure._outward_way, worked out once per grid
+	## corner in `cache`), the face's normal where it is not clear; of length 1.
+	func find_outwards(cache: Dictionary, part_set: Dictionary) -> void:
+		var normal: Vector3 = VoxelFigure._face_table(side).normal
+		outwards.clear()
+		for corner: Vector3i in corners:
+			if not cache.has(corner):
+				cache[corner] = VoxelFigure._outward_way(corner, part_set)
+			var way: Vector3 = cache[corner]
+			if way.length_squared() < 0.0001:
+				way = normal
+			outwards.append(way.normalized())
+
+	## Its two triangles into `faces`, placed round `centre` (in voxels, z mirrored so the
+	## front faces +z), shaded per corner (FACE_LIGHT, OCCLUSION).
+	func add_to(faces: FaceArrays, centre: Vector3, voxel: float, flat: bool) -> void:
+		var table: Dictionary = VoxelFigure._face_table(side)
+		var light := 1.0 if flat else float(table.light)
+		var placed: Array[Vector3] = []
+		var shades: Array[Color] = []
+		var corner_outwards: Array[Color] = []
+		var uvs := PackedVector2Array()
+		for corner_index in 4:
+			var at := Vector3(corners[corner_index]) - centre
+			placed.append(Vector3(at.x, at.y, -at.z) * voxel)
+			var shade: float = light * VoxelFigure.OCCLUSION[levels[corner_index]]
+			shades.append(Color(colour.r * shade, colour.g * shade, colour.b * shade))
+			var way: Vector3 = outwards[corner_index]
+			corner_outwards.append(Color(way.x, way.y, way.z))
+			# where in the face this corner is (as for one voxel: u, v up the sides), in voxels
+			var face_size := Vector2(extent.x, extent.y)
+			if side.x != 0:
+				face_size = Vector2(extent.z, extent.y)
+			elif side.y != 0:
+				face_size = Vector2(extent.x, extent.z)
+			uvs.append((table.uvs[corner_index] as Vector2) * face_size)
+		# the mirror flips the winding: the triangles the other way round; cut along the
+		# diagonal that keeps the occlusion smooth
+		var order: Array = VoxelFigure.FACE_ORDER
+		if shades[0].v + shades[2].v < shades[1].v + shades[3].v:
+			order = VoxelFigure.FACE_ORDER_TURNED
+		faces.add_face(order, placed, table.normal, shades, uvs, corner_outwards)
+
+
+## The faces of one surface of a figure (a part in one kind of material) as they are added
+## (VoxelFigure._add_face), in plain arrays: much quicker than a SurfaceTool vertex by vertex.
+## CUSTOM0 holds each corner's outward direction (figure_outline.gdshader).
+class FaceArrays:
+	var vertices := PackedVector3Array()
+	var normals := PackedVector3Array()
+	var colours := PackedColorArray()
+	var uvs := PackedVector2Array()
+	var outwards := PackedFloat32Array()
+
+	## One face: its two triangles, the corners (0..3) in `order`.
+	func add_face(order: Array, corners: Array[Vector3], normal: Vector3, shades: Array[Color],
+			corner_uvs: PackedVector2Array, corner_outwards: Array[Color]) -> void:
+		for index: int in order:
+			vertices.append(corners[index])
+			normals.append(normal)
+			colours.append(shades[index])
+			uvs.append(corner_uvs[index])
+			var outward: Color = corner_outwards[index]
+			outwards.append(outward.r)
+			outwards.append(outward.g)
+			outwards.append(outward.b)
+
+	## Adds these faces to `mesh` as a surface with `material`.
+	func commit(mesh: ArrayMesh, material: Material) -> void:
+		var arrays := []
+		arrays.resize(Mesh.ARRAY_MAX)
+		arrays[Mesh.ARRAY_VERTEX] = vertices
+		arrays[Mesh.ARRAY_NORMAL] = normals
+		arrays[Mesh.ARRAY_COLOR] = colours
+		arrays[Mesh.ARRAY_TEX_UV] = uvs
+		arrays[Mesh.ARRAY_CUSTOM0] = outwards
+		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays, [], {},
+			Mesh.ARRAY_CUSTOM_RGB_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM0_SHIFT)
+		mesh.surface_set_material(mesh.get_surface_count() - 1, material)
 
 
 # ------------------------------------------------------------------ the figures
