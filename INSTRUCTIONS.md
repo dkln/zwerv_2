@@ -198,8 +198,8 @@ niet het verkeer van de hele stad:
   rijstrook tussen `appear_from` (110 m) en `appear_within` van de speler (een bewaarde van
   dezelfde soort, `Vehicle.put_down`, of een nieuwe). Wrakken, trams en treinen, en de Auto en
   SUV uit de scène blijven altijd.
-- Hoeveel: `vehicle_count` (63) maal het aandeel van het uur van de dag en de wijk van de
-  speler, hooguit `most_vehicles` (112); de diensten `services_count` (7) maal alleen het
+- Hoeveel: `vehicle_count` (80) maal het aandeel van het uur van de dag en de wijk van de
+  speler, hooguit `most_vehicles` (141); de diensten `services_count` (7) maal alleen het
   uuraandeel, minstens `fewest_services` (2). Wat er komt: een voertuigsoort (`auto`, `fiets`,
   `brommer`, `vracht`, `bus`, `landbouw`, `klein`, de derde kolom van `MIX`) getrokken met de
   gewichten van het uur en van de wijk waar het verschijnt, dan een van die soort die de
@@ -273,7 +273,7 @@ stadsbewoners lopen over de stoep- en pleintiles (`stoep/`, `plein/`, zonder geb
 buurt van de speler, van cel naar cel, nu en dan even stilstaand; een plek waar ze niet in een
 rechte lijn kunnen komen zonder tegen iets van de stad te lopen (lantaarnpaal, bank, boom)
 kiezen ze niet. Ook dit is een set rond de speler: `count` (48) maal het aandeel van het uur en
-de wijk (`data/drukte.json`), minstens `fewest` (6), hooguit `most` (68). Trappen en loopbruggen:
+de wijk (`data/drukte.json`), minstens `fewest` (6), hooguit `most` (90; de winkelstraten van Centrum, Grote Markt, Schilderswijk en Voorburg zijn het drukst). Trappen en loopbruggen:
 het dek van een loopbrug (`DECK_GROUND`, `brug/loopbrug*` boven straatniveau) is beloopbaar,
 elke cel op zijn eigen laag; de rechte trappen van de Props-laag (`STAIR_PROPS`, aan elkaar
 geschakeld waar de bovenkant van de een de voet van de volgende is) verbinden de stoep onder

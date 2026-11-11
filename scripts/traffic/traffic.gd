@@ -90,8 +90,8 @@ const START_CLEAR := 24.0
 const NEAR_REFRESH := 25.0
 
 ## How many vehicles there are at a share of 1.0 (Crowd.traffic_share), and the most.
-@export var vehicle_count := 63
-@export var most_vehicles := 112   # the rush hours round Centraal (1.6 x 1.1 x 63)
+@export var vehicle_count := 80
+@export var most_vehicles := 141   # the rush hours round Centraal (1.6 x 1.1 x 80)
 ## How many of the SERVICES at a share of 1.0, and the fewest.
 @export var services_count := 7
 @export var fewest_services := 2

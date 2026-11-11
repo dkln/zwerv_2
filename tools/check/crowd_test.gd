@@ -69,7 +69,7 @@ func _init() -> void:
 	walkers._keep_round_player()
 	await _traffic_ticks(traffic, 2)
 	# new people and riders get their figure built on a thread first: a moment
-	for attempt in 60:
+	for attempt in 150:
 		wanted = traffic.wanted_counts()
 		if walkers._arriving.is_empty() and traffic._town.size() >= wanted.x:
 			break

@@ -56,7 +56,7 @@ const STAIR_PROPS := ["trappen/trap_1m", "trappen/trap_3m", "trappen/trap_metaal
 ## How many walk at a share of 1.0 (Crowd.pedestrian_share), the fewest and the most there are.
 @export var count := 48
 @export var fewest := 6
-@export var most := 68
+@export var most := 90
 @export var reach := 110.0
 @export var return_near := 50.0
 ## Seconds someone stays (drawn between the two) before it goes once unseen and over
