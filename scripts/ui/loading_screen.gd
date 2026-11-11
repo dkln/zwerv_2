@@ -3,7 +3,7 @@ extends CanvasLayer
 ## panel): the title, the loading text ("— STAD LADEN —") and a segmented bar with the
 ## percentage, under the CRT look of the HUD (with the HUD's settings when there is one).
 ## Shown by the DetailNiveau (scripts/world/level_of_detail.gd) while it merges the map.
-## Waiting music under it (MUSIC: laden_loop.ogg, tools/megadrive/laden.py), fading in when
+## Waiting music under it (MUSIC: laden_loop.ogg, made from the composition by tools/muziek/), fading in when
 ## it opens and out when it goes; meanwhile nothing else of the town is heard (GROUP).
 ##   var screen := LoadingScreen.new()
 ##   screen.text = "Stad laden…"

@@ -1,6 +1,6 @@
 ---
 name: muziek-compositie
-description: Gebruik als de gebruiker een nieuwe compositie aanlevert (een uitgeschreven nummer van Gemini of een andere componist: tempo, toonsoort, instrumenten, akkoorden en noten per maat; geplakt of in een bestand zoals nieuwe_muziek.txt) en vraagt daar de muziek van ZWERVR van te maken; zet de compositie letterlijk om naar tools/muziek/composities/<naam>.py, rendert de intro en alle afgeleide stukken (menu, karakterkeuze, handelaar, spel, deuntjes) in Mega Drive-klank en controleert ze.
+description: Gebruik als de gebruiker een nieuwe compositie aanlevert (een uitgeschreven nummer van Gemini of een andere componist: tempo, toonsoort, instrumenten, akkoorden en noten per maat; geplakt of in een bestand zoals nieuwe_muziek.txt) en vraagt daar de muziek van ZWERVR van te maken; zet de compositie letterlijk om naar tools/muziek/composities/<naam>.py, rendert de intro en alle afgeleide stukken (menu, karakterkeuze, handelaar, laadscherm, spel, deuntjes) in Mega Drive-klank en controleert ze.
 ---
 
 # Een nieuwe compositie wordt de muziek van ZWERVR
@@ -28,10 +28,16 @@ vragen.
    - **gaten**: speelt een partij volgens de tekst wel maar staan haar noten er niet (bijv. "de
      bas speelt pompende octaven" maar een sectie noemt de bas niet), vul dan uit die beschrijving
      in dezelfde tekst, en schrijf bij de maat `# afgeleid: ...` met de reden;
-   - `MOMENTEN` voor de intro (`logo`, `verhaal`, `hoogtepunt`, `duel`, `crash`): het logo op de
-     eerste grote inzet (na ten minste 6 s: daarvoor staat de openingsregel), het verhaal een
-     paar maten later, de andere drie op de grootste wendingen (refrein, breakdown, finale),
-     oplopend.
+   - `MOMENTEN` voor de intro (`logo`, `verhaal`, `hoogtepunt`, `duel`, `crash`, `rust`): het
+     logo op de eerste grote inzet (na ten minste 6 s: daarvoor staat de openingsregel), het
+     verhaal een paar maten later, de volgende drie op de grootste wendingen (refrein, breakdown,
+     finale), oplopend, en `rust` als (maat, tel) op de eindklap. Kies ze zo dat het verhaal
+     gelijkmatig rolt (in `scripts/ui/intro.gd` wijst `CRAWL_CUES` de alinea's aan die op
+     hoogtepunt, duel en crash binnenkomen: pas die aan als het tempo van het rollen anders
+     ongelijk wordt; streef naar gelijke tijd per alinea).
+   - **Een wens van de gebruiker** (blijer, sneller, een stijl als voorbeeld): niet in de maten,
+     maar in `BIJSTELLING` (docs/MUZIEK.md), met de reden en de datum als commentaar. Bij een
+     voorbeeld uit een bestaand nummer alleen kenmerken (groove, tempo, klankkleur), nooit noten.
 3. **Zet hem actief**: `ACTIEF = "<naam>"` in `tools/muziek/composities/actief.py`.
 4. **Render**: `tools/muziek/render.sh` (alles naar `assets/audio/muziek/`, plus
    `scripts/ui/intro_timing.gd`). Een fout in het compositiebestand geeft een melding met de

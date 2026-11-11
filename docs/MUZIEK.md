@@ -30,6 +30,10 @@ renderen. Eerst luisteren zonder iets te vervangen: `tools/muziek/render.sh --ui
 - **Letterlijk.** De intro is de compositie zoals ze geschreven is: elke noot, elk akkoord,
   elke tel, het tempo en de maatsoort. Geen eigen variaties, geen noten "verbeterd", de
   chromatiek van de componist blijft (de controle meldt ze, ter controle, als buiten de toonsoort).
+- **Bijstellen mag, apart.** Wil de gebruiker de muziek anders (blijer, sneller, ...), dan
+  blijven de overgezette maten letterlijk en komt de wens in `BIJSTELLING` in het
+  compositiebestand: een laag die er bij het maken overheen gaat (zie hieronder), met de reden
+  erbij. Terugdraaien is die regel weghalen.
 - **Gaten vullen uit de tekst zelf.** Schrijft de tekst een partij niet uit waar ze wel speelt
   (bijvoorbeeld: "de arpeggiator speelt onafgebroken" maar het refrein noemt geen arp), dan komt
   het figuur uit de beschrijving van dat instrument of die sectie in dezelfde tekst, en staat in
@@ -37,6 +41,13 @@ renderen. Eerst luisteren zonder iets te vervangen: `tools/muziek/render.sh --ui
 - **Afgeleid, niet nieuw.** De andere stukken gebruiken alleen materiaal van de compositie: haar
   maten, melodieën, akkoorden en klanken. Wat er bij mag: een pad of een baslijn gespeld uit haar
   akkoorden, een andere klank voor haar melodie, een ander drumpatroon met haar drums.
+- **De spel-lus is achtergrond.** Hij speelt lang onder het spelen door, dus hij voelt rustig
+  (half-time: kick op 1, clap op 3, aangehouden akkoorden, een trage bas), in de klank van de
+  handelaar (elektrische piano), met afwisseling tussen de secties en hun invulling zoals de
+  handelaarslus, zonder gitaar, felle lead, crashes, doorlopende arpeggio of shuffle; de melodie
+  af en toe. In het spel staat hij zachter dan de andere muziek (`CITY_LOOP_SOFTER_DB` in
+  `hud.gd`, 6 dB), zodat hij de geluiden van de stad niet overstemt. De energie zit in de intro,
+  het menu en de deuntjes.
 - **Mega Drive-grenzen.** FM-klanken (4 operatoren, de 8 algoritmen, feedback), PSG-blokgolven
   met de stappen van de chip, drums als 8-bit samples. Het aantal stemmen tegelijk is niet
   beperkt.
@@ -53,7 +64,7 @@ renderen. Eerst luisteren zonder iets te vervangen: `tools/muziek/render.sh --ui
 from notation import cycle, drum_run, drums, notes, run
 
 TITEL = "Blast Processing Overdrive"
-TEMPO = 136                      # BPM
+TEMPO = 136                      # BPM (zoals geschreven; BIJSTELLING kan het veranderen)
 TELLEN_PER_MAAT = 4
 TOONSOORT = ("D", "mineur")
 KLANKEN = {"bas": "fm_slapbas", "lead": "fm_lead_helder", "arp": "psg_arp", ...}
@@ -79,8 +90,32 @@ MATEN = {
   stukken zoeken die op; `standaard` geeft de partijen die elke maat van de sectie heeft (een
   maat die zelf iets zegt, wint; `[]` is stilte).
 - **MOMENTEN**: de maat waarop de beelden van de intro wisselen (scripts/ui/intro.gd): het logo
-  (`logo`, de eerste grote inzet), het verhaal begint te rollen (`verhaal`), en drie alinea's
-  vallen op `hoogtepunt`, `duel` en `crash`. Het einde is het einde van de laatste maat.
+  (`logo`, de eerste grote inzet), het verhaal begint te rollen (`verhaal`), drie alinea's
+  vallen op `hoogtepunt`, `duel` en `crash` (welke alinea's: `CRAWL_CUES` in intro.gd, zo gekozen
+  dat het verhaal gelijkmatig rolt), en de laatste zin komt tot rust op `rust`, een (maat, tel):
+  de eindklap. Daarna klinkt de muziek nog een seconde uit (`RING_OUT` in build.py), dan het menu.
+
+### BIJSTELLING
+
+```python
+BIJSTELLING = {
+    "tempo": 144,                                   # BPM in plaats van TEMPO
+    "octaaf": {"arp": 1},                           # een partij octaven hoger (+) of lager (-)
+    "kick_op_elke_tel": ("thema", "refrein", "finale"),   # four on the floor
+    "open_hihat": ("intro", "thema", "opbouw", "refrein", "finale"),  # op de off-beats
+    "handklap": ("thema", "refrein", "finale"),     # een clap bij de snare op 2 en 4
+    "stoten": {"secties": ("thema", "refrein"), "klank": "fm_piano"},  # akkoordstoten op de off-beats
+    "majeur_slot": True,                            # slotakkoord en landingen van de deuntjes in majeur
+}
+```
+
+De drum-bijstellingen gelden alleen in maten met een groove (kick en snare) en laten fills en
+de slotmaat (de eindklappen) met rust; de stoten zijn uit de akkoorden gespeld; `majeur_slot`
+geeft het slotakkoord de grote terts (en de landing van nieuwe missie, taak klaar en level
+omhoog); het deuntje van de dood blijft mineur. Nu ingesteld voor "Blast Processing Overdrive":
+"ietsje blijer, meer upbeat", in de geest van de stage 1-muziek van Streets of Rage 2 (een
+house-groove: kick op elke tel, open hi-hats op de off-beats, handklappen, pianostoten, rond
+140 BPM); alleen die kenmerken, geen noten van dat nummer.
 
 ## De klanken
 
@@ -119,7 +154,8 @@ Uit `tools/muziek/derive.py`; alle bestanden in `assets/audio/muziek/`:
 | `nachtstad_menu_loop.ogg` | hoofdmenu (lus) | de breakdown en het thema rustig: pad, arp, subbas, de melodie op klokken, zachte half-time drums |
 | `karakterkeuze_loop.ogg` | karakterkeuze (lus) | het thema twee keer: eerst alleen de groove, dan de melodie op de PSG |
 | `handelaar_loop.ogg` | bij een handelaar, in de snackbar (lus) | de akkoorden van de opbouw (en de opening van het thema) op elektrische piano, wandelende bas, clap op 2 en 4 |
-| `spel_loop.ogg` | de stad (lus, `scripts/ui/hud.gd`) | thema, opbouw, refrein, breakdown en het thema nog eens met de melodie op de PSG; zonder intro en eindklap |
+| `laden_loop.ogg` | het laadscherm (lus) | de intro-sectie van de compositie (het opstarten) twee keer: eerst alleen de puls (pad, bas, arp, lichte beat), dan zoals geschreven met melodie en fill, die terugloopt naar het begin |
+| `spel_loop.ogg` | de stad (lus, `scripts/ui/hud.gd`, zacht: `CITY_LOOP_SOFTER_DB`) | **rustig en op de achtergrond**: de klank van de handelaar (elektrische piano, bas, clap) in **half-time** (kick op 1, clap op 3, de piano houdt zijn akkoorden aan, de bas loopt in halve noten), afwisselend zoals de handelaarslus: het thema als akkoorden; het thema met zijn melodie om en om per maat (vraag en antwoord); de opbouw met de stoten van de handelaar; het refrein met de melodie op klokken om de maat; de breakdown met alleen piano en bas, terug naar het begin. Recht, geen shuffle, geen doorlopende arpeggio |
 | `deuntje_nieuwe_missie.ogg` | nieuwe missie | het motief (eerste maat van het thema) met groove, landend op de grondtoon |
 | `deuntje_taak_klaar.ogg` | een taak gehaald | een zestiendenloop over de dominant, landend op de grondtoon |
 | `deuntje_gewonnen.ogg` | een missie gehaald | de laatste twee maten van de compositie (haar finish) |
@@ -130,8 +166,7 @@ De afleidingen zoeken de secties op hun `soort`; een compositie zonder breakdown
 terug op de dichtstbijzijnde sectie. Een compositie met een heel andere vorm kan in
 `derive.py` een eigen keuze nodig hebben; dan daar, niet in het compositiebestand.
 
-Nog uit de vorige muziek (niet afgeleid): `laden_loop.ogg` (laadscherm) en
-`deuntje_kaart_start.ogg` (de kaart opent).
+Nog uit de vorige muziek (niet afgeleid): `deuntje_kaart_start.ogg` (de kaart opent).
 
 ## Controleren
 

@@ -11,7 +11,10 @@ that has them; a missing one falls back to the nearest (Score.first_section).
     nachtstad_menu_loop    main menu: the breakdown and the theme, calm (pad, arp, bells)
     karakterkeuze_loop     character choice: the theme, its groove light, the melody on the PSG
     handelaar_loop         at a merchant: the lift's chords on an electric piano, a walking bass
-    spel_loop              roaming the city: the song as a loop without its intro and ending
+    laden_loop             the loading screen: the composition's own intro (the boot-up), twice,
+                           first its pulse alone, then with its melody and the fill
+    spel_loop              roaming the city: quiet and calm, the merchant's sound in half time,
+                           varied like the merchant's loop (theme, lift, chorus, breakdown)
     deuntje_nieuwe_missie  a new mission: the motif (first bar of the theme), ending on the tonic
     deuntje_taak_klaar     a task done: a run up the dominant, landing on the tonic
     deuntje_gewonnen       a mission done: the last two bars of the composition (its finish)
@@ -119,8 +122,10 @@ def motif_bar(score: Score) -> Bar:
     return next(bar for bar in score.bars if bar.parts.get("lead"))
 
 
-def tonic_chord(score: Score, lowest: int) -> tuple:
-    third = 3 if score.is_minor() else 4
+def tonic_chord(score: Score, lowest: int, landing: bool = False) -> tuple:
+    """The tonic triad from `lowest`; a `landing` (the end of a jingle) in major when the
+    BIJSTELLING asks for a major ending."""
+    third = 3 if score.is_minor() and not (landing and score.major_ending) else 4
     root = lowest + (score.tonic() - lowest) % 12
     return (root, root + third, root + 7)
 
@@ -175,38 +180,90 @@ def character_loop(score: Score) -> Piece:
     return Piece("karakterkeuze_loop", score.tempo, score.beats_per_bar, bars, sounds)
 
 
+## The easy-going style of the shop and the city: an electric piano comping, a walking bass,
+## kick on 1 and 3 with a clap on 2 and 4 (easy_bar).
+EASY_DRUMS = drums(kick="1 3", clap="2 4", hihat="8", velocity=0.6) + drums(open="4.5", velocity=0.5)
+EASY_SOUNDS = {"piano": "fm_piano", "melodie": "fm_piano", "bas": "fm_subbas"}
+
+
+def easy_bar(bar: Bar, melody: bool, melody_semitones: int = -12) -> Bar:
+    """The bar in the easy-going style: the piano on its chords (stabs on 1, the "a" of 1, the
+    "and" of 2 and on 4), the walking bass, the light beat; with its melody on the piano too
+    (`melody_semitones` lower) or without."""
+    result = keep(bar, ("lead",) if melody else (), keep_drums=False)
+    result = recast(result, "lead", "melodie", semitones=melody_semitones, velocity=0.85)
+    result.parts["piano"] = comp(bar, (1.0, 1.75, 2.5, 4.0), velocity=0.6)
+    result.parts["bas"] = walking_bass(bar)
+    return with_drums(result, EASY_DRUMS)
+
+
 def merchant_loop(score: Score) -> Piece:
     """The lift's warm chords (and the theme's opening) on an electric piano over a walking
     bass, clap on 2 and 4: easy listening in the shop."""
     lift = score.first_section("opbouw", "thema")
     theme = score.first_section("thema")[:4]
-    shop_drums = drums(kick="1 3", clap="2 4", hihat="8", velocity=0.6) + drums(open="4.5", velocity=0.5)
-
-    def shop_bar(bar: Bar, melody: bool) -> Bar:
-        result = keep(bar, ("lead",) if melody else (), keep_drums=False)
-        result = recast(result, "lead", "melodie", semitones=-12, velocity=0.85)
-        result.parts["piano"] = comp(bar, (1.0, 1.75, 2.5, 4.0), velocity=0.6)
-        result.parts["bas"] = walking_bass(bar)
-        return with_drums(result, shop_drums)
-
-    bars = [shop_bar(bar, False) for bar in lift] + [shop_bar(bar, True) for bar in lift]
-    bars += [shop_bar(bar, True) for bar in theme] + [shop_bar(bar, True) for bar in lift]
-    sounds = dict(score.sounds, piano="fm_piano", melodie="fm_piano", bas="fm_subbas")
-    return Piece("handelaar_loop", score.tempo, score.beats_per_bar, bars, sounds,
+    bars = [easy_bar(bar, False) for bar in lift] + [easy_bar(bar, True) for bar in lift]
+    bars += [easy_bar(bar, True) for bar in theme] + [easy_bar(bar, True) for bar in lift]
+    return Piece("handelaar_loop", score.tempo, score.beats_per_bar, bars, dict(score.sounds, **EASY_SOUNDS),
                  part_gains={"piano": 0.8, "drums": 0.8})
 
 
+def loading_loop(score: Score) -> Piece:
+    """Waiting while the city loads: the composition's intro section (its boot-up), first as a
+    pulse (pad, bass, arp, a light beat), then as written, with its melody and its fill, which
+    runs back into the start."""
+    opening = score.first_section("intro", "thema")
+    pulse_drums = drums(kick="1 3", hihat="16", velocity=0.6)
+    bars = [with_drums(keep(bar, ("pad", "bas", "subbas", "arp")), pulse_drums) for bar in opening]
+    bars += [softer(bar.copy(), "drums", 0.8) for bar in opening]
+    return Piece("laden_loop", score.tempo, score.beats_per_bar, bars, score.sounds,
+                 part_gains={"arp": 1.1})
+
+
+def slow_bass(bar: Bar, velocity: float = 0.8) -> list:
+    """Root and fifth in half notes: a bass that walks slowly (the half-time feel)."""
+    result = []
+    for root, start, length in roots(bar):
+        if length >= 4:
+            result += [Note(start, (root,), 2.0, velocity), Note(start + 2.0, (root + 7,), 2.0, velocity * 0.85)]
+        else:
+            result.append(Note(start, (root,), length, velocity))
+    return result
+
+
 def game_loop(score: Score) -> Piece:
-    """The song as the city's loop: theme, lift, chorus, breakdown and the theme again with its
-    melody on the PSG; no intro, no final hit, the lead and the guitar a little back."""
-    bars = []
-    for kind in ("thema", "opbouw", "refrein", "breakdown"):
-        bars += [bar.copy() for bar in score.section(kind)]
-    for bar in score.first_section("thema"):
-        bars.append(recast(bar, "lead", "psg_melodie", velocity=0.95))
-    sounds = dict(score.sounds, psg_melodie="psg_lead")
+    """The city's loop: quiet in the background, in the merchant's sound (electric piano, the
+    bass, a clap) but in half time, so it feels calm: kick on 1, clap on 3, the piano holding its
+    chords, the bass walking in half notes. Varied like the merchant's loop, the sections and
+    their filling taking turns: the theme as chords alone; the theme with its melody bar by
+    bar in turn (call and answer); the lift with the merchant's stabs; the chorus with its
+    melody on the bells every other bar; the breakdown with piano and bass alone, running back
+    to the start. No guitar, no bright lead, no running arpeggio, no shuffle."""
+    half_time = drums(kick="1", clap="3", hihat="2 4", velocity=0.5) + drums(open="4.5", velocity=0.35)
+    hats_only = drums(hihat="2 4", velocity=0.4)
+
+    def calm_bar(bar: Bar, melody_sound: str = "", melody_now: bool = False, stabs: bool = False,
+                 beat: list = half_time) -> Bar:
+        result = keep(bar, ("lead",) if melody_sound and melody_now else (), keep_drums=False)
+        result = recast(result, "lead", melody_sound or "melodie", semitones=-12, velocity=0.75)
+        if stabs:
+            result.parts["piano"] = comp(bar, (1.0, 1.75, 2.5, 4.0), velocity=0.5)
+        else:
+            result.parts["piano"] = [Note(start, notation.chord_voicing(name, 55)[:4], length, 0.55)
+                                     for name, start, length in bar.chords]
+        result.parts["bas"] = slow_bass(bar)
+        return with_drums(result, beat)
+
+    theme = score.first_section("thema")
+    chorus = score.first_section("refrein", "thema")
+    bars = [calm_bar(bar) for bar in theme]
+    bars += [calm_bar(bar, "melodie", melody_now=index % 2 == 0) for index, bar in enumerate(theme)]
+    bars += [calm_bar(bar, stabs=True) for bar in score.first_section("opbouw", "thema")]
+    bars += [calm_bar(bar, "klok", melody_now=index % 2 == 0) for index, bar in enumerate(chorus)]
+    bars += [calm_bar(bar, beat=hats_only) for bar in score.first_section("breakdown", "opbouw")]
+    sounds = dict(score.sounds, **EASY_SOUNDS, klok="fm_klok")
     return Piece("spel_loop", score.tempo, score.beats_per_bar, bars, sounds,
-                 part_gains={"lead": 0.85, "gitaar": 0.8, "solo": 0.8})
+                 part_gains={"piano": 0.8, "drums": 0.75})
 
 
 def new_mission(score: Score) -> Piece:
@@ -214,10 +271,10 @@ def new_mission(score: Score) -> Piece:
     opening = motif_bar(score).copy()
     opening.hits = drums(kick="1 2.5 3", snare="2 4", hihat="8", crash="1") + notation.drum_run("S S S S", 0.25, start=4)
     opening.parts["brass"] = comp(opening, (1.0,), length=1.5, lowest=50, velocity=0.8)
-    tonic = tonic_chord(score, 62)
+    tonic = tonic_chord(score, 62, landing=True)
     landing = Bar(0, opening.chords, {
         "lead": [Note(1.0, (tonic[0],), 2.0)],
-        "pad": [Note(1.0, tonic_chord(score, 50) + (tonic[0],), 2.0, 0.85)],
+        "pad": [Note(1.0, tonic_chord(score, 50, landing=True) + (tonic[0],), 2.0, 0.85)],
         "bas": [Note(1.0, (tonic[0] - 24,), 2.0)],
         "arp": [Note(1.0, (tonic[2] + 12,), 1.0, 0.8)],
     }, drums(kick="1", crash="1"))
@@ -229,11 +286,11 @@ def task_done(score: Score) -> Piece:
     """A run of sixteenths up the dominant seventh (as the intro's break), landing on the tonic."""
     dominant = dominant_seventh(score, 57)
     figure = list(dominant) + [pitch + 12 for pitch in dominant]
-    tonic = tonic_chord(score, 62)
+    tonic = tonic_chord(score, 62, landing=True)
     parts = {
         "arp": [Note(1.0 + step * 0.25, (pitch,), 0.25, 0.9) for step, pitch in enumerate(figure)],
         "lead": [Note(3.0, (tonic[0] + 12,), 1.0)],
-        "pad": [Note(3.0, tonic_chord(score, 50) + (tonic[0],), 1.0, 0.8)],
+        "pad": [Note(3.0, tonic_chord(score, 50, landing=True) + (tonic[0],), 1.0, 0.8)],
         "bas": [Note(3.0, (tonic[0] - 24,), 1.0)],
     }
     hits = drums(hihat="1 1.5 2 2.5", velocity=0.7) + drums(kick="3", crash="3")
@@ -249,7 +306,7 @@ def mission_done(score: Score) -> Piece:
 
 def level_up(score: Score) -> Piece:
     """Up the tonic chord in sixteenths to the high tonic, held with the guitar and a crash."""
-    tonic = tonic_chord(score, 62)
+    tonic = tonic_chord(score, 62, landing=True)
     figure = [tonic[0], tonic[1], tonic[2], tonic[0] + 12, tonic[1] + 12, tonic[2] + 12]
     high = tonic[0] + 24 if tonic[0] + 24 <= 88 else tonic[0] + 12
     parts = {
@@ -287,7 +344,7 @@ def death(score: Score) -> Piece:
                  tail=0.6, last_bar_beats=2.0, tape_stop=(bar_seconds + beat * 1.0, beat * 1.6))
 
 
-ALL = (intro, menu_loop, character_loop, merchant_loop, game_loop,
+ALL = (intro, menu_loop, character_loop, merchant_loop, loading_loop, game_loop,
        new_mission, task_done, mission_done, level_up, death)
 
 

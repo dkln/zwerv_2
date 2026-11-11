@@ -59,6 +59,9 @@ const INDOOR_MUSIC_FADE := 1.2
 const JINGLE_DUCK_DB := 8.0
 const CITY_MUSIC_VOLUME_DB := -15.0
 const CITY_MUSIC_PAUSED_DB := -22.0
+## The city's own loop (CITY_MUSIC) plays this much softer still: it runs quietly in the
+## background, under the sounds of the town; music of a building (the merchant's) does not.
+const CITY_LOOP_SOFTER_DB := 6.0
 const CITY_MUSIC_FADE_IN := 3.0
 ## How fast (dB per second) the level follows pausing and going on.
 const CITY_MUSIC_LEVEL_SPEED := 30.0
@@ -420,7 +423,8 @@ func _update_city_music(delta: float) -> void:
 			_city_weights.erase(file)
 			continue
 		var amplitude := sin(weight * PI * 0.5)
-		player.volume_db = _city_level_db + linear_to_db(maxf(amplitude, 0.0001))
+		var own_level := -CITY_LOOP_SOFTER_DB if file == CITY_MUSIC else 0.0
+		player.volume_db = _city_level_db + own_level + linear_to_db(maxf(amplitude, 0.0001))
 
 
 static func _load_loop(file: String) -> AudioStream:

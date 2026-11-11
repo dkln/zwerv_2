@@ -20,11 +20,22 @@ MUSIC_FOLDER = os.path.join(score_module.PROJECT, "assets", "audio", "muziek")
 TIMING_FILE = os.path.join(score_module.PROJECT, "scripts", "ui", "intro_timing.gd")
 ## The constants of intro_timing.gd and the MOMENTEN they come from.
 TIMING_NAMES = {"logo": "LOGO_AT", "verhaal": "CRAWL_AT", "hoogtepunt": "CLIMAX_AT", "duel": "DUEL_AT",
-                "crash": "CRASH_AT"}
+                "crash": "CRASH_AT", "rust": "REST_AT"}
+## Seconds after the last bar the intro still lets the music ring out (then the menu).
+RING_OUT = 1.0
+
+
+def moment_seconds(moment, bar_seconds: float, beat_seconds: float) -> float:
+    """A moment as a bar (its start) or (bar, beat), in seconds from the start."""
+    bar, beat = moment if isinstance(moment, (tuple, list)) else (moment, 1.0)
+    return (bar - 1) * bar_seconds + (beat - 1.0) * beat_seconds
 
 
 def write_intro_timing(score: score_module.Score, composition_name: str, piece: mixer.Piece) -> None:
-    missing = [moment for moment in TIMING_NAMES if moment not in score.moments]
+    moments = dict(score.moments)
+    # without "rust" the story comes to rest at the start of the last bar
+    moments.setdefault("rust", len(score.bars))
+    missing = [moment for moment in TIMING_NAMES if moment not in moments]
     if missing:
         raise ValueError(f"{composition_name}: MOMENTEN misses {missing} (the intro needs them)")
     bar_seconds = score.bar_seconds
@@ -35,10 +46,11 @@ def write_intro_timing(score: score_module.Score, composition_name: str, piece: 
         "extends RefCounted",
         "",
     ]
-    moments = sorted(TIMING_NAMES, key=lambda moment: score.moments[moment])
-    for moment in moments:
-        lines.append(f"const {TIMING_NAMES[moment]} := {(score.moments[moment] - 1) * bar_seconds:.3f}")
-    lines.append(f"const END_AT := {piece.bars_seconds:.3f}")
+    beat_seconds = 60.0 / score.tempo
+    in_order = sorted(TIMING_NAMES, key=lambda moment: moment_seconds(moments[moment], bar_seconds, beat_seconds))
+    for moment in in_order:
+        lines.append(f"const {TIMING_NAMES[moment]} := {moment_seconds(moments[moment], bar_seconds, beat_seconds):.3f}")
+    lines.append(f"const END_AT := {piece.bars_seconds + RING_OUT:.3f}")
     with open(TIMING_FILE, "w") as timing_file:
         timing_file.write("\n".join(lines) + "\n")
     print(f"geschreven: {TIMING_FILE}")

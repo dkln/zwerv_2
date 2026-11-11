@@ -61,10 +61,17 @@ func _check_crossfade(hud: Node) -> void:
 	var expected: float = hud.CITY_MUSIC_PAUSED_DB if paused else hud.CITY_MUSIC_VOLUME_DB
 	_check(absf(hud._city_level_db - expected) < 0.5, "stadsmuziek op %.0f dB (%s)" % [expected, "gepauzeerd" if paused else "spelend"])
 	_check(first_file == hud.CITY_MUSIC, "de spelmuziek (%s) speelt" % hud.CITY_MUSIC)
+	var outdoor: AudioStreamPlayer = hud._city_players.get(first_file)
+	if outdoor:
+		print("spelmuziek op %.1f dB" % outdoor.volume_db)
+		_check(absf(outdoor.volume_db - (hud._city_level_db - hud.CITY_LOOP_SOFTER_DB)) < 0.5,
+				"de spelmuziek %.0f dB zachter dan het muziekniveau" % hud.CITY_LOOP_SOFTER_DB)
 	# into a building with music of its own (the merchant's) and out: crossfades and back
 	hud.set_indoor_music("handelaar_loop.ogg")
 	await create_timer(hud.INDOOR_MUSIC_FADE + 0.5).timeout
 	_check(hud._city_music_file == "handelaar_loop.ogg", "binnen: de muziek van de handelaar")
+	var indoor: AudioStreamPlayer = hud._city_players.get("handelaar_loop.ogg")
+	_check(indoor != null and absf(indoor.volume_db - hud._city_level_db) < 0.5, "de handelaarsmuziek op het gewone niveau")
 	hud.set_indoor_music("")
 	await create_timer(hud.INDOOR_MUSIC_FADE + 0.5).timeout
 	_check(hud._city_music_file == first_file and hud._city_players.size() == 1, "weer buiten: de spelmuziek, één speler")

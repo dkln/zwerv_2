@@ -64,10 +64,10 @@ const STORY := [
 ]
 ## The moments of the intro come from the music (scripts/ui/intro_timing.gd, written by
 ## tools/muziek/build.py from the MOMENTEN of the active composition, so they follow any new
-## music): the intro from 0, the logo, the story rolling (CRAWL_AT), the climax, the duel,
-## the crash and the end (END_AT), where
-## the menu takes over): the opening line fading in
-## and out, the logo, the start of the crawl, the end of the crawl and of the intro.
+## music): the logo on the first big entry (LOGO_AT), the story rolling from CRAWL_AT,
+## paragraphs on the climax, the duel and the crash (CRAWL_CUES), the last one coming to rest on
+## the final hit (REST_AT), and the end (END_AT) once that has rung out, where the menu takes
+## over. The opening line fades in and out before the logo.
 const IntroTiming := preload("res://scripts/ui/intro_timing.gd")
 const LINE_IN_AT := 0.4
 const LINE_OUT_AT := 3.6    # gone at 4.8, before the logo fades in
@@ -78,13 +78,13 @@ const LOGO_FADE_IN_AT := IntroTiming.LOGO_AT - 1.0
 const LINE_FADE := 1.2
 const LOGO_AT := IntroTiming.LOGO_AT
 const CRAWL_AT := IntroTiming.CRAWL_AT
-## The story rolls to END_AT (where the music fades): the last paragraph does not roll off
-## the top but comes to rest far off at CRAWL_REST (share of the picture's height from the
-## top) and the story fades out over the last CRAWL_FADE seconds; no travel wasted, so it
+## The story rolls to REST_AT (the final hit of the music): the last paragraph does not roll
+## off the top but comes to rest there far off at CRAWL_REST (share of the picture's height
+## from the top), and fades out while the hit rings out, to END_AT; no travel wasted, so it
 ## rolls as slowly as the music allows.
+const REST_AT := IntroTiming.REST_AT
 const END_AT := IntroTiming.END_AT
 const CRAWL_REST := 0.35
-const CRAWL_FADE := 4.0
 ## Holding Enter (or the down arrow) rolls the story this many times as fast; it then
 ## reaches its end, and the intro the main menu, sooner (the music goes on into the menu).
 const CRAWL_FAST := 12.0
@@ -106,11 +106,11 @@ const CHARACTER_CHANCE := 0.7
 const CHARACTER_SCALE := 2.2
 ## Pixels between the paragraphs of the story (in its picture).
 const PARAGRAPH_GAP := 26
-## Paragraphs of STORY and the moment each comes in at the bottom of the screen: the
-## zwerver on the climb, the handhavers on the second half of the chorus, the way out into
-## the rain on the outro (the last sentence then comes to rest as the music dies).
-## Between them the story rolls evenly, at much the same pace throughout.
-const CRAWL_CUES := {5: IntroTiming.CLIMAX_AT, 8: IntroTiming.DUEL_AT, 10: IntroTiming.CRASH_AT}
+## Paragraphs of STORY and the moment each comes in at the bottom of the screen: the gulls on
+## the chorus, the handhavers on the breakdown, the way out into the rain on the finale (the
+## last sentence then comes to rest on the final hit). Chosen so that between them the story
+## rolls evenly, at much the same pace throughout (about 3.4 s a paragraph).
+const CRAWL_CUES := {4: IntroTiming.CLIMAX_AT, 8: IntroTiming.DUEL_AT, 10: IntroTiming.CRASH_AT}
 ## The crawl picture: the size the text is drawn in (pixels), the
 ## width of its far top edge on the screen (share of the bottom edge) and how much of the
 ## screen it takes from the bottom up.
@@ -274,7 +274,7 @@ func _play(time: float) -> void:
 	_crawl_screen.visible = time >= CRAWL_AT and crawl_time < END_AT
 	if _crawl_screen.visible:
 		_crawl_text.position.y = _crawl_position(crawl_time)
-		_crawl_screen.modulate.a = clampf((END_AT - crawl_time) / CRAWL_FADE, 0.0, 1.0)
+		_crawl_screen.modulate.a = clampf((END_AT - crawl_time) / maxf(END_AT - REST_AT, 0.1), 0.0, 1.0)
 	# a star twinkles where the logo vanishes in the distance
 	var twinkling := (time - SPARKLE_AT) / SPARKLE_SECONDS
 	_sparkle.visible = twinkling >= 0.0 and twinkling < 1.0
@@ -299,7 +299,8 @@ func _play(time: float) -> void:
 
 ## Where the story stands at `time`: rolled evenly between the cues, each cue a paragraph
 ## of STORY coming in at the bottom of the picture (its top there), from the whole text
-## under the picture at CRAWL_AT to the last paragraph at rest far off (CRAWL_REST) at END_AT.
+## under the picture at CRAWL_AT to the last paragraph at rest far off (CRAWL_REST) at REST_AT,
+## where it stays.
 func _crawl_position(time: float) -> float:
 	var stops: Array = [[CRAWL_AT, float(CRAWL_PICTURE.y)]]
 	var paragraphs := _crawl_text.get_children()
@@ -309,13 +310,13 @@ func _crawl_position(time: float) -> float:
 		if paragraph_index < paragraphs.size():
 			var paragraph_top: float = (paragraphs[paragraph_index] as Control).position.y
 			stops.append([CRAWL_CUES[paragraph_index], CRAWL_PICTURE.y - paragraph_top])
-	stops.append([END_AT, CRAWL_PICTURE.y * CRAWL_REST - _crawl_text.size.y])
+	stops.append([REST_AT, CRAWL_PICTURE.y * CRAWL_REST - _crawl_text.size.y])
 	for stop_index in range(1, stops.size()):
 		var earlier: Array = stops[stop_index - 1]
 		var later: Array = stops[stop_index]
 		if time <= later[0]:
 			return lerpf(earlier[1], later[1], clampf((time - earlier[0]) / (later[0] - earlier[0]), 0.0, 1.0))
-	return -_crawl_text.size.y
+	return stops[-1][1]
 
 
 ## To the main menu (loaded in the background meanwhile). Broken off before the menu's 3D

@@ -29,8 +29,22 @@ KLANKEN = {
 }
 
 # waar de intro-beelden wisselen (scripts/ui/intro.gd): het logo staat bij thema A, het verhaal
-# rolt vanaf de octaafklim, en drie alinea's vallen op het refrein, de breakdown en de finale
-MOMENTEN = {"logo": 5, "verhaal": 9, "hoogtepunt": 17, "duel": 25, "crash": 29}
+# rolt vanaf de octaafklim, drie alinea's vallen op het refrein, de breakdown en de finale, en
+# de laatste zin komt tot rust op de eindklap (maat 32, tel 2)
+MOMENTEN = {"logo": 5, "verhaal": 9, "hoogtepunt": 17, "duel": 25, "crash": 29, "rust": (32, 2.0)}
+
+# bijstelling op verzoek van de gebruiker (11 nov 2026: "ietsje blijer, meer upbeat", in de
+# geest van de stage 1-muziek van Streets of Rage 2: een house-groove): over de letterlijke maten
+# heen gelegd bij het maken (score.tune); de maten hieronder blijven zoals Gemini ze schreef
+BIJSTELLING = {
+    "tempo": 144,                                   # was 136
+    "octaaf": {"arp": 1},                           # de PSG-arpeggio's een octaaf hoger: glinsterender
+    "kick_op_elke_tel": ("thema", "refrein", "finale"),      # four on the floor
+    "open_hihat": ("intro", "thema", "opbouw", "refrein", "finale"),  # op de off-beats
+    "handklap": ("thema", "refrein", "finale"),     # clap bij de snare op 2 en 4
+    "stoten": {"secties": ("thema", "refrein"), "klank": "fm_piano"},  # house-pianostoten op de off-beats
+    "majeur_slot": True,                            # slotakkoord en de landing van de deuntjes in D groot
+}
 
 BASIS_DRUMS = drums(kick="1 2.5 3", snare="2 4", hihat="16")
 THEMA_DRUMS = drums(kick="1 2.5 3", snare="2 4", hihat="16-off", open="off")

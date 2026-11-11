@@ -11,6 +11,13 @@ A composition file (tools/muziek/composities/<naam>.py, see docs/MUZIEK.md) hold
                pieces look for); standaard: parts every bar of the section has unless the
                bar says otherwise (a bar's own [] is silence)
     MATEN      {bar number: {"akkoord": "Dm", part: [Note], "drums": [Hit]}}
+    BIJSTELLING   (optional) a tuning laid over the literal bars when the music is made, on
+               request of the user (the bars themselves stay as the composer wrote them):
+               "tempo": BPM; "octaaf": {part: octaves}; "majeur_slot": True (the last chord,
+               and the landing of the jingles, in major); for lists of section kinds:
+               "kick_op_elke_tel" (four on the floor), "open_hihat" (on the off-beats),
+               "handklap" (a clap with the snare on 2 and 4), "stoten" ({"secties": (...),
+               "klank": sound}: short chord stabs on the off-beats, spelled from the chords)
 
 Parts are free names (bas, pad, brass, lead, arp, gitaar, ...); each one is played by the sound
 KLANKEN gives it. "drums" is always the drum kit.
@@ -59,6 +66,7 @@ class Score:
     bars: list                        # [Bar]
     sections: list = field(default_factory=list)
     moments: dict = field(default_factory=dict)
+    major_ending: bool = False        # BIJSTELLING majeur_slot: endings and landings in major
 
     @property
     def bar_seconds(self) -> float:
@@ -127,5 +135,74 @@ def load(name: str = None) -> Score:
                 raise ValueError(f"{name}: bar {number} has part {part!r} without a sound in KLANKEN")
         bars.append(Bar(number, chords, parts, hits, section["naam"] if section else "",
                         section["soort"] if section else ""))
-    return Score(module.TITEL, float(module.TEMPO), beats_per_bar, tuple(module.TOONSOORT),
-                 dict(module.KLANKEN), bars, sections, dict(getattr(module, "MOMENTEN", {})))
+    score = Score(module.TITEL, float(module.TEMPO), beats_per_bar, tuple(module.TOONSOORT),
+                  dict(module.KLANKEN), bars, sections, dict(getattr(module, "MOMENTEN", {})))
+    tune(score, getattr(module, "BIJSTELLING", {}))
+    return score
+
+
+# ----------------------------------------------------------------------------- BIJSTELLING
+
+def _on_beat(position: float) -> bool:
+    return abs(position - round(position)) < 1e-6
+
+
+def tune(score: Score, tuning: dict) -> None:
+    """Lays the BIJSTELLING over the bars (see the module docstring)."""
+    if not tuning:
+        return
+    score.tempo = float(tuning.get("tempo", score.tempo))
+    for part, octaves in tuning.get("octaaf", {}).items():
+        for bar in score.bars:
+            if part in bar.parts:
+                bar.parts[part] = [note.transposed(12 * octaves) for note in bar.parts[part]]
+    beats = score.beats_per_bar
+    # the last bar is the song's ending (its final hits): the groove stays out of it
+    for bar in score.bars[:-1]:
+        drum_positions = {(hit.drum, round(hit.position, 4)) for hit in bar.hits}
+        has_groove = any(drum == "kick" for drum, _ in drum_positions) and \
+            any(drum == "snare" and _on_beat(position) for drum, position in drum_positions)
+        is_fill_bar = sum(1 for drum, _ in drum_positions if drum.startswith("tom")) > 0
+        if bar.kind in tuning.get("kick_op_elke_tel", ()) and has_groove:
+            fill_from = min((hit.position for hit in bar.hits if hit.drum.startswith("tom")), default=beats + 1.0)
+            kept = [hit for hit in bar.hits if hit.drum != "kick" or hit.position >= fill_from]
+            bar.hits = kept + [notation.Hit(float(beat), "kick") for beat in range(1, beats + 1) if beat < fill_from]
+        if bar.kind in tuning.get("open_hihat", ()) and has_groove:
+            offbeats = [beat + 0.5 for beat in range(1, beats + 1)]
+            fill_from = min((hit.position for hit in bar.hits if hit.drum.startswith("tom")), default=beats + 1.0)
+            bar.hits = [hit for hit in bar.hits if not (hit.drum == "hihat" and round(hit.position, 4) in offbeats)]
+            bar.hits += [notation.Hit(position, "open", 0.9) for position in offbeats
+                         if position < fill_from and ("open", position) not in drum_positions]
+        if bar.kind in tuning.get("handklap", ()) and not is_fill_bar:
+            bar.hits += [notation.Hit(hit.position, "clap", 0.9) for hit in list(bar.hits)
+                         if hit.drum == "snare" and _on_beat(hit.position) and int(round(hit.position)) % 2 == 0]
+    stabs = tuning.get("stoten")
+    if stabs:
+        part = "stoot"
+        score.sounds[part] = stabs["klank"]
+        for bar in score.bars:
+            if bar.kind not in stabs["secties"]:
+                continue
+            positions = [beat + 0.5 for beat in range(1, beats + 1)]
+            bar.parts[part] = [notation.Note(position, notation.chord_voicing(bar.chord_at(position), 60)[:3], 0.25, 0.8)
+                               for position in positions]
+    if tuning.get("majeur_slot") and score.is_minor():
+        score.major_ending = True
+        _major_last_chord(score)
+
+
+def _major_last_chord(score: Score) -> None:
+    """The last bar's tonic notes get the major third with them (in the chord parts: pad,
+    brass, stabs), so the song ends bright (the Picardy third)."""
+    tonic = score.tonic()
+    last = score.bars[-1]
+    for part in ("pad", "brass", "stoot"):
+        notes_with_third = []
+        for note in last.parts.get(part, []):
+            tonics = [pitch for pitch in note.pitches if pitch % 12 == tonic]
+            if tonics and not any((pitch - tonic) % 12 in (3, 4) for pitch in note.pitches):
+                third = min(tonics) + 4
+                note = notation.Note(note.position, tuple(sorted(note.pitches + (third,))), note.length, note.velocity)
+            notes_with_third.append(note)
+        if part in last.parts:
+            last.parts[part] = notes_with_third

@@ -38,6 +38,7 @@ class Piece:
     tape_stop: tuple = None         # (at seconds, seconds): the music slows to a standstill
     fade_out: float = 0.0           # one-shot: seconds of fade at the very end
     last_bar_beats: float = None    # one-shot: the last bar only this long (then the tail)
+    swing: float = 0.0              # 0 straight, 1 a full shuffle (the "and" on the last triplet)
 
     @property
     def beat_seconds(self) -> float:
@@ -72,6 +73,22 @@ class _Tracks:
         return self.by_key[key]
 
 
+def swung(position: float, swing: float) -> float:
+    """A position (beats from 1.0) with the swing of the eighths: the first half of every beat
+    stretched, the second half squeezed, so the "and" moves from 0.5 towards 2/3 of the beat
+    (swing 1: a full triplet shuffle); the beats themselves stay where they are."""
+    if not swing:
+        return position
+    beat = int((position - 1.0) // 1.0)
+    within = position - 1.0 - beat
+    off_beat = 0.5 + swing * (2.0 / 3.0 - 0.5)
+    if within < 0.5:
+        within = within / 0.5 * off_beat
+    else:
+        within = off_beat + (within - 0.5) / 0.5 * (1.0 - off_beat)
+    return 1.0 + beat + within
+
+
 def _play(piece: Piece) -> list:
     """Every note and hit of the piece on its mixer channel: the channels, not yet mixed."""
     sample_count = int(round(piece.seconds * SAMPLE_RATE))
@@ -83,7 +100,7 @@ def _play(piece: Piece) -> list:
             sound = instruments.SOUNDS[piece.sound_of(part)]
             gain = sound.gain * piece.part_gains.get(part, 1.0)
             for note in part_notes:
-                at = bar_start + (note.position - 1.0) * beat
+                at = bar_start + (swung(note.position, piece.swing) - 1.0) * beat
                 length = note.length * beat
                 if sound.width:
                     for side in (-1.0, 1.0):
@@ -99,7 +116,7 @@ def _play(piece: Piece) -> list:
         drum_gain = piece.part_gains.get("drums", 1.0)
         for hit in bar.hits:
             drum = instruments.DRUMS[hit.drum]
-            at = bar_start + (hit.position - 1.0) * beat
+            at = bar_start + (swung(hit.position, piece.swing) - 1.0) * beat
             tracks.get(f"drum_{hit.drum}", drum.pan).add(at, drum.samples, drum.gain * hit.velocity * drum_gain)
     if not tracks.by_key:
         raise ValueError(f"{piece.name}: nothing to play")

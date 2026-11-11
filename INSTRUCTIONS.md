@@ -762,12 +762,13 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
   stad al opent (`MUSIC`, `MUSIC_VOLUME_DB`, `MUSIC_FADE_OUT`).
   Stadsmuziek: één lus overal, `spel_loop.ogg` (`CITY_MUSIC` in `scripts/ui/hud.gd`; geen
   wijkmuziek), na het kaartdeuntje (`deuntje_kaart_start.ogg`) infadend; in een gebouw met eigen
-  muziek (de handelaar, `set_indoor_music`) vloeit hij over en terug; op -10 dB en zachter zolang
+  muziek (de handelaar, `set_indoor_music`) vloeit hij over en terug; de spel-lus zelf zacht op de
+  achtergrond (`CITY_LOOP_SOFTER_DB`, 6 dB onder de handelaarsmuziek); op -10 dB en zachter zolang
   het spel stilstaat (pauzemenu, spelmenu, verhaalvak; `CITY_MUSIC_VOLUME_DB`, `CITY_MUSIC_PAUSED_DB`).
   Test: `tools/check/city_music_test.gd`.
-  **Alle muziek komt uit één compositie** (nu "Blast Processing Overdrive" van Gemini, 136 BPM,
+  **Alle muziek komt uit één compositie** (nu "Blast Processing Overdrive" van Gemini, 136 BPM, bijgesteld naar 144 en een house-groove,
   D mineur, 32 maten): die wordt letterlijk de intro (`zwervr_intro.ogg`), en menu,
-  karakterkeuze, handelaar, de stad en de deuntjes (nieuwe missie, taak klaar, missie gehaald,
+  karakterkeuze, handelaar, laadscherm, de stad en de deuntjes (nieuwe missie, taak klaar, missie gehaald,
   level omhoog, dood) worden ervan afgeleid, in Mega Drive-klank. Een nieuwe compositie
   aanleveren: de skill **`/muziek-compositie`** (`.claude/skills/muziek-compositie/SKILL.md`).
   De regels, de notatie en de lijst van stukken staan in **`docs/MUZIEK.md`**; de generator in
