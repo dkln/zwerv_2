@@ -251,6 +251,12 @@ var _tracked_quest_id := ""
 var _tracked_distance: Label         # the distance in the tracked quest's panel
 var _minimap_marks: QuestMarks
 var _minimap_exits: QuestMarks       # the ways out on the floor plan of an interior
+var _minimap_waypoint: QuestMarks    # the marker set on the map (set_waypoint)
+var _waypoint := Vector2.INF         # where it is (world x, z), INF: none
+var _waypoint_name := ""
+var _waypoint_chip: Control
+var _waypoint_label: Label
+var _beacon: Node3D                  # its beam of light in the town (WaypointBeacon)
 var _exit_points: Array[Vector3] = []
 var _town_map := {}                  # the town's map while an interior's plan is shown
 var _interior_plans := {}            # interior instance id -> its plan (InteriorPlan.build)
@@ -690,6 +696,86 @@ func quest_targets() -> Array:
 	return []
 
 
+# ------------------------------------------------------------------ the marker of the map
+
+## The colour of the marker you set on the map (the game menu's KAART: Enter on a place),
+## on the minimap, its chip and its beam in the town; how close counts as there (metres).
+const WAYPOINT_COLOUR := Color("#FF5ACD")
+const WAYPOINT_ARRIVED := 8.0
+const WaypointBeacon = preload("res://scripts/world/waypoint_beacon.gd")
+
+
+## A marker on `at` (world x, z), named `place_name`: on the minimap (an arrow on its edge
+## while it is further), its name and distance under it, a beam of light on it in the town.
+## Gone once you are there (WAYPOINT_ARRIVED) or with clear_waypoint. One at a time.
+func set_waypoint(at: Vector2, place_name: String) -> void:
+	_waypoint = at
+	_waypoint_name = place_name
+	if _beacon == null or not is_instance_valid(_beacon):
+		_beacon = WaypointBeacon.new()
+		var town := get_parent()
+		if town:
+			town.add_child(_beacon)
+	if _beacon.is_inside_tree():
+		_beacon.place(Vector3(at.x, _ground_height(at), at.y))
+	_waypoint_chip.visible = true
+	_waypoint_label.text = place_name.to_upper()
+
+
+func clear_waypoint() -> void:
+	_waypoint = Vector2.INF
+	_waypoint_name = ""
+	if _beacon and is_instance_valid(_beacon):
+		_beacon.queue_free()
+	_beacon = null
+	_waypoint_chip.visible = false
+	_minimap_waypoint.points = []
+
+
+func has_waypoint() -> bool:
+	return _waypoint != Vector2.INF
+
+
+func waypoint() -> Vector2:
+	return _waypoint
+
+
+func waypoint_name() -> String:
+	return _waypoint_name
+
+
+## The marker on the minimap and its distance; there: "Aangekomen" and it is gone. Inside a
+## building (the minimap a floor plan) it waits, its beam hidden.
+func _update_waypoint(focus: Vector3, pixels_per_metre: float) -> void:
+	if not has_waypoint():
+		return
+	var outdoors := _town_map.is_empty()
+	if _beacon and is_instance_valid(_beacon):
+		_beacon.visible = outdoors
+	if not outdoors:
+		_minimap_waypoint.points = []
+		return
+	var here := Vector2(focus.x, focus.z)
+	_minimap_waypoint.points = [_minimap_arrow.position + (_waypoint - here) * pixels_per_metre]
+	var distance := _waypoint.distance_to(here)
+	_waypoint_label.text = "%s · %d M" % [_waypoint_name.to_upper(), roundi(distance)]
+	if distance <= WAYPOINT_ARRIVED:
+		show_floating_number(focus + Vector3.UP * 2.2, "Aangekomen: " + _waypoint_name, WAYPOINT_COLOUR, 14)
+		clear_waypoint()
+
+
+## The height of the ground at `at` (world x, z), for the foot of the beam; 0 when unknown.
+func _ground_height(at: Vector2) -> float:
+	var world := get_viewport().world_3d if get_viewport() else null
+	if world == null:
+		return 0.0
+	# from just over street level, not from the sky: a place often lies against a facade,
+	# whose roof would be hit first
+	var query := PhysicsRayQueryParameters3D.create(Vector3(at.x, 1.5, at.y), Vector3(at.x, -20.0, at.y), 1)
+	var hit := world.direct_space_state.intersect_ray(query)
+	return (hit.position as Vector3).y if not hit.is_empty() else 0.0
+
+
 ## How far the nearest place of the tracked quest is, in its panel ("120 M").
 func _update_quest_distance() -> void:
 	if _tracked_distance == null or not is_instance_valid(_tracked_distance) or not _has_focus:
@@ -947,7 +1033,7 @@ func _build_area_banner() -> void:
 func _build_minimap() -> void:
 	_minimap_box = Control.new()
 	_minimap_box.name = "Kaartje"
-	_minimap_box.size = Vector2(200, MAP_TOP + 240)
+	_minimap_box.size = Vector2(200, MAP_TOP + 270)
 	_minimap_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(_minimap_box)
 	var frame := _shadowed_panel(Vector2(200, 200), UiStyle.BORDER, 3)
@@ -972,6 +1058,10 @@ func _build_minimap() -> void:
 	_minimap_exits.colour = EXIT_MARK_COLOUR
 	_minimap_exits.size = clip.size
 	clip.add_child(_minimap_exits)
+	_minimap_waypoint = QuestMarks.new()
+	_minimap_waypoint.colour = WAYPOINT_COLOUR
+	_minimap_waypoint.size = clip.size
+	clip.add_child(_minimap_waypoint)
 	_minimap_arrow = PlayerArrow.new()
 	_minimap_arrow.position = clip.size * 0.5
 	clip.add_child(_minimap_arrow)
@@ -993,6 +1083,21 @@ func _build_minimap() -> void:
 	chips.add_child(_chip([_time_icon, _time_label]))
 	# right-aligned under the map, 8 px below it
 	chips.resized.connect(func() -> void: chips.position = Vector2(200 - chips.size.x, MAP_TOP + 200 + 8))
+	# under them the marker set on the map: its name and how far it is
+	var marker_icon := PixelIcon.new()
+	marker_icon.bitmap = ["...#...", "..###..", ".#####.", "#######", ".#####.", "..###..", "...#..."]
+	marker_icon.colour = WAYPOINT_COLOUR
+	marker_icon.pixel = 12.0 / 7.0
+	marker_icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_waypoint_label = _label("", _font_pixel, 11, UiStyle.TEXT, 0)
+	_waypoint_label.clip_text = true
+	_waypoint_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_waypoint_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_waypoint_chip = _chip([marker_icon, _waypoint_label])
+	_waypoint_chip.custom_minimum_size = Vector2(200, 0)
+	_waypoint_chip.position = Vector2(0, MAP_TOP + 200 + 8 + 30)
+	_waypoint_chip.visible = false
+	_minimap_box.add_child(_waypoint_chip)
 	# where the player is: over the map, as wide as it, its height fixed (long names end
 	# in an ellipsis)
 	var pin := PixelIcon.new()
@@ -1685,6 +1790,7 @@ func _update_minimap() -> void:
 		for target: Vector2 in quest_targets():
 			marks.append(_minimap_arrow.position + (target - Vector2(focus.x, focus.z)) * pixels_per_metre)
 	_minimap_marks.points = marks
+	_update_waypoint(focus, pixels_per_metre)
 	var exits := []
 	for exit_point in _exit_points:
 		exits.append(_minimap_arrow.position + Vector2(exit_point.x - focus.x, exit_point.z - focus.z) * pixels_per_metre)

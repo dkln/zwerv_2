@@ -212,7 +212,12 @@ niet het verkeer van de hele stad:
   Zonder camera (de tools) is niets buiten beeld, dus gaat er niets weg
   (`unseen_without_camera` zet dat aan voor een test).
 - `whole_town` = true doet het zoals vroeger: `vehicle_count` + `services_count` over het hele
-  wegennet (`traffic_seed`), allemaal gehouden; `tools/check/traffic_test.gd` gebruikt dat.
+  wegennet (`traffic_seed`), allemaal gehouden; `tools/check/traffic_test.gd` gebruikt dat
+  (met `-- 300 speler 8.5` het verkeer rond de speler in de spits, zoals in het spel).
+- Lopen tegen voertuigen: verkeer heeft geen botsvorm, alleen een voetafdruk
+  (`Vehicle.footprints`); de speler loopt er niet in (`PlayerController._vehicle_in_the_way`),
+  ook niet in een stilstaande auto in de file. Staat hij er al in (een auto die hem langzaam
+  raakte), dan kan hij er altijd uit.
 - Controle: `tools/check/crowd_test.gd` (aantallen om 13:00, 03:00 en 08:00, rust buiten de
   boom, een teruggezet voertuig rijdt, alles rond de speler na een sprong) en
   `tests/unit/test_crowd.gd` (de tabel). Soorten:
@@ -465,7 +470,21 @@ Allemaal zijn het een `Vehicle` (`scripts/vehicles/vehicle.gd`):
 - Vastlopen: wachten voertuigen in een kring op elkaar (niet in de rij voor een stoplicht of
   zebra), dan wringt er na een tijdje één langs de ander (`SQUEEZE_TIME`): eerst negeert hij
   alleen de cellen die de anderen claimen en blijft hij achter de carrosserie vóór hem. Kwam hij
-  zo niet verder (`SQUEEZE_IN_VAIN`), dan rijdt hij de volgende keer door de anderen heen.
+  zo niet verder (`SQUEEZE_IN_VAIN`), dan rijdt hij de volgende keer door de anderen heen. Wie
+  er in de kring eerst mag, ligt vast (`_first_in_ring`): wie het langst wacht (bij gelijk de
+  oudste); de rest wacht op hem, zodat er geen twee tegelijk in elkaar wringen.
+- Kruising vrijhouden (`_exit_taken`): een voertuig rijdt geen kruising op als de weg net
+  erachter, waar het eraf moet, bezet is door een voertuig dat stilstaat (file); het wacht vóór
+  de kruising, zodat het kruisende verkeer door kan. Sirenes, idioten, wie opzij gaat voor een
+  sirene en wie te dichtbij is om te stoppen rijden door (`Vehicle.KEEP_CROSSINGS_CLEAR` zet het
+  uit, om te vergelijken). Gaat een voertuig opzij voor een sirene die er niet langs kan en op
+  hem wacht (`YIELD_BLOCKING`, 4 s), dan rijdt het toch door en maakt het de weg vrij.
+- Erlangs beuken (`BARGE_AFTER`, 25 s): staat de voorste van een rij zo lang vast achter iets
+  dat nergens op wacht (geen licht, geen zebra, niemand op de weg: een vastloper), dan toetert
+  hij lang en rijdt erdoorheen; de auto die in de weg stond wordt opzij geduwd als wrak en
+  wordt daarna weggesleept zoals na elke botsing.
+- Toeteren: niet naar een voertuig dat zelf wacht (`is_waiting`: in de rij, voor een licht,
+  een zebra of iemand op de weg); in een file toetert dus niemand. Naar een wrak wel.
 - Verdwaald: keert een voertuig twee keer in zijn eigen rijstrook om (er is geen rijstrook
   terug ernaast) zonder tussendoor een kruising te halen, dan rijdt het alleen nog heen en weer.
   Zodra het buiten beeld is (of na `LOST_SECONDS`) wordt het op een vrije rijstrook elders
@@ -1769,7 +1788,13 @@ Prestaties en uiterlijk
     witte driehoek, de plekken uit `places` als blokjes (klikken of pijltjes), wijken waar je
     nog niet was (`hud.visited_areas()`) onder een mist. Rechts de gekozen plek (naam, wijk,
     afstand), waar je nu bent (wijk en straat) en een legenda; linksonder X/Y in meters.
-  - Toetsen: Tab of I opent de inventaris, J de quests, M de kaart; Q/E wisselt van tab; Tab,
+    Supermarkten in de kleur en vorm van hun keten (DERREK rood vierkant, ALFRED STEYHN
+    lichtblauw rondje), ook in onbezochte wijken. Enter of rechtsklik zet een marker op de
+    gekozen plek (`hud.set_waypoint`): een roze ruit op het kaartje (aan de rand een pijl die de
+    kant op wijst), naam en afstand eronder, een lichtbaken in de stad
+    (`scripts/world/waypoint_beacon.gd`); nog eens Enter haalt hem weg, aangekomen is hij weg.
+  - Toetsen: Tab opent het menu op de tab waar je het verliet (de eerste keer de inventaris),
+    I de inventaris, J de quests, M de kaart; Q/E wisselt van tab; Tab,
     Escape of nog eens dezelfde letter sluit. Pijltjes of WASD kiezen, Enter gebruikt, X
     gooit weg, 1-5 kiest een soort; de muis werkt ook. Open = het spel staat stil (de boom
     gepauzeerd); niet tijdens het pauzemenu of als de speler dood is.

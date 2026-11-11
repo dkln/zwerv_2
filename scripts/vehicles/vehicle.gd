@@ -74,7 +74,17 @@ extends Node3D
 ## zebra) would stand there for ever, so after a while one squeezes past (SQUEEZE_TIME):
 ## it ignores the cells the others claim, but still keeps behind the body right ahead of it;
 ## only if it stands still all the same (the bodies themselves locked) does it drive
-## through them, the next time.
+## through them, the next time. Who goes first is settled (_first_in_ring): of the ring, the
+## one that has waited longest (on a tie the oldest vehicle); the others wait for it, so no two
+## squeeze into each other at once and lock it up again.
+## Keeping the crossing clear (_exit_taken): it does not drive onto a crossing when the road
+## just past it, where it would come off, is taken by a vehicle standing there (a queue): it
+## waits before the crossing, so the traffic across it can go on (most locked junctions start
+## with one standing in the middle of a crossing); a siren, a maniac and one too close to stop
+## drive on.
+## Barging through (BARGE_AFTER): stuck that long at the head of a queue that waits for nothing
+## (no light, no zebra, no one on the road: a lock), it honks long and drives on through the
+## one in its way, shoving it aside as a wreck.
 ## Windows: the glass of the model gets dark tinted glass that mirrors the sky, more at a
 ## grazing angle, with a sharp sun glint and light streaks that lie on the car itself
 ## (voxel_glass.gdshader, streaks_on_object: world streaks would slide over its windows).
@@ -437,6 +447,8 @@ const HORN_PAUSE := 5.0
 ## Honking at the other traffic: after this many seconds held up by another vehicle, and on a
 ## hard brake for one (a near crash: braking this hard, at this speed or more).
 const HONK_AT_VEHICLE_AFTER := 3.0
+## Below this speed it may go (m/s) it counts as waiting (is_waiting): not honked at.
+const WAITING_BELOW := 1.0
 const NEAR_CRASH_BRAKING := 1.2
 const NEAR_CRASH_SPEED := 4.0
 ## Held up longer (the same one not getting out of the way): from the HOLD_HORN_FROM-th honk
@@ -490,6 +502,10 @@ var _people_countdown := 0           # physics steps until the next look at the 
 var _people_limit := INF             # speed (m/s) for the people on foot in its way
 var _dodge := 0.0                    # metres it swerves right (+) or left (-) round someone
 var _horn_clock := 0.0               # seconds until it may sound its horn again
+var _wanted_speed := INF             # the speed it may go now (_target_speed), see is_waiting
+var _barge_into: Vehicle             # the one it is barging through to (_watch_barging)
+## How often it barged a vehicle aside (the checks).
+var barged := 0
 var _horn_insistence := 0            # honks for the hold-up of now (longer from HOLD_HORN_FROM)
 var _standing_for_people := 0.0      # seconds it has stood still for someone in its way
 var _impatience := 0.0               # seconds stood for someone in its path (honks or not)
@@ -690,13 +706,14 @@ func _physics_process(delta: float) -> void:
 	_update_emergency(delta)
 	_update_maniac(delta)
 	var target := _target_speed(delta)
+	_wanted_speed = target
 	_watch_for_gridlock(delta)
 	# the acceleration that brings it to the target speed in about SPEED_SETTLE seconds,
 	# reached gradually; never past the target speed
 	var wanted := clampf((target - speed) / SPEED_SETTLE, -braking * 1.5, acceleration)
 	# a near crash: braking hard for the vehicle ahead, it honks at it
 	if wanted <= -braking * NEAR_CRASH_BRAKING and speed > NEAR_CRASH_SPEED and _blocked_by != null \
-			and _horn_clock <= 0.0 and not unseen and not self is RailVehicle:
+			and _horn_clock <= 0.0 and not unseen and not self is RailVehicle and not _blocked_by.is_waiting():
 		_sound_horn("waarschuwen")
 	if speed > INSISTENCE_RESET_SPEED:
 		_horn_insistence = 0
@@ -1199,8 +1216,10 @@ func _update_emergency(delta: float) -> void:
 		_yield_countdown -= 1
 		if _yield_countdown < 0:
 			_yield_countdown = YIELD_LOOK_STEPS
-			if yielding and _yield_clock > YIELD_LONGEST:
-				_not_for = _yielding_to   # waited long enough: drives on, and not again for this one
+			if yielding and (_yield_clock > YIELD_LONGEST or _blocks_its_siren()):
+				# waited long enough, or the siren cannot get past it and waits for it: it
+				# drives on (clearing the road ahead of the siren), and not again for this one
+				_not_for = _yielding_to
 				yielding = false
 				_yielding_to = null
 			elif yielding and _yielding_to and is_instance_valid(_yielding_to) and _yielding_to.has_priority() and not _is_past(_yielding_to):
@@ -1223,6 +1242,16 @@ func _update_emergency(delta: float) -> void:
 	wanted_offset += _dodge
 	# sideways only as fast as steering allows at this speed: standing still it cannot
 	_side_offset = move_toward(_side_offset, wanted_offset, minf(OFFSET_RATE, speed * SIDEWAYS_PER_SPEED) * delta)
+
+
+## True if the siren it pulled over for stands still waiting for it (cannot pass it: no
+## room, traffic coming), for at least YIELD_BLOCKING s: then it should drive on, not wait.
+const YIELD_BLOCKING := 4.0
+
+
+func _blocks_its_siren() -> bool:
+	return _yield_clock > YIELD_BLOCKING and _yielding_to != null and is_instance_valid(_yielding_to) \
+		and _yielding_to._blocked_by == self and _yielding_to.speed < STANDING_SPEED
 
 
 ## How far (metres, right +) an idiot of this kind steers its front axle off its route at
@@ -2239,6 +2268,19 @@ func _traffic_speed(index: int, last: int) -> float:
 		var my_time := (at - _distance) / maxf(speed, 1.0)
 		var blocked := false
 		var crossing := network.is_crossing(cell)
+		# about to drive onto a crossing: only if it can come off it again (see the top)
+		if KEEP_CROSSINGS_CLEAR and crossing and (ahead_index == 0 or not network.is_crossing(_route_cells[ahead_index - 1])) \
+				and maniac == "" and not has_priority() and not yielding and not self is RailVehicle and _squeeze_clock <= 0.0 \
+				and _siren_behind() == null \
+				and (my_time > COMMITTED_SECONDS * 0.6 or speed < 2.0):
+			var holder := _exit_taken(ahead_index)
+			if holder != null:
+				_blocked_by = holder
+				var stop_at := (_route_distances[ahead_index - 1] + at) * 0.5 - half_length - TRAFFIC_GAP if ahead_index > 0 else _distance
+				target = _approach_speed(0.0, stop_at)
+				if stop_at - _distance < 0.4:
+					target = 0.0
+				break
 		for other in all_vehicles:
 			# measured to its middle: a long one (a train) reaches further than that
 			if other == self or other.global_position.distance_to(global_position) > NEAR_VEHICLES + other._reach():
@@ -2277,6 +2319,37 @@ func _traffic_speed(index: int, last: int) -> float:
 				target = 0.0
 			break
 	return target
+
+
+## The vehicle standing on the road just past the crossing that starts at route index
+## `entry_index` (the first cell after it, and the one after that for a long vehicle), where
+## it would come off the crossing; null when there is room (see "Keeping the crossing clear").
+## Off: the old way, onto a crossing whatever stands past it (to compare in the checks).
+static var KEEP_CROSSINGS_CLEAR := true
+const EXIT_TAKEN_BELOW := 1.0
+const LONG_VEHICLE := 5.0
+
+
+func _exit_taken(entry_index: int) -> Vehicle:
+	var exit_index := entry_index
+	while exit_index < _route_cells.size() and network.is_crossing(_route_cells[exit_index]):
+		exit_index += 1
+	if exit_index >= _route_cells.size():
+		return null
+	var cells_needed := 2 if half_length * 2.0 > LONG_VEHICLE else 1
+	for offset in cells_needed:
+		var index := exit_index + offset
+		if index >= _route_cells.size() or network.is_crossing(_route_cells[index]):
+			break
+		var cell := _route_cells[index]
+		for other in all_vehicles:
+			if other == self or other.speed > EXIT_TAKEN_BELOW or other is RailVehicle:
+				continue
+			if other.global_position.distance_to(global_position) > NEAR_VEHICLES + other._reach():
+				continue
+			if other.covers(cell):
+				return other
+	return null
 
 
 ## True if `other` comes from its right towards the crossing (it drives across its way from
@@ -2363,6 +2436,7 @@ func _watch_progress(delta: float) -> void:
 ## Standing still for other vehicles: if they wait for each other in a ring, one squeezes
 ## past after a while (a queue for a light or a zebra just waits).
 func _watch_for_gridlock(delta: float) -> void:
+	_watch_barging()
 	if _squeeze_clock > 0.0 and _squeeze_clock <= delta:
 		_squeezed_in_vain = global_position.distance_to(_squeeze_from) < SQUEEZE_IN_VAIN
 	_squeeze_clock = maxf(_squeeze_clock - delta, 0.0)
@@ -2374,14 +2448,29 @@ func _watch_for_gridlock(delta: float) -> void:
 		_blocked_clock = 0.0
 		return
 	_blocked_clock += delta
-	# held up by another vehicle: it honks at it (again every HORN_PAUSE, ever longer)
-	if _blocked_clock > HONK_AT_VEHICLE_AFTER and _horn_clock <= 0.0 and not unseen and not self is RailVehicle:
+	# held up by another vehicle: it honks at it (again every HORN_PAUSE, ever longer); not
+	# when that one waits itself (a queue for a light, a jam: everyone waits, no one honks)
+	if _blocked_clock > HONK_AT_VEHICLE_AFTER and _horn_clock <= 0.0 and not unseen and not self is RailVehicle \
+			and not _blocked_by.is_waiting():
 		_sound_horn("wachten")
+	# stuck too long at the front of a queue that waits for nothing (no light, no zebra, no
+	# one on the road): it barges through, ramming the one in its way aside (see the top)
+	if _blocked_clock > BARGE_AFTER and _may_barge():
+		_barge_into = _blocked_by
+		_squeeze_through = true
+		_squeeze_from = global_position
+		_squeeze_clock = SQUEEZE_TIME
+		_blocked_clock = 0.0
+		_horn_insistence = HOLD_HORN_FROM
+		_horn_clock = 0.0
+		if not unseen:
+			_sound_horn("doordrukken")
+		return
 	var patience := RING_PATIENCE + get_instance_id() % RING_PATIENCE_SPREAD
 	# a ring with a siren in it: not the siren (it may not wait), the other gets out of the way
 	if _blocked_clock > SIREN_RING_PATIENCE and not has_priority() and _waits_in_a_ring_with_siren():
 		patience = SIREN_RING_PATIENCE
-	if _blocked_clock > LOST_PATIENCE or (_blocked_clock > patience and _waits_in_a_ring()):
+	if _blocked_clock > LOST_PATIENCE or (_blocked_clock > patience and _waits_in_a_ring() and _first_in_ring()):
 		# first it only ignores the claims; if the bodies themselves are locked (that
 		# squeeze got it nowhere, or it waited far too long) it drives through them
 		_squeeze_through = _squeezed_in_vain or _squeeze_clock > 0.0 or _blocked_clock > LOST_PATIENCE \
@@ -2390,6 +2479,14 @@ func _watch_for_gridlock(delta: float) -> void:
 		_squeeze_from = global_position
 		_squeeze_clock = SQUEEZE_TIME
 		_blocked_clock = 0.0
+
+
+## True if it is held back for a reason of its own (the speed it may go is about nothing: a
+## red light, a zebra, someone on the road, the vehicle ahead of it in a queue), so the ones
+## behind it do not honk at it (_watch_for_gridlock, a hard brake behind it). A wreck in the
+## road does not wait: that one they do honk at.
+func is_waiting() -> bool:
+	return not crashed and (_wanted_speed < WAITING_BELOW or _blocked_by != null)
 
 
 ## True if `other` faces it and waits for it too: their bodies hold each other, so ignoring
@@ -2421,6 +2518,64 @@ func _waits_in_a_ring_with_siren() -> bool:
 
 
 ## True if following who waits for whom comes back round to someone it has seen already.
+## Barging through (see the top): after BARGE_AFTER s stuck, the vehicle right behind what
+## holds the queue up drives on through it; touching it, it shoves it aside (that one becomes a
+## wreck, BARGE_PUSH m/s its way, and is towed off as after any crash).
+const BARGE_AFTER := 25.0
+const BARGE_PUSH := 3.5
+const BARGE_SPIN := 1.2
+
+
+## True if it may barge into the one it waits for: that one stands, is no tram, train, siren
+## or wreck, and waits itself for nothing (a ring, of which this is the one to go first; or the
+## head of the queue, standing for no light, zebra or someone on the road).
+func _may_barge() -> bool:
+	var blocker := _blocked_by
+	if blocker == null or not is_instance_valid(blocker) or blocker.crashed or blocker is RailVehicle or self is RailVehicle:
+		return false
+	if blocker.has_priority() or blocker.speed > STANDING_SPEED or crashed:
+		return false
+	if _waits_in_a_ring():
+		return _first_in_ring()
+	return blocker._blocked_by == null and not blocker._held_by_rule and blocker._people_limit > 0.5 \
+		and not blocker.yielding
+
+
+## While barging: once its body touches the one it barges into, that one is shoved aside.
+func _watch_barging() -> void:
+	if _barge_into == null:
+		return
+	if not is_instance_valid(_barge_into) or _barge_into.crashed or _squeeze_clock <= 0.0 or crashed:
+		_barge_into = null
+		return
+	for mine: Array in _footprints(0.1):
+		for theirs: Array in _barge_into._footprints(0.1):
+			if Vehicle.rectangles_overlap(mine, theirs):
+				var forward := Vector3(global_basis.z.x, 0.0, global_basis.z.z).normalized()
+				var victim := _barge_into
+				_barge_into = null
+				barged += 1
+				victim._become_wreck(forward * BARGE_PUSH, _random.randf_range(-BARGE_SPIN, BARGE_SPIN), forward, 0.4)
+				return
+
+
+## True if it is the one of its ring that goes first (see Gridlock at the top): it has waited
+## longest of all in it, or as long as the longest and is the oldest vehicle.
+func _first_in_ring() -> bool:
+	var seen := {}
+	var vehicle := self as Vehicle
+	var first := self as Vehicle
+	for step_index in QUEUE_CHECK:
+		if vehicle == null or seen.has(vehicle):
+			break
+		seen[vehicle] = true
+		if vehicle._blocked_clock > first._blocked_clock + 0.05 \
+				or (absf(vehicle._blocked_clock - first._blocked_clock) <= 0.05 and vehicle.get_instance_id() < first.get_instance_id()):
+			first = vehicle
+		vehicle = vehicle._blocked_by
+	return first == self
+
+
 func _waits_in_a_ring() -> bool:
 	var seen := {}
 	var vehicle := self as Vehicle

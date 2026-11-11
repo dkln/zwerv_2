@@ -9,7 +9,10 @@ extends SceneTree
 ## The lights: how often a vehicle that keeps to them (no siren, not reckless) drives onto
 ## a crossing at red (its front well over the line while the light is red), and how often one
 ## stands still on a zebra before a red crossing (it should wait before the zebra).
-## usage: Godot --headless --script tools/check/traffic_test.gd -- [simulated seconds]
+## With "speler" (and an hour) the traffic is the set round the player, as in the game (dense
+## round Centraal, where the player starts, in the rush hour by default): vehicles come and go,
+## each is counted while it is there; that is where junctions lock up.
+## usage: Godot --headless --script tools/check/traffic_test.gd -- [simulated seconds] [speler [hour]]
 
 const Common = preload("res://tools/tool_common.gd")
 const TIME_SCALE := 8
@@ -22,13 +25,19 @@ const CHAIN_SHOWN := 8
 func _init() -> void:
 	Common.watchdog(self, 900)
 	var seconds := Common.arg_float(0, 300.0)
+	var round_player := Common.arg(1, "") == "speler"
+	# "oud" as the fourth word: without keeping the crossings clear (Vehicle.KEEP_CROSSINGS_CLEAR)
+	if Common.arg(3, "") == "oud":
+		Vehicle.KEEP_CROSSINGS_CLEAR = false
 	var scene := Common.instantiate("res://scenes/stad.tscn")
+	if round_player and scene.has_node("Dagcyclus") and "time_of_day" in scene.get_node("Dagcyclus"):
+		scene.get_node("Dagcyclus").time_of_day = Common.arg_float(2, 8.5)
 	# Verhaal too: its prologue holds the game (the story box pauses the tree)
 	for node_name in ["DetailNiveau", "Rook", "Verhaal"]:
 		if scene.has_node(node_name):
 			scene.get_node(node_name).free()
 	# the whole network, all kept (not the set round the player): every road is tried
-	scene.get_node("Verkeer").whole_town = true
+	scene.get_node("Verkeer").whole_town = not round_player
 	Engine.time_scale = TIME_SCALE
 	Engine.physics_ticks_per_second = 60 * TIME_SCALE
 	Engine.max_physics_steps_per_frame = 4 * TIME_SCALE
@@ -65,7 +74,21 @@ func _init() -> void:
 		elapsed += STEP
 		physics_time += Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS)
 		samples += 1
+		if round_player:
+			# the set round the player changes: every vehicle there now is counted
+			for vehicle in Vehicle.all_vehicles:
+				if not distance.has(vehicle) and is_instance_valid(vehicle):
+					vehicles.append(vehicle)
+					distance[vehicle] = 0.0
+					crashes[vehicle] = 0
+					standing[vehicle] = 0.0
+					longest_stand[vehicle] = 0.0
+					was_crashed[vehicle] = false
+					last_position[vehicle] = vehicle.global_position
+					last_cell[vehicle] = Vector3i.ZERO
 		for vehicle in vehicles:
+			if not is_instance_valid(vehicle) or not vehicle.is_inside_tree():
+				continue
 			if not vehicle.crashed:
 				distance[vehicle] += (vehicle.global_position - last_position[vehicle]).length()
 			last_position[vehicle] = vehicle.global_position
@@ -92,12 +115,18 @@ func _init() -> void:
 	var total_crashes := 0
 	var stuck := 0
 	for vehicle in vehicles:
+		if not is_instance_valid(vehicle):
+			continue
 		total_crashes += crashes[vehicle]
 		if longest_stand[vehicle] > STUCK_AFTER:
 			stuck += 1
 		print("%-34s %6.0f m  botsingen %d  langst stil %5.1f s%s" % [_label(vehicle), distance[vehicle], crashes[vehicle],
 				longest_stand[vehicle], "  VAST" if longest_stand[vehicle] > STUCK_AFTER else ""])
-	print("samen: %d botsingen, %d voertuigen vast, physics %.2f ms per stap" % [total_crashes, stuck, physics_time / maxf(samples, 1) * 1000.0])
+	var barged := 0
+	for vehicle in vehicles:
+		if is_instance_valid(vehicle):
+			barged += vehicle.barged
+	print("samen: %d botsingen, %d voertuigen vast, %d keer er langs gebeukt, physics %.2f ms per stap" % [total_crashes, stuck, barged, physics_time / maxf(samples, 1) * 1000.0])
 	print("verkeerslichten: %d keer door rood, %d keer op een zebra stil voor rood" % [through_red, on_zebra])
 	Engine.time_scale = 1.0
 	quit()

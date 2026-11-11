@@ -37,6 +37,7 @@ extends Node
 ## Sounds: assets/audio/geluiden/ (tools/megadrive/geluiden.py, docs/GELUIDEN.md).
 ## Test: tools/check/spatial_audio_test.gd.
 
+const SoundVariation = preload("res://scripts/audio/sound_variation.gd")
 const LoadingScreen = preload("res://scripts/ui/loading_screen.gd")
 const SOUND_FOLDER := "res://assets/audio/geluiden/"
 const BUS_NAME := "Verkeer"
@@ -129,6 +130,7 @@ class Emitter:
 	var kind := ""
 	var motor: AudioStreamPlayer3D
 	var siren: AudioStreamPlayer3D
+	var pitch_factor := 1.0             # the engine's own pitch (SoundVariation.LOOP_SPREAD)
 	var base_db := 0.0
 	var last_speed := 0.0
 	var was_crashed := false
@@ -294,6 +296,7 @@ func _siren_of(vehicle: Node3D) -> String:
 func _make_emitter(vehicle: Node3D) -> Emitter:
 	var emitter := Emitter.new()
 	emitter.vehicle = vehicle
+	emitter.pitch_factor = SoundVariation.pitch(SoundVariation.LOOP_SPREAD)
 	emitter.kind = _kind_of(vehicle)
 	var sound_name: String = HELICOPTER_SOUND if emitter.kind == "helikopter" else MOTOR_SOUNDS[emitter.kind]
 	emitter.base_db = 0.3 if emitter.kind == "helikopter" else MOTOR_VOLUME_DB[emitter.kind]
@@ -351,7 +354,7 @@ func _update_emitter(emitter: Emitter, delta: float) -> void:
 	var doppler := _doppler(vehicle)
 	var car := vehicle as Vehicle
 	if car == null:
-		emitter.motor.pitch_scale = clampf(doppler, 0.5, 2.0)
+		emitter.motor.pitch_scale = clampf(doppler * emitter.pitch_factor, 0.5, 2.0)
 	else:
 		var speed := absf(car.speed)
 		var cruise: float = CRUISE_SPEED[emitter.kind]
@@ -359,7 +362,7 @@ func _update_emitter(emitter: Emitter, delta: float) -> void:
 		var engine_pitch := lerpf(IDLE_PITCH, 1.0, clampf(speed / cruise, 0.0, 1.0))
 		if speed > cruise:
 			engine_pitch = minf(MAX_PITCH, 1.0 + (speed - cruise) / cruise * 0.5)
-		emitter.motor.pitch_scale = clampf(engine_pitch * doppler, 0.3, 2.5)
+		emitter.motor.pitch_scale = clampf(engine_pitch * doppler * emitter.pitch_factor, 0.3, 2.5)
 		var idle_db := lerpf(-5.0, 0.0, clampf(speed / cruise, 0.0, 1.0))
 		# a tram or a train standing still makes no sound: it fades out under RAIL_SILENT_BELOW m/s
 		if emitter.kind == "tram" or emitter.kind == "trein":
@@ -534,6 +537,7 @@ func attach_loop(parent: Node3D, sound_name: String, unit := 10.0, volume_db := 
 	player.attenuation_filter_db = 0.0
 	_even_out(player)
 	player.max_db = maxf(volume_db, 0.0)
+	player.pitch_scale = SoundVariation.pitch(SoundVariation.LOOP_SPREAD)
 	parent.add_child(player)
 	player.play()
 	return player
@@ -585,6 +589,7 @@ func _one_shot(at: Vector3, sound_name: String, unit: float, volume_db: float) -
 	# max_db caps volume_db too: at 0 dB a horn or a cry above 0 (EVENT_DB, SIGNAL_DB) would
 	# be cut back to the level of the engines and be lost under them and the music
 	player.max_db = maxf(volume_db, 0.0)
+	player.pitch_scale = SoundVariation.pitch()   # never twice quite the same
 	add_child(player)
 	player.global_position = at + Vector3.UP
 	player.finished.connect(player.queue_free)

@@ -16,6 +16,7 @@ extends RefCounted
 ## - "munt": picking up a coin: a quick bright two-note chime going up (a fourth).
 ## Play one with UiSounds.play(node, "kies"); the sounds are made once and kept.
 
+const SoundVariation = preload("res://scripts/audio/sound_variation.gd")
 const MIX_RATE := 22050
 ## The volume of the effects (dB).
 const VOLUME_DB := -8.0
@@ -34,7 +35,7 @@ static func play(node: Node, sound_name: String, softer_db := 0.0, pitch_scale :
 	var player := AudioStreamPlayer.new()
 	player.stream = stream
 	player.volume_db = VOLUME_DB + softer_db
-	player.pitch_scale = pitch_scale
+	player.pitch_scale = pitch_scale * SoundVariation.pitch(SoundVariation.UI_SPREAD)
 	# it keeps sounding while the game is paused, and after a scene change
 	player.process_mode = Node.PROCESS_MODE_ALWAYS
 	node.get_tree().root.add_child(player)

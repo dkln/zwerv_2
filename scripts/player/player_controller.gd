@@ -756,8 +756,12 @@ func _ground_height(point: Vector3, from_height: float, drop := -1.0) -> float:
 	return (hit.position as Vector3).y
 
 
-## True if nothing of the town stands in the figure's way with its feet at `feet`.
+## True if nothing of the town stands in the figure's way with its feet at `feet`: no
+## collider, and no vehicle (_vehicle_in_the_way: the traffic has no colliders, only its
+## footprints, so without this you walked straight through a car standing in a queue).
 func _fits(feet: Vector3) -> bool:
+	if _vehicle_in_the_way(feet):
+		return false
 	var space := get_world_3d().direct_space_state
 	var query := PhysicsShapeQueryParameters3D.new()
 	query.shape = _walk_shape
@@ -1140,6 +1144,32 @@ func _check_vehicles() -> void:
 			if Vehicle.rectangles_overlap(mine, footprint):
 				_hit_by(vehicle)
 				return
+
+
+## A vehicle on the road takes up its footprint (Vehicle.footprints): the figure with its
+## feet at `feet` may not stand in one, standing or driving. One it overlaps already (a car
+## that rolled into it, slower than a hit) does not count, so it can always step out of it.
+const VEHICLE_GAP := 0.05
+const VEHICLE_LOOK := 18.0
+
+
+func _vehicle_in_the_way(feet: Vector3) -> bool:
+	if _figure_box.size == Vector3.ZERO:
+		return false
+	var here := Transform3D(Basis(Vector3.UP, rotation.y), global_position)
+	var there := Transform3D(Basis(Vector3.UP, rotation.y), feet)
+	var now := Vehicle.rectangle(here, here * _figure_box.get_center(), _figure_box.size.x, _figure_box.size.z, 0.0)
+	var then := Vehicle.rectangle(there, there * _figure_box.get_center(), _figure_box.size.x, _figure_box.size.z, 0.0)
+	for vehicle: Vehicle in Vehicle.all_vehicles:
+		if not is_instance_valid(vehicle) or vehicle.crashed:
+			continue
+		var offset := vehicle.global_position - feet
+		if absf(offset.y) > 2.5 or Vector2(offset.x, offset.z).length_squared() > VEHICLE_LOOK * VEHICLE_LOOK + 100.0:
+			continue
+		for footprint: Array in vehicle.footprints(VEHICLE_GAP):
+			if Vehicle.rectangles_overlap(then, footprint) and not Vehicle.rectangles_overlap(now, footprint):
+				return true
+	return false
 
 
 func _hit_by(vehicle: Vehicle) -> void:

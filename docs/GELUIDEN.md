@@ -138,3 +138,6 @@ bewerkt tot naadloze lussen: een stuk eruit, het eind 3 s in het begin overgevlo
 `scripts/world/interiors.gd` (`AMBIENCE_OF`). Een plek erbij: een opname in `RECORDINGS` van
 omgeving.py, een regel in `PLACES` en in `AMBIENCE_OF`.
 
+Toonhoogte: elk geluidseffect klinkt elke keer een fractie anders (`scripts/audio/sound_variation.gd`:
+tot 6% hoger of lager, de menugeluiden 3%, motoren en lussen krijgen bij het starten een eigen
+toonhoogte binnen 5%). Muziek, de achtergrondgeluiden van een plek en het gebrabbel niet.

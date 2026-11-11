@@ -18,8 +18,12 @@ extends CanvasLayer
 ##   places the followed quest sends you to (hud.quest_targets()) as amber diamonds; the
 ##   supermarkets in the colour and shape of their chain (SUPERMARKETS: DERREK a red
 ##   square, ALFRED STEYHN a light blue disc, as their emblems), also in neighbourhoods not
-##   visited yet, so you can always find the nearest; the legend has them too.
-## Keys: Tab or I opens the inventory, J the quests, M the map; Q / E change tab; Tab or
+##   visited yet, so you can always find the nearest; the legend has them too. Enter (or a
+##   right click) sets the marker on the chosen place (GameHud.set_waypoint: a pink diamond
+##   on the minimap and the map, a beam of light in the town, gone once you are there);
+##   again: off.
+## Keys: Tab opens the menu on the tab it was left on (the inventory the first time), I the
+## inventory, J the quests, M the map; Q / E change tab; Tab or
 ## Escape closes; arrows / WASD and Enter choose; the mouse works too. While open the game
 ## stands still (the tree paused). It does not open while the pause menu has the game paused
 ## or while the player is dead.
@@ -297,6 +301,7 @@ var _place_name: Label
 var _place_wijk: Label
 var _place_distance: Label
 var _place_state: Label
+var _place_marker: Label     # whether the marker is on the chosen place, and how to set it
 var _here_wijk: Label
 var _here_street: Label
 
@@ -399,7 +404,10 @@ func _unhandled_input(event: InputEvent) -> void:
 	var key: Key = (event as InputEventKey).keycode
 	if not _is_open:
 		match key:
-			KEY_TAB, KEY_I:
+			KEY_TAB:
+				# where you left it (the tab shown last), the inventory the first time
+				open(_current_tab if TABS.has(_current_tab) else "inventaris")
+			KEY_I:
 				open("inventaris")
 			KEY_J:
 				open("quests")
@@ -512,6 +520,30 @@ func _map_key(key: Key) -> void:
 	var direction := _direction(key)
 	if direction != Vector2i.ZERO:
 		_move_place_selection(Vector2(direction))
+	elif _is_accept(key):
+		toggle_marker()
+
+
+## The marker on the chosen place (GameHud.set_waypoint: on the minimap and as a beam of
+## light in the town), or off again when it is there already.
+func toggle_marker() -> void:
+	var place := _place(_selected_place)
+	if place.is_empty() or _hud == null or not _hud.has_method("set_waypoint"):
+		return
+	if _hud.has_waypoint() and (_hud.waypoint() as Vector2).is_equal_approx(place.position):
+		_hud.clear_waypoint()
+		UiSounds.play(self, "terug")
+	else:
+		var chain := supermarket_chain(place.key)
+		_hud.set_waypoint(place.position, String(SUPERMARKETS[chain].name) if chain != "" else String(place.name))
+		UiSounds.play(self, "doe")
+	_fill_place_panel()
+	_map_overlay.queue_redraw()
+
+
+func _marker_on(place: Dictionary) -> bool:
+	return _hud != null and _hud.has_method("has_waypoint") and _hud.has_waypoint() \
+		and (_hud.waypoint() as Vector2).is_equal_approx(place.position)
 
 
 # ------------------------------------------------------------------ tabs
@@ -1491,7 +1523,7 @@ func _fill_quest_detail(quest: Dictionary) -> void:
 # ------------------------------------------------------------------ map page
 
 func _build_map_page() -> Control:
-	var parts := _page("Kaart", "[←↑↓→] PLEK KIEZEN   [KLIK] KIEZEN   [Q/E] TAB   [TAB] SLUITEN")
+	var parts := _page("Kaart", "[←↑↓→] PLEK KIEZEN   [ENTER] MARKER   [KLIK] KIEZEN   [RECHTSKLIK] MARKER   [Q/E] TAB   [TAB] SLUITEN")
 	var content: HBoxContainer = parts[1]
 	var frame := _box(_style(UiStyle.INK, UiStyle.BORDER, 3), 6.0)
 	frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1568,6 +1600,8 @@ func _build_map_side() -> Control:
 			_place_distance = chip_label
 		else:
 			_place_state = chip_label
+	_place_marker = _label("", _font_pixel, 11, UiStyle.TEXT)
+	place_column.add_child(_place_marker)
 	var here := _box(_style(UiStyle.PANEL, UiStyle.BORDER, 2, 16, 14))
 	column.add_child(here)
 	var here_column := _vbox(6)
@@ -1600,6 +1634,7 @@ func _build_map_side() -> Control:
 				round_style.set_corner_radius_all(5)
 				marker.add_theme_stylebox_override("panel", round_style)
 		legend_grid.add_child(_legend_entry(marker, String(SUPERMARKETS[chain].name).capitalize()))
+	legend_grid.add_child(_legend_entry(_legend_square(GameHud.WAYPOINT_COLOUR, Color.WHITE), "Jouw marker"))
 	legend_grid.add_child(_legend_entry(_legend_square(Color(FOG, 1.0), UiStyle.BORDER), "Onontdekte wijk"))
 	var arrow_holder := Control.new()
 	arrow_holder.custom_minimum_size = Vector2(12, 12)
@@ -1833,6 +1868,9 @@ func _draw_map_overlay() -> void:
 			_map_overlay.draw_rect(Rect2(at - Vector2(11, 11), Vector2(22, 22)), Color.WHITE)
 			_map_overlay.draw_rect(Rect2(at - Vector2(8, 8), Vector2(16, 16)), UiStyle.INK)
 			_map_overlay.draw_rect(Rect2(at - Vector2(5, 5), Vector2(10, 10)), _place_colour(chosen))
+	# the marker set on the map, a pink diamond
+	if _hud and _hud.has_method("has_waypoint") and _hud.has_waypoint():
+		QuestMarks.draw_mark(_map_overlay, _world_to_map(_hud.waypoint()).round(), 9.0, 1.0, GameHud.WAYPOINT_COLOUR)
 	# where the followed quest sends you, over everything
 	if _hud and _hud.has_method("quest_targets"):
 		for target: Vector2 in _hud.quest_targets():
@@ -1908,6 +1946,9 @@ func _fill_place_panel() -> void:
 	var distance := (place.position as Vector2).distance_to(_player_position())
 	_place_distance.text = "%d M" % roundi(distance)
 	_place_state.text = "BEZOCHTE WIJK" if known else "ONONTDEKTE WIJK"
+	var marked := _marker_on(place)
+	_place_marker.text = "◆ MARKER STAAT HIER   [ENTER] WEG" if marked else "[ENTER] MARKER ZETTEN"
+	_place_marker.add_theme_color_override("font_color", GameHud.WAYPOINT_COLOUR if marked else UiStyle.TEXT)
 
 
 func _choose_place(place_key: String) -> void:
@@ -1920,7 +1961,10 @@ func _choose_place(place_key: String) -> void:
 
 
 func _on_map_input(event: InputEvent) -> void:
-	if not (event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT):
+	if not (event is InputEventMouseButton and event.pressed):
+		return
+	var button := (event as InputEventMouseButton).button_index
+	if button != MOUSE_BUTTON_LEFT and button != MOUSE_BUTTON_RIGHT:
 		return
 	var nearest := ""
 	var nearest_distance := MARKER_PICK_RADIUS
@@ -1930,6 +1974,8 @@ func _on_map_input(event: InputEvent) -> void:
 			nearest_distance = distance
 			nearest = place.key
 	_choose_place(nearest)
+	if button == MOUSE_BUTTON_RIGHT and nearest != "":
+		toggle_marker()
 	_map_overlay.accept_event()
 
 

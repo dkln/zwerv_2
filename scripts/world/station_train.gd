@@ -46,6 +46,7 @@ const PLAYER_GROUP := "speler"
 const MOTOR_SOUND := "trein_motor_loop"
 const MOTOR_DB := -9.0
 
+var _motor_pitch := 1.0
 var track := 1
 var car_count := 3
 var nose_z := 0.0
@@ -84,6 +85,8 @@ static func create(props: MeshLibrary, on_track: int, cars: int) -> StationTrain
 
 func _ready() -> void:
 	_motor = StationAudio.loop_on(self, MOTOR_SOUND, MOTOR_DB)
+	# every train its own engine (loop_on gave it a pitch of its own; the speed goes on top)
+	_motor_pitch = _motor.pitch_scale if _motor else 1.0
 
 
 ## Its length from the nose to the back of the last car (metres).
@@ -196,7 +199,7 @@ func _physics_process(delta: float) -> void:
 		_hit_who_is_in_the_way()
 	if _motor and _motor.playing:
 		_motor.volume_db = MOTOR_DB - 10.0 * (1.0 - speed / TOP_SPEED)
-		_motor.pitch_scale = 0.55 + 0.6 * speed / TOP_SPEED
+		_motor.pitch_scale = (0.55 + 0.6 * speed / TOP_SPEED) * _motor_pitch
 		_motor.position = Vector3(0.0, 1.5, nose_z + 4.0)
 	var wanted := 1.0 if _doors_wanted and state == "staat" else 0.0
 	var amount := move_toward(_door_amount, wanted, delta / DOOR_TIME)

@@ -11,6 +11,7 @@ extends RefCounted
 ##   further down the hall (two delayed taps), on into the hall bus, so it gets the reverb
 ##   as well.
 
+const SoundVariation = preload("res://scripts/audio/sound_variation.gd")
 const HALL_BUS := "Stationshal"
 const ANNOUNCER_BUS := "Omroep"
 const SOUND_FOLDER := "res://assets/audio/geluiden/"
@@ -95,7 +96,7 @@ static func play_at(parent: Node3D, sound_name: String, at: Vector3, volume_db :
 	player.stream = sound
 	player.bus = HALL_BUS
 	player.volume_db = volume_db
-	player.pitch_scale = pitch
+	player.pitch_scale = pitch * SoundVariation.pitch()
 	player.unit_size = HALL_UNIT_SIZE
 	player.max_distance = HALL_MAX_DISTANCE
 	parent.add_child(player)
@@ -117,6 +118,7 @@ static func loop_on(parent: Node3D, sound_name: String, volume_db := 0.0) -> Aud
 	player.stream = sound
 	player.bus = HALL_BUS
 	player.volume_db = volume_db
+	player.pitch_scale = SoundVariation.pitch(SoundVariation.LOOP_SPREAD)
 	player.unit_size = HALL_UNIT_SIZE
 	player.max_distance = HALL_MAX_DISTANCE
 	parent.add_child(player)

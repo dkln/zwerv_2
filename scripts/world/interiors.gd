@@ -46,6 +46,7 @@ extends Node3D
 ## And it can call back: move_inside (the lift of the city hall) and show_plan.
 
 const SwipeTransition = preload("res://scripts/ui/swipe_transition.gd")
+const SoundVariation = preload("res://scripts/audio/sound_variation.gd")
 const SNACK_BAR_SCENE := "res://scenes/binnen/snackbar.tscn"
 const SNACK_BAR_FRONT := "_bg_snackbar"
 ## The music inside (GameHud.set_indoor_music) and the sounds of the door, going in and out
@@ -547,6 +548,7 @@ func _play_sound(sound_name: String) -> void:
 	var player := AudioStreamPlayer.new()
 	player.stream = stream
 	player.volume_db = DOOR_SOUND_DB
+	player.pitch_scale = SoundVariation.pitch()
 	player.process_mode = Node.PROCESS_MODE_ALWAYS
 	add_child(player)
 	player.finished.connect(player.queue_free)

@@ -24,6 +24,7 @@ extends Control
 ## "shout" of the archetype). A new one cuts the last one off.
 ## Laid out at 1280 x 720, scaled with the window.
 
+const SoundVariation = preload("res://scripts/audio/sound_variation.gd")
 const SwipeTransition = preload("res://scripts/ui/swipe_transition.gd")
 const UiStyle = preload("res://scripts/ui/ui_style.gd")
 const UiSounds = preload("res://scripts/ui/ui_sounds.gd")
@@ -206,6 +207,7 @@ func _play_shout(archetype_id: String) -> void:
 		_shout.volume_db = SHOUT_VOLUME_DB
 		add_child(_shout)
 	_shout.stream = load(path)
+	_shout.pitch_scale = SoundVariation.pitch()
 	_shout.play()
 
 
