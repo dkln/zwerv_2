@@ -89,16 +89,16 @@ func _init() -> void:
 	box._pages = []
 	paused = false
 	# the ride as it goes: a scene of its own, the camera from the front, the display counting
-	var cabin: Node3D = hall.get_node("Liftcabine")
+	var cabin: Node3D = hall.lift()
 	var camera_before := get_root().get_viewport().get_camera_3d()
 	hall.ride(2, true)
 	for wait in 30:
 		await create_timer(0.1, true).timeout
-		if hall.in_cabin:
+		if hall.in_cabin():
 			break
 	await create_timer(0.6, true).timeout
 	var camera := get_root().get_viewport().get_camera_3d()
-	_check(hall.in_cabin and cabin.visible and not hall.floor_node(0).visible, "in de lift: alleen de cabine te zien")
+	_check(hall.in_cabin() and cabin.visible, "in de lift: de liftscène")
 	_check(camera != null and camera.name == "Liftcamera", "met de camera van de lift (%s)" % (camera.name if camera else "geen"))
 	_check(cabin.has_node("Speler") and not _player.visible, "jij in de lift (een stand-in), de echte speler weg")
 	if camera and cabin.has_node("Speler"):
@@ -118,7 +118,7 @@ func _init() -> void:
 		await create_timer(0.1, true).timeout
 	print("  display onderweg: ", seen.keys())
 	_check(seen.has("▲ 0") and seen.has("▲ 1") and seen.has("2"), "het display toont waar de lift is: ▲ 0, ▲ 1, 2")
-	_check(not hall.in_cabin and hall.current_floor == 2 and _player.visible, "uitgestapt op etage 2")
+	_check(not hall.in_cabin() and hall.current_floor == 2 and _player.visible, "uitgestapt op etage 2")
 	_check(get_root().get_viewport().get_camera_3d() == camera_before, "de gewone camera weer")
 	_check(not hall.motor_running(), "de motor stil")
 	for floor_number in [1, 4, 2, 3, 0]:

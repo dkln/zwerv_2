@@ -30,9 +30,10 @@ extends SceneTree
 ## (each its GridMaps Vloer and Inrichting, its lamps and markers: Lift (where you call it,
 ## facing out of it), Liftdeur (the middle of its doors), Persoon_<n> (metadata "role",
 ## "sit", "seat"), Bord_<n> (metadata "text": a sign), Loket_<n> (the number board of a
-## counter), Nummerautomaat), and Deur (the entrance, on floor 0); beside them the lift cabin
-## (Liftcabine: its walls, Instap, Paneel, Paneelkast, Uitstap, Cabinedeur, Display).
-## Names after "--" pick the scenes (snackbar, centraal, supermarkt, stadhuis; none = all).
+## counter), Nummerautomaat), and Deur (the entrance, on floor 0). The lift is a scene of its own.
+## The lift (scenes/binnen/lift.tscn, script scripts/world/lift_ride.gd): the cabin of
+## LiftRide.cabin_plan() (GridMaps Vloer and Inrichting, a lamp); any building with floors uses it.
+## Names after "--" pick the scenes (snackbar, centraal, supermarkt, stadhuis, lift; none = all).
 
 const Common = preload("res://tools/tool_common.gd")
 const SCENE := "res://scenes/binnen/snackbar.tscn"
@@ -40,7 +41,10 @@ const STATION_SCENE := "res://scenes/binnen/centraal.tscn"
 const SUPERMARKET_SCENE := "res://scenes/binnen/supermarkt.tscn"
 const CITY_HALL_SCENE := "res://scenes/binnen/stadhuis.tscn"
 const CityHallLayout = preload("res://scripts/world/city_hall_layout.gd")
-const SCENES := {"snackbar": SCENE, "centraal": STATION_SCENE, "supermarkt": SUPERMARKET_SCENE, "stadhuis": CITY_HALL_SCENE}
+const LIFT_SCENE := "res://scenes/binnen/lift.tscn"
+const LiftRide = preload("res://scripts/world/lift_ride.gd")
+const SCENES := {"snackbar": SCENE, "centraal": STATION_SCENE, "supermarkt": SUPERMARKET_SCENE, "stadhuis": CITY_HALL_SCENE,
+	"lift": LIFT_SCENE}
 const LIBRARY := "res://assets/libraries/binnen.res"
 const GROUND_LIBRARY := "res://assets/libraries/grond.res"
 const PROPS_LIBRARY := "res://assets/libraries/props.res"
@@ -86,6 +90,8 @@ func _init() -> void:
 			_build_supermarket()
 		elif scene_name == "stadhuis":
 			_build_city_hall(library)
+		elif scene_name == "lift":
+			_build_lift(library)
 		else:
 			push_error("interiors: onbekende binnenruimte %s" % scene_name)
 			_failed = true
@@ -485,38 +491,12 @@ func _build_city_hall(library: MeshLibrary) -> void:
 			lamp.light_energy = 1.2
 			lamp.omni_range = 10.0
 			floor_node.add_child(lamp)
-	# the lift cabin beside the floors: you ride in it from floor to floor
-	var cabin_plan := CityHallLayout.cabin()
-	var cabin := Node3D.new()
-	cabin.name = "Liftcabine"
-	cabin.position = CityHallLayout.CABIN_AT
-	root.add_child(cabin)
-	var cabin_floor := _grid("Vloer", library, Vector3(0.0, -0.125, 0.0))
-	var cabin_walls := _grid("Inrichting", library, Vector3.ZERO)
-	cabin.add_child(cabin_floor)
-	cabin.add_child(cabin_walls)
-	_put_item(cabin_floor, library, "stadhuis/" + String(cabin_plan.floor), Vector3.ZERO, 0.0, missing)
-	for entry: Array in cabin_plan.tiles:
-		_put_item(cabin_walls, library, "stadhuis/" + String(entry[0]), entry[1], float(entry[2]), missing)
-	_marker_at(cabin, "Instap", cabin_plan.stand, PI)
-	_marker_at(cabin, "Paneel", cabin_plan.panel, -PI * 0.5)
-	_marker_at(cabin, "Paneelkast", cabin_plan.panel_mesh[0], float(cabin_plan.panel_mesh[1]))
-	_marker_at(cabin, "Uitstap", cabin_plan.door, PI)
-	_marker_at(cabin, "Cabinedeur", cabin_plan.doors, 0.0)
-	_marker_at(cabin, "Display", cabin_plan.display[0], float(cabin_plan.display[1]))
-	var cabin_lamp := OmniLight3D.new()
-	cabin_lamp.name = "Lamp"
-	cabin_lamp.position = Vector3(0.0, 2.4, 0.0)
-	cabin_lamp.light_color = Color("#F4F6FF")
-	cabin_lamp.light_energy = 1.0
-	cabin_lamp.omni_range = 4.0
-	cabin.add_child(cabin_lamp)
 	if not missing.is_empty():
 		push_error("interiors: tiles ontbreken in de bibliotheek binnen (eerst importeren en build_libraries): %s" % ", ".join(missing))
 		root.free()
 		_failed = true
 		return
-	_save(root, CITY_HALL_SCENE, "%d etages en de liftcabine, %d mensen" % [CityHallLayout.FLOORS, people])
+	_save(root, CITY_HALL_SCENE, "%d etages, %d mensen" % [CityHallLayout.FLOORS, people])
 
 
 ## Every node owned by `root` (so it is saved), the scene packed and saved at `path`.
@@ -531,3 +511,33 @@ func _save(root: Node3D, path: String, what: String) -> void:
 	root.free()
 	if error != OK:
 		_failed = true
+
+
+# ------------------------------------------------------------------ the lift
+
+func _build_lift(library: MeshLibrary) -> void:
+	var root := Node3D.new()
+	root.name = "Lift"
+	root.set_script(load("res://scripts/world/lift_ride.gd"))
+	var plan := LiftRide.cabin_plan()
+	var missing := []
+	var floor_map := _grid("Vloer", library, Vector3(0.0, -0.125, 0.0))
+	var walls := _grid("Inrichting", library, Vector3.ZERO)
+	root.add_child(floor_map)
+	root.add_child(walls)
+	_put_item(floor_map, library, LiftRide.PREFIX + String(plan.floor), Vector3.ZERO, 0.0, missing)
+	for entry: Array in plan.tiles:
+		_put_item(walls, library, LiftRide.PREFIX + String(entry[0]), entry[1], float(entry[2]), missing)
+	var lamp := OmniLight3D.new()
+	lamp.name = "Lamp"
+	lamp.position = Vector3(0.0, 2.4, 0.0)
+	lamp.light_color = Color("#F4F6FF")
+	lamp.light_energy = 1.0
+	lamp.omni_range = 4.0
+	root.add_child(lamp)
+	if not missing.is_empty():
+		push_error("interiors: tiles ontbreken in de bibliotheek binnen (eerst importeren en build_libraries): %s" % ", ".join(missing))
+		root.free()
+		_failed = true
+		return
+	_save(root, LIFT_SCENE, "de liftcabine")

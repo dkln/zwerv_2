@@ -1,0 +1,33 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/world/lift_ride.gd" id="1_yiw0x"]
+[ext_resource type="MeshLibrary" path="res://assets/libraries/binnen.res" id="2_16mue"]
+
+[node name="Lift" type="Node3D" unique_id=23984653]
+script = ExtResource("1_yiw0x")
+
+[node name="Vloer" type="GridMap" parent="." unique_id=1980459649]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.125, 0)
+mesh_library = ExtResource("2_16mue")
+cell_size = Vector3(0.5, 0.5, 0.5)
+cell_center_x = false
+cell_center_y = false
+cell_center_z = false
+data = {
+"cells": PackedInt32Array(0, 0, 135)
+}
+
+[node name="Inrichting" type="GridMap" parent="." unique_id=1792116059]
+mesh_library = ExtResource("2_16mue")
+cell_size = Vector3(0.5, 0.5, 0.5)
+cell_center_x = false
+cell_center_y = false
+cell_center_z = false
+data = {
+"cells": PackedInt32Array(0, 2, 655492, 65533, 0, 1048713, 3, 0, 1441929, 65534, 65534, 136, 2, 65534, 136)
+}
+
+[node name="Lamp" type="OmniLight3D" parent="." unique_id=429849909]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.4, 0)
+light_color = Color(0.95686275, 0.9647059, 1, 1)
+omni_range = 4.0

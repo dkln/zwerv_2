@@ -263,30 +263,9 @@ static func _council_chamber() -> Dictionary:
 	return plan
 
 
-## The lift cabin (Liftcabine), beside the floors in the scene (CABIN_AT): 3 x 2 m, the doors
-## at the front (-z, where the camera of the ride looks in from), the button panel on the left
-## wall, the floor display on the back wall over the head of whoever stands in it.
-## {"tiles": [[tile, at, turn]], "floor": its floor tile, "stand": where you stand coming in
-## (facing the doors), "panel": where you stand at the buttons, "panel_mesh": [at, turn] of the
-## panel on the wall, "door": where you stand to step out, "doors": the middle of the doors,
-## "display": [at, turn] of the floor display}.
+## Where the lift (scenes/binnen/lift.tscn, scripts/world/lift_ride.gd) stands in the scene:
+## beside the floors, out of sight of them.
 const CABIN_AT := Vector3(FLOORS * FLOOR_SPACING, 0.0, 0.0)
-
-
-static func cabin() -> Dictionary:
-	var plan := {"tiles": [], "floor": "liftcabine_vloer"}
-	_tile(plan, "liftcabine_achterwand", Vector3(0.0, 0.0, 1.0), PI)
-	_tile(plan, "liftcabine_zijwand", Vector3(-1.5, 0.0, 0.0), PI * 0.5)
-	_tile(plan, "liftcabine_zijwand", Vector3(1.5, 0.0, 0.0), -PI * 0.5)
-	for side in [-1.0, 1.0]:
-		_tile(plan, "liftcabine_voorwand_laag", Vector3(side * 1.0, 0.0, -1.0), 0.0)
-	plan["stand"] = Vector3(0.0, 0.0, 0.25)
-	plan["panel"] = Vector3(-0.95, 0.0, -0.35)
-	plan["panel_mesh"] = [Vector3(-1.44, 0.0, -0.35), PI * 0.5]
-	plan["door"] = Vector3(0.0, 0.0, -0.55)
-	plan["doors"] = Vector3(0.0, 0.0, -1.0)
-	plan["display"] = [Vector3(0.0, 2.32, 0.93), PI]
-	return plan
 
 
 static func _tile(plan: Dictionary, tile_name: String, at: Vector3, turn: float) -> void:

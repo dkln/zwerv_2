@@ -36,35 +36,16 @@ const DISPLAY_INK := Color("#FF6A3A")
 ## How often a counter calls the next number (seconds).
 const CALL_EVERY := Vector2(14.0, 30.0)
 const NOTICE_HEADING := "— ETAGE %d —"
-## The ride: seconds per floor going by, and after arriving before you step out.
-const FLOOR_SECONDS := 1.4
-const ARRIVE_SECONDS := 0.9
-## The camera of the ride: in the cabin's space, at the doors looking in at the player (from
-## the front, close in), and how far the view dips as the cabin starts and stops (metres).
-const CABIN_CAMERA_AT := Vector3(0.0, 1.45, -1.9)
-const CABIN_LOOK_AT := Vector3(0.0, 1.45, 0.6)
-const CABIN_FOV := 48.0
-const JOLT := 0.035
-## The motor while the lift moves (assets/audio/geluiden/, tools/megadrive/geluiden.py).
-const MOVING_SOUND := "lift_rijden_loop"
-const MOTOR_DB := -8.0
-const PlayerModel = preload("res://scripts/player/player_model.gd")
-const PlayerCharacter = preload("res://scripts/player/player_character.gd")
+## The lift of the building: reusable, a scene of its own.
+const LIFT_SCENE := "res://scenes/binnen/lift.tscn"
 
 var current_floor := 0
 var _floors: Array[Node3D] = []
 var _people_made := {}               # floor number -> true
 var _doors := {}                     # floor number -> [left leaf, right leaf]
 var _riding := false
+var _lift: Node3D                    # the lift (LiftRide)
 var _player: Node3D
-var in_cabin := false                # the player is in the lift cabin
-var cabin_floor := 0                 # the floor the cabin is at
-var _cabin: Node3D
-var _display: Node3D                 # the floor display in the cabin
-var _cabin_camera: Camera3D
-var _camera_before: Camera3D
-var _stand_in: Node3D                # the player's figure in the cabin during the ride
-var _hum: AudioStreamPlayer          # the motor of the lift
 var _number_taken := 0
 var _next_number := 41
 var _call_clock := 10.0
@@ -79,8 +60,11 @@ func _ready() -> void:
 		number += 1
 	for floor_node in _floors:
 		_dress_floor(floor_node)
-	_cabin = get_node_or_null("Liftcabine") as Node3D
-	_dress_cabin()
+	# the lift: a scene of its own (reusable), beside the floors
+	_lift = (load(LIFT_SCENE) as PackedScene).instantiate() as Node3D
+	_lift.name = "Lift"
+	add_child(_lift)
+	_lift.position = Layout.CABIN_AT
 	_show_floor(0)
 
 
@@ -94,8 +78,6 @@ func floor_count() -> int:
 
 
 func plan_root() -> Node3D:
-	if in_cabin and _cabin:
-		return _cabin
 	return floor_node(current_floor) if not _floors.is_empty() else null
 
 
@@ -103,7 +85,6 @@ func plan_root() -> Node3D:
 func dress(bar_name: String, _seed: int) -> void:
 	snack_bar_name = bar_name
 	_riding = false
-	in_cabin = false
 	_show_floor(0)
 	_make_people(0)
 	for floor_number in _doors:
@@ -116,7 +97,6 @@ func player_came_in(player: Node3D) -> void:
 
 func player_went_out() -> void:
 	_riding = false
-	in_cabin = false
 
 
 ## The lift, the doors, the floor display, the signs, the number machine and the boards of
@@ -215,59 +195,10 @@ func _show_floor(number: int) -> void:
 		var floor_node := _floors[index]
 		floor_node.visible = index == current_floor
 		floor_node.process_mode = Node.PROCESS_MODE_INHERIT if index == current_floor else Node.PROCESS_MODE_DISABLED
-	if _cabin:
-		_cabin.visible = false
-		_cabin.process_mode = Node.PROCESS_MODE_DISABLED
 
-
-## Only the cabin shown and live.
-func _show_cabin() -> void:
-	for floor_node in _floors:
-		floor_node.visible = false
-		floor_node.process_mode = Node.PROCESS_MODE_DISABLED
-	if _cabin:
-		_cabin.visible = true
-		_cabin.process_mode = Node.PROCESS_MODE_INHERIT
 
 
 # ------------------------------------------------------------------ the lift
-
-## The cabin (Liftcabine): the panel on its wall, the display on its back wall, its camera
-## (from the front, close in on whoever stands in it). No one walks in it: the ride is a little
-## scene of its own (ride), with a stand-in of the player in it.
-func _dress_cabin() -> void:
-	if _cabin == null:
-		return
-	var library: MeshLibrary = load(LIBRARY)
-	var panel_place := _cabin.get_node_or_null("Paneelkast") as Node3D
-	var panel_item := library.find_item_by_name("stadhuis/liftcabine_paneel")
-	if panel_place and panel_item >= 0:
-		var panel := MeshInstance3D.new()
-		panel.name = "Knoppenpaneel"
-		panel.mesh = library.get_item_mesh(panel_item)
-		panel.transform = panel_place.transform * library.get_item_mesh_transform(panel_item)
-		_cabin.add_child(panel)
-	var display_place := _cabin.get_node_or_null("Display") as Node3D
-	if display_place:
-		_display = SignBoard.create("0", Color("#101418"), DISPLAY_INK, 0.24, false, 1.1)
-		_display.name = "Etagedisplay"
-		_display.transform = display_place.transform
-		_cabin.add_child(_display)
-	_cabin_camera = Camera3D.new()
-	_cabin_camera.name = "Liftcamera"
-	_cabin_camera.fov = CABIN_FOV
-	_cabin.add_child(_cabin_camera)
-	_cabin_camera.position = CABIN_CAMERA_AT
-	_hum = AudioStreamPlayer.new()
-	_hum.name = "Liftmotor"
-	_hum.stream = _sound(MOVING_SOUND, true)
-	_hum.volume_db = -80.0
-	_cabin.add_child(_hum)
-
-
-static func _floor_label(number: int) -> String:
-	return "begane grond" if number == 0 else "etage %d" % number
-
 
 ## [E] at the lift on floor `from`: which floor? (the story box), then the ride.
 func _call_lift(from: int) -> void:
@@ -292,13 +223,12 @@ func _call_lift(from: int) -> void:
 			ride(int(chosen[0])))
 
 
-## The ride to floor `to`, a scene of its own: the doors of this floor open, the swipe, and you
-## see yourself in the lift (the camera from the front, close in), the display behind you
-## counting the floors by with an arrow, a floor every FLOOR_SECONDS; there the ding, the
-## swipe, and you step out of the lift on that floor as its doors open. `animate` false: at
-## once (the checks).
+## The ride to floor `to`: the doors of this floor open (a "ding-dong"), and the ride is the
+## scene of the lift (LiftRide, scenes/binnen/lift.tscn: you in the cabin, the camera from the
+## front, the display, the motor); under its last swipe you are put out on that floor, its
+## doors open, the floor at the top of the screen. `animate` false: at once (the checks).
 func ride(to: int, animate := true) -> void:
-	if _riding or to == current_floor or to < 0 or to >= _floors.size():
+	if _riding or to == current_floor or to < 0 or to >= _floors.size() or _lift == null:
 		return
 	_riding = true
 	var from := current_floor
@@ -306,126 +236,47 @@ func ride(to: int, animate := true) -> void:
 		_ding(floor_node(from).get_node_or_null("Lift") as Node3D)
 		_set_doors(from, true, true)
 		await get_tree().create_timer(DOOR_SLIDE + 0.1).timeout
-	var swipe: Node = SwipeTransition.swipe(get_tree()) if animate else null
-	if swipe:
-		await swipe.covered
-	# in the lift: the cabin, the player's stand-in in it, its camera
-	in_cabin = true
-	cabin_floor = from
-	_show_cabin()
-	_make_stand_in()
-	if _player:
-		_player.visible = false
-	_camera_before = get_viewport().get_camera_3d()
-	if _cabin_camera:
-		_cabin_camera.look_at(_cabin.global_transform * CABIN_LOOK_AT, Vector3.UP)
-		_cabin_camera.make_current()
-	var hud := _hud()
-	if hud and hud.has_method("show_interior_plan"):
-		hud.show_interior_plan(self, plan_points())
-	var direction := 1 if to > from else -1
-	_show_display(cabin_floor, direction)
-	if swipe and is_instance_valid(swipe) and swipe.has_signal("finished"):
-		await swipe.finished
-	if animate:
-		_jolt()
-		_motor(true)
-	# floor by floor (the further, the longer)
-	while cabin_floor != to:
-		_show_display(cabin_floor, direction)
-		if animate:
-			await get_tree().create_timer(FLOOR_SECONDS).timeout
-		cabin_floor += direction
-	_show_display(cabin_floor, 0)
-	_motor(false)
-	_ding(_display)
-	if animate:
-		_jolt()
-		await get_tree().create_timer(ARRIVE_SECONDS).timeout
-		swipe = SwipeTransition.swipe(get_tree())
-		await swipe.covered
-	# out on the floor
-	in_cabin = false
-	if _stand_in and is_instance_valid(_stand_in):
-		_stand_in.queue_free()
-	_stand_in = null
-	if _camera_before and is_instance_valid(_camera_before):
-		_camera_before.make_current()
-	if _player:
-		_player.visible = true
+	await _lift.ride(from, to, _player, _arrive.bind(to), animate)
+	_riding = false
+
+
+## Out of the lift on floor `to` (under the lift's last swipe).
+func _arrive(to: int) -> void:
 	_make_people(to)
 	_set_doors(to, true, false)
 	_show_floor(to)
 	var lift := floor_node(to).get_node_or_null("Lift") as Node3D
 	_move_player(lift)
+	var hud := _hud()
 	if hud and hud.has_method("show_notice"):
 		hud.show_notice(NOTICE_HEADING % to if to > 0 else "— BEGANE GROND —", String(Layout.NAMES[to]))
-	if swipe and is_instance_valid(swipe) and swipe.has_signal("finished"):
-		await swipe.finished
-	_riding = false
 
 
-## The "ding-dong" of the doors opening, at `where` (the lift of a floor, the cabin's display).
 func _ding(where: Node3D) -> void:
 	var audio := get_node_or_null("/root/RuimtelijkGeluid")
 	if audio and audio.has_method("play_event") and where:
 		audio.play_event(where.global_position, LIFT_SOUND)
 
 
-## The motor of the lift humming while it moves (fading in, fading out as it stops).
-func _motor(running: bool) -> void:
-	if _hum == null or _hum.stream == null:
-		return
-	if running and not _hum.playing:
-		_hum.volume_db = -30.0
-		_hum.play()
-	var fade := _hum.create_tween()
-	fade.tween_property(_hum, "volume_db", MOTOR_DB if running else -40.0, 0.4 if running else 0.5)
-	if not running:
-		fade.tween_callback(_hum.stop)
+## The lift of this building (LiftRide), and whether you are riding in it now.
+func lift() -> Node3D:
+	return _lift
+
+
+func in_cabin() -> bool:
+	return _lift != null and bool(_lift.get("riding"))
+
+
+func display_text() -> String:
+	return String(_lift.call("display_text")) if _lift else ""
 
 
 func motor_running() -> bool:
-	return _hum != null and _hum.playing and _hum.volume_db > -30.0
+	return _lift != null and bool(_lift.call("motor_running"))
 
 
-## A sound of assets/audio/geluiden/ (looping or not), also when not imported yet.
-static func _sound(sound_name: String, looping: bool) -> AudioStream:
-	var path := "res://assets/audio/geluiden/" + sound_name + ".ogg"
-	var stream: AudioStream = load(path) if ResourceLoader.exists(path) else null
-	if stream == null and FileAccess.file_exists(path):
-		stream = AudioStreamOggVorbis.load_from_file(path)
-	if stream is AudioStreamOggVorbis:
-		stream = (stream as AudioStreamOggVorbis).duplicate()
-		(stream as AudioStreamOggVorbis).loop = looping
-	return stream
-
-
-## The player's figure standing in the cabin, facing the camera (the real one waits outside).
-func _make_stand_in() -> void:
-	if _stand_in and is_instance_valid(_stand_in):
-		_stand_in.queue_free()
-	var model := PlayerModel.new()
-	model.name = "Speler"
-	model.archetype_id = PlayerCharacter.current_id()
-	model.figure_scale = float(_player.get("FIGURE_SCALE")) if _player and _player.get("FIGURE_SCALE") != null else 0.78
-	model.backpack = bool(_player.get("has_backpack")) if _player and _player.get("has_backpack") != null else false
-	model.idle = true
-	_cabin.add_child(model)
-	var stand := _cabin.get_node_or_null("Instap") as Node3D
-	model.position = stand.position if stand else Vector3.ZERO
-	model.rotation.y = PI   # facing the doors (the camera)
-	_stand_in = model
-
-
-## The cabin starting or stopping: the view dips a little and comes back.
-func _jolt() -> void:
-	if _cabin_camera == null:
-		return
-	var rest := _cabin_camera.position
-	var dip := _cabin_camera.create_tween()
-	dip.tween_property(_cabin_camera, "position", rest - Vector3.UP * JOLT, 0.12).set_trans(Tween.TRANS_SINE)
-	dip.tween_property(_cabin_camera, "position", rest, 0.35).set_trans(Tween.TRANS_SINE)
+func is_riding() -> bool:
+	return _riding
 
 
 ## The player put at `marker` (its place and the way it faces), the camera and the minimap
@@ -440,30 +291,10 @@ func _move_player(marker: Node3D) -> void:
 		_player.global_position = marker.global_position
 
 
-## The display in the cabin: the floor (0 the ground floor), an arrow up or down while going.
-func _show_display(number: int, direction: int) -> void:
-	if _display == null:
-		return
-	var arrow := "▲ " if direction > 0 else ("▼ " if direction < 0 else "")
-	SignBoard.set_text(_display, arrow + str(number))
-
-
-func display_text() -> String:
-	var label := _display.get_node_or_null("Tekst") as Label3D if _display else null
-	return label.text if label else ""
-
-
-func is_riding() -> bool:
-	return _riding
-
-
 ## The points the minimap marks on this floor: the way out on floor 0, the lift everywhere;
 ## in the cabin its doors.
 func plan_points() -> Array[Vector3]:
 	var points: Array[Vector3] = []
-	if in_cabin and _cabin and _cabin.has_node("Uitstap"):
-		points.append((_cabin.get_node("Uitstap") as Node3D).global_position)
-		return points
 	if current_floor == 0 and has_node("Deur"):
 		points.append((get_node("Deur") as Node3D).global_position)
 	var lift := floor_node(current_floor).get_node_or_null("Lift") as Node3D

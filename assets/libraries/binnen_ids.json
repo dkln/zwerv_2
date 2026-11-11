@@ -1,4 +1,11 @@
 {
+	"lift/cabine_achterwand": 132,
+	"lift/cabine_deur": 133,
+	"lift/cabine_paneel": 134,
+	"lift/cabine_vloer": 135,
+	"lift/cabine_voorwand_laag": 136,
+	"lift/cabine_zijwand": 137,
+	"lift/cabine_zijwand_laag": 138,
 	"snackbar/deurmat": 0,
 	"snackbar/frituur": 1,
 	"snackbar/koelkast": 2,
