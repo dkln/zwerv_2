@@ -34,7 +34,13 @@ extends Control
 ##   "voice" and "mood" (Babble) make them babble while the line types out (in place of the
 ##   text blip), a question (the line ends in "?") going up at its end; "on_show": a
 ##   Callable called as the page opens (the speaker's mood: Emote); "portrait_look": the
-##   TownsfolkFigure look of who speaks, shown in the portrait (else a silhouette).
+##   TownsfolkFigure look of who speaks, shown in the portrait (else a silhouette);
+##   "portrait_figure": their figure in the world, whose pose the portrait takes live (its
+##   mouth moving with the line while it types out: PlayerPortrait `speaking`);
+##   "official": someone on duty (a conductor, an enforcement officer: Conversations
+##   official_style), shown as such: the name plate in their colours ("plate", "plate_text",
+##   with a border of "colour"), the frame and cursor in "colour", their "emblem" ("NS",
+##   "BOA") as a badge on the portrait, their babble at their "pitch".
 ## The HUD makes it (show_story) and hands it its key presses (handle_input), as its picture
 ## takes no input of its own.
 
@@ -97,6 +103,8 @@ var _banner_diamond: ColorRect
 var _portrait_frame: Panel
 var _portrait: SubViewportContainer
 var _mission_badge: MissionBadge   # the thumbnail of a mission page, in place of the portrait
+var _emblem: PanelContainer        # the badge of someone on duty, on the portrait ("official")
+var _emblem_label: Label
 var _text_panel: Panel
 var _name_tag: PanelContainer
 var _name_label: Label
@@ -153,6 +161,7 @@ func show_pages(pages: Array, done := Callable()) -> void:
 		_portrait.position = Vector2(3, 3)
 		_portrait.size = Vector2(PORTRAIT_WIDTH - 6, BOX_HEIGHT - 6)
 		_portrait_frame.add_child(_portrait)
+		_portrait_frame.move_child(_emblem, -1)   # the badge of someone on duty over it
 		UiSounds.play(self, "doe", -4.0)
 		_history.clear()
 	_show_page()
@@ -195,6 +204,8 @@ func _process(delta: float) -> void:
 	_blink_clock += delta
 	_typewriter.update(delta)
 	_update_babble()
+	if _portrait:
+		_portrait.speaking = _typewriter_talking()
 	var choosing := not _current_choices().is_empty()
 	_more.visible = _typewriter.is_done() and not choosing and fmod(_blink_clock, 0.8) < 0.5
 	_choices_box.visible = choosing and _typewriter.is_done()
@@ -209,13 +220,23 @@ func _process(delta: float) -> void:
 		var typed_to := _text.position.y + _text.size.y * _typewriter.shown_share() + TEXT_SIZE * 0.8
 		var wanted := clampf(typed_to - _scroll.size.y, 0.0, history_room)
 		var now := float(_scroll.scroll_vertical)
-		_scroll.scroll_vertical = int(roundf(lerpf(now, wanted, 1.0 - exp(-FOLLOW_RATE * delta))))
+		var next := int(roundf(lerpf(now, wanted, 1.0 - exp(-FOLLOW_RATE * delta))))
+		# whole pixels: at a high frame rate the eased step rounds back to where it was and the
+		# last few pixels of a long reply would stay out of view; at least a pixel a frame
+		if next == int(now) and absf(wanted - now) >= 1.0:
+			next += int(signf(wanted - now))
+		_scroll.scroll_vertical = next
 	_said_before.visible = history_room > 1.0 and _scroll.scroll_vertical > 1.0 and fmod(_blink_clock, 0.8) < 0.5
 	# more choices to scroll to: a blinking arrow on the right
 	var room := _choices_box.size.y - _choices_scroll.size.y if choosing else 0.0
 	var blink := fmod(_blink_clock, 0.8) < 0.5
 	_more_below.visible = room > 1.0 and _choices_scroll.scroll_vertical < room - 1.0 and blink
 	_more_above.visible = room > 1.0 and _choices_scroll.scroll_vertical > 1.0 and blink
+
+
+## True while the line of someone who babbles (a page with "voice") types out: their mouth moves.
+func _typewriter_talking() -> bool:
+	return _page_index < _pages.size() and (_pages[_page_index] as Dictionary).has("voice") and not _typewriter.is_done()
 
 
 ## Babble while a line of someone in the street types out (its "voice" and "mood"), one sound
@@ -236,6 +257,12 @@ func _update_babble() -> void:
 	elif question and not _asked_aloud:
 		_asked_aloud = true
 		_babble = Babble.play_near(self, String(page.voice), "vraag")
+	else:
+		return
+	# someone on duty speaks in a voice of their own (lower, more measured)
+	var official: Dictionary = page.get("official", {})
+	if is_instance_valid(_babble) and not official.is_empty():
+		_babble.pitch_scale *= float(official.get("pitch", 1.0))
 
 
 ## Scrolls the chosen choice into view (once it has been laid out).
@@ -282,7 +309,7 @@ func _say_choice() -> void:
 	_history.append("[color=#%s]%s: %s[/color]" % [UiStyle.MUTED.to_html(false), String(page.get("speaker", "")),
 			_escaped(String(page.get("text", "")))])
 	if _chosen < choices.size():
-		_history.append("[color=#%s]» %s[/color]" % [UiStyle.ACCENT.darkened(0.15).to_html(false), _escaped(String(choices[_chosen]))])
+		_history.append("[color=#%s]→ %s[/color]" % [UiStyle.ACCENT.darkened(0.15).to_html(false), _escaped(String(choices[_chosen]))])
 	var follow: Callable = page.get("on_choice", Callable())
 	var next: Array = follow.call(_chosen) if follow.is_valid() else []
 	if next.is_empty():
@@ -298,20 +325,47 @@ func _say_choice() -> void:
 func _show_page() -> void:
 	var page: Dictionary = _pages[_page_index]
 	var kind := String(page.get("kind", "verhaal"))
+	var official: Dictionary = page.get("official", {})
 	var accent := UiStyle.SIDE_ACCENT if kind == "gedachte" else UiStyle.ACCENT
+	if not official.is_empty():
+		accent = official.get("colour", accent)
 	var text := String(page.get("text", ""))
 	if kind == "gedachte":
 		text = "“" + text + "”"
 	_text.add_theme_color_override("default_color", THOUGHT_COLOUR if kind == "gedachte" else UiStyle.TEXT)
 	_typewriter.cursor_colour = accent
 	_show_speaker(kind == "verhaal", kind == "gesprek", page.get("portrait_look", {}))
+	if _portrait:
+		# live: their pose in the world, the mouth with this line (only for who babbles)
+		var source: Variant = page.get("portrait_figure")
+		var figure: Node3D = source if is_instance_valid(source) and source is Node3D and _portrait.townsfolk_look == page.get("portrait_look", {}) else null
+		if _portrait.source_figure != figure:
+			_portrait.source_figure = figure
+		_portrait.speech = text if page.has("voice") else ""
 	_mission_badge.visible = kind == "missie"
 	if _portrait:
 		_portrait.visible = kind != "missie"
 	var default_speaker := "VERTELLER" if kind == "verhaal" else ("NIEUWE MISSIE" if kind == "missie" else player_name)
 	_name_label.text = String(page.get("speaker", default_speaker))
 	var tag_style := StyleBoxFlat.new()
-	tag_style.bg_color = accent
+	tag_style.bg_color = official.get("plate", accent)
+	if not official.is_empty():
+		# a plate of their own: their colours, a border of the uniform's accent
+		tag_style.border_color = accent
+		tag_style.set_border_width_all(2)
+	_name_label.add_theme_color_override("font_color", official.get("plate_text", UiStyle.INK))
+	_emblem.visible = not official.is_empty() and String(official.get("emblem", "")) != ""
+	if _emblem.visible:
+		_emblem_label.text = String(official.emblem)
+		_emblem_label.add_theme_color_override("font_color", official.get("plate_text", UiStyle.INK))
+		var emblem_style := UiStyle.box_style(official.get("plate", accent), accent, 2)
+		emblem_style.content_margin_left = 8
+		emblem_style.content_margin_right = 8
+		emblem_style.content_margin_top = 2
+		emblem_style.content_margin_bottom = 2
+		emblem_style.shadow_color = UiStyle.INK
+		emblem_style.shadow_offset = Vector2(3, 3)
+		_emblem.add_theme_stylebox_override("panel", emblem_style)
 	tag_style.shadow_color = UiStyle.INK
 	tag_style.shadow_offset = Vector2(4, 4)
 	tag_style.anti_aliasing = false
@@ -477,6 +531,14 @@ func _build() -> void:
 	_mission_badge.name = "Missie-embleem"
 	_mission_badge.visible = false
 	_portrait_frame.add_child(_mission_badge)
+	_emblem = PanelContainer.new()
+	_emblem.name = "Embleem"
+	_emblem.position = Vector2(10, 10)
+	_emblem.visible = false
+	_emblem.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_emblem_label = _make_label("", font_pixel, 13, UiStyle.INK)
+	_emblem.add_child(_emblem_label)
+	_portrait_frame.add_child(_emblem)
 	_text_panel = Panel.new()
 	var text_style := UiStyle.box_style(Color(UiStyle.INK, 0.92), UiStyle.BORDER, 3)
 	text_style.border_width_left = 0

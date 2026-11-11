@@ -1,0 +1,191 @@
+{
+	"uitleg": "De verkopers in de winkels en kiosken van Den Haag Centraal, per soort zaak (de 'kind' van Verkoper_<n> in scenes/binnen/centraal.tscn). Dezelfde velden als snackbarhouder.json; wat een zaak weglaat komt uit snackbarhouder.json. {zaak} is de naam van de zaak, {wat} wat je kocht, {prijs} wat het kost. 'item' is een item uit scripts/player/items.gd. Zie data/LEESMIJ.md.",
+	"winkels": {
+		"koffie": {
+			"spreker": "BARISTA",
+			"soort": "KOFFIEBAR",
+			"begroetingen": [
+				"Goeiemorgen! Welkom bij {zaak}. Wat mag ik voor je zetten?",
+				"Ja, zeg het maar. De machine staat warm.",
+				"Hé, even opwarmen? Wat wordt het?"
+			],
+			"menu": [
+				{"item": "koffie", "vraag": "Een koffie, zwart", "prijs": 2.8, "naam": "koffie"},
+				{"item": "cappuccino", "vraag": "Een cappuccino", "prijs": 3.4, "naam": "cappuccino"},
+				{"item": "gevulde_koek", "vraag": "Een gevulde koek", "prijs": 2.25, "naam": "gevulde koek"}
+			],
+			"gekocht": [
+				"Alsjeblieft, een {wat}. Pas op, die is heet.",
+				"Eén {wat}. Fijne reis verder!"
+			],
+			"geen_geld": "Dat wordt {prijs}. Pinnen kan ook, hoor. O, nee? Dan wordt het lastig.",
+			"tip_vraag": "Wat is hier goed?",
+			"tip": "De cappuccino. Melk opgeschuimd, niet uit een pak. En de gevulde koek is van de bakker hiernaast.",
+			"dag": "Doei! Pas op voor de poortjes, die zijn streng vandaag.",
+			"nog_iets": "Nog iets erbij?",
+			"stemmingen": {"begroeting": "blij", "gekocht": "blij", "geen_geld": "neutraal", "zakken_vol": "neutraal", "tip": "opgewonden", "dag": "blij"}
+		},
+		"broodjes": {
+			"spreker": "BROODJESMAN",
+			"soort": "BROODJESZAAK",
+			"begroetingen": [
+				"Welkom bij {zaak}! Ook als de treinen stilstaan, staan de broodjes klaar.",
+				"Zeg het maar. Wat mag erop?",
+				"Honger? Dan ben je bij {zaak} aan het goede adres."
+			],
+			"menu": [
+				{"item": "broodje_kaas", "vraag": "Een broodje kaas", "prijs": 3.95, "naam": "broodje kaas"},
+				{"item": "broodje_kroket", "vraag": "Een broodje kroket", "prijs": 4.5, "naam": "broodje kroket"},
+				{"item": "krentenbol", "vraag": "Een krentenbol", "prijs": 1.25, "naam": "krentenbol"}
+			],
+			"gekocht": [
+				"Een {wat}, alsjeblieft. Vers belegd!",
+				"Hier is je {wat}. Eet smakelijk, en mis je trein niet."
+			],
+			"geen_geld": "Dat is {prijs}. Kom terug als je het bij elkaar hebt, de broodjes lopen niet weg.",
+			"tip_vraag": "Wat raad je aan?",
+			"tip": "Het broodje kroket. Kroket van de Haagse slager, met mosterd. Voor als je niet tot de snackbar kunt wachten.",
+			"dag": "Tot ziens! En denk erom: in de trein niet kruimelen.",
+			"nog_iets": "Verder nog wat?",
+			"stemmingen": {"begroeting": "blij", "gekocht": "blij", "geen_geld": "verdrietig", "zakken_vol": "neutraal", "tip": "opgewonden", "dag": "blij"}
+		},
+		"kiosk": {
+			"spreker": "KIOSKHOUDER",
+			"soort": "KIOSK",
+			"begroetingen": [
+				"Goeiedag. Kranten, drinken, kauwgom: zeg het maar.",
+				"Welkom bij {zaak}. Wat kan ik voor je doen?",
+				"Ja? Snel, de trein van half wacht niet."
+			],
+			"menu": [
+				{"item": "koffie", "vraag": "Een koffie", "prijs": 2.6, "naam": "koffie"},
+				{"item": "mineraalwater", "vraag": "Een flesje water", "prijs": 2.2, "naam": "flesje water"},
+				{"item": "energiedrank", "vraag": "Een blikje energiedrank", "prijs": 2.5, "naam": "energiedrank"},
+				{"item": "krant", "vraag": "Een krant van vandaag", "prijs": 3.5, "naam": "krant"},
+				{"item": "kauwgom", "vraag": "Een pakje kauwgom", "prijs": 1.8, "naam": "pakje kauwgom"}
+			],
+			"gekocht": [
+				"Eén {wat}. Alsjeblieft.",
+				"Hier, een {wat}. De volgende!"
+			],
+			"geen_geld": "{prijs}, staat er. Niet genoeg? Dan houd ik het hier.",
+			"tip_vraag": "Nog nieuws?",
+			"tip": "De Intercity naar Amsterdam heeft weer vertraging. Staat in de krant van vandaag, en morgen weer.",
+			"dag": "Dag. Goede reis.",
+			"nog_iets": "Nog iets?",
+			"stemmingen": {"begroeting": "neutraal", "gekocht": "neutraal", "geen_geld": "boos", "zakken_vol": "neutraal", "tip": "opgewonden", "dag": "neutraal"}
+		},
+		"bloemen": {
+			"spreker": "BLOEMIST",
+			"soort": "BLOEMENZAAK",
+			"begroetingen": [
+				"Goeiedag! Iets moois voor iemand bij {zaak}?",
+				"Bloemen maken alles goed. Voor wie mag het zijn?",
+				"Kom maar kijken. Alles vanochtend vers van de veiling."
+			],
+			"menu": [
+				{"item": "tulpen", "vraag": "Een bos tulpen", "prijs": 4.99, "naam": "bos tulpen"},
+				{"item": "roos", "vraag": "Eén losse roos", "prijs": 2.5, "naam": "roos"}
+			],
+			"gekocht": [
+				"Een {wat}, prachtig. Wie het krijgt, boft maar.",
+				"Alsjeblieft, een {wat}. Even in het water zetten, hè?"
+			],
+			"geen_geld": "Dat is {prijs}. Jammer, ze zouden je goed staan.",
+			"tip_vraag": "Wat is er nu mooi?",
+			"tip": "De tulpen. Uit de Bollenstreek, net boven Den Haag. Die gaan wel een week mee.",
+			"dag": "Dag! Fleur de dag een beetje op.",
+			"nog_iets": "Mag het nog iets meer zijn?",
+			"stemmingen": {"begroeting": "blij", "gekocht": "blij", "geen_geld": "verdrietig", "zakken_vol": "neutraal", "tip": "opgewonden", "dag": "blij"}
+		},
+		"boeken": {
+			"spreker": "BOEKVERKOPER",
+			"soort": "BOEKHANDEL",
+			"begroetingen": [
+				"Welkom bij {zaak}. Iets te lezen voor onderweg?",
+				"Goeiedag. Romans links, puzzels rechts, kaarten bij de kassa.",
+				"Een lange reis voor de boeg? Dan heb ik wat voor je."
+			],
+			"menu": [
+				{"item": "puzzelboek", "vraag": "Een puzzelboekje", "prijs": 4.5, "naam": "puzzelboekje"},
+				{"item": "stadskaart", "vraag": "Een kaart van Den Haag", "prijs": 6.95, "naam": "kaart van Den Haag"},
+				{"item": "pocketboek", "vraag": "Een pocketboek", "prijs": 12.99, "naam": "pocketboek"}
+			],
+			"gekocht": [
+				"Een {wat}, goede keus. Veel plezier ermee.",
+				"Alsjeblieft, een {wat}. Wil je er een bonnetje bij? Nee? Ook goed."
+			],
+			"geen_geld": "Dat kost {prijs}. In de bieb lenen ze het je gratis, hoor.",
+			"tip_vraag": "Wat lezen ze tegenwoordig?",
+			"tip": "Puzzelboekjes. Daar komt de hele trein van Den Haag naar Rotterdam mee door. De pockets zijn meer voor de Intercity naar Groningen.",
+			"dag": "Dag! Goed boek is halve reis.",
+			"nog_iets": "Nog iets anders?",
+			"stemmingen": {"begroeting": "neutraal", "gekocht": "blij", "geen_geld": "neutraal", "zakken_vol": "neutraal", "tip": "opgewonden", "dag": "blij"}
+		},
+		"stroopwafels": {
+			"spreker": "WAFELBAKKER",
+			"soort": "WAFELKRAAM",
+			"begroetingen": [
+				"Verse stroopwafels! Net van het ijzer bij {zaak}!",
+				"Ruik je dat? Dat is de stroop. Wat mag het zijn?",
+				"Een warme wafel tegen de kou? Zeg het maar."
+			],
+			"menu": [
+				{"item": "stroopwafel", "vraag": "Een verse stroopwafel", "prijs": 2.5, "naam": "verse stroopwafel"},
+				{"item": "pak_stroopwafels", "vraag": "Een pak stroopwafels", "prijs": 4.95, "naam": "pak stroopwafels"}
+			],
+			"gekocht": [
+				"Een {wat}, alsjeblieft! Pas op, de stroop loopt eruit.",
+				"Hier, een {wat}. Lekker hè, die geur?"
+			],
+			"geen_geld": "{prijs}, maat. Te weinig? Ruiken is gratis.",
+			"tip_vraag": "Hoe eet je die het lekkerst?",
+			"tip": "Leg hem op je koffiebeker. Dan smelt de stroop een beetje. Zo doen ze het al honderd jaar.",
+			"dag": "Doei! Niet alles in één keer opeten.",
+			"nog_iets": "Nog een?",
+			"stemmingen": {"begroeting": "opgewonden", "gekocht": "blij", "geen_geld": "neutraal", "zakken_vol": "neutraal", "tip": "blij", "dag": "blij"}
+		},
+		"snoep": {
+			"spreker": "SNOEPVERKOOPSTER",
+			"soort": "SNOEPWINKEL",
+			"begroetingen": [
+				"Welkom bij {zaak}! Zoet, zuur of zout?",
+				"Zeg het maar, schat. Wat mag het zijn?",
+				"Een zakje snoep voor onderweg? Dat kan altijd."
+			],
+			"menu": [
+				{"item": "drop", "vraag": "Een zak drop", "prijs": 2.49, "naam": "zak drop"},
+				{"item": "winegums", "vraag": "Een zak winegums", "prijs": 2.49, "naam": "zak winegums"},
+				{"item": "chocoladereep", "vraag": "Een chocoladereep", "prijs": 1.99, "naam": "chocoladereep"}
+			],
+			"gekocht": [
+				"Een {wat}, alsjeblieft. Niet alles tegelijk, hè!",
+				"Hier is je {wat}. Smikkel smakelijk!"
+			],
+			"geen_geld": "Dat is {prijs}, schat. Kom maar terug als je wat gespaard hebt.",
+			"tip_vraag": "Wat is het lekkerst?",
+			"tip": "De zoute drop. Echt Hollands. Toeristen spugen het uit, wij eten de hele zak leeg.",
+			"dag": "Dag! Poets je tanden straks.",
+			"nog_iets": "Nog een zakje erbij?",
+			"stemmingen": {"begroeting": "blij", "gekocht": "blij", "geen_geld": "verdrietig", "zakken_vol": "neutraal", "tip": "opgewonden", "dag": "blij"}
+		},
+		"smikkels": {
+			"spreker": "SNACKBARHOUDER",
+			"soort": "SNACKBAR",
+			"begroetingen": [
+				"Welkom bij {zaak}! Snel een snack voor de trein?",
+				"Zeg het maar. Over twee minuten staat het klaar.",
+				"Ha! Uit de muur of over de toonbank, bij {zaak} kan het allebei."
+			],
+			"menu": [
+				{"item": "kroket", "vraag": "Een kroket", "prijs": 2.75, "naam": "kroket"},
+				{"item": "frikandel", "vraag": "Een frikandel", "prijs": 2.75, "naam": "frikandel"},
+				{"item": "patat", "vraag": "Een patatje met", "prijs": 3.95, "naam": "patatje met"}
+			],
+			"geen_geld": "Op het station is het {prijs}, jongen. Buiten is het goedkoper, maar daar is het nou eenmaal buiten.",
+			"tip_vraag": "Waarom is het hier duurder?",
+			"tip": "De huur van het station, jongen. Bij de snackbar om de hoek betaal je minder. Maar hier ben je al.",
+			"dag": "Goede reis! En niet eten in de stiltecoupé."
+		}
+	}
+}

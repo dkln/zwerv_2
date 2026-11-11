@@ -2,8 +2,8 @@ extends Node3D
 ## The buildings you can walk into (the node "Binnenruimtes" of scenes/stad.tscn), one entry
 ## of KINDS each: the snack bars and Den Haag Centraal. Every way in on the map gets an
 ## entrance on the pavement before it (a door point, the side of the facade with no building:
-## Entrance), with a big arrow bobbing up and down over it as you come near (so you see
-## that you can go in; with the faux 3D of the texts under it)
+## Entrance), with a big arrow bobbing up and down over it as you come near (InteractionMark:
+## so you see that you can go in; above the roof of a low building, so trees don't hide it)
 ## and "[E] Naar binnen" once you stand at it (PlayerController, the group DOORS_GROUP).
 ## Going in: a swipe (SwipeTransition), and under it the player is put in the interior (its
 ## scene, scenes/binnen/<name>.tscn, an Interior: scripts/world/interior.gd or a script that
@@ -12,6 +12,10 @@ extends Node3D
 ## doors (the markers Deur, Deur1, Deur2, ...: Interior.doors()) "[E] Naar buiten" takes you
 ## back out onto the pavement before the matching way in (door 1 the first from the west),
 ## facing the street. While you are outside an interior stands still and is hidden.
+## Inside, the minimap of the HUD shows the floor plan of the interior with its ways out
+## (GameHud.show_interior_plan).
+## Inside there is no day and night: the day cycle (Dagcyclus, DayCycle.set_indoors) keeps
+## the light constant while you are in, its clock running on.
 ##
 ## A new interior (see INSTRUCTIONS.md, "Binnenruimtes maken"): its tiles in
 ## tools/voxgen/tiles/interior.py (binnen/<name>/), a builder in tools/build/build_interiors.gd,
@@ -23,7 +27,10 @@ extends Node3D
 ##            tiles within that many metres of that place of the map are its ways in, from
 ##            west to east door 1, 2, ... (Den Haag Centraal: the three doors of the hall).
 ## Further: "scene", "music" (the loop inside, "" none), "at" (where it lies, far off the map),
-## "name" (else the name found at the way in).
+## "name" (else the name found at the way in), "zoom" (metres in view inside, else the
+## camera's indoor_zoom: the big hall of Den Haag Centraal is seen from further out),
+## "location" (the neighbourhood, a key of the "wijken" metadata, the HUD shows under the
+## minimap while inside: GameHud.set_indoor_location; else the name of the spot off the map).
 
 const SwipeTransition = preload("res://scripts/ui/swipe_transition.gd")
 const SNACK_BAR_SCENE := "res://scenes/binnen/snackbar.tscn"
@@ -36,7 +43,7 @@ const KINDS := {
 		"at": Vector3(-600.0, 0.0, -600.0)},
 	"centraal": {"scene": "res://scenes/binnen/centraal.tscn", "music": "", "name": "Den Haag Centraal",
 		"doors": "hallen/hal_glas_wand_deur_dak", "place": "centraal", "place_reach": 70.0,
-		"at": Vector3(-900.0, 0.0, 300.0)},
+		"at": Vector3(-900.0, 0.0, 300.0), "zoom": 20.0, "location": "Centraal Station"},
 }
 const SOUND_FOLDER := "res://assets/audio/geluiden/"
 const DOOR_IN_SOUND := "deur_binnen"
@@ -51,27 +58,25 @@ const PLACE_NAMES := {"snackbar_de_vrijheid": "Snackbar De Vrijheid"}
 const DOORS_GROUP := "deuren"
 ## Where the snack bar is, far off the map (metres; KINDS has it too).
 const INTERIOR_AT := Vector3(-600.0, 0.0, -600.0)
-## How far from a door point you can go through (metres), and from how far its arrow shows.
+## How far from a door point you can go through (metres).
 const DOOR_REACH := 1.8
-const MARK_FROM := 22.0
-## The arrow over a way in: its size, colour, how it bobs (between MARK_BOTTOM and MARK_TOP,
-## once up and down in MARK_BOB_SECONDS), its turning, and its faux 3D copy under it (that
-## far down, and that far behind it seen from the camera).
-const MARK_SIZE := Vector3(0.8, 0.9, 0.2)
-const MARK_COLOUR := Color("#FFB830")
+## The arrow over a way in (InteractionMark): its point between MARK_BOTTOM and MARK_TOP over
+## the pavement; over a building no higher than ROOF_MARK_HIGHEST (metres above the street)
+## it hangs above the roof instead, ROOF_MARK_CLEARANCE over it and that far into the facade
+## (so trees and awnings before the shop do not hide it).
 const MARK_TOP := 3.3
 const MARK_BOTTOM := 2.5
-const MARK_BOB_SECONDS := 1.2
-const MARK_SPIN := 1.0
-const MARK_SHADOW_DROP := 0.09
-const MARK_SHADOW_BEHIND := 0.08
-const UiStyle = preload("res://scripts/ui/ui_style.gd")
+const ROOF_MARK_HIGHEST := 14.0
+const ROOF_MARK_CLEARANCE := 0.6
+const ROOF_MARK_INTO_FACADE := 1.5
+const InteractionMark = preload("res://scripts/world/interaction_mark.gd")
 
 @export var player_path := NodePath("../Speler")
 @export var buildings_path := NodePath("../Gebouwen")
 @export var details_path := NodePath("../Details")
 @export var follow_camera_path := NodePath("../Volgcamera")
 @export var hud_path := NodePath("../HUD")
+@export var day_cycle_path := NodePath("../Dagcyclus")
 
 var _player: Node3D
 var _interior: Node3D               # the interior the player is in (or was in last)
@@ -90,9 +95,7 @@ class Entrance:
 	var bar := {}
 	var leading_out := false
 	var door_index := 1             # a way out: which door of its interior (1 = Deur / Deur1)
-	var _mark: MeshInstance3D
-	var _mark_shadow: MeshInstance3D
-	var _clock := 0.0
+	var mark: InteractionMark
 
 	func action_text() -> String:
 		return "Naar buiten" if leading_out else "Naar binnen"
@@ -107,46 +110,20 @@ class Entrance:
 		return DOOR_REACH
 
 	func show_mark(player: Node3D) -> void:
-		if _mark == null:
-			return
-		var near := player != null and player.global_position.distance_to(global_position) < MARK_FROM
-		_mark.visible = near and not leading_out
-		_mark_shadow.visible = _mark.visible
-		if not _mark.visible:
-			return
-		_clock += get_process_delta_time()
-		# up and down between MARK_BOTTOM and MARK_TOP, turning slowly
-		var swing := 0.5 + 0.5 * sin(_clock * TAU / MARK_BOB_SECONDS)
-		_mark.position.y = lerpf(MARK_BOTTOM, MARK_TOP, swing)
-		_mark.rotation.y = _clock * MARK_SPIN
-		# the copy straight under it, a little further from the camera so it lies behind it
-		var away := Vector3.ZERO
-		var camera := get_viewport().get_camera_3d() if get_viewport() else null
-		if camera:
-			away = -camera.global_transform.basis.z * MARK_SHADOW_BEHIND
-		_mark_shadow.position = _mark.position + Vector3(0.0, -MARK_SHADOW_DROP, 0.0) + away
-		_mark_shadow.rotation.y = _mark.rotation.y
+		if mark:
+			mark.follow(player, not leading_out)
 
-	func add_mark() -> void:
-		_mark = _arrow("Ingang", MARK_COLOUR)
-		# the faux 3D of the texts (UiStyle.faux_3d): a darker copy straight under it, drawn behind
-		_mark_shadow = _arrow("Ingang_schaduw", UiStyle.faux_3d_colour(MARK_COLOUR))
-
-	func _arrow(arrow_name: String, colour: Color) -> MeshInstance3D:
-		var arrow := MeshInstance3D.new()
-		arrow.name = arrow_name
-		var diamond := PrismMesh.new()
-		diamond.size = MARK_SIZE
-		arrow.mesh = diamond
-		var material := StandardMaterial3D.new()
-		material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		material.albedo_color = colour
-		arrow.material_override = material
-		arrow.rotation_degrees.z = 180.0   # the point down, to the door
-		arrow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		arrow.position.y = MARK_TOP
-		add_child(arrow)
-		return arrow
+	## The arrow over this way in: over the pavement, or above the roof when `roof_height`
+	## (metres above the street, NAN: unknown) is low enough.
+	func add_mark(roof_height: float) -> void:
+		if not is_nan(roof_height) and roof_height <= ROOF_MARK_HIGHEST:
+			var low := roof_height + ROOF_MARK_CLEARANCE
+			mark = InteractionMark.create(low, low + MARK_TOP - MARK_BOTTOM)
+			var outward: Vector3 = bar.get("outward", Vector3.ZERO)
+			mark.position = -outward * ROOF_MARK_INTO_FACADE
+		else:
+			mark = InteractionMark.create(MARK_BOTTOM, MARK_TOP)
+		add_child(mark)
 
 
 func _ready() -> void:
@@ -212,6 +189,7 @@ func enter(bar: Dictionary) -> void:
 	await swipe.covered
 	var kind: String = bar.get("kind", "snackbar")
 	_set_music(String(KINDS[kind].get("music", "")))
+	_set_location(String(KINDS[kind].get("location", "")))
 	_interior = interior_of(kind)
 	_rest(_interior, false)
 	_interior.call("dress", String(bar.name), int(bar.seed))
@@ -223,7 +201,9 @@ func enter(bar: Dictionary) -> void:
 	if _interior.has_method("player_came_in"):
 		_interior.call("player_came_in", _player)
 	_put_player(door.origin, door.basis.z)
-	_camera_indoors(true)
+	_camera_indoors(true, float(KINDS[kind].get("zoom", 0.0)))
+	_light_indoors(true)
+	_minimap_indoors(exits)
 
 
 ## Goes back out through door `door_index` of the interior: the swipe, and under it onto the
@@ -235,6 +215,7 @@ func leave(door_index := 0) -> void:
 	var swipe := SwipeTransition.swipe(get_tree())
 	await swipe.covered
 	_set_music("")
+	_set_location("")
 	var bar := _inside
 	# an interior with more doors (KINDS "doors"): out before the way in of that door
 	if KINDS.get(String(bar.kind), {}).has("doors") and door_index > 0:
@@ -247,6 +228,8 @@ func leave(door_index := 0) -> void:
 	_rest(_interior, true)
 	_put_player(bar.door + (bar.outward as Vector3) * 0.6, bar.outward)
 	_camera_indoors(false)
+	_light_indoors(false)
+	_minimap_indoors([])
 
 
 ## An interior no one is in stands still and is not drawn.
@@ -261,6 +244,12 @@ func _set_music(file: String) -> void:
 	var hud := get_node_or_null(hud_path)
 	if hud and hud.has_method("set_indoor_music"):
 		hud.set_indoor_music(file)
+
+
+func _set_location(wijk: String) -> void:
+	var hud := get_node_or_null(hud_path)
+	if hud and hud.has_method("set_indoor_location"):
+		hud.set_indoor_location(wijk)
 
 
 ## A sound of the door, not placed in the world (you are going through it).
@@ -287,12 +276,36 @@ func _put_player(at: Vector3, facing: Vector3) -> void:
 		_player.global_position = at
 
 
-func _camera_indoors(indoors: bool) -> void:
+## The floor plan of the interior on the minimap with its ways out (`exits`, Entrances), or
+## the town's map again (no exits: going out).
+func _minimap_indoors(exits: Array) -> void:
+	var hud := get_node_or_null(hud_path)
+	if hud == null:
+		return
+	if exits.is_empty():
+		if hud.has_method("show_town_plan"):
+			hud.show_town_plan()
+		return
+	var exit_points: Array[Vector3] = []
+	for way_out: Node3D in exits:
+		exit_points.append(way_out.global_position)
+	if hud.has_method("show_interior_plan"):
+		hud.show_interior_plan(_interior, exit_points)
+
+
+## The constant light of the interiors (on) or the light of the hour again (off).
+func _light_indoors(indoors: bool) -> void:
+	var day_cycle := get_node_or_null(day_cycle_path)
+	if day_cycle and day_cycle.has_method("set_indoors"):
+		day_cycle.set_indoors(indoors)
+
+
+func _camera_indoors(indoors: bool, zoom_in_view := 0.0) -> void:
 	var follow := get_node_or_null(follow_camera_path)
 	if follow == null:
 		return
 	if follow.has_method("set_indoors"):
-		follow.set_indoors(indoors)
+		follow.set_indoors(indoors, zoom_in_view)
 	if follow.has_method("snap_to_target"):
 		follow.snap_to_target()
 
@@ -363,8 +376,29 @@ func _add_way_in(bar: Dictionary) -> void:
 	entrance.bar = bar
 	add_child(entrance)
 	entrance.global_position = bar.door
-	entrance.add_mark()
+	entrance.add_mark(_roof_height(bar.door - (bar.outward as Vector3) * ROOF_MARK_INTO_FACADE))
 	entrance.add_to_group(DOORS_GROUP)
+
+
+## How high the buildings stand at `spot` (the top of the highest tile in the Gebouwen
+## column there, metres above the street), NAN when there is no building.
+func _roof_height(spot: Vector3) -> float:
+	var buildings := get_node_or_null(buildings_path) as GridMap
+	if buildings == null or buildings.mesh_library == null:
+		return NAN
+	var column := buildings.local_to_map(buildings.to_local(spot))
+	var highest := NAN
+	for cell in buildings.get_used_cells():
+		if cell.x != column.x or cell.z != column.z:
+			continue
+		var mesh := buildings.mesh_library.get_item_mesh(buildings.get_cell_item(cell))
+		if mesh == null:
+			continue
+		var mesh_place := buildings.mesh_library.get_item_mesh_transform(buildings.get_cell_item(cell))
+		var top := buildings.to_global(buildings.map_to_local(cell) + mesh_place * mesh.get_aabb().end).y
+		if is_nan(highest) or top > highest:
+			highest = top
+	return highest - spot.y if not is_nan(highest) else NAN
 
 
 ## The street side of a facade cell, as a world direction: the way its front faces (the tile

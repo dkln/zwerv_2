@@ -6,11 +6,11 @@ extends Node3D
 ## (StationLayout.gate_lanes), each lane one way: into the station (from the hall to the
 ## platform, +z) or out of it. In every lane two glass paddles (binnen/station/poortje_klep)
 ## that really close it: they have a collider while shut, so no one walks through without
-## checking in. Holding an OV-chipkaart to the reader (Lane.request) beeps (one beep in, two
-## out), the paddles swing open the way you go, and shut again once you are through.
+## checking in. Holding an OV-chipkaart to the reader (Lane.request) beeps (two high beeps in,
+## one longer high beep out), the paddles swing open the way you go, and shut again once you are through.
 ## The player checks in at a lane with "[E] Inchecken" / "[E] Uitchecken" (only from the side
 ## the lane lets you in from); without an OV-chipkaart (Items "ov_chipkaart") the reader
-## buzzes no and the paddles stay shut. People in the station queue at a lane, check in,
+## refuses with the error tone (high, low, high: ov_geweigerd) and the paddles stay shut. People in the station queue at a lane, check in,
 ## wait for the paddles and only then walk through (StationPerson).
 ## A lamp on each end of the reader cabinet: green on the side you may come from, red on the
 ## other; it flashes white on a beep.
@@ -18,6 +18,15 @@ extends Node3D
 const Layout = preload("res://scripts/world/station_layout.gd")
 const DOORS_GROUP := "deuren"
 const CARD_ITEM := "ov_chipkaart"
+## A check-in by the player lets them through the gate line for this many seconds (the
+## player's metadata PASS_META, read by station.gd: crossing without it is fare dodging).
+const PASS_SECONDS := 10.0
+const PASS_META := "ov_doorgang_tot"
+## The player holds a lane open only while in it (between the cabinets, PLAYER_HOLD_REACH
+## past their ends) and at most PLAYER_HOLD_SECONDS: standing about at the gates must not
+## keep a queue waiting.
+const PLAYER_HOLD_REACH := 0.3
+const PLAYER_HOLD_SECONDS := 6.0
 ## Seconds the paddles take to swing, and how long they stay open after a check-in if no one
 ## goes through.
 const SWING_TIME := 0.45
@@ -48,7 +57,8 @@ class Lane:
 	var _bodies: Array[CollisionShape3D] = []
 	var _lamps: Array[MeshInstance3D] = []
 	var _flash := 0.0
-	var _swung_sound := false
+	var _sound_played_for := 0.0       # the way the paddles last made a sound for (1 open, 0 shut)
+	var _held_since := -1.0            # since when the player holds it (clock)
 
 	## The middle of the lane across the hall (x, in the space of the station).
 	func station_x() -> float:
@@ -82,11 +92,10 @@ class Lane:
 		queue.erase(who)
 		_open_until = gates.clock() + StationGates.OPEN_SECONDS
 		_flash = 0.3
-		_swung_sound = false
 		StationAudio.play_at(gates.station, "ov_inchecken" if direction > 0 else "ov_uitchecken", reader_point(), -6.0)
 		return true
 
-	## No card: a buzz, and it stays shut.
+	## No card: the error tone (high, low, high), and it stays shut.
 	func refuse() -> void:
 		_flash = -0.5
 		StationAudio.play_at(gates.station, "ov_geweigerd", reader_point(), -6.0)
@@ -115,6 +124,7 @@ class Lane:
 			return
 		if request(player):
 			player.set_meta("ov_ingecheckt", direction > 0)
+			player.set_meta(StationGates.PASS_META, gates.clock() + StationGates.PASS_SECONDS)
 			gates.say(reader_point() + Vector3.UP * 0.6, "Ingecheckt" if direction > 0 else "Uitgecheckt", StationGates.GREEN)
 
 	func build(library: MeshLibrary) -> void:
@@ -162,20 +172,30 @@ class Lane:
 	func update(delta: float, now: float) -> void:
 		var player := gates.player()
 		if player and occupant == player:
-			# the player holds it open while in it
+			# the player holds it open while in it (not for ever)
+			if _held_since < 0.0:
+				_held_since = now
 			var offset := player.global_position - global_position
-			if absf(offset.x) < width and absf(offset.z) < Layout.GATE_LENGTH * 0.5 + 0.7:
+			var inside := absf(offset.x) < width * 0.5 + 0.2 and absf(offset.z) < Layout.GATE_LENGTH * 0.5 + StationGates.PLAYER_HOLD_REACH
+			if inside and now - _held_since < StationGates.PLAYER_HOLD_SECONDS:
 				_open_until = maxf(_open_until, now + 0.4)
 			elif now > _open_until:
 				occupant = null
+		else:
+			_held_since = -1.0
 		if occupant != null and not is_instance_valid(occupant):
 			occupant = null
+		# no one gone (out of the station, into a train) left in the queue
+		for index in range(queue.size() - 1, -1, -1):
+			if not is_instance_valid(queue[index]) or not queue[index].is_inside_tree():
+				queue.remove_at(index)
 		var wanted := 1.0 if now < _open_until else 0.0
 		var amount := move_toward(_amount, wanted, delta / StationGates.SWING_TIME)
 		if amount != _amount:
-			if wanted > 0.5 and not _swung_sound:
-				_swung_sound = true
-				StationAudio.play_at(gates.station, "poortje_open", Vector3(station_x(), 0.6, Layout.GATE_Z), -10.0)
+			if wanted != _sound_played_for:
+				_sound_played_for = wanted
+				var sound := "poortje_open" if wanted > 0.5 else "poortje_dicht"
+				StationAudio.play_at(gates.station, sound, Vector3(station_x(), 0.6, Layout.GATE_Z), -10.0)
 			_amount = amount
 			for index in _paddles.size():
 				var side := -1.0 if index == 0 else 1.0

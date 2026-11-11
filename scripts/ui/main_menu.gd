@@ -334,7 +334,7 @@ func _play_exit() -> void:
 
 
 static func _caret(on: bool) -> String:
-	return "▶  " if on else "    "
+	return "→  " if on else "    "
 
 
 func _style_button(button: Button, on: bool, choosable: bool) -> void:
@@ -654,7 +654,7 @@ func _load_fonts() -> void:
 	_font_pixel = UiStyle.font(UiStyle.FONT_PIXEL)
 	var body := UiStyle.font(UiStyle.FONT_BODY)
 	_font_body = UiStyle.weighted(body, 400)
-	# the ▶ and arrows the pixel fonts may lack come from JetBrains Mono
+	# the → and arrows the pixel fonts may lack come from JetBrains Mono
 	if body != fallback:
 		var fallbacks: Array[Font] = [body]
 		for font: Font in [title, _font_pixel]:

@@ -14,6 +14,9 @@ extends Node
 ## The shadow-casting sun stays between `min_elevation` and `max_elevation` degrees
 ## above the horizon, so shadows never become extremely long; the time of day mainly
 ## drives the colours and the brightness.
+## Indoors (Interiors sets `indoors` while the player is in a building) there is no day and
+## night: the clock runs on, but the light stays that of INDOOR_HOUR (sun, fill, ambient, sky
+## and the shader globals), the same day and night; going out applies the real hour again.
 ## Next to itself it makes the street lights (StreetLights, "Straatverlichting"): at night the
 ## lamps of the Props layer light the street.
 
@@ -39,6 +42,10 @@ const APPLY_STEP_HOURS := 0.02
 ## How dark it is now: 0 = day, 1 = night (the same as the shader global zwervr_night),
 ## for scripts that switch lights on (vehicle headlights, scripts/vehicles/vehicle.gd).
 var night := 0.0
+## The player is inside a building: the light stays at INDOOR_HOUR (see set_indoors).
+var indoors := false
+## The hour whose light the interiors always have (the light they were made in).
+const INDOOR_HOUR := 13.0
 
 ## A Dutch summer day (late June in The Hague): sunrise and sunset (hours).
 const StreetLights = preload("res://scripts/world/street_lights.gd")
@@ -130,7 +137,12 @@ func _process(delta: float) -> void:
 	var pace := lerpf(1.0 / maxf(daylight_slowdown, 0.01), night_speedup, night)
 	time_of_day = fposmod(time_of_day + delta * speed * pace, 24.0)
 	if absf(time_of_day - _applied_at) >= APPLY_STEP_HOURS:
-		_apply()
+		if indoors:
+			# no change of light inside; only `night` (the pace of the clock) follows the hour
+			_applied_at = time_of_day
+			night = _colours_at(time_of_day)["night"]
+		else:
+			_apply()
 
 
 ## Sets the clock to `hour` (any value, wrapped to 0..24) and applies it at once.
@@ -139,16 +151,24 @@ func set_time(hour: float) -> void:
 	_apply()
 
 
-## Applies `time_of_day` to the sun, fill light, environment, sky and shader globals.
+## Inside a building (on) the light stops following the clock and stays that of INDOOR_HOUR;
+## outside again (off) the light of the real hour comes back at once.
+func set_indoors(on: bool) -> void:
+	indoors = on
+	_apply()
+
+
+## Applies `time_of_day` (indoors: INDOOR_HOUR) to the sun, fill light, environment, sky and shader globals.
 func _apply() -> void:
 	if _sun == null:
 		return
 	_applied_at = time_of_day
+	var lit_hour := INDOOR_HOUR if indoors else time_of_day
 	# a Dutch summer day: sunrise (east) at SUNRISE, highest about 13:45, sunset (west) at SUNSET
-	var day := clampf((time_of_day - SUNRISE) / (SUNSET - SUNRISE), 0.0, 1.0)
+	var day := clampf((lit_hour - SUNRISE) / (SUNSET - SUNRISE), 0.0, 1.0)
 	var true_elevation := sin(day * PI)               # 0 at the horizon, 1 at midday
 	# brightness 0..1 of the sun: full from ~1/3 elevation, none while it is down
-	var light := clampf(true_elevation * 3.0, 0.0, 1.0) if time_of_day > SUNRISE and time_of_day < SUNSET else 0.0
+	var light := clampf(true_elevation * 3.0, 0.0, 1.0) if lit_hour > SUNRISE and lit_hour < SUNSET else 0.0
 	# rotation around the vertical axis: 90 = light from the east, 0 = from the south.
 	# The sun stays on the right of the camera's view, so the shadows fall to the left in the
 	# picture (at the start, 13:00, straight to the left and a little up; in the morning a
@@ -158,12 +178,14 @@ func _apply() -> void:
 	var elevation := lerpf(min_elevation, max_elevation, true_elevation)
 	_sun.rotation_degrees = Vector3(-elevation, azimuth, 0.0)
 	# the colours of this moment, blended between the moments of DAY_COLOURS
-	var look := _colours_at(time_of_day)
+	var look := _colours_at(lit_hour)
 	_sun.light_color = look["sun"]
 	_sun.light_energy = look["sun_energy"] * clampf(light * 4.0, 0.0, 1.0)
 	_sun.shadow_enabled = _sun.light_energy > 0.05
-	night = look["night"]
-	RenderingServer.global_shader_parameter_set("zwervr_night", night)
+	# `night` is the real dark (the pace of the clock, the street lights, headlights); the
+	# shaders get that of the light shown (indoors: none)
+	night = _colours_at(time_of_day)["night"] if indoors else look["night"]
+	RenderingServer.global_shader_parameter_set("zwervr_night", look["night"])
 	if _fill:
 		_fill.light_energy = look["fill_energy"]
 		_fill.light_color = look["fill"]

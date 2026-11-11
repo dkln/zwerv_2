@@ -34,7 +34,7 @@ extends Node
 ## - While the game is paused the traffic is PAUSED_DB softer. The bus as a whole sits at
 ##   BUS_VOLUME_DB with a compressor and a limiter on it (and Master a limiter), so a loud
 ##   moment never blasts.
-## Sounds: assets/audio/geluiden/ (tools/megadrive/geluiden.py, docs/MUZIEK.md).
+## Sounds: assets/audio/geluiden/ (tools/megadrive/geluiden.py, docs/GELUIDEN.md).
 ## Test: tools/check/spatial_audio_test.gd.
 
 const LoadingScreen = preload("res://scripts/ui/loading_screen.gd")

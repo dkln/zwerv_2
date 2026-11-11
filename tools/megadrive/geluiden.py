@@ -1,6 +1,6 @@
 """Sound effects of the traffic in Mega Drive style: engines, pass-bys, crashes, bells and horns.
 
-Made from the same three sources as the music (megadrive.py, style.py, docs/MUZIEK.md):
+Made with the sound chip of megadrive.py (the rules of the sounds: docs/GELUIDEN.md):
 YM2612-style FM (engine tones: a carrier bent by a modulator at half the firing rate, driven
 hard; metal clangs, bells, the horn), SN76489-style PSG squares (2-stroke buzz, inverter whine of
 trams and trains, glass tinkles, brake squeal) and noise, and everything at the end through the
@@ -42,13 +42,15 @@ so you can tell them apart):
     deur_binnen.ogg            going into a shop or the station: the electronic door chime, "pling-plong"
     deur_buiten.ogg            going out again: the same chime
 The station (Den Haag Centraal, scripts/world/station.gd):
-    omroep_gong.ogg            the chime before an announcement in the hall (three soft notes up)
+    omroep_gong.ogg            the chime before an announcement in the hall (three soft notes: middle, low, high)
     conducteur_fluit.ogg       the conductor's pea whistle before a train leaves
     trein_deuren_dicht.ogg     a Sprinter's doors about to close: a row of beeps, then the hiss
     trein_deuren_open.ogg      the doors of a train opening: the air letting go, the leaves sliding
-    ov_inchecken.ogg, ov_uitchecken.ogg   an OV-chipkaart at a reader: one beep in, two out
-    ov_geweigerd.ogg           a reader saying no: a low buzz, twice
-    poortje_open.ogg           the glass paddles of a gate swinging open
+    ov_inchecken.ogg, ov_uitchecken.ogg   an OV-chipkaart at a reader: one middle beep in, two out
+    ov_geweigerd.ogg           a reader saying no: high, middle, high
+    poortje_open.ogg           the glass paddles of a gate swinging open: the motor humming up
+                               and down, a soft thud against the stops
+    poortje_dicht.ogg          and swinging shut again, the paddles meeting in the middle
 Loops are a whole number of engine cycles long (every frequency fits the loop exactly) and are
 filtered circularly, so they repeat without a click. Every file is at one loudness
 (loudness.py: a one-shot's loudest 400 ms and a loop's average at -16 LUFS, peaks under -1 dB);
@@ -63,11 +65,15 @@ import numpy
 
 import loudness
 import megadrive
-import style
 from megadrive import FmPatch, Operator
 
 SAMPLE_RATE = megadrive.SAMPLE_RATE
-OUTPUT_FOLDER = os.path.join(style.PROJECT, "assets", "audio", "geluiden")
+## The project folder (three up from this file).
+PROJECT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+## The drums under a crash: a fat kick and a low tom.
+FAT_KICK = megadrive.make_kick()
+LOW_TOM = megadrive.make_tom(125.0)
+OUTPUT_FOLDER = os.path.join(PROJECT, "assets", "audio", "geluiden")
 SPEED_OF_SOUND = 343.0
 DOPPLER_BOOST = 2.5
 TWO_PI = 2.0 * numpy.pi
@@ -400,8 +406,8 @@ def crash(hard: bool) -> numpy.ndarray:
     random = numpy.random.default_rng(12 if hard else 13)
     times = time_axis(seconds)
     # the impact: a PCM thump and a burst of crunching noise
-    place(buffer, 0.0, style.FAT_KICK, 1.0 if hard else 0.7)
-    place(buffer, 0.0, style.TOMS[2], 0.8)
+    place(buffer, 0.0, FAT_KICK, 1.0 if hard else 0.7)
+    place(buffer, 0.0, LOW_TOM, 0.8)
     crunch = band_noise(len(times), 200.0, 7000.0, 21) * numpy.exp(-times / (0.25 if hard else 0.09))
     buffer += crunch * (0.9 if hard else 0.6)
     # bent metal: FM clangs at a few odd pitches
@@ -746,10 +752,10 @@ def _soft_bell(frequency: float, seconds: float, seed: int) -> numpy.ndarray:
 
 
 def station_chime() -> numpy.ndarray:
-    """The chime before an announcement in the station hall: three soft bell notes going up
-    (G, C, E), the last one ringing out."""
+    """The chime before an announcement in the station hall: three soft bell notes, middle,
+    low, high (C, G below it, E above it), the last one ringing out."""
     buffer = numpy.zeros(int(2.6 * SAMPLE_RATE))
-    for start, frequency, seed in ((0.0, 392.0, 61), (0.38, 523.3, 62), (0.76, 659.3, 63)):
+    for start, frequency, seed in ((0.0, 523.3, 61), (0.38, 392.0, 62), (0.76, 659.3, 63)):
         place(buffer, start, _soft_bell(frequency, 1.8, seed) * 0.6)
     return fade_edges(low_pass(dac(low_pass(buffer, 7000.0)), 6000.0), 0.002, 0.4)
 
@@ -804,36 +810,69 @@ def _reader_beep(frequency: float, seconds: float) -> numpy.ndarray:
             + numpy.sin(TWO_PI * frequency * times) * 0.4) * envelope
 
 
+## The pitches of the OV-chipkaart reader: a middle beep and a high one above it.
+READER_MIDDLE_HZ = 1568.0
+READER_HIGH_HZ = 2093.0
+
+
 def ov_check_in() -> numpy.ndarray:
-    """Checking in with an OV-chipkaart at a reader: one bright beep."""
+    """Checking in with an OV-chipkaart at a reader: one middle beep."""
     buffer = numpy.zeros(int(0.35 * SAMPLE_RATE))
-    place(buffer, 0.0, _reader_beep(2093.0, 0.16))
+    place(buffer, 0.0, _reader_beep(READER_MIDDLE_HZ, 0.15))
     return fade_edges(low_pass(dac(low_pass(buffer, 7000.0)), 6000.0), 0.001, 0.03)
 
 
 def ov_check_out() -> numpy.ndarray:
-    """Checking out: two beeps, quickly after each other."""
+    """Checking out: two middle beeps, quickly after each other."""
     buffer = numpy.zeros(int(0.45 * SAMPLE_RATE))
-    place(buffer, 0.0, _reader_beep(2093.0, 0.1))
-    place(buffer, 0.15, _reader_beep(2093.0, 0.1))
+    place(buffer, 0.0, _reader_beep(READER_MIDDLE_HZ, 0.1))
+    place(buffer, 0.15, _reader_beep(READER_MIDDLE_HZ, 0.1))
     return fade_edges(low_pass(dac(low_pass(buffer, 7000.0)), 6000.0), 0.001, 0.03)
 
 
 def ov_refused() -> numpy.ndarray:
-    """A reader that says no (no card, or the gate the wrong way): a low buzz, twice."""
-    buffer = numpy.zeros(int(0.6 * SAMPLE_RATE))
-    place(buffer, 0.0, _reader_beep(330.0, 0.18))
-    place(buffer, 0.25, _reader_beep(330.0, 0.22))
-    return fade_edges(low_pass(dac(low_pass(buffer, 5000.0)), 4500.0), 0.001, 0.04)
+    """A reader that says no (no card, or the gate the wrong way): high, middle, high."""
+    buffer = numpy.zeros(int(0.65 * SAMPLE_RATE))
+    for start, frequency in ((0.0, READER_HIGH_HZ), (0.15, READER_MIDDLE_HZ), (0.3, READER_HIGH_HZ)):
+        place(buffer, start, _reader_beep(frequency, 0.12))
+    return fade_edges(low_pass(dac(low_pass(buffer, 7000.0)), 6000.0), 0.001, 0.04)
+
+
+## How long the paddles of a gate take to swing (as SWING_TIME in station_gates.gd).
+GATE_SWING_SECONDS = 0.45
+
+
+def _gate_swing(closing: bool) -> numpy.ndarray:
+    """The glass paddles of a gate swinging: the geared motor in the cabinet speeding up and
+    slowing down again (a smooth hum gliding up and back, a faint rustle of the gears), and at
+    the end the paddles stopping against their rubber stops (opening) or meeting each other
+    (closing): a soft, damped thud with a little click."""
+    swing = GATE_SWING_SECONDS
+    seconds = swing + 0.3
+    times = time_axis(seconds)
+    progress = numpy.clip(times / swing, 0.0, 1.0)
+    # speed of the paddles: zero at both ends, fastest halfway
+    speed = numpy.sin(numpy.pi * progress) * (times < swing)
+    base_hz = 150.0 if closing else 170.0
+    motor_hz = base_hz + 90.0 * speed
+    motor_phase = TWO_PI * numpy.cumsum(motor_hz) / SAMPLE_RATE
+    hum = (numpy.sin(motor_phase) + 0.35 * numpy.sin(2.0 * motor_phase) + 0.12 * numpy.sin(3.0 * motor_phase)) * speed * 0.22
+    gears = band_noise(len(times), 900.0, 2600.0, 102 if closing else 101) * speed * 0.05
+    after_stop = numpy.maximum(times - swing, 0.0) * (times >= swing)
+    thud_hz = 110.0 if closing else 130.0
+    thud = numpy.sin(TWO_PI * thud_hz * after_stop) * numpy.exp(-after_stop / 0.045) * (times >= swing) * (0.5 if closing else 0.35)
+    click = band_noise(len(times), 2000.0, 4500.0, 103) * numpy.exp(-after_stop / 0.008) * (times >= swing) * 0.18
+    return fade_edges(low_pass(dac(low_pass(hum + gears + thud + click, 6000.0)), 5000.0), 0.004, 0.08)
 
 
 def gate_paddles() -> numpy.ndarray:
-    """The glass paddles of a gate swinging open: a short whirr of the motor and a soft tick."""
-    seconds = 0.5
-    times = time_axis(seconds)
-    whirr = square(phase_of(180.0 + 120.0 * times / seconds), 0.3) * numpy.exp(-times / 0.2) * 0.15
-    tick = band_noise(len(times), 1500.0, 6000.0, 101) * numpy.exp(-numpy.maximum(times - 0.35, 0.0) / 0.01) * (times > 0.35) * 0.4
-    return fade_edges(low_pass(dac(low_pass(whirr + tick, 6000.0)), 5000.0), 0.002, 0.05)
+    """The paddles of a gate swinging open."""
+    return _gate_swing(closing=False)
+
+
+def gate_paddles_close() -> numpy.ndarray:
+    """The paddles of a gate swinging shut again, meeting each other in the middle."""
+    return _gate_swing(closing=True)
 
 
 SOUNDS = {
@@ -884,6 +923,7 @@ SOUNDS = {
     "ov_uitchecken": (ov_check_out, False),
     "ov_geweigerd": (ov_refused, False),
     "poortje_open": (gate_paddles, False),
+    "poortje_dicht": (gate_paddles_close, False),
 }
 
 

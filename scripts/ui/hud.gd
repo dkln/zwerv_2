@@ -33,6 +33,8 @@ extends CanvasLayer
 ## - the death screen (show_death, when the player dies);
 ## - the story box (show_story, scripts/ui/story_box.gd): story, thoughts and missions
 ##   appearing word by word, with the player's portrait;
+## - the shop screen (show_shop, scripts/ui/shop_screen.gd): talking to someone who sells
+##   (a snack bar, the shops of Den Haag Centraal), their goods to buy;
 ## - a CRT look over the whole picture: the world bulges like a tube, its edges bending in
 ##   to black rounded corners (`crt_curvature`); the HUD bends with it, but less
 ##   (`crt_ui_curvature`), so its corners stay readable; faint scanlines (`scanlines`).
@@ -43,42 +45,30 @@ extends CanvasLayer
 const LoadingScreenScript = preload("res://scripts/ui/loading_screen.gd")
 const MAP_JINGLE := "res://assets/audio/muziek/deuntje_kaart_start.ogg"
 const MAP_JINGLE_VOLUME_DB := -4.5
-## The music while roaming the city (tools/megadrive/): a loop per kind of neighbourhood
-## (CITY_MUSIC_BY_AREA, the names of the "wijken" metadata; others play CITY_MUSIC_DEFAULT).
-## It starts when the jingle ends, fading in; going into a neighbourhood with other music
-## crossfades to it (`CITY_MUSIC_CROSSFADE` s, equal power: the amplitudes follow a quarter
-## sine and cosine, so the sum stays as loud and there is no dip halfway), starting at the
-## same point in the bar (all loops are 40 bars at 104 BPM, tools/megadrive/stad_plan.py). It switches only once the player
-## has been CITY_MUSIC_SETTLE s in the new neighbourhood (walking along a border does not make
-## it flap), outside every neighbourhood ("Den Haag") the music stays what it was, and going
-## back to a loop that is still fading out fades that one in again. Softer while the game is
-## paused (pause menu, game menu, story box): CITY_MUSIC_PAUSED_DB.
+## The music while roaming the city: one loop everywhere (CITY_MUSIC, tools/muziek/: made from
+## the composition, docs/MUZIEK.md). It starts when the jingle ends, fading in. Going into a
+## building with music of its own (set_indoor_music: the merchant's) crossfades to that and
+## back (equal power: the amplitudes follow a quarter sine and cosine, so the sum stays as loud
+## and there is no dip halfway), and going back to a loop that is still fading out fades that
+## one in again. Softer while the game is paused (pause menu, game menu, story box):
+## CITY_MUSIC_PAUSED_DB.
 const MUSIC_FOLDER := "res://assets/audio/muziek/"
-const CITY_MUSIC_DEFAULT := "stad_centrum_loop.ogg"
-const CITY_MUSIC_BY_AREA := {
-	"Centrum": "stad_centrum_loop.ogg",
-	"Paleis Noordeinde": "stad_hofstad_loop.ogg", "Lange Voorhout": "stad_hofstad_loop.ogg",
-	"Grote Markt": "stad_markt_loop.ogg", "Schilderswijk": "stad_markt_loop.ogg",
-	"Centraal Station": "stad_torens_loop.ogg", "De Resident": "stad_torens_loop.ogg",
-	"Beatrixkwartier": "stad_torens_loop.ogg", "Prins Clauslaan": "stad_torens_loop.ogg",
-	"Malieveld": "stad_groen_loop.ogg", "Koekamp": "stad_bos_loop.ogg",
-	"Bezuidenhout": "stad_woonwijk_loop.ogg", "Bezuidenhout-Oost": "stad_woonwijk_loop.ogg",
-	"Laak": "stad_woonwijk_loop.ogg",
-	"Voorburg": "stad_dorp_loop.ogg",
-	"Binckhorst": "stad_industrie_loop.ogg", "A12": "stad_industrie_loop.ogg",
-}
-const CITY_MUSIC_CROSSFADE := 3.0
+const CITY_MUSIC := "spel_loop.ogg"
 ## Inside a building: how fast its music takes over; how much softer the music is under a jingle.
 const INDOOR_MUSIC_FADE := 1.2
 const JINGLE_DUCK_DB := 8.0
 const CITY_MUSIC_VOLUME_DB := -15.0
 const CITY_MUSIC_PAUSED_DB := -22.0
 const CITY_MUSIC_FADE_IN := 3.0
-const CITY_MUSIC_SETTLE := 1.5
 ## How fast (dB per second) the level follows pausing and going on.
 const CITY_MUSIC_LEVEL_SPEED := 30.0
-## The name of the town outside every neighbourhood: the music does not change there.
-const NO_WIJK := "Den Haag"
+## Neighbourhoods shown under another name than their key in the "wijken" metadata (the key
+## stays what the crowds (data/drukte.json) and the visited list go by).
+const AREA_DISPLAY_NAMES := {"Centraal Station": "Station Den Haag Centraal"}
+## The neighbourhood's name under the minimap: this size, smaller (down to the smallest) for
+## a long name, so it fits the box whole.
+const LOCATION_WIJK_FONT_SIZE := 11
+const LOCATION_WIJK_SMALLEST_FONT_SIZE := 8
 ## The DetailNiveau of the city scene: the jingle waits until it has merged the map.
 const DETAIL_PATH := NodePath("../DetailNiveau")
 const Iso = preload("res://scripts/camera/iso_camera.gd")
@@ -90,6 +80,11 @@ const SegmentBar = preload("res://scripts/ui/widgets/segment_bar.gd")
 const CheckSquare = preload("res://scripts/ui/widgets/check_square.gd")
 const PlayerArrow = preload("res://scripts/ui/widgets/player_arrow.gd")
 const QuestMarks = preload("res://scripts/ui/widgets/quest_marks.gd")
+const InteriorPlan = preload("res://scripts/ui/widgets/interior_plan.gd")
+## Inside a building the minimap shows its floor plan (show_interior_plan) with its exits in
+## this colour, at least this many metres across (a snack bar would be a speck at 160 m).
+const EXIT_MARK_COLOUR := Color("#5BE37A")
+const INTERIOR_MINIMAP_MIN_METRES := 28.0
 const PlayerPortrait = preload("res://scripts/ui/widgets/player_portrait.gd")
 const FloatingNumbers = preload("res://scripts/ui/widgets/floating_numbers.gd")
 const PlayerCharacter = preload("res://scripts/player/player_character.gd")
@@ -201,15 +196,14 @@ var _city_music_file := ""              # its file; "" fades them all out (death
 var _city_music_on := false   # the jingle is over: the city music plays
 var _city_players := {}                 # file -> AudioStreamPlayer, also the ones fading out
 var _city_weights := {}                 # file -> 0..1, where in its fade it is
-var _city_fade := CITY_MUSIC_CROSSFADE  # seconds of the running fade
+var _city_fade := CITY_MUSIC_FADE_IN    # seconds of the running fade
 var _city_level_db := CITY_MUSIC_VOLUME_DB
 var _indoor_music := ""          # the loop of the building the player is in (set_indoor_music)
 var _jingles_playing := 0
-var _city_pending_file := ""            # a neighbourhood's loop waiting for CITY_MUSIC_SETTLE
-var _city_pending_since := 0.0
 var _focus := Vector3.ZERO       # where the player is, from the last minimap update
 var _has_focus := false
 var _current_wijk := ""
+var _indoor_wijk := ""           # inside a building: the neighbourhood it counts as (set_indoor_location)
 var _visited_wijken := {}
 var _quests: Array = []
 var _stat_rows := {}      # stat name -> its row (icon, bar, value)
@@ -249,6 +243,11 @@ var _quest_list: VBoxContainer
 var _tracked_quest_id := ""
 var _tracked_distance: Label         # the distance in the tracked quest's panel
 var _minimap_marks: QuestMarks
+var _minimap_exits: QuestMarks       # the ways out on the floor plan of an interior
+var _exit_points: Array[Vector3] = []
+var _town_map := {}                  # the town's map while an interior's plan is shown
+var _interior_plans := {}            # interior instance id -> its plan (InteriorPlan.build)
+var _minimap_metres_now := 0.0       # metres across now (0: minimap_metres)
 var _action_prompts: ActionPrompts
 var _money_panel: Control
 var _money_label: Label
@@ -297,6 +296,7 @@ func _ready() -> void:
 	_build_money()
 	_build_pause_menu()
 	_build_death_screen()
+	_build_shop_screen()
 	_build_story_box()
 	_build_crt()
 	# the game menu (Tab/I inventory, J quests, M map; scripts/ui/game_menu.gd)
@@ -352,51 +352,26 @@ func _play_map_jingle_when_ready() -> void:
 	player.finished.connect(_play_city_music)
 
 
-## Starts the city music (after the jingle): the loop of the neighbourhood the player is in.
+## Starts the city music (after the jingle).
 func _play_city_music() -> void:
 	if _city_music_on:
 		return
 	_city_music_on = true
-	_fade_city_music_to(_city_music_file_for(_current_wijk), CITY_MUSIC_FADE_IN)
-
-
-## The neighbourhood changed: its loop takes over once the player has stayed CITY_MUSIC_SETTLE s
-## (in _update_city_music); outside every neighbourhood nothing changes.
-func _switch_city_music(wijk: String) -> void:
-	if _indoor_music != "":
-		return   # inside a building its own music plays (set_indoor_music)
-	if wijk == NO_WIJK and _city_music_file != "":
-		_city_pending_file = ""
-		return
-	var file := _city_music_file_for(wijk)
-	if file == _city_music_file:
-		_city_pending_file = ""
-	elif file != _city_pending_file:
-		_city_pending_file = file
-		_city_pending_since = Time.get_ticks_msec() / 1000.0
-
-
-func _city_music_file_for(wijk: String) -> String:
-	var file: String = CITY_MUSIC_BY_AREA.get(wijk, CITY_MUSIC_DEFAULT)
-	if _load_loop(file) == null:
-		file = CITY_MUSIC_DEFAULT
-	return file
+	_fade_city_music_to(CITY_MUSIC, CITY_MUSIC_FADE_IN)
 
 
 ## Inside a building (Interiors): its own loop (`file`, in MUSIC_FOLDER; the merchant's for a
-## snack bar) in place of the neighbourhood's, fading over INDOOR_MUSIC_FADE s; "" back to
-## the neighbourhood's.
+## snack bar) in place of the city's, fading over INDOOR_MUSIC_FADE s; "" back to the city's.
 func set_indoor_music(file: String) -> void:
 	_indoor_music = file
 	if file != "":
 		_fade_city_music_to(file, INDOOR_MUSIC_FADE)
 	elif _city_music_on:
-		_fade_city_music_to(_city_music_file_for(_current_wijk), INDOOR_MUSIC_FADE)
+		_fade_city_music_to(CITY_MUSIC, INDOOR_MUSIC_FADE)
 
 
 ## Makes `file` the loop that fades in over `fade` s (the others fade out); "" fades all out.
 func _fade_city_music_to(file: String, fade: float) -> void:
-	_city_pending_file = ""
 	_city_music_file = file
 	_city_fade = maxf(fade, 0.05)
 	if file == "":
@@ -426,13 +401,11 @@ func _fade_city_music_to(file: String, fade: float) -> void:
 	_city_music = _city_players[file]
 
 
-## Each frame: a neighbourhood's loop that has waited long enough takes over; every loop
-## moves along its fade (equal power) at the level of the moment (softer while paused).
+## Each frame: every loop moves along its fade (equal power) at the level of the moment
+## (softer while paused).
 func _update_city_music(delta: float) -> void:
-	if _city_pending_file != "" and _city_music_on \
-			and Time.get_ticks_msec() / 1000.0 - _city_pending_since >= CITY_MUSIC_SETTLE:
-		_fade_city_music_to(_city_pending_file, CITY_MUSIC_CROSSFADE)
-	var level_target := CITY_MUSIC_PAUSED_DB if get_tree().paused else CITY_MUSIC_VOLUME_DB
+	# the shop screen pauses the game but its music is the point of it: full volume then
+	var level_target := CITY_MUSIC_PAUSED_DB if get_tree().paused and not is_showing_shop() else CITY_MUSIC_VOLUME_DB
 	# softer while a jingle plays over it, so the jingle is heard
 	if _jingles_playing > 0:
 		level_target -= JINGLE_DUCK_DB
@@ -972,6 +945,10 @@ func _build_minimap() -> void:
 	_minimap_marks = QuestMarks.new()
 	_minimap_marks.size = clip.size
 	clip.add_child(_minimap_marks)
+	_minimap_exits = QuestMarks.new()
+	_minimap_exits.colour = EXIT_MARK_COLOUR
+	_minimap_exits.size = clip.size
+	clip.add_child(_minimap_exits)
 	_minimap_arrow = PlayerArrow.new()
 	_minimap_arrow.position = clip.size * 0.5
 	clip.add_child(_minimap_arrow)
@@ -1219,13 +1196,17 @@ func _build_pause_menu() -> void:
 func _input(event: InputEvent) -> void:
 	# the HUD's picture takes no input of its own; while the pause menu is open the mouse
 	# is handed to it (the picture has the size of the window)
-	if _pause_layer and _pause_layer.visible and event is InputEventMouse:
+	if ((_pause_layer and _pause_layer.visible) or is_showing_shop()) and event is InputEventMouse:
 		_ui_viewport.push_input(event)
 
 
 func _unhandled_input(event: InputEvent) -> void:
 	if _story_box and _story_box.is_showing():
 		if _story_box.handle_input(event):
+			get_viewport().set_input_as_handled()
+		return
+	if is_showing_shop():
+		if _shop_screen.handle_input(event):
 			get_viewport().set_input_as_handled()
 		return
 	if _death_layer and _death_layer.visible:
@@ -1271,7 +1252,7 @@ func _select_pause_item(index: int) -> void:
 			button.add_theme_stylebox_override(state, style)
 		for colour_name in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
 			button.add_theme_color_override(colour_name, UiStyle.INK if on else UiStyle.TEXT)
-		button.text = ("▶  " if on else "    ") + PAUSE_ITEMS[button_index][0]
+		button.text = ("→  " if on else "    ") + PAUSE_ITEMS[button_index][0]
 
 
 func _choose_pause_item(index: int) -> void:
@@ -1315,6 +1296,38 @@ func show_story(pages: Array, done := Callable()) -> void:
 
 func is_showing_story() -> bool:
 	return _story_box != null and _story_box.is_showing()
+
+
+# ------------------------------------------------------------------ shop screen
+
+const ShopScreen = preload("res://scripts/ui/shop_screen.gd")
+
+var _shop_screen: Control
+
+
+## Under the story box (a mission done by buying shows its pages over the shop).
+func _build_shop_screen() -> void:
+	_shop_screen = ShopScreen.new()
+	_shop_screen.name = "Winkelscherm"
+	_shop_screen.font_title = _font_title
+	_shop_screen.font_pixel = _font_pixel
+	_shop_screen.font_body = _font_body
+	_root.add_child(_shop_screen)
+
+
+## The shop screen (scripts/ui/shop_screen.gd) for `talk`, a Conversations with a seller
+## (Conversations.is_merchant), buying for `player`; the game paused meanwhile, the mouse
+## handed to it; `done` is called when it closes.
+func show_shop(talk: RefCounted, player: Node, done := Callable()) -> void:
+	_ui_viewport.gui_disable_input = false
+	_shop_screen.open(talk, player, self, func() -> void:
+		_ui_viewport.gui_disable_input = not _pause_layer.visible
+		if done.is_valid():
+			done.call())
+
+
+func is_showing_shop() -> bool:
+	return _shop_screen != null and _shop_screen.is_showing()
 
 
 # ------------------------------------------------------------------ death screen
@@ -1520,6 +1533,42 @@ func _show_clock() -> void:
 
 ## One pixel per 4 m cell: the kind of ground of the top Grond tile at street level, and
 ## dark where the Gebouwen GridMap has a building. Built once.
+## Inside `interior` (Interiors.enter): the minimap shows its floor plan, read from its
+## colliders (InteriorPlan; made once per interior, a physics step after it is live), and
+## its ways out (`exits`, world positions) as green marks, or arrows on the edge.
+func show_interior_plan(interior: Node3D, exits: Array[Vector3]) -> void:
+	_exit_points = exits
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	if _exit_points != exits or not is_instance_valid(interior):
+		return   # out again meanwhile
+	var key := interior.get_instance_id()
+	if not _interior_plans.has(key):
+		_interior_plans[key] = InteriorPlan.build(interior)
+	var plan: Dictionary = _interior_plans[key]
+	if plan.is_empty() or _minimap_map == null:
+		return
+	if _town_map.is_empty():
+		_town_map = {"texture": _minimap_map.texture, "origin": _minimap_origin, "metres_per_pixel": _minimap_cell}
+	_minimap_map.texture = plan.texture
+	_minimap_origin = plan.origin
+	_minimap_cell = plan.metres_per_pixel
+	var extent: Vector2 = plan.extent
+	_minimap_metres_now = clampf(maxf(extent.x, extent.y) * 1.1, INTERIOR_MINIMAP_MIN_METRES, minimap_metres)
+
+
+## Back outside: the town's map on the minimap again.
+func show_town_plan() -> void:
+	_exit_points = []
+	_minimap_metres_now = 0.0
+	if _town_map.is_empty():
+		return
+	_minimap_map.texture = _town_map.texture
+	_minimap_origin = _town_map.origin
+	_minimap_cell = _town_map.metres_per_pixel
+	_town_map = {}
+
+
 func _build_minimap_image() -> void:
 	var ground := get_node_or_null(ground_path) as GridMap
 	if ground == null or ground.mesh_library == null:
@@ -1590,7 +1639,7 @@ func _update_minimap() -> void:
 		heading = -camera.global_basis.z
 	else:
 		return
-	var pixels_per_metre := (_minimap_arrow.get_parent() as Control).size.x / minimap_metres
+	var pixels_per_metre := (_minimap_arrow.get_parent() as Control).size.x / (_minimap_metres_now if _minimap_metres_now > 0.0 else minimap_metres)
 	var scale_per_cell := pixels_per_metre * _minimap_cell
 	var texture_size := _minimap_map.texture.get_size()
 	_minimap_map.size = texture_size * scale_per_cell
@@ -1602,9 +1651,15 @@ func _update_minimap() -> void:
 	if flat.length_squared() > 0.0001:
 		_minimap_arrow.rotation = atan2(flat.x, -flat.y)
 	var marks := []
-	for target: Vector2 in quest_targets():
-		marks.append(_minimap_arrow.position + (target - Vector2(focus.x, focus.z)) * pixels_per_metre)
+	# inside a building: its ways out instead of the quest places (those are in the town)
+	if _town_map.is_empty():
+		for target: Vector2 in quest_targets():
+			marks.append(_minimap_arrow.position + (target - Vector2(focus.x, focus.z)) * pixels_per_metre)
 	_minimap_marks.points = marks
+	var exits := []
+	for exit_point in _exit_points:
+		exits.append(_minimap_arrow.position + Vector2(exit_point.x - focus.x, exit_point.z - focus.z) * pixels_per_metre)
+	_minimap_exits.points = exits
 
 
 ## Height of the box with where the player is, over the minimap, and where the map starts
@@ -1642,17 +1697,49 @@ func _update_location() -> void:
 		if distance < nearest_distance:
 			nearest_distance = distance
 			nearest = _place_name(place_key)
-	_location_wijk.text = wijk.to_upper()
+	if _indoor_wijk != "":
+		# inside (far off the map): the neighbourhood of the building, no street or place
+		wijk = _indoor_wijk
+		street = ""
+		nearest = ""
+	var shown_name := area_display_name(wijk)
+	_location_wijk.text = shown_name.to_upper()
+	_fit_location_font(_location_wijk.text)
 	_location_street.text = street
 	_location_street.visible = street != ""
 	_location_place.text = nearest
-	_location_place.visible = nearest != "" and nearest.to_lower() != wijk.to_lower() and nearest.to_lower() != street.to_lower()
+	_location_place.visible = nearest != "" and nearest.to_lower() != wijk.to_lower() \
+		and nearest.to_lower() != shown_name.to_lower() and nearest.to_lower() != street.to_lower()
 	if wijk != _current_wijk:
 		if _current_wijk != "" and not _visited_wijken.has(wijk):
-			show_area(wijk)
+			show_area(shown_name)
 		_current_wijk = wijk
 		_visited_wijken[wijk] = true
-		_switch_city_music(wijk)
+
+
+## The name a neighbourhood (a key of the "wijken" metadata) is shown by.
+static func area_display_name(wijk: String) -> String:
+	return String(AREA_DISPLAY_NAMES.get(wijk, wijk))
+
+
+## Inside a building (Interiors): the location under the minimap is `wijk` (a key of the
+## "wijken" metadata, e.g. "Centraal Station") in place of the spot far off the map; ""
+## when going out again.
+func set_indoor_location(wijk: String) -> void:
+	_indoor_wijk = wijk
+	_location_clock = 0.0   # at once (next frame)
+
+
+## The neighbourhood line in its usual size, or smaller when `shown` would not fit whole.
+func _fit_location_font(shown: String) -> void:
+	var font := _location_wijk.get_theme_font("font")
+	var room := _location_wijk.size.x
+	if font == null or room <= 0.0:
+		return
+	var font_size := LOCATION_WIJK_FONT_SIZE
+	while font_size > LOCATION_WIJK_SMALLEST_FONT_SIZE and font.get_string_size(shown, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x > room:
+		font_size -= 1
+	_location_wijk.add_theme_font_size_override("font_size", font_size)
 
 
 ## Cells beside a street that still count as on it (the pavement).

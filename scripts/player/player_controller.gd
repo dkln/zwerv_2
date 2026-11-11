@@ -12,9 +12,11 @@ extends Node3D
 ## there is stamina. There is no CharacterBody: every physics step it tries the
 ## move with the town's own colliders (the GridMap shapes the wrecks use too):
 ## - the ground: a ray straight down from `max_step` above the feet to `max_drop` below
-##   them; a step up of at most `max_step` (kerbs, stairs) is taken, a drop of more than
-##   `max_drop` (a quay, the edge of a viaduct) is not, and neither is water (Grond tiles
-##   in water/) nor a slope steeper than `max_slope`;
+##   them; a step up of at most `max_step` (kerbs, stairs) is taken, a step down of at most
+##   `max_drop` is walked; a deeper drop (a platform edge, a quay, a wall, a roof) is
+##   walked off: the figure falls (`jump_gravity`) onto the ground below, down to
+##   `max_fall` m. Water (Grond tiles in water/) is never walked or fallen onto, nor a slope
+##   steeper than `max_slope`;
 ## - what stands in the way: a cylinder as wide as the figure from `max_step` above the feet
 ##   up to its head may not touch anything (walls, lampposts, bins). Blocked, it slides
 ##   along the wall (the move split in x and z).
@@ -28,8 +30,8 @@ extends Node3D
 ## and E goes through it; teleport puts the player on the other side.
 ## Space jumps (`jump_height` m, falling back at `jump_gravity`; it costs `jump_stamina`, not
 ## when exhausted): in the air it still steers, may come down on something up to its jump
-## higher than where it left (a bench, a low wall), never over a drop or water it could not
-## walk off; the figure tucks its legs and throws up its arms meanwhile.
+## higher than where it left (a bench, a low wall) or anywhere lower (off a platform), never
+## onto water; the figure tucks its legs and throws up its arms meanwhile.
 ## The collider: an AnimatableBody3D box with the outer size of the figure (Botsvorm), so
 ## the wrecks of the traffic bump into it; the player's own tests leave it out.
 ##
@@ -96,6 +98,8 @@ const Conversations = preload("res://scripts/story/conversations.gd")
 ## Who can be talked to (InteriorPerson.TALKABLE_GROUP) and the doors (Interiors.DOORS_GROUP).
 const TALKABLE_GROUP := "aanspreekbaar"
 const DOORS_GROUP := "deuren"
+## The player alone (what the world looks for to show things near it: InteractionMark).
+const PLAYER_GROUP := "speler"
 ## How much more XP each next level takes, and the colour of "+50 XP".
 const XP_GROWTH := 1.5
 const XP_TEXT_COLOUR := Color("#47D6C2")
@@ -135,6 +139,8 @@ const SHORT_CRY_COUNT := 3
 ## Highest step up and deepest step down (metres) it walks over.
 @export var max_step := 0.6
 @export var max_drop := 1.3
+## Deepest drop (metres) it walks or jumps off and falls down; deeper it stops at the edge.
+@export var max_fall := 30.0
 ## Steepest ground it walks on (degrees).
 @export var max_slope := 50.0
 ## Seconds a step up or down takes the figure (the node snaps at once).
@@ -243,6 +249,7 @@ var _last_cry := 0
 func _ready() -> void:
 	archetype_id = PlayerCharacter.current_id()
 	add_to_group(Vehicle.WALKERS_GROUP)   # vehicles brake, swerve and hoot for it
+	add_to_group(PLAYER_GROUP)
 	var archetype := PlayerCharacter.chosen_archetype()
 	level = int(archetype.get("level", 1))
 	_voice = String(archetype.get("voice", "man"))
@@ -566,7 +573,8 @@ func teleport(at: Vector3, yaw: float) -> void:
 	_water_push = 0.0
 
 
-## A conversation with `person` (Conversations) in the story box; they turn to face you.
+## A conversation with `person` (Conversations) in the story box, or with someone who sells
+## (Conversations.is_merchant) the shop screen (GameHud.show_shop); they turn to face you.
 func talk_to(person: Node3D) -> void:
 	if _hud == null or not _hud.has_method("show_story"):
 		return
@@ -588,10 +596,15 @@ func talk_to(person: Node3D) -> void:
 	var follow := get_node_or_null(follow_camera_path)
 	if follow and follow.has_method("talk_close_up"):
 		follow.talk_close_up(person)
-	_hud.show_story(talk.opening(), func() -> void:
+	var done := func() -> void:
 		talk.finish()
 		if follow and follow.has_method("talk_close_up"):
-			follow.talk_close_up(null))
+			follow.talk_close_up(null)
+	# someone who sells: the shop screen (their goods), everyone else the story box
+	if talk.is_shop() and _hud.has_method("show_shop"):
+		_hud.show_shop(talk, self, done)
+	else:
+		_hud.show_story(talk.opening(), done)
 
 
 ## Off the ground, if there is the stamina for it (not when exhausted).
@@ -615,7 +628,7 @@ func _start_jump() -> void:
 func _fall(delta: float) -> void:
 	_vertical_speed -= jump_gravity * delta
 	var height := global_position.y + _vertical_speed * delta
-	var ground := _ground_height(global_position, global_position.y, global_position.y - _takeoff_height + max_drop)
+	var ground := _ground_height(global_position, global_position.y, global_position.y - _takeoff_height + max_fall)
 	if is_nan(ground):
 		ground = _takeoff_height
 	if _vertical_speed <= 0.0 and height <= ground:
@@ -628,12 +641,12 @@ func _fall(delta: float) -> void:
 
 
 ## Moves by `offset` in a jump, at its height: where there is ground it could come down on
-## (no drop deeper than it could walk off from where it jumped, no water) and nothing in the way.
+## (at most `max_fall` below where it jumped, no water) and nothing in the way.
 func _try_move_in_air(offset: Vector3) -> bool:
 	if offset.length_squared() < 0.00000001:
 		return false
 	var goal := global_position + offset
-	var ground := _ground_height(goal, global_position.y, global_position.y - _takeoff_height + max_drop)
+	var ground := _ground_height(goal, global_position.y, global_position.y - _takeoff_height + max_fall)
 	if is_nan(ground):
 		return false
 	var feet := Vector3(goal.x, maxf(global_position.y, ground), goal.z)
@@ -660,18 +673,45 @@ func _jump_pose(on: bool) -> void:
 
 
 ## Moves by `offset` if the ground there can be walked on and the figure fits; true if so.
+## Down more than `max_step` (a platform edge, a wall; ground within `max_fall`) it steps off
+## and falls instead of stepping down.
 func _try_move(offset: Vector3) -> bool:
 	if offset.length_squared() < 0.00000001:
 		return false
 	var goal := global_position + offset
 	var height := _ground_height(goal, global_position.y)
-	if is_nan(height):
-		return false
+	if is_nan(height) or height < global_position.y - max_step:
+		return _step_off_edge(goal, offset)
 	var feet := Vector3(goal.x, height, goal.z)
 	# stuck in something already (pushed, stood up in it): let it walk out
 	if not _fits(feet) and _fits(global_position):
 		return false
 	global_position = feet
+	return true
+
+
+## Walks off an edge towards `goal` (moving by `offset`) when there is walkable ground more
+## than `max_step` below it within `max_fall` (not water, not too steep) and the figure fits
+## there: then it falls. Right at the edge the ray may hit its upright side, so it also looks
+## up to EDGE_HOP metres further on and hops that far over the edge.
+const EDGE_HOP := 0.4
+
+func _step_off_edge(goal: Vector3, offset: Vector3) -> bool:
+	var onwards := Vector3(offset.x, 0.0, offset.z).normalized()
+	var feet := Vector3.INF
+	for hop in [0.0, EDGE_HOP * 0.5, EDGE_HOP]:
+		var spot: Vector3 = goal + onwards * hop
+		var landing := _ground_height(spot, global_position.y, max_fall)
+		if not is_nan(landing) and landing < global_position.y - max_step:
+			feet = Vector3(spot.x, global_position.y, spot.z)
+			break
+	if feet == Vector3.INF or not _fits(feet):
+		return false
+	global_position = feet
+	_airborne = true
+	_takeoff_height = global_position.y
+	_vertical_speed = 0.0
+	_jump_pose(true)
 	return true
 
 

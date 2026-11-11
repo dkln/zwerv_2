@@ -184,7 +184,7 @@ func _select(index: int, audible := true) -> void:
 	if audible:
 		_detail_figure.play_gesture()
 	var archetype: Dictionary = PlayerCharacter.ARCHETYPES[PlayerCharacter.ORDER[index]]
-	_begin_button.text = "▶  BEGIN ALS %s" % String(archetype.name).to_upper()
+	_begin_button.text = "→  BEGIN ALS %s" % String(archetype.name).to_upper()
 
 
 ## The moment of the gesture: the shout of the one shown, and its words over their head.
@@ -253,7 +253,7 @@ func begin() -> void:
 	_leaving = true
 	UiSounds.play(self, "doe")
 	PlayerCharacter.choose(PlayerCharacter.ORDER[_selected])
-	_begin_button.text = "▶  LADEN…"
+	_begin_button.text = "→  LADEN…"
 	await _leave(false)
 	get_tree().change_scene_to_file(CITY_SCENE)
 
@@ -709,7 +709,7 @@ func _load_fonts() -> void:
 	_font_pixel_bold = UiStyle.font(UiStyle.FONT_PIXEL_BOLD)
 	var body := UiStyle.font(UiStyle.FONT_BODY)
 	_font_body = UiStyle.weighted(body, 400)
-	# the ▶, · and arrows the pixel fonts may lack come from JetBrains Mono
+	# the →, · and arrows the pixel fonts may lack come from JetBrains Mono
 	if body != fallback:
 		var fallbacks: Array[Font] = [body]
 		for font: Font in [title, _font_pixel, _font_pixel_bold]:

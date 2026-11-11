@@ -9,7 +9,6 @@ extends SceneTree
 
 const Common = preload("res://tools/tool_common.gd")
 const PlayerCharacter = preload("res://scripts/player/player_character.gd")
-const Conversations = preload("res://scripts/story/conversations.gd")
 
 var _problems: Array[String] = []
 
@@ -86,15 +85,26 @@ func _init() -> void:
 	player.add_money(5.0)
 	var story: Node = scene.get_node("Verhaal")
 	story.complete_step("missie_1_kroket", "kleingeld")
-	var talk := Conversations.new(keeper[0], player, hud)
-	var opening: Dictionary = talk.opening()[0]
-	print("snackbarhouder: ", opening.text, "  ", opening.choices)
-	_check((opening.choices as Array).size() >= 4 and String(opening.choices[0]).contains("kroket"), "de kaart om te bestellen")
+	# talking to the one behind the counter: the shop screen, the kroket bought there
+	player.talk_to(keeper[0])
+	await process_frame
+	_check(hud.is_showing_shop(), "praten met de snackbarhouder: het winkelscherm")
+	var shop: Control = hud._shop_screen
+	var goods: Array = shop._rows.filter(func(row: Dictionary) -> bool: return row.kind == "kopen")
+	print("snackbarhouder: ", shop.spoken_text(), "  ", goods.map(func(row: Dictionary) -> String: return row.item))
+	_check(goods.size() >= 3 and String(goods[0].item) == "kroket", "de kaart om te bestellen")
 	var money_before: float = player.money
-	var answer: Array = opening.on_choice.call(0)
-	print("  ", answer[0].text)
+	print("  ", shop.buy(0), ": ", shop.spoken_text())
 	_check(is_equal_approx(player.money, money_before - 2.0) and int(player.inventory.get("kroket", 0)) == 1, "een kroket gekocht (€ 2)")
 	_check(story.step_done("missie_1_kroket", "kroket") and story.is_finished("missie_1_kroket"), "kroket gekocht: missie 1 klaar")
+	for attempt in 3:
+		if hud._story_box.is_showing():
+			hud._story_box._pages = hud._story_box._pages.slice(-1)
+			hud._story_box._page_index = 0
+			hud._story_box._next_page()
+		await process_frame
+	shop._close()
+	await process_frame
 	# out again
 	var exit: Node3D = interiors._exit
 	player.teleport(exit.global_position, 0.0)

@@ -18,7 +18,7 @@ func _init() -> void:
 	for persona: String in Conversations.personas():
 		var data: Dictionary = Conversations.personas()[persona]
 		var complete := true
-		for key in ["spreker", "begroetingen", "onderwerp", "kleingeld_ja", "kleingeld_nee", "snackbar", "dag", "gulheid"]:
+		for key in ["spreker", "begroetingen", "onderwerp", "kleingeld_ja", "kleingeld_nee", "dag", "gulheid"]:
 			complete = complete and data.has(key)
 		_check(complete, "persona %s compleet" % persona)
 	PlayerCharacter.choose("martin")
@@ -63,6 +63,7 @@ func _init() -> void:
 	var page: Dictionary = box._pages[box._page_index]
 	print("%s: %s  %s" % [page.speaker, page.text, page.choices])
 	_check(page.kind == "gesprek" and page.choices.size() >= 3, "met keuzes")
+	_check(not page.has("official") and not box._emblem.visible, "een voorbijganger is geen personeel (geen embleem, gewoon naamkaartje)")
 	_check(page.has("voice") and page.has("mood"), "met stem en stemming (%s, %s)" % [page.get("voice"), page.get("mood")])
 	for frame_index in 20:
 		await process_frame
@@ -71,6 +72,7 @@ func _init() -> void:
 	_check(emote != null and emote.mood == page.mood, "lichaam beweegt met de stemming")
 	var rest: Transform3D = emote._rest if emote else Transform3D.IDENTITY
 	_check(box._portrait != null and box._portrait.townsfolk_look == person.figure.look and box._portrait._townsfolk != null, "gesprekspartner in het portret")
+	_check(box._portrait.source_figure == person.figure and box._portrait._townsfolk.has_face() and box._portrait.speaking == not box._typewriter.is_done(), "portret van de voorbijganger leeft en praat mee")
 	var follow: Node = scene.get_node("Volgcamera")
 	var zoom_before: float = follow._zoom
 	# real seconds (headless frames go faster than the clock); the timer runs while paused
@@ -108,11 +110,22 @@ func _init() -> void:
 	box._say_choice()
 	page = box._pages[box._page_index]
 	print("  kleingeld: ", page.text)
-	for frame_index in 4:
-		await process_frame
+	# let it type out (real seconds) and the scroll settle (FOLLOW_AFTER), then measure in the
+	# box's own design pixels: headless the window is tiny and frames run faster than the
+	# clock, the layout is the same
+	for attempt in 80:
+		if box._typewriter.is_done():
+			break
+		await create_timer(0.05, true).timeout
+	await create_timer(box.FOLLOW_AFTER + 0.2, true).timeout
 	var view: Rect2 = box._scroll.get_global_rect()
 	var reply: Rect2 = box._text.get_global_rect()
-	_check(box._text.text != "" and view.grow(1.0).encloses(reply), "na de keuze de hele nieuwe reactie in beeld (%s in %s)" % [reply, view])
+	var reply_top: float = box._text.position.y - box._scroll.scroll_vertical
+	var reply_bottom: float = reply_top + box._text.size.y
+	var view_height: float = box._scroll.size.y
+	var whole_fits: bool = box._text.size.y <= view_height
+	var in_view: bool = reply_bottom <= view_height + 1.0 and (reply_top >= -1.0 or not whole_fits)
+	_check(box._text.text != "" and in_view, "na de keuze de hele nieuwe reactie in beeld (%.0f..%.0f px in 0..%.0f)" % [reply_top, reply_bottom, view_height])
 	_check(box._history_text.visible and box._history_text.text.contains(Conversations.question("kleingeld")), "wat gezegd is blijft staan")
 	_check(not (page.choices as Array).has(Conversations.question("kleingeld")), "kleingeld niet nog eens vragen")
 	_check(person.has_meta(Conversations.GAVE_META), "eens per persoon")
@@ -149,6 +162,9 @@ func _init() -> void:
 	_check((emote_after == null or emote_after.is_queued_for_deletion()) and person.figure.transform.is_equal_approx(rest), "daarna weer gewoon")
 	await process_frame
 	_check(not box.is_showing() and not paused, "na het afscheid dicht, spel gaat door")
+	# every persona's longest reply (with the longest "nog iets" after it), after a line and a
+	# choice: once typed out and settled, its end is in view (not only the passer-by picked)
+	await _check_longest_replies(box)
 	for mood: String in Babble.MOODS:
 		for voice: String in Babble.VOICES:
 			var name := "brabbel_%s_%s_1" % [voice, mood]
@@ -157,6 +173,52 @@ func _init() -> void:
 	_check(not _problems.any(func(problem: String) -> bool: return problem.begins_with("geen ")), "alle brabbelgeluiden er")
 	print("praten ok" if _problems.is_empty() else "problemen: " + str(_problems))
 	quit(0 if _problems.is_empty() else 1)
+
+
+## For every persona of voorbijgangers.json: its longest answer as the reply to a choice in
+## the story box, after a greeting (so there is history above it); typed out and the scroll
+## settled (real seconds), the whole reply in view (its end at least, when it is taller).
+func _check_longest_replies(box: Node) -> void:
+	var agains: Array = Conversations.street().get("nog_iets", ["Nog iets?"])
+	var longest_again := ""
+	for again: Variant in agains:
+		if str(again).length() > longest_again.length():
+			longest_again = str(again)
+	var cut_off: Array[String] = []
+	for persona: String in Conversations.personas():
+		var data: Dictionary = Conversations.personas()[persona]
+		var topic: Dictionary = data.get("onderwerp", {})
+		var replies: Array[String] = [str(topic.get("antwoord", "")), str(topic.get("doorantwoord", "")) + " " + longest_again,
+			str(data.get("kleingeld_ja", "")) + " " + longest_again, str(data.get("kleingeld_nee", "")) + " " + longest_again]
+		var longest := ""
+		for reply_text in replies:
+			if reply_text.length() > longest.length():
+				longest = reply_text
+		var greeting := str((data.get("begroetingen", ["Hé."]) as Array)[0])
+		var choices := [Conversations.question("kleingeld"), Conversations.question("dag")]
+		var reply_page := {"kind": "gesprek", "speaker": str(data.get("spreker", "")), "text": longest, "choices": choices,
+			"voice": "man", "mood": "neutraal", "on_choice": func(_index: int) -> Array: return []}
+		box.show_pages([{"kind": "gesprek", "speaker": str(data.get("spreker", "")), "text": greeting, "choices": choices,
+			"voice": "man", "mood": "neutraal", "on_choice": func(_index: int) -> Array: return [reply_page]}])
+		box._typewriter.finish()
+		box._say_choice()
+		for attempt in 120:
+			if box._typewriter.is_done():
+				break
+			await create_timer(0.05, true).timeout
+		await create_timer(box.FOLLOW_AFTER + 0.2, true).timeout
+		var reply_top: float = box._text.position.y - box._scroll.scroll_vertical
+		var reply_bottom: float = reply_top + box._text.size.y
+		var view_height: float = box._scroll.size.y
+		var whole_fits: bool = box._text.size.y <= view_height
+		print("  %-14s %3d tekens: %.0f..%.0f px in 0..%.0f" % [persona, longest.length(), reply_top, reply_bottom, view_height])
+		if not (reply_bottom <= view_height + 1.0 and (reply_top >= -1.0 or not whole_fits)):
+			cut_off.append(persona)
+		box._pages = box._pages.slice(-1)
+		box._page_index = 0
+		box._next_page()
+		await process_frame
+	_check(cut_off.is_empty(), "het langste antwoord van elke voorbijganger helemaal in beeld (%s)" % ("alle %d" % Conversations.personas().size() if cut_off.is_empty() else "afgesneden: " + ", ".join(cut_off)))
 
 
 func _check(condition: bool, label: String) -> void:

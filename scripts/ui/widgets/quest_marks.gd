@@ -4,12 +4,15 @@ extends Control
 ## one off the minimap sits on its edge as an arrow pointing the way. The big map of the game
 ## menu draws the same diamond (draw_mark).
 ##   marks.points = [Vector2(120, 40)]   # in this control's pixels
+## `colour` sets another colour (the exits of an interior on the minimap).
 
 const UiStyle = preload("res://scripts/ui/ui_style.gd")
 const COLOUR := Color("#FFB830")
 ## Half the size of the diamond, and how far from the edge an arrow for a far place sits (px).
 const MARK_SIZE := 6.0
 const EDGE_INSET := 9.0
+
+var colour := COLOUR
 
 ## Where the places are, in this control's pixels (any of them may be outside it).
 var points: Array = []:
@@ -33,7 +36,7 @@ func _draw() -> void:
 	var inner := Rect2(Vector2.ONE * EDGE_INSET, size - Vector2.ONE * EDGE_INSET * 2.0)
 	for point: Vector2 in points:
 		if inner.has_point(point):
-			draw_mark(self, point.round(), MARK_SIZE, pulse)
+			draw_mark(self, point.round(), MARK_SIZE, pulse, colour)
 			continue
 		# off the minimap: on its edge, pointing from the middle towards it
 		var way := (point - middle)
@@ -47,17 +50,17 @@ func _draw() -> void:
 
 ## The diamond of a quest place at `at` on `canvas`, `half` px from its middle to a corner;
 ## `pulse` (0..1) lights it up and down a little.
-static func draw_mark(canvas: CanvasItem, at: Vector2, half: float, pulse := 1.0) -> void:
+static func draw_mark(canvas: CanvasItem, at: Vector2, half: float, pulse := 1.0, fill := COLOUR) -> void:
 	var rim := half + 3.0
 	canvas.draw_colored_polygon(PackedVector2Array([at + Vector2(0, -rim), at + Vector2(rim, 0), at + Vector2(0, rim), at + Vector2(-rim, 0)]), UiStyle.INK)
-	var colour := COLOUR.lerp(Color.WHITE, 0.35 * pulse)
-	canvas.draw_colored_polygon(PackedVector2Array([at + Vector2(0, -half), at + Vector2(half, 0), at + Vector2(0, half), at + Vector2(-half, 0)]), colour)
+	var lit := fill.lerp(Color.WHITE, 0.35 * pulse)
+	canvas.draw_colored_polygon(PackedVector2Array([at + Vector2(0, -half), at + Vector2(half, 0), at + Vector2(0, half), at + Vector2(-half, 0)]), lit)
 
 
 func _draw_arrow(at: Vector2, way: Vector2, pulse: float) -> void:
 	var across := Vector2(-way.y, way.x)
 	var tip := at + way * 6.0
 	var back := at - way * 5.0
-	var colour := COLOUR.lerp(Color.WHITE, 0.35 * pulse)
+	var lit := colour.lerp(Color.WHITE, 0.35 * pulse)
 	draw_colored_polygon(PackedVector2Array([tip + way * 3.0, back + across * 9.0 - way * 2.0, back - across * 9.0 - way * 2.0]), UiStyle.INK)
-	draw_colored_polygon(PackedVector2Array([tip, back + across * 6.0, back - across * 6.0]), colour)
+	draw_colored_polygon(PackedVector2Array([tip, back + across * 6.0, back - across * 6.0]), lit)

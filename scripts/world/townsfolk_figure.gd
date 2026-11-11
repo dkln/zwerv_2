@@ -14,6 +14,10 @@ extends Node3D
 ## shoulder), so the walk (walk) and riding (aim_leg, aim_arm: pointing the limbs at the
 ## pedals and the grips) move them. The joints are not nested: every limb is placed in
 ## the figure's own space.
+## For a close-up (PlayerPortrait: the conversations, the shop screen) add_face() gives it a
+## mouth that opens (set_mouth: a dark opening over the mouth voxels, growing down into the
+## chin) and eyelids that blink (set_blink), on the body so they move with the head; and
+## copy_pose_from(other) puts its limbs and body as another figure's (the one in the world).
 
 const PlayerModel = preload("res://scripts/player/player_model.gd")
 const GroundShadow = preload("res://scripts/effects/ground_shadow.gd")
@@ -53,6 +57,17 @@ const TROUSERS := [Color("#3E5A86"), Color("#2A3A5A"), Color("#22242A"), Color("
 const SHOES := [Color("#1A1612"), Color("#5A3A22"), Color("#E8E6E0"), Color("#3A3A40"), Color("#8A2A2A")]
 const EYE := Color("#1A1420")
 const MOUTH := Color("#8A4A44")
+## The face in voxels (see _build_voxels): the mouth (x 5..6, row 28) and the eyes (x 4 and 7,
+## row 31) on the front of the head (z 0); the cell the figure is centred on (x, z).
+const MOUTH_CELLS := Vector3i(5, 28, 0)
+const EYE_CELLS := [Vector3i(4, 31, 0), Vector3i(7, 31, 0)]
+const CENTRE_CELL := Vector2(6.0, 2.0)
+## The inside of an open mouth, and how far the opening grows down into the chin (voxels,
+## wide open).
+const MOUTH_INSIDE := Color("#2A1216")
+const MOUTH_DROP := 1.0
+## Just in front of the face, so it is drawn over it (metres).
+const FACE_FRONT := 0.003
 
 static var _parts := {}   # look key -> parts (VoxelFigure.to_parts)
 ## Looks whose parts are kept at most (the pedestrians keep changing, Pedestrians): beyond this
@@ -65,6 +80,9 @@ var _joints := {}         # limb -> Node3D at its joint
 var _rest := {}           # limb -> rest position of its joint (metres, in the figure)
 var _body: Node3D         # the body, turning round the middle of the hips
 var _walk_clock := 0.0
+var _mouth: MeshInstance3D        # add_face: the opening of the mouth
+var _eyelids: Array[MeshInstance3D] = []
+var _mouth_opening := 0.0
 
 
 ## A figure of this look, its parts in place (standing).
@@ -235,6 +253,89 @@ func _build() -> void:
 		joint.add_child(piece)
 		_joints[limb] = joint
 		_rest[limb] = parts.pivots[limb]
+
+
+## A voxel of the figure's grid (`cell`, its lower front corner) in the figure's space, as
+## VoxelFigure.to_parts places it (centred on CENTRE_CELL, z flipped so the face looks +z).
+static func cell_point(cell: Vector3) -> Vector3:
+	return Vector3(cell.x - CENTRE_CELL.x, cell.y, -(cell.z - CENTRE_CELL.y)) * VOXEL
+
+
+## The mouth and the eyelids of a close-up (see the top), shut and hidden till used. Nothing
+## for a full-face helmet.
+func add_face() -> void:
+	if _mouth != null or str(look.get("hair_style", "")) == "helm_dicht":
+		return
+	var inside := StandardMaterial3D.new()
+	inside.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	inside.albedo_color = MOUTH_INSIDE
+	_mouth = MeshInstance3D.new()
+	_mouth.name = "Mond"
+	var mouth_quad := QuadMesh.new()
+	mouth_quad.size = Vector2(2.0 * VOXEL, VOXEL)
+	_mouth.mesh = mouth_quad
+	_mouth.material_override = inside
+	_mouth.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_mouth.visible = false
+	_body.add_child(_mouth)
+	var lid := StandardMaterial3D.new()
+	lid.albedo_color = PlayerModel.graded((look.get("skin", SKINS[0]) as Color).darkened(0.12))
+	for eye: Vector3i in EYE_CELLS:
+		var eyelid := MeshInstance3D.new()
+		eyelid.name = "Ooglid"
+		var lid_quad := QuadMesh.new()
+		lid_quad.size = Vector2(VOXEL, VOXEL)
+		eyelid.mesh = lid_quad
+		eyelid.material_override = lid
+		eyelid.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		eyelid.position = cell_point(Vector3(eye) + Vector3(0.5, 0.5, 0.0)) + Vector3(0.0, 0.0, FACE_FRONT)
+		eyelid.visible = false
+		_body.add_child(eyelid)
+		_eyelids.append(eyelid)
+	set_mouth(0.0)
+
+
+## How far the mouth is open: 0 shut (the mouth voxels as they are), up to 1 wide open (the
+## dark opening over the mouth row and MOUTH_DROP voxels down into the chin).
+func set_mouth(opening: float) -> void:
+	_mouth_opening = clampf(opening, 0.0, 1.0)
+	if _mouth == null:
+		return
+	_mouth.visible = _mouth_opening > 0.01
+	var height := 1.0 + MOUTH_DROP * _mouth_opening    # voxels, from the top of the mouth row down
+	var top := cell_point(Vector3(MOUTH_CELLS) + Vector3(1.0, 1.0, 0.0))
+	_mouth.scale = Vector3(1.0, height, 1.0)
+	_mouth.position = top + Vector3(0.0, -height * VOXEL * 0.5, FACE_FRONT)
+
+
+func mouth_opening() -> float:
+	return _mouth_opening
+
+
+func has_face() -> bool:
+	return _mouth != null
+
+
+func set_blink(shut: bool) -> void:
+	for eyelid in _eyelids:
+		eyelid.visible = shut
+
+
+func is_blinking() -> bool:
+	return not _eyelids.is_empty() and _eyelids[0].visible
+
+
+## Puts the limbs and the body (the walk, a lean, a seat) as those of `other`, a figure of
+## the same build (the one in the world, for its close-up).
+func copy_pose_from(other: TownsfolkFigure) -> void:
+	if other == null:
+		return
+	for limb: String in _joints:
+		var source: Node3D = other._joints.get(limb)
+		if source:
+			(_joints[limb] as Node3D).transform = source.transform
+	if other._body and _body:
+		_body.transform = other._body.transform
 
 
 ## The meshes and joints of a look, built once per look and shared.

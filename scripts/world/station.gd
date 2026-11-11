@@ -3,9 +3,10 @@ extends "res://scripts/world/interior.gd"
 ## tools/build/build_interiors.gd from StationLayout): an Interior with life in it.
 ## - Trains (StationTrain) on twelve tracks: each track has its departure (`_departures`):
 ##   a time, a destination and a kind (StationLayout.DESTINATIONS), two or three cars, now and
-##   then a delay or a train that does not run; at random moments the train comes in through
-##   the back wall, opens its doors, stands its time, the conductor whistles, the doors beep
-##   shut, and it leaves the way it came. Then the next one is planned for that track.
+##   then a delay or a train that does not run; the train comes in through the back wall
+##   (from its "origin"), people get out, it stands its time, the conductor whistles, the
+##   doors beep shut, and it leaves the way it came; soon after (GAP_MINUTES) the next one
+##   comes in on that track, so arrivals and departures take turns on every track.
 ## - The departure boards over the hall, a display at the head of every track and the station
 ##   clock (with the red seconds hand) show the station's own clock (`_minutes`): set from the
 ##   town's day the first time you come in, then running at the pace of real time.
@@ -24,6 +25,9 @@ extends "res://scripts/world/interior.gd"
 ## the OV posts are the props/ov/ov_incheckpaal in the GridMap Props.
 
 const Layout = preload("res://scripts/world/station_layout.gd")
+const OverheadLines = preload("res://scripts/world/overhead_lines.gd")
+const Typewriter = preload("res://scripts/ui/widgets/typewriter.gd")
+const DriverShout = preload("res://scripts/vehicles/driver_shout.gd")
 const PROPS_LIBRARY := "res://assets/libraries/props.res"
 const DOORS_GROUP := "deuren"
 const CARD_ITEM := "ov_chipkaart"
@@ -40,25 +44,97 @@ const WHO_BY_HOUR := [
 	[16.0, {"zakenman": 0.35, "student": 0.2, "reiziger": 0.35, "toerist": 0.1}],
 	[19.0, {"zakenman": 0.05, "student": 0.2, "reiziger": 0.6, "toerist": 0.15}],
 ]
-## People getting out of a train at the busiest hour (fewer when it is quiet).
-const ALIGHTING_AT_FULL := 14
-## A train stands this long at its platform (minutes), and a track is free this long between
-## two trains (minutes).
-const DWELL_MINUTES := Vector2(2.5, 4.5)
-const GAP_MINUTES := Vector2(0.4, 2.5)
-const DELAY_CHANCE := 0.15
+## People getting out of a train at the busiest hour (fewer when it is quiet; trains come
+## often, so not too many each time).
+const ALIGHTING_AT_FULL := 10
+## The crowd comes and goes: new travellers walk in at the doors now and then (a random
+## DOOR_ARRIVAL_SECONDS apart at the busiest hour, further apart when it is quiet; quicker,
+## CATCH_UP_SECONDS, while there are far fewer than the hour wants) and get off the trains;
+## they leave through the doors or get into a train. Both kinds of coming in stop at
+## TRAVELLER_CAP_SHARE times the travellers the hour wants (_target_travellers), so the
+## two balance out; a train still lets at least one person off when it is busy.
+const DOOR_ARRIVAL_SECONDS := Vector2(1.5, 5.0)
+const CATCH_UP_SECONDS := Vector2(0.5, 1.4)
+const TRAVELLER_CAP_SHARE := 1.2
+## Someone off a train who stays a while: a look at the departure boards first.
+const LINGER_CHANCE := 0.15
+## Fare dodging: the player crossing the gate line from the hall onto a platform without a
+## check-in (StationGates.PASS_META; jumping over the paddles or slipping through behind
+## someone) is seen with this chance (quiet .. busiest hour, more staff about); a conductor
+## (the nearest one, else one at those gates) shouts (DriverShout "zwartrijden") and runs
+## after them at CHASE_SPEED (the player walks 3, runs 6.5 m/s). Within CATCH_REACH: a fine
+## of FINE_EUROS (all they have when it is less), a line over the player, and he goes back.
+## He gives up when the player leaves the station, stays more than GIVE_UP_DISTANCE away for
+## GIVE_UP_SECONDS, or after CHASE_SECONDS.
+const FARE_CHECK_CHANCE := Vector2(0.35, 0.5)
+const FINE_EUROS := 50.0
+const CHASE_SPEED := 4.6
+const CATCH_REACH := 1.0
+const GIVE_UP_DISTANCE := 15.0
+const GIVE_UP_SECONDS := 3.0
+const CHASE_SECONDS := 30.0
+const CONDUCTOR_NOTICE_RANGE := 35.0
+const FINE_COLOUR := Color("#FF5A4A")
+## The chase goes along the floor: on the player's platform (or in the hall with them)
+## straight at them, else along the travellers' route (through the gates); with the player
+## down on the rails he waits at the edge above them and shouts (never onto the rails).
+## Every CHASE_REPLAN seconds he looks again which way to go.
+const CHASE_REPLAN := 0.5
+## Falling off a platform by accident (StationPerson at an edge: station.stumbles): the
+## chance at an edge, for someone walking and for a conductor in a chase; never onto a
+## track with a train. Then he climbs back up (StationPerson "climb") and goes on.
+const STUMBLE_CHANCE := 0.03
+const CHASE_STUMBLE_CHANCE := 0.2
+## Someone waiting for a train gives up after this many seconds (and goes on to something else).
+const WAIT_TRAIN_LIMIT := 300.0
+## Every track goes round: a train arrives (from its "origin"), stands DWELL_MINUTES at the
+## platform (people get out and in), leaves the way it came, and GAP_MINUTES after it has
+## gone the next one comes in. With the time to come in and go out (about 15 s each) a
+## track has a train every 2.5 to 4.5 minutes, the twelve together one about every 20 s.
+const DWELL_MINUTES := Vector2(1.6, 3.0)
+const GAP_MINUTES := Vector2(0.2, 1.0)
+const DELAY_CHANCE := 0.12
+const DELAY_MINUTES := Vector2i(1, 5)
 const CANCEL_CHANCE := 0.03
+## Arrivals are announced as rarely as departures (DEPARTURE_ANNOUNCE_CHANCE).
+const ARRIVAL_ANNOUNCE_CHANCE := 0.15
 ## Seconds before leaving: the announcement, the whistle, the doors shutting.
 const ANNOUNCE_SECONDS := 150.0
 const WHISTLE_SECONDS := 17.0
 const CLOSE_SECONDS := 12.0
 ## Rows on a departure board.
 const BOARD_ROWS := 7
+## The blue face of a departure board (binnen/station/vertrekbord: 6 m wide, a frame of
+## 0.125 m) reaches this far either side of its middle, the columns start (x, metres) at:
+## the time, the destination, the track (centred) and the remark; each text is made smaller
+## when it would reach past the next column or the edge (_fit_text).
+const BOARD_EDGE := 2.8
+const BOARD_COLUMNS := [-2.75, -1.95, 1.65, 2.0]
+## The face of a platform display (binnen/station/perronscherm: 2.5 m wide): the white square
+## for the track number (centre and width) and where its text starts and ends.
+const DISPLAY_NUMBER_X := -0.81
+const DISPLAY_NUMBER_WIDTH := 0.5
+const DISPLAY_TEXT_LEFT := -0.4
+const DISPLAY_EDGE := 1.08
 const BOARD_WHITE := Color("#F2F4F8")
 const BOARD_YELLOW := Color("#FFD23A")
 const BOARD_RED := Color("#FF5A4A")
 const BOARD_BLUE := Color("#0A2A6A")
 const ANNOUNCER_VOICE := "vrouw"
+## How often the loudspeakers speak: after an announcement it stays quiet a random number of
+## seconds between these two; only this share of the departures is announced (with twelve
+## tracks every one would be far too much), and a general notice (NOTICES) comes after a
+## random wait between NOTICE_SECONDS, never the same one twice in a row. An announcement
+## that had to wait longer than ANNOUNCEMENT_STALE_SECONDS is dropped (its train is gone).
+const ANNOUNCEMENT_PAUSE_SECONDS := Vector2(60.0, 150.0)
+const DEPARTURE_ANNOUNCE_CHANCE := 0.15
+const NOTICE_SECONDS := Vector2(360.0, 900.0)
+const ANNOUNCEMENT_STALE_SECONDS := 60.0
+## The words of an announcement type out (Typewriter, with its cursor) at this share of the
+## speed of the story box, as fast as the voice babbles on (the babble goes on until the
+## last word is there); then the whole line stays ANNOUNCEMENT_HOLD_SECONDS.
+const ANNOUNCEMENT_TYPE_SPEED := 0.4
+const ANNOUNCEMENT_HOLD_SECONDS := 2.5
 const NOTICES := [
 	"Let op: laat uw bagage niet onbeheerd achter.",
 	"Roken is op het hele station niet toegestaan.",
@@ -81,6 +157,25 @@ const HALL_OBSTACLES := [
 	Rect2(-40.3, -12.3, 0.6, 0.6), Rect2(-16.3, -12.3, 0.6, 0.6), Rect2(15.7, -12.3, 0.6, 0.6), Rect2(39.7, -12.3, 0.6, 0.6),
 ]
 const OBSTACLE_MARGIN := 0.7
+## The overhead lines over the twelve tracks (_make_overhead_lines): the contact wire this
+## high over the rails (as outside, OverheadLines.train_wire_height, so the pantographs touch
+## it), the carrier wire CARRIER_RISE over it at a support, sagging CARRIER_SAG halfway. The
+## supports are cantilevers from the white roof columns down the middle of every island
+## (binnen/station/pilaar, at SUPPORT_Z) and from slim masts at the walls beside the two
+## outer tracks; the wires run from just past the buffer stops (WIRE_FRONT_Z) through the
+## openings in the back wall.
+const CONTACT_WIRE_HEIGHT := 5.6
+const CARRIER_RISE := 1.0
+const CARRIER_SAG := 0.35
+const SUPPORT_Z := [8.0, 20.0, 32.0, 44.0]
+const WIRE_FRONT_Z := 1.5
+const DROPPER_STEP := 3.0
+const COLUMN_HALF_WIDTH := 0.25
+## The masts at the walls: how far from the wall, their thickness and height (metres).
+const WALL_MAST_INSET := 0.9
+const WALL_MAST_WIDTH := 0.25
+const WALL_MAST_HEIGHT := 6.0
+const MAST_COLOUR := Color(0.6, 0.62, 0.64)
 
 var _player: Node3D
 var _setup := false
@@ -104,11 +199,36 @@ var _shop_fronts: Array[Node3D] = []
 var _posts: Array[Vector3] = []
 var _spawn_clock := 0.0
 var _board_clock := 0.0
-var _notice_clock := 90.0
-var _announcements: Array[String] = []
+var _notice_clock := 180.0
+## Its own random numbers for the announcements, different every game (the station's
+## _random has a fixed seed, so the same notices would come in the same order every time).
+var _announcement_random := RandomNumberGenerator.new()
+var _last_notice := -1
+var _announcement_pause := 0.0       # seconds the loudspeakers stay quiet still
+var _announcements: Array[Dictionary] = []   # {"text", "queued_at"} (minutes of the station clock)
 var _announcing := false
 var _subtitle_layer: CanvasLayer
-var _subtitle: Label
+var _subtitle: RichTextLabel
+## Fare dodging (FARE_CHECK_CHANCE): which side of the gate line the player was on (-1 the
+## hall, 1 the platforms, 0 not known yet), the conductor after them and for how long.
+var _player_side := 0
+var _chaser: StationPerson
+var _chase_seconds := 0.0
+var _chase_far_seconds := 0.0
+var _chase_plan := ""                # which way he is going now (CHASE_REPLAN)
+var _chase_replan_clock := 0.0
+## For the checks: how many fell onto the rails and climbed back up, and who was given
+## another way because they got stuck.
+var falls := 0
+var climbs := 0
+var unstuck := 0
+var _fare_random := RandomNumberGenerator.new()
+## For the checks: the chance of being seen (< 0: FARE_CHECK_CHANCE), and what happened.
+var fare_check_chance_override := -1.0
+var chases_started := 0
+var fines := 0
+var chases_given_up := 0
+var _subtitle_typewriter: Typewriter
 
 
 ## The player, while inside (the gates, machines and posts ask for them).
@@ -141,6 +261,7 @@ func trains() -> Array:
 
 func player_came_in(who: Node3D) -> void:
 	_player = who
+	_player_side = 0
 	_ensure_setup()
 	if _walkers.size() < _target_travellers() / 2:
 		_populate()
@@ -149,6 +270,8 @@ func player_came_in(who: Node3D) -> void:
 func player_went_out() -> void:
 	if _subtitle_layer:
 		_subtitle_layer.visible = false
+	# out of the station: the conductor has lost them
+	_end_chase()
 
 
 ## The station's clock (minutes since midnight, running on past 24 h).
@@ -167,6 +290,9 @@ func _ensure_setup() -> void:
 		return
 	_setup = true
 	_random.seed = 20261110
+	_announcement_random.randomize()
+	_fare_random.randomize()
+	_notice_clock = _announcement_random.randf_range(120.0, 360.0)
 	StationAudio.ensure_buses()
 	var furniture := get_node_or_null("Inrichting") as GridMap
 	_binnen_library = furniture.mesh_library if furniture else load("res://assets/libraries/binnen.res")
@@ -174,13 +300,13 @@ func _ensure_setup() -> void:
 	_props_library = props.mesh_library if props and props.mesh_library else load(PROPS_LIBRARY)
 	_sync_clock()
 	_make_gates()
-	_make_platform_edges()
 	_make_shops()
 	_make_machines()
 	_make_posts(props)
 	_make_boards()
 	_make_displays()
 	_make_clock()
+	_make_overhead_lines()
 	_make_subtitle()
 	_plan_start()
 	_spawn_staff()
@@ -209,22 +335,6 @@ func _make_gates() -> void:
 		number += 1
 
 
-## An invisible wall along every platform edge: no one falls onto the tracks.
-func _make_platform_edges() -> void:
-	var walls := StaticBody3D.new()
-	walls.name = "Perronranden"
-	walls.collision_layer = 1
-	walls.collision_mask = 0
-	add_child(walls)
-	for track in range(1, Layout.TRACK_COUNT + 1):
-		var shape := CollisionShape3D.new()
-		var box := BoxShape3D.new()
-		box.size = Vector3(0.1, 2.2, Layout.BACK_WALL)
-		shape.shape = box
-		shape.position = Vector3(Layout.platform_edge_x(track) - Layout.platform_side(track) * 0.06, 1.1, Layout.BACK_WALL * 0.5)
-		walls.add_child(shape)
-
-
 func _make_shops() -> void:
 	var number := 1
 	while has_node("Verkoper_%d" % number):
@@ -234,6 +344,8 @@ func _make_shops() -> void:
 		var keeper := InteriorPerson.create(role, 4000 + number * 17, false)
 		keeper.name = "Verkoper"
 		keeper.set_meta("shop_name", keeper_marker.get_meta("shop_name", ""))
+		# what it sells: the shop of this kind in data/gesprekken/winkels.json (the shop screen)
+		keeper.set_meta("kind", kind)
 		add_child(keeper)
 		keeper.transform = keeper_marker.transform
 		_keepers.append(keeper)
@@ -349,16 +461,18 @@ func _make_boards() -> void:
 		var board := Node3D.new()
 		board.name = "Tekst"
 		marker.add_child(board)
-		for heading: Array in [["VERTREK", -2.75], ["NAAR", -1.95], ["SPOOR", 1.75]]:
-			var header := _label(heading[0], 30, 0.0034, BOARD_BLUE, true)
+		for heading: Array in [["VERTREK", BOARD_COLUMNS[0], true], ["NAAR", BOARD_COLUMNS[1], true], ["SPOOR", BOARD_COLUMNS[2], false]]:
+			var header := _label(heading[0], 30, 0.0034, BOARD_BLUE, heading[2])
 			header.position = Vector3(heading[1], 0.69, 0.01)
 			board.add_child(header)
 		var rows := []
 		for row_index in BOARD_ROWS:
 			var y := 0.5 - row_index * 0.19
 			var row := []
-			for column: Array in [[-2.75, BOARD_WHITE], [-1.95, BOARD_WHITE], [1.95, BOARD_WHITE], [2.3, BOARD_YELLOW]]:
-				var label := _label("", 40, 0.0034, column[1], true)
+			# [time, destination, track, remark]: the order of the row (_update_boards)
+			for column: Array in [[BOARD_COLUMNS[0], BOARD_WHITE, true], [BOARD_COLUMNS[1], BOARD_WHITE, true],
+					[BOARD_COLUMNS[2], BOARD_WHITE, false], [BOARD_COLUMNS[3], BOARD_YELLOW, true]]:
+				var label := _label("", 40, 0.0034, column[1], column[2])
 				label.position = Vector3(column[0], y, 0.01)
 				board.add_child(label)
 				row.append(label)
@@ -372,14 +486,15 @@ func _make_displays() -> void:
 		var marker := get_node_or_null("Perronscherm_%d" % track) as Node3D
 		if marker == null:
 			continue
-		var number := _label(str(track), 64, 0.006, BOARD_BLUE)
-		number.position = Vector3(-0.81, 0.0, 0.01)
+		var number := _label("", 64, 0.006, BOARD_BLUE)
+		number.position = Vector3(DISPLAY_NUMBER_X, 0.0, 0.01)
 		marker.add_child(number)
+		_fit_text(number, str(track), DISPLAY_NUMBER_WIDTH)
 		var time := _label("", 34, 0.0034, BOARD_WHITE, true)
-		time.position = Vector3(-0.4, 0.14, 0.01)
+		time.position = Vector3(DISPLAY_TEXT_LEFT, 0.12, 0.01)
 		marker.add_child(time)
 		var destination := _label("", 34, 0.0034, BOARD_WHITE, true)
-		destination.position = Vector3(-0.4, -0.1, 0.01)
+		destination.position = Vector3(DISPLAY_TEXT_LEFT, -0.11, 0.01)
 		marker.add_child(destination)
 		_displays[track] = {"number": number, "time": time, "destination": destination}
 
@@ -421,25 +536,142 @@ func _make_clock() -> void:
 		_hands[hand[0]] = pivot
 
 
+## The overhead lines over every track (see CONTACT_WIRE_HEIGHT): contact and carrier wire
+## with droppers, a cantilever to each track from its support, and the masts at the walls
+## (each with a slim collider; the wires and arms hang out of reach and have none).
+func _make_overhead_lines() -> void:
+	var contact_y := -Layout.PLATFORM_DROP + CONTACT_WIRE_HEIGHT
+	var carrier_y := contact_y + CARRIER_RISE
+	var pieces: Array[PackedVector3Array] = []
+	for track in range(1, Layout.TRACK_COUNT + 1):
+		var track_x := Layout.track_x(track)
+		_add_track_wires(pieces, track_x, contact_y, carrier_y)
+		# the support on the platform side of the track: a roof column in the middle of an
+		# island, or a mast at the wall beside an outer track
+		var platform: Array = Layout.platforms()[Layout.platform_of_track(track)]
+		var span := Layout.platform_span(platform)
+		var support_x := (span.x + span.y) * 0.5
+		var outer := int(platform[0]) == int(platform[1])
+		if outer:
+			support_x = Layout.HALL_LEFT + WALL_MAST_INSET if support_x < 0.0 else Layout.HALL_RIGHT - WALL_MAST_INSET
+		var towards := signf(track_x - support_x)
+		var arm_start := support_x + towards * (WALL_MAST_WIDTH * 0.5 if outer else COLUMN_HALF_WIDTH)
+		for support_z: float in SUPPORT_Z:
+			_add_cantilever(pieces, arm_start, track_x, towards, support_z, contact_y, carrier_y)
+	var helper := OverheadLines.new()
+	var wires := MeshInstance3D.new()
+	wires.name = "Bovenleiding"
+	wires.mesh = helper._wire_mesh(pieces)
+	wires.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	helper.free()
+	add_child(wires)
+	var mast_number := 0
+	for wall_x: float in [Layout.HALL_LEFT + WALL_MAST_INSET, Layout.HALL_RIGHT - WALL_MAST_INSET]:
+		for support_z: float in SUPPORT_Z:
+			mast_number += 1
+			_add_wall_mast(Vector3(wall_x, 0.0, support_z), mast_number)
+
+
+## The wires over one track: the level contact wire from the buffer stop through the back
+## wall; above it the carrier wire, sagging between the supports, coming down to the
+## contact wire at its front end (where it is anchored); droppers between the two.
+func _add_track_wires(pieces: Array[PackedVector3Array], track_x: float, contact_y: float, carrier_y: float) -> void:
+	pieces.append(PackedVector3Array([Vector3(track_x, contact_y, WIRE_FRONT_Z), Vector3(track_x, contact_y, Layout.BACK_WALL + 1.0)]))
+	var stops: Array[float] = [WIRE_FRONT_Z]
+	stops.append_array(SUPPORT_Z)
+	stops.append(Layout.BACK_WALL + 1.0)
+	for stop_index in stops.size() - 1:
+		var from_z: float = stops[stop_index]
+		var to_z: float = stops[stop_index + 1]
+		var segment_count := maxi(ceili((to_z - from_z) / 1.0), 1)
+		var previous := Vector3.ZERO
+		for segment_index in segment_count + 1:
+			var share := float(segment_index) / segment_count
+			var along_z := lerpf(from_z, to_z, share)
+			var height: float
+			if stop_index == 0:
+				# the anchored front end: from the contact wire up to the first support
+				height = lerpf(contact_y + 0.15, carrier_y, share)
+			else:
+				var sag_here := CARRIER_SAG * 4.0 * share * (1.0 - share)
+				height = carrier_y - sag_here
+			var point := Vector3(track_x, height, along_z)
+			if segment_index > 0:
+				pieces.append(PackedVector3Array([previous, point]))
+			previous = point
+		# droppers from the carrier wire down to the contact wire
+		var dropper_z := from_z + DROPPER_STEP
+		while dropper_z < to_z - 1.0:
+			var share := (dropper_z - from_z) / (to_z - from_z)
+			var top := lerpf(contact_y + 0.15, carrier_y, share) if stop_index == 0 \
+				else carrier_y - CARRIER_SAG * 4.0 * share * (1.0 - share)
+			if top - contact_y > 0.2:
+				pieces.append(PackedVector3Array([Vector3(track_x, top, dropper_z), Vector3(track_x, contact_y, dropper_z)]))
+			dropper_z += DROPPER_STEP
+
+
+## A cantilever from a support (`arm_start`, on the side of the track `towards` points away
+## from) to the wires over `track_x` at `support_z`: the top tube holding the carrier wire,
+## the diagonal brace under it, the registration arm holding the contact wire.
+func _add_cantilever(pieces: Array[PackedVector3Array], arm_start: float, track_x: float, towards: float,
+		support_z: float, contact_y: float, carrier_y: float) -> void:
+	var beyond := track_x + towards * 0.3
+	pieces.append(PackedVector3Array([Vector3(arm_start, carrier_y + 0.1, support_z), Vector3(beyond, carrier_y + 0.1, support_z)]))
+	pieces.append(PackedVector3Array([Vector3(arm_start, contact_y - 0.3, support_z), Vector3(track_x - towards * 0.5, carrier_y + 0.1, support_z)]))
+	pieces.append(PackedVector3Array([Vector3(track_x - towards * 1.0, contact_y + 0.45, support_z), Vector3(track_x, contact_y, support_z)]))
+	pieces.append(PackedVector3Array([Vector3(track_x, carrier_y + 0.1, support_z), Vector3(track_x, contact_y, support_z)]))
+
+
+## A slim galvanised mast at the wall (its foot at `foot`, on the platform), with a collider
+## just as slim.
+func _add_wall_mast(foot: Vector3, number: int) -> void:
+	var mast := StaticBody3D.new()
+	mast.name = "Bovenleidingmast_%d" % number
+	mast.collision_layer = 1
+	mast.collision_mask = 0
+	mast.position = foot + Vector3.UP * WALL_MAST_HEIGHT * 0.5
+	var pole := MeshInstance3D.new()
+	var pole_mesh := BoxMesh.new()
+	pole_mesh.size = Vector3(WALL_MAST_WIDTH, WALL_MAST_HEIGHT, WALL_MAST_WIDTH)
+	var material := StandardMaterial3D.new()
+	material.albedo_color = MAST_COLOUR
+	material.metallic = 0.5
+	material.roughness = 0.5
+	pole_mesh.material = material
+	pole.mesh = pole_mesh
+	mast.add_child(pole)
+	var shape := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = Vector3(WALL_MAST_WIDTH, WALL_MAST_HEIGHT, WALL_MAST_WIDTH)
+	shape.shape = box
+	mast.add_child(shape)
+	add_child(mast)
+
+
 func _make_subtitle() -> void:
 	_subtitle_layer = CanvasLayer.new()
 	_subtitle_layer.name = "Omroeptekst"
 	_subtitle_layer.layer = 4
 	_subtitle_layer.visible = false
 	add_child(_subtitle_layer)
-	_subtitle = Label.new()
-	_subtitle.add_theme_font_override("font", UiStyle.font(UiStyle.FONT_PIXEL_BOLD))
-	_subtitle.add_theme_font_size_override("font_size", 18)
-	_subtitle.add_theme_color_override("font_color", Color("#FFE9B8"))
+	_subtitle = RichTextLabel.new()
+	_subtitle.add_theme_font_override("normal_font", UiStyle.font(UiStyle.FONT_PIXEL_BOLD))
+	_subtitle.add_theme_font_size_override("normal_font_size", 18)
+	_subtitle.add_theme_color_override("default_color", Color("#FFE9B8"))
 	_subtitle.add_theme_color_override("font_outline_color", Color("#101018"))
 	_subtitle.add_theme_constant_override("outline_size", 6)
 	_subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_subtitle.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_subtitle.scroll_active = false
+	_subtitle.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_subtitle.anchor_left = 0.15
 	_subtitle.anchor_right = 0.85
 	_subtitle.anchor_top = 0.82
 	_subtitle.anchor_bottom = 0.92
 	_subtitle_layer.add_child(_subtitle)
+	# typed out as the other spoken lines, with the block cursor; the voice is the babble
+	_subtitle_typewriter = Typewriter.new(_subtitle, self)
+	_subtitle_typewriter.sound = false
 
 
 func _label(text: String, font_size: int, pixel_size: float, colour: Color, left := false) -> Label3D:
@@ -455,7 +687,23 @@ func _label(text: String, font_size: int, pixel_size: float, colour: Color, left
 	label.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 	if left:
 		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	label.set_meta("full_pixel_size", pixel_size)
 	return label
+
+
+## Puts `text` on `label`, made smaller (its pixel_size) when it would be wider than
+## `max_width` metres, so it stays on its board.
+func _fit_text(label: Label3D, text: String, max_width: float) -> void:
+	if label.text == text:
+		return
+	label.text = text
+	var full_size := float(label.get_meta("full_pixel_size", label.pixel_size))
+	label.pixel_size = full_size
+	if text.is_empty() or label.font == null:
+		return
+	var text_width := label.font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, label.font_size).x * full_size
+	if text_width > max_width:
+		label.pixel_size = full_size * max_width / text_width
 
 
 ## A line rising over a spot (in the space of the station): the HUD's floating text.
@@ -476,20 +724,30 @@ func _seconds_left(departure: Dictionary) -> float:
 	return (_departs_at(departure) - _minutes) * 60.0
 
 
-func _plan(track: int, earliest: float) -> Dictionary:
+## The next train on `track`: it comes in at `arrive_at` (station minutes) or a little
+## after (its departure time is a whole minute, its dwell before that), from somewhere of its
+## kind, and leaves for its destination.
+func _plan(track: int, arrive_at: float) -> Dictionary:
 	var destination: Array = Layout.DESTINATIONS[_random.randi() % Layout.DESTINATIONS.size()]
 	var intercity: bool = destination[1] == "Intercity"
+	var dwell := _random.randf_range(DWELL_MINUTES.x, DWELL_MINUTES.y)
+	var origin := String(destination[0])
+	for attempt in 4:
+		var candidate: Array = Layout.DESTINATIONS[_random.randi() % Layout.DESTINATIONS.size()]
+		if candidate[1] == destination[1] and candidate[0] != destination[0]:
+			origin = String(candidate[0])
+			break
 	var departure := {
-		"id": _next_id, "track": track, "time": ceilf(earliest), "delay": 0.0,
-		"destination": destination[0], "kind": destination[1],
+		"id": _next_id, "track": track, "time": ceilf(arrive_at + dwell), "delay": 0.0,
+		"destination": destination[0], "kind": destination[1], "origin": origin,
 		"cars": 3 if (intercity and _random.randf() < 0.8) or (not intercity and _random.randf() < 0.4) else 2,
 		"cancelled": _random.randf() < CANCEL_CHANCE,
-		"dwell": _random.randf_range(DWELL_MINUTES.x, DWELL_MINUTES.y),
+		"dwell": dwell,
 		"state": "gepland", "train": null, "announced": false, "cancel_announced": false,
 		"whistled": false, "closing": false, "conductor": null,
 	}
 	if _random.randf() < DELAY_CHANCE:
-		departure.delay = float(_random.randi_range(1, 8))
+		departure.delay = float(_random.randi_range(DELAY_MINUTES.x, DELAY_MINUTES.y))
 	_next_id += 1
 	_departures.append(departure)
 	_departures.sort_custom(func(first: Dictionary, second: Dictionary) -> bool: return float(first.time) < float(second.time))
@@ -501,14 +759,16 @@ func _plan(track: int, earliest: float) -> Dictionary:
 func _plan_start() -> void:
 	for track in range(1, Layout.TRACK_COUNT + 1):
 		if _random.randf() < 0.45:
-			var departure := _plan(track, _minutes + _random.randf_range(1.2, 3.5))
+			var departure := _plan(track, _minutes)
+			departure.time = ceilf(_minutes + _random.randf_range(0.8, 2.5))
 			departure.cancelled = false
 			var train := _make_train(departure)
 			train.stand()
 			departure.state = "staat"
 			_send_conductor(departure)
 		else:
-			_plan(track, _minutes + _random.randf_range(1.0, 8.0))
+			# the first ones come in soon after you walk in
+			_plan(track, _minutes + _random.randf_range(0.1, 2.5))
 
 
 func _make_train(departure: Dictionary) -> StationTrain:
@@ -524,14 +784,15 @@ func _update_tracks() -> void:
 	for track in range(1, Layout.TRACK_COUNT + 1):
 		var departure: Dictionary = _track_departure.get(track, {})
 		if departure.is_empty():
-			_plan(track, _minutes + _random.randf_range(GAP_MINUTES.x, GAP_MINUTES.y) + DWELL_MINUTES.y)
+			_plan(track, _minutes + _random.randf_range(GAP_MINUTES.x, GAP_MINUTES.y))
 			continue
 		var left := _seconds_left(departure)
 		if departure.cancelled:
 			if not departure.cancel_announced and left < 300.0:
 				departure.cancel_announced = true
-				_announce("De %s naar %s van %s rijdt vandaag niet. Excuses voor het ongemak." % [
-					departure.kind, departure.destination, _clock_text(float(departure.time))])
+				if _announcement_random.randf() < DEPARTURE_ANNOUNCE_CHANCE * 2.0:
+					_announce("De %s naar %s van %s rijdt vandaag niet. Excuses voor het ongemak." % [
+						departure.kind, departure.destination, _clock_text(float(departure.time))])
 			if left <= 0.0:
 				_finish(departure)
 			continue
@@ -540,6 +801,8 @@ func _update_tracks() -> void:
 				if _minutes >= _departs_at(departure) - float(departure.dwell):
 					_make_train(departure).come_in()
 					departure.state = "binnenkomend"
+					if _announcement_random.randf() < ARRIVAL_ANNOUNCE_CHANCE:
+						_announce("Op spoor %d komt binnen: de %s uit %s." % [track, departure.kind, departure.origin])
 			"staat":
 				var train: StationTrain = departure.train
 				if not departure.announced and left < ANNOUNCE_SECONDS:
@@ -547,11 +810,12 @@ func _update_tracks() -> void:
 					var line := "Spoor %d: de %s naar %s, vertrekt om %s." % [track, departure.kind, departure.destination, _clock_text(_departs_at(departure))]
 					if float(departure.delay) > 0.0:
 						line += " Deze trein heeft ongeveer %d minuten vertraging." % int(departure.delay)
-					_announce(line)
+					if _announcement_random.randf() < DEPARTURE_ANNOUNCE_CHANCE:
+						_announce(line)
 				if not departure.whistled and left < WHISTLE_SECONDS:
 					departure.whistled = true
-					var conductor: StationPerson = departure.conductor
-					if conductor and is_instance_valid(conductor) and conductor.position.distance_to(train.front_door_spot()) < 2.0:
+					var conductor: StationPerson = departure.conductor if is_instance_valid(departure.conductor) else null
+					if conductor and conductor.position.distance_to(train.front_door_spot()) < 2.0:
 						conductor.blow_whistle()
 					else:
 						StationAudio.play_at(self, "conducteur_fluit", train.front_door_spot() + Vector3.UP * 1.6, -3.0)
@@ -559,8 +823,8 @@ func _update_tracks() -> void:
 					departure.closing = true
 					StationAudio.play_at(self, "trein_deuren_dicht", train.position + Vector3(0.0, 1.5, train.nose_z + train.length() * 0.5), -3.0)
 					train.close_doors()
-					var conductor: StationPerson = departure.conductor
-					if conductor and is_instance_valid(conductor):
+					var conductor: StationPerson = departure.conductor if is_instance_valid(departure.conductor) else null
+					if conductor:
 						var spot := train.front_door_spot()
 						var aboard: Array[Dictionary] = [{"type": "board", "spot": spot, "inside": train.inside_of(spot)}, {"type": "leave"}]
 						conductor.replace_steps(aboard)
@@ -577,6 +841,9 @@ func _on_arrived(departure: Dictionary) -> void:
 	train.open_doors()
 	var busy := _busy_share()
 	var count := roundi(ALIGHTING_AT_FULL * busy * _random.randf_range(0.5, 1.2))
+	# within the cap of the crowd (but one gets off a train when it is busy)
+	count = clampi(count, 0, maxi(_traveller_cap() - _travellers(), 1 if busy > 0.3 else 0))
+	came_by_train += count
 	var spots := train.door_spots()
 	for index in count:
 		var spot: Vector3 = spots[_random.randi() % spots.size()] + Vector3(0.0, 0.0, _random.randf_range(-0.3, 0.3))
@@ -641,16 +908,29 @@ func _process(delta: float) -> void:
 		_update_boards()
 	_spawn_clock -= delta
 	if _spawn_clock <= 0.0:
-		_spawn_clock = _random.randf_range(0.5, 1.4)
-		if _travellers() < _target_travellers():
+		var travellers := _travellers()
+		var wanted := _target_travellers()
+		if travellers < wanted * 0.6:
+			_spawn_clock = _random.randf_range(CATCH_UP_SECONDS.x, CATCH_UP_SECONDS.y)
+		else:
+			_spawn_clock = _random.randf_range(DOOR_ARRIVAL_SECONDS.x, DOOR_ARRIVAL_SECONDS.y) / maxf(_busy_share(), 0.2)
+		if travellers < _traveller_cap():
 			_traveller_comes_in()
 	_keep_staff()
+	_watch_the_gates()
+	_update_chase(delta)
 	_notice_clock -= delta
 	if _notice_clock <= 0.0:
-		_notice_clock = _random.randf_range(100.0, 220.0)
-		_announce(NOTICES[_random.randi() % NOTICES.size()])
-	if not _announcing and not _announcements.is_empty():
-		_speak(_announcements.pop_front())
+		_notice_clock = _announcement_random.randf_range(NOTICE_SECONDS.x, NOTICE_SECONDS.y)
+		_announce(NOTICES[_pick_notice()])
+	if _announcing and _subtitle_typewriter:
+		_subtitle_typewriter.update(delta * ANNOUNCEMENT_TYPE_SPEED)
+	if not _announcing:
+		_announcement_pause -= delta
+	if not _announcing and _announcement_pause <= 0.0 and not _announcements.is_empty():
+		var next: Dictionary = _announcements.pop_front()
+		if (_minutes - float(next.queued_at)) * 60.0 <= ANNOUNCEMENT_STALE_SECONDS:
+			_speak(String(next.text))
 
 
 func _update_clock() -> void:
@@ -674,18 +954,21 @@ func _update_boards() -> void:
 					label.text = ""
 				continue
 			var departure: Dictionary = shown[row_index]
-			(row[0] as Label3D).text = _clock_text(float(departure.time))
-			(row[1] as Label3D).text = "%s  %s" % [departure.destination, "IC" if departure.kind == "Intercity" else "SPR"]
-			(row[2] as Label3D).text = str(departure.track)
+			var gap := 0.1
+			_fit_text(row[0], _clock_text(float(departure.time)), BOARD_COLUMNS[1] - BOARD_COLUMNS[0] - gap)
+			_fit_text(row[1], "%s  %s" % [departure.destination, "IC" if departure.kind == "Intercity" else "SPR"],
+				BOARD_COLUMNS[2] - 0.25 - BOARD_COLUMNS[1] - gap)
+			_fit_text(row[2], str(departure.track), 2.0 * (BOARD_COLUMNS[3] - BOARD_COLUMNS[2]) - gap)
 			var remark := row[3] as Label3D
+			var remark_width := BOARD_EDGE - BOARD_COLUMNS[3]
 			if departure.cancelled:
-				remark.text = "Rijdt niet"
+				_fit_text(remark, "Rijdt niet", remark_width)
 				remark.modulate = BOARD_RED
 			elif float(departure.delay) > 0.0:
-				remark.text = "+%d" % int(departure.delay)
+				_fit_text(remark, "+%d" % int(departure.delay), remark_width)
 				remark.modulate = BOARD_YELLOW
 			else:
-				remark.text = ""
+				_fit_text(remark, "", remark_width)
 	for track: int in _displays:
 		var labels: Dictionary = _displays[track]
 		var departure: Dictionary = _track_departure.get(track, {})
@@ -694,43 +977,58 @@ func _update_boards() -> void:
 			(labels.destination as Label3D).text = ""
 			continue
 		var when := _clock_text(float(departure.time))
+		var display_width := DISPLAY_EDGE - DISPLAY_TEXT_LEFT
 		if departure.cancelled:
-			when += "  rijdt niet"
+			_fit_text(labels.time, "%s  Rijdt niet" % when, display_width)
 		elif float(departure.delay) > 0.0:
-			when += "  +%d" % int(departure.delay)
-		(labels.time as Label3D).text = "%s  %s" % [when, departure.kind]
-		(labels.destination as Label3D).text = String(departure.destination)
+			_fit_text(labels.time, "%s +%d  %s" % [when, int(departure.delay), departure.kind], display_width)
+		else:
+			_fit_text(labels.time, "%s  %s" % [when, departure.kind], display_width)
+		_fit_text(labels.destination, String(departure.destination), display_width)
 
 
 # ------------------------------------------------------------------ announcements
 
 func _announce(text: String) -> void:
-	if _announcements.size() < 4:
-		_announcements.append(text)
+	if _announcements.size() < 2:
+		_announcements.append({"text": text, "queued_at": _minutes})
 
 
-## The chime, then the voice (the babble of the game, through the loudspeakers) with the
-## words at the bottom of the screen.
+## A random notice, another one than the last.
+func _pick_notice() -> int:
+	var notice_index := _announcement_random.randi() % NOTICES.size()
+	if notice_index == _last_notice:
+		notice_index = (notice_index + 1 + _announcement_random.randi() % (NOTICES.size() - 1)) % NOTICES.size()
+	_last_notice = notice_index
+	return notice_index
+
+
+## The chime, then the voice (the babble of the game, through the loudspeakers) talking
+## while its words type out at the bottom of the screen, with the cursor; the line stays a
+## little when it is all there.
 func _speak(text: String) -> void:
 	_announcing = true
-	if _subtitle:
-		_subtitle.text = text
-		_subtitle_layer.visible = _player != null and is_visible_in_tree()
 	StationAudio.play_everywhere(self, "omroep_gong", -4.0)
 	await get_tree().create_timer(2.0, false).timeout
-	var clips := clampi(text.length() / 16, 2, 7)
-	for clip in clips:
-		if not is_inside_tree():
-			break
-		var player := StationAudio.play_everywhere(self, "brabbel_%s_neutraal_%d" % [ANNOUNCER_VOICE, _random.randi_range(1, 3)], -3.0)
+	if _subtitle:
+		_subtitle_typewriter.start(text)
+		_subtitle_layer.visible = _player != null and is_visible_in_tree()
+	# the voice talks on, clip after clip, until the last word has appeared
+	var clips_left := 12
+	while is_inside_tree() and clips_left > 0 and _subtitle_typewriter and not _subtitle_typewriter.is_done():
+		clips_left -= 1
+		var player := StationAudio.play_everywhere(self, "brabbel_%s_neutraal_%d" % [ANNOUNCER_VOICE, _announcement_random.randi_range(1, 3)], -3.0)
 		if player:
 			await player.finished
 		else:
 			await get_tree().create_timer(0.6, false).timeout
 		await get_tree().create_timer(0.06, false).timeout
-	await get_tree().create_timer(1.0, false).timeout
+	if _subtitle_typewriter:
+		_subtitle_typewriter.finish()
+	await get_tree().create_timer(ANNOUNCEMENT_HOLD_SECONDS, false).timeout
 	if _subtitle_layer:
 		_subtitle_layer.visible = false
+	_announcement_pause = _announcement_random.randf_range(ANNOUNCEMENT_PAUSE_SECONDS.x, ANNOUNCEMENT_PAUSE_SECONDS.y)
 	_announcing = false
 
 
@@ -748,6 +1046,11 @@ func _busy_share() -> float:
 
 func _target_travellers() -> int:
 	return roundi(TRAVELLERS_AT_FULL * _busy_share())
+
+
+## The most travellers there may be in the station now (both kinds of coming in stop there).
+func _traveller_cap() -> int:
+	return ceili(_target_travellers() * TRAVELLER_CAP_SHARE)
 
 
 func _travellers() -> int:
@@ -779,9 +1082,12 @@ func _spawn(role: String, at: Vector3) -> StationPerson:
 	return person
 
 
-## How many got into a train and how many went out through the doors (for the checks).
+## How many got into a train and how many went out through the doors, and how many came
+## in at the doors and off the trains (for the checks).
 var boarded := 0
 var went_out := 0
+var came_in_at_doors := 0
+var came_by_train := 0
 
 
 func person_left(person: StationPerson) -> void:
@@ -809,6 +1115,7 @@ func _staff_door() -> Vector3:
 func _traveller_comes_in() -> void:
 	var start := _door_spot(_random.randi() % Layout.ENTRANCE_X.size())
 	var person := _spawn(_pick_role(), start)
+	came_in_at_doors += 1
 	var steps: Array[Dictionary] = [{"type": "walk", "to": start + Vector3(0.0, 0.0, 1.6)}]
 	var here := start + Vector3(0.0, 0.0, 1.6)
 	# off the tram outside: check out at the post by the door
@@ -887,6 +1194,12 @@ func _off_the_platform(person: StationPerson, from: Vector3, track: int) -> Arra
 		steps.append_array(_route(person, here, shop.position))
 		steps.append({"type": "wait", "seconds": _random.randf_range(4.0, 10.0), "face": shop.transform.basis.z})
 		here = shop.position
+	elif _random.randf() < LINGER_CHANCE:
+		# stays a while: a look at a departure board in the hall
+		var at := Vector3([-24.0, 0.0, 24.0][_random.randi() % 3] + _random.randf_range(-2.0, 2.0), 0.0, -11.0 - _random.randf_range(0.0, 2.0))
+		steps.append_array(_route(person, here, at))
+		steps.append({"type": "wait", "seconds": _random.randf_range(6.0, 18.0), "face": Vector3(0.0, 0.0, 1.0)})
+		here = at
 	steps.append_array(_out_of_the_station(person, here))
 	return steps
 
@@ -903,6 +1216,13 @@ func _out_of_the_station(person: StationPerson, from: Vector3) -> Array[Dictiona
 ## or on when the train has gone without them.
 func waiting_check(person: StationPerson) -> void:
 	var departure := person.departure
+	var now := Time.get_ticks_msec() / 1000.0
+	if not person.has_meta("waiting_since"):
+		person.set_meta("waiting_since", now)
+	if now - float(person.get_meta("waiting_since")) > WAIT_TRAIN_LIMIT:
+		person.remove_meta("waiting_since")
+		_missed(person)
+		return
 	if departure.is_empty() or departure.state == "vertrokken" or (departure.cancelled and _seconds_left(departure) <= 0.0):
 		_missed(person)
 		return
@@ -915,12 +1235,15 @@ func waiting_check(person: StationPerson) -> void:
 	for spot in train.door_spots():
 		if nearest == Vector3.INF or absf(spot.z - person.position.z) < absf(nearest.z - person.position.z):
 			nearest = spot
-	nearest.z += _random.randf_range(-0.25, 0.25)
+	# spread over the width of the door (not all to one point)
+	nearest.z += _random.randf_range(-0.4, 0.4)
+	person.remove_meta("waiting_since")
 	var aboard: Array[Dictionary] = [{"type": "board", "spot": nearest, "inside": train.inside_of(nearest)}, {"type": "leave"}]
 	person.replace_steps(aboard)
 
 
 func _missed(person: StationPerson) -> void:
+	person.remove_meta("waiting_since")
 	var old_id := int(person.departure.get("id", -1))
 	person.departure = {}
 	if _random.randf() < 0.6:
@@ -929,6 +1252,303 @@ func _missed(person: StationPerson) -> void:
 			person.replace_steps(_to_train(person, person.position, departure))
 			return
 	person.replace_steps(_out_of_the_station(person, person.position))
+
+
+# ------------------------------------------------------------------ fare dodging
+
+## Whether the player crossed the gate line onto a platform without a check-in (see
+## FARE_CHECK_CHANCE); maybe a conductor saw it.
+func _watch_the_gates() -> void:
+	if _player == null or not _player.is_inside_tree():
+		return
+	var at := to_local(_player.global_position)
+	var margin := Layout.GATE_LENGTH * 0.5 + 0.3
+	var side := -1 if at.z < Layout.GATE_Z - margin else (1 if at.z > Layout.GATE_Z + margin else 0)
+	if side == 0:
+		return
+	var crossed := _player_side == -1 and side == 1
+	_player_side = side
+	if not crossed or _chaser != null:
+		return
+	var passed := Time.get_ticks_msec() / 1000.0 < float(_player.get_meta(StationGates.PASS_META, 0.0))
+	if passed:
+		_player.remove_meta(StationGates.PASS_META)   # one check-in, one way through
+		return
+	var chance := fare_check_chance_override if fare_check_chance_override >= 0.0 \
+		else lerpf(FARE_CHECK_CHANCE.x, FARE_CHECK_CHANCE.y, _busy_share())
+	if _fare_random.randf() < chance:
+		_start_chase(at)
+
+
+## A conductor sets off after the player (at `at`, in the space of the station): the nearest
+## one about (not one getting into a train), else one from the gates they jumped.
+func _start_chase(at: Vector3) -> void:
+	var chaser: StationPerson = null
+	var nearest := CONDUCTOR_NOTICE_RANGE
+	for walker in _walkers:
+		if not is_instance_valid(walker):
+			continue
+		var person: StationPerson = walker
+		if person.role != "conducteur" or person.position.y < -0.2:
+			continue
+		var step := person.current_step()
+		if not step.is_empty() and String(step.type) in ["board", "leave"]:
+			continue
+		var distance := person.position.distance_to(at)
+		if distance < nearest:
+			nearest = distance
+			chaser = person
+	if chaser == null:
+		var platform := _area(at)
+		var span := Layout.platform_span(Layout.platforms()[maxi(platform, 0)])
+		var beside := span.y - 0.6 if at.x < (span.x + span.y) * 0.5 else span.x + 0.6
+		chaser = _spawn("conducteur", Vector3(beside, 0.0, Layout.GATE_Z + 1.6))
+	# taken off the train he was waiting at (it leaves without him: the whistle sounds anyway)
+	for departure in _departures:
+		if is_instance_valid(departure.conductor) and departure.conductor == chaser:
+			departure.conductor = null
+	_chaser = chaser
+	_chase_seconds = 0.0
+	_chase_far_seconds = 0.0
+	_chase_plan = ""
+	_chase_replan_clock = 0.0
+	chases_started += 1
+	var to_player: Array[Dictionary] = []
+	chaser.replace_steps(to_player)
+	_plan_chase()
+	DriverShout.shout(chaser, "conducteur", "zwartrijden", 2.1)
+
+
+func _update_chase(delta: float) -> void:
+	if _chaser == null:
+		return
+	if not is_instance_valid(_chaser) or _player == null or not _player.is_inside_tree():
+		_end_chase()
+		return
+	_chase_seconds += delta
+	var at := to_local(_player.global_position)
+	var gap := Vector2(at.x - _chaser.position.x, at.z - _chaser.position.z).length()
+	if gap <= CATCH_REACH and absf(at.y - _chaser.position.y) < 1.2:
+		_fine_the_player()
+		return
+	_chase_far_seconds = _chase_far_seconds + delta if gap > GIVE_UP_DISTANCE else 0.0
+	if _chase_far_seconds >= GIVE_UP_SECONDS or _chase_seconds >= CHASE_SECONDS:
+		_end_chase()
+		return
+	_chase_replan_clock -= delta
+	if _chase_replan_clock <= 0.0:
+		_chase_replan_clock = CHASE_REPLAN
+		_plan_chase()
+
+
+## The floor at `at` (in the space of the station): the hall and the platforms at 0, the
+## tracks PLATFORM_DROP lower (from the head of the platforms to the back wall).
+func floor_height(at: Vector3) -> float:
+	if at.z < 0.0 or at.z > Layout.BACK_WALL:
+		return 0.0
+	var column := clampi(floori((at.x - Layout.HALL_LEFT) / Layout.CELL), 0, Layout.COLUMN_COUNT - 1)
+	return -Layout.PLATFORM_DROP if Layout.column_kind(column) == "T" else 0.0
+
+
+## The track under `at` (1..), or 0 when it is not over a track.
+func _track_at(at: Vector3) -> int:
+	if at.z < 0.0 or at.z > Layout.BACK_WALL:
+		return 0
+	for track in range(1, Layout.TRACK_COUNT + 1):
+		if absf(at.x - Layout.track_x(track)) <= Layout.CELL * 0.5:
+			return track
+	return 0
+
+
+## Whether `person` at a platform edge goes over it by accident (once per edge it meets):
+## rarely, more often for a conductor in a hurry; never onto a track with a train on it.
+func stumbles(person: StationPerson, chasing: bool) -> bool:
+	if person.is_staff() and not chasing:
+		return false
+	# one chance in a while, not at every frame along an edge
+	var now := Time.get_ticks_msec() / 1000.0
+	if now - float(person.get_meta("stumble_chance_at", -100.0)) < 5.0:
+		return false
+	person.set_meta("stumble_chance_at", now)
+	var ahead := person.position + person.transform.basis.z * 0.6
+	var track := _track_at(ahead)
+	if track == 0:
+		return false
+	var departure: Dictionary = _track_departure.get(track, {})
+	if not departure.is_empty() and departure.get("train") != null:
+		return false
+	return _fare_random.randf() < (CHASE_STUMBLE_CHANCE if chasing else STUMBLE_CHANCE)
+
+
+## Someone landed on the rails (StationPerson fell): a cry, a moment, up the edge it fell
+## from, and on with what it was doing (a conductor with the chase).
+func person_fell(person: StationPerson) -> void:
+	falls += 1
+	DriverShout.shout(person, "", "gevallen", 2.1)
+	var track := _track_at(person.position)
+	var climb_to := _platform_spot_above(person.position, track)
+	var steps: Array[Dictionary] = [
+		{"type": "wait", "seconds": 0.9},
+		{"type": "walk", "to": Vector3(climb_to.x - signf(climb_to.x - person.position.x) * 0.45, person.position.y, person.position.z)},
+		{"type": "climb", "to": climb_to},
+		{"type": "climbed"},
+	]
+	person.replace_steps(steps)
+
+
+## Back on the platform after a climb (the step "climbed" asks): on with the day.
+func person_climbed(person: StationPerson) -> void:
+	climbs += 1
+	if person == _chaser:
+		_chase_plan = ""
+		return
+	_send_on(person)
+
+
+## The spot on the platform of `track`, just past its edge, level with `at`.
+func _platform_spot_above(at: Vector3, track: int) -> Vector3:
+	var on_track := maxi(track, 1)
+	var side := float(Layout.platform_side(on_track))
+	return Vector3(Layout.platform_edge_x(on_track) + side * 0.5, 0.0, clampf(at.z, 1.0, Layout.BACK_WALL - 1.0))
+
+
+## On with what `person` was doing, from where it is: to its train, or out of the station.
+func _send_on(person: StationPerson) -> void:
+	if person.is_staff():
+		var back := _route(person, person.position, _staff_door())
+		back.append({"type": "leave"})
+		person.replace_steps(back)
+		return
+	var departure := person.departure
+	if not departure.is_empty() and departure.state != "vertrokken" and not departure.cancelled and _seconds_left(departure) > 40.0:
+		person.replace_steps(_to_train(person, person.position, departure))
+	else:
+		person.departure = {}
+		person.replace_steps(_out_of_the_station(person, person.position))
+
+
+## `person` has made no headway for a while (StationPerson.STUCK_SECONDS, `times` in a
+## row): a step aside and another way (another lane, or out); the third time it goes (out of
+## the station: it is simply gone, which in a crowd no one notices).
+func person_stuck(person: StationPerson, times: int) -> void:
+	if person == _chaser:
+		if times >= 3:
+			_end_chase()
+		else:
+			_chase_plan = ""
+		return
+	unstuck += 1
+	if person.position.y < -0.5:
+		var track := _track_at(person.position)
+		var steps: Array[Dictionary] = [{"type": "climb", "to": _platform_spot_above(person.position, track)}, {"type": "climbed"}]
+		person.replace_steps(steps)
+		return
+	if times >= 3:
+		var gone: Array[Dictionary] = [{"type": "leave"}]
+		person.replace_steps(gone)
+		return
+	# a step aside, where the floor is level
+	var aside := person.position + Vector3(_random.randf_range(-0.5, 0.5), 0.0, _random.randf_range(-0.5, 0.5))
+	if absf(floor_height(aside) - person.position.y) < 0.1 and not _inside_obstacle(Vector2(aside.x, aside.z)):
+		person.position = aside
+	if times >= 2:
+		person.departure = {}
+	_send_on(person)
+
+
+## Which way the conductor goes after the player now (see CHASE_REPLAN).
+func _plan_chase() -> void:
+	if _chaser == null or not is_instance_valid(_chaser) or _player == null:
+		return
+	var step := _chaser.current_step()
+	var kind := String(step.get("type", ""))
+	if _chaser.position.y < -0.3 or kind in ["climb", "climbed"] or _chaser._falling:
+		return   # down on the rails himself: first back up
+	var at := to_local(_player.global_position)
+	var chaser_area := _area(_chaser.position)
+	if at.y < -0.6 and _track_at(at) > 0:
+		# the player down on the rails: to the edge above them, and shout
+		var spot := _platform_spot_above(at, _track_at(at))
+		var plan := "spoor %d %d" % [roundi(spot.x), roundi(spot.z / 3.0)]
+		if plan == _chase_plan:
+			return
+		var shout := not _chase_plan.begins_with("spoor")
+		_chase_plan = plan
+		var steps: Array[Dictionary] = []
+		if _area(spot) == chaser_area:
+			steps.append({"type": "walk", "to": spot, "speed": CHASE_SPEED})
+		else:
+			steps = _route(_chaser, _chaser.position, spot)
+			for route_step in steps:
+				if String(route_step.type) == "walk":
+					route_step["speed"] = CHASE_SPEED
+		steps.append({"type": "stand", "face": Vector3(at.x - spot.x, 0.0, 0.0)})
+		_chaser.replace_steps(steps)
+		if shout:
+			DriverShout.shout(_chaser, "conducteur", "spoor", 2.1)
+		return
+	var player_area := _area(at)
+	if player_area == chaser_area:
+		if _chase_plan != "zelfde" or kind != "chase":
+			_chase_plan = "zelfde"
+			var chase: Array[Dictionary] = [{"type": "chase", "speed": CHASE_SPEED}]
+			_chaser.replace_steps(chase)
+		return
+	var plan := "route %d %d" % [chaser_area, player_area]
+	if plan == _chase_plan:
+		return
+	_chase_plan = plan
+	var route := _route(_chaser, _chaser.position, at)
+	for route_step in route:
+		if String(route_step.type) == "walk":
+			route_step["speed"] = CHASE_SPEED
+	route.append({"type": "chase", "speed": CHASE_SPEED})
+	_chaser.replace_steps(route)
+
+
+## The player talks to `conductor` (Conversations): is he the one chasing them?
+func is_chasing(conductor: Node) -> bool:
+	return _chaser != null and _chaser == conductor
+
+
+## Caught by talking to the conductor chasing them (Conversations): the fine, as when he
+## catches up; returns the fine (FINE_EUROS).
+func fine_the_player() -> float:
+	if _chaser != null and _player != null:
+		_fine_the_player()
+	return FINE_EUROS
+
+
+## Caught: FINE_EUROS off the player's money (what they have, when it is less).
+func _fine_the_player() -> void:
+	var money := float(_player.get("money")) if _player.get("money") != null else 0.0
+	var paid := minf(FINE_EUROS, money)
+	if _player.has_method("add_money"):
+		_player.call("add_money", -paid)
+	fines += 1
+	DriverShout.shout(_chaser, "conducteur", "beboeten", 2.1)
+	var line := "Beboet voor zwartrijden: € %d" % int(FINE_EUROS)
+	if paid < FINE_EUROS:
+		line += " (je had maar € %s)" % ("%.2f" % paid).replace(".", ",")
+	say(to_local(_player.global_position) + Vector3.UP * 2.2, line, FINE_COLOUR)
+	_chaser_goes_back()
+
+
+## The chase is over (the player got away): the conductor goes back.
+func _end_chase() -> void:
+	if _chaser != null:
+		chases_given_up += 1
+	_chaser_goes_back()
+
+
+func _chaser_goes_back() -> void:
+	if _chaser != null and is_instance_valid(_chaser) and _chaser.is_inside_tree():
+		var back := _route(_chaser, _chaser.position, _staff_door())
+		back.append({"type": "leave"})
+		_chaser.replace_steps(back)
+	_chaser = null
+	_chase_seconds = 0.0
+	_chase_far_seconds = 0.0
 
 
 # ------------------------------------------------------------------ the staff

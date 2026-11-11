@@ -1,8 +1,8 @@
 extends SceneTree
 ## Checks headless that the city music really plays: the map jingle (KaartDeuntje) starts once
 ## the map is there, and after it the loop of the neighbourhood (StadMuziek) with a stream;
-## going to another neighbourhood crossfades without a dip in loudness, in step with the bar;
-## a quick step over a border and back, or outside every neighbourhood, changes nothing.
+## one loop everywhere (spel_loop.ogg); into a building with its own music (the merchant's) and
+## out again crossfades there and back.
 ## usage: tools/godot.sh --headless --script tools/check/city_music_test.gd
 
 const Common = preload("res://tools/tool_common.gd")
@@ -50,14 +50,6 @@ func _check(ok: bool, what: String) -> void:
 		print("FOUT: " + what)
 
 
-## The power of all city loops together, against the level (1 = one loop at full level).
-func _power(hud: Node) -> float:
-	var power := 0.0
-	for player: AudioStreamPlayer in hud._city_players.values():
-		power += pow(db_to_linear(player.volume_db - hud._city_level_db), 2.0)
-	return power
-
-
 func _check_crossfade(hud: Node) -> void:
 	# wait for the fade-in
 	var started := Time.get_ticks_msec()
@@ -68,43 +60,13 @@ func _check_crossfade(hud: Node) -> void:
 	# the prologue in the story box pauses the game: then the paused level
 	var expected: float = hud.CITY_MUSIC_PAUSED_DB if paused else hud.CITY_MUSIC_VOLUME_DB
 	_check(absf(hud._city_level_db - expected) < 0.5, "stadsmuziek op %.0f dB (%s)" % [expected, "gepauzeerd" if paused else "spelend"])
-	var other_wijk := "Binckhorst" if first_file != "stad_industrie_loop.ogg" else "Malieveld"
-	# over the border and straight back: nothing changes
-	hud._switch_city_music(other_wijk)
-	await create_timer(0.5).timeout
-	hud._switch_city_music("Centraal Station" if first_file == "stad_torens_loop.ogg" else _wijk_with(hud, first_file))
-	await create_timer(hud.CITY_MUSIC_SETTLE + 0.3).timeout
-	_check(hud._city_music_file == first_file and hud._city_players.size() == 1, "even over de grens en terug: muziek blijft")
-	hud._switch_city_music(hud.NO_WIJK)
-	await create_timer(hud.CITY_MUSIC_SETTLE + 0.3).timeout
-	_check(hud._city_music_file == first_file, "buiten elke wijk: muziek blijft")
-	# a real move: after the settle time it crossfades, the power never dips
-	hud._switch_city_music(other_wijk)
-	var lowest := 9.0
-	var highest := 0.0
-	var both_seen := false
-	var in_step := true
-	started = Time.get_ticks_msec()
-	while Time.get_ticks_msec() - started < int((hud.CITY_MUSIC_SETTLE + hud.CITY_MUSIC_CROSSFADE + 1.0) * 1000):
-		await process_frame
-		var power := _power(hud)
-		lowest = minf(lowest, power)
-		highest = maxf(highest, power)
-		if hud._city_players.size() == 2:
-			both_seen = true
-			var positions: Array = hud._city_players.values().map(func(player): return player.get_playback_position())
-			if absf(positions[0] - positions[1]) > 0.15:
-				in_step = false
-	print("overvloeien %s -> %s: vermogen %.2f..%.2f" % [first_file, hud._city_music_file, lowest, highest])
-	_check(hud._city_music_file != first_file, "na %.1f s in een andere wijk: andere muziek" % hud.CITY_MUSIC_SETTLE)
-	_check(both_seen, "beide loops klinken tijdens het overvloeien")
-	_check(lowest > 0.85 and highest < 1.15, "geen gat of piek tijdens het overvloeien")
-	_check(in_step, "nieuwe loop loopt gelijk met de maat")
-	_check(hud._city_players.size() == 1, "oude loop is weg na het overvloeien")
-
-
-func _wijk_with(hud: Node, file: String) -> String:
-	for wijk: String in hud.CITY_MUSIC_BY_AREA:
-		if hud.CITY_MUSIC_BY_AREA[wijk] == file:
-			return wijk
-	return "Centrum"
+	_check(first_file == hud.CITY_MUSIC, "de spelmuziek (%s) speelt" % hud.CITY_MUSIC)
+	# into a building with music of its own (the merchant's) and out: crossfades and back
+	hud.set_indoor_music("handelaar_loop.ogg")
+	await create_timer(hud.INDOOR_MUSIC_FADE + 0.5).timeout
+	_check(hud._city_music_file == "handelaar_loop.ogg", "binnen: de muziek van de handelaar")
+	hud.set_indoor_music("")
+	await create_timer(hud.INDOOR_MUSIC_FADE + 0.5).timeout
+	_check(hud._city_music_file == first_file and hud._city_players.size() == 1, "weer buiten: de spelmuziek, één speler")
+	var still := hud._city_players.get(first_file) as AudioStreamPlayer
+	_check(still != null and still.playing, "de spelmuziek speelt door")

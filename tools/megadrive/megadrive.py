@@ -1,4 +1,4 @@
-"""A small Sega Mega Drive / Genesis style synthesizer (numpy), for the game's music.
+"""A small Sega Mega Drive / Genesis style synthesizer (numpy), for the game's sound effects and voices.
 
 It imitates the three sound sources of the console:
 
@@ -25,8 +25,8 @@ mixes the tracks, filters the circular mix in the frequency domain (DC block plu
 "Model 1" low-pass; FFT filtering is circular too, so the seam stays clean), soft-limits and
 normalizes, and `write_ogg()` writes Ogg Vorbis, 44.1 kHz stereo.
 
-This file is the sound chip; style.py builds the shared house style on it and every piece has a
-file of its own (stad_centrum.py, nachtstad_menu.py, ...; docs/MUZIEK.md). Render: tools/megadrive/render.sh
+This file is the sound chip; the sound effects (geluiden.py) and the voices (stemmen.py) are made
+with it (docs/GELUIDEN.md). Render: tools/megadrive/render.sh geluiden | stemmen
 """
 from dataclasses import dataclass, field
 from functools import lru_cache

@@ -14,7 +14,7 @@ extends Control
 ## 4. the main menu (scenes/hoofdmenu.tscn and its 3D map, loaded in the background
 ##    meanwhile, so it opens complete).
 ## It all goes by the music (assets/audio/muziek/zwervr_intro.ogg, MUSIC): the clock of the intro is where
-## the music is, and the moments are set on its beats (CUES, measured in the mp3): the logo
+## the music is, and the moments are set on its beats (CUES, the composition's MOMENTEN): the logo
 ## goes away on its first big entry, paragraphs of the story enter at its turns
 ## (CRAWL_CUES), and the intro ends where it fades. Without the music a clock of its own
 ## does the same. Where the logo vanishes a star twinkles.
@@ -62,26 +62,27 @@ const STORY := [
 	"Hij pakt zijn winkelwagen, trekt zijn jas recht\nen duwt de regen in.",
 	"Zo begint zijn zwerftocht door Den Haag.",
 ]
-## The moments of the intro (seconds into zwervr_intro.ogg: 120 BPM, a bar is 2 s, 60 bars,
-## 120 s; tools/megadrive/zwervr_intro.py): the intro from 0, the exploration theme at bar 9
-## (16.0), the battle climax at bar 25 (48.0), the duel at bar 41 (80.0), the system crash
-## and the outro at bar 53 (104.0) and the end at 120.0, where
+## The moments of the intro come from the music (scripts/ui/intro_timing.gd, written by
+## tools/muziek/build.py from the MOMENTEN of the active composition, so they follow any new
+## music): the intro from 0, the logo, the story rolling (CRAWL_AT), the climax, the duel,
+## the crash and the end (END_AT), where
 ## the menu takes over): the opening line fading in
 ## and out, the logo, the start of the crawl, the end of the crawl and of the intro.
+const IntroTiming := preload("res://scripts/ui/intro_timing.gd")
 const LINE_IN_AT := 0.4
 const LINE_OUT_AT := 3.6    # gone at 4.8, before the logo fades in
 ## The logo and the stars fade in from LOGO_FADE_IN_AT, stand there whole from LOGO_AT, and
-## the logo stands big (LOGO_HOLD) until the exploration theme of the music (16.0): there it starts
+## the logo stands big (LOGO_HOLD) until the exploration theme of the music (CRAWL_AT): there it starts
 ## to go away and the story comes in.
-const LOGO_FADE_IN_AT := 5.0
+const LOGO_FADE_IN_AT := IntroTiming.LOGO_AT - 1.0
 const LINE_FADE := 1.2
-const LOGO_AT := 6.5
-const CRAWL_AT := 16.0
+const LOGO_AT := IntroTiming.LOGO_AT
+const CRAWL_AT := IntroTiming.CRAWL_AT
 ## The story rolls to END_AT (where the music fades): the last paragraph does not roll off
 ## the top but comes to rest far off at CRAWL_REST (share of the picture's height from the
 ## top) and the story fades out over the last CRAWL_FADE seconds; no travel wasted, so it
 ## rolls as slowly as the music allows.
-const END_AT := 120.0
+const END_AT := IntroTiming.END_AT
 const CRAWL_REST := 0.35
 const CRAWL_FADE := 4.0
 ## Holding Enter (or the down arrow) rolls the story this many times as fast; it then
@@ -109,7 +110,7 @@ const PARAGRAPH_GAP := 26
 ## zwerver on the climb, the handhavers on the second half of the chorus, the way out into
 ## the rain on the outro (the last sentence then comes to rest as the music dies).
 ## Between them the story rolls evenly, at much the same pace throughout.
-const CRAWL_CUES := {5: 48.0, 8: 80.0, 10: 104.0}
+const CRAWL_CUES := {5: IntroTiming.CLIMAX_AT, 8: IntroTiming.DUEL_AT, 10: IntroTiming.CRASH_AT}
 ## The crawl picture: the size the text is drawn in (pixels), the
 ## width of its far top edge on the screen (share of the bottom edge) and how much of the
 ## screen it takes from the bottom up.

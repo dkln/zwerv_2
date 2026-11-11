@@ -11,18 +11,35 @@ extends RefCounted
 ##   way to the snack bar and goodbye; the questions you can ask ("vragen") and the mood of
 ##   each kind of line ("stemmingen", a person's own over them).
 ## - data/gesprekken/snackbarhouder.json: behind the counter of a snack bar (InteriorPerson
-##   `role` "snackbarhouder") it is ordering: the "menu" (item, what you ask, price), bought
-##   with the player's money (PlayerController.buy), a tip, or nothing after all.
+##   `role` "snackbarhouder") it is the shop: the "menu" (item, what you ask, price), bought
+##   with the player's money (PlayerController.buy), a tip; data/gesprekken/winkels.json: the
+##   sellers in the shops of Den Haag Centraal (`role` "verkoper", or "snackbarhouder" at
+##   Smikkels; the metadata "kind" picks the shop), the same fields, the snack bar's for what a
+##   shop leaves out (shop_data_of). Someone who sells (is_merchant) is talked to in the shop
+##   screen (scripts/ui/shop_screen.gd: GameHud.show_shop), which asks this for the greeting,
+##   the goods, buying (shop_buy), the tip and goodbye.
+## - data/gesprekken/personeel.json: people on duty (`role` "conducteur" or "handhaver":
+##   StationPerson, Den Haag Centraal) talk as they do there, the same fields as a passer-by,
+##   never give change, and are shown as officials in the story box (page "official": their
+##   title on a name plate of their own colours, an emblem on the portrait, a lower voice).
+##   A fare dodger talking to the conductor chasing them is caught: "betrapt", and the fine
+##   (the station's fine_the_player).
 ## Asked topics are not offered again; goodbye ends it. Every line has a mood: they babble
 ## in it, in their voice (Babble, the story box) and their body moves with it (Emote: angry
 ## shakes, happy hops, sad leans forward); `finish` puts them back as they were.
 ##   var talk := Conversations.new(person, player, hud)
-##   hud.show_story(talk.opening(), talk.finish)
+##   hud.show_story(talk.opening(), talk.finish)      # or, for a seller: hud.show_shop(talk, ...)
 
 const Emote = preload("res://scripts/world/emote.gd")
 const STREET_FILE := "res://data/gesprekken/voorbijgangers.json"
 const COUNTER_FILE := "res://data/gesprekken/snackbarhouder.json"
 const COUNTER_PERSONA := "snackbarhouder"
+const SHOPS_FILE := "res://data/gesprekken/winkels.json"
+## The roles (InteriorPerson.role) of who sells: talked to in the shop screen.
+const MERCHANT_ROLES := ["snackbarhouder", "verkoper"]
+const STAFF_FILE := "res://data/gesprekken/personeel.json"
+## The roles (StationPerson.role) of who is on duty: their own conversation and look.
+const OFFICIAL_ROLES := ["conducteur", "handhaver"]
 ## Who you talk to when nothing else fits, and the mood of a line with none set.
 const FALLBACK_PERSONA := "forens"
 const FALLBACK_MOOD := "neutraal"
@@ -31,6 +48,8 @@ const MONEY_COLOUR := Color("#E8B83A")
 
 static var _street := {}
 static var _counter := {}
+static var _shops := {}
+static var _staff := {}
 
 var persona := FALLBACK_PERSONA
 var person: Node3D
@@ -45,8 +64,8 @@ func _init(talking_to: Node3D, the_player: Node, the_hud: Node) -> void:
 	player = the_player
 	hud = the_hud
 	persona = persona_of(talking_to)
-	if talking_to and talking_to.get("role") == COUNTER_PERSONA:
-		persona = COUNTER_PERSONA
+	if is_merchant(talking_to) or is_official(talking_to):
+		persona = str(talking_to.get("role"))
 	_random.randomize()
 
 
@@ -66,10 +85,35 @@ static func counter() -> Dictionary:
 	return _counter
 
 
+## The shops of Den Haag Centraal (data/gesprekken/winkels.json), read once.
+static func shops() -> Dictionary:
+	if _shops.is_empty():
+		_shops = _read(SHOPS_FILE)
+	return _shops
+
+
+## The people on duty (data/gesprekken/personeel.json), read once.
+static func staff() -> Dictionary:
+	if _staff.is_empty():
+		_staff = _read(STAFF_FILE)
+	return _staff
+
+
+## True for someone on duty (a conductor, an enforcement officer) with a conversation of
+## their own in personeel.json.
+static func is_official(someone: Node) -> bool:
+	if someone == null:
+		return false
+	var role := str(someone.get("role"))
+	return role in OFFICIAL_ROLES and (staff().get("personen", {}) as Dictionary).has(role)
+
+
 ## Reads them again (after changing the files, while the game runs).
 static func reload() -> void:
+	_staff = {}
 	_street = {}
 	_counter = {}
+	_shops = {}
 
 
 static func _read(path: String) -> Dictionary:
@@ -89,7 +133,7 @@ static func personas() -> Dictionary:
 	return found
 
 
-## A question you can ask ("kleingeld", "snackbar", "dag").
+## A question you can ask ("kleingeld", "dag").
 static func question(key: String) -> String:
 	return str((street().get("vragen", {}) as Dictionary).get(key, ""))
 
@@ -126,26 +170,33 @@ static func _fits(rules: Dictionary, mobility: String, look: Dictionary) -> bool
 
 
 func _data() -> Dictionary:
-	return counter() if persona == COUNTER_PERSONA else personas().get(persona, personas().get(FALLBACK_PERSONA, {}))
+	if is_shop():
+		return shop_data_of(person)
+	if persona in OFFICIAL_ROLES:
+		return (staff().get("personen", {}) as Dictionary).get(persona, {})
+	return personas().get(persona, personas().get(FALLBACK_PERSONA, {}))
 
 
 ## The mood of a kind of line ("begroeting", "onderwerp", "kleingeld_ja", ...): the person's
 ## own, else the general one, else FALLBACK_MOOD.
 func mood_of(line_kind: String) -> String:
 	var own: Dictionary = _data().get("stemmingen", {})
-	var general: Dictionary = street().get("stemmingen", {}) if persona != COUNTER_PERSONA else {}
+	var general: Dictionary = street().get("stemmingen", {}) if not is_shop() else {}
 	return str(own.get(line_kind, general.get(line_kind, FALLBACK_MOOD)))
 
 
 # ------------------------------------------------------------------ the conversation
 
-## The first page: a greeting and what you can say.
+## The first page: a greeting and what you can say (a seller: only the greeting; the shop
+## screen is where you buy).
 func opening() -> Array:
+	if is_shop():
+		var greeting := shop_greeting()
+		return [_with_mood({"kind": "gesprek", "speaker": speaker(), "text": greeting.text}, "begroeting")]
+	if _is_caught():
+		return [_caught_page()]
 	var greetings: Array = _data().get("begroetingen", ["Ja?"])
-	var greeting := str(greetings[_random.randi() % greetings.size()])
-	if persona == COUNTER_PERSONA:
-		return [_counter_page(greeting.replace("{snackbar}", _snack_bar_name()), "begroeting")]
-	return [_page(greeting, "begroeting")]
+	return [_page(str(greetings[_random.randi() % greetings.size()]), "begroeting")]
 
 
 ## The conversation is over: the body as it was.
@@ -166,13 +217,49 @@ func _with_mood(page: Dictionary, line_kind: String) -> Dictionary:
 	if look is Dictionary:
 		page["portrait_look"] = look
 	var figure: Node3D = person.get("figure") if person else null
+	if figure:
+		page["portrait_figure"] = figure   # the close-up follows its pose (PlayerPortrait)
 	page["on_show"] = func() -> void: Emote.start(person, figure, mood)
+	if persona in OFFICIAL_ROLES:
+		page["official"] = official_style()
 	return page
 
 
+## How the story box shows someone on duty (personeel.json): "emblem" on the portrait,
+## "colour" of the frame and cursor, the name plate's "plate" and "plate_text" colours, the
+## babble's "pitch". Empty for anyone else.
+func official_style() -> Dictionary:
+	if not persona in OFFICIAL_ROLES:
+		return {}
+	var data := _data()
+	var colour := Color(str(data.get("kleur", "#FFB547")))
+	return {"emblem": str(data.get("embleem", "")), "colour": colour,
+		"plate": Color(str(data.get("naamkaartje", data.get("kleur", "#FFB547")))),
+		"plate_text": Color(str(data.get("tekstkleur", "#0B0D1A"))),
+		"pitch": float(data.get("stemhoogte", 1.0))}
+
+
 func _again() -> String:
-	var lines: Array = street().get("nog_iets", ["Nog iets?"])
+	var own: Variant = _data().get("nog_iets")
+	var lines: Array = own if own is Array else street().get("nog_iets", ["Nog iets?"])
 	return str(lines[_random.randi() % lines.size()])
+
+
+## The conductor who is chasing the player (a fare dodger: the station's is_chasing) is the
+## one they talk to.
+func _is_caught() -> bool:
+	if persona != "conducteur" or person == null:
+		return false
+	var station: Node = person.get("station")
+	return station != null and station.has_method("is_chasing") and station.call("is_chasing", person)
+
+
+## Caught: the fine (the station's fine_the_player), and the conductor says why.
+func _caught_page() -> Dictionary:
+	var station: Node = person.get("station")
+	var fine := float(station.call("fine_the_player"))
+	var text := str(_data().get("betrapt", "Zwartrijden? Dat wordt {boete} boete.")).replace("{boete}", _euros(fine))
+	return _page(text, "betrapt")
 
 
 ## The page of the person saying `text` (a line of `line_kind`), with the questions not
@@ -187,8 +274,6 @@ func _page(text: String, line_kind: String, follow_up := {}) -> Dictionary:
 		options.append(["onderwerp", str(topic.vraag)])
 	if not _asked.has("kleingeld"):
 		options.append(["kleingeld", question("kleingeld")])
-	if not _asked.has("snackbar"):
-		options.append(["snackbar", question("snackbar")])
 	options.append(["dag", question("dag")])
 	var texts: Array = options.map(func(option: Array) -> String: return option[1])
 	return _with_mood({"kind": "gesprek", "speaker": str(data.get("spreker", "")), "text": text, "choices": texts,
@@ -208,9 +293,6 @@ func _answer(option: Array, follow_up: Dictionary) -> Array:
 			_asked["kleingeld"] = true
 			var gave := _ask_for_money()
 			return [_page(str(data.get("kleingeld_ja" if gave else "kleingeld_nee", "")) + " " + _again(), "kleingeld_ja" if gave else "kleingeld_nee")]
-		"snackbar":
-			_asked["snackbar"] = true
-			return [_page(str(data.get("snackbar", "")) + " " + _again(), "snackbar")]
 	# goodbye: their last word, then the box closes
 	return [_with_mood({"kind": "gesprek", "speaker": str(data.get("spreker", "")), "text": str(data.get("dag", ""))}, "dag")]
 
@@ -231,48 +313,119 @@ func _ask_for_money() -> bool:
 	return true
 
 
-# ------------------------------------------------------------------ the counter
+# ------------------------------------------------------------------ the shop
 
-## The name of the snack bar the one behind the counter stands in (Interior).
-func _snack_bar_name() -> String:
+## True for someone who sells (InteriorPerson `role` in MERCHANT_ROLES): talking to them
+## opens the shop screen (GameHud.show_shop, scripts/ui/shop_screen.gd), not the story box.
+static func is_merchant(someone: Node) -> bool:
+	return someone != null and str(someone.get("role")) in MERCHANT_ROLES
+
+
+## What `someone` behind a counter says and sells: the snack bar's (COUNTER_FILE), with over
+## it the shop of its kind (SHOPS_FILE "winkels", by the metadata "kind" of a seller in Den
+## Haag Centraal) when there is one; a field a shop leaves out is the snack bar's.
+static func shop_data_of(someone: Node) -> Dictionary:
+	var merged := counter().duplicate()
+	var kind := str(someone.get_meta("kind", "")) if someone else ""
+	var own: Dictionary = (shops().get("winkels", {}) as Dictionary).get(kind, {})
+	merged.merge(own, true)
+	return merged
+
+
+func is_shop() -> bool:
+	return persona in MERCHANT_ROLES
+
+
+## The name of the shop: the seller's own ("shop_name", Den Haag Centraal), else that of the
+## snack bar it stands in (Interior), else "de snackbar".
+func shop_name() -> String:
+	var own := str(person.get_meta("shop_name", "")) if person else ""
+	if own != "":
+		return own
 	var interior: Node = person.get_parent() if person else null
 	var bar_name: Variant = interior.get("snack_bar_name") if interior else null
 	return String(bar_name) if bar_name is String and bar_name != "" else "de snackbar"
 
 
-## A page of the one behind the counter: `text`, and the menu to order from.
-func _counter_page(text: String, line_kind: String) -> Dictionary:
-	var data := counter()
-	var options: Array = []
-	for entry: Dictionary in data.get("menu", []):
-		options.append(["kopen", "%s (%s)" % [str(entry.get("vraag", "")), _euros(float(entry.get("prijs", 0.0)))], entry])
-	options.append(["tip", str(data.get("tip_vraag", "")), {}])
-	options.append(["niets", str(data.get("niets_vraag", "")), {}])
-	var texts: Array = options.map(func(option: Array) -> String: return option[1])
-	return _with_mood({"kind": "gesprek", "speaker": str(data.get("spreker", "")), "text": text, "choices": texts,
-		"on_choice": func(index: int) -> Array: return _order(options[index])}, line_kind)
+## What kind of shop it is ("soort": "KIOSK", "SNACKBAR", ...), for the screen's banner.
+func shop_kind_label() -> String:
+	return str(_data().get("soort", "SNACKBAR"))
 
 
-func _order(option: Array) -> Array:
-	var data := counter()
+func speaker() -> String:
+	return str(_data().get("spreker", ""))
+
+
+## The look of who you talk to (a TownsfolkFigure look), empty when unknown.
+func look() -> Dictionary:
+	var figure: Node = person.get("figure") if person else null
+	var figure_look: Variant = figure.get("look") if figure else null
+	return figure_look if figure_look is Dictionary else {}
+
+
+func voice() -> String:
+	return _voice()
+
+
+## Their body moves with the mood of a line (Emote).
+func show_mood(mood: String) -> void:
+	if person:
+		Emote.start(person, person.get("figure"), mood)
+
+
+## The goods: {"item", "vraag", "prijs", "naam"} each (the "menu" of the data).
+func shop_goods() -> Array:
+	return (_data().get("menu", []) as Array).filter(func(entry: Variant) -> bool: return entry is Dictionary)
+
+
+## A line of the seller: {"text", "mood"}.
+func _line(text: String, line_kind: String) -> Dictionary:
+	return {"text": text.replace("{zaak}", shop_name()).replace("{snackbar}", shop_name()), "mood": mood_of(line_kind)}
+
+
+func shop_greeting() -> Dictionary:
+	var greetings: Array = _data().get("begroetingen", ["Zeg het maar."])
+	return _line(str(greetings[_random.randi() % greetings.size()]), "begroeting")
+
+
+## Buys good `index` of shop_goods with the player's money (PlayerController.buy): the
+## seller's line and "result": "ok" (paid, in the pockets), "geld" (too little money: the
+## line names the price) or "vol" (no room in the pockets).
+func shop_buy(index: int) -> Dictionary:
+	var data := _data()
+	var goods := shop_goods()
+	if index < 0 or index >= goods.size():
+		return {}
+	var entry: Dictionary = goods[index]
+	var price := float(entry.get("prijs", 0.0))
+	var result: String = player.call("buy", str(entry.get("item", "")), price) if player and player.has_method("buy") else "geld"
 	var again := " " + str(data.get("nog_iets", ""))
-	match str(option[0]):
-		"kopen":
-			var entry: Dictionary = option[2]
-			var price := float(entry.get("prijs", 0.0))
-			var result: String = player.call("buy", str(entry.get("item", "")), price) if player and player.has_method("buy") else "geld"
-			match result:
-				"ok":
-					var lines: Array = data.get("gekocht", ["Alsjeblieft, {wat}."])
-					var what := str(entry.get("naam", entry.get("item", "")))
-					return [_counter_page(str(lines[_random.randi() % lines.size()]).replace("{wat}", what) + again, "gekocht")]
-				"vol":
-					return [_counter_page(str(data.get("zakken_vol", "")) + again, "zakken_vol")]
-				_:
-					return [_counter_page(str(data.get("geen_geld", "")).replace("{prijs}", _euros(price)) + again, "geen_geld")]
-		"tip":
-			return [_counter_page(str(data.get("tip", "")) + again, "tip")]
-	return [_with_mood({"kind": "gesprek", "speaker": str(data.get("spreker", "")), "text": str(data.get("dag", ""))}, "dag")]
+	var line: Dictionary
+	match result:
+		"ok":
+			var lines: Array = data.get("gekocht", ["Alsjeblieft, {wat}."])
+			var what := str(entry.get("naam", entry.get("item", "")))
+			line = _line(str(lines[_random.randi() % lines.size()]).replace("{wat}", what) + again, "gekocht")
+		"vol":
+			line = _line(str(data.get("zakken_vol", "")) + again, "zakken_vol")
+		_:
+			result = "geld"
+			line = _line(str(data.get("geen_geld", "")).replace("{prijs}", _euros(price)), "geen_geld")
+	line["result"] = result
+	return line
+
+
+## What you can ask (the "tip_vraag"), "" when the shop has no tip.
+func shop_tip_question() -> String:
+	return str(_data().get("tip_vraag", "")) if str(_data().get("tip", "")) != "" else ""
+
+
+func shop_tip() -> Dictionary:
+	return _line(str(_data().get("tip", "")), "tip")
+
+
+func shop_goodbye() -> Dictionary:
+	return _line(str(_data().get("dag", "Dag!")), "dag")
 
 
 static func _euros(amount: float) -> String:

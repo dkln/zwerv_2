@@ -21,7 +21,7 @@ const Babble = preload("res://scripts/audio/babble.gd")
 const Iso = preload("res://scripts/camera/iso_camera.gd")
 ## The mood of the babble of a shout (Babble) by its mood; a line ending in "?" asks ("vraag").
 const BABBLE_MOOD := {"wachten": "boos", "waarschuwen": "boos", "doordrukken": "boos", "wheelie": "opgewonden",
-	"aanrijding": "verdrietig"}
+	"aanrijding": "verdrietig", "zwartrijden": "boos", "beboeten": "boos", "spoor": "boos", "gevallen": "verdrietig"}
 
 ## Standing still for someone in its way.
 const WAITING_LINES: Array[String] = [
@@ -104,6 +104,37 @@ const KIND_LINES := {
 	"scootmobiel": ["Aan de kant, ik heb haast!", "Opzij, ik ben 87!", "Ik rij je zo omver, hoor!"],
 }
 
+## A conductor in Den Haag Centraal who saw the player jump the OV gates (scripts/world/
+## station.gd): when he sets off after them ("zwartrijden") and when he has caught them
+## ("beboeten"). Always shouted, as "doordrukken".
+const FARE_DODGER_LINES: Array[String] = [
+	"Hé! Even uw kaartje!",
+	"Ho ho, staan blijven! Kaartje!",
+	"Hé jij daar! Niet zwartrijden!",
+	"Wacht eens even, vriend!",
+	"Zo kom je er niet in, hoor!",
+]
+const FINE_LINES: Array[String] = [
+	"Hebbes! Dat wordt een boete.",
+	"Zwartrijden kost geld, meneer.",
+	"Zo, en nu even afrekenen.",
+	"Dat is dan vijftig euro, alstublieft.",
+]
+
+## The conductor at the platform edge while the player is down on the rails ("spoor"), and
+## someone who fell off a platform by accident ("gevallen").
+const OFF_THE_TRACK_LINES: Array[String] = [
+	"Van het spoor af!",
+	"Kom onmiddellijk van het spoor af!",
+	"Ben je gek? Eraf daar!",
+]
+const FALLEN_LINES: Array[String] = [
+	"Au! Mijn knie!",
+	"Oei, uitgegleden!",
+	"Wie heeft dat perron zo hoog gemaakt?",
+	"Help me even omhoog, joh!",
+]
+
 const SHOUT_CHANCE := 0.9
 const WARNING_CHANCE := 0.6
 const SPEAKER_PAUSE := 6.0
@@ -115,7 +146,7 @@ const BALLOON_LAYER := 9
 const DRIVER_ACCENT := UiStyle.ACCENT
 const READY_META := "shout_ready_at"
 const BALLOON_META := "shout_balloon"
-const MOODS := ["wachten", "waarschuwen", "doordrukken", "wheelie", "aanrijding"]
+const MOODS := ["wachten", "waarschuwen", "doordrukken", "wheelie", "aanrijding", "zwartrijden", "beboeten", "spoor", "gevallen"]
 
 static var _balloon_layer: CanvasLayer
 static var _any_ready_at := 0.0
@@ -129,7 +160,7 @@ static func shout(speaker: Node3D, kind: String, mood: String, roof_height: floa
 	if speaker == null or not speaker.is_inside_tree():
 		return false
 	var now := Time.get_ticks_msec() / 1000.0
-	var always := mood in ["doordrukken", "wheelie", "aanrijding"]
+	var always := mood in ["doordrukken", "wheelie", "aanrijding", "zwartrijden", "beboeten", "spoor", "gevallen"]
 	if not always:
 		if now < _any_ready_at or now < float(speaker.get_meta(READY_META, 0.0)):
 			return false
@@ -187,6 +218,14 @@ static func pick_line(kind: String, mood: String) -> String:
 			lines.append_array(PUSHING_LINES)
 		"aanrijding":
 			lines.append_array(HIT_LINES)
+		"zwartrijden":
+			lines.append_array(FARE_DODGER_LINES)
+		"beboeten":
+			lines.append_array(FINE_LINES)
+		"spoor":
+			lines.append_array(OFF_THE_TRACK_LINES)
+		"gevallen":
+			lines.append_array(FALLEN_LINES)
 		"wheelie":
 			lines.append_array(WHEELIE_LINES)
 			for line in WHEELIE_KIND_LINES.get(kind, []):

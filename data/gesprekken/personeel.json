@@ -1,0 +1,71 @@
+{
+	"uitleg": "Mensen in dienst: de conducteurs van de NS en de handhavers in Den Haag Centraal (scripts/world/station_person.gd, 'role'). Dezelfde velden als een persoon in voorbijgangers.json, plus hoe het gespreksvak ze laat zien ('titel', 'embleem', 'kleur', 'naamkaartje', 'tekstkleur', 'stemhoogte') en voor de conducteur 'betrapt': wat hij zegt als je met hem praat terwijl hij je achternazit omdat je zwart reed ({boete}: het bedrag). Zie data/LEESMIJ.md.",
+	"personen": {
+		"conducteur": {
+			"spreker": "CONDUCTEUR NS",
+			"embleem": "NS",
+			"kleur": "#FFC917",
+			"naamkaartje": "#FFC917",
+			"tekstkleur": "#1E2C55",
+			"stemhoogte": 0.92,
+			"begroetingen": [
+				"Goedemiddag. Kan ik u ergens mee helpen? De vertrektijden staan op de borden, hoor.",
+				"Ja? Ik heb drie minuten, dan vertrekt mijn Sprinter.",
+				"Goeiedag. Heeft u ingecheckt? Gewoon even vragen, dat hoort bij het vak."
+			],
+			"onderwerp": {
+				"vraag": "Rijden de treinen een beetje op tijd vandaag?",
+				"antwoord": "Op tijd? Er ligt een seinstoring bij Leiden, er staat een koe op het spoor bij Gouda en de Intercity naar Amsterdam is ingekort. Een gewone dinsdag dus.",
+				"doorvraag": "En als je geen kaartje hebt?",
+				"doorantwoord": "Dan heet dat zwartrijden. Vijftig euro boete, en ik vind u altijd. Inchecken bij het paaltje of bij de poortjes: piep. Uitchecken: piep-piep. Zo moeilijk is het niet."
+			},
+			"kleingeld_nee": "Kleingeld? Ik ben conducteur, geen pinautomaat. Voor een kaartje kunt u bij de automaat terecht.",
+			"nog_iets": [
+				"Verder nog iets? Mijn trein wacht niet.",
+				"Nog een vraag? Snel dan."
+			],
+			"dag": "Goede reis. En denk erom: inchecken!",
+			"betrapt": "Zo, daar bent u. Zonder in te checken door de poortjes, dacht u dat ik dat niet zag? Dat wordt {boete} boete wegens zwartrijden.",
+			"stemmingen": {
+				"begroeting": "neutraal",
+				"onderwerp": "verdrietig",
+				"doorvraag": "boos",
+				"kleingeld_nee": "boos",
+				"betrapt": "boos",
+				"dag": "neutraal"
+			}
+		},
+		"handhaver": {
+			"spreker": "HANDHAVING",
+			"embleem": "BOA",
+			"kleur": "#E8C21A",
+			"naamkaartje": "#16181C",
+			"tekstkleur": "#E8C21A",
+			"stemhoogte": 0.86,
+			"begroetingen": [
+				"Goedendag. Handhaving. Mag ik even uw legitimatie zien?",
+				"Ja? U staat hier al een tijdje. Alles in orde?",
+				"Handhaving Den Haag. Rustig aan, hè. Waar kan ik u mee helpen?"
+			],
+			"onderwerp": {
+				"vraag": "Mag ik hier even zitten?",
+				"antwoord": "Zitten mag. Liggen niet, slapen niet, en drinken uit een blikje al helemaal niet. Dat staat in de APV, artikel zoveel. Ik heb het niet verzonnen.",
+				"doorvraag": "En als ik toch blijf liggen?",
+				"doorantwoord": "Dan schrijf ik een bekeuring voor overlast. Honderd euro, plus kosten. En dan zet ik u buiten, en morgen zien we elkaar weer. Zo gaat dat. Maak het ons allebei niet moeilijk."
+			},
+			"kleingeld_nee": "Kleingeld vragen in het station? Dat heet bedelen, en dat is hier niet toegestaan. Ik laat het bij een waarschuwing. Deze keer.",
+			"nog_iets": [
+				"Verder nog iets?",
+				"Was dat alles?"
+			],
+			"dag": "Goed. Ik houd u in de gaten, hè. Fijne dag verder.",
+			"stemmingen": {
+				"begroeting": "neutraal",
+				"onderwerp": "neutraal",
+				"doorvraag": "boos",
+				"kleingeld_nee": "boos",
+				"dag": "neutraal"
+			}
+		}
+	}
+}

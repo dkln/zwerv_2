@@ -12,6 +12,13 @@ extends SubViewportContainer
 
 ## `townsfolk_look` (a TownsfolkFigure look; empty: the player figure) shows a townsperson
 ## instead: someone in the street you talk to (the story box), framed the same way.
+## `source_figure` (the TownsfolkFigure of that person in the world) makes the close-up live:
+## every frame it takes the pose of that figure (its limbs and body: sitting, standing behind
+## the counter, the moves of its mood while it talks, Emote) and breathes a little. A
+## townsperson has a mouth and eyelids (TownsfolkFigure.add_face): while `speaking` the mouth
+## follows the letters of `speech` (MOUTH_LETTERS a second: wide on a, o, u, half on e, i, y,
+## a little on the other letters, shut on spaces and signs), shut when it is not speaking;
+## now and then it blinks.
 ## play_gesture() makes the figure do its own move (PlayerModel.play_gesture); `gesture_cue`
 ## fires at the moment for its shout. `silhouette` (a colour with alpha) draws only its outline.
 
@@ -23,6 +30,19 @@ const PlayerModel = preload("res://scripts/player/player_model.gd")
 const PIXEL_SCALE := 1.0
 ## Metres the full framing shows (the tallest figure, Jos with his hat, fits with room).
 const FULL_HEIGHT := 2.9
+## The talking mouth: letters a second, and how open per kind of letter.
+const MOUTH_LETTERS := 14.0
+const WIDE_VOWELS := "aouáàóòúùäöü"
+const SMALL_VOWELS := "eiyéèëïí"
+const MOUTH_WIDE := 1.0
+const MOUTH_HALF := 0.55
+const MOUTH_LITTLE := 0.2
+## Seconds between blinks (fewest, most) and how long the eyes stay shut.
+const BLINK_EVERY := Vector2(2.2, 5.0)
+const BLINK_SECONDS := 0.12
+## Breathing: how much the figure rises (share of its height) and seconds a breath.
+const BREATH_SHARE := 0.006
+const BREATH_SECONDS := 3.4
 
 var archetype_id := "jos":
 	set(value):
@@ -67,8 +87,26 @@ var townsfolk_look := {}:
 	set(value):
 		townsfolk_look = value
 		_show_townsfolk()
+## The figure in the world the close-up follows (its pose), or null: standing still.
+var source_figure: Node3D = null:
+	set(value):
+		source_figure = value
+		_source_rest = value.transform if value else Transform3D.IDENTITY
+## While true the mouth moves with `speech` (set by the story box and the shop screen as a
+## line types out).
+var speaking := false
+var speech := "":
+	set(value):
+		speech = value
+		_speech_clock = 0.0
 
 var _viewport: SubViewport
+var _source_rest := Transform3D.IDENTITY   # the source's transform when it came (its mood moves it from there)
+var _townsfolk_scale := 1.0
+var _speech_clock := 0.0
+var _blink_clock := 0.0
+var _next_blink := 3.0
+var _breath_clock := 0.0
 var _camera: Camera3D
 var _model: Node3D
 var _townsfolk: Node3D
@@ -169,6 +207,8 @@ func _show_townsfolk() -> void:
 		var bounds := _bounds_of(_townsfolk)
 		var grow: float = (float(_model.height()) / maxf(bounds.size.y, 0.1)) * 0.92
 		_townsfolk.scale = Vector3.ONE * grow
+		_townsfolk_scale = grow
+		(_townsfolk as TownsfolkFigure).add_face()
 		# the face a little under the top of the head
 		_townsfolk_face = (bounds.end.y - 0.17) * grow
 	_frame()
@@ -197,6 +237,46 @@ static func _transform_to(ancestor: Node3D, child: Node3D) -> Transform3D:
 			result = (node as Node3D).transform * result
 		node = node.get_parent()
 	return result
+
+
+func _process(delta: float) -> void:
+	if _townsfolk == null or not is_visible_in_tree():
+		return
+	var figure := _townsfolk as TownsfolkFigure
+	# the pose of the one in the world, its mood's moves (from where it stood), a breath
+	_breath_clock += delta
+	var breath := sin(_breath_clock * TAU / BREATH_SECONDS) * BREATH_SHARE
+	var moved := Transform3D.IDENTITY
+	if is_instance_valid(source_figure):
+		if source_figure is TownsfolkFigure:
+			figure.copy_pose_from(source_figure as TownsfolkFigure)
+		moved = _source_rest.affine_inverse() * source_figure.transform
+	figure.transform = Transform3D(Basis.from_scale(Vector3(1.0, 1.0 + breath, 1.0) * _townsfolk_scale), Vector3.ZERO) * moved
+	# the mouth with the letters, the eyes now and then shut
+	figure.set_mouth(_mouth_for(delta))
+	_blink_clock += delta
+	if _blink_clock >= _next_blink:
+		figure.set_blink(true)
+		if _blink_clock >= _next_blink + BLINK_SECONDS:
+			figure.set_blink(false)
+			_blink_clock = 0.0
+			_next_blink = randf_range(BLINK_EVERY.x, BLINK_EVERY.y)
+
+
+## How open the mouth is now: the letter of `speech` it is at while speaking, else shut.
+func _mouth_for(delta: float) -> float:
+	if not speaking or speech.is_empty():
+		_speech_clock = 0.0
+		return 0.0
+	_speech_clock += delta
+	var letter := speech[int(_speech_clock * MOUTH_LETTERS) % speech.length()].to_lower()
+	if WIDE_VOWELS.contains(letter):
+		return MOUTH_WIDE
+	if SMALL_VOWELS.contains(letter):
+		return MOUTH_HALF
+	if letter.to_upper() != letter.to_lower():   # another letter
+		return MOUTH_LITTLE
+	return 0.0
 
 
 ## Where the top of the figure's head is in this picture (local pixels), for a speech balloon.

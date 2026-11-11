@@ -43,8 +43,7 @@ import zlib
 import numpy
 
 import geluiden
-import style
-from geluiden import SAMPLE_RATE, TWO_PI, band_noise, dac, fade_edges, low_pass, time_axis
+from geluiden import PROJECT, SAMPLE_RATE, TWO_PI, band_noise, dac, fade_edges, low_pass, time_axis
 
 VOICE_RATE = 11025.0
 ## The analog low-pass after the DAC: keeps the grit of the steps, takes the hard edge off.
@@ -312,7 +311,7 @@ SHOUTS = {
                (0.03, "k", "k", 1.0, 1.0, 0.0, 1.1), (0.18, "o", "o", 1.35, 1.1, 1.0, 0.05),
                (0.05, "-", "-", 1, 1, 0, 0), (0.03, "p", "p", 1.0, 1.0, 0.0, 0.9)],
 }
-SHOUTS_FOLDER = os.path.join(style.PROJECT, "assets", "audio", "kreten")
+SHOUTS_FOLDER = os.path.join(PROJECT, "assets", "audio", "kreten")
 
 
 def shout(character: str) -> numpy.ndarray:

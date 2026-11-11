@@ -20,8 +20,19 @@ extends Node3D
 ##   {"type": "board", "spot": Vector3, "inside": Vector3}  to the door and into the train
 ##   {"type": "stand", "face": Vector3}         stand there till the station says otherwise
 ##   {"type": "leave"}                          gone (through a door, into a train)
+##   {"type": "chase", "speed": float}          run after the player (a conductor after a
+##                                              fare dodger; the station says when it ends)
+##   {"type": "climb", "to": Vector3}           up the platform edge from the tracks (arms up,
+##                                              a hop), to that spot on the platform
 ## A handhaver walking as the second of a pair has `follow`: it keeps beside the first.
 ## It stops for the player when they stand right in its way (at most PLAYER_PATIENCE s).
+## The floor (station.floor_height: the hall and the platforms level, the tracks
+## PLATFORM_DROP lower): it walks along it, up or down at most MAX_STEP; a higher or lower
+## edge stops it (no walking off a platform, nor up one from the rails) except now and then
+## by accident (station.stumbles: then it falls, cries out, lands on the rails and the
+## station has it climb back up). It steers round the others close by (AVOID_RADIUS: a step
+## aside, slower behind someone), and when it makes no headway STUCK_SECONDS on its way the
+## station gives it another way (station.person_stuck).
 
 const TALKABLE_GROUP := "aanspreekbaar"
 const TURN_SPEED := 7.0
@@ -32,6 +43,18 @@ const PLAYER_PATIENCE := 1.6
 const TAP_SECONDS := 0.55
 const WHISTLE_SECONDS := 1.3
 const QUEUE_GAP := 0.85
+## The highest step up or down it walks over (as the player's max_step).
+const MAX_STEP := 0.6
+const GRAVITY := 9.8
+## Climbing up a platform edge: how long it takes, and how high the hop goes over the edge.
+const CLIMB_SECONDS := 1.1
+const CLIMB_HOP := 0.35
+## Others closer than this (metres) it steers away from; slower behind someone this close.
+const AVOID_RADIUS := 0.6
+const AVOID_STRENGTH := 0.8
+## Seconds without headway on its way (walking, to a gate, after the player) before the
+## station is asked for another way (and again at every multiple).
+const STUCK_SECONDS := 6.0
 
 const UNIFORMS := {
 	"conducteur": {"coat": Color("#1E2C55"), "trim": Color("#9FC4EC"), "trousers": Color("#1E2C55"), "cap": Color("#1E2C55")},
@@ -59,6 +82,16 @@ var _gate_phase := ""
 var _arm := ""                 # "" / "tikken" / "fluiten": the arm up for that
 var _arm_clock := 0.0
 var _blocked_clock := 0.0
+var _falling := false
+var _fall_speed := 0.0
+var _climb_from := Vector3.ZERO
+var _edge_rolled := false       # at this edge it has had its one chance of stumbling over
+var _stuck_seconds := 0.0
+var _stuck_calls := 0
+## Seconds on its way without getting anywhere (for the checks and the station).
+var stuck_seconds: float:
+	get:
+		return _stuck_seconds
 
 
 ## Someone of `person_role` with the look of `look_seed`.
@@ -153,11 +186,45 @@ func blow_whistle() -> void:
 
 func _process(delta: float) -> void:
 	var moved := 0.0
-	if follow != null:
+	if _falling:
+		_fall(delta)
+	elif follow != null:
 		moved = _follow(delta)
 	elif not steps.is_empty():
 		moved = _do_step(delta)
+	_watch_headway(delta, moved)
 	_animate(delta, moved)
+
+
+## Falling off a platform edge (by accident): down onto the rails, a cry; then the station
+## has it climb back up.
+func _fall(delta: float) -> void:
+	_fall_speed += GRAVITY * delta
+	position.y -= _fall_speed * delta
+	var floor_y := _floor_at(position)
+	if position.y <= floor_y:
+		position.y = floor_y
+		_falling = false
+		_fall_speed = 0.0
+		if station and station.has_method("person_fell"):
+			station.call("person_fell", self)
+
+
+## On its way but getting nowhere: after STUCK_SECONDS (and every multiple) the station
+## gives it another way (station.person_stuck, with how many times already).
+func _watch_headway(delta: float, moved: float) -> void:
+	var step := current_step()
+	var on_its_way := not step.is_empty() and (String(step.type) in ["walk", "board", "chase"] \
+		or (String(step.type) == "gate" and _gate_phase in ["naar", "door"]))
+	if not on_its_way or moved > 0.0005 or follow != null or _falling:
+		_stuck_seconds = 0.0
+		_stuck_calls = 0
+		return
+	_stuck_seconds += delta
+	if _stuck_seconds >= STUCK_SECONDS * (_stuck_calls + 1):
+		_stuck_calls += 1
+		if station and station.has_method("person_stuck"):
+			station.call("person_stuck", self, _stuck_calls)
 
 
 ## Works on the first step; the distance walked.
@@ -166,7 +233,7 @@ func _do_step(delta: float) -> float:
 	_step_clock += delta
 	match String(step.type):
 		"walk":
-			var walked := _walk_to(step.to, delta)
+			var walked := _walk_to(step.to, delta, false, float(step.get("speed", speed)))
 			if _at(step.to):
 				_next()
 			return walked
@@ -203,7 +270,8 @@ func _do_step(delta: float) -> float:
 				station.call("waiting_check", self)
 		"board":
 			if not step.has("at_door"):
-				var walked := _walk_to(step.spot, delta)
+				# with its height: from the floor of a train or onto it (not the rails' floor)
+				var walked := _walk_to(step.spot, delta, true)
 				if _at(step.spot):
 					step["at_door"] = true
 				return walked
@@ -211,6 +279,14 @@ func _do_step(delta: float) -> float:
 			if _at(step.inside):
 				_next()
 			return walked
+		"chase":
+			return _chase(float(step.get("speed", speed * 3.0)), delta)
+		"climb":
+			return _climb(step, delta)
+		"climbed":
+			_next()
+			if station and station.has_method("person_climbed"):
+				station.call("person_climbed", self)
 		"leave":
 			if station and station.has_method("person_left"):
 				station.call("person_left", self)
@@ -288,24 +364,119 @@ func _follow(delta: float) -> float:
 
 
 ## Walks towards `target` (turning to face the way); the distance walked. `with_height`: also
-## up or down to its height (getting into a train).
-func _walk_to(target: Vector3, delta: float, with_height := false) -> float:
+## up or down to its height (getting into a train). Else along the floor: up or down a step of
+## at most MAX_STEP; a higher or lower edge stops it (but for a stumble now and then:
+## station.stumbles), round the others close by. `walk_speed` (0: its own), `chasing`: after
+## the player (does not wait for them).
+func _walk_to(target: Vector3, delta: float, with_height := false, walk_speed := 0.0, chasing := false) -> float:
 	var flat := Vector3(target.x - position.x, 0.0, target.z - position.z)
 	var distance := flat.length()
 	if distance < 0.001:
 		return 0.0
-	if _player_in_the_way(flat / distance):
+	var direction := flat / distance
+	if not chasing and _player_in_the_way(direction):
 		_blocked_clock += delta
 		if _blocked_clock < PLAYER_PATIENCE:
 			return 0.0
 	else:
 		_blocked_clock = 0.0
-	var step := minf(distance, speed * delta)
-	position += flat / distance * step
+	var pace := walk_speed if walk_speed > 0.0 else speed
+	var step := minf(distance, pace * delta)
+	var motion := direction * step
+	if not with_height:
+		var push := _avoidance(direction)
+		if push.length_squared() > 0.0001 and distance > 0.4:
+			motion = (direction + push).normalized() * step * clampf(1.0 - push.length() * 0.5, 0.35, 1.0)
+	# a step aside that would go over an edge: straight on instead
+	if not with_height and motion != direction * step and absf(_floor_at(position + motion) - position.y) > MAX_STEP:
+		motion = direction * step
+	var next := position + motion
 	if with_height:
-		position.y = move_toward(position.y, target.y, delta * 1.2)
-	_face(flat / distance, delta)
-	return step
+		position = Vector3(next.x, move_toward(position.y, target.y, delta * 1.2), next.z)
+	else:
+		var floor_y := _floor_at(next)
+		if floor_y < position.y - MAX_STEP:
+			# an edge down: stop, but for the rare stumble over it
+			if _edge_rolled or station == null or not station.has_method("stumbles") or not station.call("stumbles", self, chasing):
+				_edge_rolled = true
+				_face(direction, delta)
+				return 0.0
+			position = next
+			_falling = true
+			_fall_speed = 0.0
+			return step
+		if floor_y > position.y + MAX_STEP:
+			_face(direction, delta)
+			return 0.0   # too high to step up (a platform from the rails): only by climbing
+		_edge_rolled = false
+		position = Vector3(next.x, move_toward(position.y, floor_y, delta * 3.0), next.z)
+	_face(direction, delta)
+	return motion.length()
+
+
+## Runs at the player (not stopping for them: they are who it wants), to just before them,
+## along the floor (an edge stops it, but for a stumble); the distance run.
+func _chase(chase_speed: float, delta: float) -> float:
+	var player: Node3D = station.call("player") if station and station.has_method("player") else null
+	if player == null or not player.is_inside_tree():
+		return 0.0
+	var target := station.to_local(player.global_position)
+	var flat := Vector3(target.x - position.x, 0.0, target.z - position.z)
+	if flat.length() < 0.5:
+		_face(flat, delta)
+		return 0.0
+	return _walk_to(position + flat.normalized() * minf(flat.length() - 0.5, chase_speed * delta * 2.0), delta, false, chase_speed, true)
+
+
+## Up the platform edge from the rails: the arms up, a hop over the edge onto `to`.
+func _climb(step: Dictionary, delta: float) -> float:
+	if _step_clock <= delta:
+		_climb_from = position
+		_arm = "klimmen"
+		_arm_clock = CLIMB_SECONDS
+	var share := clampf(_step_clock / CLIMB_SECONDS, 0.0, 1.0)
+	var to: Vector3 = step.to
+	var flat := _climb_from.lerp(to, share)
+	position = Vector3(flat.x, lerpf(_climb_from.y, to.y, share) + sin(share * PI) * CLIMB_HOP, flat.z)
+	_face(Vector3(to.x - _climb_from.x, 0.0, to.z - _climb_from.z), delta)
+	if share >= 1.0:
+		position = to
+		_edge_rolled = false
+		_next()
+	return 0.001
+
+
+## The floor under `at` (the station's, else level where it is).
+func _floor_at(at: Vector3) -> float:
+	if station and station.has_method("floor_height"):
+		return float(station.call("floor_height", at))
+	return 0.0
+
+
+## Steering away from the others close by: a push sideways (and how much slower, 0..1,
+## behind someone close in front).
+func _avoidance(direction: Vector3) -> Vector3:
+	var others: Array = station.call("station_people") if station and station.has_method("station_people") else []
+	var push := Vector3.ZERO
+	for other in others:
+		if other == self or not is_instance_valid(other):
+			continue
+		var away: Vector3 = position - (other as Node3D).position
+		away.y = 0.0
+		var gap := away.length()
+		if gap < 0.01 or gap > AVOID_RADIUS:
+			continue
+		var closeness := (AVOID_RADIUS - gap) / AVOID_RADIUS
+		if away.dot(direction) < 0.0:
+			# in front: step aside, to the side it already is on (or its own side)
+			var side := Vector3(-direction.z, 0.0, direction.x)
+			var side_sign := signf(away.dot(side))
+			if side_sign == 0.0:
+				side_sign = 1.0 if get_instance_id() % 2 == 0 else -1.0
+			push += side * side_sign * closeness
+		else:
+			push += away / gap * closeness * 0.5
+	return push * AVOID_STRENGTH
 
 
 func _at(target: Vector3) -> bool:
@@ -346,6 +517,11 @@ func _animate(delta: float, moved: float) -> void:
 		elif _arm == "tikken":
 			var shoulder := figure.rest_joint("arm_right")
 			figure.aim_arm("right", Vector3(shoulder.x + 0.1, shoulder.y - 0.25, 0.45))
+		elif _arm == "klimmen":
+			# both arms up onto the platform edge
+			for side: String in ["left", "right"]:
+				var shoulder := figure.rest_joint("arm_" + side)
+				figure.aim_arm(side, Vector3(shoulder.x, shoulder.y + 0.55, 0.3))
 		elif _arm == "fluiten":
 			var shoulder := figure.rest_joint("arm_left")
 			figure.aim_arm("left", Vector3(shoulder.x, shoulder.y + 0.6, 0.15))

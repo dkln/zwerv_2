@@ -137,7 +137,8 @@ const ARRIVAL_STEPS := 128
 ## middle between the player and who it talks to, `talk_zoom` metres in view, in about
 ## `talk_glide` seconds (also while the game stands still for the story box), and back after.
 ## Inside a building (set_indoors): metres in view, the same standing or walking (the room
-## is small), and how long the view takes to get there.
+## is small), and how long the view takes to get there. A big interior (Den Haag Centraal)
+## passes its own metres in view to set_indoors.
 @export var indoor_zoom := 9.0
 @export var talk_zoom := 7.0
 @export var talk_glide := 2.6
@@ -178,6 +179,7 @@ var _dramatic := false               # zoomed in on a dramatic moment (dramatic_
 var _talk_partner: Node3D            # who the player talks to (talk_close_up), else null
 var _turn_round_buildings_default := true   # turn_round_buildings as set, outside
 var _indoors := false
+var _indoor_zoom_now := 9.0          # metres in view inside the interior you are in
 var _arrival_clock := -1.0           # seconds into the arrival (< 0: waiting for the town)
 var _arriving := false               # the arrival is still to come or going on
 var _clouds: Node                    # the cloud layer of the arrival
@@ -271,11 +273,13 @@ func talk_close_up(partner: Node3D) -> void:
 
 ## Inside a building (Interiors): no turning round buildings (there are none to hide the
 ## player; the walls of an interior are low at the camera's side), the view as it was.
-func set_indoors(indoors: bool) -> void:
+## `zoom_in_view`: metres in view inside this interior (0: indoor_zoom).
+func set_indoors(indoors: bool, zoom_in_view := 0.0) -> void:
 	_indoors = indoors
+	_indoor_zoom_now = zoom_in_view if zoom_in_view > 0.0 else indoor_zoom
 	turn_round_buildings = not indoors and _turn_round_buildings_default
 	# straight to the zoom of inside or outside (under the swipe)
-	_zoom = indoor_zoom if indoors else zoom_still
+	_zoom = _indoor_zoom_now if indoors else zoom_still
 	_zoom_velocity = 0.0
 	_turn_goal = 0.0
 	_turn = 0.0
@@ -398,7 +402,7 @@ func _process(delta: float) -> void:
 		goal_zoom = dramatic_zoom
 		goal = target_position
 	if _indoors and not _dramatic:
-		goal_zoom = indoor_zoom
+		goal_zoom = _indoor_zoom_now
 	var talking := _talk_partner != null and is_instance_valid(_talk_partner) and not _dramatic
 	if talking:
 		goal_zoom = talk_zoom

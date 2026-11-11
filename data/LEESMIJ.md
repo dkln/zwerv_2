@@ -77,10 +77,10 @@ De startpagina's van missies met `"start": "na_proloog"` komen er direct achtera
 
 ## Gesprekken met voorbijgangers — `gesprekken/voorbijgangers.json`
 
-- `vragen`: wat je kunt vragen (`kleingeld`, `snackbar`) en waarmee je afsluit (`dag`).
+- `vragen`: wat je kunt vragen (`kleingeld`) en waarmee je afsluit (`dag`).
 - `nog_iets`: wat ze erachter zeggen ("Nog iets?").
 - `stemmingen`: de stemming per soort regel (`begroeting`, `onderwerp`, `doorvraag`,
-  `kleingeld_ja`, `kleingeld_nee`, `snackbar`, `dag`). Stemmingen: `neutraal`, `blij`,
+  `kleingeld_ja`, `kleingeld_nee`, `dag`). Stemmingen: `neutraal`, `blij`,
   `opgewonden`, `boos`, `verdrietig`. Ze bepalen het gebrabbel en hoe het poppetje beweegt.
 - `personen`: de soorten mensen. **De eerste waarvan `herkennen` klopt** wordt gekozen,
   dus zet de algemeenste (bv. de forens, `"herkennen": {}`) als laatste.
@@ -96,7 +96,6 @@ Een **persoon**:
 	"onderwerp": {"vraag": "Wat studeer je?", "antwoord": "...", "doorvraag": "...", "doorantwoord": "..."},
 	"kleingeld_ja": "Hier, een paar centen.",
 	"kleingeld_nee": "Sorry!",
-	"snackbar": "Op je kaart, kijk maar.",
 	"dag": "Doei!",
 	"gulheid": {"kans": 30, "bedrag": 0.1},
 	"stemmingen": {"begroeting": "opgewonden"}
@@ -107,12 +106,72 @@ Een **persoon**:
 `"lang"`, `"kaal"`, `"pet"`), `rok` (`true`/`false`), `jas` (een lijst kleuren, bv.
 `["#22242A"]`). `gulheid`: de kans in 100 dat ze wat kleingeld geven, en hoeveel euro.
 
+## Personeel: conducteurs en handhavers — `gesprekken/personeel.json`
+
+In Den Haag Centraal lopen conducteurs van de NS (blauw uniform met pet) en handhavers
+(zwart met geel). Spreek je ze aan, dan praten ze niet als een voorbijganger maar als
+iemand in dienst: over treinen, vertraging, inchecken en zwartrijden (conducteur), over
+regels, rondhangen, boetes en "even uw legitimatie" (handhaver). Om kleingeld vragen heeft
+geen zin: ze weigeren, in stijl. Het gespreksvak laat zien dat het personeel is: hun titel
+op een naamkaartje in hun eigen kleuren, het embleem (`NS`, `BOA`) op het portret, de rand
+en de cursor in hun kleur en een lagere stem.
+
+Onder `personen` staat per rol (`conducteur`, `handhaver`) een persoon met dezelfde velden
+als in `voorbijgangers.json` (`spreker`, `begroetingen`, `onderwerp`, `kleingeld_nee`,
+`dag`, `stemmingen`; `gulheid` niet: ze geven nooit), plus:
+
+| veld | wat |
+|---|---|
+| `spreker` | de titel op het naamkaartje (`"CONDUCTEUR NS"`, `"HANDHAVING"`) |
+| `embleem` | het korte embleem linksboven op het portret |
+| `kleur` | de kleur van het uniform: rand van het portret, rand van het naamkaartje, cursor |
+| `naamkaartje`, `tekstkleur` | achtergrond en tekst van het naamkaartje en het embleem |
+| `stemhoogte` | hoe hoog ze brabbelen (1,0 = gewoon, lager = zwaarder) |
+| `nog_iets` | eigen zinnen na een antwoord (anders die van de voorbijgangers) |
+| `betrapt` | alleen de conducteur: wat hij zegt als je met hem praat terwijl hij je achternazit omdat je zwartreed; je krijgt dan de boete (`{boete}`: het bedrag) |
+
+Controle: `tools/godot.sh --headless --script tools/check/staff_talk_test.gd`.
+
 ## De snackbarhouder — `gesprekken/snackbarhouder.json`
 
-`begroetingen` (met `{snackbar}`: de naam van de zaak), `menu` (wat je kunt bestellen:
-`item` uit `scripts/player/items.gd`, `vraag`, `prijs`, `naam`), `gekocht` (met `{wat}`),
-`geen_geld` (met `{prijs}`), `zakken_vol`, `tip_vraag`, `tip`, `niets_vraag`, `dag`,
-`nog_iets`, `stemmingen`.
+Wie je aanspreekt achter de toonbank van een snackbar krijgt het **winkelscherm**
+(`scripts/ui/shop_screen.gd`): de naam van de zaak, de verkoper, een getypte begroeting,
+de goederen met prijs, je geld en je zakken. Kiezen met de pijltjes of W/S, kopen met
+Enter (of 1–9 meteen), weggaan met Esc; de muis werkt ook. Bij te weinig geld knippert
+TE WEINIG GELD en noemt de verkoper de prijs; bij volle zakken ZAKKEN VOL. Wat je koopt
+gaat in je zakken (zoals de kroket van missie 1).
+
+`spreker` (het naamkaartje), `soort` (bovenin het scherm, bv. `"SNACKBAR"`),
+`begroetingen` (met `{snackbar}` of `{zaak}`: de naam van de zaak), `menu` (de goederen:
+`item` uit `scripts/player/items.gd`, `vraag`, `prijs` in euro, `naam` zoals de verkoper
+het noemt), `gekocht` (met `{wat}`), `geen_geld` (met `{prijs}`), `zakken_vol`,
+`tip_vraag` en `tip` (een rij "iets vragen"; weg als er geen `tip` is), `dag` (bij
+weggaan), `nog_iets` (achter wat ze zeggen na een aankoop), `stemmingen` (per soort zin:
+`begroeting`, `gekocht`, `geen_geld`, `zakken_vol`, `tip`, `dag`).
+
+## De winkels van Den Haag Centraal — `gesprekken/winkels.json`
+
+In het station staat achter elke winkel en kiosk een verkoper; je spreekt ze aan vóór de
+toonbank (`[E] Winkelen`; bij een snackbar `[E] Bestellen`) en dan opent hetzelfde winkelscherm. Onder `winkels` staat per
+**soort zaak** (de `kind` van de markers `Verkoper_<n>` in `scenes/binnen/centraal.tscn`,
+gemaakt door `tools/build/build_interiors.gd`, `SHOPS`) wat die verkoper zegt en verkoopt,
+met **dezelfde velden** als `snackbarhouder.json`. Wat een zaak weglaat komt uit
+`snackbarhouder.json` (Smikkels heeft daardoor dezelfde `gekocht`-zinnen als een snackbar).
+
+| soort | zaken | assortiment |
+|---|---|---|
+| `koffie` | Duwus Bertus | koffie € 2,80, cappuccino € 3,40, gevulde koek € 2,25 |
+| `broodjes` | Broodje Seinstoring | broodje kaas € 3,95, broodje kroket € 4,50, krentenbol € 1,25 |
+| `kiosk` | Kiosk Centraal, Kiosk Perron 12 | koffie € 2,60, flesje water € 2,20, energiedrank € 2,50, krant € 3,50, kauwgom € 1,80 |
+| `bloemen` | Bloemen van de Hofvijver, Tulp & Tak | bos tulpen € 4,99, losse roos € 2,50 |
+| `boeken` | Boek & Spoor | puzzelboekje € 4,50, kaart van Den Haag € 6,95, pocketboek € 12,99 |
+| `stroopwafels` | Stroopwafel Express | verse stroopwafel € 2,50, pak stroopwafels € 4,95 |
+| `snoep` | De Zoete Inval | zak drop € 2,49, zak winegums € 2,49, chocoladereep € 1,99 |
+| `smikkels` | Smikkels (een snackbar in het station) | kroket € 2,75, frikandel € 2,75, patatje met € 3,95 |
+
+Een nieuw product: zet het item in `scripts/player/items.gd` (naam, soort, tekst, effect;
+een eigen icoon in `GameMenu.ITEM_ICONS`) en een regel in het `menu` van de zaak.
+Controle: `tools/godot.sh --headless --script tools/check/shop_test.gd`.
 
 ## Drukte op straat — `drukte.json`
 

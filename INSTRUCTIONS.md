@@ -629,13 +629,13 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
   (`FADE_TO_MENU`) en het menu komt daar in 3,5 s uit omhoog (`UP_FROM_BLACK`), terwijl de
   muziek van intro naar menu overvloeit. Alleen de spatiebalk breekt hem af en gaat naar het
   hoofdmenu (andere toetsen, zoals de volumetoetsen, en de muis doen niets). Rechtsonder staan, zoals in het hoofdmenu en het karakterscherm, de toetsen
-  op één regel: "[SPATIE] OVERSLAAN  [ENTER] SNELLER". De sterren fonkelen. Muziek: `assets/audio/muziek/zwervr_intro.ogg` (120 BPM, 60 maten van 2,0 s, 120 s, geen lus); de intro loopt op die
-  muziek (de klok is waar de muziek is): het logo fadet in van 5 tot 6,5 s, heel groot, bijna buiten
-  beeld, en krimpt langzaam naar zijn normale formaat tot de drop (maat 9, 16,0 s):
+  op één regel: "[SPATIE] OVERSLAAN  [ENTER] SNELLER". De sterren fonkelen. Muziek: `assets/audio/muziek/zwervr_intro.ogg` (128 BPM, 64 maten van 1,875 s, 120 s, geen lus); de intro loopt op die
+  muziek (de klok is waar de muziek is): het logo fadet in van 5 tot 6,0 s, heel groot, bijna buiten
+  beeld, en krimpt langzaam naar zijn normale formaat tot de drop (maat 9, 15,0 s):
   daar wijkt het in 2,5 s de diepte in en fadet het daarbij uit (`LOGO_SECONDS`), met een
   plop (`UiSounds` "plop") als het verdwijnt, en komt de tekst op, de
-  zwerver op het gevechtshoogtepunt (maat 25, 48,0 s), de handhavers op het duel (maat 41, 80,0 s), de
-  winkelwagen op de systeemcrash (maat 53, 104,0 s: de band stopt, één harde klap, daarna de outro), het menu waar de muziek sterft (120,0 s; `LINE_IN_AT` …
+  zwerver op het gevechtshoogtepunt (maat 25, 45,0 s), de handhavers op het duel (maat 41, 75,0 s), de
+  winkelwagen op de systeemcrash (maat 57, 105,0 s: de band stopt, één harde klap, daarna de outro), het menu waar de muziek sterft (120,0 s; `LINE_IN_AT` …
   `END_AT`, `CRAWL_CUES`). Zo traag als de muziek toelaat: weinig ruimte tussen de alinea's
   (`PARAGRAPH_GAP`), en de laatste alinea rolt niet van boven weg maar komt in de verte tot
   rust (`CRAWL_REST`) terwijl het verhaal de laatste `CRAWL_FADE` s uitfadet. Bij het einde of overslaan loopt de muziek door in het menu en
@@ -682,7 +682,7 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
   `scripts/ui/widgets/player_portrait.gd` toont een poppetje in een eigen SubViewport: warm
   hoofdlicht met schaduw (ook op een onzichtbare vloer die alleen de schaduw toont), zacht
   vul- en tegenlicht, een lage grijze ambient en een eenvoudige lucht voor de reflecties.
-  Muziek: `karakterkeuze_loop.ogg` (zacht: pad, klokjes op het motief, een zachte chiptune-melodie; 96 BPM, 40 s, lus), op -12 dB en
+  Muziek: `karakterkeuze_loop.ogg` (zacht: pad, klokjes op het motief, een zachte chiptune-melodie; 100 BPM, 38,4 s, lus), op -12 dB en
   infadend. Test: `tools/check/character_test.gd` (`-- figures`: alleen de poppetjes).
 - Hoofdmenu (`scenes/hoofdmenu.tscn`, `scripts/ui/main_menu.gd`), naar het ontwerp
   "Titelscherm" in de HUD-stijl: titel ZWERVR, menu (VERDERGAAN en LADEN uitgegrijsd tot er
@@ -757,35 +757,23 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
   omgekeerd (`_play_exit`): de knoppen faden weg, de titel schuift naar links uit beeld, alles
   vervaagt naar inktblauw met een sterke trackingstoring, en het laadscherm van de stad (ook
   inktblauw) neemt het over.
-  Muziek: `assets/audio/muziek/nachtstad_menu_loop.ogg` (een eigen stuk in de huisstijl hieronder: het heroïsche titelscherm, 120 BPM, 32 maten = 64 s, met de solid bass, de motief-fanfare, powerchords en de twee gitaren), heel en in een lus, die bij het openen meteen op vol volume
+  Muziek: `assets/audio/muziek/nachtstad_menu_loop.ogg` (afgeleid van de compositie, zie hieronder), heel en in een lus, die bij het openen meteen op vol volume
   begint (geen infade) en bij het verlaten (NIEUW SPEL, AFSLUITEN) in 2 s uitfadet, ook als de
   stad al opent (`MUSIC`, `MUSIC_VOLUME_DB`, `MUSIC_FADE_OUT`).
-  Stadsmuziek: per wijk een eigen loop (`CITY_MUSIC_BY_AREA` in `scripts/ui/hud.gd`, op de
-  wijknamen uit de "wijken"-metadata; andere wijken spelen `stad_centrum_loop.ogg`), na het
-  kaartdeuntje (`deuntje_kaart_start.ogg`) infadend, bij een wijkwissel in 3 s overvloeiend
-  op dezelfde plek in de maat (gelijk vermogen: sinus/cosinus op de amplitude, dus geen gat
-  halverwege), pas na `CITY_MUSIC_SETTLE` s in de nieuwe wijk (langs een grens lopen wisselt
-  niet steeds), buiten elke wijk ("Den Haag") blijft de muziek zoals hij was; op -10 dB en
-  zachter zolang het spel stilstaat (pauzemenu, spelmenu, verhaalvak; `CITY_MUSIC_VOLUME_DB`,
-  `CITY_MUSIC_PAUSED_DB`). Test: `tools/check/city_music_test.gd`. Alle negen stadsloops: 120 BPM, D mineur, 48 maten = 96 s, dezelfde akkoorden
-  per maat (`tools/megadrive/stad_plan.py`, het plan in het stijlprofiel), naadloze lussen; per wijk een eigen
-  karakter (centrum levendig, torens koel en glazig, groen rustig, woonwijk rauw, industrie mechanisch,
-  hofstad statig zonder beat, markt met handtrommels, bos zonder drums, dorp folky; zie `docs/MUZIEK.md`).
-  Alle muziek (`assets/audio/muziek/`) is één huisstijl in de klank van de Sega Mega Drive
-  (YM2612-FM met de DAC voor de drums, SN76489-PSG; eigen composities): nu **16-bit synthwave
-  action-RPG**, heroïsch, 120 BPM, D mineur rond i – VI – III – VII (Dm – Bb – F – C), met FM-"gitaren"
-  (overdrive, bends, twee gitaren in tertsen), powerchords, een chiptune-lead met driver-vibrato,
-  snelle PSG-arpeggio's en de 80s gated snare; in elk stuk komt het motief terug (grondtoon, kwint,
-  octaaf, de toonladdertoon eronder: D A D C). Wat een stijl is (tempo, toonsoort, akkoordschema's,
-  motief, patches, drums, variaties per nummer) staat in één verwisselbaar **stijlprofiel**
-  (`tools/megadrive/stijlen/<naam>.py`, actief: `ACTIVE_STYLE` in `style.py`); een geplakte
-  Suno/Udio/Gemini-beschrijving wordt een nieuw profiel met de skill **`/muziek-prompt`**
-  (`.claude/skills/muziek-prompt/SKILL.md`). De regels en de lijst van alle stukken met waar ze
-  spelen staan in **`docs/MUZIEK.md`**: elk nieuw stuk volgt die. Opnieuw renderen:
-  `tools/megadrive/render.sh` (alles; `render.sh gevecht` één stuk, `render.sh deuntjes dood`
-  één deuntje; Python via `uv` met numpy en soundfile); nakijken met
-  `uv run --with numpy --with soundfile python3 tools/megadrive/check_music.py`.
-  Verkeersgeluiden in dezelfde Mega Drive-klank (`tools/megadrive/geluiden.py`,
+  Stadsmuziek: één lus overal, `spel_loop.ogg` (`CITY_MUSIC` in `scripts/ui/hud.gd`; geen
+  wijkmuziek), na het kaartdeuntje (`deuntje_kaart_start.ogg`) infadend; in een gebouw met eigen
+  muziek (de handelaar, `set_indoor_music`) vloeit hij over en terug; op -10 dB en zachter zolang
+  het spel stilstaat (pauzemenu, spelmenu, verhaalvak; `CITY_MUSIC_VOLUME_DB`, `CITY_MUSIC_PAUSED_DB`).
+  Test: `tools/check/city_music_test.gd`.
+  **Alle muziek komt uit één compositie** (nu "Blast Processing Overdrive" van Gemini, 136 BPM,
+  D mineur, 32 maten): die wordt letterlijk de intro (`zwervr_intro.ogg`), en menu,
+  karakterkeuze, handelaar, de stad en de deuntjes (nieuwe missie, taak klaar, missie gehaald,
+  level omhoog, dood) worden ervan afgeleid, in Mega Drive-klank. Een nieuwe compositie
+  aanleveren: de skill **`/muziek-compositie`** (`.claude/skills/muziek-compositie/SKILL.md`).
+  De regels, de notatie en de lijst van stukken staan in **`docs/MUZIEK.md`**; de generator in
+  `tools/muziek/` (`render.sh` maakt alles en `scripts/ui/intro_timing.gd`,
+  `render.sh --controle` kijkt alles na).
+  Verkeersgeluiden in Mega Drive-klank (`tools/megadrive/geluiden.py` op de geluidschip `megadrive.py`,
   `render.sh geluiden`; mono, in `assets/audio/geluiden/`): per voertuig (auto, brommer, bus,
   tram, trein) een langsrij-geluid (`*_voorbij.ogg`, met Doppler) en een naadloze motorlus
   (`*_motor_loop.ogg`, voor een AudioStreamPlayer3D op het voertuig), botsingen
@@ -794,7 +782,7 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
   `brommer_toeter.ogg`, `fiets_bel.ogg`, `scootmobiel_toeter.ogg`), en voor de hulpdiensten een eigen twee-toonsirene per dienst
   (`politie_sirene_loop.ogg`, `ambulance_sirene_loop.ogg`, `brandweer_sirene_loop.ogg`, plus
   `sirene_yelp_loop.ogg`), voorbijrazen met sirene (`*_voorbij.ogg`), `brandweer_hoorn.ogg` en
-  de politiehelikopter (`helikopter_loop.ogg`, `helikopter_voorbij.ogg`); zie `docs/MUZIEK.md`.
+  de politiehelikopter (`helikopter_loop.ogg`, `helikopter_voorbij.ogg`); zie `docs/GELUIDEN.md`.
   Ruimtelijk geluid (`scripts/audio/spatial_audio.gd`, autoload `RuimtelijkGeluid`, alleen
   actief als de speler er is): het oor (AudioListener3D) zit bij de speler of het gevolgde
   voertuig en draait mee met de camera, zodat links en rechts op het scherm ook links en rechts
@@ -969,7 +957,7 @@ Projectstructuur
                            tools/godot.sh --headless --script tests/run_unit_tests.gd [-- <filter>]
       voxgen/              Python-generator van de tiles (zie "Tiles (opnieuw) genereren")
       megadrive/           Python-generator van alle muziek en de verkeersgeluiden in Mega Drive-stijl (FM, PSG, PCM-drums)
-    docs/                  Goxel-handleiding (GOXEL.md -> handleiding_goxel.html), MUZIEK.md (de muzikale huisstijl)
+    docs/                  Goxel-handleiding (GOXEL.md -> handleiding_goxel.html), MUZIEK.md (de muzikale huisstijl), GELUIDEN.md (geluidseffecten en stemmen)
 
 
 Snel starten
