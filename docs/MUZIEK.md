@@ -100,6 +100,9 @@ MATEN = {
 ```python
 BIJSTELLING = {
     "tempo": 144,                                   # BPM in plaats van TEMPO
+    "klank": {"lead": "psg_lead_fel"},              # een partij in een andere klank (dezelfde noten)
+    "verdubbel": {"lead": "overdrive_gitaar_solo"}, # dezelfde noten ook in een tweede klank ("lead_dubbel")
+    "drumstel": "dmx",                              # een ander drumstel (instruments.DRUM_KITS)
     "octaaf": {"arp": 1},                           # een partij octaven hoger (+) of lager (-)
     "kick_op_elke_tel": ("thema", "refrein", "finale"),   # four on the floor
     "open_hihat": ("intro", "thema", "opbouw", "refrein", "finale"),  # op de off-beats
@@ -109,10 +112,15 @@ BIJSTELLING = {
 }
 ```
 
-De drum-bijstellingen gelden alleen in maten met een groove (kick en snare) en laten fills en
-de slotmaat (de eindklappen) met rust; de stoten zijn uit de akkoorden gespeld; `majeur_slot`
+De drum-bijstellingen gelden alleen in maten met een groove (kick en snare) en laten fills,
+breaks (kick en snare samen op dezelfde plekken: een unisono-figuur) en de slotmaat (de
+eindklappen) met rust; de stoten zijn uit de akkoorden gespeld; `majeur_slot`
 geeft het slotakkoord de grote terts (en de landing van nieuwe missie, taak klaar en level
-omhoog); het deuntje van de dood blijft mineur. Nu ingesteld voor "Blast Processing Overdrive":
+omhoog); het deuntje van de dood blijft mineur. Nu ingesteld voor "Mega-Volt Overdrive: Turbo
+Edition": de melodie op `fm_housebas_lead` (de klank van de bas in de eerste maat van de menulus,
+die de gebruiker goed vond; daarvoor `psg_lead_arp`; daarvoor `fm_lead_zuur`, "niet chemisch genoeg, mag rauwer"; daarvoor `fm_lead_snerpend`, en eerst `psg_lead_fel`: "meer chiptune-achtig"; daarna "het
+geluid van de lead in Streets of Rage 2, Go Straight": alleen die klankkleur), verdubbeld op
+`overdrive_gitaar_solo` ("zwaarder, meer gitaar-achtig"). Eerder, voor "Blast Processing Overdrive":
 "ietsje blijer, meer upbeat", in de geest van de stage 1-muziek van Streets of Rage 2 (een
 house-groove: kick op elke tel, open hi-hats op de off-beats, handklappen, pianostoten, rond
 140 BPM); alleen die kenmerken, geen noten van dat nummer.
@@ -126,15 +134,28 @@ In `tools/muziek/instruments.py` (`SOUNDS`), elk met plek in het stereobeeld, ni
 | --- | --- | --- |
 | `fm_slapbas` | metalige 4-op FM-bas, snelle percussieve modulator | de pompende octaafbas |
 | `fm_subbas` | diepe, zachte FM-bas | lange subnoten, de rustige stukken |
+| `fm_housebas` | "gritty" house/techno-FM-bas: feedback-paar met snelle grom, sub-octaaf | een clubbas |
+| `fm_housebas_lead` | de FM-stem van `fm_housebas` als melodie: de grom op elke noot, de sub een octaaf eronder, echo | een rauwe, "chemische" melodie |
+| `fm_stoot_metaal` | metalige, percussieve FM-stoten (modulators op 3,5x en 7x, korte decay) | akkoordstoten |
 | `synthwave_pad` | FM-zaagtand (feedback), traag, breed | akkoordvlakken |
 | `synth_brass` | FM-koper, breed | akkoordstoten |
 | `fm_lead_helder` | heldere FM-lead, vibrato 6 Hz, gepuncteerde-achtste echo | de hoofdmelodie |
+| `fm_lead_snerpend` | snerpende, nasale FM-lead (feedback-paar plus modulator op 3x), felle aanslag, vibrato na de inzet, echo | een melodie in de geest van de vroege-jaren-90 arcade-leads |
+| `psg_lead_arp` | de blokgolf van `psg_arp` (snelle aanslag, valt meteen terug) als melodie, met echo | een rauwe chiptune-melodie |
+| `fm_lead_zuur` | rauwe acid-achtige FM-lead: feedback bijna maximaal, per noot snel wegvallende modulator (het knijpen), schurende tweede drager, nauwelijks vibrato | een "chemische" techno-melodie |
 | `psg_arp` | PSG-blokgolf, kort | arpeggio's in zestienden |
 | `psg_lead` | PSG-blokgolf met vibrato en echo | de melodie in rustiger stukken |
+| `psg_lead_fel` | PSG-blokgolf, fel en vol aangehouden, snelle vibrato, echo | een melodie als chiptune |
 | `overdrive_gitaar` | FM-snaren samen overstuurd, donkere kast | powerchords |
 | `overdrive_gitaar_solo` | idem, harder gedreven, echo | riffs en solo's |
+| `clean_gitaar` | FM-snaren zonder oversturing, korte plectrum-aanslag, warme body | cleane powerchords en chugs |
+| `clean_gitaar_solo` | idem, met echo | cleane gitaarloopjes en solo's |
 | `fm_klok` | FM-klok, lange echo | de melodie in het menu |
 | `fm_piano` | FM-elektrische piano | de handelaar |
+
+**Drumstellen** (`DRUM_KITS` in `instruments.py`, gekozen met `BIJSTELLING["drumstel"]`):
+`standaard` (dikke 909-achtige kick, gated-reverb-snare) en `dmx` (de rauwe Mega Drive-kick en een
+droge snare, beide door de DAC op een lage samplefrequentie; hi-hats, clap, crash en toms als standaard).
 
 **Een nieuwe klank**: noemt een compositie een instrument dat hier niet bij past, dan komt er
 een `FmPatch` (of PSG-instelling) bij in `instruments.py`, met een naam die zegt wat hij is, en
@@ -156,6 +177,7 @@ Uit `tools/muziek/derive.py`; alle bestanden in `assets/audio/muziek/`:
 | `handelaar_loop.ogg` | bij een handelaar, in de snackbar (lus) | de akkoorden van de opbouw (en de opening van het thema) op elektrische piano, wandelende bas, clap op 2 en 4 |
 | `laden_loop.ogg` | het laadscherm (lus) | de intro-sectie van de compositie (het opstarten) twee keer: eerst alleen de puls (pad, bas, arp, lichte beat), dan zoals geschreven met melodie en fill, die terugloopt naar het begin |
 | `spel_loop.ogg` | de stad (lus, `scripts/ui/hud.gd`, zacht: `CITY_LOOP_SOFTER_DB`) | **rustig en op de achtergrond**: de klank van de handelaar (elektrische piano, bas, clap) in **half-time** (kick op 1, clap op 3, de piano houdt zijn akkoorden aan, de bas loopt in halve noten), afwisselend zoals de handelaarslus: het thema als akkoorden; het thema met zijn melodie om en om per maat (vraag en antwoord); de opbouw met de stoten van de handelaar; het refrein met de melodie op klokken om de maat; de breakdown met alleen piano en bas, terug naar het begin. Recht, geen shuffle, geen doorlopende arpeggio |
+| `deuntje_kaart_start.ogg` | de kaart opent bij het begin van het spel (`MAP_JINGLE` in `hud.gd`, hooguit 6 s) | de eerste twee maten van de intro-sectie (het opstarten van het nummer), landend op het grondakkoord met een crash; één maat als twee te lang duren |
 | `deuntje_nieuwe_missie.ogg` | nieuwe missie | het motief (eerste maat van het thema) met groove, landend op de grondtoon |
 | `deuntje_taak_klaar.ogg` | een taak gehaald | een zestiendenloop over de dominant, landend op de grondtoon |
 | `deuntje_gewonnen.ogg` | een missie gehaald | de laatste twee maten van de compositie (haar finish) |
@@ -166,7 +188,9 @@ De afleidingen zoeken de secties op hun `soort`; een compositie zonder breakdown
 terug op de dichtstbijzijnde sectie. Een compositie met een heel andere vorm kan in
 `derive.py` een eigen keuze nodig hebben; dan daar, niet in het compositiebestand.
 
-Nog uit de vorige muziek (niet afgeleid): `deuntje_kaart_start.ogg` (de kaart opent).
+Elke compositie levert **alle** stukken in deze tabel, ook het kaartdeuntje: een nieuw stuk dat
+het spel gaat gebruiken, komt hier en in `derive.py` (`ALL`) bij, nooit als los bestand naast de
+compositie.
 
 ## Controleren
 

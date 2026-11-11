@@ -111,6 +111,10 @@ CRIES = {
     2: {"length": 0.26, "vowels": [("ng", 0.0), ("uh", 0.35), ("ng", 1.0)], "drop": 1.0, "onset": "glottal"},
     3: {"length": 0.36, "vowels": [("u", 0.0), ("a", 0.3), ("uh", 1.0)], "drop": 2.2, "onset": "h"},
     "hard": {"length": 0.85, "vowels": [("a", 0.0), ("a", 0.55), ("uh", 0.85), ("ng", 1.0)], "drop": 0.8, "onset": "h"},
+    # the death cry, as the fighting games had it when someone went down (KO): long, from high up,
+    # "aaaa" sinking through "oh" and "uh", a wide vibrato, and a big echo after it (DEATH_ECHOES)
+    "dood": {"length": 1.6, "vowels": [("a", 0.0), ("a", 0.4), ("o", 0.7), ("uh", 0.9), ("ng", 1.0)], "drop": 0.6,
+             "onset": "h"},
     # a groan: low and drawn out, the breath pressed out of you (thrown out of a building)
     "kreun": {"length": 0.9, "vowels": [("uh", 0.0), ("u", 0.45), ("ng", 1.0)], "drop": 0.5, "onset": "glottal"},
 }
@@ -162,6 +166,11 @@ def vocal_tract(source: numpy.ndarray, vowels, formant_scale: float) -> numpy.nd
     return output
 
 
+## The echo of the death cry: (delay in seconds, level) of each repeat, as the big hall of a
+## fighting game's KO.
+DEATH_ECHOES = ((0.16, 0.5), (0.32, 0.3), (0.48, 0.18), (0.64, 0.1))
+
+
 def cry(voice_name: str, cry_key) -> numpy.ndarray:
     voice = VOICES[voice_name]
     shape = CRIES[cry_key]
@@ -173,6 +182,9 @@ def cry(voice_name: str, cry_key) -> numpy.ndarray:
     start_pitch, end_pitch = voice["pitch"]
     if cry_key == "hard":
         start_pitch *= 1.25   # a scream starts higher
+    if cry_key == "dood":
+        start_pitch *= 1.35   # a scream from high up, falling a long way
+        end_pitch *= 0.8
     if cry_key == "kreun":
         start_pitch *= 0.8    # a groan stays low
         end_pitch *= 0.75
@@ -181,6 +193,9 @@ def cry(voice_name: str, cry_key) -> numpy.ndarray:
     pitch *= 1.0 + 0.08 * numpy.exp(-times / 0.025)
     if cry_key == "hard":
         pitch *= 1.0 + 0.025 * numpy.sin(TWO_PI * 6.5 * times) * numpy.clip(share * 3.0, 0.0, 1.0)
+    if cry_key == "dood":
+        # the dramatic shake of the voice as it goes
+        pitch *= 1.0 + 0.045 * numpy.sin(TWO_PI * 5.5 * times) * numpy.clip(share * 2.5, 0.0, 1.0)
     growl = numpy.clip(voice["growl"] * (0.6 + 0.8 * share), 0.0, 0.9)
     voiced = glottal_pulses(pitch, growl, voice["jitter"], seed)
     voiced /= numpy.sqrt(numpy.mean(voiced ** 2)) + 1e-9
@@ -201,6 +216,14 @@ def cry(voice_name: str, cry_key) -> numpy.ndarray:
     spoken = spoken - low_pass(spoken, 180.0)
     spoken /= numpy.abs(spoken).max() + 1e-9
     driven = numpy.tanh(3.2 * spoken)
+    if cry_key == "dood":
+        # the echo of the hall, before the DAC (the console played it as one sample)
+        samples_per_second = len(times) / length
+        echoed = numpy.concatenate([driven, numpy.zeros(int(DEATH_ECHOES[-1][0] * samples_per_second) + 1)])
+        for delay, level in DEATH_ECHOES:
+            start = int(delay * samples_per_second)
+            echoed[start:start + len(driven)] += driven * level
+        driven = echoed / (numpy.abs(echoed).max() + 1e-9)
     # through the DAC, then the console's output filter, which rounds off the steps a bit
     return fade_edges(megadrive_voice(driven), 0.002, 0.04)
 

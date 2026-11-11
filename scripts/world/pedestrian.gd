@@ -181,6 +181,7 @@ var _honked_while_blocked := false   # a scooter hoots once each time it is held
 var health := MAX_HEALTH
 var _ragdoll: RigidBody3D           # its thrown body while knocked down
 var _waiting_become: Array = []     # become's arguments while its figure is built on a thread
+var _route_points: Array[Vector3] = []   # up or down stairs (Pedestrians.stair_route): the points still to walk to
 var _waiting_look := {}             # the look being built for it then
 var _ragdoll_clock := 0.0
 var _last_cry := 0
@@ -328,6 +329,7 @@ func restart_at(new_cell: Vector3i) -> bool:
 		spread *= 0.7
 	if spot == Vector3.INF:
 		return false
+	_route_points.clear()
 	Pedestrians.claim_zebra(self, [], false)
 	_crossing.clear()
 	_on_zebra = false
@@ -565,6 +567,13 @@ func _near_player(metres: float) -> bool:
 
 ## Reached its spot: on to the next cell (or a pause first).
 func _arrive() -> void:
+	if not _route_points.is_empty():
+		# on the stairs: on to the next point; at the end, in the cell it went for
+		_target = _route_points.pop_front()
+		if _route_points.is_empty():
+			_came_from = cell
+			cell = _next_cell
+		return
 	if _entering_station:
 		_entering_station = false
 		town.into_station(self)
@@ -635,6 +644,14 @@ func _shuffle(cells: Array[Vector3i]) -> void:
 ## Sets the next spot in the cell `next`, one with a clear straight way there (nearer the
 ## middle if the first is not); false if there is none.
 func _head_for(next: Vector3i) -> bool:
+	var stairs: PackedVector3Array = town.stair_route(cell, next) if town.has_method("stair_route") else PackedVector3Array()
+	if not stairs.is_empty():
+		# up or down the stairs: point after point (the railings stand beside the way)
+		_route_points.assign(Array(stairs))
+		_route_points.append(_spot_in(next, SPOT_SPREAD * 0.4))
+		_next_cell = next
+		_target = _route_points.pop_front()
+		return true
 	var spread := SPOT_SPREAD * (0.25 if town.is_zebra(next) else 1.0)
 	var side := next - cell
 	for attempt in 4:
@@ -753,8 +770,8 @@ func _turn_on_the_spot(heading: float, delta: float) -> void:
 
 ## Blocked too long: turns round to a spot back where it came from (or another one in its cell).
 func _go_elsewhere() -> void:
-	if _on_zebra:
-		return
+	if _on_zebra or not _route_points.is_empty():
+		return   # on a zebra or on the stairs: it waits (and walks through after a while)
 	if _entering_station:
 		# held up right at the door: in through it all the same
 		_entering_station = false
@@ -831,6 +848,8 @@ func _ground_height(point: Vector3, from_height: float) -> float:
 
 
 func _update_cell() -> void:
+	if not _route_points.is_empty():
+		return   # on the stairs: it is in the cell it went for once it gets there (_arrive)
 	var now := town.cell_of(global_position)
 	if now != cell and town.may_use(now, mobility):
 		_came_from = cell

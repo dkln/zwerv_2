@@ -33,7 +33,7 @@ func _init() -> void:
 		if player._placed and not walkers.people().is_empty():
 			break
 	_check(player._placed, "speler staat")
-	_check_player_collider(player)
+	await _check_player_collider(player)
 	var people := walkers.people()
 	print("voetgangers: %d, beloopbare cellen %d, zebra-overgangen %d" % [people.size(), walkers._walkable_cells.size(),
 			walkers._links.keys().filter(func(cell: Vector3i) -> bool: return walkers.is_zebra(cell)).size()])
@@ -158,11 +158,18 @@ func _check_figures() -> void:
 func _check_player_collider(player: Node3D) -> void:
 	var shape := (player._body.get_child(0) as CollisionShape3D)
 	var box := (shape.shape as BoxShape3D).size
-	var figure := PlayerController._outer_box(player._model)
-	print("speler: figuur %s, botsvorm %s" % [figure.size, box])
-	_check(box.distance_to(figure.size) < 0.02 and shape.position.distance_to(figure.get_center()) < 0.02,
-			"botsvorm van de speler past om de figuur")
-	_check(player._walk_shape.height < figure.size.y, "loopcilinder van de speler niet hoger dan de figuur")
+	# the figure moves a little standing (breathing, the arms): the collider is its box at rest
+	# with room for that (PlayerController.POSE_ROOM_*); the figure stays inside it
+	var collider := AABB(shape.position - box * 0.5, box)
+	var rest: AABB = player._model.rest_bounds()
+	var widest := rest
+	for frame_index in 240:
+		await process_frame
+		widest = widest.merge(PlayerController._outer_box(player._model))
+	print("speler: figuur in rust %s, stilstaand tot %s, botsvorm %s" % [rest, widest, collider])
+	_check(collider.grow(0.02).encloses(widest), "botsvorm van de speler past om de figuur, ook als die beweegt")
+	_check(collider.size.x - rest.size.x < 0.15 and collider.size.z - rest.size.z < 0.2, "en is niet veel groter dan de figuur")
+	_check(player._walk_shape.height < rest.size.y, "loopcilinder van de speler niet hoger dan de figuur")
 
 
 func _check_two_wheeler_parts(two_wheeler: TwoWheeler) -> void:

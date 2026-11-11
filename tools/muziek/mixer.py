@@ -114,8 +114,9 @@ def _play(piece: Piece) -> list:
                     for repeat in range(1, sound.echo_repeats + 1):
                         echo_track.add(at + repeat * sound.echo * beat, samples, gain * sound.echo_level ** repeat)
         drum_gain = piece.part_gains.get("drums", 1.0)
+        kit = instruments.DRUM_KITS[piece.sounds.get("drumstel", "standaard")]
         for hit in bar.hits:
-            drum = instruments.DRUMS[hit.drum]
+            drum = kit[hit.drum]
             at = bar_start + (swung(hit.position, piece.swing) - 1.0) * beat
             tracks.get(f"drum_{hit.drum}", drum.pan).add(at, drum.samples, drum.gain * hit.velocity * drum_gain)
     if not tracks.by_key:

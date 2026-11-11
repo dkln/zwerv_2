@@ -5,7 +5,9 @@ extends RefCounted
 ## them while driving: WARNING_CHANCE), "doordrukken" (it has waited long enough and drives
 ## on: always, see Vehicle IMPATIENT_AFTER), "wheelie" (a rider showing off on its rear wheel,
 ## Wheelie: always, its own WHEELIE_LINES and WHEELIE_KIND_LINES), "aanrijding" (it has just
-## run the player over, Vehicle.shout_after_hit: always, HIT_LINES). Not at every honk: the same speaker at most every
+## run the player over, Vehicle.shout_after_hit: always, HIT_LINES), "dronken" / "agressief" (an
+## idiot at the wheel, Vehicle.maniac: now and then and when it honks, DRUNK_LINES /
+## AGGRESSIVE_LINES). Not at every honk: the same speaker at most every
 ## SPEAKER_PAUSE seconds, anyone at all at most every ANY_PAUSE seconds (but "doordrukken"),
 ## only near what the camera looks at (SHOUT_DISTANCE) and in view. The balloon types the line, holds
 ## HOLD_SECONDS and fades; a new line of the same speaker replaces the one in its balloon.
@@ -21,8 +23,43 @@ const Babble = preload("res://scripts/audio/babble.gd")
 const Iso = preload("res://scripts/camera/iso_camera.gd")
 ## The mood of the babble of a shout (Babble) by its mood; a line ending in "?" asks ("vraag").
 const BABBLE_MOOD := {"wachten": "boos", "waarschuwen": "boos", "doordrukken": "boos", "wheelie": "opgewonden",
-	"aanrijding": "verdrietig", "zwartrijden": "boos", "beboeten": "boos", "spoor": "boos", "gevallen": "verdrietig"}
+	"aanrijding": "verdrietig", "zwartrijden": "boos", "beboeten": "boos", "spoor": "boos", "gevallen": "verdrietig",
+	"dronken": "opgewonden", "agressief": "boos"}
 
+## An idiot at the wheel (Vehicle.maniac), now and then and when it honks: drunk...
+const DRUNK_LINES: Array[String] = [
+	"Hik! Welke baan was ook alweer van mij?",
+	"Ik zie twee wegen... ik neem de middelste!",
+	"Ik ben nog hartstikke nuchter, hoor! Hik!",
+	"Wie heeft die stoep hier neergezet?",
+	"Wat staan die lantaarnpalen scheef vandaag.",
+	"Nog eentje voor onderweg!",
+	"Rood of groen? Allebei mooi!",
+	"Ik rij hartstikke rechtdoor, kijk dan!",
+	"Waarom draait de stad zo?",
+	"Effe naar huis. Waar woon ik ook alweer?",
+	"Proost, Den Haag!",
+	"Ik heb er maar twee op. Of twaalf.",
+	"Is dit de Lange Poten of de lange weg?",
+	"Lekker liedje! Lalala... hik!",
+]
+## ...or aggressive.
+const AGGRESSIVE_LINES: Array[String] = [
+	"Aan de kant, slakken!",
+	"Rechts voorrang? Nooit van gehoord!",
+	"Groen, oranje, wat maakt het uit!",
+	"Ik heb haast, jonguh!",
+	"Rijbewijs bij de Hema gehaald ofzo?",
+	"Gas erop!",
+	"Wie remt, verliest!",
+	"Dit is geen zondagsritje, hè!",
+	"Pak toch de fiets, man!",
+	"Ik moet er nú langs!",
+	"Maximumsnelheid? Dat is een advies, toch?",
+	"Rijden jullie allemaal met de handrem erop?",
+	"Opzij, opzij, opzij!",
+	"Kom op, die ouwe kar kan wel harder!",
+]
 ## Standing still for someone in its way.
 const WAITING_LINES: Array[String] = [
 	"Uit de weg!",
@@ -146,7 +183,8 @@ const BALLOON_LAYER := 9
 const DRIVER_ACCENT := UiStyle.ACCENT
 const READY_META := "shout_ready_at"
 const BALLOON_META := "shout_balloon"
-const MOODS := ["wachten", "waarschuwen", "doordrukken", "wheelie", "aanrijding", "zwartrijden", "beboeten", "spoor", "gevallen"]
+const MOODS := ["wachten", "waarschuwen", "doordrukken", "wheelie", "aanrijding", "zwartrijden", "beboeten", "spoor", "gevallen",
+	"dronken", "agressief"]
 
 static var _balloon_layer: CanvasLayer
 static var _any_ready_at := 0.0
@@ -226,6 +264,10 @@ static func pick_line(kind: String, mood: String) -> String:
 			lines.append_array(OFF_THE_TRACK_LINES)
 		"gevallen":
 			lines.append_array(FALLEN_LINES)
+		"dronken":
+			lines.append_array(DRUNK_LINES)
+		"agressief":
+			lines.append_array(AGGRESSIVE_LINES)
 		"wheelie":
 			lines.append_array(WHEELIE_LINES)
 			for line in WHEELIE_KIND_LINES.get(kind, []):

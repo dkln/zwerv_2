@@ -455,11 +455,16 @@ static func _write_registry(cat: String, registry: Dictionary) -> void:
 const TRUNK_TILES := ["bomen/"]
 ## Raise it when the way colliders are made changes: a library made with an older version gets
 ## its colliders made again (only those: the meshes, atlases and coarse versions stay).
-## 2: trees collide with their trunk only.
-const COLLISION_VERSION := 3
+## 2: trees collide with their trunk only. 4: stairs (STAIR_TILES) their exact shape.
+const COLLISION_VERSION := 4
 const TRUNK_HEIGHT := 1.6
 const TRUNK_COLLIDER_HEIGHT := 2.5
 
+
+## Props that are stairs: they get their exact shape ("trimesh": every tread of 12,5 cm, the
+## railings), not the coarse blocks, which would make a flight of 3 m a wall of 1,5 m (see
+## _block_shapes): the player and the pedestrians walk up them.
+const STAIR_TILES := ["trappen/", "steiger_trap"]
 
 ## Tile name fragments that get an exact collision shape in "auto" mode.
 const EXACT := ["hallen/", "parkeergarage", "overkapping", "pilaren", "zuilengang", "poort", "luchtboog",
@@ -553,6 +558,8 @@ static func _shapes(mesh: Mesh, mode: String, key := "") -> Array:
 			if key.contains(k):
 				mode = "trimesh"
 				break
+	if mode == "blocks" and STAIR_TILES.any(func(fragment: String) -> bool: return key.contains(fragment)):
+		mode = "trimesh"
 	match mode:
 		"block":
 			var b := BoxShape3D.new()

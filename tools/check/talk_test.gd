@@ -151,6 +151,12 @@ func _init() -> void:
 	box._say_choice()
 	page = box._pages[box._page_index]
 	print("  kleingeld: ", page.text)
+	# given: the amount rises over the open box (as a coin picked up), not under its dimming
+	var over_story: Array = hud._numbers_over_story._numbers
+	print("  getal boven het vak: %d (0: deze gaf niets)" % over_story.size())
+	if not over_story.is_empty():
+		_check(str((over_story[0].label as Label).text).begins_with("+€"), "het bedrag boven het gesprek")
+		_check(hud._numbers_over_story.get_index() > box.get_index(), "getekend over het verhaalvak")
 	# let it type out (real seconds) and the scroll settle (FOLLOW_AFTER), then measure in the
 	# box's own design pixels: headless the window is tiny and frames run faster than the
 	# clock, the layout is the same

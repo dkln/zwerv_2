@@ -220,6 +220,9 @@ var _font_body: Font         # JetBrains Mono
 
 var _root: Control
 var _floating_numbers: FloatingNumbers
+var _numbers_over_story: FloatingNumbers   # the same, drawn over the story box
+## How long a number over the story box stays (the text is being read meanwhile).
+const NUMBER_OVER_STORY_SECONDS := 2.2
 var _ui_viewport: SubViewport   # the HUD's own picture (see _build_crt)
 var _player_frame: Control
 var _portrait: PlayerPortrait
@@ -302,6 +305,13 @@ func _ready() -> void:
 	_build_death_screen()
 	_build_shop_screen()
 	_build_story_box()
+	# over the story box: money given in a conversation, seen while it is still open
+	_numbers_over_story = FloatingNumbers.new()
+	_numbers_over_story.name = "ZwevendeGetallenOverVerhaal"
+	_numbers_over_story.font = _font_pixel_bold
+	_numbers_over_story.world_viewport = get_viewport()
+	_numbers_over_story.lifetime = NUMBER_OVER_STORY_SECONDS
+	_root.add_child(_numbers_over_story)
 	_build_crt()
 	# the game menu (Tab/I inventory, J quests, M map; scripts/ui/game_menu.gd)
 	var game_menu: CanvasLayer = preload("res://scripts/ui/game_menu.gd").new()
@@ -709,10 +719,12 @@ func minimap_metres_per_pixel() -> float:
 
 
 ## A number floating up from `world_position` and fading (widgets/floating_numbers.gd): the
-## money picked up, the damage taken.
-func show_floating_number(world_position: Vector3, text: String, colour: Color, font_size := 16) -> void:
-	if _floating_numbers:
-		_floating_numbers.spawn(world_position, text, colour, font_size)
+## money picked up, the damage taken. `over_story`: drawn over the story box and its dimming
+## (money given in a conversation), a while longer.
+func show_floating_number(world_position: Vector3, text: String, colour: Color, font_size := 16, over_story := false) -> void:
+	var numbers := _numbers_over_story if over_story and _numbers_over_story else _floating_numbers
+	if numbers:
+		numbers.spawn(world_position, text, colour, font_size)
 
 
 ## The money in the bottom right corner, to the cent (Dutch: "1.284,50"), so a coin of

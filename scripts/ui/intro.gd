@@ -107,11 +107,11 @@ const CHARACTER_CHANCE := 0.7
 const CHARACTER_SCALE := 2.2
 ## Pixels between the paragraphs of the story (in its picture).
 const PARAGRAPH_GAP := 26
-## Paragraphs of STORY and the moment each comes in at the bottom of the screen: the gulls on
-## the chorus, the handhavers on the breakdown, the way out into the rain on the finale (the
-## last sentence then comes to rest on the final hit). Chosen so that between them the story
-## rolls evenly, at much the same pace throughout (about 3.4 s a paragraph).
-const CRAWL_CUES := {4: IntroTiming.CLIMAX_AT, 8: IntroTiming.DUEL_AT, 10: IntroTiming.CRASH_AT}
+## Paragraphs of STORY and the moment each comes in at the bottom of the screen: the civil
+## servants on the chorus, the tramp himself on the breakdown, the way out into the rain on the
+## finale (the last sentence then comes to rest on the final hit). Chosen so that between them
+## the story rolls evenly, at much the same pace throughout (about 3.1 s a paragraph).
+const CRAWL_CUES := {2: IntroTiming.CLIMAX_AT, 6: IntroTiming.DUEL_AT, 10: IntroTiming.CRASH_AT}
 ## The crawl picture: the size the text is drawn in (pixels), the
 ## width of its far top edge on the screen (share of the bottom edge) and how much of the
 ## screen it takes from the bottom up.

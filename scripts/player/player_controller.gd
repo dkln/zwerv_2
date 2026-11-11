@@ -269,7 +269,7 @@ func _ready() -> void:
 	_model.simple = true   # seen from afar in the town: fewer details
 	_model.figure_scale = FIGURE_SCALE
 	add_child(_model)
-	_figure_box = _outer_box(_model)
+	_figure_box = _with_pose_room(_outer_box(_model))
 	# a soft light over the figure in the dark, so it can be made out (night_glow.gd)
 	var night_light := OmniLight3D.new()
 	night_light.name = "Nachtlicht"
@@ -389,7 +389,7 @@ func pick_up_backpack() -> bool:
 		return false
 	has_backpack = true
 	_model.backpack = true
-	_fit_collider(_model.rest_bounds())
+	_fit_collider(_with_pose_room(_model.rest_bounds()))
 	inventory_changed.emit()
 	return true
 
@@ -1074,6 +1074,11 @@ func _die(cause: String) -> void:
 	_running = false
 	_model.walking = 0.0
 	_model.idle = false
+	# the dramatic cry as it goes down (pijn_<voice>_dood: long, falling, with the echo of a
+	# fighting game's KO); not under water
+	var audio := get_node_or_null("/root/RuimtelijkGeluid")
+	if audio and not _drowning:
+		audio.play_event(global_position + Vector3.UP * 0.8, "pijn_%s_dood" % _voice)
 	if _ragdoll == null and not _drowning:
 		# falls over backwards where it stands
 		var fall := create_tween().set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
@@ -1164,13 +1169,22 @@ func hit_by_moving(mover_velocity: Vector3, from: Vector3) -> bool:
 	Vehicle.last_crash = {"at": contact, "strength": strength, "time": Time.get_ticks_msec() / 1000.0}
 	_knock_down(mover_velocity, impact)
 	_hurt(damage, "aangereden")
-	cry_out(strength >= hard_cry_strength or _dead, contact)
+	if _dead:
+		_thud(contact)   # the hit that kills: its thud; the death cry comes with the fall (_die)
+	else:
+		cry_out(strength >= hard_cry_strength, contact)
 	_invulnerable_left = maxf(_invulnerable_left, knock_down_time)
 	return true
 
 
 ## The thud of the hit and a cry of pain at `at`: the long one if `heavy`, else one of the
 ## short ones, never the same twice in a row.
+func _thud(at: Vector3) -> void:
+	var audio := get_node_or_null("/root/RuimtelijkGeluid")
+	if audio:
+		audio.play_event(at, BODY_HIT_SOUND)
+
+
 func cry_out(heavy: bool, at: Vector3) -> void:
 	var audio := get_node_or_null("/root/RuimtelijkGeluid")
 	if audio == null:
@@ -1353,6 +1367,19 @@ func _build_collider() -> void:
 
 ## Fits the collider (Botsvorm) and the shape it walks with to `box` round the figure (in its
 ## own space): at the start, and again when it puts on a rucksack.
+## The figure is never quite still (breathing, the arms: PlayerModel's idle movement): standing
+## it reaches up to some 3 cm further to the sides and 9 cm further forward than at rest. The
+## collider gets that room round the box at rest (metres; -x/-z on the low side, +x/+z on the
+## high side; the figure faces +z).
+const POSE_ROOM_LOW := Vector3(0.04, 0.0, 0.02)
+const POSE_ROOM_HIGH := Vector3(0.04, 0.02, 0.1)
+
+
+## `rest` (the box round the figure at rest) with the room for its idle movement.
+static func _with_pose_room(rest: AABB) -> AABB:
+	return AABB(rest.position - POSE_ROOM_LOW, rest.size + POSE_ROOM_LOW + POSE_ROOM_HIGH)
+
+
 func _fit_collider(box: AABB) -> void:
 	_figure_box = box
 	(_body_shape.shape as BoxShape3D).size = box.size

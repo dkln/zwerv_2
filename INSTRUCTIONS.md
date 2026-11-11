@@ -198,8 +198,8 @@ niet het verkeer van de hele stad:
   rijstrook tussen `appear_from` (110 m) en `appear_within` van de speler (een bewaarde van
   dezelfde soort, `Vehicle.put_down`, of een nieuwe). Wrakken, trams en treinen, en de Auto en
   SUV uit de scène blijven altijd.
-- Hoeveel: `vehicle_count` (50) maal het aandeel van het uur van de dag en de wijk van de
-  speler, hooguit `most_vehicles` (70); de diensten `services_count` (7) maal alleen het
+- Hoeveel: `vehicle_count` (63) maal het aandeel van het uur van de dag en de wijk van de
+  speler, hooguit `most_vehicles` (112); de diensten `services_count` (7) maal alleen het
   uuraandeel, minstens `fewest_services` (2). Wat er komt: een voertuigsoort (`auto`, `fiets`,
   `brommer`, `vracht`, `bus`, `landbouw`, `klein`, de derde kolom van `MIX`) getrokken met de
   gewichten van het uur en van de wijk waar het verschijnt, dan een van die soort die de
@@ -272,8 +272,15 @@ Voetgangers (node `Voetgangers`, `scripts/world/pedestrians.gd` en `pedestrian.g
 stadsbewoners lopen over de stoep- en pleintiles (`stoep/`, `plein/`, zonder gebouw erop) in de
 buurt van de speler, van cel naar cel, nu en dan even stilstaand; een plek waar ze niet in een
 rechte lijn kunnen komen zonder tegen iets van de stad te lopen (lantaarnpaal, bank, boom)
-kiezen ze niet. Ook dit is een set rond de speler: `count` (60) maal het aandeel van het uur en
-de wijk (`data/drukte.json`), minstens `fewest` (6), hooguit `most` (84). Wie verder dan `reach`
+kiezen ze niet. Ook dit is een set rond de speler: `count` (48) maal het aandeel van het uur en
+de wijk (`data/drukte.json`), minstens `fewest` (6), hooguit `most` (68). Trappen en loopbruggen:
+het dek van een loopbrug (`DECK_GROUND`, `brug/loopbrug*` boven straatniveau) is beloopbaar,
+elke cel op zijn eigen laag; de rechte trappen van de Props-laag (`STAIR_PROPS`, aan elkaar
+geschakeld waar de bovenkant van de een de voet van de volgende is) verbinden de stoep onder
+aan de trap met het dek; een voetganger loopt die route punt voor punt (`stair_route`) en volgt
+de treden; de stoep onder een trap is niet beloopbaar. Trappen hebben daarvoor hun exacte
+botsvorm (`STAIR_TILES` in `library_builder.gd`), zodat ook de speler ze op kan. Controle:
+`tools/check/stairs_test.gd` (de voetbrug over de A12). Wie verder dan `reach`
 (110 m) van de speler raakt, wordt iemand anders (`Pedestrian.become`: andere look, tempo,
 hulpmiddel en tas, zelfde node) op een cel tussen `return_near` (50 m) en `reach`, buiten beeld.
 Wie er `renew_after` (45 tot 110 s) rondloopt, buiten beeld is en verder dan `renew_beyond`
@@ -370,6 +377,8 @@ alle overgeslagen stappen; dan draaien ook wielen, trappers en ledematen niet me
 (`vehicle.gd`) en voetgangers (`pedestrian.gd`) kijken elke 15 stappen opnieuw waar ze zijn, elk
 op een eigen moment. Controle: `tools/check/sight_test.gd`. Elke voetganger heeft een botsvorm zo groot als de
 figuur (`Botsvorm`), net als de speler: de speler loopt er niet doorheen en wrakken botsen erop.
+Die van de speler is de doos om de figuur in rust plus ruimte voor de beweging bij stilstaan
+(ademen, armen: `POSE_ROOM_LOW`/`POSE_ROOM_HIGH`, tot 4 cm opzij en 10 cm naar voren).
 De spelerfiguur staat in de stad op 0,78 (`PlayerController.FIGURE_SCALE`, ongeveer 1,75 m, Willem
 krom 1,55 m), zodat spelers, voetgangers, berijders en voertuigen in verhouding zijn; de
 schermen (portret, karakterkeuze) tekenen hem op ware grootte. Controle:
@@ -385,7 +394,7 @@ wit-oranje striping tussen witte lijnen) hebben
 een sirene (zonder geluid; de enige audio is de muziek van intro en menu en de menugeluiden) en blauwe zwaailichten (`beacon_positions`: links en rechts om beurten, met een blauw
 licht op de omgeving). Ze gaan vanzelf aan en uit (`siren_duty`, `SIREN_ON_SECONDS`,
 `SIREN_OFF_SECONDS`), met `set_siren`/`toggle_siren`, of met S terwijl de volgcamera het voertuig
-volgt. Met de sirene aan (`has_priority`) rijdt het `EMERGENCY_SPEED_FACTOR` (1,4×) de limiet,
+volgt. Met de sirene aan (`has_priority`) rijdt het `EMERGENCY_SPEED_FACTOR` (1,8×) de limiet,
 door rood en langs zebra's, en geeft het alleen voorrang aan een andere sirene, een tram of trein,
 of wie al niet meer kan stoppen (`COMMITTED_SECONDS`). Het andere verkeer houdt er rekening mee:
 op een kruising geeft iedereen voorrang aan een sirene die er binnen `PRIORITY_CLAIM_SECONDS`
@@ -423,7 +432,27 @@ Allemaal zijn het een `Vehicle` (`scripts/vehicles/vehicle.gd`):
   (carrosserie, wielen, trekhaak, lampen; `_outer_box`), ook bij aanhanger en wagons. Als
   wrak heeft de aanhanger een eigen collider die hem volgt.
 - Elkaar ontwijken (`avoids_others`): een auto remt en stopt achter een andere auto op
-  zijn route (tot 40 m vooruit), en geeft op een kruising voorrang aan wie er eerder is.
+  zijn route (tot 40 m vooruit). Op een kruising heeft verkeer van rechts voorrang
+  (`_comes_from_right`: wie haaks van rechts komt), behalve als hij zelf al te dichtbij is om te
+  stoppen (`COMMITTED_SECONDS`); verder gaat wie er eerder is. Verkeerslichten en sirenes gaan
+  voor. Staat een voertuig door file langer dan `jam_seconds` (30 s) stil, dan haalt `Verkeer`
+  het buiten beeld weg. Komt een voertuig binnen `EDGE_MARGIN` (6 m) van de rand van de kaart
+  (de buitenrand van het wegennet), dan verdwijnt het, ook in beeld; daar laat `Verkeer` ook
+  niets verschijnen.
+- Opzij gaan wordt gestuurd, niet geschoven: uitwijken voor een voetganger, aan de kant voor
+  een sirene en inhalen verplaatsen alleen de vooras (`_side_offset` in `_place`); de achteras
+  wordt erachteraan getrokken, zodat de carrosserie draait en de voorwielen meesturen. Hoe snel
+  dat zijwaarts gaat hangt af van de snelheid (`SIDEWAYS_PER_SPEED`): stilstaand niet.
+- Een idioot achter het stuur (`Vehicle.maniac`): `Verkeer` maakt van sommige auto's die erbij
+  komen een dronkaard (`"dronken"`) of een agressieveling (`"agressief"`); de kans per uur geeft
+  `Traffic.maniac_chances`: dronken `maniac_chance` (2%) x 1,5 's nachts (21-5 u, 3%) en x 0,2
+  overdag (0,4%); agressief `maniac_chance` x het kwadraat van de verkeersdrukte van dat uur
+  (in de spits worden mensen boos: ~5%, 's middags ~1%, 's nachts haast nooit). Unit test:
+  `tests/unit/test_maniacs.gd`. Die rijdt `MANIAC_SPEED` (1,3x of 1,6x) de limiet, ziet ander
+  verkeer pas op `MANIAC_LOOKAHEAD` (14 m) en geeft alleen sirenes voorrang, slingert (de vooras
+  stuurt heen en weer, `MANIAC_WEAVE`: twee golven over elkaar, de dronkaard wijd en traag, de
+  agressieveling kort en snel), toetert om niets (`MANIAC_HORN_EVERY`) en roept af en toe iets
+  (`DriverShout`, `DRUNK_LINES` / `AGGRESSIVE_LINES`). Controle: `tools/check/maniac_test.gd`.
 - Botsen: rijden twee auto's toch met minstens `CRASH_SPEED` (5 m/s) op elkaar in, dan worden
   het allebei een `RigidBody3D` (`Wrak`, met hun massa); een schampje in een bocht telt niet. Ze botsen met physics tegen elkaar en tegen de colliders van
   de stad (stoepranden, middenbermen, gebouwen en props in de GridMaps), maken een sprongetje,
@@ -975,6 +1004,8 @@ Projectstructuur
                            clash_test, intro_test, menu_test, mesh_audit, offscreen_audit,
                            overlap_test, rail_stop_test, triangle_count, speech_balloon_test,
                            stutter_profile (wat een frame traag maakt, per onderdeel),
+                           maniac_test (dronken en agressieve bestuurders),
+                           stairs_test (trappen en de voetbrug over de A12),
                            street_lights_test, drown_test, building_fade_test,
                            arrival_test, simple_figure_test,
                            loading_after_swipe_test

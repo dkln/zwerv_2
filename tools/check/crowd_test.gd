@@ -68,6 +68,12 @@ func _init() -> void:
 	day.time_of_day = 8.0
 	walkers._keep_round_player()
 	await _traffic_ticks(traffic, 2)
+	# new people and riders get their figure built on a thread first: a moment
+	for attempt in 60:
+		wanted = traffic.wanted_counts()
+		if walkers._arriving.is_empty() and traffic._town.size() >= wanted.x:
+			break
+		await _traffic_ticks(traffic, 1)
 	wanted = traffic.wanted_counts()
 	var kinds := {}
 	for person in walkers.people():

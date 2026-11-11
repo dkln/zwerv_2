@@ -22,6 +22,8 @@ const UiStyle = preload("res://scripts/ui/ui_style.gd")
 const SPREAD_PIXELS := 14.0
 
 var font: Font
+## Seconds a number lives here (LIFETIME; longer over the story box, where it is read along).
+var lifetime := LIFETIME
 ## The viewport whose camera looks at the world (the HUD itself draws in a SubViewport
 ## without 3D, so it is handed the main one).
 var world_viewport: Viewport
@@ -72,7 +74,7 @@ func _process(delta: float) -> void:
 	for index in range(_numbers.size() - 1, -1, -1):
 		var number: Dictionary = _numbers[index]
 		number.age += delta
-		if number.age >= LIFETIME:
+		if number.age >= lifetime:
 			(number.label as Label).queue_free()
 			_numbers.remove_at(index)
 			continue
@@ -82,7 +84,7 @@ func _process(delta: float) -> void:
 func _place(number: Dictionary) -> void:
 	var label: Label = number.label
 	var camera := (world_viewport if world_viewport else get_viewport()).get_camera_3d()
-	var share: float = number.age / LIFETIME
+	var share: float = number.age / lifetime
 	var at: Vector3 = number.from + Vector3.UP * RISE_METRES * (1.0 - pow(1.0 - share, 2.0))
 	if camera == null or camera.is_position_behind(at):
 		label.visible = false

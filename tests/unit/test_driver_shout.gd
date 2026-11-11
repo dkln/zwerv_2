@@ -24,3 +24,10 @@ func test_own_kind_lines_only_when_waiting_or_warning(test) -> void:
 	var bus_lines: Array = DriverShout.KIND_LINES.bus
 	for attempt in 40:
 		test.check(not bus_lines.has(DriverShout.pick_line("bus", "doordrukken")), "doordrukken zonder eigen bus-teksten")
+
+
+func test_an_idiot_at_the_wheel_has_lines_of_its_own(test) -> void:
+	for attempt in 10:
+		test.check(DriverShout.DRUNK_LINES.has(DriverShout.pick_line("auto", "dronken")), "dronken: een dronken tekst")
+		test.check(DriverShout.AGGRESSIVE_LINES.has(DriverShout.pick_line("auto", "agressief")), "agressief: een agressieve tekst")
+	test.check(DriverShout.BABBLE_MOOD.dronken == "opgewonden" and DriverShout.BABBLE_MOOD.agressief == "boos", "brabbelt in de stemming")

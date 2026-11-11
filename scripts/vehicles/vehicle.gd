@@ -49,7 +49,8 @@ extends Node3D
 ## the corners. It has its own wheels and lamps and counts as part of the vehicle for the
 ## others; in a crash it stays hooked on behind the wreck.
 ## Other vehicles: it keeps behind a vehicle on the cells ahead of it (brakes and stops
-## behind it) and gives way on a crossing to a vehicle that will be there first. If two
+## behind it) and gives way on a crossing to traffic from the right (_comes_from_right; not
+## when it is too close to stop), else to a vehicle that will be there first. If two
 ## vehicles run into each other all the same (at CRASH_SPEED or faster, or one of them
 ## driving without looking; a scrape in a corner is not a crash), they hit each other: each
 ## loses health (`health`, from `max_health`) by the change of speed it takes (DAMAGE_PER_SPEED
@@ -323,7 +324,17 @@ const BRAKE_SLACK := 1.5
 ## braking * SPEED_SETTLE over it), and this gives it the time to close that gap.
 const LIMIT_LEAD := 1.2
 ## With the siren on: how much over the speed limit it may drive.
-const EMERGENCY_SPEED_FACTOR := 1.4
+const EMERGENCY_SPEED_FACTOR := 1.8
+## An idiot at the wheel (`maniac`): times the speed limit it drives; metres it sees other
+## vehicles ahead (against TRAFFIC_LOOKAHEAD); how far its front axle weaves (metres) and in
+## how many seconds (two waves over each other: a slow one and a quick one); the seconds
+## between its shouts (from .. to).
+const MANIAC_SPEED := {"dronken": 1.3, "agressief": 1.6}
+const MANIAC_LOOKAHEAD := 14.0
+const MANIAC_WEAVE := {"dronken": [0.55, 2.9, 0.18, 1.1], "agressief": [0.22, 1.7, 0.12, 0.6]}
+const MANIAC_SHOUT_EVERY := Vector2(5.0, 11.0)
+## Seconds between its horn blasts at nothing in particular (from .. to).
+const MANIAC_HORN_EVERY := Vector2(3.0, 9.0)
 ## Seconds the siren stays on, and off, when it switches by itself (from .. to).
 const SIREN_ON_SECONDS := Vector2(45.0, 100.0)
 const SIREN_OFF_SECONDS := Vector2(20.0, 50.0)
@@ -354,10 +365,17 @@ const YIELD_LONGEST := 20.0
 const YIELD_OFFSET := 1.1
 const PASS_OFFSET := 0.9
 const OFFSET_RATE := 1.2
+## Metres sideways per metre driven at most when it moves over (about 20 degrees of heading):
+## moving over is steering, so standing still it does not move sideways.
+const SIDEWAYS_PER_SPEED := 0.35
 ## On a crossing everyone gives way to a siren that will be there within these seconds.
 const PRIORITY_CLAIM_SECONDS := 6.0
-## A siren still gives way to one that reaches the crossing first within these seconds.
+## A siren still gives way to one that reaches the crossing first within these seconds; and
+## who is that close to a crossing goes on, also before traffic from the right.
 const COMMITTED_SECONDS := 1.5
+## How square across its way another must drive to count as coming from the right (the cosine
+## of its heading against its right: 0.7 is within some 45 degrees).
+const RIGHT_OF_WAY_ACROSS := 0.7
 ## Metres before and after a point of the route over which the front axle's path is
 ## averaged, which rounds off the corners: the wheelbase plus CORNER_ROUNDING_EXTRA, within
 ## these limits.
@@ -496,6 +514,17 @@ var reckless := false
 ## swerving; only the corners of the road it still follows. What it meets, it hits (a crash
 ## whatever the difference in speed): that is the whole point of a stunt.
 var daredevil := false
+## Now and then an idiot at the wheel (Traffic, MANIAC_CHANCE): "dronken" (drunk) or
+## "agressief" (aggressive), "" for a normal driver. It drives far over the limit
+## (MANIAC_SPEED), sees the others late (MANIAC_LOOKAHEAD) and gives way to nobody but a siren,
+## and it weaves: it steers its front axle to and fro over its lane (MANIAC_WEAVE, the rear
+## following as it does in a corner, so the body and the front wheels really steer), and
+## shouts things that fit (DriverShout, its mood) and honks at nothing now and then.
+var maniac := ""
+var _maniac_clock := 0.0
+var _maniac_shout_in := 3.0
+var _maniac_horn_in := 2.0
+var _weave := 0.0                    # metres the front axle is steered right (+) of its route
 var _wreck: RigidBody3D
 var _wreck_clock := 0.0
 var _roll_on_clock := 0.0            # seconds the wreck still rolls on
@@ -659,6 +688,7 @@ func _physics_process(delta: float) -> void:
 	var speed_before := speed
 	_plan()
 	_update_emergency(delta)
+	_update_maniac(delta)
 	var target := _target_speed(delta)
 	_watch_for_gridlock(delta)
 	# the acceleration that brings it to the target speed in about SPEED_SETTLE seconds,
@@ -909,7 +939,7 @@ func _sound_horn(mood := "waarschuwen") -> void:
 	if sound and sound.has_method("play_signal"):
 		sound.play_signal(global_position, horn, 9.0)
 	if not unseen:
-		DriverShout.shout(self, vehicle_kind, mood, _outer_box.end.y + 0.4)
+		DriverShout.shout(self, vehicle_kind, maniac if maniac != "" else mood, _outer_box.end.y + 0.4)
 
 
 ## Its driver shouts something after running the player over (DriverShout, "aanrijding").
@@ -1094,7 +1124,9 @@ func toggle_siren() -> void:
 
 ## Speed limit on `cell` for it (m/s): over it with the siren on.
 func _limit_of(cell: Vector3i) -> float:
-	return network.speed_limit(cell) * (EMERGENCY_SPEED_FACTOR if has_priority() else 1.0)
+	if has_priority():
+		return network.speed_limit(cell) * EMERGENCY_SPEED_FACTOR
+	return network.speed_limit(cell) * float(MANIAC_SPEED.get(maniac, 1.0))
 
 
 ## True if it drives on past `other` as if it were not there: it has the siren on, the
@@ -1189,7 +1221,31 @@ func _update_emergency(delta: float) -> void:
 	else:
 		yielding = false
 	wanted_offset += _dodge
-	_side_offset = move_toward(_side_offset, wanted_offset, OFFSET_RATE * delta)
+	# sideways only as fast as steering allows at this speed: standing still it cannot
+	_side_offset = move_toward(_side_offset, wanted_offset, minf(OFFSET_RATE, speed * SIDEWAYS_PER_SPEED) * delta)
+
+
+## An idiot at the wheel (`maniac`): the weave of its front axle (two waves over each other,
+## less at a crawl, none standing still) and now and then a shout while it is in view.
+func _update_maniac(delta: float) -> void:
+	if maniac == "" or crashed:
+		_weave = 0.0
+		return
+	_maniac_clock += delta
+	var wave: Array = MANIAC_WEAVE.get(maniac, [0.0, 1.0, 0.0, 1.0])
+	var swing := float(wave[0]) * sin(_maniac_clock * TAU / float(wave[1])) \
+		+ float(wave[2]) * sin(_maniac_clock * TAU / float(wave[3]) + 1.3)
+	_weave = swing * clampf(speed / 6.0, 0.0, 1.0)
+	_maniac_horn_in -= delta
+	if _maniac_horn_in <= 0.0:
+		_maniac_horn_in = _random.randf_range(MANIAC_HORN_EVERY.x, MANIAC_HORN_EVERY.y)
+		if not unseen:
+			_sound_horn(maniac)   # (its shout, if any, fits its mood)
+	_maniac_shout_in -= delta
+	if _maniac_shout_in <= 0.0:
+		_maniac_shout_in = _random.randf_range(MANIAC_SHOUT_EVERY.x, MANIAC_SHOUT_EVERY.y)
+		if not unseen:
+			DriverShout.shout(self, vehicle_kind, maniac, _outer_box.end.y + 0.4)
 
 
 ## The nearest emergency vehicle with its siren on that comes up behind it in its lane
@@ -1848,11 +1904,21 @@ func _rounded_route_point(at: float) -> Vector2:
 	return weighted / (_corner_rounding * 2.0)
 
 
-## Puts the vehicle on its route: the front axle on the rounded route, the rear axle pulled
-## straight towards it, the body on the line between them, tilted with the road under the
-## axles. delta 0 = at once (at the start): the rear axle on the route too.
+## Puts the vehicle on its route: the front axle on the rounded route (steered `_weave`
+## metres off it by an idiot at the wheel), the rear axle pulled straight towards it, the body
+## on the line between them, tilted with the road under the axles. delta 0 = at once (at the
+## start): the rear axle on the route too.
 func _place(delta := 0.0) -> void:
 	var front_spot := _rounded_route_point(_distance + _front_axle)
+	# moving over (pulled over for a siren, passing, swerving round someone) and the weave of
+	# an idiot: steered with the front axle, the rear follows, so the body turns and the front
+	# wheels steer as in a real swerve (right of the heading is (-z, x) on the map)
+	var steered_off := _side_offset + _weave
+	if steered_off != 0.0:
+		var ahead := _rounded_route_point(_distance + _front_axle + 1.0) - front_spot
+		if ahead.length_squared() > 0.0001:
+			ahead = ahead.normalized()
+			front_spot += Vector2(-ahead.y, ahead.x) * steered_off
 	var wheelbase := _front_axle - _rear_axle
 	if delta > 0.0:
 		_front_axle_motion = front_spot - _front_axle_spot
@@ -1869,9 +1935,6 @@ func _place(delta := 0.0) -> void:
 	var middle := front_spot - along_body * _front_axle
 	# the height of the road right under its middle (a line between the axles would cut
 	# through the top of a ramp)
-	# pulled over to the right for a siren, or passing those on their left (right of its
-	# heading is (-z, x) on the map)
-	middle += Vector2(-along_body.y, along_body.x) * _side_offset
 	global_position = Vector3(middle.x, _route_point(_distance).y, middle.y)
 	global_basis = Basis.looking_at(-Vector3(along_body.x * wheelbase, rise, along_body.y * wheelbase), Vector3.UP)
 	if leans:
@@ -2160,9 +2223,10 @@ func _turn_wheels(distance_driven: float, delta: float) -> void:
 ## another vehicle will reach first (it gives way).
 func _traffic_speed(index: int, last: int) -> float:
 	var target := INF
+	var lookahead := MANIAC_LOOKAHEAD if maniac != "" else TRAFFIC_LOOKAHEAD
 	for ahead_index in range(index + 1, last + 1):
 		var at := _route_distances[ahead_index]
-		if at - _distance > TRAFFIC_LOOKAHEAD:
+		if at - _distance > lookahead:
 			break
 		var cell := _route_cells[ahead_index]
 		var my_time := (at - _distance) / maxf(speed, 1.0)
@@ -2176,7 +2240,7 @@ func _traffic_speed(index: int, last: int) -> float:
 				continue
 			if other.covers(cell):
 				blocked = true
-			elif crossing and not other.crashed and other.speed > 0.5:
+			elif crossing and not other.crashed and other.speed > 0.5 and (maniac == "" or other.has_priority()):
 				var their_distance := other.distance_to(cell)
 				if their_distance >= 0.0:
 					var their_time := their_distance / maxf(other.speed, 1.0)
@@ -2187,6 +2251,12 @@ func _traffic_speed(index: int, last: int) -> float:
 						blocked = their_time < PRIORITY_CLAIM_SECONDS and not _clears_way_for(other, at - _distance, their_distance)
 					elif has_priority() and not other.has_priority() and other.makes_way:
 						# it gives way to nobody else, but to one that can no longer stop
+						blocked = their_time < COMMITTED_SECONDS and first
+					elif _comes_from_right(other):
+						# traffic from the right goes first, unless it is too late to stop
+						blocked = their_time < CLAIM_SECONDS and not (my_time < COMMITTED_SECONDS and not first)
+					elif other._comes_from_right(self):
+						# it is the one from the right: on, unless the other can no longer stop
 						blocked = their_time < COMMITTED_SECONDS and first
 					else:
 						blocked = their_time < CLAIM_SECONDS and first
@@ -2200,6 +2270,16 @@ func _traffic_speed(index: int, last: int) -> float:
 				target = 0.0
 			break
 	return target
+
+
+## True if `other` comes from its right towards the crossing (it drives across its way from
+## right to left, on its right-hand side): traffic from the right goes first.
+func _comes_from_right(other: Vehicle) -> bool:
+	var forward := Vector2(global_basis.z.x, global_basis.z.z).normalized()
+	var right := Vector2(-forward.y, forward.x)   # forward x up: +z ahead, -x to the right
+	var their_forward := Vector2(other.global_basis.z.x, other.global_basis.z.z).normalized()
+	var towards_them := Vector2(other.global_position.x - global_position.x, other.global_position.z - global_position.z)
+	return towards_them.dot(right) > 0.0 and their_forward.dot(right) < -RIGHT_OF_WAY_ACROSS
 
 
 ## True if the siren `other` comes up behind it on the way to the same cell (it is nearer

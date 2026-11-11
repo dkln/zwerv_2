@@ -90,8 +90,8 @@ const START_CLEAR := 24.0
 const NEAR_REFRESH := 25.0
 
 ## How many vehicles there are at a share of 1.0 (Crowd.traffic_share), and the most.
-@export var vehicle_count := 50
-@export var most_vehicles := 90   # the rush hours round Centraal (1.6 x 1.1 x 50)
+@export var vehicle_count := 63
+@export var most_vehicles := 112   # the rush hours round Centraal (1.6 x 1.1 x 63)
 ## How many of the SERVICES at a share of 1.0, and the fewest.
 @export var services_count := 7
 @export var fewest_services := 2
@@ -109,6 +109,18 @@ const NEAR_REFRESH := 25.0
 @export var renew_beyond := 70.0
 ## One change a tick, eight ticks a second: bringing a vehicle costs some 5 ms, four in one
 ## frame were a stutter.
+## A vehicle that has stood still (a jam) for `jam_seconds` is taken out once it is out of
+## sight, so a jam does not keep the town stuck; a red light lasts far shorter (some 13 s).
+@export var jam_seconds := 30.0
+## The share of the cars coming into the town with an idiot at the wheel (Vehicle.maniac), as
+## maniac_chances works it out per hour: drunk ones that times DRUNK_AT_NIGHT at night (21-5 h)
+## and DRUNK_BY_DAY by day, aggressive ones that times the hour's traffic share squared.
+@export var maniac_chance := 0.02
+## Metres from the edge of the map (the outer bounds of the roads) within which a vehicle
+## drives off it: it is taken out, seen or not.
+const EDGE_MARGIN := 6.0
+const DRUNK_AT_NIGHT := 1.5
+const DRUNK_BY_DAY := 0.2
 @export var tick_seconds := 0.125
 @export var changes_per_tick := 1
 ## Vehicles kept out of the town to be used again at most (the rest are freed).
@@ -130,6 +142,8 @@ var _services: Array[Vehicle] = []      # the same for the services
 var _parked: Array[Vehicle] = []        # taken out, to be used again
 var _entry_of := {}                     # vehicle -> index in MIX (-1: a service)
 var _leaves_at := {}                    # vehicle -> _clock when it may be taken out
+var _still_since := {}                  # vehicle -> _clock since when it stands still
+var _map_edges := Rect2()               # the roads' outer bounds (x, z metres): the map's edge
 var _kind_of_script := {}               # script path -> its vehicle_kind
 var _start_ok := {}                     # cell -> true/false: a good start apart from the others
 var _clock := 0.0
@@ -184,6 +198,11 @@ func _spawn() -> void:
 	_interiors = get_node_or_null(interiors_path)
 	_random.seed = traffic_seed
 	_cells = _network.cells()
+	_map_edges = Rect2()
+	for road_cell: Vector3i in _cells:
+		var corner := Vector2(road_cell.x, road_cell.z) * RoadNetwork.CELL
+		_map_edges = Rect2(corner, Vector2.ONE * RoadNetwork.CELL) if _map_edges.size == Vector2.ZERO \
+			else _map_edges.merge(Rect2(corner, Vector2.ONE * RoadNetwork.CELL))
 	# a shuffle of our own: Array.shuffle() does not take a seed
 	for cell_index in range(_cells.size() - 1, 0, -1):
 		var other_index := _random.randi_range(0, cell_index)
@@ -247,13 +266,21 @@ func _physics_process(delta: float) -> void:
 			var distance := vehicle.global_position.distance_to(player_spot)
 			var too_far := distance > keep_within
 			var long_enough := _clock >= float(_leaves_at.get(vehicle, 0.0)) and distance > renew_beyond
-			if (too_far or long_enough) and _unseen(vehicle.global_position):
+			var jammed := _standing_still_for(vehicle) >= jam_seconds
+			if _at_map_edge(vehicle):
+				# at the edge of the map it drives off it: gone (seen or not)
 				_take_out(vehicle)
 				changes_left -= 1
-	while _town.size() < wanted.x and changes_left > 0:
-		if not _bring_town_vehicle(appear_from, appear_within, true):
-			break
-		changes_left -= 1
+			elif (too_far or long_enough or jammed) and _unseen(vehicle.global_position):
+				_take_out(vehicle)
+				changes_left -= 1
+	# (a try that finds no spot, or a vehicle that waits for its rider, is no reason to stop)
+	var failures := 0
+	while _town.size() < wanted.x and changes_left > 0 and failures < 8:
+		if _bring_town_vehicle(appear_from, appear_within, true):
+			changes_left -= 1
+		else:
+			failures += 1
 	while _services.size() < wanted.y and changes_left > 0:
 		if not _bring_service(appear_from, appear_within, true):
 			break
@@ -370,6 +397,32 @@ func _put_in_town(vehicle: Vehicle, cell: Vector3i) -> void:
 		get_parent().add_child(vehicle)
 	(_services if service else _town).append(vehicle)
 	_leaves_at[vehicle] = _clock + _random.randf_range(renew_after.x, renew_after.y)
+	vehicle.maniac = "" if service else _maniac_for(vehicle)
+
+
+## Now and then an idiot at the wheel of a car (Vehicle.maniac), "" for the rest (see
+## maniac_chances).
+func _maniac_for(vehicle: Vehicle) -> String:
+	if vehicle.vehicle_kind != "auto" or vehicle.emergency:
+		return ""
+	var chances := maniac_chances(Crowd.hour_of(get_parent()))
+	var roll := _random.randf()
+	if roll < chances.x:
+		return "dronken"
+	if roll < chances.x + chances.y:
+		return "agressief"
+	return ""
+
+
+## The chance a car coming in at `hour` has a drunk (x) or an aggressive (y) driver: drunk ones
+## mostly at night (DRUNK_AT_NIGHT, else DRUNK_BY_DAY times maniac_chance); aggressive ones
+## with how busy the roads are (the hour's traffic share squared: in the rush hours people get
+## angry, about 5% of the cars then; a quiet night hardly any).
+func maniac_chances(hour: float) -> Vector2:
+	var night := hour >= 21.0 or hour < 5.0
+	var drunk := maniac_chance * (DRUNK_AT_NIGHT if night else DRUNK_BY_DAY)
+	var busy := Crowd.traffic_hour_share(hour)
+	return Vector2(drunk, maniac_chance * busy * busy)
 
 
 ## Out of the town (out of the tree: not drawn, not driving, no sound), kept to be used
@@ -378,6 +431,7 @@ func _take_out(vehicle: Vehicle) -> void:
 	_town.erase(vehicle)
 	_services.erase(vehicle)
 	_leaves_at.erase(vehicle)
+	_still_since.erase(vehicle)
 	for other in Vehicle.all_vehicles:
 		if other != vehicle:
 			other.forget(vehicle)
@@ -390,6 +444,25 @@ func _take_out(vehicle: Vehicle) -> void:
 
 
 ## Not now: a wreck (until it is towed back), or one that is not in the town.
+## True if `vehicle` has come within EDGE_MARGIN metres of the edge of the map (the outer
+## bounds of the roads): there it drives off the map and is taken out.
+func _at_map_edge(vehicle: Vehicle) -> bool:
+	if _map_edges.size == Vector2.ZERO:
+		return false
+	var spot := Vector2(vehicle.global_position.x, vehicle.global_position.z)
+	return not _map_edges.grow(-EDGE_MARGIN).has_point(spot)
+
+
+## Seconds `vehicle` has stood still (under 0.3 m/s), counted at the ticks; 0 while it moves.
+func _standing_still_for(vehicle: Vehicle) -> float:
+	if vehicle.speed >= 0.3:
+		_still_since.erase(vehicle)
+		return 0.0
+	if not _still_since.has(vehicle):
+		_still_since[vehicle] = _clock
+	return _clock - float(_still_since[vehicle])
+
+
 func _may_take_out(vehicle: Vehicle) -> bool:
 	return vehicle.is_inside_tree() and not vehicle.crashed
 
@@ -481,6 +554,9 @@ func _find_near_cells() -> void:
 	for cell: Vector3i in _cells:
 		var middle := Vector2(cell.x + 0.5, cell.z + 0.5) * RoadNetwork.CELL
 		if middle.distance_to(Vector2(_near_around.x, _near_around.z)) > within:
+			continue
+		# not right at the edge of the map (it would be taken out at once)
+		if _map_edges.size != Vector2.ZERO and not _map_edges.grow(-EDGE_MARGIN - RoadNetwork.CELL).has_point(middle):
 			continue
 		if not _start_ok.has(cell):
 			_start_ok[cell] = _road_fit(cell)

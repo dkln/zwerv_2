@@ -119,11 +119,54 @@ BRIGHT_LEAD = FmPatch("fm_lead_helder", algorithm=4, feedback=0.95, vibrato_dept
     Operator(ratio=2.0, level=0.95, attack=0.004, decay=0.2, sustain=0.6, release=0.08),
     Operator(ratio=1.0, detune_cents=5, level=0.4, attack=0.004, decay=0.6, sustain=0.85, release=0.1),
 ))
+# a buzzing, nasal FM lead in the spirit of the early-90s Mega Drive arcade leads (Yuzo Koshiro's
+# street-beat-'em-up melodies): one pair with heavy feedback (saw-like buzz), one with its
+# modulator at 3x (the nasal edge), a hard attack, vibrato that sets in after the attack
+SNARL_LEAD = FmPatch("fm_lead_snerpend", algorithm=4, feedback=1.35, vibrato_depth=0.22, vibrato_rate=5.8,
+                     vibrato_delay=0.18, operators=(
+    Operator(ratio=1.0, level=1.25, attack=0.002, decay=0.5, sustain=0.8, release=0.07),
+    Operator(ratio=1.0, level=0.9, attack=0.002, decay=0.7, sustain=0.85, release=0.09),
+    Operator(ratio=3.0, level=1.05, attack=0.002, decay=0.15, sustain=0.5, release=0.06),
+    Operator(ratio=1.0, detune_cents=7, level=0.55, attack=0.002, decay=0.7, sustain=0.85, release=0.09),
+))
+# a gritty house/techno bass (the early-90s club bass on the YM2612): a feedback pair whose
+# modulator falls away fast (the growl on every note), and a second pair an octave below (the sub)
+HOUSE_BASS = FmPatch("fm_housebas", algorithm=4, feedback=1.5, operators=(
+    Operator(ratio=1.0, level=1.8, attack=0.001, decay=0.12, sustain=0.3, release=0.03),
+    Operator(ratio=1.0, level=1.0, attack=0.001, decay=0.35, sustain=0.7, release=0.04),
+    Operator(ratio=2.0, level=1.6, attack=0.001, decay=0.06, sustain=0.15, release=0.03),
+    Operator(ratio=0.5, level=0.6, attack=0.001, decay=0.4, sustain=0.75, release=0.04),
+))
+# metallic, percussive stabs: modulators on inharmonic ratios (3.5x, 7x), short decays
+METAL_STAB = FmPatch("fm_stoot_metaal", algorithm=4, feedback=0.6, operators=(
+    Operator(ratio=3.5, level=1.6, attack=0.001, decay=0.08, sustain=0.0, release=0.05),
+    Operator(ratio=1.0, level=1.0, attack=0.001, decay=0.18, sustain=0.1, release=0.06),
+    Operator(ratio=7.0, level=1.0, attack=0.001, decay=0.04, sustain=0.0, release=0.04),
+    Operator(ratio=1.0, detune_cents=5, level=0.6, attack=0.001, decay=0.15, sustain=0.05, release=0.06),
+))
+# a raw, "chemical" acid-like FM lead (early-90s techno): feedback near its top (a raw buzz), a
+# strong modulator that falls away fast on every note (the squelch, like a filter closing), a
+# second carrier detuned against the first (they grind), hardly any vibrato
+ACID_LEAD = FmPatch("fm_lead_zuur", algorithm=4, feedback=1.9, vibrato_depth=0.05, vibrato_rate=6.0,
+                    vibrato_delay=0.3, operators=(
+    Operator(ratio=1.0, level=2.3, attack=0.001, decay=0.16, sustain=0.45, release=0.05),
+    Operator(ratio=1.0, level=0.95, attack=0.001, decay=0.6, sustain=0.85, release=0.07),
+    Operator(ratio=2.0, level=2.0, attack=0.001, decay=0.09, sustain=0.25, release=0.04),
+    Operator(ratio=1.0, detune_cents=14, level=0.6, attack=0.001, decay=0.6, sustain=0.8, release=0.07),
+))
 GUITAR_STRING = FmPatch("gitaar_snaar", algorithm=4, feedback=1.4, operators=(
     Operator(ratio=1.0, level=1.6, attack=0.001, decay=0.4, sustain=0.7, release=0.06),
     Operator(ratio=1.0, level=1.0, attack=0.001, decay=0.8, sustain=0.85, release=0.06),
     Operator(ratio=3.0, level=0.7, attack=0.001, decay=0.05, sustain=0.2, release=0.05),
     Operator(ratio=1.0, detune_cents=8, level=0.5, attack=0.001, decay=0.8, sustain=0.85, release=0.06),
+))
+# a clean guitar string: no drive, a short plectrum click (the high operator, gone in 30 ms) on
+# a warm body; the cabinet's low-pass in _guitar acts as its body filter
+CLEAN_GUITAR_STRING = FmPatch("gitaar_snaar_clean", algorithm=4, feedback=0.6, operators=(
+    Operator(ratio=1.0, level=1.1, attack=0.001, decay=0.3, sustain=0.55, release=0.07),
+    Operator(ratio=1.0, level=1.0, attack=0.001, decay=0.9, sustain=0.7, release=0.08),
+    Operator(ratio=5.0, level=0.9, attack=0.001, decay=0.03, sustain=0.0, release=0.02),
+    Operator(ratio=2.0, detune_cents=6, level=0.35, attack=0.001, decay=0.6, sustain=0.5, release=0.07),
 ))
 BELL = FmPatch("fm_klok", algorithm=4, feedback=0.2, operators=(
     Operator(ratio=3.5, level=1.3, attack=0.001, decay=0.5, sustain=0.0, release=0.4),
@@ -139,17 +182,34 @@ ELECTRIC_PIANO = FmPatch("fm_piano", algorithm=4, feedback=0.3, operators=(
 ))
 
 SOUNDS = {sound.name: sound for sound in (
-    Sound("fm_slapbas", "fm", SLAP_BASS, pan=0.0, gain=0.52),
+    Sound("fm_slapbas", "fm", SLAP_BASS, pan=0.0, gain=0.75),
+    Sound("fm_housebas", "fm", HOUSE_BASS, pan=0.0, gain=0.85),
+    # the house bass's FM voice as a melody: its growl on every note, its sub an octave below
+    # giving the line a thick bottom, with echo
+    Sound("fm_housebas_lead", "fm", HOUSE_BASS, pan=-0.1, gain=0.85, echo=0.75, echo_level=0.3, echo_repeats=3),
+    Sound("fm_stoot_metaal", "fm", METAL_STAB, pan=0.0, gain=0.3, width=8.0),
     Sound("fm_subbas", "fm", SUB_BASS, pan=0.0, gain=0.42),
     Sound("synthwave_pad", "fm", SAW_PAD, pan=0.0, gain=0.21, width=14.0),
-    Sound("synth_brass", "fm", SYNTH_BRASS, pan=0.0, gain=0.18, width=9.0),
+    Sound("synth_brass", "fm", SYNTH_BRASS, pan=0.0, gain=0.27, width=9.0),
     Sound("fm_lead_helder", "fm", BRIGHT_LEAD, pan=-0.12, gain=0.75, echo=0.75, echo_level=0.32, echo_repeats=2),
-    Sound("psg_arp", "psg", pan=0.3, gain=0.22, psg_decay=0.06, psg_sustain=0.3, psg_release=0.03),
+    Sound("fm_lead_snerpend", "fm", SNARL_LEAD, pan=-0.1, gain=0.7, echo=0.75, echo_level=0.34, echo_repeats=3),
+    # the arpeggio's square (psg_arp: a quick attack, falling right away to a low level) as a
+    # melody: loud enough to lead, with echo, no vibrato
+    Sound("psg_lead_arp", "psg", pan=-0.1, gain=1.1, psg_decay=0.06, psg_sustain=0.35, psg_release=0.03,
+          echo=0.75, echo_level=0.32, echo_repeats=3),
+    Sound("fm_lead_zuur", "fm", ACID_LEAD, pan=-0.1, gain=0.6, echo=0.75, echo_level=0.3, echo_repeats=3),
+    Sound("psg_arp", "psg", pan=0.3, gain=0.31, psg_decay=0.06, psg_sustain=0.3, psg_release=0.03),
+    # the melody as chiptune: a bright SN76489 square, hardly any decay, a quick vibrato, echo
+    Sound("psg_lead_fel", "psg", pan=-0.12, gain=0.56, psg_decay=0.12, psg_sustain=0.85, psg_release=0.04,
+          psg_vibrato=0.12, echo=0.75, echo_level=0.28, echo_repeats=2),
     Sound("psg_lead", "psg", pan=-0.2, gain=0.24, psg_decay=0.3, psg_sustain=0.7, psg_release=0.06, psg_vibrato=0.18,
           echo=0.75, echo_level=0.28),
     Sound("overdrive_gitaar", "gitaar", GUITAR_STRING, pan=0.35, gain=0.37, drive=7.0),
     Sound("overdrive_gitaar_solo", "gitaar", GUITAR_STRING, pan=0.4, gain=0.34, drive=9.0, echo=0.75, echo_level=0.2,
           echo_repeats=1),
+    Sound("clean_gitaar", "gitaar", CLEAN_GUITAR_STRING, pan=0.35, gain=0.63, drive=0.8),
+    Sound("clean_gitaar_solo", "gitaar", CLEAN_GUITAR_STRING, pan=0.4, gain=0.6, drive=1.0, echo=0.75,
+          echo_level=0.2, echo_repeats=1),
     Sound("fm_klok", "fm", BELL, pan=0.15, gain=0.32, echo=0.75, echo_level=0.35, echo_repeats=3),
     Sound("fm_piano", "fm", ELECTRIC_PIANO, pan=-0.1, gain=0.38, echo=0.75, echo_level=0.2, echo_repeats=1),
 )}
@@ -178,4 +238,16 @@ def _drum_kit() -> dict:
     }
 
 
-DRUMS = _drum_kit()
+def _dmx_kit() -> dict:
+    """The early-90s drum machine kit (DMX-like) as the Mega Drive played it: the raw kick and a
+    dry snare through the DAC at a low rate; hats, clap, crash and toms as the standard kit."""
+    kit = dict(_drum_kit())
+    kit["kick"] = Drum(megadrive.make_raw_kick(), 0.0, 0.95)
+    kit["snare"] = Drum(megadrive.make_dry_snare(), 0.05, 0.62)
+    return kit
+
+
+## The drum kits a composition can choose (BIJSTELLING "drumstel"; the mixer reads it from the
+## piece's sounds under "drumstel").
+DRUM_KITS = {"standaard": _drum_kit(), "dmx": _dmx_kit()}
+DRUMS = DRUM_KITS["standaard"]

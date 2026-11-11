@@ -56,7 +56,8 @@ de console (6 kHz). Generator: `tools/megadrive/stemmen.py`; renderen met
 | Bestand | Wat | Lengte |
 |---|---|---|
 | `pijn_<stem>_1.ogg` .. `pijn_<stem>_3.ogg` | korte kreten: "ugh!", "hngh!", "uah!" | 0,26 - 0,4 s |
-| `pijn_<stem>_hard.ogg` | een lange kreet bij een zware klap of de dood: "aaargh" | 0,85 - 0,95 s |
+| `pijn_<stem>_hard.ogg` | een lange kreet bij een zware klap: "aaargh" | 0,85 - 0,95 s |
+| `pijn_<stem>_dood.ogg` | de dramatische kreet als de speler neergaat (zoals een KO in een vechtspel): hoog beginnend, lang wegzakkend van "aaaa" via "oh" naar "uh", een brede vibrato en een grote echo (`DEATH_ECHOES`); `PlayerController._die`, niet onder water | 2,2 - 2,4 s |
 | `lichaam_klap.ogg` | de doffe klap van een lichaam dat geraakt wordt | 0,22 s |
 
 Stemmen: `man` (Jos, Martin), `oude_man` (lager, rauwer, meer adem: Ufo Piloot, Willem, Gerrit),

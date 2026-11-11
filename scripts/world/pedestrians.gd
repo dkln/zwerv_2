@@ -37,17 +37,26 @@ extends Node3D
 ## nearer, _station_steps) and is gone through the door (into_station): freed, not kept
 ## resting (someone else comes instead). A way between two cells found blocked on the way
 ## there (a fence, a bike rack: station_way_blocked) is left out of the walk from then on.
+## Stairs and footbridges (_find_stairs): the decks of footbridges (ground tiles DECK_GROUND
+## above street level) are walkable, each cell at its own level; the straight flights of stairs
+## of the Props layer (STAIR_PROPS, chained where the top of one is the foot of the next) link
+## the pavement at their foot to the deck at their top, walked as a route of points up the
+## treads (stair_route, Pedestrian); the pavement under a flight is left out.
 
 const PedestrianScript = preload("res://scripts/world/pedestrian.gd")
 const Crowd = preload("res://scripts/world/crowd.gd")
 const Sight = preload("res://scripts/world/sight.gd")
 ## Ground tile folders people walk on.
 const WALK_GROUND := ["stoep/", "plein/"]
+## Ground tiles above street level that people walk on (footbridge decks), and the props that
+## are straight flights of stairs (not the spiral ones or the fire escapes).
+const DECK_GROUND := ["brug/loopbrug"]
+const STAIR_PROPS := ["trappen/trap_1m", "trappen/trap_3m", "trappen/trap_metaal_3m"]
 
 ## How many walk at a share of 1.0 (Crowd.pedestrian_share), the fewest and the most there are.
-@export var count := 60
+@export var count := 48
 @export var fewest := 6
-@export var most := 84
+@export var most := 68
 @export var reach := 110.0
 @export var return_near := 50.0
 ## Seconds someone stays (drawn between the two) before it goes once unseen and over
@@ -85,6 +94,8 @@ var _walkable := {}          # cell -> true: pavement and square cells
 var _walkable_cells: Array[Vector3i] = []
 var _links := {}             # cell -> Array[Vector3i] of the cells one can walk on to
 var _ride := {}              # cell -> true: bicycle paths (only for mobility scooters)
+var _decks := {}             # Vector2i (x, z) -> the level of the footbridge deck there
+var _stair_routes := {}      # [from cell, to cell] -> PackedVector3Array: the points up or down the stairs
 var _player: Node3D
 var _ground: GridMap
 var _buildings: GridMap
@@ -223,6 +234,10 @@ func cell_middle(cell: Vector3i) -> Vector3:
 
 func cell_of(spot: Vector3) -> Vector3i:
 	var local := _ground.local_to_map(_ground.to_local(spot))
+	# on a footbridge deck (not under it): that cell, at its level
+	var level: int = _decks.get(Vector2i(local.x, local.z), -1)
+	if level > 0 and spot.y > cell_middle(Vector3i(local.x, level, local.z)).y - 1.5:
+		return Vector3i(local.x, level, local.z)
 	return Vector3i(local.x, 0, local.z)
 
 
@@ -492,6 +507,7 @@ func _find_walkable() -> void:
 			continue
 		_walkable[cell] = true
 		_walkable_cells.append(cell)
+	var flights := _find_flights()
 	var sides: Array[Vector3i] = [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1)]
 	# the bicycle paths (bicycles allowed, cars not), for the mobility scooters
 	for road_cell in network.ground_cells():
@@ -518,6 +534,134 @@ func _find_walkable() -> void:
 		for next: Vector3i in _links[cell]:
 			if is_zebra(next) and not _links.has(next):
 				_link_zebra(next, next - cell)
+	_find_stairs(flights)
+
+
+## The route over the stairs from `from` to `to` (cells linked by them): the points to walk
+## to one after the other (the foot, the landings, the top); empty if no stairs link them.
+func stair_route(from: Vector3i, to: Vector3i) -> PackedVector3Array:
+	return _stair_routes.get([from, to], PackedVector3Array())
+
+
+## True if `cell` is a footbridge deck (above street level).
+func is_deck(cell: Vector3i) -> bool:
+	return cell.y > 0 and _decks.get(Vector2i(cell.x, cell.z), -1) == cell.y
+
+
+## The straight flights of stairs of the Props layer (STAIR_PROPS): each [foot, top] (world
+## points on the line up its middle, at the height of its lowest and highest tread, found with
+## a ray on its collider), and the pavement cells under them taken out of the walkable ones.
+func _find_flights() -> Array:
+	var flights := []
+	var props := get_node_or_null(props_path) as GridMap
+	if props == null or props.mesh_library == null:
+		return flights
+	var library := props.mesh_library
+	for prop_cell in props.get_used_cells():
+		var item := props.get_cell_item(prop_cell)
+		var item_name := library.get_item_name(item)
+		if not STAIR_PROPS.any(func(stair: String) -> bool: return item_name.begins_with(stair)):
+			continue
+		var mesh := library.get_item_mesh(item)
+		if mesh == null:
+			continue
+		var bounds := library.get_item_mesh_transform(item) * mesh.get_aabb()
+		var place := props.global_transform * Transform3D(props.get_cell_item_basis(prop_cell), props.map_to_local(prop_cell))
+		# it rises towards its -z end; the treads just inside each end
+		var foot := place * Vector3(0.0, 0.0, bounds.end.z - 0.15)
+		var top := place * Vector3(0.0, 0.0, bounds.position.z + 0.15)
+		var above := place * Vector3(0.0, bounds.end.y + 1.0, 0.0)
+		foot.y = _surface_height(foot, above.y)
+		top.y = _surface_height(top, above.y)
+		if is_nan(foot.y) or is_nan(top.y):
+			continue
+		flights.append([foot, top])
+		# the pavement under it: not to walk on (the stairs stand there)
+		var along := Vector2(top.x - foot.x, top.z - foot.z)
+		var half_width := bounds.size.x * 0.5
+		for cell: Vector3i in _walkable_cells.duplicate():
+			var middle := cell_middle(cell)
+			var from_foot := Vector2(middle.x - foot.x, middle.z - foot.z)
+			var share := from_foot.dot(along) / along.length_squared()
+			var aside := absf(from_foot.cross(along.normalized()))
+			if share > 0.0 and share < 1.0 and aside < half_width + 0.5:
+				_walkable.erase(cell)
+				_walkable_cells.erase(cell)
+	return flights
+
+
+## The decks of the footbridges and the routes over the stairs (see the top): the flights
+## chained into ways up from the pavement to a deck, each linked both ways.
+func _find_stairs(flights: Array) -> void:
+	var library := _ground.mesh_library
+	for cell in _ground.get_used_cells():
+		if cell.y <= 0 or not DECK_GROUND.any(func(deck: String) -> bool: return library.get_item_name(_ground.get_cell_item(cell)).begins_with(deck)):
+			continue
+		_decks[Vector2i(cell.x, cell.z)] = cell.y
+		_walkable[cell] = true
+	var sides: Array[Vector3i] = [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1)]
+	for column: Vector2i in _decks:
+		var deck := Vector3i(column.x, _decks[column], column.y)
+		var ways: Array[Vector3i] = []
+		for side in sides:
+			if is_deck(deck + side):
+				ways.append(deck + side)
+		_links[deck] = ways
+	for flight: Array in flights:
+		var foot: Vector3 = flight[0]
+		if foot.y - cell_middle(cell_of(foot)).y > 1.0:
+			continue   # a flight higher up: reached from the one below it
+		var points := PackedVector3Array()
+		var direction := Vector3(flight[1].x - foot.x, 0.0, flight[1].z - foot.z).normalized()
+		points.append(foot - direction * 0.6)
+		var current: Array = flight
+		for chained in flights.size():
+			points.append(current[1])
+			var next_flight: Array = []
+			for other: Array in flights:
+				var other_foot: Vector3 = other[0]
+				var top: Vector3 = current[1]
+				if other != current and Vector2(other_foot.x - top.x, other_foot.z - top.z).length() < 0.8 and absf(other_foot.y - top.y) < 0.6:
+					next_flight = other
+			if next_flight.is_empty():
+				break
+			current = next_flight
+		var last_top: Vector3 = current[1]
+		var onwards := Vector3(last_top.x - current[0].x, 0.0, last_top.z - current[0].z).normalized()
+		var beyond := last_top + onwards * 1.2
+		# the pavement it is walked onto from: the first walkable cell before its foot
+		var bottom := cell_of(foot - direction * 0.6)
+		for back in [1.5, 2.5, 3.5]:
+			if _walkable.has(bottom):
+				break
+			bottom = cell_of(foot - direction * back)
+		var deck := _deck_at(beyond, last_top.y)
+		if not _walkable.has(bottom) or deck == Vector3i(-1, -1, -1):
+			continue
+		points.append(beyond)
+		_stair_routes[[bottom, deck]] = points
+		var down := points.duplicate()
+		down.reverse()
+		_stair_routes[[deck, bottom]] = down
+		(_links[bottom] as Array).append(deck)
+		(_links[deck] as Array).append(bottom)
+
+
+## The deck cell under `spot` at about `height`, or (-1, -1, -1).
+func _deck_at(spot: Vector3, height: float) -> Vector3i:
+	var local := _ground.local_to_map(_ground.to_local(spot))
+	var level: int = _decks.get(Vector2i(local.x, local.z), -1)
+	if level < 0:
+		return Vector3i(-1, -1, -1)
+	var deck := Vector3i(local.x, level, local.z)
+	return deck if absf(cell_middle(deck).y - height) < 1.5 else Vector3i(-1, -1, -1)
+
+
+## The height of what can be walked on under `spot`, from `from_height` down; NAN if nothing.
+func _surface_height(spot: Vector3, from_height: float) -> float:
+	var query := PhysicsRayQueryParameters3D.create(Vector3(spot.x, from_height, spot.z), Vector3(spot.x, -5.0, spot.z))
+	var hit := get_world_3d().direct_space_state.intersect_ray(query)
+	return NAN if hit.is_empty() else (hit.position as Vector3).y
 
 
 ## True if from a pavement cell a zebra in this direction leads across the road to

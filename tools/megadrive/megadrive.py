@@ -350,6 +350,28 @@ def make_tight_kick() -> numpy.ndarray:
     return _pcm(numpy.tanh(2.6 * (body + click)) * 0.95)
 
 
+def make_raw_kick() -> numpy.ndarray:
+    """The raw Mega Drive kick of the early-90s drum machine sound (DMX-like): short and
+    punchy, little boom, played through the DAC at a low rate so it keeps its grit."""
+    times = numpy.arange(int(0.26 * SAMPLE_RATE)) / SAMPLE_RATE
+    frequency = 52.0 + 150.0 * numpy.exp(-times / 0.022) + 320.0 * numpy.exp(-times / 0.003)
+    body = numpy.sin(2 * numpy.pi * numpy.cumsum(frequency) / SAMPLE_RATE)
+    body *= numpy.exp(-times / 0.12) * numpy.clip(times / 0.001, 0.0, 1.0)
+    click = numpy.diff(_noise(0.26), prepend=0.0) * numpy.exp(-times / 0.002) * 0.45
+    return _pcm(numpy.tanh(3.2 * (body + click)) * 0.95, rate=11000.0)
+
+
+def make_dry_snare() -> numpy.ndarray:
+    """A dry drum-machine snare (DMX-like): a short two-tone crack under a tight noise burst, no
+    room, sampled at a low rate (gritty)."""
+    times = numpy.arange(int(0.2 * SAMPLE_RATE)) / SAMPLE_RATE
+    tone = (numpy.sin(2 * numpy.pi * 185.0 * times) * 0.75 + numpy.sin(2 * numpy.pi * 320.0 * times) * 0.35)
+    tone *= numpy.exp(-times / 0.035)
+    noise = numpy.diff(_noise(0.2), prepend=0.0) * 0.55 + _smooth(_noise(0.2), 2) * 0.55
+    noise *= numpy.exp(-times / 0.06)
+    return _pcm(numpy.tanh(2.0 * (tone + noise)) * 0.88, rate=11000.0)
+
+
 def make_gated_snare(gate_seconds: float = 0.17) -> numpy.ndarray:
     """The 80s gated-reverb snare: a snappy hit, then a dense, bright room tail that holds
     up for `gate_seconds` and is cut off hard by the gate, sampled into the DAC."""

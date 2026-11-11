@@ -15,6 +15,8 @@ that has them; a missing one falls back to the nearest (Score.first_section).
                            first its pulse alone, then with its melody and the fill
     spel_loop              roaming the city: quiet and calm, the merchant's sound in half time,
                            varied like the merchant's loop (theme, lift, chorus, breakdown)
+    deuntje_kaart_start    the map opens (at most 6 s): the first two bars of the composition's
+                           intro (the start), landing on the tonic chord with a crash
     deuntje_nieuwe_missie  a new mission: the motif (first bar of the theme), ending on the tonic
     deuntje_taak_klaar     a task done: a run up the dominant, landing on the tonic
     deuntje_gewonnen       a mission done: the last two bars of the composition (its finish)
@@ -266,6 +268,36 @@ def game_loop(score: Score) -> Piece:
                  part_gains={"piano": 0.8, "drums": 0.75})
 
 
+## The map jingle plays when the game opens the map (scripts/ui/hud.gd MAP_JINGLE): at most this
+## many seconds, tail included.
+MAP_JINGLE_LONGEST = 6.0
+
+
+def map_start(score: Score) -> Piece:
+    """The opening of the composition (its intro: the start of the song) for the opening of the
+    map: two bars of it (one if two would last longer than MAP_JINGLE_LONGEST), then a landing
+    on the tonic chord with a crash, as long as the time left allows."""
+    opening = score.first_section("intro", "thema")
+    bar_seconds = 60.0 / score.tempo * score.beats_per_bar
+    tail = 1.2
+    count = 2 if 2 * bar_seconds + 0.5 * bar_seconds + tail <= MAP_JINGLE_LONGEST else 1
+    bars = [bar.copy() for bar in opening[:count]]
+    landing_beats = max(1.0, min(2.0, (MAP_JINGLE_LONGEST - tail - count * bar_seconds) / (60.0 / score.tempo)))
+    tonic = tonic_chord(score, 62, landing=True)
+    landing = Bar(0, bars[-1].chords, {
+        "lead": [Note(1.0, (tonic[0] + 12,), landing_beats)],
+        "pad": [Note(1.0, tonic_chord(score, 50, landing=True) + (tonic[0],), landing_beats, 0.85)],
+        "bas": [Note(1.0, (tonic[0] - 24,), landing_beats)],
+        "arp": [Note(1.0, (tonic[2] + 12,), 1.0, 0.8)],
+    }, drums(kick="1", crash="1"))
+    # (a part the composition doubles, BIJSTELLING "verdubbel": the landing doubled too)
+    for part in list(score.sounds):
+        if part.endswith("_dubbel") and part[:-len("_dubbel")] in landing.parts:
+            landing.parts[part] = list(landing.parts[part[:-len("_dubbel")]])
+    return Piece("deuntje_kaart_start", score.tempo, score.beats_per_bar, bars + [landing],
+                 score.sounds, loop=False, tail=tail, last_bar_beats=landing_beats)
+
+
 def new_mission(score: Score) -> Piece:
     """The motif with its groove, landing on the tonic (lead, pad, bass and a crash)."""
     opening = motif_bar(score).copy()
@@ -345,7 +377,7 @@ def death(score: Score) -> Piece:
 
 
 ALL = (intro, menu_loop, character_loop, merchant_loop, loading_loop, game_loop,
-       new_mission, task_done, mission_done, level_up, death)
+       map_start, new_mission, task_done, mission_done, level_up, death)
 
 
 def pieces(score: Score) -> list:

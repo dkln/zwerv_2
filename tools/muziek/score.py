@@ -152,6 +152,17 @@ def tune(score: Score, tuning: dict) -> None:
     if not tuning:
         return
     score.tempo = float(tuning.get("tempo", score.tempo))
+    if "drumstel" in tuning:
+        score.sounds["drumstel"] = tuning["drumstel"]   # another drum kit (instruments.DRUM_KITS)
+    for part, sound in tuning.get("klank", {}).items():
+        score.sounds[part] = sound   # the same notes in another sound
+    for part, sound in tuning.get("verdubbel", {}).items():
+        # the same notes also in a second sound (a part of its own: "<part>_dubbel")
+        double = part + "_dubbel"
+        score.sounds[double] = sound
+        for bar in score.bars:
+            if part in bar.parts:
+                bar.parts[double] = list(bar.parts[part])
     for part, octaves in tuning.get("octaaf", {}).items():
         for bar in score.bars:
             if part in bar.parts:
@@ -160,8 +171,11 @@ def tune(score: Score, tuning: dict) -> None:
     # the last bar is the song's ending (its final hits): the groove stays out of it
     for bar in score.bars[:-1]:
         drum_positions = {(hit.drum, round(hit.position, 4)) for hit in bar.hits}
-        has_groove = any(drum == "kick" for drum, _ in drum_positions) and \
-            any(drum == "snare" and _on_beat(position) for drum, position in drum_positions)
+        kicks = {position for drum, position in drum_positions if drum == "kick"}
+        snares = {position for drum, position in drum_positions if drum == "snare"}
+        # a break (kick and snare hitting together, all of them: an unison figure) is no groove
+        is_break = bool(kicks) and kicks == snares
+        has_groove = bool(kicks) and any(_on_beat(position) for position in snares) and not is_break
         is_fill_bar = sum(1 for drum, _ in drum_positions if drum.startswith("tom")) > 0
         if bar.kind in tuning.get("kick_op_elke_tel", ()) and has_groove:
             fill_from = min((hit.position for hit in bar.hits if hit.drum.startswith("tom")), default=beats + 1.0)

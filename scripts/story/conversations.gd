@@ -50,6 +50,7 @@ const GREY_HAIRS := [Color("#8A8680"), Color("#D8D4CC")]
 ## At the station everything costs at least this many times the town's price (station_menu).
 const STATION_MARKUP := 1.3
 const MONEY_COLOUR := Color("#E8B83A")
+const UiSounds = preload("res://scripts/ui/ui_sounds.gd")
 
 static var _street := {}
 static var _counter := {}
@@ -363,8 +364,10 @@ func _ask_for_money() -> bool:
 	var euros := float(generosity.get("bedrag", 0.0))
 	if player and player.has_method("add_money"):
 		player.add_money(euros)
+	# as a coin picked up (LooseChange): its value rising, over the open box, and the chime
 	if hud and hud.has_method("show_floating_number"):
-		hud.show_floating_number(person.global_position + Vector3.UP * 2.0, "+" + _euros(euros), MONEY_COLOUR)
+		hud.show_floating_number(person.global_position + Vector3.UP * 2.0, "+" + _euros(euros), MONEY_COLOUR, 18, true)
+	UiSounds.play(person, "munt", -2.0)
 	return true
 
 
