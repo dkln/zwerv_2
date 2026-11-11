@@ -53,8 +53,14 @@ func test_every_persona_has_everything(test) -> void:
 	test.check(personas.size() >= 9, "alle soorten mensen uit de data (%d)" % personas.size())
 	for persona: String in personas:
 		var data: Dictionary = personas[persona]
-		for key in ["spreker", "begroetingen", "onderwerp", "kleingeld_ja", "kleingeld_nee", "snackbar", "dag", "gulheid"]:
+		for key in ["spreker", "begroetingen", "onderwerp", "kleingeld_ja", "kleingeld_nee", "dag", "gulheid"]:
 			test.check(data.has(key), "%s heeft %s" % [persona, key])
+		# its own topic: a question and the answer, and with a follow-up question its answer too
+		var topic: Dictionary = data.get("onderwerp", {})
+		test.check(str(topic.get("vraag", "")) != "" and str(topic.get("antwoord", "")) != "",
+				"%s: een onderwerp met vraag en antwoord" % persona)
+		if topic.has("doorvraag"):
+			test.check(str(topic.get("doorantwoord", "")) != "", "%s: de doorvraag heeft een antwoord" % persona)
 
 
 func test_the_counter_has_a_menu(test) -> void:
@@ -74,5 +80,7 @@ func test_moods_of_a_persona(test) -> void:
 	talk.persona = "oude_hagenaar"
 	test.check(talk.mood_of("begroeting") == "boos", "de oude Hagenaar groet boos")
 	test.check(talk.mood_of("kleingeld_ja") == "blij", "geven is blij (de standaard)")
+	test.check(talk.mood_of("onderwerp") == "verdrietig", "zijn eigen onderwerp: verdrietig (eigen stemming)")
 	talk.persona = "forens"
-	test.check(talk.mood_of("snackbar") == "opgewonden", "over de snackbar: opgewonden")
+	test.check(talk.mood_of("onderwerp") == "neutraal", "de forens over zijn onderwerp: neutraal (de standaard)")
+	test.check(talk.mood_of("doorvraag") == "verdrietig", "en op de doorvraag (zijn tram gaat): verdrietig")

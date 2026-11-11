@@ -199,6 +199,11 @@ compositie.
 energie per sectie van de intro; de noten buiten de toonsoort (de chromatiek van de componist,
 ter controle). Met `--balans` ook de balans van de partijen.
 
+`tools/muziek/render.sh --test`: de unit tests van de muziektools (`test_muziek.py`): de notatie,
+de bijstellingen (andere klank, verdubbelen, drumstel, four on the floor laat breaks en fills
+met rust), en voor elke compositie: al haar klanken bestaan, alle stukken worden gemaakt, het
+kaartdeuntje blijft onder 6 s, elke noot valt binnen zijn maat.
+
 De bestanden staan in `tools/muziek/`:
 
 - `notation.py`: de notatie van de compositiebestanden;

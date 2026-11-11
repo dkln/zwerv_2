@@ -263,13 +263,14 @@ func _hang(wire_lines: Dictionary, supports: Array) -> Array:
 				neighbours.get_or_add(from_key, []).append([to_key, metres])
 				neighbours.get_or_add(to_key, []).append([from_key, metres])
 				pieces.append([from_key, to_key])
-	var nearest := _two_nearest_supports(support_keys.keys(), neighbours)
+	var support_distances := {}   # [support key, support key] -> metres along the wires
+	var nearest := _two_nearest_supports(support_keys.keys(), neighbours, support_distances)
 	var bend := 4.0 * sag / (typical_span * typical_span)
 	var buildings_map := get_node_or_null(buildings) as GridMap
 	var carrier := {}   # point key -> where the carrier wire is above it
 	for key: Vector3i in positions:
 		var found: Array = nearest.get(key, [])
-		if found.size() < 2:
+		if found.size() < 2 or not _between(found, support_distances):
 			continue
 		var lift := maxf(carrier_rise - bend * found[0][0] * found[1][0], CARRIER_CLEARANCE)
 		var point: Vector3 = positions[key] + Vector3.UP * lift
@@ -312,9 +313,19 @@ static func _point_key(point: Vector3) -> Vector3i:
 	return Vector3i(roundi(point.x * 50.0), floori(point.y), roundi(point.z * 50.0))
 
 
+## True if a point lies between its two nearest supports (`found`: [metres, support key] twice):
+## from one support to the other along the wires is as far as from the point to both. Past
+## the last support both lie on the same side: no carrier wire there.
+static func _between(found: Array, support_distances: Dictionary) -> bool:
+	var span: float = support_distances.get([found[0][1], found[1][1]], -1.0)
+	return span >= 0.0 and absf(span - (float(found[0][0]) + float(found[1][0]))) < 0.05
+
+
 ## For every point the distances along the wires to its two nearest supports (two
-## different ones), within SUPPORT_SEARCH: point key -> Array of [metres, support key].
-func _two_nearest_supports(sources: Array, neighbours: Dictionary) -> Dictionary:
+## different ones), within SUPPORT_SEARCH: point key -> Array of [metres, support key]; and
+## into `support_distances` how far each support lies from each other one it reaches
+## ([support key, support key] -> metres).
+func _two_nearest_supports(sources: Array, neighbours: Dictionary, support_distances := {}) -> Dictionary:
 	var found := {}
 	for source: Vector3i in sources:
 		if not neighbours.has(source):
@@ -330,6 +341,8 @@ func _two_nearest_supports(sources: Array, neighbours: Dictionary) -> Dictionary
 			var key: Vector3i = frontier[closest_index]
 			frontier.remove_at(closest_index)
 			var metres: float = reached[key]
+			if key != source and sources.has(key):
+				support_distances[[source, key]] = metres
 			var labels: Array = found.get_or_add(key, [])
 			labels.append([metres, source])
 			labels.sort_custom(func(first: Array, second: Array) -> bool: return first[0] < second[0])

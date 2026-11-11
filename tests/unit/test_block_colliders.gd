@@ -43,3 +43,15 @@ func test_never_more_than_the_most_blocks(test) -> void:
 		steps.append([Vector3(0, level * 0.25 + 0.125, 0), Vector3(0.2 + (level % 2) * 1.0, 0.25, 0.2)])
 	var shapes := Builder._block_shapes(_boxes(steps))
 	test.check(shapes.size() / 2 <= Builder.MOST_BLOCKS, "hooguit %d blokken (%d)" % [Builder.MOST_BLOCKS, shapes.size() / 2])
+
+
+func test_stairs_get_their_exact_shape(test) -> void:
+	# a flight of steps: the coarse blocks would make a wall of its lower half
+	var steps := []
+	for step in 8:
+		steps.append([Vector3(0, 0.0625 + step * 0.0625, -step * 0.25), Vector3(2, 0.125 + step * 0.125, 0.25)])
+	var mesh := _boxes(steps)
+	var stairs := Builder._shapes(mesh, "blocks", "trappen/trap_1m")
+	test.check(stairs.size() == 2 and stairs[0] is ConcavePolygonShape3D, "een trap: de exacte vorm (treden)")
+	var bench := Builder._shapes(mesh, "blocks", "meubilair/bank")
+	test.check(not bench.is_empty() and bench[0] is BoxShape3D, "iets anders: blokken")

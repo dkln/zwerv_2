@@ -48,7 +48,8 @@ vragen.
    `MAP_JINGLE` in `scripts/ui/hud.gd`); nooit een oud bestand van een vorige compositie laten
    staan. Gebruikt het spel een stuk dat `derive.py` nog niet maakt, voeg het daar toe (`ALL`) en in
    de tabel van `docs/MUZIEK.md`.
-5. **Controleer**: `tools/muziek/render.sh --controle --balans`.
+5. **Controleer**: `tools/muziek/render.sh --test` (de unit tests: alles moet slagen) en
+   `tools/muziek/render.sh --controle --balans`.
    - alles moet "muziek ok" zijn (lengte, -16 LUFS, piek, naad, geen stilte in een lus);
    - noten buiten de toonsoort: vergelijk met de tekst; staat het zo in de tekst, dan blijft het
      (chromatiek van de componist); anders is het een overschrijffout: verbeteren;

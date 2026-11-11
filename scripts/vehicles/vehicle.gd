@@ -1225,6 +1225,16 @@ func _update_emergency(delta: float) -> void:
 	_side_offset = move_toward(_side_offset, wanted_offset, minf(OFFSET_RATE, speed * SIDEWAYS_PER_SPEED) * delta)
 
 
+## How far (metres, right +) an idiot of this kind steers its front axle off its route at
+## `clock` seconds, driving `speed` m/s: MANIAC_WEAVE's two waves, less at a crawl, none standing.
+static func maniac_weave(kind: String, clock: float, speed: float) -> float:
+	if not MANIAC_WEAVE.has(kind):
+		return 0.0
+	var wave: Array = MANIAC_WEAVE[kind]
+	var swing := float(wave[0]) * sin(clock * TAU / float(wave[1])) + float(wave[2]) * sin(clock * TAU / float(wave[3]) + 1.3)
+	return swing * clampf(speed / 6.0, 0.0, 1.0)
+
+
 ## An idiot at the wheel (`maniac`): the weave of its front axle (two waves over each other,
 ## less at a crawl, none standing still) and now and then a shout while it is in view.
 func _update_maniac(delta: float) -> void:
@@ -1232,10 +1242,7 @@ func _update_maniac(delta: float) -> void:
 		_weave = 0.0
 		return
 	_maniac_clock += delta
-	var wave: Array = MANIAC_WEAVE.get(maniac, [0.0, 1.0, 0.0, 1.0])
-	var swing := float(wave[0]) * sin(_maniac_clock * TAU / float(wave[1])) \
-		+ float(wave[2]) * sin(_maniac_clock * TAU / float(wave[3]) + 1.3)
-	_weave = swing * clampf(speed / 6.0, 0.0, 1.0)
+	_weave = maniac_weave(maniac, _maniac_clock, speed)
 	_maniac_horn_in -= delta
 	if _maniac_horn_in <= 0.0:
 		_maniac_horn_in = _random.randf_range(MANIAC_HORN_EVERY.x, MANIAC_HORN_EVERY.y)
@@ -2275,11 +2282,16 @@ func _traffic_speed(index: int, last: int) -> float:
 ## True if `other` comes from its right towards the crossing (it drives across its way from
 ## right to left, on its right-hand side): traffic from the right goes first.
 func _comes_from_right(other: Vehicle) -> bool:
-	var forward := Vector2(global_basis.z.x, global_basis.z.z).normalized()
+	return comes_from_right(Vector2(global_position.x, global_position.z), Vector2(global_basis.z.x, global_basis.z.z),
+		Vector2(other.global_position.x, other.global_position.z), Vector2(other.global_basis.z.x, other.global_basis.z.z))
+
+
+## The rule of _comes_from_right on the map (x, z): one at `my_spot` heading `my_forward`,
+## the other at `their_spot` heading `their_forward`.
+static func comes_from_right(my_spot: Vector2, my_forward: Vector2, their_spot: Vector2, their_forward: Vector2) -> bool:
+	var forward := my_forward.normalized()
 	var right := Vector2(-forward.y, forward.x)   # forward x up: +z ahead, -x to the right
-	var their_forward := Vector2(other.global_basis.z.x, other.global_basis.z.z).normalized()
-	var towards_them := Vector2(other.global_position.x - global_position.x, other.global_position.z - global_position.z)
-	return towards_them.dot(right) > 0.0 and their_forward.dot(right) < -RIGHT_OF_WAY_ACROSS
+	return (their_spot - my_spot).dot(right) > 0.0 and their_forward.normalized().dot(right) < -RIGHT_OF_WAY_ACROSS
 
 
 ## True if the siren `other` comes up behind it on the way to the same cell (it is nearer

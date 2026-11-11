@@ -447,10 +447,12 @@ func _take_out(vehicle: Vehicle) -> void:
 ## True if `vehicle` has come within EDGE_MARGIN metres of the edge of the map (the outer
 ## bounds of the roads): there it drives off the map and is taken out.
 func _at_map_edge(vehicle: Vehicle) -> bool:
-	if _map_edges.size == Vector2.ZERO:
-		return false
-	var spot := Vector2(vehicle.global_position.x, vehicle.global_position.z)
-	return not _map_edges.grow(-EDGE_MARGIN).has_point(spot)
+	return at_map_edge(Vector2(vehicle.global_position.x, vehicle.global_position.z))
+
+
+## True if `spot` (x, z) lies within EDGE_MARGIN metres of the edge of the map (_map_edges).
+func at_map_edge(spot: Vector2) -> bool:
+	return _map_edges.size != Vector2.ZERO and not _map_edges.grow(-EDGE_MARGIN).has_point(spot)
 
 
 ## Seconds `vehicle` has stood still (under 0.3 m/s), counted at the ticks; 0 while it moves.

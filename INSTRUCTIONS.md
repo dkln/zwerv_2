@@ -1014,7 +1014,8 @@ Projectstructuur
                            en uit te breiden; uitleg in data/LEESMIJ.md)
     tests/                 unit tests: kleine onderdelen los, zonder de stad (snel);
                            tests/unit/test_*.gd, elke functie test_* een test;
-                           tools/godot.sh --headless --script tests/run_unit_tests.gd [-- <filter>]
+                           tools/godot.sh --headless --script tests/run_unit_tests.gd [-- <filter>];
+                           de muziektools: tools/muziek/render.sh --test (tools/muziek/test_muziek.py)
       voxgen/              Python-generator van de tiles (zie "Tiles (opnieuw) genereren")
       megadrive/           Python-generator van alle muziek en de verkeersgeluiden in Mega Drive-stijl (FM, PSG, PCM-drums)
     docs/                  Goxel-handleiding (GOXEL.md -> handleiding_goxel.html), MUZIEK.md (de muzikale huisstijl), GELUIDEN.md (geluidseffecten en stemmen)
