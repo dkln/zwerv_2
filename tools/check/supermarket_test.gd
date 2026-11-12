@@ -94,6 +94,14 @@ func _derrek(derreks: Array) -> void:
 	_use()
 	await process_frame
 	_check(shop.carrier() == "karretje" and _player.has_node("Winkelkarretje"), "karretje gepakt, voor de speler")
+	_check(_player._pushed_box.size.z > 0.4, "het karretje botst mee (doos %s)" % [_player._pushed_box.size])
+	_check(shop.people().all(func(person: Node) -> bool: return person.has_node("Botsvorm")), "iedereen binnen heeft een botsvorm")
+	# pushed straight on towards the back wall: the trolley stops there, it never goes into it
+	var start_spot: Vector3 = _player.global_position
+	for step_index in 400:
+		_player._try_move(_player.global_transform.basis.z.normalized() * 0.05)
+	await physics_frame
+	_check(_player._pushed_fits(_player.global_position, _player.rotation.y), "het karretje staat nergens in na doorduwen (%.1f m gelopen)" % start_spot.distance_to(_player.global_position))
 	# three things from one shelf
 	var drinks := (plan.shelves as Array).filter(func(shelf: Dictionary) -> bool: return shelf.category == "drank")
 	var shelf: Dictionary = drinks[0] if not drinks.is_empty() else plan.shelves[0]

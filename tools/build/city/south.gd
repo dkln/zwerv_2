@@ -18,6 +18,7 @@ func _schenkkade() -> void:
 	var dark := {"gf": ["bg_raam", "bg_deur", "bg_winkel_luifel"], "upper": ["verd_raam", "verd_drie_ramen"], "back": ["verd_raam"],
 		"roof_extra": ["dak_schuin_schoorsteen", "dak_schuin_dakkapel"]}
 	ring(72, south, 11, depth, "jaren30", 4, flats)
+	_next_supermarket(72, south, 11, "jaren30")   # on the Schenkkade
 	ring(84, south, 11, depth, "klassiek_donker", 4, dark)
 	_fill(X6 + 3, south, XC - 3, south + depth - 1, "plein/plein_tegels")
 	block(X6 + 4, south, 7, 5, "kantoor_modern", 7, {"front": "N", "gf": ["bg_entree", "bg_glas"], "gf_side": "bg_glas", "gf_corner": "bg_glas_hoek",
@@ -32,6 +33,7 @@ func _schenkkade() -> void:
 		Pr(x * 4 + 2.0, (south + 6) * 4 + 2.0, "straat/bank_beton", "S")
 	ring(XC + 3, south, 10, depth, "klassiek_donker", 4, dark)
 	ring(XC + 14, south, 9, depth, "jaren30", 4, flats)
+	_next_supermarket(XC + 14, south, 9, "jaren30")
 	_fill(XD + 3, south, X_END - 1, south + depth - 1, "natuur/gras")
 	block(XD + 5, south + 1, 7, 3, "appartement_modern", 9, {"front": "N", "gf": ["bg_entree", "bg_glas"], "gf_side": "bg_glas", "gf_corner": "bg_glas_hoek",
 		"upper": ["verd_balkon", "verd_loggia", "verd_glas"], "upper_corner": "verd_balkon_hoek", "roof": "flat"})
@@ -54,6 +56,7 @@ func _schenkkade_west(south: int, depth: int, flats: Dictionary, dark: Dictionar
 	_trees([Vector2i(3, 93), Vector2i(20, 93), Vector2i(24, 94), Vector2i(42, 93), Vector2i(46, 94), Vector2i(64, 93)], ["bomen/plataan", "bomen/linde"])
 	ring(2, south, 10, depth, "klassiek_donker", 4, dark)
 	ring(13, south, 10, depth, "jaren30", 4, flats)
+	_next_supermarket(13, south, 10, "jaren30")
 	_fill(X2 + 3, south, X3 - 2, south + depth - 1, "plein/plein_tegels")
 	block(X2 + 5, south + 1, 4, 5, "kerk_modern", 2, {"front": "E", "gf": ["bg_entree", "bg_dicht"], "gf_side": "bg_dicht", "gf_corner": "bg_entree_hoek",
 		"upper": ["verd_spleet", "verd_kruis"], "upper_corner": "verd_spleet_hoek", "roof": "flat"})
@@ -62,6 +65,7 @@ func _schenkkade_west(south: int, depth: int, flats: Dictionary, dark: Dictionar
 	for x in [X2 + 11, X2 + 17]:
 		Pr(x * 4 + 2.0, (south + depth - 1) * 4 + 2.0, "straat/bank_beton", "N")
 	ring(X3 + 3, south, 7, depth, "jaren30", 4, flats)
+	_next_supermarket(X3 + 3, south, 7, "jaren30")
 	ring(X3 + 11, south, 7, depth, "klassiek_donker", 4, dark)
 	places["schenkkade_west"] = Vector2(36 * 4.0, ZS * 4.0)
 
@@ -81,12 +85,10 @@ func _housing_block(x0: int, z0: int, w: int, styles: Array) -> void:
 			var ring_x := x0 + 1 + column * (ring_width + 1)
 			var ring_z := z0 + 1 + row * (ring_depth + 1)
 			ring(ring_x, ring_z, ring_width, ring_depth, style, 4, _housing_options(style))
-			# a supermarket on the street side of the block's first ring, where its style has
-			# the storefronts (the brands take turns through the town)
-			if row == 0 and column == 0 and _has(style + "/" + style + "_bg_derrek_raam"):
-				var brand: String = SUPERMARKET_BRANDS[_supermarket_count % SUPERMARKET_BRANDS.size()]
-				_supermarket(ring_x, ring_z, mini(ring_width, SUPERMARKET_MOST_CELLS), style, brand, SUPERMARKET_CARTS[brand])
-				_supermarket_count += 1
+			# a supermarket on the street side of the block's rings (the first row, both
+			# columns), where its style has the storefronts (the brands take turns through the town)
+			if row == 0 and _has(style + "/" + style + "_bg_derrek_raam"):
+				_next_supermarket(ring_x, ring_z, ring_width, style)
 	_trees([Vector2i(x0 + 2, z0 + ring_depth + 1), Vector2i(x0 + w - 3, z0 + ring_depth + 1)], ["bomen/linde", "bomen/plataan"])
 
 

@@ -102,6 +102,54 @@ Een **persoon**:
 }
 ```
 
+**Meer gesprekken per soort mens — `varianten`.** Zodat twee forenzen niet hetzelfde zeggen,
+kan elke persoon (ook in `personeel.json`) een lijst `varianten` hebben: andere gesprekken voor
+dezelfde soort. Een variant bevat alleen wat anders is (meestal een eigen `onderwerp`, soms ook
+eigen `begroetingen`, `kleingeld_ja`, `kleingeld_nee`, `dag` of `stemmingen`); de rest komt van
+de persoon zelf. Wie je aanspreekt krijgt de eerste keer willekeurig de persoon zelf of één van
+de varianten, en houdt dat gesprek (praat je nog eens met dezelfde, dan zegt die hetzelfde soort
+dingen). Wie zich voordoet als dezelfde soort (`ambtenaar` en `kantoormens`, `toerist` en
+`toerist_op_straat`, `forens` en `forens_op_straat`) heeft dezelfde varianten.
+
+```json
+"varianten": [
+	{"onderwerp": {"vraag": "Op welke tram wacht u?", "antwoord": "Lijn 17...", "doorvraag": "...", "doorantwoord": "..."}},
+	{"begroetingen": ["Sorry, ik ben een beetje laat."], "onderwerp": {...}, "dag": "..."}
+]
+```
+
+**Een kleine beloning — `beloning`.** Elke vraag in het boompje (het `onderwerp` zelf of een
+vraag onder `verder`) kan een `beloning` hebben: `{"item": "koffie", "kans": 35, "tekst": "Hier,
+neem die tweede beker maar."}`. Krijg je dat antwoord, dan geeft die persoon je met `kans` op 100
+dat item (het verschijnt boven je met een geluidje, zie `Items`), en zegt er `tekst` achteraan.
+Laat de beloning passen bij wat er net gezegd wordt (de man van de markt geeft een appel, de
+forens die zijn trein haalt zijn koffie). Eén kans per persoon; geen ruimte in je zakken, dan
+krijg je niets. `"item": "pinpas"` is een gevonden pinpas met een eigen saldo en pincode (houd de
+kans daarvan klein, 5 tot 10).
+
+**Langere gesprekken — het onderwerp als boompje.** Na het `antwoord` van een `onderwerp` kun je
+de `doorvraag` stellen (antwoord: `doorantwoord`) en/of een van de vragen onder `verder`. Elke
+vraag onder `verder` is `{"vraag", "antwoord", "stemming" (optioneel, de stemming van precies
+dat antwoord), "verder" (optioneel, weer zulke vragen)}`, zo diep als je wilt. Meerdere vragen
+onder één `verder` zijn keuzes: je kiest er één, de andere vervallen. Heeft een antwoord geen
+vervolg meer, dan zegt de ander er "Nog iets?" (`nog_iets`) achter en kun je weer om kleingeld
+vragen of gedag zeggen. Houd elk antwoord kort (onder de ~180 tekens), het moet in het venster passen.
+
+```json
+"onderwerp": {
+	"vraag": "Waar werkt u?", "antwoord": "In Rotterdam...",
+	"verder": [
+		{"vraag": "Vindt ze dat erg?", "antwoord": "...", "verder": [
+			{"vraag": "Noem er eens een.", "antwoord": "Truus...", "stemming": "verdrietig"}
+		]},
+		{"vraag": "Wat doet u in de trein?", "antwoord": "..."}
+	]
+}
+```
+
+**Willekeurige regels.** `begroetingen` is altijd een lijst; ook `kleingeld_ja`, `kleingeld_nee`,
+`dag`, `betrapt` en een `antwoord` mogen een lijst zijn: dan wordt er elke keer één gekozen.
+
 `herkennen` kan hebben: `soort` (de soort mens uit `drukte.json`, bv. `"oudere"`: zo praat
 iedereen op straat als wat hij is), `vervoer` (`"rolstoel"`, `"scootmobiel"`), `haar` (`"kort"`,
 `"lang"`, `"kaal"`, `"pet"`, `"hoed"`), `rok` en `vrouw` en `grijs` (`true`/`false`), `draagt`
@@ -155,8 +203,9 @@ gaat in je zakken (zoals de kroket van missie 1).
 `begroetingen` (met `{snackbar}` of `{zaak}`: de naam van de zaak), `menu` (de goederen:
 `item` uit `scripts/player/items.gd`, `vraag`, `prijs` in euro, `naam` zoals de verkoper
 het noemt), `gekocht` (met `{wat}`), `geen_geld` (met `{prijs}`), `zakken_vol`,
-`tip_vraag` en `tip` (een rij "iets vragen"; weg als er geen `tip` is), `dag` (bij
-weggaan), `nog_iets` (achter wat ze zeggen na een aankoop), `stemmingen` (per soort zin:
+`tip_vraag` en `tip` (een rij "iets vragen"; weg als er geen `tip` is; `tip` mag een lijst
+zijn, dan zegt de verkoper elke keer een andere), `dag` (bij weggaan, ook een tekst of een
+lijst), `nog_iets` (achter wat ze zeggen na een aankoop, een tekst of een lijst), `stemmingen` (per soort zin:
 `begroeting`, `gekocht`, `geen_geld`, `zakken_vol`, `tip`, `dag`).
 
 ## De winkels van Den Haag Centraal — `gesprekken/winkels.json`
@@ -210,6 +259,24 @@ De medewerkers in de winkel (`medewerker_derrek`, `medewerker_alfred_steyhn`) pr
 `personeel.json`, net als de mensen in het stadhuis (`receptioniste`, `beveiliger`,
 `ambtenaar`, `raadslid`, `burgemeester`).
 
+## Omroepen in de supermarkt — `gesprekken/omroep_supermarkt.json`
+
+Net als op het station (`scripts/world/station.gd`) wordt er in de supermarkten af en toe iets
+omgeroepen (`scripts/world/supermarket_announcer.gd`): de muzak gaat zachter, de jingle van de
+keten klinkt (`assets/audio/muziek/jingle_derrek.ogg`, `jingle_alfred_steyhn.ogg`, gemaakt door
+`tools/muziek/`), dan praat de omroepstem door de luidsprekers en verschijnt de tekst onderin beeld.
+
+| veld | wat |
+|---|---|
+| `eerste` | na hoeveel seconden binnen (van, tot) het eerste bericht komt |
+| `tussen` | hoeveel seconden (van, tot) het na een bericht stil blijft |
+| `aanbieding_kans` | hoe vaak het een aanbieding is (0..1); anders een mededeling |
+| `mededelingen` | voor beide ketens; `{kassa}` een kassanummer van dit filiaal, `{gang}` een gangpad (1-6) |
+| `ketens.<keten>.stem` | de brabbel van de omroeper: `vrouw`, `man` of `oude_man` |
+| `ketens.<keten>.aanbieding` | een product uit een schap van dít filiaal: `{naam}` (zoals op het schap) en `{prijs}` (de prijs van dit filiaal) |
+| `ketens.<keten>.bonus` | (ALFRED STEYHN) als dat product in dit filiaal in de BONUS is |
+| `ketens.<keten>.mededelingen` | mededelingen van de keten zelf |
+
 ## Eruit gegooid worden — `gesprekken/uitzetten.json`
 
 Wie in een binnenruimte te vaak iets doet wat niet mag, wordt eruit gegooid: de swipe, en de
@@ -238,7 +305,7 @@ een groter getal komt vaker voor, `0` nooit; een soort die niet genoemd wordt te
 
 | deel | wat |
 |---|---|
-| `uren` | momenten van de dag, op volgorde van `uur` (0 tot 24). Elk: `voetgangers` en `verkeer` (hoe druk: 1,0 = normaal, 0,1 = bijna niemand; het verkeer gaat in de spits tot 1,6), `station` (hoeveel mensen er bij Den Haag Centraal uit de deuren komen en erin verdwijnen: 1,0 = de spits, 0 = niemand), `mensen` (welke soorten mensen er dan zijn) en `voertuigen` (welke voertuigsoorten). Tussen twee momenten loopt het geleidelijk over. |
+| `uren` | momenten van de dag, op volgorde van `uur` (0 tot 24). Elk: `voetgangers` en `verkeer` (hoe druk: 1,0 = normaal, 0,1 = bijna niemand; het verkeer gaat in de spits tot 1,7; de spits zijn twee momenten met dezelfde waarden, zodat hij een tijd aanhoudt), `station` (hoeveel mensen er bij Den Haag Centraal uit de deuren komen en erin verdwijnen: 1,0 = de spits, 0 = niemand), `mensen` (welke soorten mensen er dan zijn) en `voertuigen` (welke voertuigsoorten). Tussen twee momenten loopt het geleidelijk over. |
 | `gebieden` | per wijk (de namen die de HUD linksonder toont, bv. `"Centraal Station"`, `"Binckhorst"`, `"A12"`): `voetgangers` en `verkeer` keer zoveel als het uur zegt, en `mensen` en `voertuigen` als extra gewichten. Een wijk die er niet in staat telt als 1. |
 | `voertuig_basis` | hoe vaak elke voertuigsoort voorkomt voor uur en wijk erbij komen. |
 | `mensen` | de soorten mensen (zie hieronder). |
@@ -264,3 +331,23 @@ Een nieuwe soort mens: voeg hem toe onder `mensen` en geef hem een gewicht bij d
 waarop hij buiten is (en eventueel bij een paar `gebieden`), en een persoon in
 `gesprekken/voorbijgangers.json` met `"herkennen": {"soort": "<naam>"}` en zijn `namen`, zodat hij
 praat als wat hij is. Iemand in dienst (`agent`, `handhaver`) praat uit `personeel.json`.
+
+## Automaten, blikjes en pinpassen (geen JSON)
+
+De teksten en bedragen van de automaten staan niet in een JSON-bestand maar in de code (zie
+ook "Automaten, blikjes en pinpassen" in `INSTRUCTIONS.md`):
+
+| wat | waar |
+|---|---|
+| de spullen `blikje`, `pinpas`, `los_kaartje` (naam, tekst) | `scripts/player/items.gd` |
+| statiegeld per blikje of fles (€ 0,15) | `DEPOSIT` in `scripts/world/deposit_return.gd` |
+| prijs OV-chipkaart, startsaldo, ritprijs, los kaartje, opwaardeerbedragen | `scripts/world/ov_card.gd` |
+| saldo van een gevonden pinpas (€ 8 - € 60), de raadsels bij de pincode, de namen op de pas | `scripts/player/bank_cards.gd` (`BALANCE_RANGE`, `DIGIT_RIDDLES`, `OWNERS`) |
+| bedragen bij de geldautomaat (€ 5, 10, 20, 50), pogingen voor de pas wordt ingeslikt (3) | `AMOUNTS` in `scripts/ui/machines/cash_machine_screen.gd`, `MOST_TRIES` in `bank_cards.gd` |
+| hoeveel prullenbakken een blikje hebben, hoe vaak er een bijkomt | `can_share`, `most_cans`, `refill_seconds` in `scripts/world/litter_bins.gd` |
+| hoeveel pinpassen er op straat liggen | `count`, `near`, `reach` in `scripts/world/lost_bank_cards.gd` |
+
+Een raadsel bij de cijfers (`DIGIT_RIDDLES`) moet echt dat cijfer opleveren: rij 0 is het
+cijfer 0, rij 8 het cijfer 8 ("de poten van een spin"). Controleer na een wijziging met
+`tools/godot.sh --headless --script tools/check/machines_test.gd` (die rekent elk raadsel na).
+In een gesprek een pinpas geven: `speler.give_found_bank_card()`; een blikje: het item `blikje`.

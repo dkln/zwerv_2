@@ -70,6 +70,9 @@ const KINDS := {
 		"at": Vector3(-1500.0, 0.0, 900.0), "zoom": 16.0, "location": "Stadhuis"},
 }
 const SUPERMARKET_SCENE := "res://scenes/binnen/supermarkt.tscn"
+## The muzak of the supermarkets (tools/muziek/derive.py), soft in the background (GameHud
+## MUZAK_SOFTER_DB): every branch plays one of them, chosen by its seed.
+const SUPERMARKET_MUZAK := ["supermarkt_muzak_1.ogg", "supermarkt_muzak_2.ogg", "supermarkt_muzak_3.ogg"]
 const SOUND_FOLDER := "res://assets/audio/geluiden/"
 const DOOR_IN_SOUND := "deur_binnen"
 const DOOR_OUT_SOUND := "deur_buiten"
@@ -310,7 +313,7 @@ func enter(bar: Dictionary) -> void:
 	var swipe := SwipeTransition.swipe(get_tree())
 	await swipe.covered
 	var kind: String = bar.get("kind", "snackbar")
-	_set_music(String(KINDS[kind].get("music", "")))
+	_set_music(_music_of(bar))
 	_ambience.set_place(String(AMBIENCE_OF.get(kind, "winkel")))
 	_set_location(String(KINDS[kind].get("location", "")))
 	_interior = interior_of(kind)
@@ -549,6 +552,14 @@ func _rest(interior: Node3D, resting: bool) -> void:
 		return
 	interior.visible = not resting
 	interior.process_mode = Node.PROCESS_MODE_DISABLED if resting else Node.PROCESS_MODE_INHERIT
+
+
+## The loop inside the way in `way_in`: its kind's "music", a supermarket its branch's muzak.
+func _music_of(way_in: Dictionary) -> String:
+	var settings: Dictionary = KINDS[String(way_in.get("kind", "snackbar"))]
+	if String(settings.get("scene", "")) == SUPERMARKET_SCENE:
+		return String(SUPERMARKET_MUZAK[absi(int(way_in.get("seed", 0))) % SUPERMARKET_MUZAK.size()])
+	return String(settings.get("music", ""))
 
 
 func _set_music(file: String) -> void:

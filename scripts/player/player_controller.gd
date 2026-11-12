@@ -95,6 +95,7 @@ const GroundShadow = preload("res://scripts/effects/ground_shadow.gd")
 const PlayerCharacter = preload("res://scripts/player/player_character.gd")
 const PlayerModel = preload("res://scripts/player/player_model.gd")
 const Items = preload("res://scripts/player/items.gd")
+const UiSounds = preload("res://scripts/ui/ui_sounds.gd")
 const WaterSplash = preload("res://scripts/effects/water_splash.gd")
 const Iso = preload("res://scripts/camera/iso_camera.gd")
 const Conversations = preload("res://scripts/story/conversations.gd")
@@ -218,6 +219,11 @@ var _figure_box := AABB(Vector3(-0.3, 0.0, -0.2), Vector3(0.6, 1.9, 0.4))
 var _body: AnimatableBody3D
 var _body_shape: CollisionShape3D
 var _walk_shape := CylinderShape3D.new()
+## What the player pushes before them (a shopping trolley, scripts/world/supermarket.gd): its box
+## in the player's own space (feet at y = 0, facing +z), tested with the figure wherever it
+## walks or turns (_fits, _turn_to); an empty AABB without one.
+var _pushed_box := AABB()
+var _pushed_shape := BoxShape3D.new()
 var _hud: Node
 var _ground: GridMap
 var _buildings: GridMap
@@ -373,6 +379,8 @@ func has_room_for(item_id: String) -> bool:
 
 
 ## Adds items; false (and nothing added) if there is no room for them: the pockets full.
+## Getting something shows: its name rises over the player in the colour of its rarity (over
+## the story box too, for what a conversation gives), with the "item" chime.
 func add_item(item_id: String, count := 1) -> bool:
 	if not has_room_for(item_id):
 		if _hud and _hud.has_method("show_floating_number"):
@@ -380,6 +388,11 @@ func add_item(item_id: String, count := 1) -> bool:
 		return false
 	inventory[item_id] = int(inventory.get(item_id, 0)) + count
 	inventory_changed.emit()
+	if _hud and _hud.has_method("show_floating_number"):
+		var item_name := String(Items.item(item_id).get("name", item_id))
+		var label := "+ %s" % item_name if count == 1 else "+ %d x %s" % [count, item_name]
+		_hud.show_floating_number(global_position + Vector3.UP * 2.1, label, Items.rarity_colour(item_id), 15, true)
+	UiSounds.play(self, "item", -3.0)
 	return true
 
 
@@ -393,6 +406,13 @@ func pick_up_backpack() -> bool:
 	_fit_collider(_with_pose_room(_model.rest_bounds()))
 	inventory_changed.emit()
 	return true
+
+
+## A found bank card in the pockets ("pinpas"): its own account, a modest balance, a PIN and
+## the riddle of it (scripts/player/bank_cards.gd); false if the pockets are full.
+func give_found_bank_card() -> bool:
+	var bank_cards: GDScript = load("res://scripts/player/bank_cards.gd")
+	return bool(bank_cards.give_found_bank_card(self))
 
 
 func drop_item(item_id: String) -> void:
@@ -476,7 +496,7 @@ func _walk(delta: float) -> void:
 	var backwards := false
 	if controls == "tank":
 		# turn round the own axis; forwards or backwards the way it faces
-		rotation.y -= input.x * deg_to_rad(turn_speed) * delta
+		_turn_to(rotation.y - input.x * deg_to_rad(turn_speed) * delta)
 		if input.y != 0.0:
 			backwards = input.y > 0.0
 			direction = Vector3(sin(rotation.y), 0.0, cos(rotation.y)) * (-1.0 if backwards else 1.0)
@@ -515,7 +535,7 @@ func _walk(delta: float) -> void:
 			_water_push = 0.0
 		if controls != "tank":
 			var facing := atan2(direction.x, direction.z)
-			rotation.y = lerp_angle(rotation.y, facing, 1.0 - exp(-delta / maxf(turn_time, 0.001)))
+			_turn_to(lerp_angle(rotation.y, facing, 1.0 - exp(-delta / maxf(turn_time, 0.001))))
 	else:
 		_water_push = 0.0
 	if _airborne:
@@ -762,7 +782,7 @@ func _ground_height(point: Vector3, from_height: float, drop := -1.0) -> float:
 ## True if nothing of the town stands in the figure's way with its feet at `feet`: no
 ## collider, and no vehicle (_vehicle_in_the_way: the traffic has no colliders, only its
 ## footprints, so without this you walked straight through a car standing in a queue).
-func _fits(feet: Vector3) -> bool:
+func _fits(feet: Vector3, yaw := NAN) -> bool:
 	if _vehicle_in_the_way(feet):
 		return false
 	var space := get_world_3d().direct_space_state
@@ -771,7 +791,44 @@ func _fits(feet: Vector3) -> bool:
 	query.collision_mask = TOWN_LAYER
 	query.exclude = _own_bodies()
 	query.transform = Transform3D(Basis.IDENTITY, feet + Vector3.UP * (max_step + 0.05 + _walk_shape.height * 0.5))
-	return space.intersect_shape(query, 1).is_empty()
+	if not space.intersect_shape(query, 1).is_empty():
+		return false
+	return _pushed_fits(feet, rotation.y if is_nan(yaw) else yaw)
+
+
+## Pushes `box` (in the player's own space: a shopping trolley) before the figure from now on,
+## so it bumps into shelves and people as the figure does; an empty AABB lets go of it.
+func set_pushed_box(box: AABB) -> void:
+	_pushed_box = box
+	# its bottom clear of the floor, as the figure's walk shape (steps and kerbs)
+	var bottom := maxf(box.position.y, max_step + 0.05)
+	_pushed_shape.size = Vector3(box.size.x, maxf(box.end.y - bottom, 0.1), box.size.z)
+
+
+## True if nothing of the town is where the pushed box (set_pushed_box) would be with the feet
+## at `feet` and the figure turned to `yaw`; true without one.
+func _pushed_fits(feet: Vector3, yaw: float) -> bool:
+	if _pushed_box.size == Vector3.ZERO:
+		return true
+	var bottom := maxf(_pushed_box.position.y, max_step + 0.05)
+	var centre := _pushed_box.get_center()
+	centre.y = bottom + _pushed_shape.size.y * 0.5
+	var frame := Transform3D(Basis(Vector3.UP, yaw), feet)
+	var query := PhysicsShapeQueryParameters3D.new()
+	query.shape = _pushed_shape
+	query.collision_mask = TOWN_LAYER
+	query.exclude = _own_bodies()
+	query.transform = Transform3D(frame.basis, frame * centre)
+	return get_world_3d().direct_space_state.intersect_shape(query, 1).is_empty()
+
+
+## Turns the figure to `yaw`, unless what it pushes (set_pushed_box) would turn into something
+## that it was clear of (stuck in it already, it may turn out of it).
+func _turn_to(yaw: float) -> void:
+	if _pushed_box.size != Vector3.ZERO and not _pushed_fits(global_position, yaw) \
+			and _pushed_fits(global_position, rotation.y):
+		return
+	rotation.y = yaw
 
 
 ## The surface of the water under `point` (searched from a step above the figure to well

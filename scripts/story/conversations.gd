@@ -24,6 +24,15 @@ extends RefCounted
 ##   title on a name plate of their own colours, an emblem on the portrait, a lower voice).
 ##   A fare dodger talking to the conductor chasing them is caught: "betrapt", and the fine
 ##   (the station's fine_the_player).
+## Variants ("varianten" of a person, a shop or someone on duty): other conversations for the
+## same kind of person, each overriding some fields (another topic, other lines); every person
+## gets one of them (or the base) at random the first time you talk to them and keeps it
+## (VARIANT_META), so two people of the same kind can say quite different things.
+## A topic ("onderwerp") is a little tree: after its "antwoord" you can ask its "doorvraag"
+## (answered by "doorantwoord") and/or one of its "verder" (each {"vraag", "antwoord",
+## "stemming", "verder"}, as deep as you like); lines may be a list, one is picked at random.
+## A node may hold a "beloning" (_reward_for): now and then they give you something that fits
+## what they just said (a sandwich, a can, food; very rarely a bank card they found).
 ## Asked topics are not offered again; goodbye ends it. Every line has a mood: they babble
 ## in it, in their voice (Babble, the story box) and their body moves with it (Emote: angry
 ## shakes, happy hops, sad leans forward); `finish` puts them back as they were.
@@ -49,6 +58,13 @@ const OFFICIAL_ROLES := ["conducteur", "handhaver", "agent", "medewerker_derrek"
 const FALLBACK_PERSONA := "forens"
 const FALLBACK_MOOD := "neutraal"
 const GAVE_META := "gaf_kleingeld"
+## Which conversation (0: the base, n: "varianten"[n - 1]) a person was given, kept on them.
+const VARIANT_META := "gesprek_variant"
+## Set on someone once they have had their chance at giving a reward ("beloning").
+const REWARD_META := "gaf_beloning"
+const ItemTable = preload("res://scripts/player/items.gd")
+## The player's method that gives a new lost bank card (its own balance, PIN and riddle).
+const BANK_CARD_METHOD := "give_found_bank_card"
 ## Hair that makes someone look old (TownsfolkFigure.HAIRS: grey, white).
 const GREY_HAIRS := [Color("#8A8680"), Color("#D8D4CC")]
 ## At the station everything costs at least this many times the town's price (station_menu).
@@ -67,6 +83,8 @@ var player: Node
 var hud: Node
 var _asked := {}
 var _random := RandomNumberGenerator.new()
+## The lines of this conversation: the person's data with their variant over it (_data).
+var _chosen_data := {}
 
 
 func _init(talking_to: Node3D, the_player: Node, the_hud: Node) -> void:
@@ -219,12 +237,79 @@ static func name_of(someone: Node, data: Dictionary) -> String:
 	return str(data.get("spreker", ""))
 
 
+## The lines of this conversation: the base data of who you talk to with the variant they
+## were given over it (variants_of, VARIANT_META), chosen once.
 func _data() -> Dictionary:
+	if not _chosen_data.is_empty():
+		return _chosen_data
+	var base: Dictionary
 	if is_shop():
-		return shop_data_of(person)
-	if persona in OFFICIAL_ROLES:
-		return (staff().get("personen", {}) as Dictionary).get(persona, {})
-	return personas().get(persona, personas().get(FALLBACK_PERSONA, {}))
+		base = shop_data_of(person)
+	elif persona in OFFICIAL_ROLES:
+		base = (staff().get("personen", {}) as Dictionary).get(persona, {})
+	else:
+		base = personas().get(persona, personas().get(FALLBACK_PERSONA, {}))
+	var variants := variants_of(base)
+	var variant_index := -1
+	if person and person.has_meta(VARIANT_META):
+		variant_index = int(person.get_meta(VARIANT_META))
+	if variant_index < 0 or variant_index >= variants.size():
+		variant_index = _random.randi() % variants.size()
+		if person:
+			person.set_meta(VARIANT_META, variant_index)
+	_chosen_data = variants[variant_index]
+	return _chosen_data
+
+
+## Every conversation someone with `base` data can have: the base itself, then each of its
+## "varianten" laid over it (a field of the variant replaces the base's; "stemmingen" are
+## merged, the variant's winning).
+static func variants_of(base: Dictionary) -> Array:
+	var variants: Array = [base]
+	for override: Variant in base.get("varianten", []):
+		if not override is Dictionary:
+			continue
+		var merged := base.duplicate()
+		merged.erase("varianten")
+		for field: String in override:
+			merged[field] = override[field]
+		if override.has("stemmingen"):
+			var moods: Dictionary = (base.get("stemmingen", {}) as Dictionary).duplicate()
+			moods.merge(override["stemmingen"], true)
+			merged["stemmingen"] = moods
+		variants.append(merged)
+	return variants
+
+
+## A line of the data: a text, or a list of texts of which one is picked at random.
+func _pick(value: Variant, fallback := "") -> String:
+	if value is Array:
+		return str(value[_random.randi() % value.size()]) if not value.is_empty() else fallback
+	return fallback if value == null else str(value)
+
+
+## What you can ask after the answer of topic node `node`: its "doorvraag" (as a node with
+## "doorantwoord" for its answer) and its "verder", each {"vraag", "antwoord", ...}.
+static func follow_ups_of(node: Dictionary) -> Array:
+	var follow_ups: Array = []
+	if node.has("doorvraag"):
+		follow_ups.append({"vraag": node.doorvraag, "antwoord": node.get("doorantwoord", "")})
+	for child: Variant in node.get("verder", []):
+		if child is Dictionary and (child as Dictionary).has("vraag"):
+			follow_ups.append(child)
+	return follow_ups
+
+
+## Every answer in the tree of topic `node` (itself and all follow-ups), each a list of the
+## texts it may be: for checks of how long they get.
+static func answers_in(node: Dictionary) -> Array:
+	var found: Array = []
+	if node.has("antwoord"):
+		var answer: Variant = node.antwoord
+		found.append(answer if answer is Array else [answer])
+	for child: Dictionary in follow_ups_of(node):
+		found.append_array(answers_in(child))
+	return found
 
 
 ## The mood of a kind of line ("begroeting", "onderwerp", "kleingeld_ja", ...): the person's
@@ -245,8 +330,7 @@ func opening() -> Array:
 		return [_with_mood({"kind": "gesprek", "speaker": speaker(), "text": greeting.text}, "begroeting")]
 	if _is_caught():
 		return [_caught_page()]
-	var greetings: Array = _data().get("begroetingen", ["Ja?"])
-	return [_page(str(greetings[_random.randi() % greetings.size()]), "begroeting")]
+	return [_page(_pick(_data().get("begroetingen"), "Ja?"), "begroeting")]
 
 
 ## The conversation is over: the body as it was.
@@ -259,8 +343,9 @@ func _voice() -> String:
 
 
 ## Their mood shown and heard on a page (babble, Emote), their look in the portrait.
-func _with_mood(page: Dictionary, line_kind: String) -> Dictionary:
-	var mood := mood_of(line_kind)
+## `own_mood`: the mood of this very line (a topic node's "stemming"), else that of its kind.
+func _with_mood(page: Dictionary, line_kind: String, own_mood := "") -> Dictionary:
+	var mood := own_mood if own_mood != "" else mood_of(line_kind)
 	page["voice"] = _voice()
 	page["mood"] = mood
 	var look: Variant = person.get("figure").get("look") if person and person.get("figure") else null
@@ -315,46 +400,81 @@ func _is_caught() -> bool:
 func _caught_page() -> Dictionary:
 	var station: Node = person.get("station")
 	var fine := float(station.call("fine_the_player"))
-	var text := str(_data().get("betrapt", "Zwartrijden? Dat wordt {boete} boete.")).replace("{boete}", _euros(fine))
+	var text := _pick(_data().get("betrapt"), "Zwartrijden? Dat wordt {boete} boete.").replace("{boete}", _euros(fine))
 	return _page(text, "betrapt")
 
 
-## The page of the person saying `text` (a line of `line_kind`), with the questions not
-## asked yet (the follow-up of the topic first, when there is one).
-func _page(text: String, line_kind: String, follow_up := {}) -> Dictionary:
+## The page of the person saying `text` (a line of `line_kind`, in `own_mood` when it has one),
+## with what you can say next: the follow-ups of the topic node just answered first
+## (follow_ups_of), then the topic when not asked yet, change when not asked yet, goodbye.
+func _page(text: String, line_kind: String, follow_ups := [], own_mood := "") -> Dictionary:
 	var data := _data()
 	var topic: Dictionary = data.get("onderwerp", {})
 	var options: Array = []
-	if not follow_up.is_empty():
-		options.append(["doorvraag", str(follow_up.get("doorvraag", ""))])
+	for follow_up: Dictionary in follow_ups:
+		options.append(["verder", str(follow_up.get("vraag", "")), follow_up])
 	if not _asked.has("onderwerp") and topic.has("vraag"):
-		options.append(["onderwerp", str(topic.vraag)])
+		options.append(["onderwerp", str(topic.vraag), topic])
 	if not _asked.has("kleingeld"):
-		options.append(["kleingeld", question("kleingeld")])
-	options.append(["dag", question("dag")])
+		options.append(["kleingeld", question("kleingeld"), {}])
+	options.append(["dag", question("dag"), {}])
 	var texts: Array = options.map(func(option: Array) -> String: return option[1])
 	return _with_mood({"kind": "gesprek", "speaker": speaker(), "text": text, "choices": texts,
-		"on_choice": func(index: int) -> Array: return _answer(options[index], follow_up)}, line_kind)
+		"on_choice": func(index: int) -> Array: return _answer(options[index])}, line_kind, own_mood)
 
 
-func _answer(option: Array, follow_up: Dictionary) -> Array:
+func _answer(option: Array) -> Array:
 	var data := _data()
 	match str(option[0]):
-		"onderwerp":
-			_asked["onderwerp"] = true
-			var topic: Dictionary = data.get("onderwerp", {})
-			return [_page(str(topic.get("antwoord", "")), "onderwerp", topic if topic.has("doorvraag") else {})]
-		"doorvraag":
-			return [_page(str(follow_up.get("doorantwoord", "")) + " " + _again(), "doorvraag")]
+		"onderwerp", "verder":
+			# a node of the topic tree: its answer, then its own follow-ups (none left: the
+			# topic is done, "nog iets?")
+			var is_topic := str(option[0]) == "onderwerp"
+			if is_topic:
+				_asked["onderwerp"] = true
+			var node: Dictionary = option[2]
+			var follow_ups := follow_ups_of(node)
+			var text := _pick(node.get("antwoord"))
+			var reward_line := _reward_for(node)
+			if reward_line != "":
+				text += " " + reward_line
+			if follow_ups.is_empty() and not is_topic:
+				text += " " + _again()
+			return [_page(text, "onderwerp" if is_topic else "doorvraag", follow_ups, str(node.get("stemming", "")))]
 		"kleingeld":
 			_asked["kleingeld"] = true
 			var gave := _ask_for_money()
 			# begging counts inside: too much of it and you are thrown out (Interiors)
 			if person and person.is_inside_tree():
 				Interiors.note_offence(person.get_tree(), "bedelen")
-			return [_page(str(data.get("kleingeld_ja" if gave else "kleingeld_nee", "")) + " " + _again(), "kleingeld_ja" if gave else "kleingeld_nee")]
+			var line_kind := "kleingeld_ja" if gave else "kleingeld_nee"
+			return [_page(_pick(data.get(line_kind)) + " " + _again(), line_kind)]
 	# goodbye: their last word, then the box closes
-	return [_with_mood({"kind": "gesprek", "speaker": speaker(), "text": str(data.get("dag", ""))}, "dag")]
+	return [_with_mood({"kind": "gesprek", "speaker": speaker(), "text": _pick(data.get("dag"))}, "dag")]
+
+
+## A reward of topic node `node` ("beloning": {"item", "kans" in 100, "tekst"}): once per
+## person (REWARD_META) at that chance the item goes in the player's pockets (with its name
+## rising and the chime: PlayerController.add_item) and their line about it is returned, to
+## follow the answer it belongs to; "" when nothing is given (no reward, not this time, no
+## room). "item" "pinpas" is a lost bank card of its own (BANK_CARD_METHOD on the player).
+func _reward_for(node: Dictionary) -> String:
+	var reward: Dictionary = node.get("beloning", {}) if node.get("beloning") is Dictionary else {}
+	if reward.is_empty() or person == null or person.has_meta(REWARD_META) or player == null:
+		return ""
+	if _random.randi_range(1, 100) > int(reward.get("kans", 0)):
+		person.set_meta(REWARD_META, true)
+		return ""
+	var item_id := str(reward.get("item", ""))
+	var given := false
+	if item_id == "pinpas":
+		given = player.has_method(BANK_CARD_METHOD) and bool(player.call(BANK_CARD_METHOD))
+	elif ItemTable.ITEMS.has(item_id) and player.has_method("has_room_for") and player.call("has_room_for", item_id):
+		given = bool(player.call("add_item", item_id))
+	if not given:
+		return ""
+	person.set_meta(REWARD_META, true)
+	return _pick(reward.get("tekst"), "Hier, voor jou.")
 
 
 ## Asked for change: once per person maybe some ("gulheid": "kans" in 100, "bedrag" in
@@ -475,8 +595,7 @@ func _line(text: String, line_kind: String) -> Dictionary:
 
 
 func shop_greeting() -> Dictionary:
-	var greetings: Array = _data().get("begroetingen", ["Zeg het maar."])
-	return _line(str(greetings[_random.randi() % greetings.size()]), "begroeting")
+	return _line(_pick(_data().get("begroetingen"), "Zeg het maar."), "begroeting")
 
 
 ## Buys good `index` of shop_goods with the player's money (PlayerController.buy): the
@@ -490,7 +609,7 @@ func shop_buy(index: int) -> Dictionary:
 	var entry: Dictionary = goods[index]
 	var price := float(entry.get("prijs", 0.0))
 	var result: String = player.call("buy", str(entry.get("item", "")), price) if player and player.has_method("buy") else "geld"
-	var again := " " + str(data.get("nog_iets", ""))
+	var again := " " + _pick(data.get("nog_iets"))
 	var line: Dictionary
 	match result:
 		"ok":
@@ -498,25 +617,25 @@ func shop_buy(index: int) -> Dictionary:
 			var what := str(entry.get("naam", entry.get("item", "")))
 			line = _line(str(lines[_random.randi() % lines.size()]).replace("{wat}", what) + again, "gekocht")
 		"vol":
-			line = _line(str(data.get("zakken_vol", "")) + again, "zakken_vol")
+			line = _line(_pick(data.get("zakken_vol")) + again, "zakken_vol")
 		_:
 			result = "geld"
-			line = _line(str(data.get("geen_geld", "")).replace("{prijs}", _euros(price)), "geen_geld")
+			line = _line(_pick(data.get("geen_geld")).replace("{prijs}", _euros(price)), "geen_geld")
 	line["result"] = result
 	return line
 
 
 ## What you can ask (the "tip_vraag"), "" when the shop has no tip.
 func shop_tip_question() -> String:
-	return str(_data().get("tip_vraag", "")) if str(_data().get("tip", "")) != "" else ""
+	return str(_data().get("tip_vraag", "")) if _pick(_data().get("tip")) != "" else ""
 
 
 func shop_tip() -> Dictionary:
-	return _line(str(_data().get("tip", "")), "tip")
+	return _line(_pick(_data().get("tip")), "tip")
 
 
 func shop_goodbye() -> Dictionary:
-	return _line(str(_data().get("dag", "Dag!")), "dag")
+	return _line(_pick(_data().get("dag"), "Dag!"), "dag")
 
 
 static func _euros(amount: float) -> String:

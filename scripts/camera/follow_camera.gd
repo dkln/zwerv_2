@@ -22,7 +22,10 @@ extends Node
 ## When buildings stand between the player and the camera, the view turns round the player
 ## in whole steps of `turn_step` degrees (a quarter turn by default, so it stays isometric;
 ## at most `turn_most` either way) to where they no longer hide it,
-## gliding there over `turn_glide_time` s; once the usual view is free again for
+## gliding there over `turn_glide_time` s. It is slow to turn: only once the player has been
+## hidden for `turn_after` s (the view hole of building_fade.gd shows them meanwhile), and
+## after a turn it holds that view for `turn_hold_time` s, so walking past a row of buildings
+## never swings it round several times in a row; once the usual view is free again for
 ## `turn_back_after` s it turns back (`view_yaw` is the turned view, for the walking keys).
 
 const CloudShroud = preload("res://scripts/effects/cloud_shroud.gd")
@@ -105,7 +108,11 @@ const ARRIVAL_STEPS := 128
 @export_range(15.0, 180.0, 15.0) var turn_step := 90.0
 ## Seconds the turn takes (about), and how long the usual view has to be free before it turns back.
 @export var turn_glide_time := 2.8
-@export var turn_back_after := 1.5
+@export var turn_back_after := 4.0
+## Seconds the player has to be hidden before the view turns, and the seconds a view is held
+## after it turned (no turning on or back meanwhile).
+@export var turn_after := 1.2
+@export var turn_hold_time := 6.0
 ## Seconds between two looks round.
 @export var turn_check_interval := 0.2
 ## Heights (metres over the feet) of the points that have to stay in sight, and the
@@ -189,6 +196,8 @@ var _turn_velocity := 0.0
 var _turn_goal := 0.0                # degrees it turns to
 var _turn_check_clock := 0.0
 var _usual_free_for := 0.0           # seconds the usual view (no turn) has been free
+var _hidden_for := 0.0               # seconds the player has been hidden from the view turned to its goal
+var _turn_held_for := 1000.0         # seconds since the view last chose a new turn
 
 ## The followed node (for scripts/world/building_fade.gd and the HUD).
 var target_node: Node3D:
@@ -284,6 +293,8 @@ func set_indoors(indoors: bool, zoom_in_view := 0.0) -> void:
 	_turn_goal = 0.0
 	_turn = 0.0
 	_turn_velocity = 0.0
+	_hidden_for = 0.0
+	_turn_held_for = 1000.0
 
 
 ## The view on its target at once, without gliding over (after the target was put elsewhere).
@@ -444,8 +455,9 @@ func view_yaw() -> float:
 
 
 ## Looks every turn_check_interval s whether buildings hide the player from the view turned
-## to its goal; if so, picks the nearest turn (within turn_most) from which they hide it least.
-## Back to the usual view once that has been free for turn_back_after s. Then glides there.
+## to its goal; if they have for turn_after s, picks the nearest turn (within turn_most) from
+## which they hide it least. Back to the usual view once that has been free for
+## turn_back_after s. A new turn is held for turn_hold_time s. Then glides there.
 func _advance_turn(target_position: Vector3, view_size: float, delta: float) -> void:
 	var may_turn := turn_round_buildings and _buildings != null and not _arriving and not _dramatic \
 			and _underground < 0.001 and _glide_over_left <= 0.0
@@ -465,11 +477,17 @@ func _choose_turn(target_position: Vector3, view_size: float) -> void:
 	var distance := Iso.distance(view_size)
 	var usual_hidden := _hidden_points(target_position, 0.0, distance)
 	_usual_free_for = _usual_free_for + turn_check_interval if usual_hidden == 0 else 0.0
+	_turn_held_for += turn_check_interval
+	if _turn_held_for < turn_hold_time:
+		return   # just turned: hold this view a while (the view hole shows the player)
 	if _turn_goal != 0.0 and _usual_free_for >= turn_back_after:
 		_turn_goal = 0.0
+		_turn_held_for = 0.0
+		_hidden_for = 0.0
 		return
 	var goal_hidden := usual_hidden if _turn_goal == 0.0 else _hidden_points(target_position, _turn_goal, distance)
-	if goal_hidden == 0:
+	_hidden_for = _hidden_for + turn_check_interval if goal_hidden > 0 else 0.0
+	if goal_hidden == 0 or _hidden_for < turn_after:
 		return
 	# the nearest turn (from the usual view, then from where it is) that hides the least
 	var best_turn := _turn_goal
@@ -488,7 +506,10 @@ func _choose_turn(target_position: Vector3, view_size: float) -> void:
 				best_hidden = hidden
 		if best_hidden == 0:
 			break
-	_turn_goal = best_turn
+	if best_turn != _turn_goal:
+		_turn_goal = best_turn
+		_turn_held_for = 0.0
+		_hidden_for = 0.0
 
 
 ## How many of the test points round the target (turn_test_heights, and turn_test_reach to

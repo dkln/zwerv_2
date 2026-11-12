@@ -30,6 +30,8 @@ const Layout = preload("res://scripts/world/station_layout.gd")
 const OverheadLines = preload("res://scripts/world/overhead_lines.gd")
 const Typewriter = preload("res://scripts/ui/widgets/typewriter.gd")
 const DriverShout = preload("res://scripts/vehicles/driver_shout.gd")
+const OvCard = preload("res://scripts/world/ov_card.gd")
+const OvMachineScreen = preload("res://scripts/ui/machines/ov_machine_screen.gd")
 const PROPS_LIBRARY := "res://assets/libraries/props.res"
 const DOORS_GROUP := "deuren"
 const CARD_ITEM := "ov_chipkaart"
@@ -445,16 +447,15 @@ static func _icon_texture(rows: Array, colour: Color) -> ImageTexture:
 	return ImageTexture.create_from_image(image)
 
 
-## The OV-chipkaart machines: buy a card there.
+## The OV-chipkaart machines: [E] opens the machine's own screen (OvMachineScreen,
+## scripts/ui/machines/ov_machine_screen.gd: buy a card, see the balance, top up, a single
+## ticket; OvCard keeps the card's balance).
 class TicketMachine:
 	extends Node3D
 	var station: Node3D
 
 	func action_text() -> String:
-		var player: Node3D = station.call("player")
-		if player and int((player.get("inventory") as Dictionary).get("ov_chipkaart", 0)) > 0:
-			return "OV-chipkaart (heb je al)"
-		return "OV-chipkaart kopen (€ 7,50)"
+		return "OV-chipkaartautomaat"
 
 	func reach() -> float:
 		return 1.2
@@ -463,21 +464,11 @@ class TicketMachine:
 		var player: Node3D = station.call("player")
 		if player == null:
 			return
-		var at := position + Vector3.UP * 1.9
-		if int((player.get("inventory") as Dictionary).get("ov_chipkaart", 0)) > 0:
-			station.call("say", at, "Je hebt al een OV-chipkaart", Color("#FFD23A"))
-			return
-		var result: String = player.call("buy", "ov_chipkaart", 7.5) if player.has_method("buy") else "geld"
-		match result:
-			"ok":
-				StationAudio.play_at(station, "ov_inchecken", position + Vector3.UP, -6.0)
-				station.call("say", at, "OV-chipkaart gekocht", Color("#3CE06A"))
-			"vol":
-				StationAudio.play_at(station, "ov_geweigerd", position + Vector3.UP, -6.0)
-				station.call("say", at, "Je zakken zitten vol", Color("#FF5A4A"))
-			_:
-				StationAudio.play_at(station, "ov_geweigerd", position + Vector3.UP, -6.0)
-				station.call("say", at, "Te weinig geld (€ 7,50)", Color("#FF5A4A"))
+		OvMachineScreen.show_for(player, "DEN HAAG CENTRAAL")
+
+	## A card straight away, as the screen's "kaart kopen" (the checks): "ok", "heb_al", "geld", "vol".
+	func buy_card() -> String:
+		return OvCard.buy_card(station.call("player"))
 
 
 func _make_machines() -> void:
@@ -510,11 +501,13 @@ class OvPost:
 		if player == null:
 			return
 		var at := position + Vector3.UP * 1.6
-		if int((player.get("inventory") as Dictionary).get("ov_chipkaart", 0)) <= 0:
-			StationAudio.play_at(station, "ov_geweigerd", position + Vector3.UP, -6.0)
-			station.call("say", at, "Geen OV-chipkaart", Color("#FF5A4A"))
-			return
 		var checked_in: bool = player.get_meta("ov_ingecheckt", false)
+		# a card with the fare on it or a single ticket (OvCard)
+		var ticket := OvCard.check_out(player) if checked_in else OvCard.check_in(player)
+		if ticket == "saldo" or ticket == "geen":
+			StationAudio.play_at(station, "ov_geweigerd", position + Vector3.UP, -6.0)
+			station.call("say", at, OvCard.refusal(ticket), Color("#FF5A4A"))
+			return
 		player.set_meta("ov_ingecheckt", not checked_in)
 		StationAudio.play_at(station, "ov_uitchecken" if checked_in else "ov_inchecken", position + Vector3.UP, -6.0)
 		station.call("say", at, "Uitgecheckt" if checked_in else "Ingecheckt", Color("#3CE06A"))

@@ -148,7 +148,12 @@ Verhaal, missies en kleingeld
   kaartje en de kaart. Elke missie en elke stap heeft eigen XP (`add_xp`, level omhoog met
   deuntje); in het questlog kies je met Enter welke missie je volgt.
 - Praten (`scripts/story/conversations.gd`): bij iemand in de buurt "[E] Praten" linksonder;
-  een gesprek met keuzes in het verhaalvenster, passend bij het uiterlijk (9 typen). Ze
+  een gesprek met keuzes in het verhaalvenster, passend bij het uiterlijk (9 typen). Elke soort
+  mens (en elk personeelslid) heeft meerdere gesprekken (`varianten`, nu 4 per soort): wie je
+  aanspreekt krijgt er de eerste keer willekeurig één van en houdt die (meta `gesprek_variant`).
+  Een onderwerp is een boompje (`doorvraag` en/of `verder`, zo diep als je wilt), dus sommige
+  gesprekken gaan 4-6 vragen door, met keuzes ertussen; regels mogen een lijst zijn (willekeurig
+  één). Winkels en de snackbar hebben meerdere tips en afscheidszinnen. Ze
   brabbelen in hun stem en stemming (`scripts/audio/babble.gd`, `brabbel_<stem>_<stemming>_<n>`
   uit `tools/megadrive/stemmen.py`; een vraag gaat omhoog) en hun lichaam beweegt mee
   (`scripts/world/emote.gd`: boos schudt, blij huppelt, verdrietig hangt voorover).
@@ -157,6 +162,67 @@ Verhaal, missies en kleingeld
   raapt ze op (`add_money`, geluid "munt", het bedrag stijgt op).
 - Test: `tools/check/story_test.gd`; portemonnee en geldmissie (snel, zonder de stad):
   `tools/check/wallet_test.gd`.
+
+Automaten, blikjes en pinpassen
+-------------------------------
+- Oppakbare dingen gloeien: alles wat je in de stad kunt oppakken (kleingeld, rugzakken,
+  blikjes in prullenbakken, pinpassen) krijgt `QuestOutline.add` (`scripts/effects/quest_outline.gd`):
+  een pulserende rand (`quest_outline.gdshader`) en als volgende pass een zachte gloed eromheen
+  (`quest_outline_glow.gdshader`, `GLOW_GROW` keer zo breed, opgeteld bij wat erachter ligt).
+- Blikjes (`Prullenbakken`, `scripts/world/litter_bins.gd`): van de prullenbakken in de laag
+  Props (`straat/prullenbak_paal`, `_rond`) heeft bij de start een deel (`can_share` 0,3, hooguit
+  `most_cans` 60) een leeg blikje bovenin (`MachineModels.can_mesh`, gloeiend). Erbij: `[E] Blikje
+  pakken` (item `blikje`, via `add_item`). Elke `refill_seconds` (150 s) krijgt een lege bak
+  er weer een.
+- Statiegeld (`scripts/world/deposit_return.gd`): `blikje` en `statiegeld` (flessen) € 0,15 per
+  stuk, in te leveren bij de statiegeldautomaat in elke supermarkt.
+- Pinpassen (`scripts/player/bank_cards.gd`, item `pinpas`, een sleutelvoorwerp): elke gevonden
+  pas is een eigen rekening, bewaard op de speler (metadata `pinpassen`: `pin`, `saldo` tussen
+  € 8 en € 60, `raadsel`, `houder`, `nummer`, `pogingen`). De pincode is altijd 4 cijfers; het
+  raadsel op de achterkant geeft hem: een som (`a × b + c`), elk cijfer een raadseltje ("de poten
+  van een spin") of twee helften ("Eerste twee cijfers: 6 × 7. Laatste twee: de helft van 64.").
+  In de inventaris staat het raadsel bij de pas (over het vakje gaan selecteert het en toont de
+  tekst rechts, ook als tooltip). Geven: `BankCards.give_found_bank_card(speler)` of
+  `PlayerController.give_found_bank_card() -> bool` (false bij volle zakken).
+  Op straat (`Pinpassen`, `scripts/world/lost_bank_cards.gd`): 5 passen op stoepen en pleinen,
+  één binnen 60 m van de start; eroverheen lopen raapt ze op.
+- De automaten zijn elk een eigen scène (`scripts/ui/machines/`): de swipe, het spel staat stil,
+  het hele beeld is de voorkant van de automaat tegen een bakstenen muur in de pixelstijl van de
+  HUD (`machine_screen.gd`: behuizing in de huisstijl, een display, links wat eruit komt, rechts je
+  zakken, CRT eroverheen). Muis en toetsen; Esc = weg. Geluiden in code (`machine_sounds.gd`,
+  PSG-blokgolven en ruis zoals `ui_sounds.gd`): toetsen, kaart in/uit, foutzoemer, inslikken,
+  geld tellen, blikje erin, de band, de printer.
+  - Statiegeldautomaat (`deposit_machine_screen.gd`, STATIEGELD): in elke supermarkt in de hoek
+    voorbij de karretjes, tegen de zijwand aan de ingangskant (`plan.deposit` uit
+    `supermarket_layout.gd`, model `MachineModels.deposit_machine_mesh`, `[E] Statiegeld
+    inleveren`). [1] blikje / [2] fles erin, één voor één (het schuift het gat in, rammelt, de
+    band), [Enter] de bon (geprint, met wat erin ging en het totaal), nog eens [Enter] pakt hem:
+    het bedrag gaat meteen in je portemonnee. Weggaan met iets erin print en betaalt ook.
+  - OV-chipkaartautomaat (`ov_machine_screen.gd`, `scripts/world/ov_card.gd`): in de hal van
+    Centraal (`Automaat_<n>`) en bij 8 tramhaltes (naast een abri, het model van
+    `binnen/station/kaartautomaat`). Zonder kaart: kaart kopen € 7,50 (met € 2,50 saldo); met kaart:
+    saldo, opladen € 5 / € 10 / € 20; altijd: los kaartje € 3,50. Inchecken (poortjes, OV-paaltjes)
+    kost € 1 van het saldo (`RIDE_FARE`; te weinig: "Saldo te laag"); een los kaartje werkt ook, bij
+    het uitchecken houdt het poortje hem. Saldo: metadata `ov_saldo` op de speler.
+  - Geldautomaat (`cash_machine_screen.gd`, PINPUNT): pas kiezen (je gevonden passen), pincode op
+    het toetsenbord (0-9, Backspace = CORR, Enter = OK), drie keer fout en de pas wordt ingeslikt;
+    dan een bedrag (€ 5, 10, 20, 50; niet meer dan het saldo), het geld komt eruit (de biljetten
+    in het vak links), het nieuwe saldo staat erbij. Esc: de pas terug.
+- Straatautomaten (`Straatautomaten`, `scripts/world/street_machines.gd`): de stadsbouwer
+  (`_street_machines` in `tools/build/city/finishing.gd`) zet markers `Geldautomaat_<n>` (34)
+  en `OVAutomaat_<n>` (8); hun +z is de kant waar ze naar kijken. Geldautomaten staan plat tegen
+  een gevel op de stoep ernaast, 1,3 m naast het midden (niet voor de deur): eerst bij elke tweede
+  supermarktingang (`_bg_<keten>_ingang`), dan bij winkelpuien (`_bg_*winkel*`), dan aan pleinen;
+  minstens 44 m uit elkaar, nergens een prop binnen 1 m. In het spel staat elk op de grond (straal
+  omlaag), met een botsvorm zo groot als het model en `[E] Pinnen` ervoor.
+- De modellen (`scripts/world/machine_models.gd`) zijn in code uit voxels gemaakt
+  (`PlayerModel.VoxelFigure`, voxels van 6,25 cm; blikje en pas 5 cm), dus zonder tiles: geldautomaat
+  0,75 x 1,75 x 0,5 m, statiegeldautomaat 0,875 x 1,875 x 0,625 m; `MachineModels.instance` geeft
+  er een StaticBody3D (laag 1) met een doos van precies die maat bij.
+- Tests: `tools/check/machines_test.gd` (snel, zonder de stad: raadsels geven de pincode, passen,
+  geldautomaat met goede en foute pincode en inslikken, statiegeld, OV-saldo, modellen) en
+  `tools/check/street_machines_test.gd` (in de stad: automaten op de grond, `[E] Pinnen` opent het
+  scherm, blikje uit een prullenbak, pinpas oprapen).
 - Statbalken: verandert een stat in één keer met minstens 1,5 punt (aanrijding, honger die
   bijt, eten), dan trilt de rij van die balk kort en licht op (wit bij erbij, rood bij eraf;
   `STAT_SHAKE_*` in hud.gd). Het langzame leeglopen en bijvullen trilt niet.
@@ -185,6 +251,11 @@ elke scène die de bouwers maken) laat de stoplichtprops (`verkeerslichten/auto_
 `fiets_*`, `ov_*`, `voetganger_*`, `mast_*`) per kruispunt een vaste cyclus doorlopen:
 noord-zuid groen, oranje, alles rood, oost-west groen, oranje, alles rood. De richting
 van een licht volgt uit zijn draaiing; tijden zijn instelbaar op de node.
+In de stad (`tools/build/city/street_grid.gd`, `_dress_streets`) krijgen tot
+`MAX_LIT_INTERSECTIONS` (8) kruispunten met ruimte eromheen verkeerslichten, minstens
+`LIT_SPACING` (14) cellen uit elkaar. Zebrapaden: de helft van de noord-zuidaanlopen van een
+kruispunt, een kwart van de oost-westaanlopen (de pijl schuift dan een cel op), en midden in elke
+geasfalteerde straat van minstens `MID_ZEBRA_LENGTH` (9) cellen nog een, over beide rijstroken.
 
 Er rijdt verkeer door de stad: een sedan, node `Auto` (`scripts/vehicles/car.gd`), en een
 SUV, node `SUV` (`scripts/vehicles/suv.gd`), staan in de scène; de node `Verkeer`
@@ -197,11 +268,13 @@ niet het verkeer van de hele stad:
   200 s) rondrijdt en verder dan `renew_beyond` (70 m) is, gaat buiten beeld uit de stad: uit de
   boom (niet getekend, rijdt niet, geen geluid; de anderen laten het los, `Vehicle.forget`),
   bewaard om terug te zetten (hooguit `parked_kept`, 30). Nieuwe komen buiten beeld op een
-  rijstrook tussen `appear_from` (110 m) en `appear_within` van de speler (een bewaarde van
+  rijstrook tussen `appear_from` (75 m) en `appear_within` (180 m) van de speler (dicht bij wat de
+  camera toont, zodat de straten in beeld vol zijn; `keep_within` 220 m, startplekken minstens
+  `spacing` 12 m uit elkaar) (een bewaarde van
   dezelfde soort, `Vehicle.put_down`, of een nieuwe). Wrakken, trams en treinen, en de Auto en
   SUV uit de scène blijven altijd.
 - Hoeveel: `vehicle_count` (80) maal het aandeel van het uur van de dag en de wijk van de
-  speler, hooguit `most_vehicles` (141); de diensten `services_count` (7) maal alleen het
+  speler, hooguit `most_vehicles` (150); de diensten `services_count` (7) maal alleen het
   uuraandeel, minstens `fewest_services` (2). Wat er komt: een voertuigsoort (`auto`, `fiets`,
   `brommer`, `vracht`, `bus`, `landbouw`, `klein`, de derde kolom van `MIX`) getrokken met de
   gewichten van het uur en van de wijk waar het verschijnt, dan een van die soort die de
@@ -279,8 +352,8 @@ Voetgangers (node `Voetgangers`, `scripts/world/pedestrians.gd` en `pedestrian.g
 stadsbewoners lopen over de stoep- en pleintiles (`stoep/`, `plein/`, zonder gebouw erop) in de
 buurt van de speler, van cel naar cel, nu en dan even stilstaand; een plek waar ze niet in een
 rechte lijn kunnen komen zonder tegen iets van de stad te lopen (lantaarnpaal, bank, boom)
-kiezen ze niet. Ook dit is een set rond de speler: `count` (48) maal het aandeel van het uur en
-de wijk (`data/drukte.json`), minstens `fewest` (6), hooguit `most` (90; de winkelstraten van Centrum, Grote Markt, Schilderswijk en Voorburg zijn het drukst). Trappen en loopbruggen:
+kiezen ze niet. Ook dit is een set rond de speler (binnen `reach`, 90 m): `count` (64) maal het aandeel van het uur en
+de wijk (`data/drukte.json`), minstens `fewest` (6), hooguit `most` (130; de winkelstraten van Centrum, Grote Markt, Schilderswijk en Voorburg zijn het drukst). Trappen en loopbruggen:
 het dek van een loopbrug (`DECK_GROUND`, `brug/loopbrug*` boven straatniveau) is beloopbaar,
 elke cel op zijn eigen laag; de rechte trappen van de Props-laag (`STAIR_PROPS`, aan elkaar
 geschakeld waar de bovenkant van de een de voet van de volgende is) verbinden de stoep onder
@@ -338,8 +411,9 @@ Drukte (`data/drukte.json`, gelezen door `scripts/world/crowd.gd`, uitgelegd in
 - `uren`: momenten van de dag (`uur`) met het aandeel voetgangers en verkeer (`voetgangers`,
   `verkeer`; 1 = `count` en `vehicle_count`), de gewichten van de soorten mensen (`mensen`) en
   van de voertuigsoorten (`voertuigen`). Tussen twee momenten loopt het geleidelijk over, ook
-  rond middernacht. Nu: 's nachts 0,08 tot 0,22, spits (7:30 en 17:00) 1,0, overdag 0,75 tot
-  0,9, 's avonds 0,4 tot 0,7.
+  rond middernacht. Nu: 's nachts 0,08 tot 0,22; de spits duurt (7:15-8:45 en 16:30-18:30): voetgangers 1,4,
+  verkeer 1,7 met twee keer zoveel fietsers; overdag 0,85 tot 1,0; 's avonds 0,3 tot 0,8.
+  `voertuig_basis`: fietsen 0,8 tegen auto's 0,42 (Den Haag fietst).
 - `gebieden`: per wijk (de namen van de metadata `wijken`, zoals de HUD ze toont) een factor op
   voetgangers en verkeer en andere gewichten. Nu: Centraal Station 1,4 voetgangers / 1,1 verkeer
   (forenzen, zakenmensen, bussen, fietsers), Centrum en Grote Markt druk met voetgangers en
@@ -417,6 +491,12 @@ Allemaal zijn het een `Vehicle` (`scripts/vehicles/vehicle.gd`):
   snelheidsverandering en de meeste draaiing. Daarna rolt een wrak nog even door op zijn wielen
   met de motor aan (`ROLL_ON_*`), een bus veel langer dan een kleine auto, dus een bus duwt een
   hatchback voor zich uit. Test: `tools/check/crash_test.gd -- heavy` of `light`.
+- Tweewielers (fiets, fatbike, brommer, scooter, motor; `two_wheeler.gd`) gaan bij een harde
+  klap echt onderuit: het wrak kantelt op zijn zij (`TOPPLE_SPIN`, eerst een hoog zwaartepunt) en
+  glijdt uit zonder motor, en de berijder vliegt eraf als een eigen tuimelend lichaam
+  (`KnockDown`, de botsvorm zo groot als de figuur) met de snelheid die hij had. Na
+  `FIT_WRECK_AFTER` krimpt de botsvorm van het wrak tot het voertuig zonder berijder. Een fiets
+  brandt nooit; weggesleept zit de berijder er weer op. Test: `tools/check/two_wheeler_fall_test.gd`.
 - Aanhanger (`trailer_model`, `hitch_position`): hij draait om zijn eigen punt, de bol van de
   trekhaak. Elke stap wordt zijn as recht naar de bol getrokken, zodat hij de bocht afsnijdt
   zoals een echte aanhanger, met eigen wielen en lampen. Bij een botsing blijft hij aangekoppeld
@@ -834,8 +914,10 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
   Test: `tools/check/city_music_test.gd`.
   **Alle muziek komt uit één compositie** (nu "Blast Processing Overdrive" van Gemini, 136 BPM, bijgesteld naar 144 en een house-groove,
   D mineur, 32 maten): die wordt letterlijk de intro (`zwervr_intro.ogg`), en menu,
-  karakterkeuze, handelaar, laadscherm, de stad en de deuntjes (nieuwe missie, taak klaar, missie gehaald,
-  level omhoog, dood) worden ervan afgeleid, in Mega Drive-klank. Een nieuwe compositie
+  karakterkeuze, handelaar, laadscherm, de stad, de deuntjes (nieuwe missie, taak klaar, missie gehaald,
+  level omhoog, dood), de drie muzaklussen van de supermarkten (`supermarkt_muzak_1..3.ogg`: bossa,
+  ballade, lichte swing) en de jingles van de twee supermarktketens (`jingle_derrek.ogg`,
+  `jingle_alfred_steyhn.ogg`) worden ervan afgeleid, in Mega Drive-klank. Een nieuwe compositie
   aanleveren: de skill **`/muziek-compositie`** (`.claude/skills/muziek-compositie/SKILL.md`).
   De regels, de notatie en de lijst van stukken staan in **`docs/MUZIEK.md`**; de generator in
   `tools/muziek/` (`render.sh` maakt alles en `scripts/ui/intro_timing.gd`,
@@ -921,7 +1003,8 @@ buiten de kaart (`at`), staat stil en is onzichtbaar zolang je buiten bent.
   sporen en 7 perrons (`grond/spoor/perron`, `trein_recht`, `trein_stootblok` van de stad,
   `PLATFORM_DROP` omlaag zodat de perrons gelijk liggen met de hal), een hal van 96 x 32 m met
   13 winkels (o.a. Smikkels met automatiekwand, Broodje Seinstoring, Duwus Bertus; een
-  Smikkels-verkoper verkoopt kroketten als in de snackbar), OV-chipkaartautomaten, drie
+  Smikkels-verkoper verkoopt kroketten als in de snackbar), OV-chipkaartautomaten (`[E]` opent hun
+  eigen scherm, zie "Automaten, blikjes en pinpassen"), drie
   vertrekborden, een stationsklok met rode secondewijzer, pilaren, banken, OV-paaltjes.
   - Treinen (`station_train.gd`, de NS-wagons van de stad): elk spoor heeft een vertrek
     (bestemming, Intercity/Sprinter, 2 of 3 wagons, soms vertraging of "rijdt niet"). Op een
@@ -938,7 +1021,8 @@ buiten de kaart (`at`), staat stil en is onzichtbaar zolang je buiten bent.
   - Poortjes (`station_gates.gd`) voor elk perron: kasten met poortjes in (vanuit de hal) en
     uit (naar de hal), glazen klepjes die echt dichtzitten (botsvorm) en open zwaaien de kant
     op die je gaat. Groen lampje aan de kant waar je in mag, rood aan de andere. Zonder
-    OV-chipkaart (item `ov_chipkaart`, € 7,50 uit een automaat) zoemt de lezer nee. Inchecken
+    OV-chipkaart (item `ov_chipkaart`, € 7,50 uit een automaat) met € 1 saldo, of een los kaartje,
+    zoemt de lezer nee (`OvCard`, `scripts/world/ov_card.gd`). Inchecken
     is één piep, uitchecken twee. Bij de OV-paaltjes check je met [E] in of uit.
   - Mensen (`station_person.gd`, met tassen uit `scripts/world/carried_items.gd`):
     reizigers, zakenmensen met aktetas, toeristen met rolkoffer en rugzak, scholieren met
@@ -985,6 +1069,19 @@ buiten de kaart (`at`), staat stil en is onzichtbaar zolang je buiten bent.
     sluiten aan bij een kassa, rekenen af en gaan weer weg; sommigen kijken alleen. Ze lopen over
     een rooster van de vrije vloer (`AStarGrid2D`) om de schappen heen en wachten als je in de
     weg staat. Caissières zitten aan de kassa, medewerkers (`personeel.json`) vullen de schappen.
+  - Muziek: zachte muzak op de achtergrond, elk filiaal één van de drie (`supermarkt_muzak_1..3.ogg`,
+    gekozen op de seed van het filiaal: `SUPERMARKET_MUZAK` in `scripts/world/interiors.gd`), via
+    `set_indoor_music` in plaats van de stadslus en nog `MUZAK_SOFTER_DB` (6 dB) zachter dan
+    andere binnenmuziek (`scripts/ui/hud.gd`), ongeveer zo hard als het winkelgeluid.
+  - Omroepen, net als op het station (`scripts/world/supermarket_announcer.gd`, teksten in
+    `data/gesprekken/omroep_supermarkt.json`): af en toe gaat de muziek omlaag
+    (`GameHud.duck_music`), klinkt de jingle van de keten (`jingle_derrek.ogg`,
+    `jingle_alfred_steyhn.ogg`) en daarna de omroepstem (brabbel over de bus `Omroep` van
+    `StationAudio`) met de tekst onderin beeld: een aanbieding (een product uit een schap van dit
+    filiaal met zijn prijs, ALFRED STEYHN met de BONUS) of een mededeling ("kassa 3 gaat voor u open").
+  - Statiegeldautomaat in de hoek voorbij de karretjes (`plan.deposit`, `[E] Statiegeld inleveren`;
+    zie "Automaten, blikjes en pinpassen"). Hij telt mee in `Supermarket.footprints`, dus winkelende
+    mensen lopen eromheen; de indelingstest controleert dat hij nergens in staat.
   - Tests: `tools/check/supermarket_layout_test.gd` (snel, zonder de stad: 180 filialen,
     alles bereikbaar, niets in elkaar) en `tools/check/supermarket_test.gd` (in de stad).
 - Het stadhuis aan het Spui (`scenes/binnen/stadhuis.tscn`, `scripts/world/city_hall.gd`,

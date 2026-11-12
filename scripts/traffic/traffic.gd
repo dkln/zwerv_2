@@ -91,22 +91,25 @@ const NEAR_REFRESH := 25.0
 
 ## How many vehicles there are at a share of 1.0 (Crowd.traffic_share), and the most.
 @export var vehicle_count := 80
-@export var most_vehicles := 141   # the rush hours round Centraal (1.6 x 1.1 x 80)
+@export var most_vehicles := 150   # the rush hours round Centraal (1.7 x 1.1 x 80)
 ## How many of the SERVICES at a share of 1.0, and the fewest.
 @export var services_count := 7
 @export var fewest_services := 2
-## Fewest metres between the start spots (a bus is 10.5 m long).
-@export var spacing := 20.0
+## Fewest metres between the start spots (a bus is 10.5 m long; closer, the rush hours round
+## the player would not fit).
+@export var spacing := 12.0
 ## Seed of the start spots and routes.
 @export var traffic_seed := 11
 ## The old way: all over the whole town, all kept (see the top).
 @export var whole_town := false
 ## The set round the player (metres, seconds): see the top.
-@export var keep_within := 280.0
-@export var appear_from := 110.0
-@export var appear_within := 230.0
+## Kept close (just beyond what the camera shows), so the vehicles fill the streets round the
+## player instead of spreading thin over a wide ring nobody sees.
+@export var keep_within := 220.0
+@export var appear_from := 75.0
+@export var appear_within := 180.0
 @export var renew_after := Vector2(90.0, 200.0)
-@export var renew_beyond := 70.0
+@export var renew_beyond := 60.0
 ## One change a tick, eight ticks a second: bringing a vehicle costs some 5 ms, four in one
 ## frame were a stutter.
 ## A vehicle that has stood still (a jam) for `jam_seconds` is taken out once it is out of

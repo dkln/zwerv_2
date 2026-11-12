@@ -61,6 +61,13 @@ const SIGN_TEXTS := {
 	"brood": "BROOD", "bakkerij": "BAKKERIJ", "groente": "GROENTE & FRUIT", "bloemen": "BLOEMEN",
 	"actie": "ACTIE",
 }
+## The deposit machine (statiegeld, scripts/world/machine_models.gd): its size (across, up,
+## deep), how far from the front wall it stands against the side wall of the entrance, and
+## where you stand to use it (from that wall and the front wall).
+const DEPOSIT_MACHINE_SIZE := Vector3(0.875, 1.875, 0.625)
+const DEPOSIT_MACHINE_Z := 1.0
+const DEPOSIT_USE_FROM_WALL := 1.0
+const DEPOSIT_USE_Z := 1.45
 ## The props colour of each chain's trolleys (props/winkel/winkelwagen_<colour>).
 const CART_COLOURS := {"derrek": "rood", "alfred_steyhn": "blauw"}
 
@@ -73,6 +80,8 @@ const CART_COLOURS := {"derrek": "rood", "alfred_steyhn": "blauw"}
 ##  "shelves": [{"at", "facing" (towards the shelf), "category"}] (where you take something),
 ##  "checkouts": [{"number", "pay_at", "self_scan", "cashier" (Transform3D, staffed ones)}],
 ##  "cart_at", "basket_at": where you take a trolley or a basket,
+##  "deposit": {"at", "turn", "use_at", "size"} the deposit machine (statiegeld) and where you
+##  stand to use it,
 ##  "signs": [{"at", "turn", "text"}] (hung over the aisles), "promotions": [{"at", "turn"}]
 ##  (the price boards of DERREK's pallets), "lamps": [Vector3],
 ##  "people": [Transform3D] (shoppers standing at a shelf), "staff": [Transform3D],
@@ -236,6 +245,11 @@ static func _entrance(result: Dictionary, brand: String, random: RandomNumberGen
 	result["basket_at"] = Vector3(door_x + side * 1.5, 0.0, front + 1.6)
 	var far := door_x + side * (room + 1.0)    # the wall on that side
 	var zone_z := front + 4.75
+	# the deposit machine in the corner past the trolleys, against that side wall, facing the
+	# door; you stand before it, a little further in (clear of the trolleys)
+	var machine_at := Vector3(far - side * (0.125 + DEPOSIT_MACHINE_SIZE.z * 0.5), 0.0, front + DEPOSIT_MACHINE_Z)
+	result["deposit"] = {"at": machine_at, "turn": -side * PI * 0.5,
+		"use_at": Vector3(far - side * DEPOSIT_USE_FROM_WALL, 0.0, front + DEPOSIT_USE_Z), "size": DEPOSIT_MACHINE_SIZE}
 	if brand == "derrek":
 		var pallets := clampi(int((room - 4.3) / 2.0) + 1, 1, 3)
 		for index in pallets:

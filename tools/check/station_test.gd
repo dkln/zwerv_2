@@ -143,7 +143,7 @@ func _init() -> void:
 	var machine: Node3D = station.get_node("Kaartautomaat")
 	player.add_money(10.0)
 	var money_before: float = player.money
-	machine.go_through()
+	machine.buy_card()   # what the machine's screen does (OvMachineScreen); go_through opens it
 	_check(int(player.inventory.get("ov_chipkaart", 0)) == 1 and is_equal_approx(player.money, money_before - 7.5), "OV-chipkaart gekocht (€ 7,50)")
 	_awake(hud)
 	print("poortje bezet door: %s" % [lane.occupant])

@@ -35,8 +35,15 @@
 			],
 			"geen_geld": "Dat wordt {prijs}. Pinnen kan ook, hoor. O, nee? Dan wordt het lastig.",
 			"tip_vraag": "Wat is hier goed?",
-			"tip": "De cappuccino. Melk opgeschuimd, niet uit een pak. En de gevulde koek is van de bakker hiernaast.",
-			"dag": "Doei! Pas op voor de poortjes, die zijn streng vandaag.",
+			"tip": [
+				"De cappuccino. Melk opgeschuimd, niet uit een pak. En de gevulde koek is van de bakker hiernaast.",
+				"Vraag om een extra shot. Kost niks extra als je lief kijkt. Zo, je kijkt lief. Goed zo.",
+				"Om vijf uur gooi ik de koffie van de dag weg. Sta je dan hier, dan is hij voor jou."
+			],
+			"dag": [
+				"Doei! Pas op voor de poortjes, die zijn streng vandaag.",
+				"Tot morgen! De machine mist je al."
+			],
 			"nog_iets": "Nog iets erbij?",
 			"stemmingen": {
 				"begroeting": "blij",
@@ -91,8 +98,14 @@
 			],
 			"geen_geld": "Dat is {prijs}. Kom terug als je het bij elkaar hebt, de broodjes lopen niet weg.",
 			"tip_vraag": "Wat raad je aan?",
-			"tip": "Het broodje kroket. Kroket van de Haagse slager, met mosterd. Voor als je niet tot de snackbar kunt wachten.",
-			"dag": "Tot ziens! En denk erom: in de trein niet kruimelen.",
+			"tip": [
+				"Het broodje kroket. Kroket van de Haagse slager, met mosterd. Voor als je niet tot de snackbar kunt wachten.",
+				"Als de trein vertraging heeft, verkoop ik twee keer zoveel. Ik bid elke ochtend om een seinstoring."
+			],
+			"dag": [
+				"Tot ziens! En denk erom: in de trein niet kruimelen.",
+				"Eet smakelijk! En geef de duiven niks."
+			],
 			"nog_iets": "Verder nog wat?",
 			"stemmingen": {
 				"begroeting": "blij",
@@ -160,8 +173,15 @@
 			],
 			"geen_geld": "{prijs}, staat er. Niet genoeg? Dan houd ik het hier.",
 			"tip_vraag": "Nog nieuws?",
-			"tip": "De Intercity naar Amsterdam heeft weer vertraging. Staat in de krant van vandaag, en morgen weer.",
-			"dag": "Dag. Goede reis.",
+			"tip": [
+				"De Intercity naar Amsterdam heeft weer vertraging. Staat in de krant van vandaag, en morgen weer.",
+				"De puzzel op pagina twaalf is makkelijk. Het antwoord is 'Hofvijver'. Het is altijd 'Hofvijver'.",
+				"De energiedrank is in de aanbieding, maar neem van mij aan: slaap is goedkoper."
+			],
+			"dag": [
+				"Dag. Goede reis.",
+				"Tot ziens. Pas op, het perron is glad."
+			],
 			"nog_iets": "Nog iets?",
 			"stemmingen": {
 				"begroeting": "neutraal",
@@ -210,8 +230,14 @@
 			],
 			"geen_geld": "Dat is {prijs}. Jammer, ze zouden je goed staan.",
 			"tip_vraag": "Wat is er nu mooi?",
-			"tip": "De tulpen. Uit de Bollenstreek, net boven Den Haag. Die gaan wel een week mee.",
-			"dag": "Dag! Fleur de dag een beetje op.",
+			"tip": [
+				"De tulpen. Uit de Bollenstreek, net boven Den Haag. Die gaan wel een week mee.",
+				"Eén roos zegt meer dan een bos. Vooral als je verder niks te zeggen hebt."
+			],
+			"dag": [
+				"Dag! Fleur de dag een beetje op.",
+				"Tot ziens! Snij de stelen schuin, dan blijven ze langer mooi."
+			],
 			"nog_iets": "Mag het nog iets meer zijn?",
 			"stemmingen": {
 				"begroeting": "blij",
@@ -266,8 +292,14 @@
 			],
 			"geen_geld": "Dat kost {prijs}. In de bieb lenen ze het je gratis, hoor.",
 			"tip_vraag": "Wat lezen ze tegenwoordig?",
-			"tip": "Puzzelboekjes. Daar komt de hele trein van Den Haag naar Rotterdam mee door. De pockets zijn meer voor de Intercity naar Groningen.",
-			"dag": "Dag! Goed boek is halve reis.",
+			"tip": [
+				"Puzzelboekjes. Daar komt de hele trein van Den Haag naar Rotterdam mee door. De pockets zijn meer voor de Intercity naar Groningen.",
+				"De kaart van Den Haag. Kijk, hier ben jij. En hier is de zee. Dat is de goede kant op."
+			],
+			"dag": [
+				"Dag! Goed boek is halve reis.",
+				"Tot ziens! Lees niet tijdens het lopen, dat is gevaarlijk."
+			],
 			"nog_iets": "Nog iets anders?",
 			"stemmingen": {
 				"begroeting": "neutraal",
@@ -316,8 +348,14 @@
 			],
 			"geen_geld": "{prijs}, maat. Te weinig? Ruiken is gratis.",
 			"tip_vraag": "Hoe eet je die het lekkerst?",
-			"tip": "Leg hem op je koffiebeker. Dan smelt de stroop een beetje. Zo doen ze het al honderd jaar.",
-			"dag": "Doei! Niet alles in één keer opeten.",
+			"tip": [
+				"Leg hem op je koffiebeker. Dan smelt de stroop een beetje. Zo doen ze het al honderd jaar.",
+				"De gebroken wafels gooi ik niet weg. Kom aan het eind van de dag maar eens kijken."
+			],
+			"dag": [
+				"Doei! Niet alles in één keer opeten.",
+				"Tot ziens! Plakvingers zijn gratis."
+			],
 			"nog_iets": "Nog een?",
 			"stemmingen": {
 				"begroeting": "opgewonden",
@@ -373,8 +411,14 @@
 			],
 			"geen_geld": "Dat is {prijs}, schat. Kom maar terug als je wat gespaard hebt.",
 			"tip_vraag": "Wat is het lekkerst?",
-			"tip": "De zoute drop. Echt Hollands. Toeristen spugen het uit, wij eten de hele zak leeg.",
-			"dag": "Dag! Poets je tanden straks.",
+			"tip": [
+				"De zoute drop. Echt Hollands. Toeristen spugen het uit, wij eten de hele zak leeg.",
+				"De winegums zonder wijn. Er zit geen wijn in, ik heb het nagevraagd. Twee keer."
+			],
+			"dag": [
+				"Dag! Poets je tanden straks.",
+				"Doei, schat! Niet alles in de trein opeten."
+			],
 			"nog_iets": "Nog een zakje erbij?",
 			"stemmingen": {
 				"begroeting": "blij",
@@ -425,8 +469,14 @@
 			],
 			"geen_geld": "Op het station is het {prijs}, jongen. Buiten is het goedkoper, maar daar is het nou eenmaal buiten.",
 			"tip_vraag": "Waarom is het hier duurder?",
-			"tip": "De huur van het station, jongen. Bij de snackbar om de hoek betaal je minder. Maar hier ben je al.",
-			"dag": "Goede reis! En niet eten in de stiltecoupé.",
+			"tip": [
+				"De huur van het station, jongen. Bij de snackbar om de hoek betaal je minder. Maar hier ben je al.",
+				"Uit de muur is net zo vers als over de toonbank. Ik sta erachter, ik zie alles."
+			],
+			"dag": [
+				"Goede reis! En niet eten in de stiltecoupé.",
+				"Doei! De trein wacht niet, de kroket wel."
+			],
 			"logo": {
 				"icoon": "kroket",
 				"kleur": "#E8C21A",

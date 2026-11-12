@@ -234,9 +234,17 @@ func _check_longest_replies(box: Node) -> void:
 	var cut_off: Array[String] = []
 	for persona: String in Conversations.personas():
 		var data: Dictionary = Conversations.personas()[persona]
-		var topic: Dictionary = data.get("onderwerp", {})
-		var replies: Array[String] = [str(topic.get("antwoord", "")), str(topic.get("doorantwoord", "")) + " " + longest_again,
-			str(data.get("kleingeld_ja", "")) + " " + longest_again, str(data.get("kleingeld_nee", "")) + " " + longest_again]
+		# over all its conversations (the base and its "varianten") and every answer in the
+		# tree of their topic (each with "nog iets" after it: the longest it can get)
+		var replies: Array[String] = []
+		for variant: Dictionary in Conversations.variants_of(data):
+			for answer_texts: Array in Conversations.answers_in(variant.get("onderwerp", {})):
+				for answer_text: Variant in answer_texts:
+					replies.append(str(answer_text) + " " + longest_again)
+			for line_kind: String in ["kleingeld_ja", "kleingeld_nee"]:
+				var line: Variant = variant.get(line_kind, "")
+				for line_text: Variant in (line if line is Array else [line]):
+					replies.append(str(line_text) + " " + longest_again)
 		var longest := ""
 		for reply_text in replies:
 			if reply_text.length() > longest.length():

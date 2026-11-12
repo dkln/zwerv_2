@@ -46,6 +46,16 @@ const TOWN_LAYER := 1
 ## Metres per second walking (the slowest and the fastest), and how much faster over a zebra.
 const SLOWEST := 1.05
 const FASTEST := 1.55
+## Now and then someone on foot is in a hurry and runs a stretch: each second of walking the
+## chance HURRY_PER_SECOND (HURRY_KINDS more often: the rush of commuters and pupils), for a
+## while between HURRY_SECONDS, at RUN_SPEED (m/s, times its pace factor). Running the limbs
+## swing RUN_SWING times as far as walking, in longer strides (RUN_STRIDE times).
+const HURRY_PER_SECOND := 0.003
+const HURRY_KINDS := {"forens": 3.0, "zakenmens": 2.0, "scholier": 2.5, "kantoormens": 1.5}
+const HURRY_SECONDS := Vector2(5.0, 14.0)
+const RUN_SPEED := 3.4
+const RUN_SWING := 1.9
+const RUN_STRIDE := 1.7
 const CROSSING_HURRY := 1.3
 ## Metres off the middle of a cell a spot may be.
 const SPOT_SPREAD := 1.3
@@ -138,6 +148,8 @@ var role := ""
 ## On its way into Den Haag Centraal (Pedestrians._send_to_station): each step a cell nearer a
 ## door, at the door it is gone (Pedestrians.into_station).
 var heading_to_station := false
+## Walking to the door of a tram or a train to get on (board_at): gone at the door.
+var boarding := false
 var _entering_station := false
 var _station_misses := 0            # choices in a row that got it no nearer the station
 ## After this many choices in a row without a way nearer the station it gives up going there.
@@ -152,6 +164,7 @@ var _came_from := Vector3i.ZERO
 var _target := Vector3.ZERO
 var _next_cell := Vector3i.ZERO
 var _speed := 1.3
+var _hurry_left := 0.0           # seconds it still runs (in a hurry), 0 walking
 var _pace := 1.3
 var _phase := 0.0
 var _walking := 0.0
@@ -306,6 +319,8 @@ func become(new_seed: int, new_look: Dictionary, new_mobility: String, new_pace_
 	_ghost_left = 0.0
 	_blocked = 0.0
 	_walking = 0.0
+	_hurry_left = 0.0
+	boarding = false
 	_dress()
 
 
@@ -425,6 +440,9 @@ func _physics_process(delta: float) -> void:
 	_held_up = maxf(_held_up - delta * 0.5, 0.0)
 	_honked_while_blocked = false
 	_speed = _pace * (CROSSING_HURRY if _on_zebra else 1.0) * (daredevil_pace() if is_daredevil() else 1.0)
+	_update_hurry(delta)
+	if is_running():
+		_speed = maxf(_speed, RUN_SPEED * pace_factor)
 	var direction := flat_to.normalized()
 	var heading := atan2(direction.x, direction.y)
 	if aid:
@@ -436,7 +454,26 @@ func _physics_process(delta: float) -> void:
 		rotation.y = lerp_angle(rotation.y, heading, 1.0 - exp(-delta * 10.0))
 	_follow_ground()
 	_update_cell()
-	_walk_figure(delta, 1.0)
+	_walk_figure(delta, RUN_SWING if is_running() else 1.0)
+
+
+## True while it runs, in a hurry (on foot only).
+func is_running() -> bool:
+	return _hurry_left > 0.0
+
+
+## Counts down a hurry, or now and then starts one (see HURRY_PER_SECOND): on foot, not on a
+## zebra (it crosses at its own brisk pace there), not near the player's conversation.
+func _update_hurry(delta: float) -> void:
+	if aid or _ragdoll:
+		_hurry_left = 0.0
+		return
+	if _hurry_left > 0.0:
+		_hurry_left = maxf(_hurry_left - delta, 0.0)
+		return
+	var chance := HURRY_PER_SECOND * float(HURRY_KINDS.get(crowd_kind, 1.0)) * delta
+	if not _on_zebra and _random.randf() < chance:
+		_hurry_left = _random.randf_range(HURRY_SECONDS.x, HURRY_SECONDS.y)
 
 
 ## Rides the way it faces, turning towards `heading` (at most its TURN_RATE, slower the
@@ -482,7 +519,8 @@ func _walk_figure(delta: float, walking: float) -> void:
 		if _wheelie:
 			_do_wheelie(delta, walking > 0.0)
 		return
-	_phase = fmod(_phase + _speed * delta / TownsfolkFigure.STRIDE * PI * _walking, TAU)
+	var stride := TownsfolkFigure.STRIDE * (RUN_STRIDE if is_running() else 1.0)
+	_phase = fmod(_phase + _speed * delta / stride * PI * minf(_walking, 1.0), TAU)
 	figure.walk(_phase, _walking)
 	if _carried_pose and _carried_item:
 		Crowd.carried_items().call("pose", figure, carried)
@@ -563,6 +601,29 @@ func _do_wheelie(delta: float, riding: bool) -> void:
 func _near_player(metres: float) -> bool:
 	var player := town._player
 	return player == null or player.global_position.distance_to(global_position) < metres
+
+
+## Gets on the tram or train whose door is at `door`: walks straight there and is gone
+## (Pedestrians.into_station, counted as boarded).
+func board_at(door: Vector3) -> void:
+	boarding = true
+	heading_to_station = false
+	_route_points.clear()
+	_pause = 0.0
+	_hurry_left = 0.0
+	Pedestrians.claim_zebra(self, [], false)
+	_crossing.clear()
+	_target = Vector3(door.x, global_position.y, door.z)
+	_next_cell = cell
+	_entering_station = true
+
+
+## Just got off at `door`: stands there (on the platform's edge) and walks into its cell.
+func step_out_at(door: Vector3) -> void:
+	var ground := _ground_height(door, global_position.y + 1.0)
+	global_position = Vector3(door.x, global_position.y if is_nan(ground) else ground, door.z)
+	_target = town.cell_middle(cell) if town else global_position
+	_target.y = global_position.y
 
 
 ## Reached its spot: on to the next cell (or a pause first).

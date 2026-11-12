@@ -63,6 +63,10 @@ const CITY_MUSIC_PAUSED_DB := -20.5
 ## The city's own loop (CITY_MUSIC) plays this much softer still: it runs quietly in the
 ## background, under the sounds of the town; music of a building (the merchant's) does not.
 const CITY_LOOP_SOFTER_DB := 3.0
+## The muzak of a supermarket (Interiors SUPERMARKET_MUZAK, files starting with this) plays
+## softer still: background music in a shop, about as loud as the shop's own sound.
+const MUZAK_PREFIX := "supermarkt_muzak_"
+const MUZAK_SOFTER_DB := 6.0
 const CITY_MUSIC_FADE_IN := 3.0
 ## How fast (dB per second) the level follows pausing and going on.
 const CITY_MUSIC_LEVEL_SPEED := 30.0
@@ -390,6 +394,12 @@ func set_indoor_music(file: String) -> void:
 		_fade_city_music_to(CITY_MUSIC, INDOOR_MUSIC_FADE)
 
 
+## Holds the music down as under a jingle (JINGLE_DUCK_DB) while something else must be heard
+## (an announcement in a supermarket: SupermarketAnnouncer); every true needs a false after it.
+func duck_music(ducked: bool) -> void:
+	_jingles_playing = maxi(_jingles_playing + (1 if ducked else -1), 0)
+
+
 ## Makes `file` the loop that fades in over `fade` s (the others fade out); "" fades all out.
 func _fade_city_music_to(file: String, fade: float) -> void:
 	_city_music_file = file
@@ -441,6 +451,8 @@ func _update_city_music(delta: float) -> void:
 			continue
 		var amplitude := sin(weight * PI * 0.5)
 		var own_level := -CITY_LOOP_SOFTER_DB if file == CITY_MUSIC else 0.0
+		if file.begins_with(MUZAK_PREFIX):
+			own_level = -MUZAK_SOFTER_DB
 		player.volume_db = _city_level_db + own_level + linear_to_db(maxf(amplitude, 0.0001))
 
 

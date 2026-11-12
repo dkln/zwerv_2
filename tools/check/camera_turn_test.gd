@@ -44,6 +44,8 @@ func _init() -> void:
 		var player_spot := Vector3(middle.x, buildings.global_position.y, middle.z) + flat_away * 3.5
 		camera._turn_goal = 0.0
 		camera._usual_free_for = 0.0
+		camera._hidden_for = camera.turn_after   # hidden long enough, no turn being held
+		camera._turn_held_for = camera.turn_hold_time
 		camera._choose_turn(player_spot, camera.zoom_still)
 		var goal: float = camera._turn_goal
 		turns[goal] = int(turns.get(goal, 0)) + 1

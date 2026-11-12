@@ -31,6 +31,11 @@ const Interiors = preload("res://scripts/world/interiors.gd")
 const UiSounds = preload("res://scripts/ui/ui_sounds.gd")
 const InteriorSpot = preload("res://scripts/world/interior_spot.gd")
 const SignBoard = preload("res://scripts/world/sign_board.gd")
+## The loudspeakers: the chain's jingle and an offer or a notice now and then (omroep_supermarkt.json).
+const Announcer = preload("res://scripts/world/supermarket_announcer.gd")
+## The deposit machine by the entrance (statiegeld): its model and its close-up screen.
+const MachineModels = preload("res://scripts/world/machine_models.gd")
+const DepositMachineScreen = preload("res://scripts/ui/machines/deposit_machine_screen.gd")
 const DATA_FILE := "res://data/gesprekken/supermarkten.json"
 const LIBRARY := "res://assets/libraries/binnen.res"
 const PROPS_LIBRARY := "res://assets/libraries/props.res"
@@ -86,12 +91,15 @@ var _next_seed := 0
 ## What the shoppers of this branch did since it was laid out: came in, paid at a checkout,
 ## went out (the checks).
 var stats := {"binnen": 0, "betaald": 0, "weg": 0}
+var _announcer: Node
 
 
 func _ready() -> void:
 	brand = String(get_meta("kind", brand))
 	_data = _read_data()
 	_build(Layout.plan(brand, 0, 6), 0)
+	_announcer = Announcer.new(self)
+	add_child(_announcer)
 
 
 ## What the chain says, sells and wears (data/gesprekken/supermarkten.json).
@@ -131,10 +139,12 @@ func dress(bar_name: String, seed: int) -> void:
 
 func player_came_in(player: Node3D) -> void:
 	_player = player
+	_announcer.start()
 
 
 func player_went_out() -> void:
 	_drop_carrier()
+	_announcer.stop()
 
 
 ## Out of the door with goods not paid for: the gates go off ("winkeldiefstal").
@@ -182,6 +192,7 @@ func _build(new_plan: Dictionary, seed: int) -> void:
 	_make_signs()
 	_make_lamps()
 	_make_spots()
+	_make_deposit_machine()
 	_make_staff(seed)
 	_make_floor_grid(library, props_library)
 	_spawn_clock = _random.randf_range(SHOPPER_EVERY.x, SHOPPER_EVERY.y) * 0.5
@@ -377,6 +388,9 @@ func _take_carrier(kind: String) -> void:
 		_carried.position = BASKET_AT
 	_carried.add_child(mesh_node)
 	_player.add_child(_carried)
+	# the trolley bumps into the shelves and the people as the player does
+	if kind == "karretje" and mesh_node.mesh and _player.has_method("set_pushed_box"):
+		_player.set_pushed_box(_carried.transform * mesh_node.transform * mesh_node.mesh.get_aabb())
 	_pose_player_arms()
 	UiSounds.play(self, "kies", -6.0)
 
@@ -387,6 +401,8 @@ func _drop_carrier() -> void:
 	if _carried and is_instance_valid(_carried):
 		_carried.queue_free()
 	_carried = null
+	if _player and is_instance_valid(_player) and _player.has_method("set_pushed_box"):
+		_player.set_pushed_box(AABB())
 	_pose_player_arms()
 
 
@@ -617,6 +633,7 @@ func _shopper_carrier(person: InteriorPerson, with_cart: bool) -> bool:
 			mesh_node.transform = library.get_item_mesh_transform(item)
 		mesh_node.position += Vector3(-0.32, 0.5, 0.05)
 	person.add_child(mesh_node)
+	person.fit_collider()   # the trolley or basket is part of what bumps
 	return with_cart
 
 
@@ -867,7 +884,39 @@ static func footprints(a_plan: Dictionary, library: MeshLibrary, props_library: 
 		if box.position.y > 1.6:
 			continue
 		boxes.append(box)
+	boxes.append_array(deposit_footprint(a_plan))
 	return boxes
+
+
+## The box of the deposit machine of `a_plan` (its "deposit"), or none.
+static func deposit_footprint(a_plan: Dictionary) -> Array[AABB]:
+	var found: Array[AABB] = []
+	var deposit: Dictionary = a_plan.get("deposit", {})
+	if not deposit.is_empty():
+		var size: Vector3 = deposit.size
+		var turned := Basis(Vector3.UP, float(deposit.turn)) * size
+		var extent := Vector3(absf(turned.x), size.y, absf(turned.z))
+		found.append(AABB((deposit.at as Vector3) - Vector3(extent.x, 0.0, extent.z) * 0.5, extent))
+	return found
+
+
+## The deposit machine (statiegeld) by the entrance: its model, a collider, and "[E]
+## Statiegeld inleveren" before it (DepositMachineScreen).
+func _make_deposit_machine() -> void:
+	var deposit: Dictionary = plan.get("deposit", {})
+	if deposit.is_empty():
+		return
+	var machine: Node3D = MachineModels.instance(MachineModels.deposit_machine_mesh(), "Statiegeldautomaat")
+	machine.position = deposit.at
+	machine.rotation.y = float(deposit.turn)
+	_layout.add_child(machine)
+	_layout.add_child(_spot("Statiegeld", deposit.use_at, func() -> String: return "Statiegeld inleveren",
+		_use_deposit_machine))
+
+
+func _use_deposit_machine() -> void:
+	if _player:
+		DepositMachineScreen.show_for(_player, String(chain().get("naam", brand)).to_upper())
 
 
 static func cell_of(a_plan: Dictionary, at: Vector3) -> Vector2i:

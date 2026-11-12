@@ -69,6 +69,8 @@ func _init() -> void:
 			continue
 		var official: StationPerson = by_role[role]
 		_check(Conversations.is_official(official), "%s is personeel" % role)
+		# the base conversation (not one of its "varianten"), whose lines are checked below
+		official.set_meta(Conversations.VARIANT_META, 0)
 		player.talk_to(official)
 		await process_frame
 		var page: Dictionary = box._pages[box._page_index]

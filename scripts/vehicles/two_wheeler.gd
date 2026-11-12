@@ -19,8 +19,25 @@ extends Vehicle
 ## Some do a wheelie now and then (`wheelie_degrees`, Wheelie): going straight at speed the
 ## front comes up on the rear wheel for a few seconds and the rider shouts something cocky
 ## (DriverShout, mood "wheelie", `wheelie_kind` for its own lines).
+## Crashing hard (_become_wreck) it goes down: the wreck tips over onto its side (a higher centre
+## of mass and a roll towards where it was pushed, TOPPLE_SPIN) and slides on without its
+## engine, and the rider comes off: thrown as a tumbling body of their own (KnockDown) along
+## the way they were going. A bicycle never burns (_catch_fire). Towed back, the rider is in
+## the saddle again.
 
 const Wheelie = preload("res://scripts/vehicles/wheelie.gd")
+const KnockDown = preload("res://scripts/world/knock_down.gd")
+
+## Going down: the roll (rad/s) round its length that tips the wreck over, the height of its
+## centre of mass (share of its height), and the rider thrown off: their mass (kg), the share
+## of the speed they fly on with, the extra tumble (rad/s).
+const TOPPLE_SPIN := 5.5
+const TOPPLE_CENTRE := 0.6
+const RIDER_MASS := 75.0
+const RIDER_FLIES_ON := 0.85
+const RIDER_TUMBLE := 3.0
+## Seconds after the crash at which the wreck's box shrinks to the vehicle without its rider.
+const FIT_WRECK_AFTER := 0.8
 
 ## Wheel turns per turn of the cranks (a Dutch bicycle's gear).
 const PEDAL_GEAR := 2.4
@@ -57,6 +74,8 @@ const WHEELIE_MOST_LEAN := 0.1
 @export var fat_tyres := false
 
 var _rider: TownsfolkFigure
+var _thrown_rider: RigidBody3D       # the rider's body, thrown off in a crash
+var _rider_seat := Transform3D()     # the rider on the body, to put them back after the tow
 var _crank: Node3D
 var _steer_head: Node3D           # the head tube: leans the steering back
 var _grips_on_steering := {}      # side ("left", "right") -> grip in the steering pivot's space
@@ -223,7 +242,7 @@ func _pose_rider(crank_angle: float) -> void:
 
 
 func _animate(roll: float, _steering_now: float, delta: float) -> void:
-	if _rider == null:
+	if _rider == null or crashed:
 		return
 	if _wheelie:
 		_do_wheelie(delta)
@@ -252,3 +271,85 @@ func _do_wheelie(delta: float) -> void:
 	daredevil = _wheelie.is_up() and not crashed
 	if _wheelie.angle > 0.0:
 		_body.global_transform = _body.global_transform * _wheelie.tilt_about(_rear_contact)
+
+
+# ------------------------------------------------------------------ going down
+
+func _become_wreck(impact: Vector3, spin := 0.0, pushed := Vector3.ZERO, jolt := 0.0) -> void:
+	var speed_before := velocity
+	super(impact, spin, pushed, jolt)
+	if _wreck == null:
+		return
+	# over onto its side, towards where it was pushed (or either way), sliding without its engine
+	# (the centre of mass high while it tips; _fit_wreck_to_vehicle sets the vehicle's own after
+	# FIT_WRECK_AFTER)
+	_wreck.center_of_mass = Vector3(0.0, _body_size.y * TOPPLE_CENTRE, 0.0)
+	var along := global_basis.z.normalized()
+	var side := signf(pushed.dot(global_basis.x))
+	if side == 0.0:
+		side = 1.0 if route_seed % 2 == 0 else -1.0
+	_wreck.angular_velocity += along * side * TOPPLE_SPIN
+	_roll_on_clock = 0.0
+	_wreck.physics_material_override.friction = SLIDING_FRICTION
+	_throw_rider(speed_before, maxf(jolt, speed_before.length()))
+	# once it is going over, the wreck the size of the vehicle alone (with its own centre of mass)
+	get_tree().create_timer(FIT_WRECK_AFTER, false).timeout.connect(_fit_wreck_to_vehicle)
+
+
+## Without its rider the wreck is only as big as the vehicle (its meshes): the box the wreck
+## got was measured with the rider on it.
+func _fit_wreck_to_vehicle() -> void:
+	if _wreck == null or not is_instance_valid(_wreck):
+		return
+	var shape_node: CollisionShape3D = null
+	for child in _wreck.get_children():
+		if child is CollisionShape3D:
+			shape_node = child
+			break
+	if shape_node == null:
+		return
+	var bounds := Vehicle._mesh_bounds(_body)
+	if bounds.size.y < 0.2:
+		return
+	(shape_node.shape as BoxShape3D).size = Vector3(maxf(bounds.size.x, 0.2), maxf(bounds.size.y - 0.05, 0.2), maxf(bounds.size.z, 0.5))
+	shape_node.position = bounds.get_center() + Vector3(0.0, 0.03, 0.0)
+	_wreck.center_of_mass = Vector3(0.0, bounds.get_center().y, 0.0)
+
+
+## The rider off the vehicle, flying on the way they went (and up and tumbling by the blow).
+func _throw_rider(speed_before: Vector3, impact: float) -> void:
+	if _rider == null or _thrown_rider != null:
+		return
+	_rider_seat = _rider.transform
+	# limp: straight arms and legs (no longer on the grips and the pedals), then the body as
+	# big as the figure is now (its meshes), so it lands and lies the size it looks
+	_rider.walk(0.0, 0.0)
+	_rider.lean_body(0.0)
+	var bounds := Vehicle._mesh_bounds(_rider)
+	var box := BoxShape3D.new()
+	box.size = Vector3(maxf(bounds.size.x, 0.3), maxf(bounds.size.y, 0.8), maxf(bounds.size.z, 0.2))
+	var flat_speed := Vector3(speed_before.x, 0.0, speed_before.z) * RIDER_FLIES_ON
+	_thrown_rider = KnockDown.throw(get_parent(), Transform3D(Basis(Vector3.UP, rotation.y), _rider.global_position),
+			box, bounds.get_center(), RIDER_MASS, flat_speed, impact, _random, 1.0, RIDER_TUMBLE)
+	if _wreck:
+		_thrown_rider.add_collision_exception_with(_wreck)
+	_rider.reparent(_thrown_rider, true)
+
+
+## A bicycle has nothing to burn; a motor two-wheeler can catch fire as any vehicle.
+func _catch_fire() -> void:
+	if bicycle:
+		return
+	super()
+
+
+## Towed back: the rider in the saddle again.
+func _tow() -> void:
+	if _thrown_rider and is_instance_valid(_thrown_rider):
+		_rider.reparent(_body, false)
+		_rider.transform = _rider_seat
+		_rider.lean_body(_rider_lean)
+		_pose_rider(_crank_angle)
+		_thrown_rider.queue_free()
+	_thrown_rider = null
+	super()

@@ -60,6 +60,11 @@ const DOOR_STEP_OUT := 0.125
 const DOOR_STEP_SHARE := 0.25
 ## Metres beyond a door where the platform has to be.
 const DOOR_PLATFORM_REACH := 2.0
+## The pedestrians (Pedestrians) who get on and off at its doors; where they step on and off
+## (metres outside a door), and the leaves within this of each other that make one door.
+const PEDESTRIANS_NODE := "Voetgangers"
+const DOOR_STEP_OFF := 0.6
+const DOOR_PAIR_WITHIN := 2.2
 
 var _cars: Array[Node3D] = []
 var _car_previous: Array[Transform3D] = []
@@ -196,6 +201,8 @@ func _move_doors(delta: float) -> void:
 	if open and _door_amount == 0.0:
 		_opening_leaves = _leaves_beside_platform(_waiting_before.y if at_platform else _route_cells[-1].y)
 	var amount := move_toward(_door_amount, 1.0 if open else 0.0, delta / door_time)
+	if open and amount >= 1.0:
+		_let_people_on_and_off(delta)
 	if amount == _door_amount:
 		return
 	_door_amount = amount
@@ -204,6 +211,23 @@ func _move_doors(delta: float) -> void:
 	for leaf in _opening_leaves:
 		(leaf.node as Node3D).position = leaf.closed + leaf.outward * DOOR_STEP_OUT * smoothstep(0.0, 1.0, stepped) \
 			+ leaf.slide * DOOR_LEAF_VOXELS * VOXEL * smoothstep(0.0, 1.0, slid)
+
+
+## While the doors beside the platform stand open: at each door (a pair of leaves, on the
+## platform just outside them) people may get on and off (Pedestrians.door_open_at).
+func _let_people_on_and_off(delta: float) -> void:
+	var town := get_parent().get_node_or_null(PEDESTRIANS_NODE)
+	if town == null or not town.has_method("door_open_at"):
+		return
+	var doors: Array[Vector3] = []
+	for leaf in _opening_leaves:
+		var parent := (leaf.node as Node3D).get_parent() as Node3D
+		var outside: Vector3 = parent.global_transform * (leaf.centre + leaf.outward * DOOR_STEP_OFF)
+		if doors.any(func(door: Vector3) -> bool: return door.distance_to(outside) < DOOR_PAIR_WITHIN):
+			continue
+		doors.append(outside)
+	for door in doors:
+		town.door_open_at(door, delta)
 
 
 ## The route distances start again from the first cell it keeps: so does its stopping spot.

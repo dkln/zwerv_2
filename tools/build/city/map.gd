@@ -404,6 +404,14 @@ const SUPERMARKET_MOST_CELLS := 7
 var _supermarket_count := 0
 
 
+## A supermarket of the next brand in turn (SUPERMARKET_BRANDS) in the north front of a ring
+## of `style` from column x0, at most SUPERMARKET_MOST_CELLS of its `width`.
+func _next_supermarket(x0: int, z: int, width: int, style: String) -> void:
+	var brand: String = SUPERMARKET_BRANDS[_supermarket_count % SUPERMARKET_BRANDS.size()]
+	_supermarket(x0, z, mini(width, SUPERMARKET_MOST_CELLS), style, brand, SUPERMARKET_CARTS[brand])
+	_supermarket_count += 1
+
+
 ## A supermarket of `brand` ("derrek", "alfred_steyhn") in the ground floor of the north
 ## front (row z) of a block of `style` from column x0, `width` wide: shop windows in the
 ## brand's colours between the corners, the sliding doors in the middle, the brand's sign

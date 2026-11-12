@@ -58,6 +58,13 @@ func _init() -> void:
 				var inner := boxes.filter(func(box: AABB) -> bool:
 					return box.position.x > -float(plan.width) * 0.5 + 0.2 and box.end.x < float(plan.width) * 0.5 - 0.2 \
 						and box.position.z > -float(plan.depth) * 0.5 + 0.2 and box.end.z < float(plan.depth) * 0.5 - 0.2)
+				# the deposit machine stands against a wall: checked against all the furniture
+				var deposit_box: AABB = Supermarket.deposit_footprint(plan)[0]
+				for box: AABB in inner:
+					if box != deposit_box and box.grow(-TOUCH).intersects(deposit_box.grow(-TOUCH)):
+						overlaps += 1
+						if first_overlap == "":
+							first_overlap = "seed %d breedte %d: statiegeldautomaat %s in %s" % [seed, width, deposit_box, box]
 				for first in inner.size():
 					for second in range(first + 1, inner.size()):
 						if (inner[first] as AABB).grow(-TOUCH).intersects((inner[second] as AABB).grow(-TOUCH)):
@@ -66,7 +73,7 @@ func _init() -> void:
 								first_overlap = "seed %d breedte %d: %s en %s" % [seed, width, inner[first], inner[second]]
 				var grid := Supermarket.make_floor_grid(plan, library, props_library)
 				var door: Vector3 = (plan.door as Transform3D).origin
-				var spots: Array = [["karretjes", plan.cart_at], ["mandjes", plan.basket_at]]
+				var spots: Array = [["karretjes", plan.cart_at], ["mandjes", plan.basket_at], ["statiegeld", plan.deposit.use_at]]
 				for shelf: Dictionary in plan.shelves:
 					spots.append(["schap " + String(shelf.category), shelf.at])
 				for checkout: Dictionary in plan.checkouts:

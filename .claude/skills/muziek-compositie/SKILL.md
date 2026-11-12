@@ -1,6 +1,6 @@
 ---
 name: muziek-compositie
-description: Gebruik als de gebruiker een nieuwe compositie aanlevert (een uitgeschreven nummer van Gemini of een andere componist: tempo, toonsoort, instrumenten, akkoorden en noten per maat; in tools/muziek/composition.md of geplakt) en vraagt daar de muziek van ZWERVR van te maken; zet de compositie letterlijk om naar tools/muziek/composities/<naam>.py, rendert de intro en alle afgeleide stukken (menu, karakterkeuze, handelaar, laadscherm, spel, deuntjes, ook het deuntje voor de start van de kaart) in Mega Drive-klank en controleert ze.
+description: Gebruik als de gebruiker een nieuwe compositie aanlevert (een uitgeschreven nummer van Gemini of een andere componist: tempo, toonsoort, instrumenten, akkoorden en noten per maat; in tools/muziek/composition.md of geplakt) en vraagt daar de muziek van ZWERVR van te maken; zet de compositie letterlijk om naar tools/muziek/composities/<naam>.py, rendert de intro en alle afgeleide stukken (menu, karakterkeuze, handelaar, laadscherm, spel, deuntjes, ook het deuntje voor de start van de kaart, de drie muzaklussen van de supermarkten en de jingles van de twee supermarktketens) in Mega Drive-klank en controleert ze.
 ---
 
 # Een nieuwe compositie wordt de muziek van ZWERVR
@@ -45,7 +45,14 @@ vragen.
    maat; verbeter en render opnieuw.
    Alle stukken uit "Afgeleide stukken" van `docs/MUZIEK.md` moeten er komen, ook de deuntjes en
    **altijd het deuntje voor de start van de kaart** (`deuntje_kaart_start.ogg`, hooguit 6 s:
-   `MAP_JINGLE` in `scripts/ui/hud.gd`); nooit een oud bestand van een vorige compositie laten
+   `MAP_JINGLE` in `scripts/ui/hud.gd`), en **altijd de supermarkten**: de drie muzaklussen
+   `supermarkt_muzak_1.ogg` (bossa), `_2` (ballade), `_3` (lichte swing), zacht op de
+   achtergrond in elk filiaal (`SUPERMARKET_MUZAK` in `scripts/world/interiors.gd`), en de
+   jingles `jingle_derrek.ogg` en `jingle_alfred_steyhn.ogg` (voor de omroep in de winkel,
+   `scripts/world/supermarket_announcer.gd`, hooguit 6 s); `derive.py` maakt ze uit het thema en
+   het refrein (zie "De muzak" in `docs/MUZIEK.md`), dus ze komen vanzelf mee. Heeft een
+   compositie geen thema of refrein, of klinkt de gezoete harmonie vreemd (andere toonsoort,
+   modus), pas dan `derive.py` algemeen aan. Nooit een oud bestand van een vorige compositie laten
    staan. Gebruikt het spel een stuk dat `derive.py` nog niet maakt, voeg het daar toe (`ALL`) en in
    de tabel van `docs/MUZIEK.md`.
 5. **Controleer**: `tools/muziek/render.sh --test` (de unit tests: alles moet slagen) en
@@ -56,12 +63,16 @@ vragen.
    - de balans (zie `docs/MUZIEK.md`): wijkt een partij meer dan 3 dB af van de richtlijn, pas
      dan het niveau van die klank aan (`gain` in `instruments.py`), niet de noten;
    - de energie per sectie: het refrein en de finale horen het luidst, de breakdown het zachtst.
+   - de muzak: drie lussen van ongeveer een minuut, zonder naad; in de balans hoort de melodie
+     (fluit, vibrafoon, piano, klokken) boven de begeleiding, de strijkers en de drums ver
+     eronder (achtergrond); de jingles kort en in majeur.
 6. **Past de vorm niet** bij de afleidingen (geen thema, geen finale, heel andere maatsoort),
    pas dan `tools/muziek/derive.py` algemeen aan (zodat het voor elke compositie werkt) en zet
    het in "Afgeleide stukken" van `docs/MUZIEK.md`.
 7. **Speltests** (één tegelijk, headless):
    `tools/godot.sh --headless --script tools/check/intro_test.gd` en
    `tools/godot.sh --headless --script tools/check/city_music_test.gd`.
-8. **Meld** aan de gebruiker: titel, tempo, toonsoort, lengte van de intro, wat er is afgeleid
+8. **Meld** aan de gebruiker: titel, tempo, toonsoort, lengte van de intro, de lengte van de drie
+   muzaklussen en de jingles, wat er is afgeleid
    (welke gaten, met reden), nieuwe klanken, de uitkomst van de controle, en dat je het niet
    hebt beluisterd. Niet committen.

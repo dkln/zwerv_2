@@ -767,3 +767,147 @@ func _try_bin(p: Vector2, placed: Array[Vector2]) -> bool:
 	Pr(p.x, p.y, "straat/prullenbak_rond" if park else "straat/prullenbak_paal")
 	placed.append(p)
 	return true
+
+
+## The machines and things to find in the streets (each its own node; scripts in
+## scripts/world/): the cash machines (PINPUNT) flush against facades and the OV-chipkaart
+## machines at tram stops (node Straatautomaten, street_machines.gd: a marker
+## Geldautomaat_<n> / OVAutomaat_<n> each, its +z the way it faces), the cans in the waste
+## bins (node Prullenbakken, litter_bins.gd) and the lost bank cards (node Pinpassen,
+## lost_bank_cards.gd).
+## Cash machines: beside every other supermarket entrance (bg_<chain>_ingang), then the
+## other shop fronts (bg_*winkel*) and the facades on squares, spread out (at least
+## CASH_MACHINE_SPACING m apart, at most MOST_CASH_MACHINES), each on the pavement in front of
+## the facade, 1.3 m to the side of the middle (not before the door). OV machines: beside a
+## tram shelter (ov/abri), at most MOST_OV_MACHINES, OV_MACHINE_SPACING m apart.
+const MOST_CASH_MACHINES := 34
+const CASH_MACHINE_SPACING := 44.0
+const MOST_OV_MACHINES := 8
+const OV_MACHINE_SPACING := 60.0
+## The cash machine's half depth: how far its middle stands before the facade.
+const CASH_MACHINE_HALF_DEPTH := 0.27
+
+
+func _street_machines(root: Node3D) -> void:
+	var machines := Node3D.new()
+	machines.name = "Straatautomaten"
+	machines.set_script(load("res://scripts/world/street_machines.gd"))
+	root.add_child(machines)
+	machines.owner = root
+	# the facades: supermarkets first (every other one), then shops, then squares
+	var supermarket_fronts: Array = []
+	var shop_fronts: Array = []
+	var square_fronts: Array = []
+	var library := buildings.mesh_library
+	for cell in buildings.get_used_cells():
+		if cell.y != 0:
+			continue
+		var tile_name := library.get_item_name(buildings.get_cell_item(cell))
+		var front := buildings.get_cell_item_basis(cell) * Vector3(0, 0, 1)
+		var step := Vector2i(roundi(front.x), roundi(front.z))
+		if step.length_squared() != 1:
+			continue
+		var before := Vector2i(cell.x, cell.z) + step
+		var ground_name := _ground_name(before)
+		if not (ground_name.begins_with("stoep/") or ground_name.begins_with("plein/")):
+			continue
+		if buildings.get_cell_item(Vector3i(before.x, 0, before.y)) != GridMap.INVALID_CELL_ITEM:
+			continue
+		var entry := [cell, step]
+		if tile_name.ends_with("_ingang") and (tile_name.contains("derrek") or tile_name.contains("alfred_steyhn")):
+			supermarket_fronts.append(entry)
+		elif tile_name.contains("_bg_") and tile_name.contains("winkel"):
+			shop_fronts.append(entry)
+		elif ground_name.begins_with("plein/") and tile_name.contains("_bg_"):
+			square_fronts.append(entry)
+	var sort_cells := func(first: Array, second: Array) -> bool:
+		var first_cell: Vector3i = first[0]
+		var second_cell: Vector3i = second[0]
+		return first_cell.z < second_cell.z or (first_cell.z == second_cell.z and first_cell.x < second_cell.x)
+	for fronts: Array in [supermarket_fronts, shop_fronts, square_fronts]:
+		fronts.sort_custom(sort_cells)
+	var placed: Array[Vector2] = []
+	var number := 1
+	var supermarket_index := 0
+	for fronts: Array in [supermarket_fronts, shop_fronts, square_fronts]:
+		# spread the shops: every third of them tried first, the others after
+		var order: Array = []
+		for stride_start in 3:
+			for index in range(stride_start, fronts.size(), 3):
+				order.append(fronts[index])
+		for entry: Array in order:
+			if number > MOST_CASH_MACHINES:
+				break
+			if fronts == supermarket_fronts:
+				supermarket_index += 1
+				if supermarket_index % 2 == 0:
+					continue
+			var cell: Vector3i = entry[0]
+			var step: Vector2i = entry[1]
+			var middle := Vector2(cell.x * 4.0 + 2.0, cell.z * 4.0 + 2.0)
+			var outward := Vector2(step)
+			var along := Vector2(-outward.y, outward.x)
+			for side: float in [1.0, -1.0]:
+				var spot := middle + outward * (2.0 + CASH_MACHINE_HALF_DEPTH) + along * 1.3 * side
+				if placed.any(func(other: Vector2) -> bool: return other.distance_to(spot) < CASH_MACHINE_SPACING):
+					break
+				if not _free_of_props(spot):
+					continue
+				_machine_marker(machines, root, "Geldautomaat_%d" % number, spot, 0.0, outward)
+				placed.append(spot)
+				number += 1
+				break
+	print("cash machines: ", number - 1)
+	# the OV-chipkaart machines beside tram shelters
+	var shelters: Array[Vector3i] = []
+	var shelter_item := props.mesh_library.find_item_by_name("ov/abri")
+	if shelter_item >= 0:
+		shelters.assign(props.get_used_cells_by_item(shelter_item))
+	shelters.sort_custom(func(first: Vector3i, second: Vector3i) -> bool:
+		return first.z < second.z or (first.z == second.z and first.x < second.x))
+	var ov_placed: Array[Vector2] = []
+	var ov_number := 1
+	for shelter in shelters:
+		if ov_number > MOST_OV_MACHINES:
+			break
+		var at := Vector2(shelter.x, shelter.z) * 0.5
+		if ov_placed.any(func(other: Vector2) -> bool: return other.distance_to(at) < OV_MACHINE_SPACING):
+			continue
+		var facing := props.get_cell_item_basis(shelter) * Vector3(0, 0, 1)
+		var shelter_front := Vector2(facing.x, facing.z).normalized()
+		var shelter_along := Vector2(-shelter_front.y, shelter_front.x)
+		for side: float in [1.0, -1.0]:
+			var spot := at + shelter_along * 2.5 * side
+			if not _free_of_props(spot, shelter.y):
+				continue
+			_machine_marker(machines, root, "OVAutomaat_%d" % ov_number, spot, shelter.y * 0.5, shelter_front)
+			ov_placed.append(at)
+			ov_number += 1
+			break
+	print("OV machines at tram stops: ", ov_number - 1)
+	for finds: Array in [["Prullenbakken", "res://scripts/world/litter_bins.gd"], ["Pinpassen", "res://scripts/world/lost_bank_cards.gd"]]:
+		var node := Node3D.new()
+		node.name = finds[0]
+		node.set_script(load(finds[1]))
+		root.add_child(node)
+		node.owner = root
+
+
+## True if no prop stands within a metre of `spot` (metres) at the props level `level`.
+func _free_of_props(spot: Vector2, level := 0) -> bool:
+	var prop_cell := Vector2i(roundi(spot.x * 2), roundi(spot.y * 2))
+	for offset_x in range(-2, 3):
+		for offset_z in range(-2, 3):
+			for height in [level, level + 1]:
+				if props.get_cell_item(Vector3i(prop_cell.x + offset_x, height, prop_cell.y + offset_z)) != GridMap.INVALID_CELL_ITEM:
+					return false
+	return true
+
+
+func _machine_marker(parent: Node3D, root: Node3D, marker_name: String, spot: Vector2, height: float, facing: Vector2) -> void:
+	var marker := Node3D.new()
+	marker.name = marker_name
+	marker.position = Vector3(spot.x, height, spot.y)
+	marker.rotation.y = atan2(facing.x, facing.y)
+	parent.add_child(marker)
+	marker.owner = root

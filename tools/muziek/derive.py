@@ -23,6 +23,11 @@ that has them; a missing one falls back to the nearest (Score.first_section).
     deuntje_level_omhoog   a level up: a run up the tonic chord to the high tonic
     deuntje_dood           death: the motif at half speed an octave down, falling to the low
                            tonic, a tape stop
+    supermarkt_muzak_1..3  the supermarkets (soft, in the background): muzak from the theme and
+                           the chorus, chords sweetened, melody smoothed: a bossa nova, a slow
+                           ballad, a light swing
+    jingle_derrek, jingle_alfred_steyhn   the sound logo of each supermarket chain, before an
+                           announcement in the shop
 """
 from dataclasses import replace
 
@@ -376,8 +381,199 @@ def death(score: Score) -> Piece:
                  tail=0.6, last_bar_beats=2.0, tape_stop=(bar_seconds + beat * 1.0, beat * 1.6))
 
 
+# ----------------------------------------------------------------------------- the supermarkets
+
+## The muzak of the supermarkets (scripts/world/interiors.gd SUPERMARKET_MUZAK: each branch
+## plays one of the three, soft, under the sound of the shop). Easy listening made from the
+## composition's own melodies and chords: the chords sweetened (a power chord or a triad gets
+## the third of the key and a seventh: muzak harmony), the melody smoothed (only the notes on
+## the beat grid, each held to the next), at a tempo of its own, in soft sounds (flute,
+## vibraphone, strings, electric piano). Bars with more than two chords (the chromatic
+## climbs) stay out.
+MUZAK_TEMPOS = {"bossa": 100.0, "ballade": 76.0, "swing": 112.0}
+## The seventh chord each degree of the key gets (semitones above the tonic -> quality).
+MUZAK_QUALITIES_MINOR = {0: "m7", 1: "maj7", 2: "m7b5", 3: "maj7", 5: "m7", 7: "7", 8: "maj7", 10: "6"}
+MUZAK_QUALITIES_MAJOR = {0: "maj7", 2: "m7", 4: "m7", 5: "maj7", 7: "7", 9: "m7", 11: "m7b5"}
+MUZAK_SOUNDS = {"fluit": "fm_fluit", "vibrafoon": "fm_vibrafoon", "strijkers": "fm_strijkers",
+                "piano": "fm_piano", "klok": "fm_klok", "bas": "fm_subbas", "drumstel": "standaard"}
+
+
+def chord_root(name: str) -> str:
+    return name[:2] if len(name) > 1 and name[1] in "#b" else name[:1]
+
+
+def sweetened(name: str, score: Score) -> str:
+    """The chord as muzak plays it: a power chord or a plain triad gets the third of the key
+    and a seventh (MUZAK_QUALITIES_*); a chord that already says more stays as it is."""
+    root = chord_root(name)
+    quality = name[len(root):]
+    if quality not in ("", "5", "m"):
+        return name
+    degree = (notation.pitch(root + "0") - score.tonic()) % 12
+    qualities = MUZAK_QUALITIES_MINOR if score.is_minor() else MUZAK_QUALITIES_MAJOR
+    return root + qualities.get(degree, quality if quality != "5" else "")
+
+
+def sweet_bar(bar: Bar, score: Score) -> Bar:
+    result = bar.copy()
+    result.chords = [(sweetened(name, score), start, length) for name, start, length in bar.chords]
+    return result
+
+
+def plain_bars(bars: list) -> list:
+    """The bars with one or two chords (the chromatic climbs left out)."""
+    return [bar for bar in bars if len(bar.chords) <= 2]
+
+
+def smooth_melody(bar: Bar, grid: float = 0.5, semitones: int = -12, velocity: float = 0.8,
+                  longest: float = 2.0, beats: int = 4) -> list:
+    """The bar's melody (lead) with only its notes on the grid, each held to the next one."""
+    kept = [note for note in bar.parts.get("lead", [])
+            if abs((note.position - 1.0) / grid - round((note.position - 1.0) / grid)) < 1e-6]
+    result = []
+    for index, note in enumerate(kept):
+        next_start = kept[index + 1].position if index + 1 < len(kept) else beats + 1.0
+        length = min(longest, max(note.length, next_start - note.position))
+        result.append(Note(note.position, tuple(pitch + semitones for pitch in note.pitches), length,
+                           velocity * note.velocity))
+    return result
+
+
+def bossa_bass(bar: Bar, velocity: float = 0.8) -> list:
+    """Root (dotted quarter), fifth, fifth (dotted quarter), root: the bossa nova bass."""
+    result = []
+    for root, start, length in roots(bar):
+        result.append(Note(start, (root,), 1.5, velocity))
+        result.append(Note(start + 1.5, (root + 7,), 0.5, velocity * 0.8))
+        if length >= 4:
+            result.append(Note(start + 2.0, (root + 7,), 1.5, velocity * 0.9))
+            result.append(Note(start + 3.5, (root,), 0.5, velocity * 0.8))
+    return result
+
+
+def broken_chords(bar: Bar, lowest: int = 55, velocity: float = 0.45) -> list:
+    """The chords broken in eighths, up and down (a gentle piano)."""
+    result = []
+    for name, start, length in bar.chords:
+        voicing = list(notation.chord_voicing(name, lowest)[:4])
+        figure = voicing + voicing[-2:0:-1]
+        for step in range(int(length / 0.5)):
+            result.append(Note(start + step * 0.5, (figure[step % len(figure)],), 0.5, velocity))
+    return result
+
+
+def strings_pad(bar: Bar, velocity: float = 0.6) -> list:
+    return pad_from_chords(bar, lowest=52, velocity=velocity)
+
+
+def muzak_bar(bar: Bar, score: Score, style: str, melody_part: str = "", grid: float = 0.5,
+              semitones: int = -12) -> Bar:
+    """One bar of muzak in `style` (bossa, ballade, swing), its melody on `melody_part` (or none)."""
+    sweet = sweet_bar(bar, score)
+    result = Bar(bar.number, sweet.chords, {}, [], bar.section, bar.kind)
+    if melody_part:
+        result.parts[melody_part] = smooth_melody(bar, grid, semitones)
+    if style == "bossa":
+        result.parts["vibrafoon" if melody_part != "vibrafoon" else "piano"] = comp(
+            sweet, (1.0, 2.5, 4.0), length=0.75, lowest=57, velocity=0.4)
+        result.parts["bas"] = bossa_bass(sweet)
+        result.parts["strijkers"] = strings_pad(sweet, 0.45)
+        result.hits = (drums(hihat="8", velocity=0.3) + drums(kick="1 2.5 3 4.5", velocity=0.4)
+                       + drums(tom_hoog="1 2.5 4", velocity=0.18))
+    elif style == "ballade":
+        result.parts["piano"] = broken_chords(sweet)
+        result.parts["bas"] = long_bass(sweet, 0.75)
+        result.parts["strijkers"] = strings_pad(sweet, 0.6)
+        result.hits = drums(kick="1", clap="3", velocity=0.3) + drums(hihat="8", velocity=0.2)
+    else:   # swing
+        result.parts["vibrafoon" if melody_part != "vibrafoon" else "piano"] = comp(
+            sweet, (2.0, 4.0), length=0.5, lowest=57, velocity=0.4)
+        result.parts["bas"] = walking_bass(sweet, 0.75)
+        result.hits = drums(kick="1 3", clap="2 4", velocity=0.3) + drums(hihat="8", velocity=0.3)
+    return result
+
+
+def _muzak_piece(name: str, score: Score, style: str, bars: list) -> Piece:
+    return Piece(name, MUZAK_TEMPOS[style], score.beats_per_bar, bars, dict(score.sounds, **MUZAK_SOUNDS),
+                 part_gains={"drums": 0.55, "strijkers": 0.9, "bas": 0.9},
+                 swing=0.6 if style == "swing" else 0.0)
+
+
+def supermarket_muzak_bossa(score: Score) -> Piece:
+    """Muzak 1, a bossa nova: the theme's chords alone (four bars), the theme on the flute,
+    the theme on the vibraphone, the chorus on the flute."""
+    theme = plain_bars(score.first_section("thema"))
+    chorus = plain_bars(score.first_section("refrein", "thema"))
+    bars = [muzak_bar(bar, score, "bossa") for bar in theme[:4]]
+    bars += [muzak_bar(bar, score, "bossa", "fluit") for bar in theme]
+    bars += [muzak_bar(bar, score, "bossa", "vibrafoon") for bar in theme]
+    bars += [muzak_bar(bar, score, "bossa", "fluit") for bar in chorus]
+    return _muzak_piece("supermarkt_muzak_1", score, "bossa", bars)
+
+
+def supermarket_muzak_ballad(score: Score) -> Piece:
+    """Muzak 2, a slow ballad: the breakdown's chords (strings, broken piano), the chorus on
+    the vibraphone, the theme on the flute."""
+    breakdown = plain_bars(score.first_section("breakdown", "opbouw", "thema"))
+    chorus = plain_bars(score.first_section("refrein", "thema"))
+    theme = plain_bars(score.first_section("thema"))
+    opening = (breakdown * 2)[:4]
+    bars = [muzak_bar(bar, score, "ballade") for bar in opening]
+    bars += [muzak_bar(bar, score, "ballade", "vibrafoon") for bar in chorus]
+    bars += [muzak_bar(bar, score, "ballade", "fluit") for bar in theme]
+    return _muzak_piece("supermarkt_muzak_2", score, "ballade", bars)
+
+
+def supermarket_muzak_swing(score: Score) -> Piece:
+    """Muzak 3, a cheerful light swing: the theme on the electric piano, the chorus on the
+    bells, the theme on the vibraphone, the chorus on the piano; a walking bass."""
+    theme = plain_bars(score.first_section("thema"))
+    chorus = plain_bars(score.first_section("refrein", "thema"))
+    bars = [muzak_bar(bar, score, "swing", "piano") for bar in theme]
+    bars += [muzak_bar(bar, score, "swing", "klok") for bar in chorus]
+    bars += [muzak_bar(bar, score, "swing", "vibrafoon") for bar in theme]
+    bars += [muzak_bar(bar, score, "swing", "piano") for bar in chorus]
+    return _muzak_piece("supermarkt_muzak_3", score, "swing", bars)
+
+
+def _chain_jingle(name: str, score: Score, opening: Bar, melody_sound: str, chord_sound: str,
+                  tempo: float, drum_hits: list) -> Piece:
+    """A chain's jingle (its sound logo before an announcement): the first half of `opening`'s
+    melody, landing on beat 3 on the high tonic over the tonic chord in major (a shop is happy)."""
+    tonic = score.tonic()
+    melody = [note for note in opening.parts.get("lead", []) if note.position < 3.0 - 1e-6]
+    melody = [Note(note.position, note.pitches, min(note.length, 3.0 - note.position), 0.9) for note in melody]
+    landing_root = 64 + (tonic - 64) % 12          # the tonic from E4 up
+    major = (landing_root - 12, landing_root - 8, landing_root - 5, landing_root - 1)   # maj7 under it
+    parts = {
+        "melodie": melody + [Note(3.0, (landing_root + 12,), 2.0)],
+        "akkoord": [Note(3.0, major, 2.0, 0.8)],
+        "bas": [Note(1.0, (landing_root - 24,), 2.0, 0.8), Note(3.0, (landing_root - 24,), 2.0, 0.9)],
+    }
+    sounds = dict(score.sounds, melodie=melody_sound, akkoord=chord_sound, bas="fm_subbas", drumstel="standaard")
+    return Piece(name, tempo, score.beats_per_bar, [Bar(0, [], parts, drum_hits)], sounds, loop=False,
+                 tail=1.6, last_bar_beats=4.0, part_gains={"drums": 0.6})
+
+
+def jingle_derrek(score: Score) -> Piece:
+    """DERREK (cheap and cheerful, red): the motif bright on the PSG, brass on the landing."""
+    hits = drums(hihat="1 1.5 2 2.5", velocity=0.5) + drums(kick="1 3", velocity=0.7) + drums(crash="3", velocity=0.5)
+    return _chain_jingle("jingle_derrek", score, motif_bar(score), "psg_lead_fel", "synth_brass", 132.0, hits)
+
+
+def jingle_alfred_steyhn(score: Score) -> Piece:
+    """ALFRED STEYHN (the chic one, blue): the chorus's opening on the bells, strings under the
+    landing, no drums but a soft cymbal."""
+    chorus = plain_bars(score.first_section("refrein", "thema"))
+    opening = next((bar for bar in chorus if bar.parts.get("lead")), motif_bar(score))
+    return _chain_jingle("jingle_alfred_steyhn", score, opening, "fm_klok", "fm_strijkers", 100.0,
+                         drums(crash="3", velocity=0.3))
+
+
 ALL = (intro, menu_loop, character_loop, merchant_loop, loading_loop, game_loop,
-       map_start, new_mission, task_done, mission_done, level_up, death)
+       map_start, new_mission, task_done, mission_done, level_up, death,
+       supermarket_muzak_bossa, supermarket_muzak_ballad, supermarket_muzak_swing,
+       jingle_derrek, jingle_alfred_steyhn)
 
 
 def pieces(score: Score) -> list:

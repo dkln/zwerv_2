@@ -128,7 +128,8 @@ def test_every_composition_has_its_sounds():
 def test_every_composition_makes_every_piece():
     wanted = {"zwervr_intro", "nachtstad_menu_loop", "karakterkeuze_loop", "handelaar_loop", "laden_loop", "spel_loop",
               "deuntje_kaart_start", "deuntje_nieuwe_missie", "deuntje_taak_klaar", "deuntje_gewonnen",
-              "deuntje_level_omhoog", "deuntje_dood"}
+              "deuntje_level_omhoog", "deuntje_dood", "supermarkt_muzak_1", "supermarkt_muzak_2",
+              "supermarkt_muzak_3", "jingle_derrek", "jingle_alfred_steyhn"}
     for name in COMPOSITIONS:
         made = {piece.name for piece in derive.pieces(score_module.load(name))}
         assert wanted <= made, (name, wanted - made)
@@ -142,6 +143,27 @@ def test_the_map_jingle_is_short_enough():
             jingle = derive.map_start(score)
             assert jingle.seconds <= derive.MAP_JINGLE_LONGEST + 1e-6, (name, tempo, jingle.seconds)
             assert not jingle.loop
+
+
+def test_the_supermarket_muzak_loops_and_the_chain_jingles_are_short():
+    for name in COMPOSITIONS:
+        score = score_module.load(name)
+        made = {piece.name: piece for piece in derive.pieces(score)}
+        for number in (1, 2, 3):
+            muzak = made[f"supermarkt_muzak_{number}"]
+            assert muzak.loop and 40.0 <= muzak.seconds <= 150.0, (name, muzak.name, muzak.seconds)
+            for bar in muzak.bars:
+                assert len(bar.chords) <= 2, (name, muzak.name, bar.number)
+        for chain in ("derrek", "alfred_steyhn"):
+            jingle = made["jingle_" + chain]
+            assert not jingle.loop and jingle.seconds <= 6.0, (name, jingle.name, jingle.seconds)
+
+
+def test_muzak_sweetens_power_chords():
+    score = _score([_groove_bar(1)])
+    assert derive.sweetened("E5", score) == "Em7"
+    assert derive.sweetened("C5", score) == "Cmaj7"
+    assert derive.sweetened("B7", score) == "B7"
 
 
 def test_the_notes_of_a_bar_stay_inside_it():

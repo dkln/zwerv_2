@@ -69,7 +69,7 @@ func _init() -> void:
 		_schenkviaduct, _ministry_over_tram, _a12_footbridge, _paths_to_lonely_buildings,
 		_join_gravel_paths, _roof_equipment, _straighten_hidden_corners, _flatten_facades_by_viaducts,
 		_remove_trees_in_buildings, _fit_signs_on_facades, _one_sign_per_spot, _clear_behind_signs,
-		_bins, _grote_marktstraat_lanes, _no_grass_under_buildings, _camera.bind(root), _zebra_clock.bind(root),
+		_bins, _street_machines.bind(root), _grote_marktstraat_lanes, _no_grass_under_buildings, _camera.bind(root), _zebra_clock.bind(root),
 		_helicopter_flights.bind(root), _car.bind(root), _own_tints.bind(root),
 	]
 	var progress := Progress.new("stad bouwen", build_steps.size())

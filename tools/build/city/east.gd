@@ -199,6 +199,9 @@ func _bezuidenhout() -> void:
 		"roof_extra": ["dak_schuin_dakkapel", "dak_schuin_schoorsteen"]}
 	ring(99, 32, 12, 10, "jaren30", 3, flats)
 	ring(115, 32, 12, 10, "jaren30", 4, flats)
+	# the neighbourhood's two supermarkets, on the street north of the blocks
+	_next_supermarket(99, 32, 12, "jaren30")
+	_next_supermarket(115, 32, 12, "jaren30")
 	for o in [Vector2i(101, 34), Vector2i(117, 34)]:
 		_fill(o.x, o.y, o.x + 7, o.y + 5, "natuur/gras")
 		for i in 4:

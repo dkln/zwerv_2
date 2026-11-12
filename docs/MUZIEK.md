@@ -152,6 +152,9 @@ In `tools/muziek/instruments.py` (`SOUNDS`), elk met plek in het stereobeeld, ni
 | `clean_gitaar_solo` | idem, met echo | cleane gitaarloopjes en solo's |
 | `fm_klok` | FM-klok, lange echo | de melodie in het menu |
 | `fm_piano` | FM-elektrische piano | de handelaar |
+| `fm_vibrafoon` | FM-vibrafoon: een korte hamertik (modulator op 4x) op een ronde, langzaam wegstervende toon, licht zwevend | de muzak van de supermarkten |
+| `fm_fluit` | FM-fluit: bijna zuivere toon, een beetje adem een octaaf hoger, zachte inzet, vibrato na de inzet | de melodie van de muzak |
+| `fm_strijkers` | zachte FM-strijkers: twee ontstemde paren, weinig feedback, trage aanzwelling, breed | akkoordvlakken in de muzak, de jingle van ALFRED STEYHN |
 
 **Drumstellen** (`DRUM_KITS` in `instruments.py`, gekozen met `BIJSTELLING["drumstel"]`):
 `standaard` (dikke 909-achtige kick, gated-reverb-snare) en `dmx` (de rauwe Mega Drive-kick en een
@@ -183,12 +186,27 @@ Uit `tools/muziek/derive.py`; alle bestanden in `assets/audio/muziek/`:
 | `deuntje_gewonnen.ogg` | een missie gehaald | de laatste twee maten van de compositie (haar finish) |
 | `deuntje_level_omhoog.ogg` | level omhoog | een loop over het grondakkoord naar de hoge grondtoon, met gitaar en crash |
 | `deuntje_dood.ogg` | dood | het motief op halve snelheid een octaaf lager, vallend naar de lage grondtoon, tapestop |
+| `supermarkt_muzak_1.ogg` | in een supermarkt (lus, zacht op de achtergrond: `MUZAK_SOFTER_DB` in `hud.gd`; elk filiaal één van de drie, `SUPERMARKET_MUZAK` in `interiors.gd`) | **bossa nova** (100 BPM): de akkoorden van het thema alleen (vier maten), het thema op de fluit, het thema op de vibrafoon, het refrein op de fluit; bossabas, vibrafoon-stoten, strijkers, zachte bossa-drums |
+| `supermarkt_muzak_2.ogg` | idem | **trage ballade** (76 BPM): de akkoorden van de breakdown (strijkers, gebroken piano), het refrein op de vibrafoon, het thema op de fluit; lange bas, heel zacht ritme |
+| `supermarkt_muzak_3.ogg` | idem | **lichte swing** (112 BPM, swing 0,6): het thema op de piano, het refrein op klokken, het thema op de vibrafoon, het refrein op de piano; wandelende bas, vibrafoon op 2 en 4 |
+| `jingle_derrek.ogg` | de omroep van DERREK (`scripts/world/supermarket_announcer.gd`, voor een aanbieding of mededeling) | de eerste helft van het motief fel op de PSG, landend op tel 3 op de hoge grondtoon boven het grondakkoord in majeur (maj7) op koper; kick, hi-hat, crash |
+| `jingle_alfred_steyhn.ogg` | de omroep van ALFRED STEYHN | de eerste helft van de opening van het refrein op klokken, landend op de hoge grondtoon boven strijkers (maj7), alleen een zachte crash |
+
+**De muzak** (de supermarkten) is easy listening uit het materiaal van de compositie: de
+akkoorden **gezoet** (een powerchord of drieklank krijgt de terts van de toonsoort en een septiem:
+in mineur I m7, bII maj7, II m7b5, III maj7, IV m7, V 7, VI maj7, VII 6; in majeur I maj7, II m7,
+III m7, IV maj7, V 7, VI m7, VII m7b5), de melodie **gladgestreken** (alleen de noten op het
+achtste-raster, elk aangehouden tot de volgende, een octaaf lager), in een eigen tempo
+(`MUZAK_TEMPOS`), in zachte klanken (fluit, vibrafoon, strijkers, elektrische piano, klokken) en
+het standaard drumstel heel zacht. Maten met meer dan twee akkoorden (de chromatische
+klimmen) blijven eruit. Elke lus duurt ongeveer een minuut (40 tot 150 s, de test). **De
+jingles** van de ketens zijn hooguit 6 s, een opening uit de compositie die in majeur landt.
 
 De afleidingen zoeken de secties op hun `soort`; een compositie zonder breakdown of opbouw valt
 terug op de dichtstbijzijnde sectie. Een compositie met een heel andere vorm kan in
 `derive.py` een eigen keuze nodig hebben; dan daar, niet in het compositiebestand.
 
-Elke compositie levert **alle** stukken in deze tabel, ook het kaartdeuntje: een nieuw stuk dat
+Elke compositie levert **alle** stukken in deze tabel, ook het kaartdeuntje, de drie muzaklussen en de twee jingles: een nieuw stuk dat
 het spel gaat gebruiken, komt hier en in `derive.py` (`ALL`) bij, nooit als los bestand naast de
 compositie.
 
@@ -202,7 +220,8 @@ ter controle). Met `--balans` ook de balans van de partijen.
 `tools/muziek/render.sh --test`: de unit tests van de muziektools (`test_muziek.py`): de notatie,
 de bijstellingen (andere klank, verdubbelen, drumstel, four on the floor laat breaks en fills
 met rust), en voor elke compositie: al haar klanken bestaan, alle stukken worden gemaakt, het
-kaartdeuntje blijft onder 6 s, elke noot valt binnen zijn maat.
+kaartdeuntje blijft onder 6 s, de muzak loopt (40-150 s, zonder chromatische maten) en de jingles
+blijven onder 6 s, de muzak zoet powerchords, elke noot valt binnen zijn maat.
 
 De bestanden staan in `tools/muziek/`:
 

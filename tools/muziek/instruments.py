@@ -181,6 +181,32 @@ ELECTRIC_PIANO = FmPatch("fm_piano", algorithm=4, feedback=0.3, operators=(
     Operator(ratio=1.0, level=0.45, attack=0.001, decay=0.6, sustain=0.1, release=0.15),
 ))
 
+# the soft sounds of supermarket muzak (derive.py, the muzak loops): a vibraphone (a mallet
+# tine at 4x gone in a moment over a round, slowly dying body, a slow shimmer), a flute (a
+# nearly pure tone with a little breath an octave up, a slow attack, vibrato after the onset)
+# and soft strings (two detuned saw-ish pairs, low feedback, a slow swell)
+VIBRAPHONE = FmPatch("fm_vibrafoon", algorithm=4, feedback=0.0, vibrato_depth=0.05, vibrato_rate=4.5,
+                     vibrato_delay=0.05, operators=(
+    Operator(ratio=4.0, level=0.55, attack=0.001, decay=0.06, sustain=0.0, release=0.05),
+    Operator(ratio=1.0, level=1.0, attack=0.001, decay=1.4, sustain=0.0, release=0.5),
+    Operator(ratio=1.0, level=0.25, attack=0.001, decay=0.4, sustain=0.1, release=0.3),
+    Operator(ratio=1.0, detune_cents=4, level=0.6, attack=0.001, decay=1.8, sustain=0.0, release=0.6),
+))
+FLUTE = FmPatch("fm_fluit", algorithm=4, feedback=0.15, vibrato_depth=0.12, vibrato_rate=5.0,
+                vibrato_delay=0.3, operators=(
+    Operator(ratio=1.0, level=0.35, attack=0.04, decay=0.5, sustain=0.7, release=0.1),
+    Operator(ratio=1.0, level=1.0, attack=0.05, decay=1.0, sustain=0.85, release=0.12),
+    Operator(ratio=1.0, level=0.1, attack=0.03, decay=0.3, sustain=0.3, release=0.1),
+    Operator(ratio=2.0, level=0.18, attack=0.06, decay=0.8, sustain=0.6, release=0.1),
+))
+SOFT_STRINGS = FmPatch("fm_strijkers", algorithm=4, feedback=0.45, vibrato_depth=0.06, vibrato_rate=5.2,
+                       vibrato_delay=0.4, operators=(
+    Operator(ratio=1.0, level=0.7, attack=0.35, decay=1.5, sustain=0.85, release=0.5),
+    Operator(ratio=1.0, level=0.9, attack=0.4, decay=2.0, sustain=0.9, release=0.6),
+    Operator(ratio=1.0, detune_cents=7, level=0.5, attack=0.4, decay=1.5, sustain=0.85, release=0.5),
+    Operator(ratio=1.0, detune_cents=-7, level=0.7, attack=0.45, decay=2.0, sustain=0.9, release=0.6),
+))
+
 SOUNDS = {sound.name: sound for sound in (
     Sound("fm_slapbas", "fm", SLAP_BASS, pan=0.0, gain=0.75),
     Sound("fm_housebas", "fm", HOUSE_BASS, pan=0.0, gain=0.85),
@@ -212,6 +238,9 @@ SOUNDS = {sound.name: sound for sound in (
           echo_level=0.2, echo_repeats=1),
     Sound("fm_klok", "fm", BELL, pan=0.15, gain=0.32, echo=0.75, echo_level=0.35, echo_repeats=3),
     Sound("fm_piano", "fm", ELECTRIC_PIANO, pan=-0.1, gain=0.38, echo=0.75, echo_level=0.2, echo_repeats=1),
+    Sound("fm_vibrafoon", "fm", VIBRAPHONE, pan=0.2, gain=0.42, echo=0.75, echo_level=0.25, echo_repeats=2),
+    Sound("fm_fluit", "fm", FLUTE, pan=-0.15, gain=0.45, echo=0.75, echo_level=0.22, echo_repeats=2),
+    Sound("fm_strijkers", "fm", SOFT_STRINGS, pan=0.0, gain=0.16, width=12.0),
 )}
 
 

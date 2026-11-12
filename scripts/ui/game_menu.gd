@@ -43,6 +43,7 @@ const PlayerArrow = preload("res://scripts/ui/widgets/player_arrow.gd")
 const PlayerPortrait = preload("res://scripts/ui/widgets/player_portrait.gd")
 const PlayerCharacter = preload("res://scripts/player/player_character.gd")
 const Items = preload("res://scripts/player/items.gd")
+const BankCards = preload("res://scripts/player/bank_cards.gd")
 const Iso = preload("res://scripts/camera/iso_camera.gd")
 
 ## Size of the design; the menu is laid out at this size and scaled to the window.
@@ -97,6 +98,8 @@ const STAT_SEGMENTS := 24
 ## one gets the icon of its kind (KIND_ICONS).
 const ITEM_ICONS := {
 	"ov_chipkaart": {"colour": Color("#4FA3E8"), "rows": ["##########", "#........#", "#.##.....#", "#.##..##.#", "#.....##.#", "#........#", "##########"]},
+	"pinpas": {"colour": Color("#F2C230"), "rows": ["##########", "#........#", "#.##.....#", "#.##.....#", "#........#", "#.######.#", "##########"]},
+	"kaartje": {"colour": Color("#E8E6F0"), "rows": ["########", "#......#", "#.####.#", "#......#", "#.##.#.#", "#......#", "########"]},
 	"brood": {"colour": Color("#D9A55B"), "rows": [".#######.", "#########", "##.##.###", "#########", "#########", ".#######."]},
 	"kroket": {"colour": Color("#B8692E"), "rows": [".........", "..#####..", ".#######.", ".#######.", ".#######.", "..#####..", "........."]},
 	"patat": {"colour": Color("#F2C440"), "rows": ["..#.#.#..", ".#.#.#.#.", "..#####..", "..#####..", "...###...", "...###...", "....#...."]},
@@ -924,6 +927,8 @@ func _build_item_grid() -> Control:
 		slot.add_child(count)
 		slot.style = _style(EMPTY_SLOT, EMPTY_BORDER, 2, 4, 1)
 		slot.pressed.connect(func() -> void: _click_slot(slot_index))
+		# hovering shows it on the right too (a found bank card: the riddle of its PIN)
+		slot.mouse_entered.connect(func() -> void: _click_slot(slot_index))
 		grid.add_child(slot)
 		_slots.append(slot)
 		_slot_icons.append(icon)
@@ -1064,6 +1069,8 @@ func _refresh_inventory() -> void:
 		var amount := int(inventory.get(item_id, 0))
 		count.text = str(amount) if amount > 1 else ""
 		slot.tooltip_text = _item_name(item_id)
+		if item_id == BankCards.ITEM:
+			slot.tooltip_text = BankCards.description(_player, _item_name(item_id))
 	var used := _items_in_category("").size()
 	_slots_used_label.text = "%d / %d VAKJES" % [used, _slot_count()] + ("  · RUGZAK" if _has_backpack() else "")
 	_refresh_item_detail()
@@ -1101,6 +1108,9 @@ func _refresh_item_detail() -> void:
 		_detail_lines.add_child(_detail_line(STAT_LABELS.get(stat_name, stat_name.to_upper()),
 				"%+d" % roundi(change), GOOD if better else BAD))
 	var text: String = item.get("text", "")
+	if _selected_item == BankCards.ITEM:
+		# every card found: its holder and the riddle of its PIN (BankCards)
+		text = BankCards.description(_player, text)
 	_detail_text.text = "“%s”" % text if text != "" else ""
 	_detail_text.visible = text != ""
 	_action_box.visible = Items.can_use(_selected_item)

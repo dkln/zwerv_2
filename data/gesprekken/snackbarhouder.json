@@ -33,9 +33,22 @@
 	"geen_geld": "Dat is {prijs}, jongen. Kom maar terug als je het bij elkaar hebt.",
 	"zakken_vol": "Je zakken zitten vol, zo te zien. Eerst wat opmaken, hè?",
 	"tip_vraag": "Wat is er lekker hier?",
-	"tip": "De kroketten zijn vanochtend nog gedraaid. Echte Haagse, met een flinke klodder mosterd erbij.",
-	"dag": "Tot de volgende keer! Doe de deur achter je dicht, het tocht.",
-	"nog_iets": "Verder nog iets?",
+	"tip": [
+		"De kroketten zijn vanochtend nog gedraaid. Echte Haagse, met een flinke klodder mosterd erbij.",
+		"Neem een frikandel speciaal. Met uitjes. Die uitjes snijd ik zelf, daarom huil ik de hele dag.",
+		"Het patatje oorlog. Pindasaus, mayo, uitjes. Na een nacht op straat is dat een warme deken van binnen.",
+		"Kom na sluitingstijd langs de achterdeur. Wat over is, gaat anders weg. Maar dat heb ik niet gezegd."
+	],
+	"dag": [
+		"Tot de volgende keer! Doe de deur achter je dicht, het tocht.",
+		"Smakelijk! En de mosterd is gratis, hè. Zoveel als je wil.",
+		"Zie je! Niet aan de meeuwen voeren, die worden brutaal."
+	],
+	"nog_iets": [
+		"Verder nog iets?",
+		"Nog wat erbij?",
+		"Was dat het?"
+	],
 	"stemmingen": {
 		"begroeting": "blij",
 		"gekocht": "blij",

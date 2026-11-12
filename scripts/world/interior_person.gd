@@ -38,6 +38,9 @@ var figure: TownsfolkFigure
 var sitting := false
 var seat_height := SEAT_HEIGHT
 var _mark: InteractionMark
+var _body: AnimatableBody3D
+## The physics layer of the town (PlayerController.TOWN_LAYER).
+const TOWN_LAYER := 1
 
 
 ## Someone of `person_role` with the look of `look_seed`; `sit`: on a chair at its origin
@@ -71,7 +74,41 @@ static func create(person_role: String, look_seed: int, sit: bool, on_seat_at :=
 		person._mark = InteractionMark.create(MARK_BOTTOM, MARK_TOP, false)
 		person.add_child(person._mark)
 	person.set_process(person._mark != null)
+	person.fit_collider()
 	return person
+
+
+## The collider (Botsvorm, on the town's layer, so the player bumps into them as into the
+## pedestrians outside): a box round the figure, and one round each thing it has with it
+## (a trolley, a basket: the meshes hung on the person itself). Again after adding one.
+func fit_collider() -> void:
+	if _body == null:
+		_body = AnimatableBody3D.new()
+		_body.name = "Botsvorm"
+		_body.sync_to_physics = false
+		_body.collision_layer = TOWN_LAYER
+		_body.collision_mask = 0
+		add_child(_body)
+	for old_shape in _body.get_children():
+		old_shape.free()
+	var parts: Array[AABB] = []
+	if figure:
+		var figure_bounds := Vehicle._mesh_bounds(figure, figure.transform)
+		# the figure stands round its own axis: as wide as its widest side, no thinner than a person
+		figure_bounds = figure_bounds.grow(0.02)
+		parts.append(figure_bounds)
+	for child in get_children():
+		if child is MeshInstance3D and (child as MeshInstance3D).mesh:
+			parts.append(child.transform * (child as MeshInstance3D).mesh.get_aabb())
+	for part_index in parts.size():
+		var part: AABB = parts[part_index]
+		var shape := CollisionShape3D.new()
+		shape.name = "Doos%d" % part_index
+		var box := BoxShape3D.new()
+		box.size = Vector3(maxf(part.size.x, 0.1), maxf(part.size.y, 0.1), maxf(part.size.z, 0.1))
+		shape.shape = box
+		shape.position = part.get_center()
+		_body.add_child(shape)
 
 
 func _process(_delta: float) -> void:

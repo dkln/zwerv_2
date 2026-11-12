@@ -33,7 +33,63 @@
 				"kleingeld_nee": "boos",
 				"betrapt": "boos",
 				"dag": "neutraal"
-			}
+			},
+			"varianten": [
+				{
+					"onderwerp": {
+						"vraag": "Wat is het gekste wat u heeft meegemaakt?",
+						"antwoord": "Een man met een levende kreeft in een emmer. Hij had er een kaartje voor gekocht. Een kinderkaartje. De kreeft was 'nog jong'.",
+						"doorvraag": "Mocht dat?",
+						"doorantwoord": "Volgens de voorwaarden van de NS? Huisdieren mogen mee, klein en in een mand. Een emmer is een soort mand. Ik heb het laten gaan."
+					}
+				},
+				{
+					"begroetingen": [
+						"Goedemiddag. Even geduld, ik moet net omroepen. 'Dames en heren...' Ach, laat maar. Zegt u het maar."
+					],
+					"onderwerp": {
+						"vraag": "Wat roept u allemaal om?",
+						"antwoord": "Vertragingen, perronwijzigingen en dat de koffiekar niet rijdt. Dat laatste geeft de meeste klachten.",
+						"verder": [
+							{
+								"vraag": "Waarom rijdt de koffiekar niet?",
+								"antwoord": "Er is geen koffiekar meer. Al jaren niet. Maar mensen blijven hopen. Dus roep ik het elke dag om. Dat geeft rust.",
+								"stemming": "verdrietig",
+								"verder": [
+									{
+										"vraag": "Waarom geeft dat rust?",
+										"antwoord": "Als je weet dat er geen koffie komt, ga je niet zitten wachten. Dat is het hele geheim van de NS: verwachtingen managen.",
+										"verder": [
+											{
+												"vraag": "Werkt dat?",
+												"antwoord": "Bij de koffie wel. Bij de treinen niet. Daar blijven ze maar denken dat hij op tijd komt. Ik bewonder ze, eigenlijk.",
+												"stemming": "neutraal"
+											}
+										]
+									}
+								]
+							},
+							{
+								"vraag": "Mag ik een keer omroepen?",
+								"antwoord": "Nee. Vorige keer liet ik een stagiair het doen. Hij heeft de hele trein 'Amsterdam' laten zeggen. Op de lijn naar Venlo.",
+								"stemming": "boos"
+							}
+						]
+					},
+					"dag": "Goede reis. En als er koffie komt: dan heeft u het van mij niet gehoord."
+				},
+				{
+					"begroetingen": [
+						"Ja? Ik ben even pauze aan het nemen. Dat zie je niet, maar dat doe ik nu."
+					],
+					"onderwerp": {
+						"vraag": "Hoe lang bent u al conducteur?",
+						"antwoord": "Vierentwintig jaar. Ik heb meer storingen meegemaakt dan verjaardagen. En meer bladeren op het spoor dan vakanties.",
+						"doorvraag": "Bladeren op het spoor?",
+						"doorantwoord": "Elke herfst. De bomen weten het niet, maar ze zijn de grootste vijand van de NS. Gewoon blaadjes."
+					}
+				}
+			]
 		},
 		"handhaver": {
 			"spreker": "HANDHAVING",
@@ -65,7 +121,59 @@
 				"doorvraag": "boos",
 				"kleingeld_nee": "boos",
 				"dag": "neutraal"
-			}
+			},
+			"varianten": [
+				{
+					"onderwerp": {
+						"vraag": "Wat doet u als het rustig is?",
+						"antwoord": "Rustig bestaat niet. Dan zoek ik fietsen die verkeerd staan. Daar zijn er altijd een paar duizend van.",
+						"doorvraag": "Wat gebeurt er met die fietsen?",
+						"doorantwoord": "Die gaan naar het fietsdepot. Daar staan er dertigduizend. Een stad vol fietsen zonder eigenaar. Soms denk ik dat ze 's nachts rijden."
+					}
+				},
+				{
+					"begroetingen": [
+						"Goedendag. Ik zie u. U ziet mij. Zullen we het netjes houden?"
+					],
+					"onderwerp": {
+						"vraag": "Waarom doet u dit werk?",
+						"antwoord": "Omdat iemand het moet doen. En omdat ik het uniform mooi vond. Dat tweede zeg ik niet tegen collega's.",
+						"verder": [
+							{
+								"vraag": "Wat vindt u het leukst?",
+								"antwoord": "Als ik iemand kan helpen in plaats van bekeuren. Een kind dat z'n moeder kwijt is. Een toerist die de tram niet snapt. Dat zijn de goede dagen.",
+								"stemming": "blij",
+								"verder": [
+									{
+										"vraag": "En de slechte dagen?",
+										"antwoord": "Als mensen tegen me schreeuwen omdat hun fiets weg is. Alsof ik hem zelf heb opgegeten. Ik eet geen fietsen.",
+										"stemming": "boos",
+										"verder": [
+											{
+												"vraag": "Kan ik u ergens mee helpen?",
+												"antwoord": "Mij helpen? Dat vraagt nooit iemand. Nou... loop gewoon niet met dat blikje rond, dan heb ik er vandaag één zorg minder.",
+												"stemming": "blij"
+											}
+										]
+									}
+								]
+							}
+						]
+					},
+					"dag": "Goed. Houd het netjes. Ik zie u morgen. Zeker weten."
+				},
+				{
+					"begroetingen": [
+						"Handhaving. Even een vraagje: is dat uw winkelwagen daar?"
+					],
+					"onderwerp": {
+						"vraag": "Waarom die winkelwagen?",
+						"antwoord": "Omdat hij al drie dagen midden op het plein staat. Niemand weet van wie. Hij is een soort monument geworden.",
+						"doorvraag": "Mag hij blijven?",
+						"doorantwoord": "Volgens de APV niet. Volgens mijn hart misschien wel. Maar ik volg de APV, hè. Meestal."
+					}
+				}
+			]
 		},
 		"agent": {
 			"spreker": "POLITIE",
@@ -97,7 +205,74 @@
 				"doorvraag": "neutraal",
 				"kleingeld_nee": "neutraal",
 				"dag": "blij"
-			}
+			},
+			"varianten": [
+				{
+					"onderwerp": {
+						"vraag": "Hoe is het om agent te zijn in Den Haag?",
+						"antwoord": "Afwisselend. 's Ochtends een minister, 's middags een demonstratie, 's avonds een meeuw die een toerist beroofde van z'n broodje.",
+						"doorvraag": "Heeft u de meeuw gepakt?",
+						"doorantwoord": "Nee. Meeuwen hebben geen legitimatie. En ze vliegen. Die zaak is nog open."
+					}
+				},
+				{
+					"begroetingen": [
+						"Goedendag. U ziet er wat koud uit. Gaat het wel goed met u?"
+					],
+					"onderwerp": {
+						"vraag": "Waar kan ik terecht als het slecht gaat?",
+						"antwoord": "Dat is een goede vraag. Er is meer dan u denkt. Wilt u eten, slapen of praten?",
+						"verder": [
+							{
+								"vraag": "Eten.",
+								"antwoord": "In de Schilderswijk zit de voedselbank, en sommige kerken geven op zondag soep. De snackbar om de hoek geeft weleens wat weg na sluiting.",
+								"verder": [
+									{
+										"vraag": "En als ik ziek word?",
+										"antwoord": "Dan kunt u bij de straatdokter langs. Die vraagt niet naar een verzekering. Zeg maar dat agent Van Dijk u stuurt.",
+										"stemming": "neutraal"
+									}
+								]
+							},
+							{
+								"vraag": "Slapen.",
+								"antwoord": "De nachtopvang aan de Lange Beestenmarkt. Ga er vroeg heen, om zeven uur loopt het vol. En niet in het Haagse Bos, daar ligt u te koud.",
+								"verder": [
+									{
+										"vraag": "Waarom helpt u mij zo?",
+										"antwoord": "Omdat het mijn werk is. En omdat mijn oom ook een tijd op straat heeft gestaan. Iedereen verdient een tweede kans.",
+										"stemming": "verdrietig"
+									}
+								]
+							},
+							{
+								"vraag": "Praten.",
+								"antwoord": "Nou, dat doen we nu al. Ik heb nog vijf minuten tot mijn ronde. Vertel eens: waar komt u eigenlijk vandaan?",
+								"stemming": "blij",
+								"verder": [
+									{
+										"vraag": "Dat is een lang verhaal.",
+										"antwoord": "De beste verhalen zijn lang. Een andere keer dan, met koffie. Ik loop hier elke dinsdag. U weet me te vinden.",
+										"stemming": "blij"
+									}
+								]
+							}
+						]
+					},
+					"dag": "Pas goed op uzelf. En denk erom: dinsdag, koffie."
+				},
+				{
+					"begroetingen": [
+						"Politie. Even stilstaan. O, u stond al stil. Goed zo."
+					],
+					"onderwerp": {
+						"vraag": "Heeft u vandaag iemand opgepakt?",
+						"antwoord": "Eén man. Hij reed met een fatbike over het Binnenhof, met een speaker die keihard Hazes draaide.",
+						"doorvraag": "Was dat verboden?",
+						"doorantwoord": "Het rijden wel. De muziek eigenlijk niet. Maar het volume, dat was een misdrijf."
+					}
+				}
+			]
 		},
 		"medewerker_derrek": {
 			"spreker": "MEDEWERKER DERREK",
@@ -129,7 +304,59 @@
 				"doorvraag": "neutraal",
 				"kleingeld_nee": "neutraal",
 				"dag": "blij"
-			}
+			},
+			"varianten": [
+				{
+					"onderwerp": {
+						"vraag": "Wat is het raarste wat iemand ooit kocht?",
+						"antwoord": "Veertig pakken melk en één kaars. Ik heb niks gevraagd. Ik wil het eigenlijk ook niet weten.",
+						"doorvraag": "Wat denk je zelf?",
+						"doorantwoord": "Iemand die een heel romantisch bad wil nemen. Of een hele grote poes heeft. Of allebei."
+					}
+				},
+				{
+					"begroetingen": [
+						"Hé! Pas op, ik ben aan het dweilen. Nee, links. Nee, je andere links."
+					],
+					"onderwerp": {
+						"vraag": "Hoe is het om hier te werken?",
+						"antwoord": "Prima! Behalve de pieper. Elke keer als ik een pallet scan, piept hij. Ik hoor hem 's nachts nog in m'n dromen.",
+						"stemming": "blij",
+						"verder": [
+							{
+								"vraag": "Wat droom je dan?",
+								"antwoord": "Dat ik in een eindeloos pad loop met alleen maar chips. En dat elke zak piept. En dan komt de bedrijfsleider en zegt: 'die zijn in de aanbieding'.",
+								"verder": [
+									{
+										"vraag": "Is dat een nachtmerrie?",
+										"antwoord": "Half. De chips zijn wel lekker. Maar die bedrijfsleider. Brrr.",
+										"stemming": "opgewonden",
+										"verder": [
+											{
+												"vraag": "Wat is er mis met hem?",
+												"antwoord": "Hij telt de koekjes in de pauzetrommel. Als er een mist, houdt hij een vergadering. Vorige week duurde die een uur. Om één koekje.",
+												"stemming": "boos"
+											}
+										]
+									}
+								]
+							}
+						]
+					},
+					"dag": "Doei! En niet over de dweil lopen, hè."
+				},
+				{
+					"begroetingen": [
+						"Zoek je iets? Ik weet waar alles ligt. Behalve de chips. Niemand weet waar de chips liggen."
+					],
+					"onderwerp": {
+						"vraag": "Waarom liggen de chips bij de dranken?",
+						"antwoord": "Omdat iemand op het hoofdkantoor heeft bedacht dat mensen dan meer kopen. Nu zoeken mensen een kwartier en kopen ze ook nog bier.",
+						"doorvraag": "Dus het werkt?",
+						"doorantwoord": "Helaas wel. Ik haat het dat het werkt."
+					}
+				}
+			]
 		},
 		"medewerker_alfred_steyhn": {
 			"spreker": "MEDEWERKER ALFRED STEYHN",
@@ -161,7 +388,64 @@
 				"doorvraag": "neutraal",
 				"kleingeld_nee": "neutraal",
 				"dag": "blij"
-			}
+			},
+			"varianten": [
+				{
+					"onderwerp": {
+						"vraag": "Waarom is het hier zo duur?",
+						"antwoord": "Duur? Wij noemen het 'kwaliteit'. En de verlichting. We hebben heel mooie verlichting. Die betaalt u ook.",
+						"doorvraag": "Zou ik het licht uit kunnen doen?",
+						"doorantwoord": "Haha! Nee. Maar u mag de bonuskaart gratis aanvragen. Dat scheelt een euro op uw volgende croissant."
+					}
+				},
+				{
+					"begroetingen": [
+						"Goedemiddag! Wilt u een proefje? Ik sta hier met kaas. Ik sta hier al de hele dag met kaas."
+					],
+					"onderwerp": {
+						"vraag": "Wat voor kaas is het?",
+						"antwoord": "Belegen, uit de Hollandse polder. Met komijn. Nou ja, het zou komijn moeten zijn. Volgens mij zijn het gewoon zaadjes.",
+						"stemming": "neutraal",
+						"verder": [
+							{
+								"vraag": "Hoe lang staat u hier al?",
+								"antwoord": "Sinds negen uur. Ik heb tweehonderd blokjes uitgedeeld. Er is één klant die er elf heeft gepakt. Ik ken hem inmiddels. Hij heet Gerard.",
+								"verder": [
+									{
+										"vraag": "Wie is Gerard?",
+										"antwoord": "Een vaste klant. Hij komt elke dag voor de proefjes en koopt nooit iets. Maar hij vertelt heel mooie verhalen over z'n duiven.",
+										"stemming": "blij",
+										"verder": [
+											{
+												"vraag": "Duiven?",
+												"antwoord": "Postduiven. Hij heeft er dertig, op het dak in Escamp. Eén is ooit tot Spanje gevlogen. Hij heeft hem 'Paella' genoemd.",
+												"stemming": "opgewonden"
+											}
+										]
+									}
+								]
+							},
+							{
+								"vraag": "Mag ik er ook een?",
+								"antwoord": "Natuurlijk. Hier, een blokje. Niet tegen m'n chef zeggen dat ik er twee geef. Hier, nog eentje.",
+								"stemming": "blij"
+							}
+						]
+					},
+					"dag": "Fijne dag! En als u Gerard ziet: de kaas is op."
+				},
+				{
+					"begroetingen": [
+						"Welkom! Heeft u een bonuskaart? Nee? Ik ook niet, eerlijk gezegd."
+					],
+					"onderwerp": {
+						"vraag": "Waarom heeft u er geen?",
+						"antwoord": "Omdat ik hier werk. Dan krijg je personeelskorting. Die is lager dan de bonus. Niemand snapt het. Ik ook niet.",
+						"doorvraag": "Waarom klaagt u niet?",
+						"doorantwoord": "Ik heb geklaagd. Er komt een werkgroep. Die gaat het onderzoeken. Over een jaar."
+					}
+				}
+			]
 		},
 		"receptioniste": {
 			"spreker": "RECEPTIE STADHUIS",
@@ -193,7 +477,64 @@
 				"doorvraag": "neutraal",
 				"kleingeld_nee": "neutraal",
 				"dag": "blij"
-			}
+			},
+			"varianten": [
+				{
+					"onderwerp": {
+						"vraag": "Wat is de raarste vraag die u ooit kreeg?",
+						"antwoord": "Iemand wilde zijn huis laten verhuizen. Niet hijzelf. Het huis. Een rijtjeshuis in Moerwijk. Naar de zee.",
+						"doorvraag": "Kan dat?",
+						"doorantwoord": "Ik heb hem doorverwezen naar Burgerzaken. Die verwezen hem naar Ruimtelijke Ordening. Hij is nooit meer teruggekomen."
+					}
+				},
+				{
+					"begroetingen": [
+						"Goedemiddag! Oei, de telefoon. Momentje. ...Gemeente Den Haag, met de receptie. Ja. Nee. Zo. U was?"
+					],
+					"onderwerp": {
+						"vraag": "Hoe vaak gaat die telefoon?",
+						"antwoord": "Vierhonderd keer per dag. Ik heb ze geteld. Tweehonderd over parkeren, honderd over afval, en de rest belt voor de burgemeester.",
+						"verder": [
+							{
+								"vraag": "Wat zeggen die over afval?",
+								"antwoord": "Dat de container vol is. Altijd. En dan zeg ik: 'U kunt een melding maken in de app'. Dan zeggen ze: 'Dat doe ik nu toch?'",
+								"stemming": "opgewonden",
+								"verder": [
+									{
+										"vraag": "En wat zegt u dan?",
+										"antwoord": "'Dit is de telefoon, meneer. Niet de app.' Dan is het stil. Heel lang stil. En dan hangen ze op. Ik heb de container nooit gezien.",
+										"stemming": "neutraal"
+									}
+								]
+							},
+							{
+								"vraag": "En wat wil iedereen van de burgemeester?",
+								"antwoord": "Een lintje, een gesprek of een selfie. Een man belt elke maandag om te vragen of ze nog getrouwd is. Ze is getrouwd.",
+								"stemming": "blij",
+								"verder": [
+									{
+										"vraag": "Waarom belt hij elke week?",
+										"antwoord": "Hij heet Kees, hij is negentig, en hij zegt dat hij het blijft proberen. Eerlijk gezegd vind ik het een beetje romantisch.",
+										"stemming": "blij"
+									}
+								]
+							}
+						]
+					},
+					"dag": "Tot ziens! En als Kees belt: ik ben er niet."
+				},
+				{
+					"begroetingen": [
+						"Welkom. U heeft geen nummertje, zie ik. Die liggen daar, bij de plant."
+					],
+					"onderwerp": {
+						"vraag": "Waarom bij de plant?",
+						"antwoord": "Omdat de automaat kapot is. De plant is van de wethouder. Hij is er erg trots op.",
+						"doorvraag": "Leeft hij nog?",
+						"doorantwoord": "Hij is van plastic. Maar niet tegen de wethouder zeggen. Hij geeft hem elke vrijdag water."
+					}
+				}
+			]
 		},
 		"beveiliger": {
 			"spreker": "BEVEILIGING",
@@ -225,7 +566,58 @@
 				"doorvraag": "boos",
 				"kleingeld_nee": "boos",
 				"dag": "neutraal"
-			}
+			},
+			"varianten": [
+				{
+					"onderwerp": {
+						"vraag": "Gebeurt hier weleens wat?",
+						"antwoord": "Vorige maand probeerde een man met een geit binnen te komen. Voor de inspraakavond over de kinderboerderij.",
+						"doorvraag": "Heeft u hem binnengelaten?",
+						"doorantwoord": "De man wel. De geit niet. Die heeft buiten staan wachten. Ze heeft drie folders opgegeten."
+					}
+				},
+				{
+					"begroetingen": [
+						"Rustig. Ik kijk alleen. Dat is mijn werk: kijken."
+					],
+					"onderwerp": {
+						"vraag": "Wordt u nooit moe van het kijken?",
+						"antwoord": "Moe? Na acht uur kijken kun je dingen zien die er niet zijn. Gisteren dacht ik dat de kamerplant bewoog.",
+						"verder": [
+							{
+								"vraag": "Bewoog hij?",
+								"antwoord": "Nee. Het was de airco. Maar ik heb hem wel tien minuten aangestaard. Hij mij ook, volgens mij.",
+								"stemming": "boos",
+								"verder": [
+									{
+										"vraag": "Wat doet u om wakker te blijven?",
+										"antwoord": "Koffie. Veel koffie. En ik zing in m'n hoofd. Vandaag is het Hazes. Morgen misschien het Wilhelmus. Dat duurt lekker lang.",
+										"verder": [
+											{
+												"vraag": "Zing eens wat?",
+												"antwoord": "Hier? In functie? Absoluut niet. ...Oké, één regel. 'Zij gelooft in mij...' Klaar. Niks gezien, niks gehoord.",
+												"stemming": "blij"
+											}
+										]
+									}
+								]
+							}
+						]
+					},
+					"dag": "Goedemiddag. Ik houd u in de gaten. Vriendelijk, hoor."
+				},
+				{
+					"begroetingen": [
+						"Pardon. Even de tas laten zien? Dank u. Een blikje en een sok. Prima."
+					],
+					"onderwerp": {
+						"vraag": "Waarom controleert u iedereen?",
+						"antwoord": "Niet iedereen. Iedereen met een tas. Dus iedereen. Ja, oké. Iedereen.",
+						"doorvraag": "Ook de burgemeester?",
+						"doorantwoord": "Haar tas heb ik één keer gecontroleerd. Daar zat een appel in en een speech. De appel was beter."
+					}
+				}
+			]
 		},
 		"ambtenaar": {
 			"spreker": "GEMEENTE DEN HAAG",
@@ -257,7 +649,59 @@
 				"doorvraag": "neutraal",
 				"kleingeld_nee": "neutraal",
 				"dag": "blij"
-			}
+			},
+			"varianten": [
+				{
+					"onderwerp": {
+						"vraag": "Waarom duurt alles zo lang?",
+						"antwoord": "Omdat elk formulier een ander formulier nodig heeft. Wij noemen het de keten. Er zit nergens een slot op.",
+						"doorvraag": "Is er een formulier voor formulieren?",
+						"doorantwoord": "Formulier B-17. Aanvraag tot verkorting van procedures. Dat duurt zes weken."
+					}
+				},
+				{
+					"begroetingen": [
+						"Goedemiddag. U bent nummer drieënveertig? Nee? Dan bent u een verrassing."
+					],
+					"onderwerp": {
+						"vraag": "Kunt u me helpen aan een woning?",
+						"antwoord": "Ik kan u inschrijven voor sociale huur. De wachttijd is negen jaar. Maar u kunt ook urgentie aanvragen.",
+						"verder": [
+							{
+								"vraag": "Hoe krijg ik urgentie?",
+								"antwoord": "U moet aantonen dat u dakloos bent. Met een adres. Waar we de brief heen kunnen sturen.",
+								"stemming": "neutraal",
+								"verder": [
+									{
+										"vraag": "Maar ik heb geen adres.",
+										"antwoord": "Ja. Dat... Dat staat er niet in. Ik heb dit formulier nooit van die kant bekeken. Mag ik even met mijn teamleider overleggen?",
+										"stemming": "verdrietig",
+										"verder": [
+											{
+												"vraag": "Natuurlijk.",
+												"antwoord": "Ze zegt: briefadres bij de daklozenopvang, dan kan het wel. Dat schrijf ik op. U bent de eerste die me iets geleerd heeft vandaag.",
+												"stemming": "blij"
+											}
+										]
+									}
+								]
+							}
+						]
+					},
+					"dag": "Tot ziens. En u krijgt bericht. Binnen zes tot acht weken."
+				},
+				{
+					"begroetingen": [
+						"Ja. Even mijn koffie... zo. Zeg het maar."
+					],
+					"onderwerp": {
+						"vraag": "Hoe lang werkt u hier al?",
+						"antwoord": "Eenendertig jaar. Ik ben begonnen met typemachines. Nu hebben we computers. Ze zijn langzamer.",
+						"doorvraag": "Langzamer?",
+						"doorantwoord": "Een typemachine hoeft niet bij te werken. Deze computer werkt al sinds dinsdag bij."
+					}
+				}
+			]
 		},
 		"raadslid": {
 			"spreker": "RAADSLID",
@@ -289,7 +733,60 @@
 				"doorvraag": "neutraal",
 				"kleingeld_nee": "neutraal",
 				"dag": "blij"
-			}
+			},
+			"varianten": [
+				{
+					"onderwerp": {
+						"vraag": "Waarom bent u de politiek in gegaan?",
+						"antwoord": "Om de wereld te verbeteren. Begonnen met de stad. Nu ben ik bij de stoep voor de bibliotheek. Die is scheef.",
+						"doorvraag": "Wordt hij recht?",
+						"doorantwoord": "Volgend jaar, als de begroting het toelaat. Ik heb er drie moties over geschreven. Het is mijn stoep."
+					}
+				},
+				{
+					"begroetingen": [
+						"Hallo! U bent toch geen journalist? Nee? Gelukkig. Waar kan ik u mee helpen?"
+					],
+					"onderwerp": {
+						"vraag": "Wat gaat u veranderen?",
+						"antwoord": "Ik wil een bankje op elke straathoek. Om te rusten, om te praten. Een stad waar je mag zitten zonder iets te kopen.",
+						"stemming": "opgewonden",
+						"verder": [
+							{
+								"vraag": "Dat klinkt goed.",
+								"antwoord": "Dank u! De wethouder vindt het overlast. Ze zegt dat er dan mensen gaan zitten. Dat is toch precies de bedoeling?",
+								"stemming": "boos",
+								"verder": [
+									{
+										"vraag": "Zou ik daar mogen zitten?",
+										"antwoord": "Juist u! Dat zet ik in mijn speech. Mag ik uw naam noemen? Nee? Dan zeg ik 'een wijze inwoner'.",
+										"stemming": "opgewonden",
+										"verder": [
+											{
+												"vraag": "Komt er een meerderheid?",
+												"antwoord": "Twee partijen zijn voor, drie tegen, en één partij wil eerst onderzoeken wat een bankje is. Ik ben hoopvol. Een beetje.",
+												"stemming": "verdrietig"
+											}
+										]
+									}
+								]
+							}
+						]
+					},
+					"dag": "Dank u wel! Stem op mij! Of niet, dat mag ook. Democratie!"
+				},
+				{
+					"begroetingen": [
+						"Pardon, ik zoek de koffieautomaat. De vergadering duurt al vier uur."
+					],
+					"onderwerp": {
+						"vraag": "Waarom duurt het zo lang?",
+						"antwoord": "Er is een amendement op een amendement op een motie. Over een amendement. Ik ben vergeten waar het over ging.",
+						"doorvraag": "Waar ging het over?",
+						"doorantwoord": "Over de lengte van de vergaderingen. Echt waar."
+					}
+				}
+			]
 		},
 		"burgemeester": {
 			"spreker": "DE BURGEMEESTER",
@@ -321,7 +818,59 @@
 				"doorvraag": "neutraal",
 				"kleingeld_nee": "neutraal",
 				"dag": "blij"
-			}
+			},
+			"varianten": [
+				{
+					"onderwerp": {
+						"vraag": "Wat is het mooiste aan uw baan?",
+						"antwoord": "Prinsjesdag. De Gouden Koets rijdt door mijn stad, iedereen zwaait, en ik mag op de eerste rij. Dan voel ik me even jarig.",
+						"doorvraag": "En het minst mooie?",
+						"doorantwoord": "Elk jaar op Oud en Nieuw. Dan is mijn stad een slagveld en word ik om drie uur 's nachts gebeld. Over de Scheveningse vreugdevuren."
+					}
+				},
+				{
+					"begroetingen": [
+						"Ah, een inwoner! Komt u eens hier. Ik praat te weinig met de mensen zelf, zegt mijn staf."
+					],
+					"onderwerp": {
+						"vraag": "Weet u hoe het op straat is?",
+						"antwoord": "Ik lees de rapporten. Elke maand een nieuwe. Met grafieken. Er gaat iets omhoog, en dat is niet goed.",
+						"stemming": "neutraal",
+						"verder": [
+							{
+								"vraag": "Bent u er weleens geweest?",
+								"antwoord": "Op straat? Zeker. Bij de opening van de nieuwe nachtopvang. Met een schaar en een lint. Ik heb er een kop soep gedronken.",
+								"verder": [
+									{
+										"vraag": "Ook 's nachts?",
+										"antwoord": "'s Nachts? Nee. Dan slaap ik. In een bed. Een warm bed. Hm. Dat klinkt anders als ik het hardop zeg tegen u.",
+										"stemming": "neutraal",
+										"verder": [
+											{
+												"vraag": "Kom eens een nachtje mee.",
+												"antwoord": "Een nachtje? Mijn staf zou flauwvallen. Maar... misschien moet ik dat doen. Zonder camera's. Ik zet het in mijn agenda. Echt.",
+												"stemming": "verdrietig"
+											}
+										]
+									}
+								]
+							}
+						]
+					},
+					"dag": "Dank u wel voor het gesprek. Ik meen het. Mijn agenda ook, hopelijk."
+				},
+				{
+					"begroetingen": [
+						"Goedemiddag. Ik heb vijf minuten. Mijn secretaris zegt drie. Zeg het maar."
+					],
+					"onderwerp": {
+						"vraag": "Draagt u die ketting altijd?",
+						"antwoord": "De ambtsketen? Alleen bij officiële gelegenheden. Hij weegt drie kilo. Mijn nek heeft er een eigen ambt bij.",
+						"doorvraag": "Mag ik hem eens dragen?",
+						"doorantwoord": "Haha! Nee. Maar u mag hem aanraken. Eén vinger. Zo. Nu bent u een klein beetje burgemeester."
+					}
+				}
+			]
 		}
 	}
 }

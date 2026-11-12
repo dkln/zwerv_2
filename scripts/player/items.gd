@@ -153,7 +153,20 @@ const ITEMS := {
 		"effect": {"honger": 14, "gezondheid": 3}, "action": "ETEN"},
 	# from the machines in Den Haag Centraal (scripts/world/station.gd): opens the OV gates
 	"ov_chipkaart": {"name": "OV-chipkaart", "kind": "sleutel", "rarity": "bijzonder", "icon": "ov_chipkaart",
-		"text": "Anoniem, blauw, € 7,50 uit de automaat. Piep bij binnenkomst, piep-piep bij vertrek."},
+		"text": "Anoniem, blauw, € 7,50 uit de automaat (met € 2,50 reissaldo). Piep bij binnenkomst, piep-piep bij vertrek."},
+	# from the OV-chipkaart machines (scripts/ui/machines/ov_machine_screen.gd): one ride,
+	# taken in at the gate where you check out
+	"los_kaartje": {"name": "Los kaartje", "kind": "spullen", "rarity": "gewoon", "icon": "kaartje",
+		"text": "Eén enkele reis, wegwerp. Bij het uitchecken houdt het poortje hem."},
+	# from the waste bins in the town (scripts/world/litter_bins.gd): statiegeld at the
+	# machine in every supermarket (scripts/world/deposit_return.gd)
+	"blikje": {"name": "Leeg blikje", "kind": "spullen", "rarity": "gewoon", "icon": "blik",
+		"text": "Uit een prullenbak gevist. Vijftien cent statiegeld bij de automaat in de supermarkt."},
+	# lost bank cards (scripts/world/lost_bank_cards.gd): every card its own account and PIN,
+	# kept on the player (scripts/player/bank_cards.gd); the menu adds each card's riddle to
+	# this text (BankCards.description)
+	"pinpas": {"name": "Gevonden pinpas", "kind": "sleutel", "rarity": "zeldzaam", "icon": "pinpas",
+		"text": "Iemand is zijn pinpas kwijt. Op de achterkant staat met balpen een raadsel gekrabbeld."},
 }
 
 const START_ITEMS := {
@@ -168,6 +181,17 @@ const START_ITEMS := {
 
 static func item(item_id: String) -> Dictionary:
 	return ITEMS.get(item_id, {})
+
+
+## The colour of an item's rarity (as the inventory shows it, GameMenu.RARITIES).
+const RARITY_COLOURS := {
+	"gewoon": Color("#9AA0C8"), "bijzonder": Color("#8BE36B"), "zeldzaam": Color("#5B8CFF"),
+	"episch": Color("#C08BFF"), "legendarisch": Color("#FFB547"),
+}
+
+
+static func rarity_colour(item_id: String) -> Color:
+	return RARITY_COLOURS.get(String(item(item_id).get("rarity", "gewoon")), RARITY_COLOURS.gewoon)
 
 
 static func can_use(item_id: String) -> bool:

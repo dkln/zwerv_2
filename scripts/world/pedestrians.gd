@@ -48,16 +48,29 @@ const Crowd = preload("res://scripts/world/crowd.gd")
 const Sight = preload("res://scripts/world/sight.gd")
 ## Ground tile folders people walk on.
 const WALK_GROUND := ["stoep/", "plein/"]
+## Platform tiles at street level people walk and wait on too (a tram stop, the station's):
+## from them they get on a tram or a train and onto them they get off (door_open_at).
+const PLATFORM_GROUND := ["tram/tram_halte_perron", "tram/tramhalte_middenperron", "spoor/perron", "spoor/perron_midden"]
+## Getting on and off (door_open_at): per second that a door stands open the chance someone
+## within BOARD_REACH metres gets on, and that someone gets off; only within BOARD_PLAYER_REACH
+## of the player (where it can be seen).
+const BOARD_PER_SECOND := 0.45
+const ALIGHT_PER_SECOND := 0.4
+const BOARD_REACH := 7.0
+const BOARD_PLAYER_REACH := 90.0
+## Who just got off does not get on again for this long (seconds; ALIGHTED_META: when).
+const STAY_OFF_SECONDS := 40.0
+const ALIGHTED_META := "uitgestapt_om"
 ## Ground tiles above street level that people walk on (footbridge decks), and the props that
 ## are straight flights of stairs (not the spiral ones or the fire escapes).
 const DECK_GROUND := ["brug/loopbrug"]
 const STAIR_PROPS := ["trappen/trap_1m", "trappen/trap_3m", "trappen/trap_metaal_3m"]
 
 ## How many walk at a share of 1.0 (Crowd.pedestrian_share), the fewest and the most there are.
-@export var count := 48
+@export var count := 64
 @export var fewest := 6
-@export var most := 90
-@export var reach := 110.0
+@export var most := 130
+@export var reach := 90.0
 @export var return_near := 50.0
 ## Seconds someone stays (drawn between the two) before it goes once unseen and over
 ## `renew_beyond` metres from the player; how many come or go each second at most (more after
@@ -121,6 +134,9 @@ var _station_blocked := {}                 # [from cell, to cell] -> true: no wa
 var _station_looks_left := 5               # tries left to find the doors (Interiors sets them up)
 ## How many came out of the station and went into it so far (for the tests).
 var came_out_of_station := 0
+## How many got on and off a tram or a train so far (door_open_at; for the tests).
+var boarded := 0
+var alighted := 0
 var went_into_station := 0
 
 
@@ -500,7 +516,8 @@ func _find_walkable() -> void:
 		if cell.y != 0:
 			continue
 		var item_name := library.get_item_name(_ground.get_cell_item(cell))
-		if not WALK_GROUND.any(func(folder: String) -> bool: return item_name.begins_with(folder)):
+		if not WALK_GROUND.any(func(folder: String) -> bool: return item_name.begins_with(folder)) \
+				and not item_name in PLATFORM_GROUND:
 			continue
 		if _buildings and (_buildings.get_cell_item(Vector3i(cell.x, 0, cell.z)) != GridMap.INVALID_CELL_ITEM
 				or _buildings.get_cell_item(Vector3i(cell.x, 1, cell.z)) != GridMap.INVALID_CELL_ITEM):
@@ -835,12 +852,66 @@ func station_way_blocked(from: Vector3i, to: Vector3i) -> void:
 	_walk_to_station()
 
 
+## A tram or a train stands with a door open at `door` (on the platform, just outside it:
+## RailVehicle, every physics step while open, `delta` its seconds): now and then someone on
+## the platform near it walks to the door and gets on (gone, as into the station), and now and
+## then someone gets off (comes out of the door onto the platform and walks off).
+func door_open_at(door: Vector3, delta: float) -> void:
+	if _player == null or _player.global_position.distance_to(door) > BOARD_PLAYER_REACH or network == null:
+		return
+	if _random.randf() < BOARD_PER_SECOND * delta:
+		var nearest: Pedestrian = null
+		var nearest_distance := BOARD_REACH
+		for person in _people:
+			if person.heading_to_station or person._ragdoll or person.role != "" or person.mobility == "scootmobiel":
+				continue
+			if _clock - float(person.get_meta(ALIGHTED_META, -INF)) < STAY_OFF_SECONDS:
+				continue   # just got off: it walks off first
+			if person.global_position.distance_to(_player.global_position) < 3.0:
+				continue   # not the one the player stands with (talking, perhaps)
+			var distance := person.global_position.distance_to(door)
+			if distance < nearest_distance:
+				nearest = person
+				nearest_distance = distance
+		if nearest:
+			nearest.board_at(door)
+	if _random.randf() < ALIGHT_PER_SECOND * delta and not _resting.is_empty():
+		var cell := _walkable_cell_near(door)
+		if cell == RoadNetwork.NONE:
+			return
+		var person: Pedestrian = _resting.pop_back()
+		_dress_for_now(person, true, door)
+		add_child(person)
+		_people.append(person)
+		if person.restart_at(cell):
+			person.step_out_at(door)
+			person.set_meta(ALIGHTED_META, _clock)
+			alighted += 1
+		elif not bring_back(person):
+			_rest(person)
+
+
+## The walkable cell at `spot`, or the nearest one beside it; NONE if there is none.
+func _walkable_cell_near(spot: Vector3) -> Vector3i:
+	var here := cell_of(spot)
+	if _walkable.has(here):
+		return here
+	for side: Vector3i in [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1)]:
+		if _walkable.has(here + side):
+			return here + side
+	return RoadNetwork.NONE
+
+
 ## `person` went in through a station door: gone for good (freed; someone else comes instead).
+## (Getting on a tram or a train ends the same way: Pedestrian.board_at.)
 func into_station(person: Pedestrian) -> void:
 	person.heading_to_station = false
 	if not person in _people:
 		return
-	went_into_station += 1
+	if person.boarding:
+		boarded += 1
+	else:
+		went_into_station += 1
 	_people.erase(person)
 	_leaves_at.erase(person)
 	Pedestrians.claim_zebra(person, [], false)

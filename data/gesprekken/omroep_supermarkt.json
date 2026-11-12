@@ -1,0 +1,50 @@
+{
+  "uitleg": "Wat er in de supermarkten (DERREK, ALFRED STEYHN) wordt omgeroepen (scripts/world/supermarket_announcer.gd), net als op het station: de muzak gaat zachter, de jingle van de keten klinkt (assets/audio/muziek/jingle_<keten>.ogg, tools/muziek/derive.py), dan praat de omroepstem en verschijnt de tekst onderin beeld. 'eerste': na hoeveel seconden binnen (van, tot) het eerste bericht komt; 'tussen': hoeveel seconden (van, tot) het daarna stil blijft. 'aanbieding_kans': hoe vaak het een aanbieding is (anders een mededeling). Per keten: 'stem' (vrouw, man, oude_man: de brabbel van de omroeper), 'aanbieding' (een product uit een schap van dit filiaal: {naam} en {prijs}), 'bonus' (ALFRED STEYHN: als dat product in dit filiaal BONUS heeft), 'mededelingen' (van de keten zelf). 'mededelingen' bovenaan gelden voor beide; {kassa} is een kassanummer van dit filiaal, {gang} een gangpad (1 tot 6). Zie data/LEESMIJ.md.",
+  "eerste": [12, 30],
+  "tussen": [45, 100],
+  "aanbieding_kans": 0.55,
+  "mededelingen": [
+    "Kassa {kassa} gaat voor u open.",
+    "Wil een collega naar kassa {kassa} komen? Een collega naar kassa {kassa}.",
+    "Wil de eigenaar van een grijze bakfiets voor de ingang zich melden bij de servicebalie?",
+    "Een collega met de dweil naar gangpad {gang} graag. Gangpad {gang}.",
+    "Er staat een klein meisje bij de servicebalie, ze zoekt haar papa. Haar naam is Fenna.",
+    "Wil de eigenaar van de auto met kenteken GZ-418-B zijn lichten uitdoen? Ze staan nog aan.",
+    "Statiegeldflessen kunt u inleveren bij de automaat naast de ingang.",
+    "Let op: honden mogen niet mee de winkel in, behalve hulphonden."
+  ],
+  "ketens": {
+    "derrek": {
+      "stem": "man",
+      "aanbieding": [
+        "Vandaag bij DERREK: {naam} voor maar € {prijs}! Op is op!",
+        "Klanten van DERREK, let op: {naam}, nu voor € {prijs}. Altijd de laagste prijs!",
+        "Laagste prijs van Den Haag: {naam}, € {prijs}. Pak ze voordat de buurman ze pakt!",
+        "Deze week bij DERREK: {naam}, slechts € {prijs}. Zo goedkoop, dat is bijna gratis."
+      ],
+      "mededelingen": [
+        "Bij DERREK betaalt u nooit te veel. Dat zeggen wij, dus het is zo.",
+        "Een collega van de vulploeg naar het magazijn, de pallets met stroopwafels zijn er.",
+        "DERREK, de laagste prijs. Hebben we iets niet? Dan heeft u het niet nodig."
+      ]
+    },
+    "alfred_steyhn": {
+      "stem": "vrouw",
+      "aanbieding": [
+        "Goed om te weten bij ALFRED STEYHN: {naam}, vandaag € {prijs}.",
+        "Probeer ook eens {naam}, voor € {prijs}. Lekker en verantwoord, bij ALFRED STEYHN.",
+        "Uit ons eigen assortiment: {naam}, nu € {prijs}."
+      ],
+      "bonus": [
+        "Deze week in de BONUS: {naam}, nu voor € {prijs}. Een kwart korting!",
+        "BONUS! {naam} voor maar € {prijs}. Alleen met uw Steyhn-kaart. Grapje, gewoon voor iedereen.",
+        "Let op het oranje bordje: {naam} is in de BONUS, nu € {prijs}."
+      ],
+      "mededelingen": [
+        "Heeft u al gespaard voor de mooie Steyhn-pannenset? Vraag naar de zegeltjes aan de kassa.",
+        "Wilt u gebruik maken van de zelfscankassa's? Een collega helpt u graag.",
+        "ALFRED STEYHN wenst u een prettige winkeldag. Vergeet uw tas niet."
+      ]
+    }
+  }
+}

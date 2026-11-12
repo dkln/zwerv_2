@@ -9,13 +9,15 @@ extends Node3D
 ## checking in. Holding an OV-chipkaart to the reader (Lane.request) beeps (two high beeps in,
 ## one longer high beep out), the paddles swing open the way you go, and shut again once you are through.
 ## The player checks in at a lane with "[E] Inchecken" / "[E] Uitchecken" (only from the side
-## the lane lets you in from); without an OV-chipkaart (Items "ov_chipkaart") the reader
+## the lane lets you in from); without an OV-chipkaart with RIDE_FARE on it or a single ticket
+## (OvCard, scripts/world/ov_card.gd: checking in costs the fare, a ticket is kept going out) the reader
 ## refuses with the error tone (high, low, high: ov_geweigerd) and the paddles stay shut. People in the station queue at a lane, check in,
 ## wait for the paddles and only then walk through (StationPerson).
 ## A lamp on each end of the reader cabinet: green on the side you may come from, red on the
 ## other; it flashes white on a beep.
 
 const Layout = preload("res://scripts/world/station_layout.gd")
+const OvCard = preload("res://scripts/world/ov_card.gd")
 const DOORS_GROUP := "deuren"
 const CARD_ITEM := "ov_chipkaart"
 ## A check-in by the player lets them through the gate line for this many seconds (the
@@ -117,12 +119,17 @@ class Lane:
 		var player := gates.player()
 		if player == null:
 			return
-		var inventory: Dictionary = player.get("inventory") if player.get("inventory") != null else {}
-		if int(inventory.get(StationGates.CARD_ITEM, 0)) <= 0:
+		# a card with enough balance, or a single ticket (OvCard); checking in costs the fare
+		var ticket := OvCard.check_in(player, false) if direction > 0 else OvCard.check_out(player, false)
+		if ticket == "saldo" or ticket == "geen":
 			refuse()
-			gates.say(reader_point() + Vector3.UP * 0.6, "Geen OV-chipkaart", StationGates.RED)
+			gates.say(reader_point() + Vector3.UP * 0.6, OvCard.refusal(ticket), StationGates.RED)
 			return
 		if request(player):
+			if direction > 0:
+				OvCard.check_in(player)
+			else:
+				OvCard.check_out(player)
 			player.set_meta("ov_ingecheckt", direction > 0)
 			player.set_meta(StationGates.PASS_META, gates.clock() + StationGates.PASS_SECONDS)
 			gates.say(reader_point() + Vector3.UP * 0.6, "Ingecheckt" if direction > 0 else "Uitgecheckt", StationGates.GREEN)

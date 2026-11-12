@@ -160,6 +160,12 @@ const STREET_THEMES := ["standaard", "fietsstraat", "fietsstroken", "inhaalverbo
 ## Street themes paved with ordinary asphalt, which get the asphalt arrows and markings
 ## before a crossing.
 const ASPHALT_THEMES := ["standaard", "fietsstroken", "inhaalverbod", "lijnen", "fietsstrook"]
+## Most intersections with traffic lights, and the least distance (cells, along either
+## axis) between two of them.
+const MAX_LIT_INTERSECTIONS := 8
+const LIT_SPACING := 14
+## Sections at least this long (cells) get a zebra crossing halfway along as well.
+const MID_ZEBRA_LENGTH := 9
 const ARROWS := ["rijstrook_pijl_rechtdoor", "rijstrook_pijl_links", "rijstrook_pijl_rechts", "rijstrook_pijl_rechtdoor_links", "rijstrook_pijl_rechtdoor_rechts"]
 
 
@@ -201,7 +207,7 @@ func _dress_streets() -> void:
 		for c in inter:
 			if c.y == tram_row or c.y == tram_row + 1:
 				G(c.x, c.y, "tram/tram_recht", "E")
-	# two busy intersections get traffic lights (all light types; green and amber north-south)
+	# intersections with room round them get traffic lights (up to MAX_LIT_INTERSECTIONS)
 	var candidates := []
 	for c in inter:
 		if c.y == tram_row or c.y == tram_row + 1 or c.x > lights_last_column:
@@ -216,14 +222,29 @@ func _dress_streets() -> void:
 		if ok:
 			candidates.append(c)
 	candidates.sort_custom(func(a, b): return a.y < b.y or (a.y == b.y and a.x < b.x))
-	if candidates.size() >= 2:
-		var c1: Vector2i = candidates[candidates.size() / 3]
-		var c2: Vector2i = candidates[candidates.size() * 2 / 3]
-		_intersection_with_lights(c1.x, c1.y, "groen", "rood", "rijden", "stop", "groen", "rood")
-		_intersection_with_lights(c2.x, c2.y, "oranje", "rood", "attentie", "stop", "oranje", "rood")
-		# the 2 x 2 crossing cells start at c: its centre lies on the far corner of c
-		places["verkeerslichten"] = Vector2(c1 + Vector2i.ONE) * 4.0
-		places["verkeerslichten_2"] = Vector2(c2 + Vector2i.ONE) * 4.0
+	# every candidate that keeps its distance from the ones already lit gets lights, so
+	# their arms, kerbs and corners never overlap and the city has lights all over
+	var lit := []
+	for candidate: Vector2i in candidates:
+		if lit.size() >= MAX_LIT_INTERSECTIONS:
+			break
+		var far_enough := true
+		for other: Vector2i in lit:
+			if maxi(absi(candidate.x - other.x), absi(candidate.y - other.y)) < LIT_SPACING:
+				far_enough = false
+				break
+		if far_enough:
+			lit.append(candidate)
+	for lit_index in lit.size():
+		var crossing: Vector2i = lit[lit_index]
+		# alternate the states they are built with (the game runs the real cycle anyway)
+		if lit_index % 2 == 0:
+			_intersection_with_lights(crossing.x, crossing.y, "groen", "rood", "rijden", "stop", "groen", "rood")
+		else:
+			_intersection_with_lights(crossing.x, crossing.y, "oranje", "rood", "attentie", "stop", "oranje", "rood")
+		# the 2 x 2 crossing cells start at the cell: its centre lies on the far corner of it
+		var place_key := "verkeerslichten" if lit_index == 0 else "verkeerslichten_%d" % (lit_index + 1)
+		places[place_key] = Vector2(crossing + Vector2i.ONE) * 4.0
 
 
 ## Lane tiles of one street section (cells of its first lane, west to east or north to
@@ -304,7 +325,13 @@ func _dress_section(run: Array, horizontal: bool, theme: String, inter: Dictiona
 			continue
 		var before: Vector2i = e[3]
 		var kind := _r(e[2].x, e[2].y, 4)
-		if horizontal:
+		if horizontal and kind == 2 and n >= 5:
+			# a zebra right before the crossing, the arrow and block marking further back
+			var further: Vector2i = before + (before - cell)
+			G(cell.x, cell.y, "weg/zebrapad", e[1])
+			G(before.x, before.y, "weg/" + ARROWS[(section + (0 if e[1] == rot0 else 2)) % ARROWS.size()], e[1])
+			G(further.x, further.y, "weg/rijstrook_blok_kant" if e[1] == rot0 else "weg/rijstrook_blok_geen", e[1])
+		elif horizontal:
 			G(cell.x, cell.y, "weg/" + ARROWS[(section + (0 if e[1] == rot0 else 2)) % ARROWS.size()], e[1])
 			if n >= 3:
 				G(before.x, before.y, "weg/rijstrook_blok_kant" if e[1] == rot0 else "weg/rijstrook_blok_geen", e[1])
@@ -314,10 +341,17 @@ func _dress_section(run: Array, horizontal: bool, theme: String, inter: Dictiona
 				G(before.x, before.y, "weg/rijstrook_stop_tekst", e[1])
 		elif kind == 1:
 			G(cell.x, cell.y, "weg/rijstrook_haaientanden", e[1])
-		elif kind == 2:
+		else:
+			# half of the north-south approaches get a zebra crossing
 			G(cell.x, cell.y, "weg/zebrapad", e[1])
 			if n >= 3:
 				G(before.x, before.y, "weg/pianostrepen", e[1])
+	# a long street gets a zebra crossing between its intersections too, over both lanes
+	# (away from the middle, where the drains and manholes lie)
+	if n >= MID_ZEBRA_LENGTH:
+		var zebra_at: Vector2i = run[n / 2 - 2]
+		G(zebra_at.x, zebra_at.y, "weg/zebrapad", rot0)
+		G(zebra_at.x + other.x, zebra_at.y + other.y, "weg/zebrapad", rot1)
 
 
 # ------------------------------------------------------------------ traffic lights: all types in all states

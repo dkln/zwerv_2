@@ -14,6 +14,7 @@ extends RefCounted
 ##   wave with a quick drop in pitch, its volume in the chip's coarse steps; play it with a
 ##   slightly different `pitch_scale` each time, as those games did;
 ## - "munt": picking up a coin: a quick bright two-note chime going up (a fourth).
+## - "item": getting an item: three notes going up a major chord, the last ringing on.
 ## Play one with UiSounds.play(node, "kies"); the sounds are made once and kept.
 
 const SoundVariation = preload("res://scripts/audio/sound_variation.gd")
@@ -62,6 +63,8 @@ static func _sound(sound_name: String) -> AudioStreamWAV:
 				_sounds[sound_name] = _text_blip()
 			"munt":
 				_sounds[sound_name] = _notes([[1975.5, 0.06], [2637.0, 0.2]], 1.0, 1.0)
+			"item":
+				_sounds[sound_name] = _notes([[1318.5, 0.05], [1661.2, 0.05], [1975.5, 0.26]], 1.0, 1.1)
 			_:
 				return null
 	return _sounds[sound_name]
