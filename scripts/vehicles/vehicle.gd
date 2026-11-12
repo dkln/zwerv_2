@@ -491,6 +491,25 @@ const RELOCATE_TRIES := 40
 
 ## Every vehicle in the game (for keeping clear of each other and crashing).
 static var all_vehicles: Array[Vehicle] = []
+## Clustered: the vehicles in buckets of BUCKET_SIZE metres (seen from above), filled once per
+## physics frame (_fill_buckets), so a vehicle that looks round itself (near) only goes
+## through the buckets round the spot instead of every vehicle in the game. The long ones
+## (a train, a tram: more than LONG_REACH from their middle to their far end) always come
+## along, wherever their middle is. BUCKET_MARGIN covers how far they move in a frame.
+const BUCKET_SIZE := 16.0
+const LONG_REACH := 15.0
+const BUCKET_MARGIN := 3.0
+static var _buckets := {}                    # Vector2i -> Array[Vehicle]
+static var _long_vehicles: Array[Vehicle] = []
+static var _buckets_frame := -1
+## Combined per step: the vehicles round this one (within NEAR_VEHICLES, Vehicle.near) are looked
+## up once per physics frame (_nearby_vehicles) and every check of that step (oncoming traffic,
+## sirens, who is ahead, the crossings, a crash) goes through that one list.
+var _nearby: Array[Vehicle] = []
+var _nearby_frame := -1
+## The people on foot (WALKERS_GROUP), looked up once per physics frame for all vehicles.
+static var _walkers_now: Array[Node] = []
+static var _walkers_frame := -1
 ## The last crash: where, how hard (0..1) and when (seconds, Time); the camera shakes.
 static var last_crash := {"at": Vector3.ZERO, "strength": 0.0, "time": -100.0}
 
@@ -737,7 +756,10 @@ func _physics_process(delta: float) -> void:
 	velocity = (global_position - before) / maxf(delta, 0.0001)
 	_tick_current = global_transform
 	_bump_clock = maxf(_bump_clock - delta, 0.0)
-	_check_crash()
+	# only what is seen crashes: out of sight it keeps its distance (_body_ahead_speed) and that
+	# is enough (a crash nobody sees costs the look-up of everyone round it every step)
+	if not unseen:
+		_check_crash()
 	if not unseen:
 		_turn_wheels(speed * delta, delta)
 	_move_trailer()
@@ -830,7 +852,7 @@ func _watch_people(seconds: float) -> void:
 	var nearest := INF          # metres from its front to the nearest one in its path
 	var warn_at := INF          # metres to the nearest one it has to swerve round or stop for
 	var reach_squared := (reach + 1.0) * (reach + 1.0)
-	for walker in get_tree().get_nodes_in_group(WALKERS_GROUP):
+	for walker in _walkers(get_tree()):
 		var person := walker as Node3D
 		if person == null or not person.is_visible_in_tree():
 			continue
@@ -1156,7 +1178,7 @@ func _passes(other: Vehicle) -> bool:
 func _oncoming_near() -> bool:
 	var forward := Vector2(global_basis.z.x, global_basis.z.z).normalized()
 	var mine := Vector2(global_position.x, global_position.z)
-	for other in all_vehicles:
+	for other in _nearby_vehicles():
 		if other == self or absf(other.global_position.y - global_position.y) > 2.5:
 			continue
 		var relative := Vector2(other.global_position.x, other.global_position.z) - mine
@@ -1291,7 +1313,7 @@ func _siren_behind() -> Vehicle:
 	var mine := Vector2(global_position.x, global_position.z)
 	var nearest: Vehicle = null
 	var nearest_distance := SIREN_HEARD
-	for other in all_vehicles:
+	for other in _nearby_vehicles():
 		if other == self or not other.has_priority() or absf(other.global_position.y - global_position.y) > 2.5:
 			continue
 		var theirs := Vector2(other.global_position.x, other.global_position.z)
@@ -1314,7 +1336,7 @@ func _siren_oncoming() -> Vehicle:
 	var mine := Vector2(global_position.x, global_position.z)
 	var nearest: Vehicle = null
 	var nearest_distance := ONCOMING_SIREN_HEARD
-	for other in all_vehicles:
+	for other in _nearby_vehicles():
 		if other == self or not other.has_priority() or absf(other.global_position.y - global_position.y) > 2.5:
 			continue
 		var relative := Vector2(other.global_position.x, other.global_position.z) - mine
@@ -1344,7 +1366,7 @@ func _is_past(other: Vehicle) -> bool:
 func _passing_someone() -> bool:
 	var forward := Vector2(global_basis.z.x, global_basis.z.z).normalized()
 	var mine := Vector2(global_position.x, global_position.z)
-	for other in all_vehicles:
+	for other in _nearby_vehicles():
 		if other == self or not other.yielding:
 			continue
 		var relative := Vector2(other.global_position.x, other.global_position.z) - mine
@@ -1358,7 +1380,7 @@ func _passing_someone() -> bool:
 func _beside_yielder() -> bool:
 	var forward := Vector2(global_basis.z.x, global_basis.z.z).normalized()
 	var mine := Vector2(global_position.x, global_position.z)
-	for other in all_vehicles:
+	for other in _nearby_vehicles():
 		if other == self or not other.yielding:
 			continue
 		var relative := Vector2(other.global_position.x, other.global_position.z) - mine
@@ -1389,7 +1411,7 @@ func _moved_over_for_siren() -> bool:
 		if network.is_crossing(beside) or network.step(beside, heading) == RoadNetwork.NONE:
 			continue
 		var taken := false
-		for other in all_vehicles:
+		for other in near(network.centre(beside), RoadNetwork.CELL):
 			taken = taken or (other != self and other.covers(beside))
 		if taken:
 			continue
@@ -2260,6 +2282,14 @@ func _turn_wheels(distance_driven: float, delta: float) -> void:
 func _traffic_speed(index: int, last: int) -> float:
 	var target := INF
 	var lookahead := MANIAC_LOOKAHEAD if maniac != "" else TRAFFIC_LOOKAHEAD
+	# who is near enough to matter, looked up once (not again for every cell ahead)
+	var nearby: Array[Vehicle] = []
+	for other in _nearby_vehicles():
+		# measured to its middle: a long one (a train) reaches further than that
+		if other == self or other.global_position.distance_to(global_position) > NEAR_VEHICLES + other._reach():
+			continue
+		if not _passes(other):
+			nearby.append(other)
 	for ahead_index in range(index + 1, last + 1):
 		var at := _route_distances[ahead_index]
 		if at - _distance > lookahead:
@@ -2281,12 +2311,7 @@ func _traffic_speed(index: int, last: int) -> float:
 				if stop_at - _distance < 0.4:
 					target = 0.0
 				break
-		for other in all_vehicles:
-			# measured to its middle: a long one (a train) reaches further than that
-			if other == self or other.global_position.distance_to(global_position) > NEAR_VEHICLES + other._reach():
-				continue
-			if _passes(other):
-				continue
+		for other in nearby:
 			if other.covers(cell):
 				blocked = true
 			elif crossing and not other.crashed and other.speed > 0.5 and (maniac == "" or other.has_priority()):
@@ -2342,7 +2367,7 @@ func _exit_taken(entry_index: int) -> Vehicle:
 		if index >= _route_cells.size() or network.is_crossing(_route_cells[index]):
 			break
 		var cell := _route_cells[index]
-		for other in all_vehicles:
+		for other in _nearby_vehicles():
 			if other == self or other.speed > EXIT_TAKEN_BELOW or other is RailVehicle:
 				continue
 			if other.global_position.distance_to(global_position) > NEAR_VEHICLES + other._reach():
@@ -2387,7 +2412,7 @@ func _body_ahead_speed(claims_limit := INF) -> float:
 	var side_room := _outer_box.size.x * 0.5 + BODY_SIDE_ROOM
 	var nearest_gap := INF
 	var nearest_body: Vehicle = null
-	for other in all_vehicles:
+	for other in _nearby_vehicles():
 		if other == self or other.crashed or absf(other.global_position.y - global_position.y) > 2.5 or _passes(other):
 			continue
 		var reach := nose + other._reach() + BODY_LOOKAHEAD
@@ -2626,7 +2651,7 @@ func distance_to(cell: Vector3i) -> float:
 
 ## Crashes into every vehicle whose body touches this one's (within CRASH_MARGIN).
 func _check_crash() -> void:
-	for other in all_vehicles:
+	for other in _nearby_vehicles():
 		if other == self or other.crashed or crashed or _bump_clock > 0.0 or other._bump_clock > 0.0:
 			continue
 		if global_position.distance_to(other.global_position) > _reach() + other._reach() + 1.0:
@@ -2977,7 +3002,7 @@ func _free_lane(cell: Vector3i, heading: Vector2i) -> Vector3i:
 	var candidate := cell
 	for step_index in TOW_SEARCH_CELLS:
 		var free := true
-		for other in all_vehicles:
+		for other in near(network.centre(candidate), _body_size.z):
 			if other != self and not other.crashed and (other.covers(candidate) \
 					or other.global_position.distance_to(network.centre(candidate)) < _body_size.z + other._reach()):
 				free = false
@@ -3025,3 +3050,65 @@ func _plan_ahead(metres: float) -> void:
 	speed = sqrt(maxf(0.0, 2.0 * braking * (metres - PLAN_MARGIN)))
 	_plan()
 	speed = keep
+
+
+# ------------------------------------------------------------------ clustered lookup
+
+## The vehicles that may be within `radius` metres of `spot` (plus their own reach): those in
+## the buckets round it and all long ones; a few more than that, never fewer (the callers
+## measure the exact distance themselves).
+static func near(spot: Vector3, radius: float) -> Array[Vehicle]:
+	_fill_buckets()
+	var found: Array[Vehicle] = _long_vehicles.duplicate()
+	var reach := radius + LONG_REACH + BUCKET_MARGIN
+	var low := Vector2i(floori((spot.x - reach) / BUCKET_SIZE), floori((spot.z - reach) / BUCKET_SIZE))
+	var high := Vector2i(floori((spot.x + reach) / BUCKET_SIZE), floori((spot.z + reach) / BUCKET_SIZE))
+	for bucket_x in range(low.x, high.x + 1):
+		for bucket_z in range(low.y, high.y + 1):
+			var bucket: Variant = _buckets.get(Vector2i(bucket_x, bucket_z))
+			if bucket != null:
+				found.append_array(bucket)
+	return found
+
+
+## Sorts all vehicles into their buckets, once per physics frame.
+static func _fill_buckets() -> void:
+	var frame := Engine.get_physics_frames()
+	if frame == _buckets_frame:
+		return
+	_buckets_frame = frame
+	_buckets.clear()
+	_long_vehicles.clear()
+	for vehicle in all_vehicles:
+		if not is_instance_valid(vehicle) or not vehicle.is_inside_tree():
+			continue
+		if vehicle._reach() > LONG_REACH:
+			_long_vehicles.append(vehicle)
+			continue
+		var key := Vector2i(floori(vehicle.global_position.x / BUCKET_SIZE), floori(vehicle.global_position.z / BUCKET_SIZE))
+		var bucket: Variant = _buckets.get(key)
+		if bucket == null:
+			var new_bucket: Array[Vehicle] = [vehicle]
+			_buckets[key] = new_bucket
+		else:
+			(bucket as Array[Vehicle]).append(vehicle)
+
+
+## The people on foot (WALKERS_GROUP) this physics frame: the group looked up once per frame,
+## not by every vehicle every step (again when someone joins or leaves it within the frame).
+static func _walkers(tree: SceneTree) -> Array[Node]:
+	var frame := Engine.get_physics_frames()
+	if frame != _walkers_frame or tree.get_node_count_in_group(WALKERS_GROUP) != _walkers_now.size():
+		_walkers_frame = frame
+		_walkers_now = tree.get_nodes_in_group(WALKERS_GROUP)
+	return _walkers_now
+
+
+## The vehicles round this one this physics frame (see _nearby): looked up once, shared by all
+## its checks; each check still measures its own distance.
+func _nearby_vehicles() -> Array[Vehicle]:
+	var frame := Engine.get_physics_frames()
+	if frame != _nearby_frame:
+		_nearby_frame = frame
+		_nearby = near(global_position, NEAR_VEHICLES)
+	return _nearby

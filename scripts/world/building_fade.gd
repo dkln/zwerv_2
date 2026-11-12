@@ -70,6 +70,11 @@ const Iso = preload("res://scripts/camera/iso_camera.gd")
 const CELL := 4.0
 ## Metres between the samples along a view line (less than the 3 m cell height).
 const STEP := 1.0
+## Looked again at the latest after this many frames, sooner when the followed moved more than
+## RETEST_MOVE metres or the camera turned or zoomed (_view_key).
+const RETEST_FRAMES := 3
+const RETEST_MOVE := 0.25
+const LOWEST_CELL := -1000000
 
 var _follow: Node
 var _buildings: GridMap
@@ -87,6 +92,10 @@ var _fade := {}                     # building index -> current fade (0..1), onl
 var _image: Image
 var _texture: ImageTexture
 var _origin := Vector2i.ZERO        # cell at the texture's corner
+var _top_height := INF               # metres: the highest building or deck top (no line looks above)
+var _last_blocking := {}             # what _blocking found the last time it looked
+var _last_key := []                  # where the followed and the camera were then (_view_key)
+var _frames_since := 0
 
 
 func _ready() -> void:
@@ -106,7 +115,9 @@ func _find_buildings() -> void:
 	var occupied := {}
 	var lowest := Vector2i(1 << 30, 1 << 30)
 	var highest := -lowest
+	var top_cell := LOWEST_CELL
 	for cell in _buildings.get_used_cells():
+		top_cell = maxi(top_cell, cell.y)
 		var flat := Vector2i(cell.x, cell.z)
 		occupied[flat] = true
 		lowest = Vector2i(mini(lowest.x, flat.x), mini(lowest.y, flat.y))
@@ -143,6 +154,13 @@ func _find_buildings() -> void:
 				_building_area.append(Rect2(Vector2(flat) * CELL, Vector2.ONE * CELL))
 			_with_deck[_building_of[flat]] = true
 	_origin = lowest
+	if top_cell > LOWEST_CELL:
+		var top_local := _buildings.map_to_local(Vector3i(0, top_cell + 1, 0))
+		_top_height = (_buildings.global_transform * top_local).y + _buildings.cell_size.y
+	if _ground:
+		for cell in _ground.get_used_cells():
+			if cell.y >= deck_level:
+				_top_height = maxf(_top_height, (_ground.global_transform * _ground.map_to_local(cell)).y + _ground.cell_size.y)
 	var size := highest - lowest + Vector2i.ONE
 	# floats: the last row holds the centre and radius of the hole in metres
 	_image = Image.create(size.x, size.y + 1, false, Image.FORMAT_RGBAF)
@@ -182,19 +200,38 @@ func _blocking() -> Dictionary:
 			# not on the ground): only what covers the vehicle and the room round it on the
 			# screen blocks it, not the facades beside a narrow street
 			var start := centre + Vector3.UP * height + (across * corner.x + upwards * corner.y) * reach
+			var last_cell := Vector3i(1 << 30, 0, 0)
 			for step in range(1, steps + 1):
 				var point := start + towards_camera * (step * STEP)
+				if point.y > _top_height:
+					break   # above every building and deck: nothing further on can hide it
 				var cell := _buildings.local_to_map(to_map * point)
 				# the sample itself lies on the camera's side of the followed too: a test point
 				# shifted up in the picture starts behind it, inside the building at its back
-				var ahead := Vector2(point.x - centre.x, point.z - centre.z).dot(flat_towards) > 0.0
-				if ahead and _buildings.get_cell_item(cell) != GridMap.INVALID_CELL_ITEM and _in_front(cell, centre, towards_camera):
-					found[_building_of[Vector2i(cell.x, cell.z)]] = true
+				# (a cell just looked at is not looked at again: the steps are shorter than a cell)
+				if cell != last_cell:
+					last_cell = cell
+					var ahead := Vector2(point.x - centre.x, point.z - centre.z).dot(flat_towards) > 0.0
+					if ahead and _buildings.get_cell_item(cell) != GridMap.INVALID_CELL_ITEM and _in_front(cell, centre, towards_camera):
+						found[_building_of[Vector2i(cell.x, cell.z)]] = true
 				if _ground and point.y > lowest_deck:
 					var ground_cell := _ground.local_to_map(to_ground * point)
 					if ground_cell.y >= deck_level and _ground.get_cell_item(ground_cell) != GridMap.INVALID_CELL_ITEM:
 						found[_building_of[Vector2i(ground_cell.x, ground_cell.z)]] = true
 	return found
+
+
+## Where the followed and the camera are, coarsely: a test is made again when this changes.
+func _view_key() -> Array:
+	var followed: Node3D = _follow.get("target_node")
+	var camera := get_viewport().get_camera_3d()
+	if followed == null or camera == null:
+		return []
+	var at := followed.global_position
+	var view := camera.global_basis.z
+	return [Vector3i(roundi(at.x / RETEST_MOVE), roundi(at.y / RETEST_MOVE), roundi(at.z / RETEST_MOVE)),
+			Vector3i(roundi(view.x * 100.0), roundi(view.y * 100.0), roundi(view.z * 100.0)),
+			roundi(camera.size * 4.0) if camera.projection == Camera3D.PROJECTION_ORTHOGONAL else roundi(camera.fov)]
 
 
 ## True if the middle of building cell `cell` lies on the camera's side of `centre` (seen from
@@ -208,7 +245,20 @@ func _in_front(cell: Vector3i, centre: Vector3, towards_camera: Vector3) -> bool
 
 func _process(delta: float) -> void:
 	var following: bool = _follow.call("is_following")
-	var blocking := _blocking() if following else {}
+	var blocking := {}
+	# a hole only when the camera cannot turn to a view that shows the player (it turns instead):
+	# follow_camera.gd view_hole_wanted, from the view table
+	if following and _follow.has_method("view_hole_wanted") and not _follow.call("view_hole_wanted"):
+		following = false
+	if following:
+		# looked again only when something changed, or every few frames
+		_frames_since += 1
+		var key := _view_key()
+		if key != _last_key or _frames_since >= RETEST_FRAMES:
+			_last_key = key
+			_frames_since = 0
+			_last_blocking = _blocking()
+		blocking = _last_blocking
 	var change := delta / maxf(fade_time, 0.01)
 	var changed := false
 	for index in blocking:

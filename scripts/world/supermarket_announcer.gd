@@ -234,17 +234,17 @@ func _make_subtitle() -> void:
 	add_child(_subtitle_layer)
 	_subtitle = RichTextLabel.new()
 	_subtitle.add_theme_font_override("normal_font", UiStyle.font(UiStyle.FONT_PIXEL_BOLD))
-	_subtitle.add_theme_font_size_override("normal_font_size", 18)
+	_subtitle.add_theme_font_size_override("normal_font_size", UiStyle.ANNOUNCEMENT_FONT_SIZE)
 	_subtitle.add_theme_color_override("default_color", Color("#FFE9B8"))
-	UiStyle.faux_3d(_subtitle, 3)
+	UiStyle.faux_3d(_subtitle, 4)
 	_subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_subtitle.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_subtitle.scroll_active = false
 	_subtitle.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_subtitle.anchor_left = 0.15
-	_subtitle.anchor_right = 0.85
-	_subtitle.anchor_top = 0.82
-	_subtitle.anchor_bottom = 0.92
+	_subtitle.anchor_left = 0.08
+	_subtitle.anchor_right = 0.92
+	_subtitle.anchor_top = 0.74
+	_subtitle.anchor_bottom = 0.95
 	_subtitle_layer.add_child(_subtitle)
 	_typewriter = Typewriter.new(_subtitle, self)
 	_typewriter.sound = false

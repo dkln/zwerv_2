@@ -284,6 +284,20 @@ niet het verkeer van de hele stad:
   speler (een warp, een geladen spel) alles in één keer. In een binnenruimte staat het stil.
   Zonder camera (de tools) is niets buiten beeld, dus gaat er niets weg
   (`unseen_without_camera` zet dat aan voor een test).
+- Zuinig met de CPU: elke tick bekijkt het maar een deel van de voertuigen of ze weg moeten,
+  zodat elk er ongeveer eens per seconde aan de beurt is (`CHECK_ROUND`). Is er rond de speler
+  geen plek voor meer, dan kijkt het pas na `NO_ROOM_WAIT` (1,5 s) weer. Of een startplek vrij
+  is (`_apart`) gaat via de clustering hieronder, één keer per plek (niet per voertuigsoort).
+- Clustering (`Vehicle.near`): de voertuigen worden één keer per physics-frame in vakken van
+  `BUCKET_SIZE` (16 m) gesorteerd; wie om zich heen kijkt (tegenliggers, sirenes, wie voor
+  rijdt, kruisingen, botsingen, voetgangers bij een zebra, de speler) krijgt alleen de vakken
+  rond de plek, plus alle lange (treinen, trams: verder dan `LONG_REACH` van hun midden).
+  Per stap haalt een voertuig die lijst één keer op (`_nearby_vehicles`, binnen
+  `NEAR_VEHICLES`) en alle controles van die stap gebruiken hem. De mensen te voet
+  (`WALKERS_GROUP`) worden ook één keer per frame opgehaald. Buiten beeld botsen voertuigen
+  niet (ze houden wel afstand) en rekenen ze eens per 6 stappen, ver weg eens per 10
+  (`Sight`). Tests: `vehicle_buckets_test.gd` (mist er nooit een), `traffic_cost_test.gd`
+  (de ochtendspits binnen 16 ms per beeld, headless).
 - `whole_town` = true doet het zoals vroeger: `vehicle_count` + `services_count` over het hele
   wegennet (`traffic_seed`), allemaal gehouden; `tools/check/traffic_test.gd` gebruikt dat
   (met `-- 300 speler 8.5` het verkeer rond de speler in de spits, zoals in het spel).
@@ -610,8 +624,22 @@ debugtoetsen meer (geen ander voertuig volgen, geen tijd versnellen, geen demo-b
 zit alleen nog in `tools/check/crash_test.gd`). De auto rijdt met een vaste
 stap van 60 Hz; zijn carrosserie (node `Carrosserie`) wordt elk frame tussen de laatste
 twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
+- Zichttabel (`scripts/camera/view_table.gd`): bij het baken (`tools/bake.sh`) wordt per
+  straatcel uitgerekend hoeveel zichtlijnen een gebouw verbergt voor elk van de vier
+  kijkrichtingen van de volgcamera (gewoon, een kwartslag links of rechts, half om), en in
+  de bake-cache bewaard (`user://merged/<kaart>_zicht_<sleutel>.bin`, opnieuw zodra de
+  gebouwen veranderen). Ontbreekt hij bij het laden, dan wordt hij op een eigen thread
+  gemaakt (uit een kopie van de cellen) en bewaard. Het draaien om gebouwen zoekt de plek
+  daarin op in plaats van zelf lijnen te trekken. Laat een andere kijkrichting de speler wel
+  zien, dan draait de camera snel (`turn_after_when_free`, 0,4 s) en komt er geen kijkgat
+  (`view_hole_wanted`); helpt geen enkele draai (of mag de camera nu niet draaien), dan gaat
+  het kijkgat open. Naast de vier gewone kijkrichtingen staan ook dezelfde vier steil omlaag
+  in de tabel (`ViewTable.PITCHES`): zit je tussen hoge gebouwen en laat geen gewone richting
+  je zien, dan kijkt de camera steiler omlaag (`steep_pitch`, -62 graden) en weer terug zodra
+  een gewone richting vrij is. Draaien en kantelen glijden langzaam (`turn_glide_time`, 4 s).
+  Test: `view_table_test.gd`.
 - Doorkijk (node `Doorkijk`, `scripts/world/building_fade.gd`): zolang de camera de speler
-  volgt, krijgt elk gebouw (aaneengesloten cellen van de laag Gebouwen) dat tussen de
+  volgt (en de camera het wil, zie de zichttabel), krijgt elk gebouw (aaneengesloten cellen van de laag Gebouwen) dat tussen de
   speler en de camera staat een rond kijkgat (`hole_radius`, 3,5 m): een buis van de speler
   naar de camera, met een geditherde rand; alleen wat aan de camerakant van de speler ligt
   wordt weggesneden, de rest van het gebouw blijft staan. Het gat gaat open en dicht in
@@ -623,6 +651,9 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
   Getest wordt vanuit een vierkant rond het gevolgde in beeld: `test_reach` (3 m) rond een
   voertuig, `walker_reach` (0,5 m) rond iemand te voet, zodat een gevel waar je naast staat
   (die alleen de ruimte naast je in beeld bedekt, niet jezelf) blijft staan.
+  Zuinig: de test gebeurt pas opnieuw als het gevolgde meer dan `RETEST_MOVE` (25 cm) is
+  verschoven of de camera draaide of zoomde, en anders hooguit eens per `RETEST_FRAMES`
+  beelden; een lijn stopt boven het hoogste gebouw en slaat een cel die hij net bekeek over.
   Viaducten vervagen ook: elke kolom van de laag Grond met een cel vanaf `deck_level` telt als
   een eigen klein gebouw, dus alleen het stuk dek boven het voertuig gaat open. Een dek vervaagt
   alleen als het minstens `deck_clearance` boven het voertuig ligt.

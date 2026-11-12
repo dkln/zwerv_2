@@ -7,6 +7,10 @@ extends RefCounted
 ## Fonts: Silkscreen, Pixelify Sans and JetBrains Mono (assets/fonts, OFL); Rubik when one
 ## is missing.
 
+## The size of the announcements on screen (the station's and the supermarkets' loudspeaker:
+## station.gd, supermarket_announcer.gd): big enough to read over the town.
+const ANNOUNCEMENT_FONT_SIZE := 32
+
 const INK := Color("#0B0D1A")
 const PANEL := Color("#141831")
 const BORDER := Color("#343B70")

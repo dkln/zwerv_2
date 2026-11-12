@@ -88,6 +88,10 @@ const SPOT_TRIES := 220
 const START_CLEAR := 24.0
 ## Metres the player may move before the good start cells round it are looked up again.
 const NEAR_REFRESH := 25.0
+## Seconds it waits before it looks for room again once there was none round the player.
+const NO_ROOM_WAIT := 1.5
+## Seconds in which every vehicle is looked at once for being taken out (a share of them each tick).
+const CHECK_ROUND := 1.0
 
 ## How many vehicles there are at a share of 1.0 (Crowd.traffic_share), and the most.
 @export var vehicle_count := 80
@@ -134,6 +138,10 @@ const DRUNK_BY_DAY := 0.2
 @export var unseen_without_camera := false
 @export var interiors_path := NodePath("../Binnenruimtes")
 
+var _check_turn := 0                    # which share of the vehicles this tick looks at
+var _placed_spots: Array[Vector3] = []   # put in the town this physics frame (_placed_this_frame)
+var _placed_frame := -1
+var _no_room_until := 0.0                # _clock before which it does not look for room again
 var _network: RoadNetwork
 var _random := RandomNumberGenerator.new()
 var _cells: Array = []
@@ -164,8 +172,10 @@ func _ready() -> void:
 
 
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_PREDELETE:
-		# the parked vehicles are out of the tree: they go with this node
+	# the parked vehicles are out of the tree: they go with this node, as soon as it leaves the
+	# tree (while the rest still stands; freeing them only when it is deleted, at the very end
+	# of a run, could crash)
+	if what == NOTIFICATION_EXIT_TREE or what == NOTIFICATION_PREDELETE:
 		for vehicle in _parked:
 			if is_instance_valid(vehicle):
 				vehicle.free()
@@ -259,11 +269,19 @@ func _physics_process(delta: float) -> void:
 	_last_player_spot = player_spot
 	var changes_left := 1000 if jumped else changes_per_tick
 	var wanted := wanted_counts()
-	# out of reach or long enough round: taken out, or swapped for another out of sight
+	# out of reach or long enough round: taken out, or swapped for another out of sight. Each
+	# tick looks at a share of them in turn (all of them after a jump), so every one comes up
+	# about once per CHECK_ROUND seconds instead of every tick.
+	var round_ticks := maxi(roundi(CHECK_ROUND / maxf(tick_seconds, 0.01)), 1)
+	_check_turn = (_check_turn + 1) % round_ticks
 	for group in [_town, _services]:
+		var looked := 0
 		for vehicle: Vehicle in group.duplicate():
 			if changes_left <= 0:
 				break
+			looked += 1
+			if not jumped and looked % round_ticks != _check_turn:
+				continue
 			if not _may_take_out(vehicle):
 				continue
 			var distance := vehicle.global_position.distance_to(player_spot)
@@ -279,11 +297,14 @@ func _physics_process(delta: float) -> void:
 				changes_left -= 1
 	# (a try that finds no spot, or a vehicle that waits for its rider, is no reason to stop)
 	var failures := 0
-	while _town.size() < wanted.x and changes_left > 0 and failures < 8:
+	while _town.size() < wanted.x and changes_left > 0 and failures < 8 and (jumped or _clock >= _no_room_until):
 		if _bring_town_vehicle(appear_from, appear_within, true):
 			changes_left -= 1
 		else:
 			failures += 1
+	if failures >= 8:
+		# no room round the player for more just now: look again in a while, not every tick
+		_no_room_until = _clock + NO_ROOM_WAIT
 	while _services.size() < wanted.y and changes_left > 0:
 		if not _bring_service(appear_from, appear_within, true):
 			break
@@ -307,11 +328,12 @@ func _bring_town_vehicle(from: float, to: float, unseen_only: bool) -> bool:
 	var world := get_parent()
 	var hour := Crowd.hour_of(world)
 	var weights_by_area := {}
-	var taken := _taken_spots()
+	var taken := _placed_this_frame()
 	var everything := 0.0
 	for try_index in SPOT_TRIES:
 		var cell := _ring_cell(from, to, unseen_only)
-		if cell == RoadNetwork.NONE:
+		# room there: looked at once for the spot (not for every kind of vehicle)
+		if cell == RoadNetwork.NONE or not _apart(cell, taken):
 			continue
 		var area := Crowd.area_at(world, _network.centre(cell))
 		if not weights_by_area.has(area):
@@ -323,7 +345,7 @@ func _bring_town_vehicle(from: float, to: float, unseen_only: bool) -> bool:
 		for entry_index in MIX.size():
 			var weight: float = weights[entry_index]
 			everything += weight
-			var fits := weight > 0.0 and _network.allows(cell, _kind_of(MIX[entry_index][0])) and _apart(cell, taken)
+			var fits := weight > 0.0 and _network.allows(cell, _kind_of(MIX[entry_index][0]))
 			usable.append(weight if fits else 0.0)
 			allowed += usable[-1]
 		# a lane only some kinds may use (a cycle path) is taken as often as those kinds come
@@ -357,7 +379,7 @@ func _bring_town_vehicle(from: float, to: float, unseen_only: bool) -> bool:
 func _bring_service(from: float, to: float, unseen_only: bool) -> bool:
 	var script_path: String = SERVICES[_services_made % SERVICES.size()]
 	var kind := _kind_of(script_path)
-	var taken := _taken_spots()
+	var taken := _placed_this_frame()
 	for try_index in SPOT_TRIES:
 		var cell := _ring_cell(from, to, unseen_only)
 		if cell == RoadNetwork.NONE or not _network.allows(cell, kind) or not _apart(cell, taken):
@@ -388,6 +410,7 @@ func _make(entry_index: int, script_path: String, service: bool) -> Vehicle:
 
 ## Into the town on `cell` (a new one starts there, a parked one is put down there).
 func _put_in_town(vehicle: Vehicle, cell: Vector3i) -> void:
+	_placed_this_frame().append(_network.centre(cell))
 	var heading: Vector2i = _network.lanes(cell)[0]
 	var service := int(_entry_of.get(vehicle, -1)) < 0
 	_parked.erase(vehicle)
@@ -569,17 +592,24 @@ func _find_near_cells() -> void:
 			_near_cells.append(cell)
 
 
-func _taken_spots() -> Array[Vector3]:
-	var taken: Array[Vector3] = []
-	for vehicle in Vehicle.all_vehicles:
-		taken.append(vehicle.global_position)
-	return taken
+## The spots of the vehicles put in the town during this physics frame: the clustered lookup
+## (Vehicle.near) sorts the vehicles once per frame, so it does not know them yet.
+func _placed_this_frame() -> Array[Vector3]:
+	if _placed_frame != Engine.get_physics_frames():
+		_placed_frame = Engine.get_physics_frames()
+		_placed_spots.clear()
+	return _placed_spots
 
 
+## True if no vehicle stands within `spacing` of the middle of `cell`: the ones round it
+## (Vehicle.near, clustered) and the spots in `taken`.
 func _apart(cell: Vector3i, taken: Array[Vector3]) -> bool:
 	var centre := _network.centre(cell)
 	for spot in taken:
 		if spot.distance_to(centre) < spacing:
+			return false
+	for vehicle in Vehicle.near(centre, spacing):
+		if vehicle.global_position.distance_to(centre) < spacing:
 			return false
 	return true
 

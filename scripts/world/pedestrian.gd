@@ -132,6 +132,9 @@ const SHORT_CRY_COUNT := 3
 ## moving, makes it wait at the kerb.
 @export var safe_gap := 4.0
 @export var safe_time := 2.2
+## How far round a zebra it looks for vehicles coming (metres: the gap plus a city speed
+## over safe_time, with room); Vehicle.near gives only those within it.
+const ZEBRA_LOOK := 45.0
 ## "" walking, "rolstoel" in a wheelchair, "scootmobiel" on a mobility scooter (MobilityAid).
 @export var mobility := ""
 ## Its look (TownsfolkFigure); empty: the one of TownsfolkFigure.look_for(walker_seed).
@@ -752,7 +755,7 @@ func _may_go() -> bool:
 	if town.walk_light(_next_cell, _crossing_side) == 1:
 		return false
 	var middle := town.cell_middle(_next_cell)
-	for vehicle in Vehicle.all_vehicles:
+	for vehicle in Vehicle.near(middle, ZEBRA_LOOK):
 		if vehicle.crashed or vehicle.speed < 0.8:
 			continue
 		var gap := Vector2(vehicle.global_position.x - middle.x, vehicle.global_position.z - middle.z).length()

@@ -7,6 +7,8 @@ extends SceneTree
 ## cache in user://merged (layer_baker.gd) exactly as the game would, and waits until it is
 ## done. A map whose cache is up to date is left as it is. Afterwards it removes the cache files
 ## of maps that no longer exist (and the cache folder of older versions, user://samengevoegd).
+## It also works out the view table of each map (ViewTable: what the follow camera sees from
+## every street cell), kept in the same cache.
 ## "opnieuw" empties the cache of the maps first, so everything is baked again.
 ##
 ## usage: tools/bake.sh [opnieuw] [res://scenes/<map>.tscn ...]
@@ -53,6 +55,10 @@ func _init() -> void:
 			progress.set_done(int(detail_level.merge_progress() * 100.0))
 			await create_timer(0.5).timeout
 		await Common.wait_for_merge(map)
+		# what the follow camera sees from every street cell (ViewTable), for turning round buildings
+		var view_started := Time.get_ticks_msec()
+		if ViewTable.bake(map):
+			print("bake: zichttabel klaar in %.1f s" % ((Time.get_ticks_msec() - view_started) / 1000.0))
 		print("bake: %s ready in %.1f s" % [map_path, (Time.get_ticks_msec() - started) / 1000.0])
 		map.queue_free()
 		await process_frame

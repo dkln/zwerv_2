@@ -1198,7 +1198,7 @@ func _check_vehicles() -> void:
 		return
 	var frame := Transform3D(Basis(Vector3.UP, rotation.y), global_position)
 	var mine := Vehicle.rectangle(frame, frame * _figure_box.get_center(), _figure_box.size.x, _figure_box.size.z, 0.0)
-	for vehicle: Vehicle in Vehicle.all_vehicles:
+	for vehicle: Vehicle in Vehicle.near(global_position, 0.0):
 		if not is_instance_valid(vehicle) or vehicle.crashed:
 			continue
 		var offset := vehicle.global_position - global_position
@@ -1224,7 +1224,7 @@ func _vehicle_in_the_way(feet: Vector3) -> bool:
 	var there := Transform3D(Basis(Vector3.UP, rotation.y), feet)
 	var now := Vehicle.rectangle(here, here * _figure_box.get_center(), _figure_box.size.x, _figure_box.size.z, 0.0)
 	var then := Vehicle.rectangle(there, there * _figure_box.get_center(), _figure_box.size.x, _figure_box.size.z, 0.0)
-	for vehicle: Vehicle in Vehicle.all_vehicles:
+	for vehicle: Vehicle in Vehicle.near(feet, 2.0):
 		if not is_instance_valid(vehicle) or vehicle.crashed:
 			continue
 		var offset := vehicle.global_position - feet
