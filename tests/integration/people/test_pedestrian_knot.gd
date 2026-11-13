@@ -7,19 +7,22 @@ extends "res://tests/integration/support/town_test.gd"
 ##   tests/run_integration_tests.sh pedestrian_knot
 
 const PeopleHelp = preload("res://tests/integration/support/people_help.gd")
+const Crowd = preload("res://scripts/world/people/crowd.gd")
 ## Seconds (game time) the knot gets to fall apart, and how far (metres) counts as away.
 const UNTANGLE_SECONDS := 20
 const AWAY_METRES := 2.0
 
 
-## Up to three riders of an aid and five people on foot, put in a little ring on the spot
+## Up to three riders of an aid and people on foot (eight in all), put in a little ring on the spot
 ## of the first, each facing and heading to the other side of the ring; returns them.
 func _tie_a_knot() -> Array:
 	var walkers: Pedestrians = scene.get_node("Voetgangers")
 	var people: Array = walkers.people()
 	var riders := people.filter(func(person: Pedestrian) -> bool: return person.aid != null)
 	var on_foot := people.filter(func(person: Pedestrian) -> bool: return person.aid == null)
-	var knot: Array = riders.slice(0, 3) + on_foot.slice(0, 5)
+	# (riders are few: when none are near, people on foot make up the eight)
+	var knot: Array = riders.slice(0, 3)
+	knot += on_foot.slice(0, 8 - knot.size())
 	if knot.is_empty():
 		return knot
 	var middle: Vector3 = knot[0].global_position
@@ -42,7 +45,9 @@ func test_a_knot_of_people_falls_apart(test) -> void:
 	await put_player(PeopleHelp.street_away_from_station(self))
 	await PeopleHelp.crowd_at_hour(self, 13.0)
 	var knot := _tie_a_knot()
-	test.check(knot.size() >= 6, "genoeg mensen voor een kluit (%d)" % knot.size())
+	var walkers: Pedestrians = scene.get_node("Voetgangers")
+	test.check(knot.size() >= 6, "genoeg mensen voor een kluit (%d; %d in de stad, %d gewenst, buurt %s)" % [knot.size(),
+			walkers.people().size(), walkers.wanted_count(), Crowd.area_at(scene, player.global_position)])
 	if knot.is_empty():
 		return
 	var middle: Vector3 = knot[0].global_position

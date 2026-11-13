@@ -94,6 +94,12 @@ func test_collider_holds_aid_and_rider(test) -> void:
 	var riders := await _riders()
 	test.check(not riders.is_empty(), "er zijn berijders (%d)" % riders.size())
 	for person: Pedestrian in riders:
+		# measured going straight: the box is that of the aid at rest (a turned front wheel
+		# or caster sticks out a little further, as it may)
+		if person.aid._steering:
+			person.aid._steering.rotation.y = 0.0
+		for caster: Array in person.aid._casters:
+			(caster[0] as Node3D).rotation.y = 0.0
 		var drawn := Vehicle._mesh_bounds(person.aid, person.aid.transform)
 		var shape: CollisionShape3D = person._body.get_node("Doos")
 		var box := AABB(shape.position - (shape.shape as BoxShape3D).size * 0.5, (shape.shape as BoxShape3D).size)
