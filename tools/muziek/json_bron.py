@@ -35,8 +35,97 @@ STOPS = ("===", "=")
 NOTE = re.compile(r"^[A-G][#b]?-?\d$")
 
 
+## The flat form of the composer's export (docs/MUZIEK_JSON.md, "De platte vorm"): the
+## metadata at the top, per bar "bar", "section", "chord" (a name) and five tracks, each its own
+## name, that are read as these tracks of the usual form. A step is a note, "---" (it sounds on),
+## or null (silence); "brass" holds at a stab the notes of its chord (a list); "drums" holds
+## letters joined by "+" (FLAT_DRUMS).
+FLAT_TRACKS = {"bass": "FM1_bass", "lead": "FM3_lead", "arp": "PSG_arp"}
+## The drum letters of the flat form; "T" (a tom, its pitch not given) is the middle tom.
+FLAT_DRUMS = {"K": "KCK", "S": "SNR", "H": "CHH", "O": "OHH", "T": "TOM2"}
+
+
+def is_flat(data) -> bool:
+    """Whether the file is in the flat form (metadata at the top, bars with "bar")."""
+    return isinstance(data, dict) and "metadata" not in data and "bpm" in data and isinstance(data.get("bars"), list) \
+        and all(isinstance(bar, dict) and "bar" in bar for bar in data["bars"])
+
+
+def _flat_row(row) -> list:
+    """A note track of the flat form in the usual form: null is a rest ("---" when nothing
+    sounds, "===" right after a sounding note, so that note stops there)."""
+    if not isinstance(row, list):
+        return row
+    result = []
+    sounding = False
+    for cell in row:
+        if cell is None:
+            result.append("===" if sounding else HOLD)
+            sounding = False
+        elif cell == HOLD:
+            result.append(HOLD)
+        else:
+            result.append(cell)
+            sounding = True
+    return result
+
+
+def _flat_drum(cell):
+    if cell is None:
+        return HOLD
+    if not isinstance(cell, str):
+        return cell
+    return "+".join(FLAT_DRUMS.get(letter, letter) for letter in cell.split("+"))
+
+
+def from_flat(data: dict) -> dict:
+    """The flat form (is_flat) as the usual form, so that it is checked and read the same way.
+    Its sections are the runs of bars with the same "section"; the harmony track (FM4) is
+    empty (the flat form has none); "brass" becomes the stab triggers with, from each stab
+    on, its chord's notes (voicingSteps_<from>_to_<to>)."""
+    metadata = {key: data[key] for key in ("title", "bpm", "timeSignature", "stepsPerBar", "totalBars", "key")
+                if key in data}
+    sections = []
+    bars = []
+    for index, bar in enumerate(data["bars"]):
+        number = bar.get("bar")
+        name = str(bar.get("section", ""))
+        if sections and sections[-1]["name"] == name:
+            sections[-1]["endBar"] = number
+        else:
+            sections.append({"name": name, "startBar": number, "endBar": number})
+        channels = {usual: _flat_row(bar.get(flat)) for flat, usual in FLAT_TRACKS.items()}
+        channels["FM4_harmony"] = [HOLD] * STEPS
+        drums = bar.get("drums")
+        channels["drums"] = [_flat_drum(cell) for cell in drums] if isinstance(drums, list) else drums
+        brass = bar.get("brass")
+        chord = {"name": str(bar.get("chord", ""))}
+        if isinstance(brass, list):
+            channels["FM2_stabs"] = [1 if isinstance(cell, list) else 0 for cell in brass]
+            stabs = [step for step, cell in enumerate(brass) if isinstance(cell, list)]
+            for at, step in enumerate(stabs):
+                until = stabs[at + 1] - 1 if at + 1 < len(stabs) else STEPS - 1
+                chord[f"voicingSteps_{step + 1}_to_{until + 1}"] = list(brass[step])
+        else:
+            channels["FM2_stabs"] = brass
+        bars.append({"barNumber": number if number == index + 1 else number, "section": name, "chord": chord,
+                     "channels": channels})
+    usual = {"metadata": metadata, "sections": sections, "bars": bars}
+    for key in ("synthParameters", "master"):
+        if key in data:
+            usual[key] = data[key]
+    return usual
+
+
+def _is_drum(cell) -> bool:
+    """A drum step: one drum (tracker.DRUM_NAMES) or several hitting together ("KCK+CHH")."""
+    return isinstance(cell, str) and all(part in tracker.DRUM_NAMES for part in cell.split("+"))
+
+
 def problems(data) -> list:
     """What is wrong with the file (Dutch, one line each); empty when it can be used."""
+    if is_flat(data):
+        data = from_flat(data)
     if not isinstance(data, dict):
         return ["het bestand is geen JSON-object ({...})"]
     found = []
@@ -86,7 +175,7 @@ def problems(data) -> list:
                     if cell not in (0, 1):
                         found.append(f"{where}, '{name}' stap {step + 1}: {cell!r} is geen 0 of 1")
                 elif name == "drums":
-                    if cell != HOLD and cell not in tracker.DRUM_NAMES:
+                    if cell != HOLD and not _is_drum(cell):
                         found.append(f"{where}, '{name}' stap {step + 1}: onbekende drum {cell!r} (bekend: {', '.join(tracker.DRUM_NAMES)})")
                 elif cell != HOLD and cell not in STOPS and not (isinstance(cell, str) and NOTE.match(cell)):
                     found.append(f"{where}, '{name}' stap {step + 1}: {cell!r} is geen noot (zoals 'E2' of 'C#5'), '---' of '='")
@@ -141,6 +230,9 @@ def read(path: str) -> tracker.Tracker:
     wrong = problems(data)
     if wrong:
         raise ValueError(f"{path}: de compositie kan zo niet gebruikt worden:\n  " + "\n  ".join(wrong[:40]))
+    flat = is_flat(data)
+    if flat:
+        data = from_flat(data)
     metadata = data["metadata"]
     bars = []
     for bar in data["bars"]:
@@ -170,6 +262,9 @@ def read(path: str) -> tracker.Tracker:
     source = tracker.Tracker(path, str(metadata.get("title", "")), str(metadata.get("key", "")).upper(),
                              float(metadata["bpm"]), float(master.get("volume", tracker.DEFAULT_MASTER_VOLUME)), volumes,
                              bars, {}, "")
+    if flat:
+        source.warnings.append("de platte vorm (zonder 'metadata'): gelezen als de gewone, zonder harmoniespoor (FM4), "
+                               "de drum 'T' als de middelste tom (TOM2)")
     for voice in VOICES:
         if voice not in synth:
             source.warnings.append(f"'synthParameters.{voice}' ontbreekt: het volume van de tracker zelf genomen")
@@ -186,6 +281,15 @@ def main() -> int:
     parser.add_argument("--overschrijf", action="store_true")
     parser.add_argument("--titel")
     arguments = parser.parse_args()
+    # a full timeline (tijdlijn.py: hardware_patches, full_track_timeline_<n>_bars) is read there
+    try:
+        with open(arguments.json, encoding="utf-8") as json_file:
+            whole = json.load(json_file)
+    except (ValueError, OSError):
+        whole = None
+    import tijdlijn
+    if tijdlijn.is_timeline(whole):
+        return tijdlijn.main(sys.argv[1:])
     try:
         source = read(arguments.json)
     except (ValueError, OSError) as error:

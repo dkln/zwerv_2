@@ -5,23 +5,34 @@ extends Node3D
 ## - Geldautomaat_<n>: a cash machine (PINPUNT, MachineModels.cash_machine_mesh) flush
 ##   against a facade: beside supermarket entrances, in the shopping streets, on squares.
 ##   "[E] Pinnen" opens CashMachineScreen (scripts/ui/machines/cash_machine_screen.gd);
-## - OVAutomaat_<n>: an OV-chipkaart machine (the tile binnen/station/kaartautomaat of the
-##   station hall) beside a tram shelter; "[E] OV-chipkaartautomaat" opens OvMachineScreen.
+## - OVPaal_<n>: an OV post (the prop ov/ov_incheckpaal) beside the shelter of a tram or bus
+##   stop: "[E] Inchecken" / "[E] Uitchecken" holds the OV-chipkaart to it, as the posts in
+##   the station (OvCard.tap: a beep, refused without a card or with too little on it, the
+##   boarding fare for a trip not checked out). Cards are bought and topped up at the machines
+##   in the hall of Den Haag Centraal (OvMachineScreen).
 ## Each has a collider (MachineModels.instance) and stands on the ground under its marker (a
 ## ray down). The [E] spot is before its front (SPOT_AHEAD), in the group of the doors.
 
 const MachineModels = preload("res://scripts/world/things/machine_models.gd")
 const InteriorSpot = preload("res://scripts/world/interiors/interior_spot.gd")
+const Interactable = preload("res://scripts/world/things/interactable.gd")
 const CashMachineScreen = preload("res://scripts/ui/machines/cash_machine_screen.gd")
 const Banks = preload("res://scripts/world/things/banks.gd")
-const OvMachineScreen = preload("res://scripts/ui/machines/ov_machine_screen.gd")
-const INTERIOR_LIBRARY := "res://assets/libraries/binnen.res"
-const OV_TILE := "station/kaartautomaat"
+const OvCard = preload("res://scripts/world/station/ov_card.gd")
+const StationAudio = preload("res://scripts/world/station/station_audio.gd")
+const PROPS_LIBRARY := "res://assets/libraries/props.res"
+const OV_POST_TILE := "ov/ov_incheckpaal"
+const OV_POST_PREFIX := "OVPaal"
 const SPOT_AHEAD := 0.75
 const SPOT_REACH := 1.1
 const TOWN_LAYER := 1
+## What the post shows over it (the HUD's floating text): green, red when it says no or kept
+## the boarding fare.
+const POST_OK_COLOUR := Color("#3CE06A")
+const POST_NO_COLOUR := Color("#FF5A4A")
 
 @export var player_path := NodePath("../Speler")
+@export var hud_path := NodePath("../HUD")
 
 var _player: Node3D
 var machines: Array[Node3D] = []
@@ -37,41 +48,45 @@ func _dress() -> void:
 	# the colliders of the town in the physics space first
 	await get_tree().physics_frame
 	await get_tree().physics_frame
-	var ov_mesh: Mesh = null
-	var ov_transform := Transform3D()
+	var post_mesh: Mesh = null
+	var post_transform := Transform3D()
 	for marker in get_children():
 		var place := marker as Node3D
 		if place == null:
 			continue
 		var is_cash := String(place.name).begins_with("Geldautomaat")
-		var is_ov := String(place.name).begins_with("OVAutomaat")
-		if not (is_cash or is_ov):
+		var is_post := String(place.name).begins_with(OV_POST_PREFIX)
+		if not (is_cash or is_post):
 			continue
 		_settle_on_ground(place)
 		var machine: Node3D
 		if is_cash:
 			machine = MachineModels.instance(MachineModels.cash_machine_mesh(), "Geldautomaat")
 		else:
-			if ov_mesh == null and ResourceLoader.exists(INTERIOR_LIBRARY):
-				var library: MeshLibrary = load(INTERIOR_LIBRARY)
-				var item := library.find_item_by_name(OV_TILE)
+			if post_mesh == null and ResourceLoader.exists(PROPS_LIBRARY):
+				var library: MeshLibrary = load(PROPS_LIBRARY)
+				var item := library.find_item_by_name(OV_POST_TILE)
 				if item >= 0:
-					ov_mesh = library.get_item_mesh(item)
-					ov_transform = library.get_item_mesh_transform(item)
-			if ov_mesh == null:
+					post_mesh = library.get_item_mesh(item)
+					post_transform = library.get_item_mesh_transform(item)
+			if post_mesh == null:
 				continue
-			machine = MachineModels.instance(ov_mesh, "OVAutomaat")
-			(machine.get_node("Model") as Node3D).transform = ov_transform
-			(machine.get_node("Botsvorm") as Node3D).transform = ov_transform   # the collider on the mesh
+			machine = MachineModels.instance(post_mesh, "OVPaal")
+			(machine.get_node("Model") as Node3D).transform = post_transform
+			(machine.get_node("Botsvorm") as Node3D).transform = post_transform   # the collider on the mesh
 		place.add_child(machine)
-		# a cash machine belongs to a bank: random, but always the same one for this place
+		var spot: Node3D
 		if is_cash:
+			# a cash machine belongs to a bank: random, but always the same one for this place
 			place.set_meta("bank", Banks.bank_for(place.global_position))
-		var use := _open_cash_machine.bind(String(place.get_meta("bank", ""))) if is_cash else _open_ov_machine
-		# (a machine with a screen of its own: Interactable.KIND_MACHINE, set below)
-		var spot: Node3D = InteriorSpot.create("Plek", Vector3(0.0, 0.0, SPOT_AHEAD + 0.25), "Pinnen" if is_cash else "OV-chipkaartautomaat",
-			use, SPOT_REACH)
-		spot.set("kind", "automaat")
+			# (a machine with a screen of its own: Interactable.KIND_MACHINE, set below)
+			spot = InteriorSpot.create("Plek", Vector3(0.0, 0.0, SPOT_AHEAD + 0.25), "Pinnen",
+				_open_cash_machine.bind(String(place.get_meta("bank", ""))), SPOT_REACH)
+			spot.set("kind", "automaat")
+		else:
+			spot = Interactable.make("Plek", Vector3(0.0, 0.0, SPOT_AHEAD), Interactable.KIND_GATE, "Inchecken",
+				_tap_post.bind(place), SPOT_REACH)
+			spot.set("text_of", _post_action)
 		place.add_child(spot)
 		machines.append(place)
 
@@ -90,11 +105,36 @@ func _open_cash_machine(bank := "") -> void:
 		CashMachineScreen.show_for(_player, "", true, bank)
 
 
-func _open_ov_machine() -> void:
-	if _player:
-		OvMachineScreen.show_for(_player, "TRAMHALTE")
+## "[E] Inchecken" or "[E] Uitchecken" at a post.
+func _post_action() -> String:
+	return OvCard.post_action(_player) if _player else "Inchecken"
 
 
-## The cash machines and OV machines in the town (for the checks).
+## The card held to the post at `place`: the beep (or the error tone) and what it says over it.
+func _tap_post(place: Node3D) -> void:
+	if _player == null:
+		return
+	var result := OvCard.tap(_player)
+	var sound := StationAudio.stream(String(result.sound))
+	if sound:
+		var beep := AudioStreamPlayer3D.new()
+		beep.stream = sound
+		beep.volume_db = -6.0
+		place.add_child(beep)
+		beep.position = Vector3.UP * 1.1
+		beep.finished.connect(beep.queue_free)
+		beep.play()
+	var hud := get_node_or_null(hud_path)
+	if hud and hud.has_method("show_floating_number"):
+		var red: bool = not result.ok or float(result.charge) > 0.0
+		hud.show_floating_number(place.global_position + Vector3.UP * 1.6, String(result.text), POST_NO_COLOUR if red else POST_OK_COLOUR, 14)
+
+
+## The cash machines in the town (for the checks).
 func cash_machines() -> Array:
 	return machines.filter(func(place: Node3D) -> bool: return String(place.name).begins_with("Geldautomaat"))
+
+
+## The OV posts at the tram and bus stops (for the checks).
+func ov_posts() -> Array:
+	return machines.filter(func(place: Node3D) -> bool: return String(place.name).begins_with(OV_POST_PREFIX))

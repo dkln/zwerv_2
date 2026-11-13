@@ -1,0 +1,270 @@
+{
+	"uitleg": "De vaste mensen van het verhaal (scripts/story/characters.gd). Elk staat op een plek van de kaart ('plek'), ziet er altijd hetzelfde uit ('uiterlijk', kleuren als #RRGGBB) en heeft gesprekken ('gesprekken', elk zoals een persoon in voorbijgangers.json); welk gesprek er nu is, zet een stap van een missie ('gesprekken': {\"ome_wim\": \"rondje\"}), anders 'standaard'. Een vraag met 'check' is een vaardigheidscheck: {\"id\", \"label\", \"kans\" (in 100), \"gelukt\", \"mislukt\"}; mislukt kun je het in een later gesprek opnieuw proberen. Zie data/LEESMIJ.md.",
+	"personen": {
+		"ome_wim": {
+			"spreker": "OME WIM",
+			"plek": "plein",
+			"tempo": 0.8,
+			"uiterlijk": {
+				"skin": "#E8B896",
+				"hair": "#D8D4CC",
+				"hair_style": "pet",
+				"coat": "#4A4438",
+				"trim": "#2E2A22",
+				"trousers": "#3A3A40",
+				"skirt": false,
+				"shoes": "#2A2420",
+				"cap": "#3C3A34",
+				"helmet": "#22242A"
+			},
+			"stemmingen": {
+				"begroeting": "neutraal",
+				"onderwerp": "neutraal",
+				"doorvraag": "neutraal",
+				"kleingeld_nee": "neutraal",
+				"dag": "blij"
+			},
+			"dag": [
+				"Hou je taai, jong.",
+				"Pas op jezelf. En op je spullen."
+			],
+			"kleingeld_nee": [
+				"Kleingeld? Van mij? Jong, ik sta hier zelf ook niet voor de lol.",
+				"Als ik kleingeld had, stond ik nu bij Jan Blammage."
+			],
+			"gulheid": {
+				"kans": 0,
+				"bedrag": 0.0
+			},
+			"nog_iets": [
+				"Nog wat?",
+				"Zeg het maar."
+			],
+			"standaard": "pas",
+			"gesprekken": {
+				"pas": {
+					"begroetingen": [
+						"Zo, een nieuw gezicht. Of nee, ik ken jou wel. Jij sliep vannacht bij Centraal. Wat kijk je benauwd?"
+					],
+					"onderwerp": {
+						"vraag": "Mijn ID-kaart is weg. Gestolen terwijl ik sliep.",
+						"antwoord": "Dat gebeurt hier vaker dan je denkt. Een ID is geld waard, jong. Er zijn lui die er een handeltje in hebben.",
+						"stemming": "verdrietig",
+						"verder": [
+							{
+								"vraag": "Kom op, Wim. Jij ziet alles. Wat weet je nog meer?",
+								"check": {
+									"id": "overtuigen_wim",
+									"label": "OVERTUIGEN",
+									"kans": 50,
+									"gelukt": "...Goed dan. Er loopt 's nachts een vent rond in een nette jas. Hij bukt bij de slapers, alsof hij zijn veter strikt. Daarna zijn er spullen weg.",
+									"mislukt": "Ik weet niks. En als ik wat wist, zei ik het niet zomaar tegen de eerste de beste.",
+									"stemming_gelukt": "neutraal",
+									"stemming_mislukt": "boos"
+								}
+							},
+							{
+								"vraag": "Wat moet ik nu doen?",
+								"antwoord": "Eerst moet je de stad leren kennen. Loop een rondje met me mee door het Centrum, dan laat ik je zien waar je wat vindt."
+							}
+						]
+					}
+				},
+				"rondje": {
+					"begroetingen": [
+						"Doorlopen, jong. Ik ben oud, maar zo langzaam ben ik nou ook weer niet.",
+						"Hier om de hoek is het Buitenhof. Daar zitten 's middags de toeristen, die geven nog weleens wat."
+					],
+					"onderwerp": {
+						"vraag": "Hoe lang zit jij al op straat?",
+						"antwoord": "Twintig jaar, deze winter. Eerst was het een paar weken. Toen een paar maanden. Je weet hoe dat gaat.",
+						"stemming": "verdrietig",
+						"verder": [
+							{
+								"vraag": "Over die gestolen pas: weet je echt niks meer?",
+								"check": {
+									"id": "overtuigen_wim",
+									"label": "OVERTUIGEN",
+									"kans": 50,
+									"gelukt": "Je geeft het niet op, hè? Er loopt 's nachts een vent rond in een nette jas. Hij bukt bij de slapers. Daarna zijn er spullen weg.",
+									"mislukt": "Laat het rusten, jong. Loop nou maar mee.",
+									"stemming_mislukt": "boos"
+								}
+							}
+						]
+					}
+				},
+				"jas": {
+					"begroetingen": [
+						"Nog even, het Spui is hier vlakbij."
+					],
+					"onderwerp": {
+						"vraag": "Waar gaan we heen?",
+						"antwoord": "Naar het Spui. Daar heb ik nog wat voor je."
+					}
+				},
+				"klaar": {
+					"begroetingen": [
+						"Staat die jas je goed, of niet? Je lijkt wel een echte Hagenees."
+					],
+					"onderwerp": {
+						"vraag": "Bedankt voor alles, Wim.",
+						"antwoord": "Niks te danken. Wij moeten op elkaar letten. Niemand anders doet het."
+					}
+				}
+			}
+		},
+		"bertus": {
+			"spreker": "BLIKKEN BERTUS",
+			"plek": "centraal",
+			"tempo": 0.6,
+			"stem": "rasperig",
+			"uiterlijk": {
+				"model": "bertus",
+				"skin": "#D8A882",
+				"hair": "#B8B2A6",
+				"hair_style": "kort",
+				"coat": "#5A5232",
+				"trim": "#3A341E",
+				"trousers": "#4A3E30",
+				"skirt": false,
+				"shoes": "#2A2018",
+				"cap": "#2E6A5A",
+				"helmet": "#22242A",
+				"patch": "#9A7440",
+				"scarf": "#B83A2A",
+				"pompom": "#E8C83A"
+			},
+			"zwerft": {
+				"punten": [[4, -8], [16, -9], [20, -4], [10, -3]],
+				"tempo": 0.55,
+				"rookpauze": [5.0, 10.0],
+				"karretje": true,
+				"rookt": true
+			},
+			"mompelt": [
+				"Kuch. Kuch-kuch. Gaat wel.",
+				"Nog drieduizend blikjes. Dan heb ik een eigen tram.",
+				"Die duiven. Die duiven weten meer dan ze zeggen.",
+				"Een blikje is een kwartje. Een kwartje is een sjekkie. Simpel.",
+				"Heb jij een vuurtje? Nee? Laat maar, ik heb er zelf een.",
+				"Daar gaat lijn 9 weer. Altijd te laat, altijd vol.",
+				"Statiegeld, jongen. Dat is de toekomst.",
+				"Mijn karretje is van mij. Al zeven jaar. Niemand die het terugvraagt.",
+				"Hè hè. Even een trekje.",
+				"Rook is gezond. Dat zei mijn opa ook. Kuch.",
+				"Zo'n mooie dag. Zonde om niet te roken."
+			],
+			"stemmingen": {
+				"begroeting": "blij",
+				"onderwerp": "opgewonden",
+				"doorvraag": "neutraal",
+				"kleingeld_nee": "boos",
+				"dag": "blij"
+			},
+			"dag": [
+				"Kuch. Doei. Breng meer blikjes!",
+				"Gaat ze goed. Ik ga nog een sjekkie draaien."
+			],
+			"kleingeld_nee": [
+				"Kleingeld? Ik? Alles wat ik heb, zit in tabak. Kuch.",
+				"Geld geven doe ik niet. Geld krijgen, dat is meer mijn ding."
+			],
+			"gulheid": {
+				"kans": 0,
+				"bedrag": 0.0
+			},
+			"nog_iets": [
+				"Nog wat? Kuch.",
+				"Zeg het maar, ik heb de tijd. En de tabak."
+			],
+			"standaard": "koopt",
+			"gesprekken": {
+				"koopt": {
+					"begroetingen": [
+						"Hé, maat! Kuch-kuch. Blikken Bertus is de naam. Blikjes zijn mijn zaak. Heb je wat voor me?",
+						"Ha, daar is er weer een. Kuch. Je ruikt naar blikjes, jongen. Dat bedoel ik als compliment."
+					],
+					"onderwerp": {
+						"vraag": "Wil je mijn blikjes kopen?",
+						"antwoord": "Blikjes? Altijd! Een kwartje per stuk, contant. Kuch. Die automaat geeft meer, zeg je? Die automaat is stuk, maat. Bertus is nooit stuk.",
+						"koopt_blikjes": 0.25,
+						"gekocht": [
+							"Eens kijken... {aantal} blikjes. Dat is {bedrag}. Kuch. Goeie zaken!",
+							"{aantal} stuks. {bedrag}, zonder bonnetje. Daar koop ik mooi een pakje shag van."
+						],
+						"geen_blikjes": [
+							"Je hebt helemaal geen blikjes! Kom terug als je wat hebt. Kuch.",
+							"Lege handen? Daar betaal ik niks voor, maat."
+						],
+						"stemming": "blij",
+						"verder": [
+							{
+								"vraag": "Wat doe je met al die blikjes?",
+								"antwoord": "Sparen. Nog drieduizend, en dan... kuch-kuch... dan koop ik een eigen tram. Lijn 0. Gratis rijden voor iedereen met een sjekkie.",
+								"stemming": "opgewonden"
+							},
+							{
+								"vraag": "Moet je niet eens stoppen met roken?",
+								"antwoord": "Stoppen? Kuch. Ik ben gisteren nog gestopt. Twee keer. Het is maar hoe je het bekijkt.",
+								"stemming": "neutraal"
+							}
+						]
+					}
+				}
+			}
+		},
+		"werver": {
+			"spreker": "GOEDEDOELENWERVER",
+			"tempo": 1.2,
+			"uiterlijk": {
+				"skin": "#F0C8A8",
+				"hair": "#7A5432",
+				"hair_style": "kort",
+				"coat": "#2E9A48",
+				"trim": "#E8ECEA",
+				"trousers": "#2A2C34",
+				"skirt": false,
+				"shoes": "#E8E6E0",
+				"cap": "#2E9A48",
+				"helmet": "#22242A"
+			},
+			"stemmingen": {
+				"begroeting": "opgewonden",
+				"onderwerp": "opgewonden",
+				"doorvraag": "opgewonden",
+				"kleingeld_nee": "verdrietig",
+				"dag": "verdrietig"
+			},
+			"dag": [
+				"Oké! Nog een fijne dag! ...Hallo meneer, heeft u even?"
+			],
+			"kleingeld_nee": [
+				"Kleingeld? Nee, nee, wij werken alleen met een machtiging. Elke maand. Heel makkelijk."
+			],
+			"gulheid": {
+				"kans": 0,
+				"bedrag": 0.0
+			},
+			"standaard": "werven",
+			"gesprekken": {
+				"werven": {
+					"begroetingen": [
+						"Hoi! Heb je even een momentje voor de ijsberen? Het kost maar een paar euro per maand!"
+					],
+					"onderwerp": {
+						"vraag": "Ik heb niet eens een bankrekening.",
+						"antwoord": "Oh! Eh. Dan kun je het via je ouders doen? Of op je IBAN? Je hebt toch wel een IBAN?",
+						"verder": [
+							{
+								"vraag": "Ik heb niet eens een ID. Die is gestolen.",
+								"antwoord": "Oh. Oké. Sorry. Eh... nog een fijne dag dan!",
+								"stemming": "verdrietig"
+							}
+						]
+					}
+				}
+			}
+		}
+	}
+}

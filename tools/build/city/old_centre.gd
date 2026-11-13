@@ -393,7 +393,7 @@ func _grote_marktstraat() -> void:
 	block(37, 61, 10, 5, "modern_donker", 4, {"front": "N", "gf": ["bg_kleding", "bg_winkel", "bg_juwelier", "bg_telefoon"],
 		"gf_side": "bg_winkel", "gf_corner": "bg_raam_hoek", "upper": ["verd_raam_breed", "verd_dicht", "verd_frans"],
 		"upper_corner": "verd_raam_breed_hoek", "roof": "flat"})
-	D(42 * 4.0, 61 * 4.0, 9.0, "tekst/lichtreclame_zwervr", "N")
+	D(42 * 4.0, 61 * 4.0, 9.0, "tekst/naam_kantoor_1", "N")   # POLDERTECH
 	places["bijenkorf"] = Vector2(31 * 4.0, 61 * 4.0)
 	# the Passage: a glass hall over the arcade between two rows of shops
 	_fill(35, 61, 36, 83, "plein/plein_tegels")
@@ -419,58 +419,89 @@ func _grote_marktstraat() -> void:
 
 ## Storeys of the glass of the city hall's atrium (its roof on top of them).
 const CITY_HALL_ATRIUM_LEVELS := 10
+## First column of the city hall (west slab, atrium, east slab: two columns each) and its rows.
+const CITY_HALL_X := 51
+const CITY_HALL_DEPTH := 10
 
 
-## Spuiplein with the Nieuwe Kerk and the white city hall (two slabs with the glass atrium
-## between them); south of the church cafes on the Spui and a little square beside the
-## city hall (Amare stands at the Dirigentplein by De Resident, _de_resident).
+## The block between the Spui (x 48) and the street along the singel (x 63): the Spuiplein in
+## the north, the white city hall (two slabs with the glass atrium between them) on its west
+## side with the Nieuwe Kerk behind it, and on its east side, towards Centraal Station, a
+## block of flats with a supermarket on its corner by the Spuiplein (the nearest one to the
+## start: the first mission sends you there). Amare stands at the Dirigentplein by De
+## Resident (_de_resident).
 func _spui() -> void:
-	_fill(51, 61, 61, 68, "plein/plein_tegels")
-	_fill(55, 69, 55, 83, "plein/plein_tegels")
-	_fill(51, 74, 54, 75, "natuur/gras")
-	block(51, 69, 4, 5, "kerk_baksteen", 2, {"front": "N", "gf": ["bg_spitsraam"], "gf_side": "bg_spitsraam", "gf_corner": "bg_spitsraam_hoek",
-		"upper": ["verd_spitsraam"], "upper_corner": "verd_spitsraam_hoek", "roof": "sloped"})
-	tower(52, 68, "kerk_baksteen", ["toren_portaal", "toren_raam", "toren_galmgat", "toren_spits_onder", "toren_spits_boven"], "N")
-	_trees([Vector2i(51, 75), Vector2i(54, 74)], ["bomen/linde"])
+	_fill(51, 61, 61, 62, "plein/plein_tegels")
+	_fill(51, 63, 57, 68, "plein/plein_tegels")
+	_fill(57, 69, 57, 83, "plein/plein_tegels")
+	_fill(51, 69 + CITY_HALL_DEPTH, 56, 69 + CITY_HALL_DEPTH, "plein/plein_tegels")
+	_fill(55, 80, 56, 83, "plein/plein_tegels")
 	# a street organ on the Spuiplein, playing to the people going by
 	Pr(53 * 4 + 2.0, 62 * 4 + 2.0, "markt/draaiorgel", "S")
 	# city hall (Richard Meier, 1995, the "IJspaleis"): two white slabs, 10 storeys (the Spui
 	# side) and 12, of white panels with square windows on a grid, and between them the
 	# atrium: glass ends the full height and a glass roof over it; the entrance on the
 	# Spuiplein with the flags of Den Haag (yellow over green) before it
-	for s in [[56, "W", 10], [60, "E", 12]]:
-		block(s[0], 69, 2, 15, "modern_wit", s[2], {"front": s[1], "gf": ["bg_deur", "bg_raam"], "gf_side": "bg_raam", "gf_corner": "bg_raam_hoek",
+	for s in [[CITY_HALL_X, "W", 10], [CITY_HALL_X + 4, "E", 12]]:
+		block(s[0], 69, 2, CITY_HALL_DEPTH, "modern_wit", s[2], {"front": s[1], "gf": ["bg_deur", "bg_raam"], "gf_side": "bg_raam", "gf_corner": "bg_raam_hoek",
 			"upper": ["verd_raam", "verd_dicht", "verd_raam", "verd_raam"], "upper_corner": "verd_raam_hoek", "roof": "flat"})
-	_hall(58, 69, 2, 15, "hal_glas", Vector2i(58, 69))
-	for x in [58, 59]:
+	var atrium := CITY_HALL_X + 2
+	var last_row := 69 + CITY_HALL_DEPTH - 1
+	_hall(atrium, 69, 2, CITY_HALL_DEPTH, "hal_glas", Vector2i(atrium, 69))
+	# the glass door under the letters, to the Spuiplein (the narrow hall has corners there: the
+	# way in of the city hall, Interiors KINDS "stadhuis")
+	B(atrium, 0, 69, "hallen/hal_glas_wand_deur_dak", "N")
+	for x in [atrium, atrium + 1]:
 		for level in range(1, CITY_HALL_ATRIUM_LEVELS):
 			B(x, level, 69, "kantoor_glas/kantoor_glas_verd_vliesgevel", "N")
-			B(x, level, 83, "kantoor_glas/kantoor_glas_verd_vliesgevel", "S")
-		for z in range(69, 84):
+			B(x, level, last_row, "kantoor_glas/kantoor_glas_verd_vliesgevel", "S")
+		for z in range(69, last_row + 1):
 			B(x, CITY_HALL_ATRIUM_LEVELS, z, "hallen/hal_glas_dak", "S")
-	D(59 * 4.0, 69 * 4.0, 4.5, "tekst/tekst_stadhuis", "N")
-	D(57 * 4.0, 69 * 4.0, 27.0, "gevel/vlag_denhaag", "N")
-	for flag_x in [57 * 4 + 3.0, 60 * 4 + 1.0]:
+	D((atrium + 1) * 4.0, 69 * 4.0, 4.5, "tekst/tekst_stadhuis", "N")
+	D((CITY_HALL_X + 1) * 4.0, 69 * 4.0, 27.0, "gevel/vlag_denhaag", "N")
+	for flag_x in [(CITY_HALL_X + 1) * 4 + 3.0, (CITY_HALL_X + 4) * 4 + 1.0]:
 		Pr(flag_x, 68 * 4 + 1.5, "straat/vlaggenmast_denhaag", "N")
-	places["stadhuis"] = Vector2(59 * 4.0, 69 * 4.0)
-	# cafes along the Spui, a square with trees between them and the city hall
-	_shops(Vector2i(51, 76), Vector2i(0, 1), 8, "W", 2, HORECA, AWNINGS, 3, true)
-	_fill(53, 76, 54, 83, "plein/plein_tegels")
-	_trees([Vector2i(53, 77), Vector2i(54, 80), Vector2i(53, 83)], ["bomen/plataan", "bomen/linde"])
-	for z in [78, 82]:
-		Pr(54 * 4 + 2.0, z * 4 + 2.0, "straat/bank_beton", "E")
-	for z in [76, 79, 81]:
-		Pr(50 * 4 + 1.5, z * 4 + 2.0, ["terras/terras_set_parasol", "terras/terras_set_parasol_groen"][z % 2], "W")
+	places["stadhuis"] = Vector2((atrium + 1) * 4.0, 69 * 4.0)
+	# the Nieuwe Kerk behind the city hall, its tower on the little square between them
+	block(51, 80, 4, 4, "kerk_baksteen", 2, {"front": "N", "gf": ["bg_spitsraam"], "gf_side": "bg_spitsraam", "gf_corner": "bg_spitsraam_hoek",
+		"upper": ["verd_spitsraam"], "upper_corner": "verd_spitsraam_hoek", "roof": "sloped"})
+	tower(52, 69 + CITY_HALL_DEPTH, "kerk_baksteen", ["toren_portaal", "toren_raam", "toren_galmgat", "toren_spits_onder", "toren_spits_boven"], "N")
+	_trees([Vector2i(55, 81), Vector2i(56, 83)], ["bomen/linde", "bomen/plataan"])
+	Pr(55 * 4 + 2.0, 82 * 4 + 2.0, "straat/bank_beton", "E")
+	# towards Centraal: flats over shops, a supermarket on the corner by the square
+	_spui_supermarket_block()
 	# the square
 	Pr(57 * 4.0, 64 * 4.0, "standbeelden/kunstwerk_modern", "S")
-	Pr(60 * 4 + 2.0, 66 * 4 + 2.0, "straat/afvalcontainer_ondergronds")
-	_trees([Vector2i(54, 62), Vector2i(61, 62), Vector2i(61, 66)], ["bomen/plataan"])
-	for c in [Vector2i(53, 64), Vector2i(59, 63)]:
+	Pr(56 * 4 + 2.0, 66 * 4 + 2.0, "straat/afvalcontainer_ondergronds")
+	_trees([Vector2i(51, 62), Vector2i(57, 61), Vector2i(51, 66)], ["bomen/plataan"])
+	for c in [Vector2i(53, 64), Vector2i(56, 62)]:
 		Pr(c.x * 4 + 2.0, c.y * 4 + 2.0, "verlichting/lantaarn_modern")
-	for x in [55, 58]:
+	for x in [52, 55]:
 		Pr(x * 4 + 2.0, 67 * 4 + 2.0, "straat/bank_beton", "S")
-	Pr(61 * 4 + 2.0, 61 * 4 + 2.0, "fietsen/fietsenrek_vol", "E")
-	places["spui"] = Vector2(57 * 4.0, 65 * 4.0)
+	Pr(51 * 4 + 2.0, 64 * 4 + 2.0, "fietsen/fietsenrek_vol", "E")
+	places["spui"] = Vector2(55 * 4.0, 65 * 4.0)
+
+
+## The block of flats between the city hall and the street along the singel, towards
+## Centraal Station: columns SPUI_BLOCK_X .. + SPUI_BLOCK_WIDTH - 1, from row SPUI_BLOCK_Z to
+## the Zuidwal, with a DERREK on its north-east corner (the doors to the Spuiplein, the
+## windows round the corner).
+const SPUI_BLOCK_X := 58
+const SPUI_BLOCK_Z := 63
+const SPUI_BLOCK_WIDTH := 4
+
+
+func _spui_supermarket_block() -> void:
+	var depth := Z4 - 1 - SPUI_BLOCK_Z
+	var style := "modern_donker"
+	block(SPUI_BLOCK_X, SPUI_BLOCK_Z, SPUI_BLOCK_WIDTH, depth, style, 6, {"front": "N", "gf": ["bg_raam", "bg_deur"], "gf_side": "bg_raam",
+		"upper": ["verd_raam", "verd_balkon"], "roof": "flat"})
+	_supermarket(SPUI_BLOCK_X, SPUI_BLOCK_Z, SPUI_BLOCK_WIDTH, style, "derrek", "rood", false)   # no carts before its doors
+	var p := style + "/" + style + "_bg_derrek_"
+	var corner_x := SPUI_BLOCK_X + SPUI_BLOCK_WIDTH - 1
+	var sides := _sides(corner_x, SPUI_BLOCK_Z, SPUI_BLOCK_X, SPUI_BLOCK_Z, SPUI_BLOCK_WIDTH, depth)
+	B(corner_x, 0, SPUI_BLOCK_Z, p + "raam_hoek", CORNER[_corner_pair(sides, "N")])
+	B(corner_x, 0, SPUI_BLOCK_Z + 1, p + "raam", "E")
 
 
 # ------------------------------------------------------------------ east of the singel

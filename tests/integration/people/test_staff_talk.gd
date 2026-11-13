@@ -206,3 +206,26 @@ func test_fare_dodger_talking_to_the_chasing_conductor_is_fined(test) -> void:
 	test.check(is_equal_approx(player.money, 30.0) and box.is_showing() and not String(StoryBoxHelp.page(box).text).contains("zwartrijden"),
 		"daarna gewoon een gesprek, geen tweede boete")
 	StoryBoxHelp.close(box)
+
+
+## Chased for not checking out: talking to the conductor, his own line for it
+## ("betrapt_uitchecken"), the fine, and he checks you out.
+func test_talking_to_the_conductor_after_not_checking_out(test) -> void:
+	var by_role := await _people_in_the_station(test)
+	test.check(by_role.has("conducteur"), "een conducteur in het station")
+	if not by_role.has("conducteur"):
+		return
+	var station: Node3D = interiors._interior
+	var box: Node = hud._story_box
+	var conductor: StationPerson = by_role.conducteur
+	station._chaser = conductor
+	station._chase_reason = "uitchecken"
+	player.set_meta("ov_ingecheckt", true)
+	player.add_money(80.0 - player.money)
+	player.talk_to(conductor)
+	await frames(1)
+	var page := StoryBoxHelp.page(box)
+	print("niet uitgecheckt: ", page.text)
+	test.check(String(page.text).contains("niet uitgecheckt") and String(page.text).contains("€ 50,00"), "de conducteur: betrapt, niet uitgecheckt")
+	test.check(is_equal_approx(player.money, 30.0) and not bool(player.get_meta("ov_ingecheckt", false)), "beboet en uitgecheckt")
+	StoryBoxHelp.close(box)

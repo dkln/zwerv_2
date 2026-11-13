@@ -45,8 +45,11 @@ def _letters(m, text, cx, y, ztop, c, spacing=1):
 @tile("props/markt/frietkar")
 def chip_van():
     """A chip van (patatkraam) on one axle: white with a red skirt and a yellow band, the
-    serving hatch open at the front under its propped-up flap, the fryer and the counter
-    inside, a yellow FRIET sign on the roof and the drawbar on its jockey wheel."""
+    serving hatch open at the front under its propped-up flap, a yellow FRIET sign on the roof
+    and the drawbar on its jockey wheel. Hollow: walls of one voxel round a room with a tiled
+    floor at 0.625 m (z 5) and a ceiling at 2.625 m, room for the seller (1.75 m) between the
+    counter and the fryer and the warmer against the back wall (street_vendors.gd puts them
+    there: seen through the hatch from the waist up)."""
     m = V(32, 18, 30)
     # the body on its chassis
     m.box(3, 3, 4, 27, 16, 22, "lak_wit1")
@@ -54,22 +57,25 @@ def chip_van():
     m.box(3, 3, 19, 27, 16, 21, "lak_geel1")
     m.box(3, 3, 22, 27, 16, 23, "lak_wit2")
     m.box(2, 2, 22, 28, 17, 23, "lak_zilver1")                 # the roof's rim
-    # the hatch: open, the counter under it, the fryer and the warmer behind
-    m.clear(6, 3, 11, 24, 4, 18)
+    # the room inside: floor (the body's bottom, tiled), the walls one voxel thick
+    m.clear(4, 4, 5, 26, 15, 21)
+    m.box(4, 4, 4, 26, 15, 5, "tegel_wit")                     # the floor
+    m.box(4, 14, 5, 26, 15, 21, "tegel_wit")                   # the back wall inside
+    # the hatch: open from the counter up to 2.5 m, the counter under it
+    m.clear(6, 3, 11, 24, 4, 20)
     m.box(5, 2, 10, 25, 4, 11, "rvs")                          # counter
-    m.box(6, 5, 7, 24, 15, 8, "tegel_wit")                     # inside floor (seen through)
-    m.box(7, 8, 8, 13, 13, 12, "rvs")                          # the fryer
-    m.box(8, 9, 12, 12, 12, 12, "goud")                        # chips in the basket
-    m.box(15, 8, 8, 23, 13, 13, "metaal1")                     # the warmer with chips
-    m.box(16, 8, 13, 22, 12, 14, "glas_helder")
-    m.box(16, 9, 12, 22, 11, 13, "bord_geel")
-    m.box(6, 14, 11, 24, 15, 18, "tegel_wit")                  # the back wall inside
+    # the fryer and the warmer against the back wall
+    m.box(6, 11, 5, 13, 14, 10, "rvs")                         # the fryer
+    m.box(7, 12, 10, 12, 13, 11, "goud")                       # chips in the basket
+    m.box(16, 11, 5, 24, 14, 11, "metaal1")                    # the warmer with chips
+    m.box(17, 12, 10, 23, 13, 11, "bord_geel")
+    m.box(16, 11, 11, 24, 14, 12, "glas_helder")
     # the flap propped up over the hatch, red and white
     for x in range(5, 25):
         for y in range(0, 3):
-            m.set(x, y, 18 + (2 - y) // 2, "luifel_rood" if (x // 2) % 2 else "luifel_wit")
-    m.box(5, 0, 14, 6, 1, 19, "metaal2")
-    m.box(24, 0, 14, 25, 1, 19, "metaal2")
+            m.set(x, y, 20 + (2 - y) // 2, "luifel_rood" if (x // 2) % 2 else "luifel_wit")
+    m.box(5, 0, 16, 6, 1, 21, "metaal2")
+    m.box(24, 0, 16, 25, 1, 21, "metaal2")
     # the sign on the roof
     m.box(8, 8, 23, 22, 10, 29, "bord_geel")
     _letters(m, "FRIET", 15, 7, 27, "bord_rood")

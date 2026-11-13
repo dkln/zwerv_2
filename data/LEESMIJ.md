@@ -15,35 +15,57 @@ Let op bij JSON: teksten tussen `"aanhalingstekens"`, een komma tussen alle onde
 ## Missies — `missies/*.json`
 
 Elk bestand is één missie. Ze worden gelezen in de volgorde van de bestandsnamen
-(`01_kroket.json`, `02_...json`). Een nieuwe missie: kopieer `01_kroket.json`, geef het
-een nieuwe naam en een nieuwe `"id"`.
+(`01_lege_maag.json`, `02_bekend_gezicht.json`, ..., zijmissies achteraan: `90_blikjesronde.json`).
+Een nieuwe missie: kopieer er een, geef het een nieuwe naam en een nieuwe `"id"`.
 
 | veld | wat |
 |---|---|
-| `id` | unieke naam, bv. `"missie_2_slaapplek"` |
-| `label`, `titel` | boven in beeld en in het questlog: `"MISSIE 2"`, `"Een dak boven je hoofd"` |
+| `id` | unieke naam, bv. `"missie_3_papieren"` |
+| `label`, `titel` | boven in beeld en in het questlog: `"MISSIE 2"`, `"Bekend gezicht"` |
 | `gever`, `beschrijving` | van wie de opdracht komt en wat het is (questlog) |
 | `soort` | `"verhaal"` (standaard) of `"zij"` (een zijmissie) |
-| `start` | `"na_proloog"`, of `"na:missie_1_kroket"` (als die klaar is) |
+| `start` | `"na_proloog"`, of `"na:missie_1_lege_maag"` (als die klaar is) |
 | `xp` | XP voor de hele missie |
 | `beloningen` | teksten in het questlog, bv. `["KROKET", "+40 HONGER"]` |
 | `geeft` | items die je krijgt als de hele missie klaar is, bv. `[{"item": "koffie", "aantal": 1}]` (ook per stap) |
 | `start_paginas` | wat er verteld wordt als de missie begint |
 | `stappen` | de stappen, na elkaar (de volgende is doorzichtig tot de vorige klaar is) |
-| `einde_paginas` | wat er verteld wordt als alles klaar is |
+| `einde_paginas` | wat er verteld wordt als alles klaar is (een pagina met `"als": "check:overtuigen_wim"` alleen als die check gelukt is) |
+| `opent_na_afloop` | gebieden die daarna open gaan (zie **Gebieden** hieronder) |
+| `markeringen` | plekken die daarna voorgoed op de kaart gemarkeerd staan (een ring), bv. `["malieveld"]` |
+| `gesprekken_na_afloop` | welk gesprek een personage daarna heeft: `{"ome_wim": "klaar"}` |
+| `herhaalbaar`, `herhaal_na` | `true`: de missie begint `herhaal_na` seconden na afloop opnieuw (de blikjesronde) |
 
 Een **stap**:
 
 ```json
 {
 	"id": "kroket",
-	"tekst": "Koop een kroket bij een snackbar",
-	"xp": 100,
-	"doel": {"soort": "kopen", "item": "kroket"},
+	"tekst": "Koop een kroket en eet hem op [F]",
+	"xp": 60,
+	"doel": {"soort": "gebruiken", "item": "kroket"},
 	"plekken": {"soort": "snackbars", "aantal": 3},
 	"klaar_paginas": [{"soort": "gedachte", "tekst": "Eindelijk een kroket."}]
 }
 ```
+
+Wat een stap verder kan (het meeste gebeurt zodra de stap begint):
+
+| veld | wat |
+|---|---|
+| `optioneel` | `true`: houdt de volgende stappen niet tegen; kan zolang de missie loopt |
+| `verborgen_tot_open` | `true`: de stap staat niet in de takenlijst (tracker, missies in het spelmenu), ook niet op slot, tot hij aan de beurt is; bv. het bedelen in missie 1, dat pas na het statiegeld (en de gedachte dat je tekortkomt) verschijnt |
+| `zet_stats` | zet stats, bv. `{"honger": 74}` (dan merk je de honger snel) |
+| `ontgrendelt` | zet iets van het spel open (bij het begin van de stap): `["menu"]` = het spelmenu (Tab), `["bedelen"]` = mensen om kleingeld vragen, `["handelaars"]` = praten met wie iets verkoopt (de frietkar, een snackbar, de winkels; missie 1, allebei na het statiegeld), `["springen"]` = springen met de spatiebalk (missie 1, via `bij_binnenkomst` in het station), `["snackkaart"]` = de hele kaart van de frietkar en de snackbars (wat in `snackbarhouder.json` een `"slot": "snackkaart"` heeft; missie 1, na de kroket: daarvoor alleen de kroket), `["kleingeld"]` / `["pinpassen"]` = kleingeld en pinpassen die op straat liggen (heel zeldzaam; nog geen missie zet ze open); tot dan kan het niet |
+| `opent` | gebieden die open gaan (zie **Gebieden**) |
+| `groeit` | `{"per": "blikje", "tot": "supermarkt"}`: het startgebied groeit met elk verzameld blikje, tot de dichtstbijzijnde supermarkt erin ligt |
+| `opent_tot` | `"supermarkt"`: het startgebied wordt zo groot dat de dichtstbijzijnde supermarkt erin ligt |
+| `blikjes_buiten`, `blikjes_station` | bij een stap met `"plekken": {"soort": "blikjes"}`: precies zoveel blikjes in de prullenbakken rond de start (de andere daar leeg, en niets bijgevuld zolang de stap loopt), de rest (hoogstens 2) in Den Haag Centraal, achter de poortjes: elk in een eigen prullenbak op een perron (de tweede bij voorkeur op een ander perron); als de blikjes buiten op zijn, wijst het kaartje buiten naar de ingang van Centraal en binnen naar de blikjes zelf |
+| `tussen_paginas` | `[{"bij": 3, "paginas": [...]}]`: pagina's zodra je er zoveel van het doel hebt (eenmalig) |
+| `bij_binnenkomst` | `{"binnen": "centraal", "vanaf": 4, "ontgrendelt": ["springen"], "paginas": [...]}`: pagina's (bv. de verteller) zodra je tijdens de stap een binnenruimte van die soort binnenkomt (`centraal`, `snackbar`, `derrek`, `alfred_steyhn`, `stadhuis`) met minstens `vanaf` van het doel op zak; eenmalig per spel, en wat `ontgrendelt` gaat dan open. Missie 1: in het station de twee blikjes op de perrons, een manier verzinnen om erop te komen, de conducteurs (€ 50 boete; niet betalen = eruit gezet, en `terug_na` seconden niet meer naar binnen) |
+| `eerste_scherm` | `{"kop": "GEVONDEN", "titel": "Je eerste blikje"}`: het eerste item van het doel dat je oppakt (uit een prullenbak, in het station) komt in het **beloningsscherm** in plaats van als tekstje boven je hoofd; eenmalig per spel (onthouden in de save), de volgende krijgen weer het tekstje |
+| `storing` | `{"tekst": "TIJDELIJK BUITEN GEBRUIK", "paginas": [...]}`: de eerste statiegeldautomaat die je probeert is stuk; de stap toont dan `tekst_storing`, wijst naar een andere supermarkt en het gebied groeit tot daar. Met `"persoon": "bertus"` (een personage met `zwerft`) komt dat personage op dat moment de stad in en blijft daar voorgoed rondlopen; het kaartje wijst (en volgt) hem in plaats van een andere supermarkt, en het gebied groeit niet. Missie 1: Blikken Bertus koopt je blikjes, voor minder dan de automaat |
+| `gesprekken` | welk gesprek een personage nu heeft: `{"ome_wim": "rondje"}` |
 
 Een stap met `"overslaan_als": {"startgeld_minstens": 2.0}` wordt overgeslagen (meteen
 klaar, zonder XP) voor een karakter dat met minstens zoveel geld begint.
@@ -59,23 +81,88 @@ Soorten **doel**:
 | soort | velden | klaar als |
 |---|---|---|
 | `geld_verdiend` | `bedrag` | je zoveel gevonden of gekregen geld nog op zak hebt (wat je uitgeeft telt weer af, je startgeld telt niet mee; hetzelfde bedrag als in je portemonnee) |
+| `geld_op_zak` | `bedrag` | je zoveel in je portemonnee hebt, hoe dan ook (startgeld, gevonden, gekregen); heb je het al als de stap begint, dan is hij meteen klaar (missie 1: € 2 voor de kroket) |
 | `kopen` | `item` | je het gekocht hebt (een item uit `scripts/player/items.gd`) |
-| `praten_met` | `persoon` | je met zo iemand praat (een `id` uit de gesprekken, of `"iemand"`) |
+| `gebruiken` | `item` | je het gegeten, gedronken of gebruikt hebt (in het menu, of met F: eet iets uit je zakken) |
+| `verzamelen` | `item`, `aantal` | je er zoveel van op zak hebt |
+| `statiegeld` | | een statiegeldautomaat je geld heeft gegeven |
+| `praten_met` | `persoon` | je met zo iemand praat (een `id` uit de gesprekken of een personage, of `"iemand"`) |
 | `naar_plek` | `plek`, `straal` | je binnen `straal` meter van die plek bent |
+| `naar_persoon` | `persoon`, `straal` | je binnen `straal` meter van dat personage bent |
+| `lopen` | `meter` | je zover gelopen hebt sinds de stap begon |
+| `stat_onder` | `stat`, `waarde` | die stat onder de waarde zakt (bv. `honger`) |
+| `menu_open` | `tab` | je het spelmenu op die tab opent (`inventaris`, `quests`, `kaart`) |
+| `check` | `check` | een vaardigheidscheck in een gesprek gelukt is (zie **Personages**) |
+| `begeleiden` | `persoon`, `route` | je met het personage langs de plekken van `route` gelopen bent (het wacht als je achterblijft) |
+| `werver` | `persoon`, `straal`, `plek`, `voorbij` | het personage staat op `plek` in de weg; klaar als je ermee praat of er voorbij bent (dichter bij `voorbij`) |
 
 **Plekken** op het kaartje en de kaart (optioneel): `{"soort": "snackbars", "aantal": 3}`
-(de dichtstbijzijnde), `{"soort": "plek", "plek": "koekamp"}` of
+(de dichtstbijzijnde), `{"soort": "supermarkten", "aantal": 1}`, `{"soort": "blikjes", "aantal": 3}`
+(prullenbakken met een blikje; met `"in_zicht": true` en `blikjes_buiten` alleen bakken zonder gebouw tussen de start en de bak: op het plein en bij de tramhalte voor Centraal, nooit erachter), `{"soort": "plek", "plek": "koekamp"}` of
 `{"soort": "plekken", "plekken": ["koekamp", "centraal"]}`. De namen van plekken staan in
-`scenes/stad.tscn` onder `metadata/places` (o.a. `centraal`, `koekamp`,
-`snackbar_hertenkamp`, `malieveld`). Bij `naar_plek` wordt die plek vanzelf aangewezen.
+`scenes/stad.tscn` onder `metadata/places` (o.a. `centraal`, `koekamp`, `plein`, `spui`,
+`snackbar_hertenkamp`, `malieveld`). Bij `naar_plek`, `naar_persoon`, `praten_met` (een
+personage) en `begeleiden` wordt de plek vanzelf aangewezen. Alleen wat open is (de
+gebieden) staat op de kaart.
 
 Een **pagina**: `{"soort": "verhaal", "tekst": "..."}`. Soorten: `verhaal` (de verteller),
 `gedachte` (je karakter denkt), `missie` (een opdracht), `gesprek` (iemand anders, met
 `"spreker": "NAAM"`).
 
 In teksten kun je invullen: `{naam}` (je karakter), `{achtergrond}` (zijn verhaal),
-`{voortgang}` (in de tekst van een stap: hoe ver je bent, bv. `€ 1,20`), `{geldregel}`
+`{voortgang}` (in de tekst van een stap: hoe ver je bent, bv. `€ 1,20` of `2/4`), `{geldregel}`
 (een regel uit `"geldregel": {"leeg": ..., "wel": ...}`: of je karakter geld heeft).
+
+## Gebieden (de shroud) — `gebieden.json`
+
+Waar je mag komen. Wat niet open is, staat niet op de kaart en het kaartje, en je kunt er
+niet in lopen (aan de rand denkt je karakter "Daar heb ik nu niks te zoeken."). Binnenruimtes
+tellen niet mee.
+
+- `start`: een cirkel om een plek (`midden`, een plek van de kaart) met een `straal` in meters:
+  wat open is als het spel begint. Een stap met `groeit` laat hem groter worden.
+- `marge`: meters om een plek waar de cirkel naartoe groeit, zodat je er echt kunt komen.
+- `gebieden`: gebieden met een naam die een missie opent (`opent`, `opent_na_afloop`), elk uit
+  `cirkels` (zoals de start), `wijken` (namen van `metadata/wijken`, zoals `"Centrum"`) en/of
+  `rechthoeken` (`[x0, z0, x1, z1]` in cellen van 4 m).
+
+## Personages — `gesprekken/personages.json`
+
+De vaste mensen van het verhaal (Ome Wim, de goededoelenwerver, Blikken Bertus). Elk staat op een `plek`, ziet
+er altijd hetzelfde uit (`uiterlijk`: kleuren als `#RRGGBB`, `hair_style` `kort`, `lang`,
+`kaal`, `pet` of `hoed`), loopt in zijn eigen `tempo` en heeft `gesprekken` (elk zoals een
+persoon in `voorbijgangers.json`: `begroetingen`, `onderwerp` met `verder`, ...). Welk gesprek
+het nu heeft, zet een stap (`gesprekken`), anders `standaard`. Wat in alle gesprekken hetzelfde
+is (`spreker`, `stemmingen`, `dag`, `kleingeld_nee`, `gulheid`, `nog_iets`), staat bij het personage zelf.
+
+Een vraag met een **vaardigheidscheck** (zie Ome Wim):
+
+```json
+{"vraag": "Kom op, Wim. Wat weet je nog meer?",
+ "check": {"id": "overtuigen_wim", "label": "OVERTUIGEN", "kans": 50,
+           "gelukt": "Goed dan...", "mislukt": "Ik weet niks."}}
+```
+
+Je ziet hem als `[OVERTUIGEN 50%] Kom op, Wim...`. Gelukt: het `gelukt`-antwoord (met zijn
+`verder`), en de check is voorgoed gehaald (een stap met doel `check` is klaar). Mislukt:
+het `mislukt`-antwoord, en in een volgend gesprek kun je het opnieuw proberen.
+
+Een vraag met **`koopt_blikjes`** (euro per blikje, zie Blikken Bertus): het personage koopt al
+je blikjes voor dat bedrag (het geld zoals bij een statiegeldautomaat: een stap met doel
+`statiegeld` is klaar); daarna zegt het `gekocht` (met `{aantal}` en `{bedrag}`), of
+`geen_blikjes` als je er geen hebt.
+
+Een personage dat **rondzwerft** (Blikken Bertus): `zwerft` = `{"punten": [[x, z], ...]` (meters
+vanaf zijn `plek`, een rondje), `"tempo"` (m/s), `"rookpauze": [van, tot]` (seconden stil bij
+een punt), `"karretje": true` (een winkelkarretje vol blikjes dat hij duwt), `"rookt": true` (een
+sjekkie met rookwolkjes, af en toe een trekje en een wolk uitblazen)}. Het verschijnt zodra een
+stap het laat komen (`storing` `persoon`) en blijft daarna rondlopen; komt de speler dichtbij,
+dan blijft het staan en kijkt hem aan. `mompelt`: losse zinnetjes die het af en toe in een
+tekstballon zegt (om de 8 tot 25 seconden, alleen met de speler in de buurt, nooit twee keer
+dezelfde achter elkaar). `stem`: een eigen stem voor het gebrabbel (`rasperig`: laag en schor,
+`brabbel_rasperig_*` uit `tools/megadrive/stemmen.py`). In `uiterlijk` geeft `"model": "bertus"`
+hem een eigen figuur (lange jas met lappen, sjaal, baard, gebreide muts met pompon, sjekkie;
+kleuren `patch`, `scarf`, `pompom`: `TownsfolkFigure._bertus`).
 
 ## De proloog — `verhaal/proloog.json`
 
@@ -84,7 +171,8 @@ De startpagina's van missies met `"start": "na_proloog"` komen er direct achtera
 
 ## Gesprekken met voorbijgangers — `gesprekken/voorbijgangers.json`
 
-- `vragen`: wat je kunt vragen (`kleingeld`) en waarmee je afsluit (`dag`).
+- `vragen`: wat je kunt vragen (`kleingeld`) en waarmee je afsluit (`dag`). Om kleingeld vragen
+  kan pas als het verhaal `bedelen` heeft ontgrendeld (missie 1, na het inleveren van de blikjes).
 - `nog_iets`: wat ze erachter zeggen ("Nog iets?").
 - `stemmingen`: de stemming per soort regel (`begroeting`, `onderwerp`, `doorvraag`,
   `kleingeld_ja`, `kleingeld_nee`, `dag`). Stemmingen: `neutraal`, `blij`,
@@ -195,6 +283,7 @@ als in `voorbijgangers.json` (`spreker`, `begroetingen`, `onderwerp`, `kleingeld
 | `stemhoogte` | hoe hoog ze brabbelen (1,0 = gewoon, lager = zwaarder) |
 | `nog_iets` | eigen zinnen na een antwoord (anders die van de voorbijgangers) |
 | `betrapt` | alleen de conducteur: wat hij zegt als je met hem praat terwijl hij je achternazit omdat je zwartreed; je krijgt dan de boete (`{boete}`: het bedrag) |
+| `betrapt_uitchecken` | alleen de conducteur: hetzelfde als hij je achternazit omdat je zonder uit te checken over de poortjes naar buiten ging (hij checkt je uit en je krijgt de boete); zonder deze regel zegt hij `betrapt` |
 
 Controle: `tests/run_integration_tests.sh staff_talk`.
 
@@ -210,7 +299,7 @@ gaat in je zakken (zoals de kroket van missie 1).
 `spreker` (het naamkaartje), `soort` (bovenin het scherm, bv. `"SNACKBAR"`),
 `begroetingen` (met `{snackbar}` of `{zaak}`: de naam van de zaak), `menu` (de goederen:
 `item` uit `scripts/player/items.gd`, `vraag`, `prijs` in euro, `naam` zoals de verkoper
-het noemt), `gekocht` (met `{wat}`), `geen_geld` (met `{prijs}`), `zakken_vol`,
+het noemt; `"slot": "snackkaart"`: pas te koop als het verhaal dat ontgrendelt, zie **Missies** `ontgrendelt`), `gekocht` (met `{wat}`), `geen_geld` (met `{prijs}`), `zakken_vol`,
 `tip_vraag` en `tip` (een rij "iets vragen"; weg als er geen `tip` is; `tip` mag een lijst
 zijn, dan zegt de verkoper elke keer een andere), `dag` (bij weggaan, ook een tekst of een
 lijst), `nog_iets` (achter wat ze zeggen na een aankoop, een tekst of een lijst), `stemmingen` (per soort zin:
@@ -359,12 +448,14 @@ ook "Automaten, blikjes en pinpassen" in `INSTRUCTIONS.md`):
 | wat | waar |
 |---|---|
 | de spullen `blikje`, `pinpas`, `los_kaartje` (naam, tekst) | `scripts/player/items.gd` |
-| statiegeld per blikje of fles (€ 0,15) | `DEPOSIT` in `scripts/world/things/deposit_return.gd` |
-| prijs OV-chipkaart, startsaldo, ritprijs, los kaartje, opwaardeerbedragen | `scripts/world/station/ov_card.gd` |
+| statiegeld per blikje (€ 0,40) of fles (€ 0,15) bij de automaat (Blikken Bertus geeft € 0,25 per blikje: `koopt_blikjes` in personages.json) | `DEPOSIT` in `scripts/world/things/deposit_return.gd` |
+| prijs OV-chipkaart, startsaldo, ritprijs, los kaartje, opwaardeerbedragen, instaptarief (niet uitgecheckt, € 4); kopen en opladen alleen bij de automaten in de hal van Centraal, bij de tramhaltes staan OV-paaltjes (in- en uitchecken) | `scripts/world/station/ov_card.gd`; de paaltjes bij tramhaltes: `tools/build/city/finishing.gd` (`MOST_OV_POSTS`, `OV_POST_SPACING`) |
+| kans dat een conducteur zwartrijden of niet uitchecken over de poortjes ziet, de kaartcontrole op het perron (afstand, kans), de boete (€ 50) | `FARE_CHECK_CHANCE`, `INSPECTION_REACH`, `INSPECTION_CHANCE`, `FINE_EUROS` in `scripts/world/station/station.gd` |
 | saldo van een gevonden pinpas (€ 8 - € 60), de raadsels bij de pincode, de namen op de pas | `scripts/player/bank_cards.gd` (`BALANCE_RANGE`, `DIGIT_RIDDLES`, `OWNERS`) |
 | bedragen bij de geldautomaat (€ 5, 10, 20, 50), pogingen voor de pas wordt ingeslikt (3) | `AMOUNTS` in `scripts/ui/machines/cash_machine_screen.gd`, `MOST_TRIES` in `bank_cards.gd` |
 | hoeveel prullenbakken een blikje hebben, hoe vaak er een bijkomt | `can_share`, `most_cans`, `refill_seconds` in `scripts/world/things/litter_bins.gd` |
-| hoeveel pinpassen er op straat liggen | `count`, `near`, `reach` in `scripts/world/things/lost_bank_cards.gd` |
+| hoeveel pinpassen er op straat liggen (pas als het verhaal `pinpassen` ontgrendelt; dan 1) | `count`, `near_count`, `near`, `reach` in `scripts/world/things/lost_bank_cards.gd` |
+| hoeveel kleingeld er op straat ligt (pas als het verhaal `kleingeld` ontgrendelt; dan 1 munt, niet bij de start) | `count`, `near_count`, `near`, `reach`, `VALUES` in `scripts/world/things/loose_change.gd` |
 
 Een raadsel bij de cijfers (`DIGIT_RIDDLES`) moet echt dat cijfer opleveren: rij 0 is het
 cijfer 0, rij 8 het cijfer 8 ("de poten van een spin"). Controleer na een wijziging met

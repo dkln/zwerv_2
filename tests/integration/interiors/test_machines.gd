@@ -6,7 +6,7 @@ extends "res://tests/integration/support/town_test.gd"
 ## - the cash machine (CashMachineScreen): a wrong PIN is refused, the right one lets you in,
 ##   no more than the balance comes out, what comes out is in the wallet and off the
 ##   balance; three wrong PINs and the card is kept (gone from the pockets);
-## - the deposit machine (DepositMachineScreen): cans and bottles one by one, 15 cents each,
+## - the deposit machine (DepositMachineScreen): cans (40 cents) and bottles (15 cents) one by one,
 ##   gone from the pockets, the bon pays the total out;
 ## - the OV-chipkaart (OvCard, OvMachineScreen): buying needs the money, a new card has its
 ##   balance, checking in costs the fare, topping up, a single ticket kept at check-out.
@@ -153,13 +153,13 @@ func test_cash_machine_without_a_card(test) -> void:
 	await _close(screen)
 
 
-## The deposit machine: cans and bottles go in one by one (15 cents each, out of the
+## The deposit machine: cans and bottles go in one by one (40 cents a can, 15 a bottle, out of the
 ## pockets), the bon is printed and only taking it pays the total out.
 func test_deposit_machine_pays_for_cans_and_bottles(test) -> void:
 	var returner := await _player_in_stand_in_town()
 	returner.add_item("blikje", 3)
 	returner.add_item("statiegeld", 2)
-	test.check(is_equal_approx(DepositReturn.total_value(returner.inventory), 0.75), "3 blikjes en 2 flessen: € 0,75 statiegeld")
+	test.check(is_equal_approx(DepositReturn.total_value(returner.inventory), 1.5), "3 blikjes en 2 flessen: € 1,50 statiegeld")
 	var money_before: float = returner.money
 	var screen: Node = DepositMachineScreen.show_for(returner, "DERREK", false)
 	await frames(1)
@@ -172,12 +172,12 @@ func test_deposit_machine_pays_for_cans_and_bottles(test) -> void:
 	await screen.insert_one("statiegeld")
 	test.check(is_equal_approx((await screen.insert_one("blikje")), 0.0), "een vierde blikje is er niet")
 	test.check(not returner.inventory.has("blikje") and int(returner.inventory.get("statiegeld", 0)) == 1, "de blikjes en een fles zijn uit je zakken")
-	test.check(is_equal_approx(screen.total, 0.6), "op het display: € 0,60 (%.2f)" % screen.total)
+	test.check(is_equal_approx(screen.total, 1.35), "op het display: € 1,35 (%.2f)" % screen.total)
 	await screen.print_bon()
 	test.check(screen.state == "bon" and is_equal_approx(returner.money, money_before), "de bon geprint, nog niet uitbetaald")
 	await screen.take_bon()
 	await frames(2)
-	test.check(is_equal_approx(returner.money, money_before + 0.6), "bon gepakt: € 0,60 erbij (€ %.2f)" % (returner.money - money_before))
+	test.check(is_equal_approx(returner.money, money_before + 1.35), "bon gepakt: € 1,35 erbij (€ %.2f)" % (returner.money - money_before))
 	test.check(not tree.paused, "weg bij de automaat: het spel gaat verder")
 
 

@@ -30,6 +30,10 @@ const EXTRA_CELLS := Vector2i(1, 3)
 const DEPTHS := [24.0, 28.0, 32.0, 36.0]
 ## The front zone (entrance and checkouts) is this deep, metres from the front wall.
 const FRONT_ZONE := 6.5
+## The way in: from the door straight into the shop this wide and this deep stays free (no
+## furniture, trolleys or baskets; no shopper stops in it: no shelf spot, till or queue).
+const ENTRANCE_LANE_WIDTH := 1.6
+const ENTRANCE_LANE_DEPTH := 4.0
 ## From the back wall: the fridge wall and the aisle before it; from the left wall: the wall
 ## shelves and the aisle before them; at the right (the low wall): an aisle.
 const BACK_ZONE := 3.25
@@ -62,23 +66,25 @@ const SIGN_TEXTS := {
 	"verzorging": "VERZORGING", "conserven": "CONSERVEN", "diepvries": "DIEPVRIES", "zuivel": "ZUIVEL",
 	"brood": "BROOD", "bakkerij": "BAKKERIJ", "groente": "GROENTE & FRUIT", "bloemen": "BLOEMEN",
 	"actie": "ACTIE",
+	"statiegeld": "STATIEGELD",
 }
 ## The deposit machine (statiegeld, scripts/world/things/machine_models.gd): its size (across, up,
-## deep), how far from the front wall it stands against the side wall of the entrance, and
-## where you stand to use it (from that wall and the front wall).
+## deep) and where you stand to use it (metres from the back wall, before it). It stands at
+## the back of the shop against the back wall, in the cell beside the staff door.
 const DEPOSIT_MACHINE_SIZE := Vector3(0.875, 1.875, 0.625)
-const DEPOSIT_MACHINE_Z := 1.0
-const DEPOSIT_USE_FROM_WALL := 1.0
-const DEPOSIT_USE_Z := 1.45
+const DEPOSIT_USE_FROM_BACK := 1.45
 ## The props colour of each chain's trolleys (props/winkel/winkelwagen_<colour>).
 const CART_COLOURS := {"derrek": "rood", "alfred_steyhn": "blauw"}
 
 
 ## The plan of a branch of `brand` with `seed`, its shop front `front_cells` cells wide:
 ## {"brand", "width", "depth", "tiles": [[tile, at, turn]] (the library binnen without its
-##  "supermarkt/" prefix), "floor": [[tile, at]], "props": [[props item, at, turn]],
+##  "supermarkt/" prefix), "wall_tiles": [[tile, at (on the wall's grid line), turn]]
+##  (the name and the emblem of the chain, hung by WallMount), "floor": [[tile, at]],
+##  "props": [[props item, at, turn]],
 ##  "door": Transform3D (inside the entrance, facing into the shop), "door_gap": Vector3
 ##  (the middle of the opening in the front wall),
+##  "entrance_lane": Rect2 (x, z: the way in from the door, kept free; ENTRANCE_LANE_*),
 ##  "shelves": [{"at", "facing" (towards the shelf), "category"}] (where you take something),
 ##  "checkouts": [{"number", "pay_at", "self_scan", "cashier" (Transform3D, staffed ones)}],
 ##  "cart_at", "basket_at": where you take a trolley or a basket,
@@ -94,7 +100,7 @@ static func plan(brand: String, seed: int, front_cells: int) -> Dictionary:
 	var cells := clampi(front_cells + random.randi_range(EXTRA_CELLS.x, EXTRA_CELLS.y), FEWEST_CELLS, MOST_CELLS)
 	var width := cells * CELL
 	var depth: float = DEPTHS[random.randi() % DEPTHS.size()]
-	var result := {"brand": brand, "width": width, "depth": depth, "tiles": [], "floor": [], "props": [],
+	var result := {"brand": brand, "width": width, "depth": depth, "tiles": [], "wall_tiles": [], "floor": [], "props": [],
 		"shelves": [], "checkouts": [], "signs": [], "promotions": [], "lamps": [], "people": [], "staff": []}
 	var left := -width * 0.5
 	var right := width * 0.5
@@ -125,6 +131,7 @@ static func plan(brand: String, seed: int, front_cells: int) -> Dictionary:
 		_tile(result, "muur_laag_" + brand, Vector3(right, 0.0, z), -PI * 0.5)
 	result["door"] = Transform3D(Basis(), Vector3(door_x, 0.0, front + 0.9))
 	result["door_gap"] = Vector3(door_x, 0.0, front)
+	result["entrance_lane"] = Rect2(door_x - ENTRANCE_LANE_WIDTH * 0.5, front, ENTRANCE_LANE_WIDTH, ENTRANCE_LANE_DEPTH)
 	# the checkouts on the wider side of the entrance, the rest on the other
 	var room_left := door_x - 1.0 - left
 	var room_right := right - (door_x + 1.0)
@@ -132,19 +139,28 @@ static func plan(brand: String, seed: int, front_cells: int) -> Dictionary:
 	var entrance_side := -checkout_side
 	_checkouts(result, brand, random, door_x, checkout_side, maxf(room_left, room_right), front)
 	_entrance(result, brand, random, door_x, entrance_side, minf(room_left, room_right), front)
-	# the back wall: the fridge wall, the staff door in one cell
+	# the back wall: the fridge wall, the staff door in one cell and beside it the deposit
+	# machine (statiegeld) in a cell of its own, against the back wall facing the entrance: seen
+	# at once from the door and by the camera, which looks in from the front
 	var staff_cell := 0 if random.randf() < 0.5 else cells - 1
+	var deposit_cell := 1 if staff_cell == 0 else cells - 2
+	var deposit_x := left + CELL * 0.5 + deposit_cell * CELL
+	result["deposit"] = {"at": Vector3(deposit_x, 0.0, back - 0.125 - DEPOSIT_MACHINE_SIZE.z * 0.5), "turn": PI,
+		"use_at": Vector3(deposit_x, 0.0, back - DEPOSIT_USE_FROM_BACK), "size": DEPOSIT_MACHINE_SIZE}
+	result.signs.append({"at": Vector3(deposit_x, 2.6, back - 0.4), "turn": PI, "text": SIGN_TEXTS.statiegeld})
 	for column in cells:
 		var x := left + CELL * 0.5 + column * CELL
 		if column == staff_cell:
 			_tile(result, "deur_personeel", Vector3(x, 0.0, back - 0.25), PI)
 			result.staff.append(Transform3D(Basis(Vector3.UP, PI), Vector3(x + 1.0, 0.0, back - 1.2)))
+		elif column == deposit_cell:
+			pass   # the deposit machine (Supermarket._make_deposit_machine)
 		else:
 			_tile(result, "koelwand_" + brand, Vector3(x, 0.0, back - 0.5), PI)
 			_shelf_spots(result, Vector3(x, 0.0, back - 0.5), Vector3(0.0, 0.0, -1.0), "zuivel", 0.4)
 	# the name of the chain over the fridges, its emblem towards the right
-	_tile(result, "naambord_" + brand, Vector3(snappedf(left + width * 0.5, 0.5), 2.0, back - 0.125), PI)
-	_tile(result, "logo_" + brand, Vector3(right - 2.0, 2.0, back - 0.125), PI)
+	_wall_tile(result, "naambord_" + brand, Vector3(snappedf(left + width * 0.5, 0.5), 2.0, back), PI)
+	_wall_tile(result, "logo_" + brand, Vector3(right - 2.0, 2.0, back), PI)
 	# the left wall: shelves, at ALFRED STEYHN the bakery among them
 	var wall_categories: Array = WALL_CATEGORIES[brand].duplicate()
 	_shuffle(wall_categories, random)
@@ -247,11 +263,6 @@ static func _entrance(result: Dictionary, brand: String, random: RandomNumberGen
 	result["basket_at"] = Vector3(door_x + side * 1.5, 0.0, front + 1.6)
 	var far := door_x + side * (room + 1.0)    # the wall on that side
 	var zone_z := front + 4.75
-	# the deposit machine in the corner past the trolleys, against that side wall, facing the
-	# door; you stand before it, a little further in (clear of the trolleys)
-	var machine_at := Vector3(far - side * (0.125 + DEPOSIT_MACHINE_SIZE.z * 0.5), 0.0, front + DEPOSIT_MACHINE_Z)
-	result["deposit"] = {"at": machine_at, "turn": -side * PI * 0.5,
-		"use_at": Vector3(far - side * DEPOSIT_USE_FROM_WALL, 0.0, front + DEPOSIT_USE_Z), "size": DEPOSIT_MACHINE_SIZE}
 	if brand == "derrek":
 		var pallets := clampi(int((room - 4.3) / 2.0) + 1, 1, 3)
 		for index in pallets:
@@ -346,6 +357,12 @@ static func _standing(at: Vector3, facing: Vector3) -> Transform3D:
 
 static func _tile(result: Dictionary, tile_name: String, at: Vector3, turn: float) -> void:
 	result.tiles.append([tile_name, at, turn])
+
+
+## A tile that hangs on the wall whose grid line runs through `at` (WallMount: just before
+## its inner surface, not half in it).
+static func _wall_tile(result: Dictionary, tile_name: String, at: Vector3, turn: float) -> void:
+	result.wall_tiles.append([tile_name, at, turn])
 
 
 static func _shuffle(items: Array, random: RandomNumberGenerator) -> void:

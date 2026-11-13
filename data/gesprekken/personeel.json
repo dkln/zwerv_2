@@ -1,5 +1,5 @@
 {
-	"uitleg": "Mensen in dienst: de conducteurs van de NS en de handhavers in Den Haag Centraal (scripts/world/station/station_person.gd, 'role'), de medewerkers van DERREK en ALFRED STEYHN (scripts/world/interiors/supermarket.gd) en de mensen in het stadhuis (receptioniste, beveiliger, ambtenaar, raadslid, burgemeester: scripts/world/interiors/city_hall.gd). Dezelfde velden als een persoon in voorbijgangers.json, plus hoe het gespreksvak ze laat zien ('titel', 'embleem', 'kleur', 'naamkaartje', 'tekstkleur', 'stemhoogte') en voor de conducteur 'betrapt': wat hij zegt als je met hem praat terwijl hij je achternazit omdat je zwart reed ({boete}: het bedrag). Zie data/LEESMIJ.md.",
+	"uitleg": "Mensen in dienst: de conducteurs van de NS en de handhavers in Den Haag Centraal (scripts/world/station/station_person.gd, 'role'), de medewerkers van DERREK en ALFRED STEYHN (scripts/world/interiors/supermarket.gd) en de mensen in het stadhuis (receptioniste, beveiliger, ambtenaar, raadslid, burgemeester: scripts/world/interiors/city_hall.gd). Dezelfde velden als een persoon in voorbijgangers.json, plus hoe het gespreksvak ze laat zien ('titel', 'embleem', 'kleur', 'naamkaartje', 'tekstkleur', 'stemhoogte') en voor de conducteur 'betrapt': wat hij zegt als je met hem praat terwijl hij je achternazit omdat je zwart reed ({boete}: het bedrag), en 'betrapt_uitchecken': hetzelfde als hij je achternazit omdat je zonder uit te checken over de poortjes naar buiten ging (zonder die regel: 'betrapt'). Zie data/LEESMIJ.md.",
 	"personen": {
 		"conducteur": {
 			"spreker": "CONDUCTEUR NS",
@@ -26,6 +26,7 @@
 			],
 			"dag": "Goede reis. En denk erom: inchecken!",
 			"betrapt": "Zo, daar bent u. Zonder in te checken door de poortjes, dacht u dat ik dat niet zag? Dat wordt {boete} boete wegens zwartrijden.",
+			"betrapt_uitchecken": "Zo, daar bent u. Over de poortjes naar buiten en niet uitgecheckt? Dat is net zo goed zwartrijden. Ik check u even uit, en dat wordt {boete} boete.",
 			"stemmingen": {
 				"begroeting": "neutraal",
 				"onderwerp": "verdrietig",

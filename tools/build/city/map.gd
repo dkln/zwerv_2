@@ -401,6 +401,9 @@ func _entrance_flags(wx: float, wz: float, front: String) -> void:
 const SUPERMARKET_BRANDS := ["derrek", "alfred_steyhn"]
 const SUPERMARKET_CARTS := {"derrek": "rood", "alfred_steyhn": "blauw"}
 const SUPERMARKET_MOST_CELLS := 7
+## Metres sideways from the middle of a supermarket's door kept free of carts and their shelter
+## (the door is 2 m wide: 3 m of room either side of it).
+const SUPERMARKET_DOOR_CLEAR := 4.0
 var _supermarket_count := 0
 
 
@@ -416,8 +419,9 @@ func _next_supermarket(x0: int, z: int, width: int, style: String) -> void:
 ## front (row z) of a block of `style` from column x0, `width` wide: shop windows in the
 ## brand's colours between the corners, the sliding doors in the middle, the brand's sign
 ## over them, and before it a cart shelter, a row of carts and a couple left standing
-## (handles in `cart_colour`: "rood", "blauw").
-func _supermarket(x0: int, z: int, width: int, style: String, brand: String, cart_colour: String) -> void:
+## (handles in `cart_colour`: "rood", "blauw"); `loose_carts` off: none left standing before
+## the doors (where they are in the way).
+func _supermarket(x0: int, z: int, width: int, style: String, brand: String, cart_colour: String, loose_carts := true) -> void:
 	var prefix := style + "/" + style + "_bg_" + brand + "_"
 	var door := x0 + width / 2
 	for x in range(x0 + 1, x0 + width - 1):
@@ -426,10 +430,26 @@ func _supermarket(x0: int, z: int, width: int, style: String, brand: String, car
 	# the logo on the corner of the front, high up, and a pylon at the forecourt
 	D((x0 + width - 1) * 4 + 2.0, z * 4.0, 6.5, "tekst/logo_" + brand, "N")
 	Pr((x0 + width - 1) * 4 + 3.0, (z - 1) * 4 + 0.5, "winkel/reclamezuil_" + brand, "N")
-	Pr((x0 + 1) * 4 + 2.0, (z - 1) * 4 + 1.0, "winkel/winkelwagenstalling_" + cart_colour, "S")
-	Pr((x0 + width - 2) * 4 + 2.0, (z - 1) * 4 + 2.5, "winkel/winkelwagens_rij_" + cart_colour, "E")
-	Pr((door - 1) * 4 + 2.5, (z - 1) * 4 + 2.0, "winkel/winkelwagen_" + cart_colour, "W")
-	Pr((door + 1) * 4 + 1.0, (z - 1) * 4 + 1.0, "winkel/winkelwagen", "N")
+	# the carts keep clear of the way in: nothing within SUPERMARKET_DOOR_CLEAR metres of the
+	# door's middle (sideways), so the shelter, the row and the carts left standing stand at
+	# the ends of the front, and a narrow front leaves out what does not fit
+	var door_middle := door * 4 + 2.0
+	var clear := func(wx: float, half_width: float) -> bool:
+		return absf(wx - door_middle) - half_width >= SUPERMARKET_DOOR_CLEAR
+	var shelter_x := (x0 + 1) * 4 + 2.0
+	if clear.call(shelter_x, 2.25):
+		Pr(shelter_x, (z - 1) * 4 + 1.0, "winkel/winkelwagenstalling_" + cart_colour, "S")
+	var row_x := (x0 + width - 2) * 4 + 2.0
+	if clear.call(row_x, 1.0):
+		Pr(row_x, (z - 1) * 4 + 2.5, "winkel/winkelwagens_rij_" + cart_colour, "E")
+	if loose_carts:
+		# one beside the shelter, one beside the row, on the side away from the door
+		var by_shelter := (x0 + 1) * 4 - 0.5
+		if clear.call(by_shelter, 0.6):
+			Pr(by_shelter, (z - 1) * 4 + 2.0, "winkel/winkelwagen_" + cart_colour, "W")
+		var by_row := (x0 + width - 2) * 4 + 3.5
+		if clear.call(by_row, 0.6):
+			Pr(by_row, (z - 1) * 4 + 1.0, "winkel/winkelwagen", "N")
 	var key := brand
 	var number := 2
 	while places.has(key):

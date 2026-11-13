@@ -5,10 +5,10 @@ extends RefCounted
 ## by one; at the end the machine prints a bon for the total, and the bon is paid out at once.
 ##   const DepositReturn = preload("res://scripts/world/things/deposit_return.gd")
 ##   DepositReturn.returnable(player.inventory)       # {"blikje": 3}
-##   DepositReturn.insert_one(player, "blikje")       # 0.15 (the can gone from the pockets)
-##   DepositReturn.pay_out(player, 0.45)
+##   DepositReturn.insert_one(player, "blikje")       # 0.4 (the can gone from the pockets)
+##   DepositReturn.pay_out(player, 0.75)
 
-const DEPOSIT := {"blikje": 0.15, "statiegeld": 0.15}
+const DEPOSIT := {"blikje": 0.4, "statiegeld": 0.15}
 ## The order they are offered in the machine.
 const ORDER := ["blikje", "statiegeld"]
 
@@ -48,3 +48,5 @@ static func insert_one(player: Node, item_id: String) -> float:
 static func pay_out(player: Node, amount: float) -> void:
 	if player and amount > 0.0 and player.has_method("add_money"):
 		player.call("add_money", snappedf(amount, 0.01))
+		if player.has_signal("deposited"):
+			player.emit_signal("deposited", snappedf(amount, 0.01))

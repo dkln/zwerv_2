@@ -32,6 +32,11 @@ const PLAYER_GROUP := "speler"
 const InteractionMark = preload("res://scripts/world/things/interaction_mark.gd")
 
 var seat_height := SEAT_HEIGHT
+## Where they are talked to from: this many metres before them (the front of a cart they sell
+## from, so the reach counts from the counter, not from behind it), within `talk_reach`
+## metres of that point (0: reach() as usual).
+var talk_ahead := 0.0
+var talk_reach := 0.0
 var _mark: InteractionMark
 var _body: AnimatableBody3D
 ## The physics layer of the town (PlayerController.TOWN_LAYER).
@@ -163,7 +168,14 @@ func _sit() -> void:
 
 ## How far off the player can talk to them: across the counter for who sells.
 func reach() -> float:
+	if talk_reach > 0.0:
+		return talk_reach
 	return COUNTER_REACH if role in MERCHANT_ROLES else TALK_REACH
+
+
+## The point the reach counts from (PlayerController): before them by `talk_ahead`.
+func talk_position() -> Vector3:
+	return global_position + global_basis.z * talk_ahead
 
 
 ## The action shown near them ("[E] ...", PlayerController): who sells opens the shop screen,

@@ -182,6 +182,10 @@ func _init() -> void:
 	_model = PlayerModel.new()
 	_model.archetype_id = archetype_id
 	_model.spin = spin
+	# in the game: as the player is dressed now (a T-shirt until a coat is given)
+	var player := get_tree().get_first_node_in_group("speler") if is_inside_tree() else null
+	if player and player.has_method("wears_coat"):
+		_model.coat = player.wears_coat()
 	_model.gesture_cue.connect(func() -> void: gesture_cue.emit())
 	_viewport.add_child(_model)
 	_camera = Camera3D.new()

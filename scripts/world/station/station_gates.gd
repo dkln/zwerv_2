@@ -123,16 +123,18 @@ class Lane:
 		var ticket := OvCard.check_in(player, false) if direction > 0 else OvCard.check_out(player, false)
 		if ticket == "saldo" or ticket == "geen":
 			refuse()
-			gates.say(reader_point() + Vector3.UP * 0.6, OvCard.refusal(ticket), StationGates.RED)
+			gates.say(reader_point() + Vector3.UP * 0.6, OvCard.refusal(ticket, player), StationGates.RED)
 			return
 		if request(player):
+			# a trip not checked out: the next check-in keeps the boarding fare (OvCard)
+			var charge := OvCard.missed_check_out_charge(player) if direction > 0 and ticket == "kaart" else 0.0
 			if direction > 0:
 				OvCard.check_in(player)
 			else:
 				OvCard.check_out(player)
-			player.set_meta("ov_ingecheckt", direction > 0)
 			player.set_meta(StationGates.PASS_META, gates.clock() + StationGates.PASS_SECONDS)
-			gates.say(reader_point() + Vector3.UP * 0.6, "Ingecheckt" if direction > 0 else "Uitgecheckt", StationGates.GREEN)
+			var text := OvCard.check_in_text(charge) if direction > 0 else "Uitgecheckt"
+			gates.say(reader_point() + Vector3.UP * 0.6, text, StationGates.RED if charge > 0.0 else StationGates.GREEN)
 
 	func build(library: MeshLibrary) -> void:
 		var item := library.find_item_by_name("station/poortje_klep") if library else -1

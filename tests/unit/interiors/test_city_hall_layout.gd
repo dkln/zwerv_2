@@ -9,7 +9,7 @@ const Layout = preload("res://scripts/world/interiors/city_hall_layout.gd")
 ## The kinds of tile of a floor plan that make its layout (not the walls, not the lift).
 static func _furnishing(plan: Dictionary) -> Array:
 	var kinds := {}
-	for entry: Array in plan.tiles:
+	for entry: Array in plan.tiles + plan.wall_tiles:
 		if String(entry[0]) not in ["muur", "muur_laag", "lift"]:
 			kinds[String(entry[0])] = true
 	return kinds.keys()

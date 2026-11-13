@@ -41,6 +41,7 @@ const STATION_SCENE := "res://scenes/binnen/centraal.tscn"
 const SUPERMARKET_SCENE := "res://scenes/binnen/supermarkt.tscn"
 const CITY_HALL_SCENE := "res://scenes/binnen/stadhuis.tscn"
 const CityHallLayout = preload("res://scripts/world/interiors/city_hall_layout.gd")
+const WallMount = preload("res://scripts/world/interiors/wall_mount.gd")
 const LIFT_SCENE := "res://scenes/binnen/lift.tscn"
 const LiftRide = preload("res://scripts/world/interiors/lift_ride.gd")
 const SCENES := {"snackbar": SCENE, "centraal": STATION_SCENE, "supermarkt": SUPERMARKET_SCENE, "stadhuis": CITY_HALL_SCENE,
@@ -464,6 +465,11 @@ func _build_city_hall(library: MeshLibrary) -> void:
 					Vector3(-width * 0.5 + 2.0 + column * 4.0, 0.0, -depth * 0.5 + 2.0 + row * 4.0), 0.0, missing)
 		for entry: Array in plan.tiles:
 			_put_item(furniture, library, "stadhuis/" + String(entry[0]), entry[1], float(entry[2]), missing)
+		# the paintings and the coat of arms: just before the wall, not half in it
+		for entry: Array in plan.wall_tiles:
+			var wall_tile := "stadhuis/" + String(entry[0])
+			if not WallMount.put(floor_node, library, wall_tile, entry[1], float(entry[2])) and not missing.has(wall_tile):
+				missing.append(wall_tile)
 		_marker_at(floor_node, "Lift", plan.lift_spot, PI)
 		_marker_at(floor_node, "Liftdeur", (plan.lift as Vector3) + Vector3(0.0, 0.0, -CityHallLayout.LIFT_DEPTH * 0.5 + 0.06), PI)
 		for index in plan.people.size():

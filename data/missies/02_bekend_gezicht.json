@@ -1,0 +1,156 @@
+{
+	"uitleg": "Missie 2, hoofdstuk 1 (Op straat). Ome Wim staat op het Plein (data/gesprekken/personages.json). Zie data/LEESMIJ.md.",
+	"id": "missie_2_bekend_gezicht",
+	"label": "MISSIE 2",
+	"titel": "Bekend gezicht",
+	"gever": "Ome Wim",
+	"beschrijving": "Ome Wim slaapt al twintig jaar op straat en kent iedereen in het Centrum. Als iemand weet wie er 's nachts met andermans spullen vandoor gaat, is hij het.",
+	"start": "na:missie_1_lege_maag",
+	"xp": 200,
+	"beloningen": [
+		"OUDE JAS",
+		"KAART VAN HET CENTRUM"
+	],
+	"start_paginas": [
+		{
+			"soort": "gedachte",
+			"tekst": "Ome Wim. Die staat elke ochtend op het Plein, bij het standbeeld. Hij ziet alles en hij hoort alles. Misschien weet hij wie mijn pas heeft."
+		}
+	],
+	"stappen": [
+		{
+			"id": "zoeken",
+			"tekst": "Zoek Ome Wim op het Plein",
+			"xp": 20,
+			"opent": [
+				"plein"
+			],
+			"doel": {
+				"soort": "naar_persoon",
+				"persoon": "ome_wim",
+				"straal": 6
+			},
+			"klaar_paginas": []
+		},
+		{
+			"id": "praten",
+			"tekst": "Praat met hem over je gestolen pas",
+			"xp": 30,
+			"doel": {
+				"soort": "praten_met",
+				"persoon": "ome_wim"
+			},
+			"klaar_paginas": []
+		},
+		{
+			"id": "overtuigen",
+			"tekst": "Optioneel: overtuig hem om meer te vertellen",
+			"optioneel": true,
+			"xp": 40,
+			"doel": {
+				"soort": "check",
+				"check": "overtuigen_wim"
+			},
+			"klaar_paginas": []
+		},
+		{
+			"id": "rondje",
+			"tekst": "Loop met Ome Wim een rondje door het Centrum",
+			"xp": 60,
+			"gesprekken": {
+				"ome_wim": "rondje"
+			},
+			"opent": [
+				"centrum"
+			],
+			"doel": {
+				"soort": "begeleiden",
+				"persoon": "ome_wim",
+				"route": [
+					"plein",
+					"buitenhof",
+					"grote_markt",
+					"grote_marktstraat"
+				]
+			},
+			"klaar_paginas": []
+		},
+		{
+			"id": "werver",
+			"tekst": "Een goededoelenwerver staat in de weg: praat je eruit of loop om",
+			"xp": 30,
+			"doel": {
+				"soort": "werver",
+				"persoon": "werver",
+				"straal": 9,
+				"plek": "tram_grote_marktstraat",
+				"voorbij": "spui"
+			},
+			"klaar_paginas": [
+				{
+					"soort": "gesprek",
+					"spreker": "OME WIM",
+					"tekst": "Die lui. Ze willen je pinpas, je handtekening en je ziel, in die volgorde. Kom, nog een klein stukje."
+				}
+			]
+		},
+		{
+			"id": "jas",
+			"tekst": "Neem zijn oude jas aan",
+			"xp": 20,
+			"gesprekken": {
+				"ome_wim": "jas"
+			},
+			"doel": {
+				"soort": "begeleiden",
+				"persoon": "ome_wim",
+				"route": [
+					"spui"
+				]
+			},
+			"geeft": [
+				{
+					"item": "oude_jas",
+					"aantal": 1
+				}
+			],
+			"klaar_paginas": [
+				{
+					"soort": "gesprek",
+					"spreker": "OME WIM",
+					"tekst": "Hier. Mijn oude jas. De voering is kapot, maar hij houdt de wind tegen. 's Nachts wordt het koud op de stenen, en zonder jas hou je het niet lang vol."
+				},
+				{
+					"soort": "gedachte",
+					"tekst": "Hij ruikt naar sigaren en natte hond. Hij is perfect."
+				}
+			]
+		}
+	],
+	"einde_paginas": [
+		{
+			"soort": "gesprek",
+			"spreker": "OME WIM",
+			"tekst": "Nu weet je de weg in het Centrum. De snackbar bij het hertenkamp, het station, het Malieveld, het Haagse Bos: die staan nu op je kaart. Daar vind je mensen zoals wij."
+		},
+		{
+			"soort": "gedachte",
+			"als": "check:overtuigen_wim",
+			"tekst": "Een vent in een nette jas, zei Wim. Die loopt 's nachts langs de slapers en bukt zich bij de rugzakken. Wie draagt er nou een nette jas om drie uur 's nachts?"
+		}
+	],
+	"markeringen": [
+		"snackbar_hertenkamp",
+		"centraal",
+		"malieveld",
+		"haagse_bos"
+	],
+	"gesprekken_na_afloop": {
+		"ome_wim": "klaar"
+	},
+	"opent_na_afloop": [
+		"station",
+		"malieveld",
+		"haagse_bos"
+	]
+}

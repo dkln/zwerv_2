@@ -33,6 +33,11 @@ class TestPlayer:
 	extends Node3D
 	var inventory := {}
 
+	func drop_item(item_id: String) -> void:
+		inventory[item_id] = int(inventory.get(item_id, 1)) - 1
+		if int(inventory[item_id]) <= 0:
+			inventory.erase(item_id)
+
 
 func _gates(directions: Array) -> TestGates:
 	var gates := TestGates.new()
@@ -152,3 +157,54 @@ func test_where_you_stand(test) -> void:
 	test.check(gates.lanes[0].action_text() == "Inchecken" and gates.lanes[1].action_text() == "Uitchecken",
 		"erin inchecken, eruit uitchecken")
 	gates.free()
+
+
+## Not checked out (out of the station still checked in): the next check-in at a gate keeps
+## the rest of the boarding fare and says so; a check-in after a check-out costs the fare.
+func test_not_checked_out_costs_the_boarding_fare(test) -> void:
+	var gates := _gates([1, -1])
+	var station := TestStation.new()
+	var player := TestPlayer.new()
+	station.the_player = player
+	gates.station = station
+	player.inventory[StationGates.CARD_ITEM] = 1
+	player.set_meta(OvCard.BALANCE_META, 10.0)
+	var lane_in: StationGates.Lane = gates.lanes[0]
+	lane_in.go_through()
+	test.check(OvCard.is_checked_in(player) and is_equal_approx(OvCard.balance(player), 9.0), "ingecheckt: € 1 eraf")
+	test.check(OvCard.leave_open_trip(player) == "kaart" and not OvCard.is_checked_in(player), "het station uit zonder uitchecken")
+	test.check(is_equal_approx(OvCard.missed_check_out_charge(player), OvCard.BOARDING_FARE - OvCard.RIDE_FARE), "de rit staat open: het instaptarief")
+	lane_in.release(player)
+	lane_in.go_through()
+	test.check(is_equal_approx(OvCard.balance(player), 9.0 - OvCard.BOARDING_FARE), "volgende keer inchecken: het instaptarief ingehouden (€ %.2f over)" % OvCard.balance(player))
+	test.check(station.said.has("Niet uitgecheckt: € 3,00 ingehouden"), "en de lezer zegt het (%s)" % str(station.said))
+	# in again without checking out: the same
+	lane_in.release(player)
+	lane_in.go_through()
+	test.check(is_equal_approx(OvCard.balance(player), 5.0 - OvCard.BOARDING_FARE), "nog eens inchecken zonder uitchecken: weer het instaptarief")
+	# out at the out gate, then in: the fare only
+	var lane_out: StationGates.Lane = gates.lanes[1]
+	lane_out.go_through()
+	test.check(not OvCard.is_checked_in(player), "uitgecheckt")
+	lane_in.release(player)
+	lane_in.go_through()
+	test.check(is_equal_approx(OvCard.balance(player), 0.0), "netjes uitgecheckt: daarna alleen de ritprijs")
+	# the boarding fare owed and too little on the card: no
+	OvCard.leave_open_trip(player)
+	player.set_meta(OvCard.BALANCE_META, 2.0)
+	lane_in.release(player)
+	test.check(OvCard.check_in(player, false) == "saldo", "te weinig voor het instaptarief en de rit: nee")
+	test.check(OvCard.refusal("saldo", player) == "Saldo te laag (€ 4,00 nodig)", "en hoeveel nodig is (%s)" % OvCard.refusal("saldo", player))
+	player.free()
+	station.free()
+	gates.free()
+
+
+## A single ticket not checked out is used up.
+func test_ticket_not_checked_out_is_used_up(test) -> void:
+	var player := TestPlayer.new()
+	player.inventory[OvCard.TICKET_ITEM] = 1
+	test.check(OvCard.check_in(player) == "kaartje" and OvCard.is_checked_in(player), "ingecheckt met een los kaartje")
+	test.check(OvCard.leave_open_trip(player) == "kaartje" and not OvCard.has_ticket(player), "niet uitgecheckt: het kaartje is op")
+	test.check(OvCard.missed_check_out_charge(player) == 0.0, "geen instaptarief zonder kaart")
+	player.free()

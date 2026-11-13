@@ -6,12 +6,15 @@ extends "res://tests/integration/support/town_test.gd"
 ## OV-chipkaart machines, OV posts, the people behind the counters and people walking; a card
 ## bought at a machine opens a gate; who goes over the gates without checking in gets a
 ## conductor after them (fined when caught, who stays off the rails and goes round through
-## the hall); a train that is due leaves (whistle, doors, out of the hall) and its track
+## the hall), and so does who goes out over them without checking out or stands on a platform
+## unchecked when a conductor checks; out of the station still checked in, the next check-in
+## keeps the boarding fare; a train that is due leaves (whistle, doors, out of the hall) and its track
 ## gets the next one; the travellers keep moving; out through door 3 you stand before the
 ## eastern door.
 ##   tests/run_integration_tests.sh station
 
 const Layout = preload("res://scripts/world/station/station_layout.gd")
+const OvCard = preload("res://scripts/world/station/ov_card.gd")
 ## Seconds someone on their way may stand still before they count as stuck.
 const STILL_LIMIT := 20
 ## Seconds the travellers are watched for standing still.
@@ -35,10 +38,40 @@ func _station() -> Node3D:
 	if station._chaser != null:
 		station._end_chase()
 	station.fare_check_chance_override = -1.0
-	if player.has_meta("ov_doorgang_tot"):
-		player.remove_meta("ov_doorgang_tot")
+	station.inspection_chance_override = -1.0
+	station._fined_on_the_platforms = false
+	for meta: String in ["ov_doorgang_tot", OvCard.CHECKED_IN_WITH_META, OvCard.MISSED_CHECK_OUT_META]:
+		if player.has_meta(meta):
+			player.remove_meta(meta)
+	player.set_meta(OvCard.CHECKED_IN_META, false)
 	player.inventory.erase("ov_chipkaart")
 	return station
+
+
+## The player with an OV-chipkaart with `balance` on it.
+func _give_card(balance: float) -> void:
+	player.inventory["ov_chipkaart"] = 1
+	player.set_meta(OvCard.BALANCE_META, balance)
+
+
+## The out lanes (platform to hall) of `gates_node`: one no one is using (else the first).
+func _free_lane_out(gates_node: Node) -> Node3D:
+	var lanes_out: Array = (gates_node.lanes as Array).filter(func(candidate: Node3D) -> bool: return candidate.direction < 0)
+	for candidate: Node3D in lanes_out:
+		if candidate.occupant == null and candidate.queue.is_empty():
+			return candidate
+	return lanes_out[0]
+
+
+## The player onto the platform behind `lane_in` as if checked in there (the pass the gate
+## gives), no conductor noticing anything.
+func _onto_the_platform(station: Node3D, lane_in: Node3D) -> void:
+	station.fare_check_chance_override = 0.0
+	player.teleport(station.to_global(lane_in.entry_point()), 0.0)
+	await frames(3)
+	player.set_meta("ov_doorgang_tot", Time.get_ticks_msec() / 1000.0 + 10.0)
+	player.teleport(station.to_global(lane_in.exit_point() + Vector3(0.0, 0.0, PAST_THE_GATE)), 0.0)
+	await frames(3)
 
 
 ## Game time on with nothing holding the game shut (a story page, a reward).
@@ -73,6 +106,7 @@ func _call_off_the_chase(station: Node3D) -> void:
 	if station._chaser != null:
 		station._end_chase()
 	station.fare_check_chance_override = -1.0
+	station.inspection_chance_override = -1.0
 
 
 ## A track with no train on it now (else track 7): the rails free to stand on.
@@ -326,6 +360,140 @@ func test_fare_dodger_who_runs_gets_away(test) -> void:
 	test.check(escaped and station.chases_given_up > given_up_before and station.fines == fines_before,
 		"ontsnapt: de conducteur geeft het op (%d keer opgegeven, %d boetes)" % [station.chases_given_up - given_up_before, station.fines - fines_before])
 	_call_off_the_chase(station)
+
+
+## Checked in, but out over the gates into the hall without checking out: a conductor
+## (sure to notice) comes after you for not checking out; caught, the fine, and he checks
+## you out (no boarding fare on top of it later).
+func test_who_does_not_check_out_is_chased_and_fined(test) -> void:
+	var station := await _station()
+	test.check(station != null, "binnen in het station")
+	if station == null:
+		return
+	_give_card(10.0)
+	var gates_node: Node = station._gates[2]
+	await _onto_the_platform(station, _free_lane_in(gates_node))
+	test.check(OvCard.check_in(player) == "kaart" and OvCard.is_checked_in(player), "ingecheckt op het perron")
+	var chases_before: int = station.chases_started
+	var fines_before: int = station.fines
+	var lane_out := _free_lane_out(gates_node)
+	station.fare_check_chance_override = 1.0
+	player.teleport(station.to_global(lane_out.entry_point()), 0.0)
+	await frames(3)
+	player.teleport(station.to_global(lane_out.exit_point() - Vector3(0.0, 0.0, PAST_THE_GATE)), 0.0)
+	await frames(3)
+	test.check(station.chases_started == chases_before + 1 and station._chaser != null and station.chase_reason() == "uitchecken",
+		"zonder uitchecken de hal in: een conducteur erachteraan (%s)" % station.chase_reason())
+	player.add_money(80.0 - player.money)
+	var caught := false
+	for attempt in 40:
+		await _tick(0.25)
+		if station.fines > fines_before:
+			caught = true
+			break
+	test.check(caught and is_equal_approx(player.money, 30.0), "ingehaald: beboet (€ %.2f over van € 80)" % player.money)
+	test.check(not OvCard.is_checked_in(player) and OvCard.missed_check_out_charge(player) == 0.0, "de conducteur heeft je uitgecheckt: geen instaptarief erbij")
+	_call_off_the_chase(station)
+
+
+## Checked out at the out gate (the pass it gives), back into the hall: no conductor.
+func test_who_checks_out_goes_out_in_peace(test) -> void:
+	var station := await _station()
+	test.check(station != null, "binnen in het station")
+	if station == null:
+		return
+	_give_card(10.0)
+	var gates_node: Node = station._gates[4]
+	await _onto_the_platform(station, _free_lane_in(gates_node))
+	OvCard.check_in(player)
+	var lane_out := _free_lane_out(gates_node)
+	await put_player_in(station, lane_out.entry_point())
+	var chases_before: int = station.chases_started
+	station.fare_check_chance_override = 1.0
+	lane_out.go_through()
+	test.check(not OvCard.is_checked_in(player), "uitgecheckt bij het poortje")
+	player.teleport(station.to_global(lane_out.exit_point() - Vector3(0.0, 0.0, PAST_THE_GATE)), 0.0)
+	await frames(3)
+	test.check(station.chases_started == chases_before and station._chaser == null, "uitgecheckt de hal in: geen conducteur")
+	_call_off_the_chase(station)
+
+
+## On the platform without a check-in (slipped through unseen): a conductor close by checks
+## the card and comes after you; checked in, he only looks.
+func test_conductor_on_the_platform_checks_the_card(test) -> void:
+	var station := await _station()
+	test.check(station != null, "binnen in het station")
+	if station == null:
+		return
+	_give_card(10.0)
+	var platform_spot := Vector3(Layout.platform_walk_x(5), 0.0, Layout.GATE_Z + 14.0)
+	await _onto_the_platform(station, _free_lane_in(station._gates[2]))
+	station.inspection_chance_override = 1.0
+	# deterministic: no one new comes in during the test, the chances run from a fixed seed,
+	# and the conductors of the test stand where they are put (a random route could start with
+	# boarding, or walk them out of reach)
+	station._spawn_clock = 1.0e9
+	station._fare_random.seed = 20261113
+	# checked in: he looks at the card and lets you be
+	OvCard.check_in(player)
+	_only_these_check(station, [])
+	var first: Node3D = station._spawn("conducteur", platform_spot + Vector3(0.0, 0.0, 1.0))
+	_stand_still(first)
+	var inspections_before: int = station.inspections
+	var chases_before: int = station.chases_started
+	player.teleport(station.to_global(platform_spot), 0.0)
+	await frames(3)
+	test.check(station.inspections == inspections_before + 1 and station.chases_started == chases_before, "ingecheckt: kaartcontrole, geen achtervolging")
+	# not checked in (as after checking out at a post): he is after you
+	OvCard.check_out(player)
+	_only_these_check(station, [])
+	var strict: Node3D = station._spawn("conducteur", platform_spot + Vector3(0.0, 0.0, 8.5))
+	_stand_still(strict)
+	player.teleport(station.to_global(platform_spot + Vector3(0.0, 0.0, 6.0)), 0.0)
+	await frames(3)
+	test.check(station.chases_started == chases_before + 1 and station._chaser == strict and station.chase_reason() == "zwartrijden",
+		"niet ingecheckt op het perron: de conducteur van de controle zit je achterna (%d achtervolgingen, %d controles, conducteur op %s)"
+		% [station.chases_started - chases_before, station.inspections - inspections_before, strict.position.snapped(Vector3.ONE * 0.1)])
+	_call_off_the_chase(station)
+
+
+## Every station person now present counts as having checked the player already, except `keep`.
+func _only_these_check(station: Node3D, keep: Array) -> void:
+	for walker: Node3D in station.station_people():
+		if not keep.has(walker):
+			walker.set_meta(station.INSPECTED_META, true)
+
+
+## The person stays where they are put, facing the platform's edge (no route of their own).
+func _stand_still(person: Node3D) -> void:
+	var standing: Array[Dictionary] = [{"type": "stand", "face": Vector3(0.0, 0.0, 1.0)}]
+	person.steps = standing
+
+
+## Out of the station still checked in: the next check-in keeps the rest of the boarding fare
+## (and says so); after that a check-in costs the fare again.
+func test_leaving_without_checking_out_costs_the_boarding_fare(test) -> void:
+	var station := await _station()
+	test.check(station != null, "binnen in het station")
+	if station == null:
+		return
+	_give_card(10.0)
+	test.check(OvCard.check_in(player) == "kaart", "ingecheckt")
+	await leave_interior()
+	test.check(not interiors.is_inside() and not OvCard.is_checked_in(player) and bool(player.get_meta(OvCard.MISSED_CHECK_OUT_META, false)),
+		"het station uit zonder uitchecken: de rit staat nog open")
+	await enter("centraal")
+	station = interiors.interior_of("centraal")
+	var lane := _free_lane_in(station._gates[3])
+	await put_player_in(station, lane.entry_point())
+	var balance_before := OvCard.balance(player)
+	lane.go_through()
+	var kept := balance_before - OvCard.balance(player)
+	test.check(is_equal_approx(kept, OvCard.BOARDING_FARE), "het instaptarief ingehouden (€ %.2f van het saldo)" % kept)
+	test.check(not player.has_meta(OvCard.MISSED_CHECK_OUT_META) or not bool(player.get_meta(OvCard.MISSED_CHECK_OUT_META)), "daarna is het verrekend")
+	test.check(OvCard.check_out(player) == "kaart" and OvCard.missed_check_out_charge(player) == 0.0, "netjes uitgecheckt: niets meer")
+	if player.has_meta("ov_doorgang_tot"):
+		player.remove_meta("ov_doorgang_tot")
 
 
 ## The player down on the rails: the conductor after them stays on the platform edge above.

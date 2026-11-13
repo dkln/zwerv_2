@@ -1,10 +1,11 @@
 # Een compositie aanleveren als JSON
 
-De muziek van ZWERVR wordt gemaakt uit één compositie (zie `docs/MUZIEK.md` en de skill
-`muziek-compositie`). De beste manier om een nieuw nummer aan te leveren is JSON: de partituur als
+De muziek van ZWERVR wordt gemaakt uit de basissoundtracks: een primaire (de intro), een secundaire
+(het menu) en eventueel een tertiaire (de vechtscène); zie `docs/MUZIEK.md` en de skill
+`muziek-compositie`. De beste manier om een nieuw nummer aan te leveren is JSON: de partituur als
 gegevens, met een WAV erbij van hoe het moet klinken. Het formaat is dat van de export van de
 tracker van de componist (Gemini); `tools/muziek/composities/nitro_overdrive_92.json` is het
-voorbeeld. Een VGM of een tracker-pagina kan ook, maar daar gaat makkelijk iets in verloren
+voorbeeld. Een tracker-pagina kan ook, maar daar gaat makkelijk iets in verloren
 (stemmen die niet worden weggeschreven, verkeerd omgerekende toonhoogtes).
 
 Inlezen: `tools/muziek/render.sh --json <bestand.json> [naam]` (`--toon` laat alleen zien wat erin
@@ -78,9 +79,60 @@ Een bestand dat niet compleet is wordt geweigerd, met per regel wat er mis is en
 Alles wat de componist zelf afspeelt hoort erin: een stem die niet in het JSON staat, bestaat voor
 ons niet.
 
+## De platte vorm
+
+Een andere export van de tracker zet alles plat (`street_viper_92.json` is het voorbeeld). Die
+wordt ook gelezen: `json_bron.from_flat` maakt er de vorm hierboven van, en daarna gaat alles
+hetzelfde.
+
+```json
+{
+  "title": "Street Viper '92", "bpm": 128, "timeSignature": "4/4", "stepsPerBar": 16, "key": "E Mixolydian",
+  "bars": [
+    {"bar": 1, "section": "A - Intro: Igniter", "chord": "E5",
+     "lead":  [null, "---", "E5", ...],
+     "brass": [["E4", "B4"], "---", null, ...],
+     "arp":   ["E5", null, "B4", ...],
+     "bass":  ["E2", null, "E2", "E3", ...],
+     "drums": ["K+H", "H", "S+O", null, ...]}
+  ]
+}
+```
+
+| veld | wat het wordt |
+|---|---|
+| `title`, `bpm`, `key`, `stepsPerBar` bovenaan | `metadata` |
+| `bars[].bar` | `barNumber` |
+| `bars[].section` | de secties: elke reeks maten met dezelfde naam is een sectie (de soort uit de naam, zie hierboven; ook MAIN of GROOVE = thema) |
+| `bars[].chord` (een naam) | `chord.name` |
+| `bass`, `lead`, `arp` | `FM1_bass`, `FM3_lead`, `PSG_arp` |
+| `brass`: per stap een lijst noten (een aanslag) of `"---"` / `null` | `FM2_stabs` (1 bij een lijst) en vanaf elke aanslag zijn noten als het akkoord (`voicingSteps_<van>_to_<tot>`) |
+| (geen harmoniespoor) | `FM4_harmony` leeg |
+| `drums`: letters, samen met `+` | `K` kick, `S` snare, `H` dichte hi-hat, `O` open hi-hat, `T` een tom (geen toonhoogte genoemd: de middelste, `TOM2`); `"K+H"` wordt `"KCK+CHH"`: meer drums op dezelfde stap |
+
+Een vakje `null` is stilte: direct na een noot stopt die daar (`"==="`), anders is het een rust
+(`"---"`). `"---"` houdt de noot aan. Ontbreekt `synthParameters`, dan gelden de volumes van de
+tracker zelf (het wordt gemeld).
+
 ## Wat een tracker-pagina nog meer exporteert
 
 De pagina van de componist laat drie verschillende dingen horen: zijn eigen synth (bij afspelen;
 die bouwen wij na), een WAV-export met een versimpelde synth, en een VGM-export. Bij
 `nitro_overdrive_92` miste het VGM vier van de zes stemmen en waren de toonhoogtes fout omgerekend.
 Lever daarom het JSON aan; de WAV dient alleen als meetlat.
+
+## De tijdlijn
+
+Een volledige export met de klanken erbij (`neon_knuckle.json` is het voorbeeld) wordt gelezen door
+`tools/muziek/tijdlijn.py` (`render.sh --json` geeft hem door): `metadata` (`bpm`, `steps_per_bar` 16,
+`loop_points`), `hardware_patches` (per YM2612-kanaal `algorithm`, `feedback` en vier `operators` met
+`MUL`, `DET` (-3..3), `TL`, `AR`, `D1R`, `D2R`, `D1L`, `RR`), `arrangement_structure` (de secties),
+`full_track_timeline_<n>_bars` (per maat per stap elk kanaal) en `flat_sequencer_events` (de noten van
+FM1-FM3 met hun lengte en velocity, en de velocity van elke drumslag).
+
+Het wordt een gewoon compositiebestand, elke noot letterlijk: de FM-kanalen spelen hun eigen patch
+uit het bestand (`patch:<bestand>:<kanaal>`, door de chipnabootsing, op hun eigen niveau), de PSG-kanalen
+de PSG-klanken, de DAC-samples en ruis-hats het Mega Drive-drumstel (`KICK_SNARE_CLAP` drie slagen
+tegelijk). Wat het bestand niet zegt: de pad (FM4) houdt aan tot zijn volgende akkoord, de echo (PSG2)
+tot zijn volgende noot ("sustain"). Niet nagespeeld en gemeld: samples zonder klank (een stem), en
+effecten (vibrato, slides).

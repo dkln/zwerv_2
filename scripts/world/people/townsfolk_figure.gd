@@ -496,6 +496,8 @@ static func _build_voxels(figure: PlayerModel.VoxelFigure, figure_look: Dictiona
 	figure.put(7, 31, 0, EYE)
 	figure.box(Vector3i(5, 28, 0), Vector3i(6, 28, 0), MOUTH)
 	_hair(figure, figure_look, hair)
+	if str(figure_look.get("model", "")) == "bertus":
+		_bertus(figure, figure_look)
 	figure.mark("skin", [skin, skin.darkened(0.05), skin.darkened(0.08)])
 	figure.mark("eye", [EYE])
 	figure.mark("hair", [hair])
@@ -505,6 +507,48 @@ static func _build_voxels(figure: PlayerModel.VoxelFigure, figure_look: Dictiona
 	figure.mark("cloth", [figure_look.cap, (figure_look.cap as Color).darkened(0.45)])
 	figure.mark("plastic", [figure_look.helmet])
 	figure.mark("glass", [Color("#20242E")])
+
+
+## A look of its own ("model": "bertus", Blikken Bertus of data/gesprekken/personages.json):
+## a long patched overcoat down over the knees, a scarf, a big grey beard below the mouth, a
+## tall slouching knitted hat with a pompom, and a roll-up in the corner of the mouth with a
+## glowing tip ("patch", "scarf", "pompom": colours of the look; the coat and the hat are
+## "coat" and "cap"). The smoke is CigaretteSmoke (Characters puts it on him).
+static func _bertus(figure: PlayerModel.VoxelFigure, figure_look: Dictionary) -> void:
+	var coat: Color = figure_look.coat
+	var hat: Color = figure_look.cap
+	var hair: Color = figure_look.hair
+	var patch := Color(str(figure_look.get("patch", "#8A6A3A")))
+	var scarf := Color(str(figure_look.get("scarf", "#B83A2A")))
+	var pompom := Color(str(figure_look.get("pompom", "#E8D24A")))
+	# the overcoat: down over the thighs to the knees, a bit wider, with patches
+	figure.box(Vector3i(2, 9, -1), Vector3i(9, 15, 3), coat)
+	figure.box(Vector3i(2, 16, -1), Vector3i(9, 24, -1), coat)
+	figure.box(Vector3i(3, 17, -2), Vector3i(4, 19, -2), patch)
+	figure.box(Vector3i(7, 11, -2), Vector3i(8, 12, -2), patch)
+	figure.box(Vector3i(0, 19, -1), Vector3i(0, 20, 2), patch)   # on the left sleeve
+	# the scarf round the neck, an end hanging down the front
+	figure.box(Vector3i(3, 25, -1), Vector3i(8, 26, 3), scarf)
+	figure.box(Vector3i(7, 19, -2), Vector3i(8, 24, -2), scarf)
+	# the beard: from below the mouth down over the scarf, and up the cheeks
+	figure.box(Vector3i(3, 23, -2), Vector3i(8, 27, -1), hair)
+	figure.box(Vector3i(2, 27, -1), Vector3i(3, 30, 0), hair)
+	figure.box(Vector3i(8, 27, -1), Vector3i(9, 30, 0), hair)
+	figure.box(Vector3i(4, 29, -1), Vector3i(7, 29, -1), hair)   # the moustache
+	figure.clear(5, 28, -1)
+	figure.clear(6, 28, -1)
+	# the tall knitted hat over the ears, slouching back, with a pompom
+	figure.box(Vector3i(2, 32, -1), Vector3i(9, 36, 6), hat)
+	figure.box(Vector3i(2, 32, -1), Vector3i(9, 32, -1), hat.darkened(0.3))   # the turned-up rim
+	figure.box(Vector3i(3, 37, 1), Vector3i(8, 38, 7), hat)
+	figure.box(Vector3i(4, 39, 4), Vector3i(7, 39, 8), hat)
+	figure.box(Vector3i(5, 40, 7), Vector3i(6, 41, 8), pompom)
+	# the roll-up in the right corner of the mouth, its tip glowing
+	figure.put(7, 28, -2, Color("#E8E2D0"))
+	figure.put(7, 28, -3, Color("#E8E2D0"))
+	figure.put(7, 28, -4, Color("#FF7A2A"), true)
+	figure.mark("cloth", [patch, scarf, pompom, hat.darkened(0.3)])
+	figure.mark("cloth", [Color("#E8E2D0")])
 
 
 static func _hair(figure: PlayerModel.VoxelFigure, figure_look: Dictionary, hair: Color) -> void:

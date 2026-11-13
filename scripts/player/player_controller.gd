@@ -3,7 +3,9 @@ extends Node3D
 ## The player in the town (the node "Speler" of scenes/stad.tscn): the zwerver chosen on the
 ## character creation screen (PlayerCharacter), walking round with its stats. The camera
 ## follows it (Volgcamera, follow_camera.gd); the HUD shows its stats (set_stat) and the game
-## menu its inventory (scripts/ui/game_menu.gd).
+## menu its inventory (scripts/ui/game_menu.gd). F eats (or drinks) something from the
+## pockets without the menu (eat_something). Where the story's shroud is closed it cannot
+## walk (Story.may_walk, asked before every step: _may_walk).
 ##
 ## Walking (`controls`): "tank" (the default): A/D or left/right turn the figure round
 ## (`turn_speed`), W/S or up/down walk forwards or backwards the way it faces (backwards at
@@ -28,7 +30,8 @@ extends Node3D
 ## the game stands still meanwhile), they turn to you. A door (DOORS_GROUP: a snack bar's
 ## entrance, the way out of an interior; Interiors) shows its own action ("[E] Naar binnen")
 ## and E goes through it; teleport puts the player on the other side.
-## Space jumps (`jump_height` m, falling back at `jump_gravity`; it costs `jump_stamina`, not
+## Space jumps (once the story has unlocked "springen", jumping_open; `jump_height` m, falling
+## back at `jump_gravity`; it costs `jump_stamina`, not
 ## when exhausted): in the air it still steers, may come down on something up to its jump
 ## higher than where it left (a bench, a low wall, a raised square) or anywhere lower (off a
 ## platform), or into the water (it jumps in: the splash); the figure tucks its legs and
@@ -89,6 +92,16 @@ signal money_changed
 signal bought(item_id: String)
 ## A conversation started with someone (talk_to), the kind of person (Conversations.persona).
 signal talked(persona: String)
+## Something eaten, drunk or used (use_item), its item id.
+signal used(item_id: String)
+## A deposit machine paid out (DepositReturn.pay_out), the euros.
+signal deposited(euros: float)
+## A skill check in a conversation (Conversations: "kans_slaagt"), its id and whether it passed.
+signal checked(check_id: String, passed: bool)
+## Something got that shows (add_item, not `quiet`: picked up, bought), after inventory_changed
+## and before its note rises; a listener that shows it its own way (Story: the reward screen
+## for the first of a kind, "eerste_scherm") calls announced_elsewhere() and the note is left out.
+signal got_item(item_id: String, count: int)
 
 const KnockDown = preload("res://scripts/world/people/knock_down.gd")
 const GroundShadow = preload("res://scripts/effects/ground_shadow.gd")
@@ -108,6 +121,8 @@ const PLAYER_GROUP := "speler"
 const XP_GROWTH := 1.5
 const XP_TEXT_COLOUR := Color("#47D6C2")
 
+## Hunger runs out this much slower while wearing clothes (Items "worn": the coat of Ome Wim).
+const WORN_HUNGER_FACTOR := 0.85
 const STAT_NAMES := ["gezondheid", "uithoudingsvermogen", "honger", "overprikkeldheid"]
 const OVERSTIMULATION_MAXIMUM := 100.0
 ## Where every zwerver starts: the square by Centraal Station (a key of the "places" metadata).
@@ -197,6 +212,8 @@ const WAKE_AT_ARRIVAL := 0.8
 @export var hud_path := NodePath("../HUD")
 @export var ground_path := NodePath("../Grond")
 @export var buildings_path := NodePath("../Gebouwen")
+## The story (scripts/story/story.gd): where the player may walk (its shroud).
+@export var story_path := NodePath("../Verhaal")
 
 var archetype_id := ""
 var level := 1
@@ -249,10 +266,12 @@ var _vertical_speed := 0.0        # metres a second up (in a jump)
 var _takeoff_height := 0.0        # world y it jumped from
 var _jump_key_was_down := false
 var _talk_key_was_down := false
+var _eat_key_was_down := false
 var _talk_partner: Node3D          # who "[E] Praten" is for now
 var _drowning := false
 var _voice := "man"               # the voice of the cries of pain: man, oude_man, vrouw
 var _last_cry := 0
+var _announced := false           # a got_item listener shows the item itself (announced_elsewhere)
 
 
 func _ready() -> void:
@@ -274,9 +293,12 @@ func _ready() -> void:
 	_model.name = "Figuur"
 	_model.archetype_id = archetype_id
 	_model.simple = true   # seen from afar in the town: fewer details
+	_model.xray = false    # (the see-through shape did not work well: the rim instead, _update_rim)
 	_model.figure_scale = FIGURE_SCALE
+	_model.coat = _wears_something()   # everyone starts in a T-shirt, until given a coat
 	add_child(_model)
 	_figure_box = _with_pose_room(_outer_box(_model))
+	inventory_changed.connect(func() -> void: _model.coat = _wears_something())
 	# a soft light over the figure in the dark, so it can be made out (night_glow.gd)
 	var night_light := OmniLight3D.new()
 	night_light.name = "Nachtlicht"
@@ -376,13 +398,23 @@ func inventory_slots() -> int:
 
 ## True if there is room for one more of `item_id`: it has some already, or a slot is free.
 func has_room_for(item_id: String) -> bool:
-	return int(inventory.get(item_id, 0)) > 0 or inventory.size() < inventory_slots()
+	return int(inventory.get(item_id, 0)) > 0 or not Items.takes_slot(item_id) or slots_used() < inventory_slots()
+
+
+## The slots taken: the kinds of item in the pockets that take one (Items.takes_slot).
+func slots_used() -> int:
+	var used := 0
+	for item_id: String in inventory:
+		if Items.takes_slot(item_id):
+			used += 1
+	return used
 
 
 ## Adds items; false (and nothing added) if there is no room for them: the pockets full.
 ## Getting something shows: its name rises over the player in the colour of its rarity (over
 ## the story box too, for what a conversation gives), with the "item" chime; `quiet`: neither
 ## (a reward of a mission or a conversation: the reward screen shows it, GameHud.show_reward).
+## Not quiet, got_item fires first; a listener may show it itself (announced_elsewhere).
 func add_item(item_id: String, count := 1, quiet := false) -> bool:
 	if not has_room_for(item_id):
 		if _hud and _hud.has_method("show_floating_number"):
@@ -392,12 +424,23 @@ func add_item(item_id: String, count := 1, quiet := false) -> bool:
 	inventory_changed.emit()
 	if quiet:
 		return true
+	_announced = false
+	got_item.emit(item_id, count)
+	if _announced:
+		_announced = false
+		return true
 	if _hud and _hud.has_method("show_floating_number"):
 		var item_name := String(Items.item(item_id).get("name", item_id))
 		var label := "+ %s" % item_name if count == 1 else "+ %d x %s" % [count, item_name]
 		_hud.show_floating_number(global_position + Vector3.UP * 2.1, label, Items.rarity_colour(item_id), 15, true)
 	UiSounds.play(self, "item", -3.0)
 	return true
+
+
+## Called from a got_item listener that shows the item itself (the reward screen): the item
+## then gets no rising note and no chime of its own.
+func announced_elsewhere() -> void:
+	_announced = true
 
 
 ## Puts on a rucksack found in the town: more room (Items.BACKPACK_SLOTS), worn on the back,
@@ -428,6 +471,32 @@ func drop_item(item_id: String) -> void:
 	inventory_changed.emit()
 
 
+## The rim round the figure (PlayerModel.rim: a dark silhouette ringed bright, through the walls)
+## wherever something hides it from the camera: on all the time, its shader shows it only on
+## the pixels where the scene stands before the figure (figure_rim_mask.gdshader), so at once
+## and whatever hides it (buildings, trees, bridges, props), in the iso view and from above.
+## Off once dead and while the view comes down through the clouds at the start (is_arriving).
+func _update_rim(_delta: float) -> void:
+	if _model == null:
+		return
+	var follow := get_node_or_null(follow_camera_path)
+	var arriving: bool = follow != null and follow.has_method("is_arriving") and follow.is_arriving()
+	_model.rim = not _dead and not arriving
+
+
+## Whether it wears a coat (the figure: PlayerModel.coat; the stand-ins and portraits follow it).
+func wears_coat() -> bool:
+	return _wears_something()
+
+
+## Whether it wears something warm (an item "worn" in its pockets: Items.is_worn).
+func _wears_something() -> bool:
+	for item_id: String in inventory:
+		if Items.is_worn(item_id):
+			return true
+	return false
+
+
 ## Uses one of an item (eats, drinks...): its effect on the stats; false if it cannot.
 func use_item(item_id: String) -> bool:
 	if _dead or int(inventory.get(item_id, 0)) <= 0 or not Items.can_use(item_id):
@@ -436,7 +505,26 @@ func use_item(item_id: String) -> bool:
 	for stat_name: String in effect:
 		change_stat(stat_name, float(effect[stat_name]))
 	drop_item(item_id)
+	used.emit(item_id)
 	return true
+
+
+## Eats (or drinks) something from the pockets without the game menu (F): the food that
+## fills the stomach most, or else a drink; false when there is nothing.
+func eat_something() -> bool:
+	var best := ""
+	var best_score := 0.0
+	for item_id: String in inventory:
+		if not Items.can_use(item_id):
+			continue
+		var kind := String(Items.item(item_id).get("kind", ""))
+		if kind != "eten" and kind != "drinken":
+			continue
+		var score := float(Items.item(item_id).effect.get("honger", 0.0)) + (100.0 if kind == "eten" else 0.0)
+		if best == "" or score > best_score:
+			best = item_id
+			best_score = score
+	return best != "" and use_item(best)
 
 
 # ------------------------------------------------------------------ frame
@@ -447,6 +535,7 @@ func _process(delta: float) -> void:
 			_update_sleep(delta)
 	elif not _dead:
 		_update_stats(delta)
+	_update_rim(delta)
 	if _dead:
 		_blink_left = 0.0   # dying (and dead) it never blinks
 	if _blink_left > 0.0:
@@ -529,7 +618,8 @@ func _walk(delta: float) -> void:
 			if not move.call(Vector3(step.x, 0.0, 0.0)):
 				move.call(Vector3(0.0, 0.0, step.z))
 		# pushing against water: in it goes, at once when running
-		var water := _water_point(global_position + direction * 0.6) if global_position.distance_squared_to(start) < 0.0001 and not _airborne else Vector3.INF
+		var water := _water_point(global_position + direction * 0.6) if global_position.distance_squared_to(start) < 0.0001 and not _airborne \
+			and _may_walk(global_position + direction * 0.6) else Vector3.INF
 		if water != Vector3.INF:
 			_water_push += delta
 			if _running or _water_push >= water_push_time:
@@ -568,8 +658,13 @@ func _look_for_someone_to_talk_to() -> void:
 			# who sells behind a counter only from its front (InteriorPerson.can_talk_from)
 			if thing.has_method("can_talk_from") and not thing.call("can_talk_from", global_position):
 				continue
+			# who sells only once the story allows it (mission 1: after the deposit, "handelaars")
+			if Conversations.is_merchant(thing) and not merchants_open():
+				continue
 			var reach: float = thing.call("reach") if thing.has_method("reach") else talk_reach
-			var offset := Vector2(thing.global_position.x - global_position.x, thing.global_position.z - global_position.z)
+			# from where they are talked to (a seller at a cart: its counter, InteriorPerson.talk_position)
+			var from: Vector3 = thing.call("talk_position") if thing.has_method("talk_position") else thing.global_position
+			var offset := Vector2(from.x - global_position.x, from.z - global_position.z)
 			var distance := offset.length()
 			if distance > reach or absf(thing.global_position.y - global_position.y) > 1.2:
 				continue
@@ -593,6 +688,25 @@ func _look_for_someone_to_talk_to() -> void:
 		else:
 			talk_to(_talk_partner)
 	_talk_key_was_down = talk_key
+	var eat_key := Input.is_physical_key_pressed(KEY_F)
+	if eat_key and not _eat_key_was_down:
+		eat_something()
+	_eat_key_was_down = eat_key
+
+
+## Whether those who sell can be talked to: once the story has unlocked "handelaars" (mission 1,
+## after the cans are handed in: you have no money before that); without a story always.
+func merchants_open() -> bool:
+	var story := get_tree().get_first_node_in_group("verhaal")
+	return story == null or not story.has_method("is_unlocked") or bool(story.is_unlocked("handelaars"))
+
+
+## Whether Space jumps: once the story has unlocked "springen" (mission 1, as you come into
+## the station for the last two cans: the narrator says you will need a way onto the
+## platforms); without a story always.
+func jumping_open() -> bool:
+	var story := get_tree().get_first_node_in_group("verhaal") if is_inside_tree() else null
+	return story == null or not story.has_method("is_unlocked") or bool(story.is_unlocked("springen"))
 
 
 ## Puts the player at `at` (on the ground there), facing `yaw`: going into or out of a
@@ -650,6 +764,8 @@ func talk_to(person: Node3D) -> void:
 
 ## Off the ground, if there is the stamina for it (not when exhausted).
 func _start_jump() -> void:
+	if not jumping_open():
+		return   # not until the story unlocks it (mission 1, in the station)
 	var stamina: Vector2 = _stats.uithoudingsvermogen
 	if _exhausted or stamina.x < jump_stamina:
 		return
@@ -692,6 +808,8 @@ func _try_move_in_air(offset: Vector3) -> bool:
 	if offset.length_squared() < 0.00000001:
 		return false
 	var goal := global_position + offset
+	if not _may_walk(goal):
+		return false
 	var ground := _ground_height(goal, global_position.y, global_position.y - _takeoff_height + max_fall)
 	if is_nan(ground):
 		# over water it may fly on too: it comes down in it (_fall)
@@ -722,6 +840,13 @@ func _jump_pose(on: bool) -> void:
 		_model.pose_limb(limb, JUMP_POSE[limb] if on else Vector3.ZERO)
 
 
+## Whether the story lets the player walk to `goal` (the shroud: Story.may_walk); everywhere
+## when there is no story.
+func _may_walk(goal: Vector3) -> bool:
+	var story := get_node_or_null(story_path)
+	return story == null or not story.has_method("may_walk") or story.may_walk(goal.x, goal.z)
+
+
 ## Moves by `offset` if the ground there can be walked on and the figure fits; true if so.
 ## Down more than `max_step` (a platform edge, a wall; ground within `max_fall`) it steps off
 ## and falls instead of stepping down.
@@ -729,6 +854,8 @@ func _try_move(offset: Vector3) -> bool:
 	if offset.length_squared() < 0.00000001:
 		return false
 	var goal := global_position + offset
+	if not _may_walk(goal):
+		return false
 	var height := _ground_height(goal, global_position.y)
 	if is_nan(height) or height < global_position.y - max_step:
 		return _step_off_edge(goal, offset)
@@ -1066,6 +1193,8 @@ func _walkable_near(around: Vector3, above: float, reach: float) -> Vector3:
 func _update_stats(delta: float) -> void:
 	var hunger: Vector2 = _stats.honger
 	var hunger_rate := hunger_per_minute / 60.0 * (running_hunger_factor if _running else 1.0)
+	if _wears_something():
+		hunger_rate *= WORN_HUNGER_FACTOR
 	_stats.honger = Vector2(maxf(hunger.x - hunger_rate * delta, 0.0), hunger.y)
 	if _stats.honger.x <= 0.0:
 		_starvation_clock += delta

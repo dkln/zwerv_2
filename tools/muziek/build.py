@@ -1,9 +1,13 @@
-"""Makes all the music of the game from the active composition (docs/MUZIEK.md):
+"""Makes all the music of the game from the base compositions of composities/actief.py
+(ACTIEF, primary: the intro and most derived pieces; MENU, secondary: the menu and derive.SECONDARY_PIECES;
+GEVECHT, tertiary: the fight scene, when set; docs/MUZIEK.md):
 
     tools/muziek/render.sh                         everything, into assets/audio/muziek/
     tools/muziek/render.sh zwervr_intro spel_loop  only these pieces
     tools/muziek/render.sh --uit /some/folder      somewhere else (to listen before replacing)
-    ZWERVR_COMPOSITIE=<naam> tools/muziek/render.sh    another composition than composities/actief.py
+    ZWERVR_COMPOSITIE=<naam> tools/muziek/render.sh    another first composition than composities/actief.py
+    ZWERVR_MENU_COMPOSITIE=<naam> tools/muziek/render.sh   another second (menu) composition
+    ZWERVR_GEVECHT_COMPOSITIE=<naam> tools/muziek/render.sh   a third (fight scene) composition
 
 The intro also writes scripts/ui/intro_timing.gd: the moments (MOMENTEN) of the composition in
 seconds, which the intro's pictures follow.
@@ -64,7 +68,16 @@ def main() -> None:
     composition_name = score_module.active_name()
     score = score_module.load(composition_name)
     print(f"compositie: {composition_name} ({score.title}, {score.tempo:g} BPM, {len(score.bars)} maten)")
-    pieces = derive.pieces(score)
+    menu_name = score_module.menu_name()
+    menu_score = score_module.load(menu_name) if menu_name != composition_name else None
+    if menu_score:
+        print(f"menu: {menu_name} ({menu_score.title}, {menu_score.tempo:g} BPM, {len(menu_score.bars)} maten): "
+              + ", ".join(make.__name__ for make in derive.SECONDARY_PIECES))
+    fight_name = score_module.fight_name()
+    fight_score = score_module.load(fight_name) if fight_name else None
+    if fight_score:
+        print(f"gevecht: {fight_name} ({fight_score.title}, {fight_score.tempo:g} BPM, {len(fight_score.bars)} maten)")
+    pieces = derive.pieces(score, menu_score, fight_score)
     known = [piece.name for piece in pieces]
     unknown = [name for name in arguments.names if name not in known]
     if unknown:

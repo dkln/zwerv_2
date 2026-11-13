@@ -69,6 +69,9 @@ var _player: Node
 var _rows: Array[Dictionary] = []  # {"kind": "kopen" | "tip" | "weg", "index", "button", "name", "price"}
 var _chosen := 0
 var _was_paused := false
+## Whether the game must stay paused when this closes (another screen still up; GameHud sets
+## it). Else as it was before it opened.
+var keep_paused := Callable()
 var _music_before := ""
 var _hud: Node
 var _leaving := false
@@ -361,7 +364,7 @@ func _close() -> void:
 		_portrait = null
 	if _hud and _hud.has_method("set_indoor_music") and _music_before != SHOP_MUSIC:
 		_hud.set_indoor_music(_music_before)
-	get_tree().paused = _was_paused
+	get_tree().paused = bool(keep_paused.call()) if keep_paused.is_valid() else _was_paused
 	finished.emit()
 
 

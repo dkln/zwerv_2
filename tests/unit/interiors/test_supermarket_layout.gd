@@ -17,6 +17,8 @@ const BRANCHES := 90
 const TOUCH := 0.06
 ## Half the width of someone standing at a spot (metres).
 const PERSON_RADIUS := 0.22
+## How far round a spot where a shopper stops they (or the trolley before them) reach (metres).
+const CART_REACH := 0.4
 
 ## brand -> what _survey found (made once for all the tests).
 static var _surveys := {}
@@ -35,7 +37,7 @@ static func _survey(brand: String) -> Dictionary:
 	var props_library: MeshLibrary = load(Supermarket.PROPS_LIBRARY)
 	var found := {"kinds": {}, "sizes": {}, "missing": {}, "overlaps": 0, "first_overlap": "", "inside": 0,
 		"unreachable": 0, "first_unreachable": "", "fewest_checkouts": 99,
-		"self_scans": 0, "bakery": 0, "freezers": 0, "lengte": 0, "breedte": 0}
+		"self_scans": 0, "bakery": 0, "freezers": 0, "lengte": 0, "breedte": 0, "in_lane": 0, "first_in_lane": ""}
 	for width: int in WIDTHS:
 		for seed in SEEDS:
 			var plan := Layout.plan(brand, seed * 7919 + width, width)
@@ -43,7 +45,7 @@ static func _survey(brand: String) -> Dictionary:
 				plan.aisles, plan.checkouts.size()]] = true
 			if seed == 0:
 				found.sizes[width] = [float(plan.width), float(plan.depth)]
-			for entry: Array in plan.tiles:
+			for entry: Array in plan.tiles + plan.wall_tiles:
 				if library.find_item_by_name(Supermarket.PREFIX + String(entry[0])) < 0:
 					found.missing[String(entry[0])] = true
 			for entry: Array in plan.props:
@@ -67,6 +69,27 @@ static func _survey(brand: String) -> Dictionary:
 						found.overlaps += 1
 						if found.first_overlap == "":
 							found.first_overlap = "seed %d breedte %d: %s en %s" % [seed, width, inner[first], inner[second]]
+			# the way in from the door: no furniture in it (all of it, also what stands against a
+			# wall), no one stopping in it (a person and, with a trolley, the trolley before them)
+			var lane: Rect2 = plan.entrance_lane
+			var lane_box := AABB(Vector3(lane.position.x, 0.05, lane.position.y), Vector3(lane.size.x, 1.5, lane.size.y))
+			var stops: Array = [plan.cart_at, plan.basket_at]
+			for shelf: Dictionary in plan.shelves:
+				stops.append_array([shelf.at, Layout.beside(shelf, -1.0), Layout.beside(shelf, 1.0)])
+			for checkout: Dictionary in plan.checkouts:
+				for place in 4:
+					stops.append((checkout.pay_at as Vector3) + Vector3(0.0, 0.0, Supermarket.QUEUE_GAP * place))
+			for person: Transform3D in plan.people:
+				stops.append(person.origin)
+			var in_lane := boxes.filter(func(box: AABB) -> bool: return box.intersects(lane_box))
+			for stop: Vector3 in stops:
+				# a trolley (0.75 m wide) before them: as far round them as CART_REACH
+				if lane.grow(CART_REACH).has_point(Vector2(stop.x, stop.z)):
+					in_lane.append(stop)
+			if not in_lane.is_empty():
+				found.in_lane += 1
+				if found.first_in_lane == "":
+					found.first_in_lane = "seed %d breedte %d: %s in de ingang %s" % [seed, width, in_lane[0], lane]
 			var grid := Supermarket.make_floor_grid(plan, library, props_library)
 			var door: Vector3 = (plan.door as Transform3D).origin
 			var spots: Array = [["karretjes", plan.cart_at], ["mandjes", plan.basket_at], ["statiegeld", plan.deposit.use_at]]
@@ -162,3 +185,11 @@ func test_alfred_steyhn_has_self_scan_and_a_bakery(test) -> void:
 	test.check(found.self_scans > BRANCHES / 2, "alfred_steyhn: meestal zelfscan (%d van %d)" % [found.self_scans, BRANCHES])
 	test.check(found.bakery == BRANCHES, "alfred_steyhn: overal een bakkerij (%d)" % found.bakery)
 	test.check(found.lengte > 0 and found.breedte > 0, "alfred_steyhn: schappen beide kanten op (%d / %d)" % [found.lengte, found.breedte])
+
+
+## From the door straight in (Layout.ENTRANCE_LANE_*) nothing stands and no one stops: no
+## furniture, trolleys or baskets, no shelf spot, till or queue, in any branch.
+func test_the_way_in_from_the_door_is_free(test) -> void:
+	for brand in BRANDS:
+		var found := _survey(brand)
+		test.check(found.in_lane == 0, "%s: de ingang vrij (%d filialen niet; %s)" % [brand, found.in_lane, found.first_in_lane])

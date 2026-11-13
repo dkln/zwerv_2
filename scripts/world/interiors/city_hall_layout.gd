@@ -39,7 +39,8 @@ const NAMES := ["Hal en receptie", "Burgerzaken", "Kantoortuin", "Vergaderzalen 
 
 
 ## Every floor: {"number", "name", "width", "depth", "floor" (its tile), "tiles": [[tile, at,
-## turn]], "lift": Vector3 (the lift tile), "lift_spot": Vector3 (where you call it),
+## turn]], "wall_tiles": [[tile, at (on the wall's grid line), turn]] (hung by WallMount),
+## "lift": Vector3 (the lift tile), "lift_spot": Vector3 (where you call it),
 ## "people": [{"role", "at", "turn", "sit", "seat"}], "signs": [{"at", "turn", "text"}],
 ## "counters": [{"number", "board_at"}] (Burgerzaken: the number boards), "dispenser":
 ## Vector3 (where you take a number, or none), "door": Vector3 (floor 0: inside the
@@ -51,7 +52,7 @@ static func floors() -> Array[Dictionary]:
 
 static func _floor(number: int, width: float, depth: float, floor_tile: String) -> Dictionary:
 	var plan := {"number": number, "name": NAMES[number], "width": width, "depth": depth, "floor": floor_tile,
-		"tiles": [], "people": [], "signs": [], "counters": [], "lamps": []}
+		"tiles": [], "wall_tiles": [], "people": [], "signs": [], "counters": [], "lamps": []}
 	var left := -width * 0.5
 	var back := depth * 0.5
 	var front := -depth * 0.5
@@ -95,7 +96,7 @@ static func _hall() -> Dictionary:
 		_tile(plan, "receptie", Vector3(x, 0.0, 0.5), PI)
 	_person(plan, "receptioniste", Vector3(-1.5, 0.0, 1.6), PI)
 	_person(plan, "receptioniste", Vector3(2.5, 0.0, 1.6), PI)
-	_tile(plan, "wapen", Vector3(0.0, 1.5, back), PI)   # on the wall's cell: it stands proud of it
+	_wall_tile(plan, "wapen", Vector3(0.0, 1.5, back), PI)
 	for x in [-3.0, 3.0]:
 		_tile(plan, "vlag", Vector3(x, 0.0, back - 0.5), PI)
 	plan.signs.append({"at": Vector3(0.0, 2.9, 0.0), "turn": PI, "text": "RECEPTIE"})
@@ -116,7 +117,7 @@ static func _hall() -> Dictionary:
 	_tile(plan, "infozuil", Vector3(-3.5, 0.0, front + 3.0), 0.0)
 	_tile(plan, "infozuil", Vector3(-12.0, 0.0, -4.0), 0.0)
 	for z in [-6.0, 0.0, 6.0]:
-		_tile(plan, "schilderij", Vector3(left + 0.125, 1.5, z), PI * 0.5)
+		_wall_tile(plan, "schilderij", Vector3(left, 1.5, z), PI * 0.5)
 	# visitors about in the hall
 	_person(plan, "klant", Vector3(-1.0, 0.0, -2.2), 0.0)
 	_person(plan, "klant", Vector3(-8.0, 0.0, 7.5), PI)
@@ -156,7 +157,7 @@ static func _civil_affairs() -> Dictionary:
 	_tile(plan, "plant", Vector3(right - 1.5, 0.0, front + 1.5), 0.0)
 	_tile(plan, "plant", Vector3(left + 1.5, 0.0, front + 1.5), 0.0)
 	_tile(plan, "kast", Vector3(left + 0.5, 0.0, 1.0), PI * 0.5)
-	_tile(plan, "schilderij", Vector3(left + 0.125, 1.5, -4.0), PI * 0.5)
+	_wall_tile(plan, "schilderij", Vector3(left, 1.5, -4.0), PI * 0.5)
 	return plan
 
 
@@ -248,7 +249,7 @@ static func _council_chamber() -> Dictionary:
 	var front := -14.0
 	_tile(plan, "voorzittersbank", Vector3(0.0, 0.0, back - 2.25), PI)
 	_person(plan, "burgemeester", Vector3(0.0, 0.25, back - 1.9), PI)
-	_tile(plan, "wapen", Vector3(0.0, 1.5, back), PI)
+	_wall_tile(plan, "wapen", Vector3(0.0, 1.5, back), PI)
 	for x in [-3.5, 3.5]:
 		_tile(plan, "vlag", Vector3(x, 0.0, back - 0.5), PI)
 	# the U: a row each side facing the middle, one across the front facing the bench
@@ -278,7 +279,7 @@ static func _council_chamber() -> Dictionary:
 		_person(plan, "klant", Vector3(-9.0 + index * 2.6, 0.0, front + 4.75 - row * 1.0), 0.0, true, GALLERY_SEATS[row])
 	plan.signs.append({"at": Vector3(0.0, 3.4, front + 5.1), "turn": PI, "text": "PUBLIEKE TRIBUNE"})
 	for z in [2.0, 8.0]:
-		_tile(plan, "schilderij", Vector3(left + 0.125, 1.5, z), PI * 0.5)
+		_wall_tile(plan, "schilderij", Vector3(left, 1.5, z), PI * 0.5)
 	return plan
 
 
@@ -289,6 +290,12 @@ const CABIN_AT := Vector3(FLOORS * FLOOR_SPACING, 0.0, 0.0)
 
 static func _tile(plan: Dictionary, tile_name: String, at: Vector3, turn: float) -> void:
 	plan.tiles.append([tile_name, at, turn])
+
+
+## A tile that hangs on the wall whose grid line runs through `at` (WallMount: just before
+## its inner surface, not half in it).
+static func _wall_tile(plan: Dictionary, tile_name: String, at: Vector3, turn: float) -> void:
+	plan.wall_tiles.append([tile_name, at, turn])
 
 
 static func _person(plan: Dictionary, role: String, at: Vector3, turn: float, sit := false, seat := 0.0) -> void:

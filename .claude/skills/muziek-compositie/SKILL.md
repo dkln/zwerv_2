@@ -1,6 +1,6 @@
 ---
 name: muziek-compositie
-description: Gebruik als de gebruiker een nieuwe compositie aanlevert en vraagt daar de muziek van ZWERVR van te maken. De voorkeursbron is een compositie in JSON (docs/MUZIEK_JSON.md: de export van de tracker van Gemini of een andere componist, met metadata, sections, synthParameters en bars; tools/muziek/render.sh --json); het kan ook een uitgeschreven nummer zijn (tempo, toonsoort, instrumenten, akkoorden en noten per maat; in tools/muziek/composition.md of geplakt), een tracker-pagina (HTML, render.sh --tracker) of een VGM-bestand (.vgm/.vgz, render.sh --vgm). Zet de compositie letterlijk om naar tools/muziek/composities/&lt;naam&gt;.py, rendert de intro en alle afgeleide stukken (menu, karakterkeuze, handelaar, laadscherm, spel, deuntjes, ook het deuntje voor de start van de kaart en dat van een beloning, de drie muzaklussen van de supermarkten en de jingles van de twee supermarktketens) en controleert ze.
+description: Gebruik als de gebruiker een nieuwe compositie aanlevert en vraagt daar de muziek van ZWERVR van te maken. Er zijn drie basissoundtracks en de gebruiker zegt welke vervangen wordt - primair (de intro; daarvan afgeleid alle deuntjes en liedjes van het spel), secundair (het menu, letterlijk; daarvan afgeleid de karakterkeuze, het laadscherm, de stad, de beloning en level omhoog) of tertiair (de vechtscène, letterlijk). De voorkeursbron is een compositie in JSON (docs/MUZIEK_JSON.md: de export van de tracker van Gemini of een andere componist, met metadata, sections, synthParameters en bars, of de platte vorm met bpm bovenaan en per maat lead/brass/arp/bass/drums; tools/muziek/render.sh --json); het kan ook een uitgeschreven nummer zijn (tempo, toonsoort, instrumenten, akkoorden en noten per maat; in tools/muziek/composition.md of geplakt), een tracker-pagina (HTML, render.sh --tracker). Zet de compositie letterlijk om naar tools/muziek/composities/&lt;naam&gt;.py, zet hem op zijn plek in composities/actief.py (ACTIEF, MENU of GEVECHT), rendert alle stukken (intro, menu, karakterkeuze, handelaar, laadscherm, spel, deuntjes, ook het deuntje voor de start van de kaart en dat van een beloning, de drie muzaklussen van de supermarkten en de jingles van de twee supermarktketens, en de vechtscène als die er is) en controleert ze.
 ---
 
 # Een nieuwe compositie wordt de muziek van ZWERVR
@@ -10,8 +10,28 @@ vorige compositiebestand in `tools/muziek/composities/` als voorbeeld van de not
 inhoud: **niets** uit een vorige compositie overnemen). Werk zelfstandig door, zonder tussentijdse
 vragen.
 
-Levert de gebruiker een **VGM-bestand** (`.vgm` of `.vgz`) in plaats van een tekst, dan gaan
-stap 1 en 2 anders: zie "Een VGM-bestand" hieronder; stap 3 tot en met 8 blijven gelijk.
+VGM-bestanden worden niet meer gelezen (de VGM-logica is weg): vraag dan om het JSON van de
+componist (docs/MUZIEK_JSON.md).
+
+## Welke basissoundtrack
+
+Er zijn drie basissoundtracks, elk een plek in `tools/muziek/composities/actief.py`
+(docs/MUZIEK.md, bovenaan). Een nieuwe compositie **vervangt er één**:
+
+| plek | `actief.py` | klinkt letterlijk als | wordt ervan afgeleid |
+| --- | --- | --- | --- |
+| **primair** (intro) | `ACTIEF` | de intro (`zwervr_intro.ogg`, met `MOMENTEN`, `intro_timing.gd`) | de andere deuntjes en liedjes: handelaar, de kaart, missie- en taakdeuntjes, gewonnen, dood, de supermarkten en hun jingles |
+| **secundair** (menu) | `MENU` | het hoofdmenu (`nachtstad_menu_loop.ogg`, als lus) | de karakterkeuze, het laadscherm, de stad (`spel_loop`), de beloning en level omhoog (`derive.SECONDARY_PIECES`) |
+| **tertiair** (vechtscène) | `GEVECHT` | de vechtscène (`gevecht.ogg`: het hele nummer, één bestand) | niets |
+
+Alle andere deuntjes en liedjes zijn op de primaire of de secundaire gebaseerd; voor het menu en
+de vechtscène maak je **geen** afgeleide: daar klinkt het origineel, precies zoals aangeleverd.
+De stukken die uit de secundaire komen houden de **eigen groove** van dat nummer (de bas en de drums
+zoals geschreven: `derive.GROOVE_VARIANTS`), niet de bewerkingen die voor de primaire gemaakt zijn. Zegt de gebruiker niet welke
+plek, vraag het dan (het is de enige vraag die je stelt). Een compositie voor het menu of de
+vechtscène heeft geen `MOMENTEN` nodig (die zijn er alleen voor de intro). De andere plekken laat
+je zoals ze zijn; de plek die je vervangt mag een vorige compositie hebben gehad (die blijft
+staan in `composities/`).
 
 ## Stappen
 
@@ -32,7 +52,7 @@ stap 1 en 2 anders: zie "Een VGM-bestand" hieronder; stap 3 tot en met 8 blijven
    - **gaten**: speelt een partij volgens de tekst wel maar staan haar noten er niet (bijv. "de
      bas speelt pompende octaven" maar een sectie noemt de bas niet), vul dan uit die beschrijving
      in dezelfde tekst, en schrijf bij de maat `# afgeleid: ...` met de reden;
-   - `MOMENTEN` voor de intro (`logo`, `verhaal`, `hoogtepunt`, `duel`, `crash`, `rust`): het
+   - (alleen primair) `MOMENTEN` voor de intro (`logo`, `verhaal`, `hoogtepunt`, `duel`, `crash`, `rust`): het
      logo op de eerste grote inzet (na ten minste 6 s: daarvoor staat de openingsregel), het
      verhaal een paar maten later, de volgende drie op de grootste wendingen (refrein, breakdown,
      finale), oplopend, en `rust` als (maat, tel) op de eindklap. Kies ze zo dat het verhaal
@@ -42,7 +62,11 @@ stap 1 en 2 anders: zie "Een VGM-bestand" hieronder; stap 3 tot en met 8 blijven
    - **Een wens van de gebruiker** (blijer, sneller, een stijl als voorbeeld): niet in de maten,
      maar in `BIJSTELLING` (docs/MUZIEK.md), met de reden en de datum als commentaar. Bij een
      voorbeeld uit een bestaand nummer alleen kenmerken (groove, tempo, klankkleur), nooit noten.
-3. **Zet hem actief**: `ACTIEF = "<naam>"` in `tools/muziek/composities/actief.py`.
+3. **Zet hem op zijn plek** in `tools/muziek/composities/actief.py` ("Welke basissoundtrack"):
+   `ACTIEF = "<naam>"` (primair), `MENU = "<naam>"` (secundair) of `GEVECHT = "<naam>"`
+   (tertiair). De docstring van het compositiebestand zegt welke plek het is (de omzetter schrijft
+   "de intro": pas dat aan voor het menu of de vechtscène). Zet in `docs/MUZIEK.md` bij "Nu op de
+   plekken" wat er nu staat.
 4. **Render**: `tools/muziek/render.sh` (alles naar `assets/audio/muziek/`, plus
    `scripts/ui/intro_timing.gd`). Een fout in het compositiebestand geeft een melding met de
    maat; verbeter en render opnieuw.
@@ -74,7 +98,11 @@ stap 1 en 2 anders: zie "Een VGM-bestand" hieronder; stap 3 tot en met 8 blijven
    het in "Afgeleide stukken" van `docs/MUZIEK.md`.
 7. **Speltests** (één tegelijk, headless):
    `tests/run_integration_tests.sh intro` en
-   `tests/run_integration_tests.sh city_music`.
+   `tests/run_integration_tests.sh city_music` (bij een secundaire ook het menu en het laadscherm:
+   de categorie `ui`).
+
+Op Windows heeft elk script een `.ps1` ernaast met dezelfde argumenten (`tools\muziek\render.ps1`,
+`tests\run_integration_tests.ps1`); verander je een `.sh`, verander dan de `.ps1` mee, en andersom.
 ## Een compositie in JSON (de voorkeursbron)
 
 Een JSON-bestand zoals `docs/MUZIEK_JSON.md` het beschrijft (de export van de tracker van de
@@ -85,11 +113,15 @@ geluisterd of omgerekend.
 1. Bekijk wat erin zit: `tools/muziek/render.sh --json <bestand.json> [naam] --toon`. Een bestand
    dat niet compleet is wordt geweigerd met per regel wat er mis is (een spoor dat ontbreekt, een
    spoor met een ander aantal vakjes dan 16, een onbekende noot of drum, maten niet op volgorde):
-   geef dat door aan de gebruiker, verzin niets erbij.
+   geef dat door aan de gebruiker, verzin niets erbij. De **platte vorm** (`bpm` bovenaan, per maat
+   `bar`, `lead`, `brass`, `arp`, `bass`, `drums`: docs/MUZIEK_JSON.md) wordt ook gelezen; meld
+   wat daarbij geduid is (geen harmoniespoor, de drum `T` als middelste tom). Is het een andere vorm
+   die nog niet gelezen wordt, voeg dan een vertaling toe in `json_bron.py` (zoals `from_flat`), met
+   een unit test, en zet de vorm in docs/MUZIEK_JSON.md.
 2. Schrijf de compositie: `tools/muziek/render.sh --json <bestand.json> [naam] --overschrijf`. Het
    JSON wordt naast de compositie bewaard (`composities/<naam>.json`) en `composities/<naam>.py`
    krijgt elke rij zoals het JSON hem geeft, met `TRACKER = "<naam>.json"`.
-3. Maak hem actief (`composities/actief.py`), render alles (`tools/muziek/render.sh`), draai
+3. Zet hem op zijn plek (`composities/actief.py`: `ACTIEF`, `MENU` of `GEVECHT`), render alles (`tools/muziek/render.sh`), draai
    `render.sh --test` en `render.sh --controle`.
 4. Meet de weergave: `render.sh --json composities/<naam>.json <naam> --meet [wav]`: de toonhoogte
    van de stemmen tegen de noten van de bron, links tegen rechts, de balans, en met een WAV van de
@@ -106,65 +138,10 @@ versimpelde synth, en een VGM-export. Bij `nitro_overdrive_92` miste het VGM vie
 stemmen en waren de toonhoogtes fout omgerekend (afgekapt op F-number 2047). Vertrouw dus het
 JSON (of de pagina zelf, `render.sh --tracker <pagina.html>`), niet het VGM van zo'n pagina.
 
-## Een VGM-bestand
-
-Een VGM is het logboek van de registers van de YM2612 (FM) en de SN76489 (PSG). Het wordt
-**exact** de muziek (docs/MUZIEK.md, "Een VGM als compositie"): de **intro is het VGM zelf**,
-gespeeld door de nabootsing van de chips (`tools/muziek/chip.py`: de patches, de exacte
-frequenties uit F-number en blok, de envelopes, de volumes, de panning), en de afgeleide stukken
-klinken met de **stemmen van het VGM** (de patches van zijn kanalen, een drumstel van zijn
-PSG-ruis). Dus: geen bestaande klanken uit `instruments.py` in plaats van de patches, geen
-octaaf verschoven in de intro, geen noten met de hand overschrijven of "verbeteren".
-
-1. **Bekijk het bestand**: `tools/muziek/render.sh --vgm <bestand> [naam] --toon` (`<naam>`:
-   standaard de bestandsnaam in kleine letters met underscores). Lees wat het meldt: de chips, per
-   kanaal het aantal noten en het bereik, het tempo (en of een getal in de bestandsnaam, bv.
-   `_92`, het tempo is: alleen als het op het raster van de noten past), de maatsoort, de
-   toonsoort, de secties, de akkoorden en elke "let op".
-2. **Zet het om**: `tools/muziek/render.sh --vgm <bestand> [naam]` schrijft
-   `tools/muziek/composities/<naam>.py` en bewaart het VGM ongewijzigd als
-   `tools/muziek/composities/<naam>.vgm` (de intro wordt daaruit gespeeld: het moet daar blijven;
-   staat het VGM elders in het project, haal het daar dan weg). Klopt het tempo niet (de noten
-   liggen ver van het raster, of het getal in de naam is wel het tempo maar wordt niet gevonden),
-   geef dan `--tempo <BPM>`; bestaat het bestand al, dan `--overschrijf`. Het bestand heeft
-   `VGM` (de intro), `KLANKEN` en `AFGELEIDE_KLANKEN` met `vgm:<bestand>:<kanaal>=<klank>` (de
-   patch van dat kanaal, op de plek in de mix van die klank) en zo nodig `AFGELEID_OCTAAF`
-   (alleen de afgeleide stukken). Lees het na en verbeter met de hand alleen wat de omzetter
-   raadt, met de reden als commentaar:
-   - de `soort` van de secties (en hun grenzen) als de vorm anders is dan gevonden;
-   - akkoorden die niet bij de noten van de maat passen;
-   - `MOMENTEN` (zelfde regels als bij een tekst, stap 2 hierboven);
-   - welke patch van het VGM welke soort klank speelt in de afgeleide stukken
-     (`AFGELEIDE_KLANKEN`: altijd een `vgm:`-stem van ditzelfde VGM, nooit een gewone klank);
-   - de noten in `MATEN` **niet**, en `VGM` niet weghalen: zonder `VGM` wordt de intro weer uit
-     de noten nagespeeld in plaats van uit het log.
-   Een wens van de gebruiker die de intro verandert (ander tempo, andere klank) kan niet samen
-   met "exact het VGM": zeg dat, en doe het alleen als de gebruiker het dan nog wil.
-3. Ga verder met stap 3 tot en met 7 hierboven (actief zetten, renderen, controleren, de vorm,
-   de speltests). Bij het **controleren** komt erbij:
-   - `tools/muziek/render.sh --vgm <bestand> [naam] --vergelijk`: elke partij van het
-     compositiebestand moet "gelijk" zijn aan het VGM (aantal noten, plek, toonhoogte, lengte, de
-     drums); "ANDERS" is een fout;
-   - `tools/muziek/render.sh --vgm <bestand> [naam] --meet` (na het renderen): de nabootsing
-     tegen het registerlog (de toonhoogte van elke noot per kanaal in cent, het niveau van de
-     ruis-slagen) en de intro tegen de nabootsing (lengte, correlatie, niveau per deel); het
-     moet eindigen met "de nabootsing komt overeen met het registerlog", en elke regel "niet
-     nagebootst" (LFO, SSG-EG, CSM) moet in het verslag;
-   - de balans van de intro is die van het VGM (`--balans` laat zijn kanalen zien): niet
-     bijstellen, ook niet als hij van de richtlijn afwijkt.
-   De unit tests doen de vergelijking en kijken of de intro het VGM is en de afgeleide stukken
-   alleen `vgm:`-stemmen gebruiken, voor elke compositie met een `.vgm` ernaast.
-4. **Meld** (stap 8) ook: wat het VGM bevatte (chips, kanalen en hun partij, tempo en hoe het
-   met de bestandsnaam zat, toonsoort, lengte); dat de intro het VGM zelf is en wat daarin
-   exact is en wat benaderd (docs/MUZIEK.md, "De nabootsing van de chips") of niet nagebootst;
-   de uitkomst van `--meet`; welke patch welke klank speelt in de afgeleide stukken en welke
-   drums afgeleid zijn (wat het VGM zelf niet heeft: bv. kick, crash); wat de omzetter heeft
-   afgeleid (akkoorden, secties, octaven) en wat je met de hand hebt verbeterd; en elke "let op"
-   (afgekapte F-numbers, overgeslagen commando's), kanalen zonder noten, ontbrekende drums.
-
 ## Melden
 
-8. **Meld** aan de gebruiker: titel, tempo, toonsoort, lengte van de intro, de lengte van de drie
+8. **Meld** aan de gebruiker: welke plek vervangen is (primair, secundair, tertiair), titel,
+   tempo, toonsoort, lengte van de intro (of het menu, de vechtscène), de lengte van de drie
    muzaklussen en de jingles, wat er is afgeleid
    (welke gaten, met reden), nieuwe klanken, de uitkomst van de controle, en dat je het niet
    hebt beluisterd. Niet committen.

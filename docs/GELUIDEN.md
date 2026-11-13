@@ -65,7 +65,9 @@ de console (6 kHz). Generator: `tools/megadrive/stemmen.py`; renderen met
 | `lichaam_klap.ogg` | de doffe klap van een lichaam dat geraakt wordt | 0,22 s |
 
 Stemmen: `man` (Jos, Martin), `oude_man` (lager, rauwer, meer adem: Ufo Piloot, Willem, Gerrit),
-`vrouw` (Sjaan); de stem staat als `"voice"` bij het personage in
+`vrouw` (Sjaan), `rasperig` (alleen Blikken Bertus, `"stem"` in `data/gesprekken/personages.json`: laag en
+schor, extra adem per lettergreep (`rasp`) en een kraak in de keel (`crackle`); `Babble.OWN_VOICES`,
+nooit voor iemand anders); de stem van een speler staat als `"voice"` bij het personage in
 `scripts/player/player_character.gd`. In het spel: `PlayerController.cry_out()` (bij
 aangereden worden) speelt de klap en een kreet via `RuimtelijkGeluid.play_at()`, met de
 echo van de straat.

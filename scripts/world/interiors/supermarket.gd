@@ -31,6 +31,8 @@ const Interiors = preload("res://scripts/world/interiors/interiors.gd")
 const UiSounds = preload("res://scripts/ui/ui_sounds.gd")
 const InteriorSpot = preload("res://scripts/world/interiors/interior_spot.gd")
 const SignBoard = preload("res://scripts/world/things/sign_board.gd")
+## The name and the emblem of the chain on the back wall: just before it, not half in it.
+const WallMount = preload("res://scripts/world/interiors/wall_mount.gd")
 ## The loudspeakers: the chain's jingle and an offer or a notice now and then (omroep_supermarkt.json).
 const Announcer = preload("res://scripts/world/interiors/supermarket_announcer.gd")
 ## The deposit machine by the entrance (statiegeld): its model and its close-up screen.
@@ -69,6 +71,9 @@ const ONLY_LOOKING := 0.25
 const WITH_CART := 0.35
 const PLAYER_GAP := 0.75
 const PLAYER_PATIENCE := 2.0
+## In the way in from the door (the plan's "entrance_lane") they wait for the player only this
+## long: they do not stand about in the entrance, with or without a trolley.
+const PLAYER_PATIENCE_IN_ENTRANCE := 0.5
 ## Metres into the shop from the door where a player warned for not paying is put back.
 const WAY_BACK_IN := 3.0
 const TURN_SPEED := 8.0
@@ -76,6 +81,8 @@ const TURN_SPEED := 8.0
 var brand := "derrek"
 var plan := {}
 var _layout: Node3D
+## The doors of the branch this is now (dress_way_in: Interiors, world), INF for the base.
+var _door := Vector3.INF
 var _data := {}
 var _bonus: Array[String] = []
 var _random := RandomNumberGenerator.new()
@@ -128,6 +135,7 @@ func plan_root() -> Node3D:
 
 ## Laid out for the branch of `way_in` (Interiors: its "kind", "seed", "width" and "name").
 func dress_way_in(way_in: Dictionary) -> void:
+	_door = way_in.get("door", Vector3.INF)
 	brand = String(way_in.get("kind", brand))
 	snack_bar_name = String(way_in.get("name", chain().get("naam", brand)))
 	var seed := int(way_in.get("seed", 0))
@@ -226,6 +234,9 @@ func _build(new_plan: Dictionary, seed: int) -> void:
 		_put(floor_map, PREFIX + String(entry[0]), entry[1], 0.0)
 	for entry: Array in plan.tiles:
 		_put(furniture, PREFIX + String(entry[0]), entry[1], float(entry[2]))
+	for entry: Array in plan.get("wall_tiles", []):
+		if not WallMount.put(_layout, library, PREFIX + String(entry[0]), entry[1], float(entry[2])):
+			push_warning("supermarkt: geen tile %s" % String(entry[0]))
 	for entry: Array in plan.props:
 		_put(props, String(entry[0]), entry[1], float(entry[2]))
 	_choose_bonus(seed)
@@ -783,7 +794,8 @@ func _walk_along(shopper: Dictionary, target: Vector3, delta: float) -> float:
 	var direction := offset.normalized()
 	if _player_in_the_way(person.position, direction):
 		shopper.waited = float(shopper.waited) + delta
-		if float(shopper.waited) < PLAYER_PATIENCE:
+		var patience := PLAYER_PATIENCE_IN_ENTRANCE if in_entrance_lane(person.position) else PLAYER_PATIENCE
+		if float(shopper.waited) < patience:
 			return 0.0
 	else:
 		shopper.waited = 0.0
@@ -878,6 +890,12 @@ func _turn_to(person: Node3D, direction: Vector3, delta: float) -> void:
 	person.rotation.y = lerp_angle(person.rotation.y, goal, 1.0 - exp(-TURN_SPEED * delta))
 
 
+## Whether `point` (in the shop's space) lies in the way in from the door (plan "entrance_lane").
+func in_entrance_lane(point: Vector3) -> bool:
+	var lane: Rect2 = plan.get("entrance_lane", Rect2())
+	return lane.has_point(Vector2(point.x, point.z))
+
+
 func _player_in_the_way(from: Vector3, direction: Vector3) -> bool:
 	if _player == null or not is_instance_valid(_player) or not _player.is_visible_in_tree():
 		return false
@@ -957,8 +975,14 @@ func _make_deposit_machine() -> void:
 
 
 func _use_deposit_machine() -> void:
-	if _player:
-		DepositMachineScreen.show_for(_player, String(chain().get("naam", brand)).to_upper())
+	if _player == null:
+		return
+	# the story may have this one out of order (the first mission: Story.machine_out_of_order)
+	var broken := ""
+	var story := get_tree().get_first_node_in_group("verhaal")
+	if story and story.has_method("machine_out_of_order") and _door != Vector3.INF:
+		broken = story.machine_out_of_order(Vector2(_door.x, _door.z))
+	DepositMachineScreen.show_for(_player, String(chain().get("naam", brand)).to_upper(), true, broken)
 
 
 static func cell_of(a_plan: Dictionary, at: Vector3) -> Vector2i:

@@ -1,4 +1,4 @@
-# Makes the music of the game from the active composition (tools/muziek/build.py,
+# Makes the music of the game from the base compositions of composities/actief.py (tools/muziek/build.py,
 # docs/MUZIEK.md); Windows PowerShell, the same as tools/muziek/render.sh.
 # Usage: tools\muziek\render.ps1                          (everything, into assets/audio/muziek/)
 #        tools\muziek\render.ps1 zwervr_intro spel_loop   (only these)
@@ -8,7 +8,6 @@
 #        tools\muziek\render.ps1 --json <file> [naam]     (a composition in JSON to composities/<naam>.py,
 #                                                          json_bron.py, docs/MUZIEK_JSON.md: the preferred source)
 #        tools\muziek\render.ps1 --tracker <file> [naam]  (a tracker page (HTML) the same way, tracker.py)
-#        tools\muziek\render.ps1 --vgm <file> [naam]      (a VGM file, vgm.py)
 # Needs uv (https://docs.astral.sh/uv/), and node for --tracker.
 $called_from = (Get-Location).Path
 Set-Location $PSScriptRoot
@@ -18,7 +17,8 @@ if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {
 }
 # python: "python" on Windows (uv provides it), no stdin
 function Invoke-Python {
-	$null | & uv run --quiet --with soundfile --with numpy python @args
+	# its output to the screen (as function output, `exit (Invoke-Python ...)` would swallow it)
+	$null | & uv run --quiet --with soundfile --with numpy python @args | Out-Host
 	return $LASTEXITCODE
 }
 # a file given from where the script was called: its full path
@@ -37,6 +37,5 @@ switch ($first) {
 	'--controle' { exit (Invoke-Python check.py @rest) }
 	'--json' { $rest = @(Resolve-Source $rest); exit (Invoke-Python json_bron.py @rest) }
 	'--tracker' { $rest = @(Resolve-Source $rest); exit (Invoke-Python tracker.py @rest) }
-	'--vgm' { $rest = @(Resolve-Source $rest); exit (Invoke-Python vgm.py @rest) }
 	default { exit (Invoke-Python build.py @args) }
 }

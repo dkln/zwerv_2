@@ -323,9 +323,8 @@ def coat_of_arms():
     """The coat of arms of the city on a wall (1.5 m): a gold shield with a black stork
     holding an eel in its beak, a crown over it.
 
-    Four deep with the shield in the front two: it sits on the wall's cell (the interiors
-    lay tiles on a 0.5 m grid), and the wall, two deep, fills the middle of that cell, so
-    the shield stands 12.5 cm proud of it instead of in the same plane (z-fighting)."""
+    Four deep with the shield in the front two (the back half empty); the interiors hang it
+    just before the wall (scripts/world/interiors/wall_mount.gd), not in its plane."""
     rows = [
         "....#..#..#....",
         "...#########...",

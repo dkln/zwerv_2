@@ -159,6 +159,8 @@ const CASH_MACHINE_KEY := "pinautomaat_"
 const CASH_MACHINE_COLOUR := Color("#F2B705")
 const CASH_MACHINE_NAME := "Pinautomaat"
 const FOG := Color(20.0 / 255.0, 24.0 / 255.0, 58.0 / 255.0, 0.86)
+## How see-through the icon of an item you have not got is in the slot kept for it (the ID card).
+const MISSING_ITEM_ALPHA := 0.25
 const WHOLE_CITY := "Den Haag"
 ## Map cells are 4 m (the "wijken" table counts in cells).
 const CELL_METRES := 4.0
@@ -227,6 +229,9 @@ class Box extends Container:
 var _hud: Node
 var _player: Node
 var _is_open := false
+## Shut by the story until a mission opens it (Story "ontgrendelt": ["menu"], GameHud.set_menu_locked):
+## then Tab, I, J and M do nothing.
+var locked := false
 var _current_tab := "inventaris"
 
 var _font_title: Font        # Pixelify Sans, bold
@@ -371,7 +376,7 @@ func open(tab_name: String = "inventaris") -> void:
 	if not TABS.has(tab_name):
 		tab_name = "inventaris"
 	if not _is_open:
-		if get_tree().paused:
+		if locked or get_tree().paused:
 			return
 		_find_player()
 		if _player and _player.has_method("is_dead") and _player.is_dead():
@@ -572,6 +577,8 @@ func _show_tab(tab_name: String, with_sound := true) -> void:
 		tab_label.add_theme_font_override("font", _font_title if on else _font_title_medium)
 		tab_label.add_theme_color_override("font_color", UiStyle.INK if on else UiStyle.TEXT)
 	_refresh()
+	if _is_open and _hud and _hud.has_signal("menu_opened"):
+		_hud.menu_opened.emit(tab_name)
 
 
 ## Fills the open tab and the header from the player, the HUD and the scene.
@@ -1065,6 +1072,7 @@ func _refresh_inventory() -> void:
 			slot.style = _style(EMPTY_SLOT, EMPTY_BORDER, 2, 4, 1)
 			slot.shadow_offset = 0.0
 			icon.bitmap = []
+			icon.modulate.a = 1.0
 			count.text = ""
 			slot.tooltip_text = "" if slot_index < _slot_count() else "Meer ruimte met een rugzak"
 			continue
@@ -1078,9 +1086,16 @@ func _refresh_inventory() -> void:
 		var amount := int(inventory.get(item_id, 0))
 		count.text = str(amount) if amount > 1 else ""
 		slot.tooltip_text = _item_name(item_id)
+		icon.modulate.a = 1.0
+		if amount <= 0:
+			# the slot kept for your ID card: empty, the card a shadow in it
+			slot.style = _style(EMPTY_SLOT, Color.WHITE if selected else EMPTY_BORDER, 2, 4, 1)
+			slot.shadow_offset = 0.0
+			icon.modulate.a = MISSING_ITEM_ALPHA
+			slot.tooltip_text = _item_name(item_id) + " (kwijt)"
 		if item_id == BankCards.ITEM:
 			slot.tooltip_text = BankCards.description(_player, _item_name(item_id))
-	var used := _items_in_category("").size()
+	var used := _items_in_category("").filter(func(item_id: String) -> bool: return int(inventory.get(item_id, 0)) > 0 and Items.takes_slot(item_id)).size()
 	_slots_used_label.text = "%d / %d VAKJES" % [used, _slot_count()] + ("  · RUGZAK" if _has_backpack() else "")
 	_refresh_item_detail()
 
@@ -1100,6 +1115,7 @@ func _refresh_item_detail() -> void:
 	_detail_box.style = _style(UiStyle.PANEL, rarity_colour, 3, 20, 20)
 	_detail_icon_box.style = _style(UiStyle.INK, rarity_colour, 2)
 	_set_item_icon(_detail_icon, _selected_item)
+	_detail_icon.modulate.a = 1.0 if int(_inventory().get(_selected_item, 0)) > 0 else MISSING_ITEM_ALPHA
 	_detail_rarity.text = RARITIES.get(rarity, RARITIES.gewoon).label
 	_detail_rarity.add_theme_color_override("font_color", rarity_colour)
 	_detail_name.text = _item_name(_selected_item)
@@ -1120,6 +1136,9 @@ func _refresh_item_detail() -> void:
 	if _selected_item == BankCards.ITEM:
 		# every card found: its holder and the riddle of its PIN (BankCards)
 		text = BankCards.description(_player, text)
+	if amount <= 0 and item.has("missing_text"):
+		text = String(item.missing_text)   # the slot kept for your ID card, empty
+		_detail_rarity.text = "KWIJT"
 	_detail_text.text = "“%s”" % text if text != "" else ""
 	_detail_text.visible = text != ""
 	_action_box.visible = Items.can_use(_selected_item)
@@ -1149,6 +1168,8 @@ func _items_in_category(kind: String) -> Array[String]:
 			continue
 		if kind == "" or Items.item(item_id).get("kind", "spullen") == kind:
 			found.append(item_id)
+	var always := Items.ALWAYS_SHOWN
+	var missing: bool = int(inventory.get(always, 0)) <= 0 and (kind == "" or kind == Items.item(always).get("kind", ""))
 	var rarity_order := RARITIES.keys()
 	found.sort_custom(func(first: String, second: String) -> bool:
 		var first_item := Items.item(first)
@@ -1162,6 +1183,9 @@ func _items_in_category(kind: String) -> Array[String]:
 		if first_rarity != second_rarity:
 			return first_rarity > second_rarity
 		return _item_name(first) < _item_name(second))
+	# the slot of your ID card first, empty (dimmed) while you have not got it
+	if missing:
+		found.push_front(always)
 	if found.size() > GRID_COLUMNS * GRID_ROWS:
 		found.resize(GRID_COLUMNS * GRID_ROWS)
 	return found
@@ -1747,6 +1771,8 @@ func _refresh_map() -> void:
 			if place_key.begins_with("verkeerslichten"):
 				continue   # a test spot of the builder, not a place
 			var place_position: Vector2 = places[place_key]
+			if _shrouded(place_position):
+				continue   # not open yet (the story's shroud)
 			_places.append({"key": place_key, "name": GameHud._place_name(place_key),
 					"position": place_position, "wijk": _wijk_at(place_position)})
 		var machines := world.get_node_or_null(CASH_MACHINE_NODE)
@@ -1758,6 +1784,8 @@ func _refresh_map() -> void:
 				number += 1
 				var at := (marker as Node3D).global_position
 				var machine_position := Vector2(at.x, at.z)
+				if _shrouded(machine_position):
+					continue
 				_places.append({"key": CASH_MACHINE_KEY + str(number), "name": CASH_MACHINE_NAME,
 						"position": machine_position, "wijk": _wijk_at(machine_position)})
 	if _selected_place == "" or not _places.any(func(place: Dictionary) -> bool: return place.key == _selected_place):
@@ -1826,6 +1854,10 @@ func _fog_texture(map_texture: Texture2D) -> Texture2D:
 		if rect.size.x <= 0 or rect.size.y <= 0:
 			continue
 		image.fill_rect(rect, Color(0, 0, 0, 0) if _visited.has(area[0]) else FOG)
+	# what the story has not opened yet: not on the map at all (GameHud.shroud_image)
+	var shroud: Image = _hud.shroud_image() if _hud and _hud.has_method("shroud_image") else null
+	if shroud and Vector2i(shroud.get_size()) == pixels:
+		image.blend_rect(shroud, Rect2i(Vector2i.ZERO, pixels), Vector2i.ZERO)
 	return ImageTexture.create_from_image(image)
 
 
@@ -1875,6 +1907,8 @@ func _draw_map_overlay() -> void:
 			if area[0] == WHOLE_CITY or not _visited.has(area[0]):
 				continue
 			var centre_world := Vector2(float(area[1] + area[3]) + 1.0, float(area[2] + area[4]) + 1.0) * 0.5 * CELL_METRES
+			if _shrouded(centre_world):
+				continue
 			var text := str(area[0]).to_upper()
 			var text_width := _font_pixel.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 10).x
 			var at := _world_to_map(centre_world) - Vector2(text_width * 0.5, -4.0)
@@ -1885,6 +1919,8 @@ func _draw_map_overlay() -> void:
 		if place.key == _selected_place:
 			chosen = place
 			continue
+		if _shrouded(place.position):
+			continue   # not open yet: not on the map
 		var at := _world_to_map(place.position).round()
 		if supermarket_chain(place.key) != "":
 			_draw_supermarket(at, supermarket_chain(place.key), false)
@@ -1904,13 +1940,31 @@ func _draw_map_overlay() -> void:
 			_map_overlay.draw_rect(Rect2(at - Vector2(11, 11), Vector2(22, 22)), Color.WHITE)
 			_map_overlay.draw_rect(Rect2(at - Vector2(8, 8), Vector2(16, 16)), UiStyle.INK)
 			_map_overlay.draw_rect(Rect2(at - Vector2(5, 5), Vector2(10, 10)), _place_colour(chosen))
+	# the places a mission marked for good (Story "markeringen"): a ring round them
+	for at_world: Vector2 in _story_markers():
+		var ring_at := _world_to_map(at_world).round()
+		_map_overlay.draw_arc(ring_at, 11.0, 0.0, TAU, 20, UiStyle.INK, 4.0)
+		_map_overlay.draw_arc(ring_at, 11.0, 0.0, TAU, 20, UiStyle.ACCENT, 2.0)
 	# the marker set on the map, a pink diamond
 	if _hud and _hud.has_method("has_waypoint") and _hud.has_waypoint():
 		QuestMarks.draw_mark(_map_overlay, _world_to_map(_hud.waypoint()).round(), 9.0, 1.0, GameHud.WAYPOINT_COLOUR)
 	# where the followed quest sends you, over everything
 	if _hud and _hud.has_method("quest_targets"):
 		for target: Vector2 in _hud.quest_targets():
+			if _shrouded(target):
+				continue
 			QuestMarks.draw_mark(_map_overlay, _world_to_map(target).round(), 8.0)
+
+
+## Whether the world point is still under the story's shroud (GameHud.is_shrouded).
+func _shrouded(world_point: Vector2) -> bool:
+	return _hud != null and _hud.has_method("is_shrouded") and _hud.is_shrouded(world_point)
+
+
+## The places the missions marked for good (Story.markers), world x, z.
+func _story_markers() -> Array:
+	var story := get_tree().get_first_node_in_group("verhaal")
+	return story.markers().values() if story and story.has_method("markers") else []
 
 
 ## The chain of a supermarket place ("derrek_3" -> "derrek"), "" for any other place.

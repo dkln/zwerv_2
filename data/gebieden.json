@@ -1,0 +1,48 @@
+{
+	"uitleg": "Waar je mag komen (de shroud). Wat niet open is staat niet op de kaart en het kaartje, en je kunt er niet in. Missies openen gebieden ('opent' bij een stap, 'opent_na_afloop' bij een missie) of laten het startgebied groeien ('groeit'). Zie data/LEESMIJ.md.",
+	"start": {
+		"midden": "centraal",
+		"straal": 45
+	},
+	"marge": 20,
+	"gebieden": {
+		"plein": {
+			"cirkels": [
+				{
+					"midden": "centraal",
+					"straal": 175
+				}
+			]
+		},
+		"centrum": {
+			"wijken": [
+				"Centrum",
+				"Paleis Noordeinde",
+				"Lange Voorhout",
+				"Grote Markt"
+			]
+		},
+		"station": {
+			"wijken": [
+				"Centraal Station",
+				"De Resident"
+			]
+		},
+		"malieveld": {
+			"wijken": [
+				"Malieveld",
+				"Koekamp"
+			]
+		},
+		"haagse_bos": {
+			"rechthoeken": [
+				[
+					70,
+					0,
+					127,
+					17
+				]
+			]
+		}
+	}
+}

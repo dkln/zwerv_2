@@ -1,17 +1,15 @@
 """Unit tests of the music tools (docs/MUZIEK.md): the notation, the BIJSTELLING (score.tune),
 the drum kits and sounds, the derived pieces of every composition (the map jingle short
-enough, every piece there) and the VGM reader (vgm.py, on a small VGM made here). Every
+enough, every piece there), the chip imitation and the readers of the composer's JSON. Every
 function test_* is a test; plain asserts.
 Run: tools/muziek/render.sh --test
 """
 import contextlib
 import glob
-import gzip
 import io
 import math
 import os
 import json
-import struct
 import sys
 import tempfile
 import traceback
@@ -26,7 +24,7 @@ import derive  # noqa: E402
 import instruments  # noqa: E402
 import notation  # noqa: E402
 import score as score_module  # noqa: E402
-import vgm  # noqa: E402
+import fm  # noqa: E402
 import json_bron  # noqa: E402
 import tracker  # noqa: E402
 from notation import Hit, Note, cycle, drum_run, drums, notes, run  # noqa: E402
@@ -191,257 +189,10 @@ def test_the_notes_of_a_bar_stay_inside_it():
                 assert 1.0 <= hit.position < score.beats_per_bar + 1.0, (name, bar.number, hit.drum, hit.position)
 
 
-# ----------------------------------------------------------------------------- the VGM reader
+# ----------------------------------------------------------------------------- the chips
 
-VGM_FM_CLOCK = 7670453
-VGM_PSG_CLOCK = 3579545
-## One sixteenth at 120 BPM in VGM samples (44100 a second).
-VGM_STEP = 5512
-
-
-def _vgm_file(events: list, total_samples: int) -> bytes:
-    """A VGM (version 1.50, YM2612 and SN76489) of (sample time, command bytes) events."""
-    stream = bytearray()
-    now = 0
-    for time, commands in sorted(events, key=lambda event: event[0]):
-        while time > now:
-            wait = min(65535, time - now)
-            stream += bytes([0x61]) + struct.pack("<H", wait)
-            now += wait
-        stream += commands
-    while total_samples > now:
-        wait = min(65535, total_samples - now)
-        stream += bytes([0x61]) + struct.pack("<H", wait)
-        now += wait
-    stream.append(0x66)
-    header = bytearray(0x40)
-    header[0:4] = b"Vgm "
-    struct.pack_into("<I", header, 0x04, 0x40 + len(stream) - 4)
-    struct.pack_into("<I", header, 0x08, 0x150)
-    struct.pack_into("<I", header, 0x0C, VGM_PSG_CLOCK)
-    struct.pack_into("<I", header, 0x18, total_samples)
-    struct.pack_into("<I", header, 0x2C, VGM_FM_CLOCK)
-    struct.pack_into("<I", header, 0x34, 0x0C)
-    return bytes(header) + bytes(stream)
-
-
-def _fm_patch(channel: int, algorithm: int, feedback: int) -> bytes:
-    """Port 0 writes: the patch of FM channel 0-2 (all operators alike, the last one loudest)."""
-    commands = bytes([0x52, 0xB0 + channel, (feedback << 3) | algorithm])
-    for slot in range(4):
-        register = slot * 4 + channel
-        commands += bytes([0x52, 0x30 + register, 0x01, 0x52, 0x40 + register, 0x00 if slot == 3 else 0x18,
-                           0x52, 0x50 + register, 0x1F, 0x52, 0x80 + register, 0x2A])
-    return commands
-
-
-def _fm_key_on(channel: int, midi_pitch: int, f_number: int = None) -> bytes:
-    """Key off, the frequency (F-number and block) of the pitch, key on: as a sound driver does."""
-    block = max(0, min(7, midi_pitch // 12 - 1))
-    hertz = 440.0 * 2 ** ((midi_pitch - 69) / 12.0)
-    if f_number is None:
-        f_number = int(round(hertz * 144.0 * 2 ** (21 - block) / VGM_FM_CLOCK))
-    return bytes([0x52, 0x28, channel, 0x52, 0xA4 + channel, (block << 3) | (f_number >> 8),
-                  0x52, 0xA0 + channel, f_number & 0xFF, 0x52, 0x28, 0xF0 | channel])
-
-
-def _fm_key_off(channel: int) -> bytes:
-    return bytes([0x52, 0x28, channel])
-
-
-def _psg_tone(channel: int, midi_pitch: int, attenuation: int) -> bytes:
-    period = int(round(VGM_PSG_CLOCK / (32.0 * 440.0 * 2 ** ((midi_pitch - 69) / 12.0))))
-    return bytes([0x50, 0x80 | (channel << 5) | (period & 0x0F), 0x50, period >> 4,
-                  0x50, 0x90 | (channel << 5) | attenuation])
-
-
-def _psg_noise(attenuation: int) -> bytes:
-    """White noise struck again (the control register) at this attenuation (15: silent)."""
-    return bytes([0x50, 0xE4, 0x50, 0xF0 | attenuation])
-
-
-def _proef_events() -> list:
-    """Eight bars at 120 BPM: a bass in eighths on FM channel 1 (E2, the last of every bar a D3
-    held a quarter), from bar 5 a melody in quarters on FM channel 2, a loud noise hit on
-    beats 2 and 4 and a soft one on the "and" of every beat."""
-    events = [(0, _fm_patch(0, 0, 6) + _fm_patch(1, 4, 2))]
-    melody = [64, 67, 71, 76, 74, 71, 69, 67, 66, 69, 73, 78, 76, 73, 71, 69]
-    for bar in range(8):
-        for step in range(16):
-            time = (bar * 16 + step) * VGM_STEP
-            if step % 2 == 0 and step < 14:
-                events.append((time, _fm_key_on(0, 50 if step == 12 else 40)))
-                if step < 12:
-                    events.append((time + VGM_STEP, _fm_key_off(0)))
-            if bar >= 4 and step % 4 == 0:
-                events.append((time, _fm_key_on(1, melody[((bar - 4) * 4 + step // 4) % len(melody)])))
-            if step in (4, 12):
-                events.append((time, _psg_noise(1)))
-            elif step % 4 == 2:
-                events.append((time, _psg_noise(6)))
-            else:
-                events.append((time, _psg_noise(15)))
-    return events
-
-
-def _proef_song(folder: str, file_name: str = "proef_120.vgm", zipped: bool = False):
-    data = _vgm_file(_proef_events(), 8 * 16 * VGM_STEP)
-    path = os.path.join(folder, file_name)
-    with open(path, "wb") as vgm_file:
-        vgm_file.write(gzip.compress(data) if zipped else data)
-    return vgm.read(path)
-
-
-def test_vgm_fm_notes_have_pitch_start_and_length():
-    with tempfile.TemporaryDirectory() as folder:
-        song = _proef_song(folder)
-    assert song.chips == [f"YM2612 ({VGM_FM_CLOCK} Hz)", f"SN76489 ({VGM_PSG_CLOCK} Hz)"]
-    bass = [note for note in song.notes if note.channel == "fm1"]
-    assert len(bass) == 8 * 7 and song.key_ons["fm1"] == 56
-    assert [round(note.pitch) for note in bass[:7]] == [40] * 6 + [50]
-    assert all(abs(note.pitch - round(note.pitch)) < 0.05 for note in bass), "within 5 cents of the note"
-    assert [note.start for note in bass[:3]] == [0, 2 * VGM_STEP, 4 * VGM_STEP]
-    assert bass[0].end - bass[0].start == VGM_STEP                 # key-off a step later
-    assert bass[6].end - bass[6].start == 4 * VGM_STEP             # held to the next key-on
-    melody = [note for note in song.notes if note.channel == "fm2"]
-    assert [round(note.pitch) for note in melody[:4]] == [64, 67, 71, 76]
-    assert melody[0].start == 4 * 16 * VGM_STEP
-    assert song.voices["fm1"].algorithm == 0 and song.voices["fm1"].feedback == 6
-    assert song.voices["fm2"].algorithm == 4 and song.voices["fm2"].carriers() == (1, 3)
-
-
-def test_vgm_psg_tones_and_noise_drums():
-    events = [(0, _psg_tone(0, 69, 2)), (VGM_STEP, _psg_tone(0, 72, 2)), (2 * VGM_STEP, _psg_tone(0, 72, 15)),
-              (0, _psg_noise(0)), (VGM_STEP, _psg_noise(8)), (2 * VGM_STEP, _psg_noise(15)),
-              # periodic noise, and white noise left ringing: a low tom and a crash
-              (4 * VGM_STEP, bytes([0x50, 0xE0, 0x50, 0xF2])), (5 * VGM_STEP, bytes([0x50, 0xE4, 0x50, 0xF2]))]
-    with tempfile.TemporaryDirectory() as folder:
-        path = os.path.join(folder, "psg.vgm")
-        with open(path, "wb") as vgm_file:
-            vgm_file.write(_vgm_file(events, 16 * VGM_STEP))
-        song = vgm.read(path)
-    tones = [(note.channel, round(note.pitch), note.start, note.end) for note in song.notes]
-    assert tones == [("psg1", 69, 0, VGM_STEP), ("psg1", 72, VGM_STEP, 2 * VGM_STEP)], tones
-    assert [(hit.drum, hit.start) for hit in song.hits] == [
-        ("snare", 0), ("hihat", VGM_STEP), ("tom_laag", 4 * VGM_STEP), ("crash", 5 * VGM_STEP)], song.hits
-
-
-def _dac_burst(start: int, samples: list) -> list:
-    """A sample through the DAC at 8820 Hz (a write every 5 VGM samples)."""
-    return [(start + index * 5, bytes([0x52, 0x2A, value])) for index, value in enumerate(samples)]
-
-
-def test_vgm_dac_samples_are_drums():
-    thump = [int(128 + 100 * math.sin(2 * math.pi * 70.0 * index / 8820.0)) for index in range(900)]
-    tone = [int(128 + 100 * math.sin(2 * math.pi * 260.0 * index / 8820.0)) for index in range(900)]
-    hiss = [(index * 7919 + (index * index * 31) % 251) % 256 for index in range(900)]
-    events = [(0, bytes([0x52, 0x2B, 0x80]))]
-    events += _dac_burst(0, thump) + _dac_burst(2 * VGM_STEP, hiss) + _dac_burst(4 * VGM_STEP, tone)
-    with tempfile.TemporaryDirectory() as folder:
-        path = os.path.join(folder, "dac.vgm")
-        with open(path, "wb") as vgm_file:
-            vgm_file.write(_vgm_file(events, 8 * VGM_STEP))
-        song = vgm.read(path)
-    assert [(hit.source, hit.drum, hit.start) for hit in song.hits] == [
-        ("dac", "kick", 0), ("dac", "snare", 2 * VGM_STEP), ("dac", "tom_mid", 4 * VGM_STEP)], song.hits
-
-
-def test_vgm_tempo_from_the_notes_checked_against_the_file_name():
-    with tempfile.TemporaryDirectory() as folder:
-        named_right = vgm.find_timing(_proef_song(folder, "proef_120.vgm"))
-        named_wrong = vgm.find_timing(_proef_song(folder, "proef_92.vgm"))
-        unnamed = vgm.find_timing(_proef_song(folder, "proef.vgm"))
-    for timing in (named_right, named_wrong, unnamed):
-        assert timing.tempo == 120.0 and timing.steps_per_beat == 4 and timing.beats_per_bar == 4, timing
-        assert timing.fit < 0.01
-    assert named_right.name_tempo == 120.0 and named_right.name_tempo_fits
-    assert named_wrong.name_tempo == 92.0 and not named_wrong.name_tempo_fits
-    assert unnamed.name_tempo is None
-
-
-def test_vgm_gzipped_reads_the_same():
-    with tempfile.TemporaryDirectory() as folder:
-        plain = _proef_song(folder, "proef.vgm")
-        zipped = _proef_song(folder, "proef.vgz", zipped=True)
-    assert [(note.channel, note.start, note.end, note.pitch) for note in plain.notes] == [
-        (note.channel, note.start, note.end, note.pitch) for note in zipped.notes]
-    assert len(zipped.hits) == len(plain.hits) > 0
-
-
-def test_vgm_clipped_f_numbers_are_reported():
-    events = [(0, _fm_patch(0, 4, 3)), (0, _fm_key_on(0, 45, f_number=2047)), (VGM_STEP, _fm_key_on(0, 52)),
-              (2 * VGM_STEP, _fm_key_off(0))]
-    with tempfile.TemporaryDirectory() as folder:
-        path = os.path.join(folder, "afgekapt.vgm")
-        with open(path, "wb") as vgm_file:
-            vgm_file.write(_vgm_file(events, 4 * VGM_STEP))
-        song = vgm.read(path)
-    assert [note.saturated for note in song.notes] == [True, False]
-    assert any("F-number" in warning for warning in song.warnings)
-
-
-def test_vgm_parts_key_chords_and_sections():
-    with tempfile.TemporaryDirectory() as folder:
-        song = _proef_song(folder)
-    arrangement = vgm.arrange(song, vgm.find_timing(song))
-    assert arrangement.part_channels == {"bas": ["fm1"], "lead": ["fm2"]}
-    assert arrangement.sounds == {"bas": "fm_housebas", "lead": "fm_lead_helder"}
-    assert all(sound in instruments.SOUNDS for sound in arrangement.sounds.values())
-    assert arrangement.bar_count == 8
-    assert arrangement.key[0] in ("E", "A", "D") and arrangement.key[1] in ("majeur", "mineur"), arrangement.key
-    assert all(vgm._root(arrangement.chords[bar].split()[0]) == "E" for bar in range(1, 5)), arrangement.chords
-    assert [(section["soort"], section["maten"]) for section in arrangement.sections] == [
-        ("intro", (1, 4)), ("thema", (5, 8))]
-    assert _drum_counts(arrangement) == {"snare": 16, "hihat": 32}
-    # the melody is written in the octave of the VGM and stays where it is (E4..F#5 is high enough);
-    # a melody as low as the bass would be raised by the BIJSTELLING
-    assert arrangement.octaves.get("lead", 0) in (0, 1)
-
-
-def _drum_counts(arrangement) -> dict:
-    counts = {}
-    for hit in arrangement.hits:
-        counts[hit.drum] = counts.get(hit.drum, 0) + 1
-    return counts
-
-
-def test_vgm_becomes_a_composition_every_piece_is_made_from():
-    name = "vgm_proef_compositie"
-    with tempfile.TemporaryDirectory() as folder:
-        song = _proef_song(folder)
-        arrangement = vgm.arrange(song, vgm.find_timing(song))
-        with open(os.path.join(folder, name + ".py"), "w") as composition_file:
-            composition_file.write(vgm.composition_source(arrangement, name, "Proef"))
-        sys.path.insert(0, folder)
-        try:
-            score = score_module.load(name)
-            with contextlib.redirect_stdout(io.StringIO()):
-                problems = vgm.compare(arrangement, name)
-        finally:
-            sys.path.remove(folder)
-            sys.modules.pop(name, None)
-    assert problems == [], problems
-    assert score.title == "Proef" and score.tempo == 120.0 and len(score.bars) == 8
-    assert score.bars[0].parts["bas"][0] == Note(1.0, (40,), 0.25)
-    assert score.bars[0].parts["bas"][6] == Note(4.0, (50,), 1.0)
-    assert sorted(hit.position for hit in score.bars[0].hits if hit.drum == "snare") == [2.0, 4.0]
-    pieces = {piece.name: piece for piece in derive.pieces(score)}
-    assert abs(pieces["zwervr_intro"].bars_seconds - song.seconds) < 0.05, "the intro as long as the VGM"
-    assert len(pieces) == len(derive.ALL)
-
-
-def test_every_vgm_composition_still_matches_its_vgm():
-    for name in COMPOSITIONS:
-        for extension in (".vgm", ".vgz"):
-            path = os.path.join(HERE, "composities", name + extension)
-            # (a composition that is no longer read from the VGM beside it: its JSON is the source)
-            if not os.path.exists(path) or not score_module.load(name).vgm:
-                continue
-            song = vgm.read(path)
-            arrangement = vgm.arrange(song, vgm.find_timing(song, score_module.load(name).tempo))
-            with contextlib.redirect_stdout(io.StringIO()):
-                problems = vgm.compare(arrangement, name)
-            assert problems == [], (name, problems)
+FM_CLOCK = 7670453
+PSG_CLOCK = 3579545
 
 
 def test_a_composition_without_an_ending_lands_its_win_jingle():
@@ -467,7 +218,7 @@ def _sine_voice(release_rate: int = 15, **changes):
                     detunes=(0, 0, 0, 0), rate_scalings=(0, 0, 0, 0), sustain_rates=(0, 0, 0, 0),
                     release_rates=(release_rate,) * 4)
     settings.update(changes)
-    return vgm.FmVoice(**settings)
+    return fm.FmVoice(**settings)
 
 
 def _period_hz(signal, wanted_hz: float) -> float:
@@ -480,20 +231,20 @@ def _period_hz(signal, wanted_hz: float) -> float:
 
 
 def test_chip_plays_the_frequency_of_f_number_and_block():
-    clock = float(VGM_FM_CLOCK)
+    clock = float(FM_CLOCK)
     for f_number, block in ((1083, 4), (2047, 1), (644, 3), (181, 5)):
-        hertz = vgm.fm_hz(f_number, block, clock)
+        hertz = fm.fm_hz(f_number, block, clock)
         events = chip.voice_events(_sine_voice()) + [(0, "frequency", f_number, block), (0, "key", 0x0F)]
         mono, _left, _right = chip.fm_channel(events, 30000)
         played = chip.resample(mono, chip.native_rate(clock))
         found = _period_hz(played[2000:22000], hertz)
         assert abs(1200.0 * math.log2(found / hertz)) < 0.5, (f_number, block, hertz, found)
     # no rounding to a note: F-number 2047 in block 1 is 103.98 Hz, 2.5 cents above G#2
-    assert abs(vgm.fm_hz(2047, 1, clock) - 103.98) < 0.01
+    assert abs(fm.fm_hz(2047, 1, clock) - 103.98) < 0.01
 
 
 def test_chip_envelope_attack_decay_sustain_and_release():
-    clock = float(VGM_FM_CLOCK)
+    clock = float(FM_CLOCK)
     rate = chip.native_rate(clock)
     # decay rate 12 with the key scaling of this pitch (rate 26: 6/8 of a step every 32 envelope ticks
     # of 3 samples) falls 39 dB a second to the sustain level (2: 6 dB down), then holds (sustain rate 0)
@@ -508,7 +259,7 @@ def test_chip_envelope_attack_decay_sustain_and_release():
 
 
 def test_chip_feedback_and_modulation_change_the_sound_not_the_pitch():
-    clock = float(VGM_FM_CLOCK)
+    clock = float(FM_CLOCK)
     plain = chip.voice_note(_sine_voice(), clock, 220.0, 0.3)
     modulated_voice = _sine_voice(algorithm=0, feedback=3, total_levels=(22, 22, 22, 0))
     modulated = chip.voice_note(modulated_voice, clock, 220.0, 0.3)
@@ -525,44 +276,25 @@ def test_chip_psg_squares_volumes_and_noise():
     rate = 53267.0
     period = 254                                                    # A4: 3579545 / (32 * 254) = 440.4 Hz
     writes = [(0, 0x80 | (period & 0x0F)), (0, period >> 4), (0, 0x90), (20000, 0x93)]
-    tone = chip.psg(writes, 40000, float(VGM_PSG_CLOCK), rate)
-    wanted = VGM_PSG_CLOCK / (32.0 * period)
+    tone = chip.psg(writes, 40000, float(PSG_CLOCK), rate)
+    wanted = PSG_CLOCK / (32.0 * period)
     assert abs(_period_hz(tone[1000:19000], wanted) * rate / chip.OUTPUT_RATE - wanted) < 0.5
     loud, soft = numpy.abs(tone[1000:19000]).max(), numpy.abs(tone[21000:39000]).max()
     assert abs(loud - chip.PSG_LEVEL) < 0.01 and abs(20 * math.log10(soft / loud) + 6.0) < 0.2, (loud, soft)
-    white = chip.psg([(0, 0xE4), (0, 0xF0)], 30000, float(VGM_PSG_CLOCK), rate)
-    periodic = chip.psg([(0, 0xE0), (0, 0xF0)], 30000, float(VGM_PSG_CLOCK), rate)
+    white = chip.psg([(0, 0xE4), (0, 0xF0)], 30000, float(PSG_CLOCK), rate)
+    periodic = chip.psg([(0, 0xE0), (0, 0xF0)], 30000, float(PSG_CLOCK), rate)
     assert set(numpy.unique(numpy.abs(white[2000:]))) == {chip.PSG_LEVEL}
     # periodic noise repeats every 16 shifts (6991 shifts a second), white noise does not
-    repeat = int(round(16 * rate / (VGM_PSG_CLOCK / 512.0)))
+    repeat = int(round(16 * rate / (PSG_CLOCK / 512.0)))
     alike = lambda signal: float(numpy.mean(signal[2000:20000] * signal[2000 + repeat:20000 + repeat])) / chip.PSG_LEVEL ** 2
     assert alike(periodic) > 0.8 and abs(alike(white)) < 0.2, (alike(periodic), alike(white))
 
 
-def test_chip_plays_a_whole_vgm_with_its_panning():
-    events = [(0, _fm_patch(0, 4, 3) + bytes([0x52, 0xB4, 0x80])), (0, _fm_key_on(0, 57)), (0, _psg_noise(15)),
-              (4 * VGM_STEP, _fm_key_off(0)), (4 * VGM_STEP, _psg_noise(2)), (6 * VGM_STEP, _psg_noise(15))]
-    with tempfile.TemporaryDirectory() as folder:
-        path = os.path.join(folder, "heel.vgm")
-        with open(path, "wb") as vgm_file:
-            vgm_file.write(_vgm_file(events, 8 * VGM_STEP))
-        song = vgm.read(path)
-    stereo = chip.render_song(song, tail_seconds=0.5)
-    assert abs(len(stereo) - (8 * VGM_STEP + 22050)) <= 2
-    level = lambda start, end, side: float(numpy.sqrt(numpy.mean(stereo[start * VGM_STEP:end * VGM_STEP, side] ** 2)))
-    assert level(0, 4, 0) > 0.1 and level(0, 4, 1) < 0.01, "the FM channel is panned left"
-    assert abs(level(4, 6, 0) - level(4, 6, 1)) < 0.02 and level(5, 6, 1) > 0.3, "the PSG noise in the middle"
-    assert level(7, 8, 0) < 0.01 and level(7, 8, 1) < 0.01
-    only_fm = chip.render_song(song, channels=("fm1",))
-    assert float(numpy.abs(only_fm[5 * VGM_STEP:6 * VGM_STEP]).max()) < 0.01
-    assert chip.unsupported(song) == []
-
-
-def test_the_sounds_of_the_vgm_tool_cover_every_sound():
-    listed = {sound for sounds in vgm.SOUND_KINDS.values() for sound in sounds}
-    plain = {name for name in instruments.SOUNDS if not name.startswith(("vgm:", "tracker"))}
+def test_the_kinds_of_sound_cover_every_sound():
+    listed = {sound for sounds in fm.SOUND_KINDS.values() for sound in sounds}
+    plain = {name for name in instruments.SOUNDS if not name.startswith(("tracker", "patch:"))}
     assert listed == plain, (listed ^ plain)
-    assert set(vgm.DRUM_KIT_NAMES) == {name for name in instruments.DRUM_KITS if not name.startswith(("vgm:", "tracker"))}
+    assert set(fm.DRUM_KIT_NAMES) == {name for name in instruments.DRUM_KITS if not name.startswith("tracker")}
 
 
 # ----------------------------------------------------------------------------- a composition in JSON
@@ -644,6 +376,110 @@ def test_a_json_composition_that_is_not_complete_is_refused():
         assert "kan zo niet gebruikt worden" in str(error)
 
 
+def _flat_source() -> dict:
+    """A small composition in the flat form of the composer's export (json_bron.from_flat)."""
+    def bar(number: int, section: str) -> dict:
+        return {"bar": number, "section": section, "chord": "E5",
+                "lead": ["E4", "---", None, "G4"] + [None] * 12,
+                "brass": [["E4", "B4"], "---", None, None] + [None] * 4 + [["D4", "A4"], "---"] + [None] * 6,
+                "arp": ["E5", None] * 8,
+                "bass": ["E2", None, "E2", "E3"] + [None] * 12,
+                "drums": ["K+H", "H", "S+O", None] + ["H"] * 10 + ["T", "T"]}
+    return {"title": "Plat", "bpm": 128, "stepsPerBar": 16, "key": "E Mixolydian",
+            "bars": [bar(1, "A - Intro: Start"), bar(2, "B - Main Groove: Gas")]}
+
+
+def test_a_flat_json_composition_is_read_as_the_usual_one():
+    data = _flat_source()
+    assert json_bron.is_flat(data) and json_bron.problems(data) == []
+    source = json_bron.read(_json_file(data))
+    assert source.bpm == 128.0 and source.title == "Plat" and len(source.bars) == 2
+    first = source.bars[0]
+    assert first["lead"][:4] == ["E4", "---", "===", "G4"], "null right after a note stops it"
+    assert first["holds"]["lead"][0] == 2 and first["bass"][1] == "===" and first["arp"][1] == "==="
+    assert first["stabTrig"][0] == 1 and first["stabTrig"][8] == 1 and sum(first["stabTrig"]) == 2
+    assert first["chords"][0] == ["E4", "B4"] and first["chords"][8] == ["D4", "A4"], "each stab its own chord"
+    assert first["harm"] == ["---"] * 16, "no harmony track in the flat form"
+    assert first["drums"][:4] == ["KCK+CHH", "CHH", "SNR+OHH", "---"] and first["drums"][14] == "TOM2"
+    kinds = [tracker.section_kind(bar["section"]) for bar in source.bars]
+    assert kinds == ["intro", "thema"], kinds
+    hits = notation.drum_steps("KCK+CHH --- SNR+OHH")
+    assert [(hit.position, hit.drum) for hit in hits] == [(1.0, "kick"), (1.0, "hihat"), (1.5, "snare"), (1.5, "open")]
+    played = tracker.render(source, 0.2)
+    assert float(numpy.abs(played).max()) > 0.05, "it sounds"
+
+
+def test_the_menu_is_the_second_composition_as_written_and_the_fight_scene_the_third():
+    trackers = [score_module.load(name) for name in COMPOSITIONS if score_module.load(name).tracker]
+    first, second = trackers[0], trackers[-1]
+    made = {piece.name: piece for piece in derive.pieces(first, second, second)}
+    menu = made["nachtstad_menu_loop"]
+    assert menu.loop and menu.tracker == second.tracker and len(menu.bars) == len(second.bars), "the menu as written"
+    assert made["zwervr_intro"].tracker == first.tracker, "the intro stays the first"
+    assert len(made["karakterkeuze_loop"].bars) and made["handelaar_loop"].tempo == first.tempo
+    assert made["laden_loop"].tempo == second.tempo, "the loading screen made from the second"
+    for name in ("spel_loop", "deuntje_beloning", "deuntje_level_omhoog"):
+        assert made[name].sounds == derive.in_own_voices(made[name], second).sounds, (name, "in the second's voices")
+    second_tonic = second.tonic()
+    rewarded = made["deuntje_beloning"].bars[0].parts["arp"][0].pitches[0]
+    assert rewarded % 12 == second_tonic, "the reward on the second's tonic"
+    assert made["deuntje_dood"].tempo == first.tempo / 2.0, "death stays the first"
+    # the second's pieces keep its own groove: its bass and its drums as written
+    own = [([(note.position, note.pitches) for note in bar.parts.get("bas", [])], [(hit.position, hit.drum) for hit in bar.hits])
+           for bar in second.bars]
+    for name in ("spel_loop", "karakterkeuze_loop", "laden_loop"):
+        for bar in made[name].bars:
+            mine = ([(note.position, note.pitches) for note in bar.parts.get("bas", [])], [(hit.position, hit.drum) for hit in bar.hits])
+            assert mine in own, (name, "a bar with a bass or drums of its own")
+    assert made["gevecht"].loop and made["gevecht"].tracker == second.tracker and len(made["gevecht"].bars) == len(second.bars)
+    assert "gevecht" not in {piece.name for piece in derive.pieces(first, second)}, "no fight scene without a third"
+    assert score_module.menu_name() in COMPOSITIONS
+
+
+def _timeline_source() -> dict:
+    """A small full timeline (tijdlijn.py): two bars, an intro bar and a loop bar."""
+    operator = {"MUL": 1, "DET": -2, "TL": 10, "AR": 31, "D1R": 8, "D2R": 2, "D1L": 2, "RR": 7}
+    def step(number: int) -> dict:
+        return {"step": number,
+                "FM1_SlapBass": {"note": "G1", "midi": 31, "velocity": 127} if number == 1 else {"note": "---", "velocity": 0},
+                "FM2_HouseStabs": None, "FM3_LeadSynth": {"note": "---", "velocity": 0},
+                "FM4_SubPad": {"notes": ["G3", "D4"], "velocity": 95} if number == 1 else None,
+                "FM5_FMPerc": "RIMSHOT_D5" if number == 5 else ("FM_TOM_SLIDE" if number == 9 else "---"),
+                "FM6_DAC_Drums": "KICK_SNARE_CLAP" if number == 1 else ("VOX_GO" if number == 13 else "---"),
+                "PSG1_Arp": {"note": "G4", "midi": 67, "velocity": 88},
+                "PSG2_CounterEcho": {"midi": 70, "velocity": 75} if number in (3, 4) else None,
+                "PSG4_NoiseHats": "OH" if number % 4 == 3 else "CH"}
+    bars = [{"bar": number, "section": "Intro" if number == 1 else "Section A1: Groove", "chord": "Gm7",
+             "steps": [step(index) for index in range(1, 17)]} for number in (1, 2)]
+    return {"metadata": {"title": "Proef", "bpm": 126, "steps_per_bar": 16, "key_signature": "G Dorian",
+                         "loop_points": {"seamless_loop_start_bar": 2, "seamless_loop_end_bar": 2}},
+            "hardware_patches": {"FM1_SlapBass": {"algorithm": 4, "feedback": 6, "operators": {f"OP{i}": operator for i in range(1, 5)}}},
+            "arrangement_structure": [{"section": "Intro", "start_bar": 1, "end_bar": 1},
+                                      {"section": "Section A1: Groove", "start_bar": 2, "end_bar": 2}],
+            "full_track_timeline_2_bars": bars,
+            "flat_sequencer_events": [{"bar": b, "step": 1, "channel": "FM1_SlapBass", "note": "G1", "midi": 31,
+                                       "duration_steps": 2, "velocity": 127} for b in (1, 2)]}
+
+
+def test_a_full_timeline_is_read_note_for_note_with_its_own_patches():
+    import tijdlijn
+    path = _json_file(_timeline_source())
+    voice = tijdlijn.patches(path)["FM1_SlapBass"]
+    assert voice.algorithm == 4 and voice.feedback == 6 and voice.detunes == (6, 6, 6, 6), "DET -2 is register 6"
+    source = tijdlijn.read(path)
+    assert source["loop"] == (2, 2) and source["tempo"] == 126.0
+    first = source["bars"][0]
+    assert first["bas"] == [(1.0, (31,), 0.5, 1.0)], "the bass with its length from the flat events"
+    assert first["pad"][0][2] == 4.0, "the pad holds the whole bar"
+    assert len(first["arp"]) == 16 and first["echo"][0][2] == 0.25 and first["echo"][1][2] == 3.25, "the echo sustains"
+    assert (1.0, "kick", 1.0) in first["drums"] and (1.0, "clap", 1.0) in first["drums"], "KICK_SNARE_CLAP: three at once"
+    assert (3.0, "tom_laag", 0.8) in first["drums"] and first["perc"][0][1] == (notation.pitch("D5"),)
+    assert any("VOX_GO" in warning for warning in source["warnings"]), "a voice sample is reported"
+    assert [section["soort"] for section in source["sections"]] == ["intro", "thema"]
+    text = tijdlijn.composition_source(source, "proef", "proef.json")
+    assert "LUSPUNTEN = (2, 2)" in text and '"patch:proef.json:FM1_SlapBass",' in text, "the patch at its own level"
+
+
 def test_a_composition_from_json_plays_its_source_and_its_voices():
     found = 0
     for name in COMPOSITIONS:
@@ -659,7 +495,8 @@ def test_a_composition_from_json_plays_its_source_and_its_voices():
         for bar, written in zip(source.bars, score.bars):
             starts = sum(1 for cell in bar["bass"] if cell not in ("---", "==="))
             assert len(written.parts.get("bas", [])) == starts, (name, bar["barNum"])
-            assert len(written.hits) == sum(1 for cell in bar["drums"] if cell != "---"), (name, bar["barNum"])
+            assert len(written.hits) == sum(len(cell.split("+")) for cell in bar["drums"] if cell != "---"), \
+                (name, bar["barNum"])
         for piece in derive.pieces(score)[1:]:
             for part in {part for bar in piece.bars for part in bar.parts}:
                 assert piece.sound_of(part).startswith("tracker_"), (piece.name, part, piece.sound_of(part))
@@ -678,36 +515,6 @@ def test_the_voices_and_the_drums_of_the_tracker():
     assert set(notation.DRUM_NAMES) <= set(kit), set(notation.DRUM_NAMES) - set(kit)
     kick = numpy.abs(numpy.fft.rfft(kit["kick"].samples, 16384))
     assert int(kick.argmax()) * 44100.0 / 16384 < 120.0, "the kick is low"
-
-
-def test_a_vgm_composition_plays_its_vgm_and_its_own_voices():
-    for name in COMPOSITIONS:
-        score = score_module.load(name)
-        if not score.vgm:
-            continue
-        song = instruments.vgm_song(score.vgm)
-        made = derive.pieces(score)
-        assert made[0].name == "zwervr_intro" and made[0].vgm == score.vgm
-        assert abs(made[0].bars_seconds - song.seconds) < 0.1, (name, made[0].bars_seconds, song.seconds)
-        # the intro is the VGM as written: no octave moved in the score it is timed by
-        assert all(part not in score.derived_octaves or made[0].bars[4].parts[part] == score.bars[4].parts[part]
-                   for part in score.bars[4].parts)
-        for piece in made[1:]:
-            assert not piece.vgm
-            for part in {part for bar in piece.bars for part in bar.parts}:
-                assert piece.sound_of(part).startswith("vgm:" + score.vgm), (name, piece.name, part, piece.sound_of(part))
-            assert piece.sounds["drumstel"] == "vgm:" + score.vgm, (name, piece.name)
-        voice = instruments.SOUNDS[score.sounds["lead"]]
-        assert voice.kind == "chip" and voice.chip_voice == song.patches[score.sounds["lead"].split(":")[2].split("=")[0]]
-        assert voice.echo == 0.0 and len(voice.render((69,), 0.25, 1.0)) >= int(0.25 * 44100)
-        kit = instruments.DRUM_KITS["vgm:" + score.vgm]
-        assert set(kit) == set(instruments.DRUM_KITS["standaard"])
-        moved = derive.pieces(score)[2].bars       # the character loop: the melody where the derived pieces want it
-        if score.derived_octaves.get("lead"):
-            lead_low = min(pitch for bar in score.bars for note in bar.parts.get("lead", []) for pitch in note.pitches)
-            derived_low = min(pitch for bar in score.for_derived().bars for note in bar.parts.get("lead", [])
-                              for pitch in note.pitches)
-            assert derived_low - lead_low == 12 * score.derived_octaves["lead"] and moved
 
 
 def main() -> int:

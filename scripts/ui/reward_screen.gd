@@ -40,6 +40,9 @@ var font_body: Font
 var _pages: Array[Dictionary] = []   # per page: {"heading", "title", "xp", "item", "count"}
 var _page_index := 0
 var _was_paused := false
+## Whether the game must stay paused when this closes (another screen still up: the story
+## box, the shop, the pause menu; GameHud sets it). Else as it was before it opened.
+var keep_paused := Callable()
 var _since := 0.0
 var _panel: PanelContainer
 var _heading: Label
@@ -138,7 +141,7 @@ func next_page() -> void:
 		_show_page()
 		return
 	visible = false
-	get_tree().paused = _was_paused
+	get_tree().paused = bool(keep_paused.call()) if keep_paused.is_valid() else _was_paused
 	UiSounds.play(self, "terug", -6.0)
 	finished.emit()
 

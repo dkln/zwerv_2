@@ -1,6 +1,5 @@
-"""The two sound chips of the Mega Drive imitated from their registers, so a VGM (the log of
-what a tune writes to them, vgm.py) sounds as the console plays it (docs/MUZIEK.md, "Een VGM als
-compositie").
+"""The two sound chips of the Mega Drive imitated from their registers, so a patch (fm.FmVoice:
+the FM patches a composition gives itself, tijdlijn.py) sounds as the console plays it.
 
 YM2612 (FM, six channels): four operators per channel in the eight algorithms, the feedback
 of operator 1, per operator the multiple, the detune, the total level and the envelope
@@ -357,7 +356,7 @@ def psg(writes: list, count: int, psg_clock: float, rate: float) -> numpy.ndarra
     return out
 
 
-# ----------------------------------------------------------------------------- a whole VGM
+# ----------------------------------------------------------------------------- resampling
 
 def resample(signal: numpy.ndarray, from_rate: float, to_rate: float = OUTPUT_RATE) -> numpy.ndarray:
     """The signal at another sample rate (band-limited: through its spectrum)."""
@@ -371,111 +370,6 @@ def resample(signal: numpy.ndarray, from_rate: float, to_rate: float = OUTPUT_RA
     return numpy.fft.irfft(kept, out_count) * (out_count / len(signal))
 
 
-def _fm_events(song, clock: float, end_sample: int) -> dict:
-    """The song's YM2612 writes as fm_channel events per channel (0-5), key-offs at the end."""
-    scale = native_rate(clock) / song_rate(song)
-    events = {channel: [] for channel in range(6)}
-    high_latches = {}
-    for time, port, register, value in song.fm_writes:
-        sample = int(round(time * scale))
-        if port == 0 and register == 0x28:
-            channel = {0: 0, 1: 1, 2: 2, 4: 3, 5: 4, 6: 5}.get(value & 0x07)
-            if channel is not None:
-                events[channel].append((sample, "key", value >> 4))
-        elif port == 0 and register == 0x27:
-            events[2].append((sample, "special", bool(value & 0xC0)))
-        elif 0x30 <= register <= 0x8F and register & 3 != 3 and (register & 0xF0) in OPERATOR_SETTINGS:
-            operator = (0, 2, 1, 3)[(register >> 2) & 3]
-            events[port * 3 + (register & 3)].append((sample, "set", operator, OPERATOR_SETTINGS[register & 0xF0], value))
-        elif 0xA4 <= register <= 0xA6 or 0xAC <= register <= 0xAE:
-            high_latches[(port, register)] = value
-        elif 0xA0 <= register <= 0xA2:
-            high = high_latches.get((port, register + 4), 0)
-            events[port * 3 + register - 0xA0].append((sample, "frequency", ((high & 7) << 8) | value, (high >> 3) & 7))
-        elif 0xA8 <= register <= 0xAA and port == 0:
-            high = high_latches.get((port, register + 4), 0)
-            operator = {0xA8: 2, 0xA9: 0, 0xAA: 1}[register]
-            events[2].append((sample, "operator_frequency", operator, ((high & 7) << 8) | value, (high >> 3) & 7))
-        elif 0xB0 <= register <= 0xB2:
-            events[port * 3 + register - 0xB0].append((sample, "algorithm", value & 7, (value >> 3) & 7))
-        elif 0xB4 <= register <= 0xB6:
-            events[port * 3 + register - 0xB4].append((sample, "pan", bool(value & 0x80), bool(value & 0x40)))
-    for channel in range(6):
-        events[channel].append((end_sample, "key", 0))
-    return events
-
-
-def song_rate(song) -> float:
-    return 44100.0
-
-
-def unsupported(song) -> list:
-    """What the song uses that is not imitated (Dutch, for the report)."""
-    found = []
-    for _time, port, register, value in song.fm_writes:
-        if port == 0 and register == 0x22 and value & 0x08:
-            found.append("de LFO (vibrato/tremolo) staat aan: niet nagebootst")
-        elif 0x90 <= register <= 0x9F and value & 0x08:
-            found.append("SSG-EG-envelopes: niet nagebootst")
-        elif port == 0 and register == 0x27 and value & 0x80:
-            found.append("de CSM-modus: niet nagebootst")
-    return sorted(set(found))
-
-
-def _dac(song, count: int, scale: float) -> numpy.ndarray:
-    """The DAC's samples held until the next one (it takes the place of channel 6)."""
-    out = numpy.zeros(count)
-    if song.dac_writes:
-        times = numpy.array([int(round(time * scale)) for time, _value in song.dac_writes])
-        values = numpy.array([(value - 128) / 128.0 for _time, value in song.dac_writes])
-        held = numpy.searchsorted(times, numpy.arange(count), side="right") - 1
-        out = numpy.where(held >= 0, values[numpy.maximum(held, 0)], 0.0)
-        # silent again 20 ms after the last sample of a burst
-        gap = numpy.arange(count) - times[numpy.maximum(held, 0)]
-        out[gap > 0.02 * native_rate(song.fm_clock)] = 0.0
-    for time, samples, sample_rate in song.dac_streams:
-        start = int(round(time * scale))
-        length = int(len(samples) / sample_rate * native_rate(song.fm_clock))
-        positions = (numpy.arange(max(0, min(length, count - start))) * sample_rate / native_rate(song.fm_clock)).astype(int)
-        burst = numpy.frombuffer(bytes(samples), dtype=numpy.uint8)[positions].astype(numpy.float64)
-        out[start:start + len(burst)] = (burst - 128.0) / 128.0
-    return out
-
-
-def render_song(song, tail_seconds: float = 0.0, channels: tuple = None) -> numpy.ndarray:
-    """The whole VGM as the chips play it: stereo (n, 2) at 44100 Hz, from the first sample of
-    the log to its end, then every key released and the PSG silenced, ringing out for
-    `tail_seconds`. `channels` (names as in vgm.py: "fm1".."fm6", "psg", "dac") plays only those."""
-    rate = native_rate(song.fm_clock)
-    scale = rate / song_rate(song)
-    end = int(round(song.total_samples * scale))
-    count = end + int(round(tail_seconds * rate))
-    left = numpy.zeros(count)
-    right = numpy.zeros(count)
-    wanted = (lambda name: channels is None or name in channels)
-    events = _fm_events(song, song.fm_clock, end)
-    dac_plays = bool(song.dac_writes or song.dac_streams)
-    for channel in range(6):
-        if not wanted(f"fm{channel + 1}") or not any(event[1] == "key" and event[2] for event in events[channel]):
-            continue
-        mono, on_left, on_right = fm_channel(events[channel], count)
-        left += mono * on_left
-        right += mono * on_right
-    if dac_plays and wanted("dac"):
-        samples = _dac(song, count, scale)
-        left += samples
-        right += samples
-    if song.psg_writes and wanted("psg"):
-        writes = [(int(round(time * scale)), value) for time, value in song.psg_writes]
-        writes += [(end, 0x9F), (end, 0xBF), (end, 0xDF), (end, 0xFF)]
-        tones = psg(writes, count, song.psg_clock, rate)
-        left += tones
-        right += tones
-    return numpy.stack([resample(left, rate), resample(right, rate)], axis=1)
-
-
-# ----------------------------------------------------------------------------- one note of a voice
-
 def f_number_for(hz: float, clock: float) -> tuple:
     """(F-number, block) nearest to a frequency: the lowest block the F-number fits in, as
     sound drivers choose them."""
@@ -487,7 +381,7 @@ def f_number_for(hz: float, clock: float) -> tuple:
 
 
 def voice_events(voice) -> list:
-    """The events that set a channel to a patch (vgm.FmVoice: operators 1-4 in order)."""
+    """The events that set a channel to a patch (fm.FmVoice: operators 1-4 in order)."""
     events = [(0, "algorithm", voice.algorithm, voice.feedback)]
     for operator in range(4):
         events += [

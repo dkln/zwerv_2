@@ -58,7 +58,7 @@ GATES = {"bas": 0.95, "lead": 0.96, "harmonie": 0.96, "arp": 0.9, "brass": 1.0}
 BRASS_STEPS = 2.4
 SECTION_KINDS = (("INTRO", "intro"), ("VERSE", "thema"), ("THEME", "thema"), ("PRE", "opbouw"), ("BUILD", "opbouw"),
                  ("BRIDGE", "opbouw"), ("CHORUS", "refrein"), ("BREAK", "breakdown"), ("FINAL", "finale"),
-                 ("OUTRO", "finale"), ("CLIMAX", "finale"))
+                 ("OUTRO", "finale"), ("CLIMAX", "finale"), ("MAIN", "thema"), ("GROOVE", "thema"))
 
 
 # ----------------------------------------------------------------------------- reading the page
@@ -563,7 +563,9 @@ def render(tracker: Tracker, tail_seconds: float = 0.0, only: tuple = None, mast
                     -0.5 if step_index % 2 == 0 else 0.5)
             hit = bar["drums"][step_index]
             if wanted("drums") and hit and hit != "---":
-                add(drum(hit, volumes[5]), time)
+                # several drums at once ("KCK+CHH": the flat form of json_bron.py)
+                for one in hit.split("+"):
+                    add(drum(one, volumes[5]), time)
     if not mastered:
         return out
     compressor = Compressor(threshold=-10.0, knee=12.0, ratio=4.0, attack=0.003, release=0.15)
@@ -604,13 +606,18 @@ def _note_class(note: str) -> int:
 
 
 def chord_from_notes(notes: list) -> str:
-    """The name of a chord by its notes (the lowest the root), for a bar whose name on the page
-    is not a chord name ("E Mixo Blues Riff")."""
+    """The name of a chord by its notes, for a bar whose name on the page is not a chord name
+    ("E Mixo Blues Riff"): the lowest the root when the notes are a chord shape from there,
+    else another of its notes from which they are (an inversion: C#-E-A is A), else the shape
+    that shares most with them from the lowest."""
     root = _note_class(notes[0])
+    candidates = [root] + [_note_class(note) for note in notes[1:] if _note_class(note) != root]
+    for candidate in candidates:
+        classes = {(_note_class(note) - candidate) % 12 for note in notes}
+        for quality, shape in CHORD_SHAPES.items():
+            if set(shape) == classes:
+                return NOTE_CLASS_NAMES[candidate] + quality
     classes = {(_note_class(note) - root) % 12 for note in notes}
-    for quality, shape in CHORD_SHAPES.items():
-        if set(shape) == classes:
-            return NOTE_CLASS_NAMES[root] + quality
     # no shape of its own: the one that shares most with it
     best = max(CHORD_SHAPES, key=lambda quality: (len(set(CHORD_SHAPES[quality]) & classes) - len(set(CHORD_SHAPES[quality]) - classes)))
     return NOTE_CLASS_NAMES[root] + best
@@ -627,17 +634,43 @@ def _readable_chord(text: str):
     return text
 
 
+def _same_chord(first: list, second: list) -> bool:
+    """Whether two voicings are the same chord (one's notes a part of the other's, the same
+    chord by name: E7 and its E triad, Cmaj7 and C), so a new stab of it is no change."""
+    first_classes = {_note_class(note) for note in first}
+    second_classes = {_note_class(note) for note in second}
+    if not (first_classes <= second_classes or second_classes <= first_classes):
+        return False
+    def root(name: str) -> str:
+        return name[:2] if len(name) > 1 and name[1] in "#b" else name[:1]
+
+    return root(chord_from_notes(first)) == root(chord_from_notes(second))
+
+
 def bar_chords(bar: dict) -> str:
-    """The bar's chords for "akkoord": the page's own names when it names as many chords as the
-    bar has (the notes change at those places), else named by the notes the page plays."""
-    spans = []
-    for step_notes in bar["chords"]:
-        if not spans or spans[-1] != step_notes:
-            spans.append(step_notes)
+    """The bar's chords for "akkoord", where they change (a stab of the same chord in another
+    voicing is no change: _same_chord), each named by the fullest voicing of it: the page's own
+    names when it names as many chords as there are, else named by the notes it plays. When the
+    changes do not split the bar evenly, each name gets its beat ("E7@1 D@4": notation.bar_chords)."""
+    spans = []                       # [first step, notes]
+    for step, step_notes in enumerate(bar["chords"]):
+        if not step_notes:
+            continue
+        if spans and (spans[-1][1] == step_notes or _same_chord(spans[-1][1], step_notes)):
+            if len({_note_class(note) for note in step_notes}) > len({_note_class(note) for note in spans[-1][1]}):
+                spans[-1][1] = step_notes
+            continue
+        spans.append([step, step_notes])
+    if not spans:
+        return ""
+    spans[0][0] = 0
     names = [_readable_chord(part) for part in bar["chordName"].split("->")]
-    if len(names) == len(spans) and all(names):
+    if not (len(names) == len(spans) and all(names)):
+        names = [chord_from_notes(notes) for _step, notes in spans]
+    even = all(step == index * 16 // len(spans) for index, (step, _notes) in enumerate(spans))
+    if even:
         return " ".join(names)
-    return " ".join(chord_from_notes(span) for span in spans)
+    return " ".join(f"{name}@{1.0 + step / 4.0:g}" for name, (step, _notes) in zip(names, spans))
 
 
 def _row(notes: list) -> str:
@@ -646,7 +679,7 @@ def _row(notes: list) -> str:
 
 def composition_source(tracker: Tracker, name: str, title: str) -> str:
     """The text of composities/<naam>.py: the page's rows as they stand."""
-    import vgm
+    import fm
     bars = tracker.bars
     found_sections = sections(tracker)
     constants = {}                # (part, row text) -> constant name
@@ -664,7 +697,7 @@ def composition_source(tracker: Tracker, name: str, title: str) -> str:
                 constants[key] = pattern_names[key]
             else:
                 counters[part] = counters.get(part, 0) + 1
-                constants[key] = f"{part}_{vgm._letters(counters[part] - 1)}"
+                constants[key] = f"{part}_{fm.letters(counters[part] - 1)}"
             order.append(key)
         return constants[key]
 
@@ -687,7 +720,7 @@ def composition_source(tracker: Tracker, name: str, title: str) -> str:
         bar_entries.append(f'"drums": {constant("DRUMS", bar["drums"])}')
         entries.append((bar, bar_entries))
     key_tonic, key_mode = key_of(tracker)
-    moments = vgm.moments_from_sections(found_sections, len(bars), 60.0 / tracker.bpm * 4)
+    moments = fm.moments_from_sections(found_sections, len(bars), 60.0 / tracker.bpm * 4)
     out = []
     from_json = tracker.path.endswith(".json")
     out += [f'"""{title}: de partituur van {os.path.basename(tracker.path)} (' + (
@@ -727,13 +760,13 @@ def composition_source(tracker: Tracker, name: str, title: str) -> str:
             "AFGELEIDE_KLANKEN = {"]
     voices = {"bas": "tracker_bas", "lead": "tracker_lead", "zacht": "tracker_harmonie", "vlak": "tracker_harmonie",
               "akkoord": "tracker_brass"}
-    for kind, sounds in vgm.SOUND_KINDS.items():
+    for kind, sounds in fm.SOUND_KINDS.items():
         for sound in sounds:
             if sound.startswith("tracker_"):
                 continue
             own = "tracker_arp" if sound == "psg_arp" else voices[kind]
             out.append(f'    "{sound}": "{own}={sound}",')
-    for kit in vgm.DRUM_KIT_NAMES:
+    for kit in fm.DRUM_KIT_NAMES:
         if kit != "tracker":
             out.append(f'    "{kit}": "tracker",')
     out += ["}", "",
@@ -801,7 +834,8 @@ def expected_bars(tracker: Tracker) -> list:
                  for step in range(16) if bar["stabTrig"][step] == 1]
         if brass:
             parts["brass"] = brass
-        parts["drums"] = [(1.0 + step * 0.25, DRUM_NAMES[hit]) for step, hit in enumerate(bar["drums"]) if hit in DRUM_NAMES]
+        parts["drums"] = [(1.0 + step * 0.25, DRUM_NAMES[drum]) for step, hit in enumerate(bar["drums"]) if hit
+                          for drum in str(hit).split("+") if drum in DRUM_NAMES]
         result.append(parts)
     return result
 

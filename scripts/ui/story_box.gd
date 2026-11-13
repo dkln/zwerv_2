@@ -94,6 +94,9 @@ var _pages: Array = []
 var _page_index := 0
 var _typewriter: Typewriter
 var _was_paused := false
+## Whether the game must stay paused when this closes (another screen still up: the reward
+## screen, the shop, the pause menu; GameHud sets it). Else as it was before it opened.
+var keep_paused := Callable()
 var _blink_clock := 0.0
 var _dim: ColorRect
 var _banner: PanelContainer
@@ -464,8 +467,13 @@ func _next_page() -> void:
 	if _portrait:
 		_portrait.queue_free()
 		_portrait = null
-	get_tree().paused = _was_paused
+	get_tree().paused = bool(keep_paused.call()) if keep_paused.is_valid() else _was_paused
 	finished.emit()
+
+
+## Whether it shows a conversation now (a page of kind "gesprek"), not a story or a mission.
+func is_conversation() -> bool:
+	return visible and _page_index < _pages.size() and String((_pages[_page_index] as Dictionary).get("kind", "verhaal")) == "gesprek"
 
 
 # ------------------------------------------------------------------ building

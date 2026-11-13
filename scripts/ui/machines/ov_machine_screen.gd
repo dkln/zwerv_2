@@ -1,6 +1,6 @@
 extends "res://scripts/ui/machines/machine_screen.gd"
-## The OV-chipkaart machine (in the hall of Den Haag Centraal, scripts/world/station/station.gd, and at
-## a few tram stops in the town, scripts/world/things/street_machines.gd), close up. With what the
+## The OV-chipkaart machine (in the hall of Den Haag Centraal, scripts/world/station/station.gd: the
+## only place to buy or top up a card; the tram stops have OV posts), close up. With what the
 ## game has (OvCard, scripts/world/station/ov_card.gd):
 ## - no card yet: buy one (OvCard.CARD_PRICE, with START_BALANCE on it) or a single ticket;
 ## - with a card: its balance on the display, top it up (OvCard.TOP_UPS) or buy a single

@@ -23,7 +23,7 @@ const Babble = preload("res://scripts/audio/babble.gd")
 const Iso = preload("res://scripts/camera/iso_camera.gd")
 ## The mood of the babble of a shout (Babble) by its mood; a line ending in "?" asks ("vraag").
 const BABBLE_MOOD := {"wachten": "boos", "waarschuwen": "boos", "doordrukken": "boos", "wheelie": "opgewonden",
-	"aanrijding": "verdrietig", "zwartrijden": "boos", "beboeten": "boos", "spoor": "boos", "gevallen": "verdrietig",
+	"aanrijding": "verdrietig", "zwartrijden": "boos", "uitchecken": "boos", "beboeten": "boos", "spoor": "boos", "gevallen": "verdrietig",
 	"dronken": "opgewonden", "agressief": "boos"}
 
 ## An idiot at the wheel (Vehicle.maniac), now and then and when it honks: drunk...
@@ -143,13 +143,21 @@ const KIND_LINES := {
 
 ## A conductor in Den Haag Centraal who saw the player jump the OV gates (scripts/world/
 ## station.gd): when he sets off after them ("zwartrijden") and when he has caught them
-## ("beboeten"). Always shouted, as "doordrukken".
+## ("beboeten"); "uitchecken" when they went out over the gates still checked in. Always
+## shouted, as "doordrukken".
 const FARE_DODGER_LINES: Array[String] = [
 	"Hé! Even uw kaartje!",
 	"Ho ho, staan blijven! Kaartje!",
 	"Hé jij daar! Niet zwartrijden!",
 	"Wacht eens even, vriend!",
 	"Zo kom je er niet in, hoor!",
+]
+## ...and one who saw them go out over the gates without checking out ("uitchecken").
+const CHECK_OUT_LINES: Array[String] = [
+	"Hé! U bent vergeten uit te checken!",
+	"Ho! Eerst uitchecken, meneer!",
+	"Niet uitgecheckt? Staan blijven!",
+	"Zo ga je er niet uit, hoor!",
 ]
 const FINE_LINES: Array[String] = [
 	"Hebbes! Dat wordt een boete.",
@@ -183,7 +191,7 @@ const BALLOON_LAYER := 9
 const DRIVER_ACCENT := UiStyle.ACCENT
 const READY_META := "shout_ready_at"
 const BALLOON_META := "shout_balloon"
-const MOODS := ["wachten", "waarschuwen", "doordrukken", "wheelie", "aanrijding", "zwartrijden", "beboeten", "spoor", "gevallen",
+const MOODS := ["wachten", "waarschuwen", "doordrukken", "wheelie", "aanrijding", "zwartrijden", "uitchecken", "beboeten", "spoor", "gevallen",
 	"dronken", "agressief"]
 
 static var _balloon_layer: CanvasLayer
@@ -198,7 +206,7 @@ static func shout(speaker: Node3D, kind: String, mood: String, roof_height: floa
 	if speaker == null or not speaker.is_inside_tree():
 		return false
 	var now := Time.get_ticks_msec() / 1000.0
-	var always := mood in ["doordrukken", "wheelie", "aanrijding", "zwartrijden", "beboeten", "spoor", "gevallen"]
+	var always := mood in ["doordrukken", "wheelie", "aanrijding", "zwartrijden", "uitchecken", "beboeten", "spoor", "gevallen"]
 	if not always:
 		if now < _any_ready_at or now < float(speaker.get_meta(READY_META, 0.0)):
 			return false
@@ -278,6 +286,8 @@ static func pick_line(kind: String, mood: String) -> String:
 			lines.append_array(HIT_LINES)
 		"zwartrijden":
 			lines.append_array(FARE_DODGER_LINES)
+		"uitchecken":
+			lines.append_array(CHECK_OUT_LINES)
 		"beboeten":
 			lines.append_array(FINE_LINES)
 		"spoor":

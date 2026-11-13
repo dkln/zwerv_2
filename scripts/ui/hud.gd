@@ -97,6 +97,9 @@ const InteriorPlan = preload("res://scripts/ui/widgets/interior_plan.gd")
 ## this colour, at least this many metres across (a snack bar would be a speck at 160 m).
 const EXIT_MARK_COLOUR := Color("#5BE37A")
 const INTERIOR_MINIMAP_MIN_METRES := 28.0
+## Inside a building a quest place within this many metres is in it and marked on its plan
+## (the cans of mission 1 in the station); farther off it is in the town and left out.
+const INDOOR_TARGET_REACH := 150.0
 const PlayerPortrait = preload("res://scripts/ui/widgets/player_portrait.gd")
 const FloatingNumbers = preload("res://scripts/ui/widgets/floating_numbers.gd")
 const PlayerCharacter = preload("res://scripts/player/player_character.gd")
@@ -142,6 +145,8 @@ const MINIMAP_COLOURS := {
 	"building": Color("#141729"),
 }
 const MINIMAP_EMPTY := Color("#0B0D1A")
+## The colour of the player's thoughts over its head (show_thought), as the "gedachte" pages.
+const THOUGHT_COLOUR := Color("#47D6C2")
 ## Folder of a Grond tile (the start of its library name) -> kind of ground on the minimap.
 const MINIMAP_KINDS := {
 	"weg": "road", "snelweg": "road", "bocht": "road", "parkeren": "road", "tunnel": "road", "brug": "road",
@@ -187,6 +192,12 @@ const EXAMPLE_QUESTS := [
 @export var day_cycle_path := NodePath("../Dagcyclus")
 @export var ground_path := NodePath("../Grond")
 @export var buildings_path := NodePath("../Gebouwen")
+## The story (scripts/story/story.gd): its shroud hides the parts of the town not yet open
+## on the minimap and the map (Story.shroud, shroud_changed); its "markeringen" stay on the map.
+@export var story_path := NodePath("../Verhaal")
+
+## The game menu opened, or went to another tab while open (the story waits for it: "menu_open").
+signal menu_opened(tab: String)
 
 var _location_wijk: Label
 var _location_place: Label
@@ -238,6 +249,10 @@ var _area_tween: Tween
 var _notices: Array[Dictionary] = []   # waiting: {"heading", "name", "seconds", "jingle"}
 var _minimap_box: Control
 var _minimap_map: TextureRect
+var _minimap_shroud: TextureRect     # over the map: what the story has not opened yet, hidden
+var _shroud_image: Image              # the same size as the map picture, opaque where shrouded
+var _shroud_texture: ImageTexture
+var _map_lowest := Vector2i.ZERO      # the cell of the map picture's first pixel
 var _minimap_arrow: PlayerArrow
 var _minimap_origin := Vector2.ZERO   # world x, z of the map image's corner
 var _minimap_cell := 4.0              # metres per map pixel
@@ -701,6 +716,8 @@ func quest_targets() -> Array:
 	for step: Dictionary in quest.get("steps", []):
 		if step.get("done", false):
 			continue
+		if step.get("optional", false):
+			continue   # an optional step never holds up the one under way
 		if step.get("locked", false):
 			return []
 		return step.get("targets", [])
@@ -1062,6 +1079,13 @@ func _build_minimap() -> void:
 	_minimap_map.stretch_mode = TextureRect.STRETCH_SCALE
 	_minimap_map.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	clip.add_child(_minimap_map)
+	_minimap_shroud = TextureRect.new()
+	_minimap_shroud.name = "Sluier"
+	_minimap_shroud.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_minimap_shroud.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_minimap_shroud.stretch_mode = TextureRect.STRETCH_SCALE
+	_minimap_shroud.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	clip.add_child(_minimap_shroud)
 	_minimap_marks = QuestMarks.new()
 	_minimap_marks.size = clip.size
 	clip.add_child(_minimap_marks)
@@ -1460,6 +1484,16 @@ func _build_reward_screen() -> void:
 	_reward_screen.font_pixel = _font_pixel
 	_reward_screen.font_body = _font_body
 	_root.add_child(_reward_screen)
+	# closing, the game stays paused only while another of these screens is still up (never
+	# paused again from a state remembered when it opened: the town would stand still)
+	_reward_screen.keep_paused = func() -> bool:
+		return is_showing_story() or is_showing_shop() or (_pause_layer != null and _pause_layer.visible)
+	if _story_box:
+		_story_box.keep_paused = func() -> bool:
+			return is_showing_reward() or is_showing_shop() or (_pause_layer != null and _pause_layer.visible)
+	if _shop_screen:
+		_shop_screen.keep_paused = func() -> bool:
+			return is_showing_reward() or is_showing_story() or (_pause_layer != null and _pause_layer.visible)
 
 
 ## A reward got (scripts/ui/reward_screen.gd: {"heading", "title", "xp", "items": [{"item",
@@ -1487,10 +1521,13 @@ func rewards_waiting() -> Array[Dictionary]:
 
 
 ## A reward comes at once, also over a conversation or the shop (which wait under it and go
-## on after); not over the pause menu, the game menu, a machine's close-up, the loading
-## screen or the death screen (it waits for those).
+## on after); not over the pages of a story or a mission (its own pages come first), the
+## pause menu, the game menu, a machine's close-up, the loading screen or the death screen
+## (it waits for those).
 func _open_waiting_reward() -> void:
 	if _rewards_waiting.is_empty() or is_showing_reward() or not is_inside_tree():
+		return
+	if is_showing_story() and not _story_box.is_conversation():
 		return
 	if (_death_layer and _death_layer.visible) or (_pause_layer and _pause_layer.visible):
 		return
@@ -1825,6 +1862,68 @@ func _build_minimap_image() -> void:
 	# cell (x, z) spans x*4 .. x*4+4 (the GridMap centres its tiles in their cells)
 	_minimap_origin = Vector2(lowest) * _minimap_cell + Vector2(ground.position.x, ground.position.z)
 	_minimap_map.texture = ImageTexture.create_from_image(image)
+	_map_lowest = lowest
+	var story := get_node_or_null(story_path)
+	if story and story.has_signal("shroud_changed") and not story.shroud_changed.is_connected(_refresh_shroud):
+		story.shroud_changed.connect(_refresh_shroud)
+	_refresh_shroud()
+
+
+## The shroud of the story painted over the map: every cell it has not opened in the colour
+## of the empty map (opaque), the open ones clear; the minimap and the game menu's map use it
+## (shroud_image). Again whenever the story opens more (Story.shroud_changed).
+func _refresh_shroud() -> void:
+	var story := get_node_or_null(story_path)
+	var map_texture: Texture2D = _town_map.get("texture", _minimap_map.texture) if _minimap_map else null
+	if story == null or not "shroud" in story or map_texture == null:
+		_shroud_image = null
+		_shroud_texture = null
+		return
+	var shroud = story.shroud
+	var size := Vector2i(map_texture.get_size())
+	var image := Image.create(size.x, size.y, false, Image.FORMAT_RGBA8)
+	image.fill(Color(0, 0, 0, 0))
+	var hidden := Color(MINIMAP_EMPTY, 1.0)
+	var any := false
+	for y in size.y:
+		for x in size.x:
+			if not shroud.is_open_cell(x + _map_lowest.x, y + _map_lowest.y):
+				image.set_pixel(x, y, hidden)
+				any = true
+	_shroud_image = image if any else null
+	if _shroud_image == null:
+		_shroud_texture = null
+	elif _shroud_texture and Vector2i(_shroud_texture.get_size()) == size:
+		_shroud_texture.update(image)
+	else:
+		_shroud_texture = ImageTexture.create_from_image(image)
+	if _minimap_shroud:
+		_minimap_shroud.texture = _shroud_texture
+
+
+## The shroud over the town's map picture (pixels as minimap_texture), null when all is open.
+func shroud_image() -> Image:
+	return _shroud_image
+
+
+## Whether the world point (x, z) is under the shroud (hidden on the maps).
+func is_shrouded(world: Vector2) -> bool:
+	var story := get_node_or_null(story_path)
+	return story != null and "shroud" in story and not story.shroud.is_open(world.x, world.y)
+
+
+## The game menu (Tab) closed or open to the player (the story unlocks it: "ontgrendelt").
+func set_menu_locked(locked: bool) -> void:
+	var game_menu := get_node_or_null("Spelmenu")
+	if game_menu:
+		game_menu.set("locked", locked)
+
+
+## A thought of the player, rising over its head (at the edge of the shroud).
+func show_thought(text: String) -> void:
+	var player := get_tree().get_first_node_in_group("speler") as Node3D
+	if player:
+		show_floating_number(player.global_position + Vector3.UP * 2.3, text, THOUGHT_COLOUR, 13)
 
 
 static func _minimap_kind(item_name: String) -> String:
@@ -1864,14 +1963,24 @@ func _update_minimap() -> void:
 	_has_focus = true
 	var focus_on_map := (Vector2(focus.x, focus.z) - _minimap_origin) * pixels_per_metre
 	_minimap_map.position = _minimap_arrow.position - focus_on_map
+	if _minimap_shroud:
+		_minimap_shroud.visible = _town_map.is_empty() and _shroud_texture != null
+		_minimap_shroud.size = _minimap_map.size
+		_minimap_shroud.position = _minimap_map.position
 	var flat := Vector2(heading.x, heading.z)
 	if flat.length_squared() > 0.0001:
 		_minimap_arrow.rotation = atan2(flat.x, -flat.y)
 	var marks := []
-	# inside a building: its ways out instead of the quest places (those are in the town)
-	if _town_map.is_empty():
-		for target: Vector2 in quest_targets():
-			marks.append(_minimap_arrow.position + (target - Vector2(focus.x, focus.z)) * pixels_per_metre)
+	# inside a building: its ways out, not the quest places in the town; only a place in the
+	# building itself (INDOOR_TARGET_REACH: the cans of mission 1 in the station, Story)
+	var indoors := not _town_map.is_empty()
+	for target: Vector2 in quest_targets():
+		var offset := target - Vector2(focus.x, focus.z)
+		if indoors and offset.length() > INDOOR_TARGET_REACH:
+			continue
+		if not indoors and is_shrouded(target):
+			continue
+		marks.append(_minimap_arrow.position + offset * pixels_per_metre)
 	_minimap_marks.points = marks
 	_update_waypoint(focus, pixels_per_metre)
 	var exits := []

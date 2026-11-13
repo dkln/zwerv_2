@@ -7,7 +7,7 @@
 $root = Split-Path -Parent $PSScriptRoot
 if (-not $env:GODOT_TIMEOUT) { $env:GODOT_TIMEOUT = 300 }
 if ($args.Count -gt 0) {
-	& "$root\tools\godot.ps1" --headless --script tests/run_unit_tests.gd -- @args
+	& "$root\tools\godot.ps1" --headless --script tests/run_unit_tests.gd '--' @args
 } else {
 	& "$root\tools\godot.ps1" --headless --script tests/run_unit_tests.gd
 }

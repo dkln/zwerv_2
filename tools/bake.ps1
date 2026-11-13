@@ -7,5 +7,5 @@
 #   tools\bake.ps1 opnieuw               eerst de cache van die kaarten leeg: alles opnieuw
 #   tools\bake.ps1 scenes/stad.tscn      alleen deze kaart
 if (-not $env:GODOT_TIMEOUT) { $env:GODOT_TIMEOUT = 3600 }
-& "$PSScriptRoot\godot.ps1" --headless --script tools/build/bake_maps.gd -- @args
+& "$PSScriptRoot\godot.ps1" --headless --script tools/build/bake_maps.gd '--' @args
 exit $LASTEXITCODE

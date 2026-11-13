@@ -35,6 +35,18 @@ const DriverShout = preload("res://scripts/vehicles/driver_shout.gd")
 const Pursuit = preload("res://scripts/world/interiors/pursuit.gd")
 const OvCard = preload("res://scripts/world/station/ov_card.gd")
 const OvMachineScreen = preload("res://scripts/ui/machines/ov_machine_screen.gd")
+const MachineModels = preload("res://scripts/world/things/machine_models.gd")
+const QuestOutline = preload("res://scripts/effects/quest_outline.gd")
+const InteriorSpot = preload("res://scripts/world/interiors/interior_spot.gd")
+## The bins on the platforms (props straat/prullenbak_paal past the gate line): a mission may
+## want an empty can in two of them (Story.station_cans_wanted: the first
+## mission's last two, behind the gates; MISSION_CAN_KINDS), put there as the player comes in
+## (put_mission_can).
+const PLATFORM_BIN := "straat/prullenbak_paal"
+const CAN_REACH := 1.3
+const MISSION_CAN_KINDS := ["perron_1", "perron_2"]
+## How far apart (m) the two bins of the story's cans are at least when no other platform has one.
+const MISSION_CANS_APART := 12.0
 const PROPS_LIBRARY := "res://assets/libraries/props.res"
 const DOORS_GROUP := "deuren"
 const CARD_ITEM := "ov_chipkaart"
@@ -73,7 +85,19 @@ const LINGER_CHANCE := 0.15
 ## of FINE_EUROS (all they have when it is less), a line over the player, and he goes back.
 ## He gives up when the player leaves the station, stays more than GIVE_UP_DISTANCE away for
 ## GIVE_UP_SECONDS, or after CHASE_SECONDS.
+## The same the other way: from a platform into the hall without checking out (still checked
+## in: the chase is for "niet uitgecheckt", DriverShout "uitchecken"; caught, the fine and he
+## checks them out; not checked in at all: zwartrijden). Who leaves the station still checked
+## in owes the boarding fare (OvCard.leave_open_trip).
+## On the platforms a conductor checks: the player within INSPECTION_REACH of one (not one
+## getting into a train or already after them) is asked for their card with INSPECTION_CHANCE
+## (once per conductor: INSPECTED_META); without a check-in (slipped through unseen, checked
+## out at a post) he is after them as at the gates. Fined on the platforms: no more checks
+## until they are back in the hall.
 const FARE_CHECK_CHANCE := Vector2(0.35, 0.5)
+const INSPECTION_REACH := 3.0
+const INSPECTION_CHANCE := 0.5
+const INSPECTED_META := "kaart_gecontroleerd"
 const FINE_EUROS := 50.0
 const CHASE_SPEED := 4.6
 const CATCH_REACH := 1.0
@@ -215,6 +239,8 @@ var _topping_up := false            # _top_up under way
 var _keepers: Array[InteriorPerson] = []
 var _patrol_leaders: Array[StationPerson] = []
 var _platform_patrol: StationPerson
+var _mission_cans := {}                # kind ("perron_1", "perron_2") -> the can a mission wants there (put_mission_can)
+var _mission_cans_taken := {}          # the kinds whose can the player has taken
 var _props_library: MeshLibrary
 var _binnen_library: MeshLibrary
 var _boards: Array = []               # per board: Array of rows [time, destination, track, remark]
@@ -239,6 +265,11 @@ var _subtitle: RichTextLabel
 var _player_side := 0
 var _chaser: StationPerson
 var _pursuit: Pursuit                # the rules of his chase (caught, given up)
+## Why he is after them: "zwartrijden" or "uitchecken" (not checked out).
+var _chase_reason := "zwartrijden"
+## Fined on the platforms: no more checks until they are back in the hall (the fine is
+## their ticket).
+var _fined_on_the_platforms := false
 ## Which way the conductor is going now (CHASE_REPLAN; for the checks).
 var _chase_plan: String:
 	get:
@@ -251,6 +282,9 @@ var unstuck := 0
 var _fare_random := RandomNumberGenerator.new()
 ## For the checks: the chance of being seen (< 0: FARE_CHECK_CHANCE), and what happened.
 var fare_check_chance_override := -1.0
+## The chance of a check on the platform (< 0: INSPECTION_CHANCE), and how many there were.
+var inspection_chance_override := -1.0
+var inspections := 0
 var chases_started := 0
 var fines := 0
 var chases_given_up := 0
@@ -288,7 +322,9 @@ func trains() -> Array:
 func player_came_in(who: Node3D) -> void:
 	_player = who
 	_player_side = 0
+	_fined_on_the_platforms = false
 	_ensure_setup()
+	put_mission_can()
 	# topped up a few at a time (each figure is built of voxels: all at once stalls the game)
 	if _walkers.size() < _target_travellers() / 2 and not _topping_up:
 		_top_up()
@@ -308,8 +344,12 @@ func _top_up() -> void:
 func player_went_out() -> void:
 	if _subtitle_layer:
 		_subtitle_layer.visible = false
+	_tell_story_cans(false)   # the cans no longer marked: the town's map again
 	# out of the station: the conductor has lost them
 	_end_chase()
+	# still checked in: not checked out, the boarding fare is owed (OvCard)
+	if _player != null and is_instance_valid(_player):
+		OvCard.leave_open_trip(_player)
 
 
 ## The station's clock (minutes since midnight, running on past 24 h).
@@ -508,7 +548,7 @@ class OvPost:
 
 	func action_text() -> String:
 		var player: Node3D = station.call("player")
-		return "Uitchecken" if player and player.get_meta("ov_ingecheckt", false) else "Inchecken"
+		return OvCard.post_action(player) if player else "Inchecken"
 
 	func reach() -> float:
 		return 1.1
@@ -518,16 +558,12 @@ class OvPost:
 		if player == null:
 			return
 		var at := position + Vector3.UP * 1.6
-		var checked_in: bool = player.get_meta("ov_ingecheckt", false)
-		# a card with the fare on it or a single ticket (OvCard)
-		var ticket := OvCard.check_out(player) if checked_in else OvCard.check_in(player)
-		if ticket == "saldo" or ticket == "geen":
-			StationAudio.play_at(station, "ov_geweigerd", position + Vector3.UP, -6.0)
-			station.call("say", at, OvCard.refusal(ticket), Color("#FF5A4A"))
-			return
-		player.set_meta("ov_ingecheckt", not checked_in)
-		StationAudio.play_at(station, "ov_uitchecken" if checked_in else "ov_inchecken", position + Vector3.UP, -6.0)
-		station.call("say", at, "Uitgecheckt" if checked_in else "Ingecheckt", Color("#3CE06A"))
+		# a card with the fare on it or a single ticket (OvCard.tap); a trip not checked out
+		# before: the boarding fare is kept now
+		var result := OvCard.tap(player)
+		StationAudio.play_at(station, String(result.sound), position + Vector3.UP, -6.0)
+		var red: bool = not result.ok or float(result.charge) > 0.0
+		station.call("say", at, String(result.text), Color("#FF5A4A") if red else Color("#3CE06A"))
 
 
 func _make_posts(props: GridMap) -> void:
@@ -1350,8 +1386,9 @@ func _missed(person: StationPerson) -> void:
 
 # ------------------------------------------------------------------ fare dodging
 
-## Whether the player crossed the gate line onto a platform without a check-in (see
-## FARE_CHECK_CHANCE); maybe a conductor saw it.
+## Whether the player crossed the gate line without a check-in or check-out (see
+## FARE_CHECK_CHANCE); maybe a conductor saw it. On the platforms: maybe a check
+## (_inspect_the_player).
 func _watch_the_gates() -> void:
 	if _player == null or not _player.is_inside_tree():
 		return
@@ -1360,9 +1397,15 @@ func _watch_the_gates() -> void:
 	var side := -1 if at.z < Layout.GATE_Z - margin else (1 if at.z > Layout.GATE_Z + margin else 0)
 	if side == 0:
 		return
-	var crossed := _player_side == -1 and side == 1
+	var crossed := _player_side != 0 and side != _player_side
 	_player_side = side
-	if not crossed or _chaser != null:
+	if not crossed:
+		if side == 1 and _chaser == null and not _fined_on_the_platforms:
+			_inspect_the_player(at)
+		return
+	if side == -1:
+		_fined_on_the_platforms = false
+	if _chaser != null:
 		return
 	var passed := Time.get_ticks_msec() / 1000.0 < float(_player.get_meta(StationGates.PASS_META, 0.0))
 	if passed:
@@ -1371,15 +1414,49 @@ func _watch_the_gates() -> void:
 	var chance := fare_check_chance_override if fare_check_chance_override >= 0.0 \
 		else lerpf(FARE_CHECK_CHANCE.x, FARE_CHECK_CHANCE.y, _busy_share())
 	if _fare_random.randf() < chance:
-		_start_chase(at)
+		# out into the hall still checked in: not checked out; else (either way) zwartrijden
+		_start_chase(at, "uitchecken" if side == -1 and OvCard.is_checked_in(_player) else "zwartrijden")
 
 
-## A conductor sets off after the player (at `at`, in the space of the station): the nearest
-## one about (not one getting into a train), else one from the gates they jumped.
-func _start_chase(at: Vector3) -> void:
-	var chaser: StationPerson = null
-	var nearest := CONDUCTOR_NOTICE_RANGE
+## A conductor on the platforms near the player (INSPECTION_REACH, not one boarding or
+## leaving) asks for their card, once, with INSPECTION_CHANCE: without a check-in he is
+## after them (zwartrijden).
+func _inspect_the_player(at: Vector3) -> void:
 	for walker in _walkers:
+		if not is_instance_valid(walker):
+			continue
+		var person: StationPerson = walker
+		if person.role != "conducteur" or person.position.y < -0.2 or person.has_meta(INSPECTED_META):
+			continue
+		if person.position.z < Layout.GATE_Z or person.position.distance_to(at) > INSPECTION_REACH:
+			continue
+		var step := person.current_step()
+		if not step.is_empty() and String(step.type) in ["board", "leave"]:
+			continue
+		person.set_meta(INSPECTED_META, true)
+		var chance := inspection_chance_override if inspection_chance_override >= 0.0 else INSPECTION_CHANCE
+		if _fare_random.randf() >= chance:
+			continue
+		inspections += 1
+		if not OvCard.is_checked_in(_player):
+			_start_chase(at, "zwartrijden", person)
+		return
+
+
+## Why the conductor after the player is after them: "zwartrijden" or "uitchecken"
+## (Conversations: what he says when caught, "betrapt" / "betrapt_uitchecken").
+func chase_reason() -> String:
+	return _chase_reason
+
+
+## A conductor sets off after the player (at `at`, in the space of the station) for `reason`
+## ("zwartrijden", "uitchecken"): `who`, else the nearest one about (not one getting into a
+## train), else one from the gates they jumped.
+func _start_chase(at: Vector3, reason := "zwartrijden", who: StationPerson = null) -> void:
+	_chase_reason = reason
+	var chaser: StationPerson = who
+	var nearest := CONDUCTOR_NOTICE_RANGE
+	for walker in (_walkers if who == null else [] as Array[StationPerson]):
 		if not is_instance_valid(walker):
 			continue
 		var person: StationPerson = walker
@@ -1402,6 +1479,7 @@ func _start_chase(at: Vector3) -> void:
 		if is_instance_valid(departure.conductor) and departure.conductor == chaser:
 			departure.conductor = null
 	_chaser = chaser
+	chaser.set_meta(INSPECTED_META, true)   # after the chase no check of his own straight away
 	_pursuit = Pursuit.new(chaser, CATCH_REACH)
 	_pursuit.give_up_distance = GIVE_UP_DISTANCE
 	_pursuit.give_up_seconds = GIVE_UP_SECONDS
@@ -1410,7 +1488,7 @@ func _start_chase(at: Vector3) -> void:
 	var to_player: Array[Dictionary] = []
 	chaser.replace_steps(to_player)
 	_begin_chasing(chaser, CHASE_SPEED)
-	DriverShout.shout(chaser, "conducteur", "zwartrijden", 2.1)
+	DriverShout.shout(chaser, "conducteur", reason, 2.1)
 
 
 func _update_chase(delta: float) -> void:
@@ -1652,8 +1730,14 @@ func _fine_the_player() -> void:
 	if _player.has_method("add_money"):
 		_player.call("add_money", -paid)
 	fines += 1
+	_fined_on_the_platforms = _player_side == 1
 	DriverShout.shout(_chaser, "conducteur", "beboeten", 2.1)
 	var line := "Beboet voor zwartrijden: € %d" % int(FINE_EUROS)
+	if _chase_reason == "uitchecken":
+		# he checks them out himself: no boarding fare on top of the fine
+		OvCard.check_out(_player)
+		_player.set_meta(OvCard.CHECKED_IN_META, false)
+		line = "Beboet, niet uitgecheckt: € %d" % int(FINE_EUROS)
 	if paid < FINE_EUROS:
 		line += " (je had maar € %s)" % ("%.2f" % paid).replace(".", ",")
 	say(to_local(_player.global_position) + Vector3.UP * 2.2, line, FINE_COLOUR)
@@ -1681,6 +1765,7 @@ func _chaser_goes_back() -> void:
 		_stop_chasing(_chaser)
 	_chaser = null
 	_pursuit = null
+	_chase_reason = "zwartrijden"
 
 
 # ------------------------------------------------------------------ putting the player out
@@ -2003,3 +2088,133 @@ static func _hits(from: Vector2, to: Vector2, area: Rect2) -> bool:
 		if Geometry2D.segment_intersects_segment(from, to, corners[index], corners[(index + 1) % 4]) != null:
 			return true
 	return false
+
+
+# ------------------------------------------------------------------ cans for the story
+
+## Cans the story wants in the station (Story.station_cans_wanted: the first mission's last
+## two, behind the gates), put there as the player comes in, in the order of MISSION_CAN_KINDS,
+## each sticking out of a bin on a platform (_platform_bins): "perron_1" in the bin nearest the
+## middle of the gate line, "perron_2" in the nearest bin on another platform (or, with none
+## there, the nearest one at least MISSION_CANS_APART m from the first). Glowing like the cans
+## in the town's bins; "[E] Blikje pakken" puts one in the pockets. One taken stays gone
+## (_mission_cans_taken). True if one lies there now.
+func put_mission_can() -> bool:
+	var story := get_tree().get_first_node_in_group("verhaal") if is_inside_tree() else null
+	var wanted := 0
+	if story and story.has_method("station_cans_wanted"):
+		wanted = int(story.station_cans_wanted())
+	elif story and story.has_method("wants_station_can") and story.wants_station_can():
+		wanted = 1
+	var bins := _platform_bins()
+	for index in MISSION_CAN_KINDS.size():
+		var kind: String = MISSION_CAN_KINDS[index]
+		if wanted <= 0:
+			break
+		if _mission_cans.has(kind) and is_instance_valid(_mission_cans[kind]):
+			wanted -= 1
+			continue
+		if _mission_cans_taken.has(kind) or index >= bins.size():
+			continue
+		_mission_cans[kind] = _make_mission_can(kind, bins[index])
+		wanted -= 1
+	_tell_story_cans(_player != null)
+	return not mission_cans().is_empty()
+
+
+## The cans of the story lying in the station now: kind ("perron_1", "perron_2") -> its spot.
+func mission_cans() -> Dictionary:
+	var lying := {}
+	for kind: String in _mission_cans:
+		if is_instance_valid(_mission_cans[kind]):
+			lying[kind] = _mission_cans[kind]
+	return lying
+
+
+func _make_mission_can(kind: String, at: Vector3) -> Node3D:
+	var spot: Node3D = InteriorSpot.create("BlikjeOpPerron" + kind.trim_prefix("perron"), Vector3.ZERO,
+			"Blikje pakken", _take_mission_can.bind(kind), CAN_REACH)
+	spot.set("kind", "oppakken")   # Interactable.KIND_PICKUP
+	add_child(spot)
+	spot.position = at
+	var can := MeshInstance3D.new()
+	can.name = "Blikje"
+	can.mesh = MachineModels.can_mesh()
+	spot.add_child(can)
+	can.position = Vector3(0.0, 1.0, 0.0)   # sticking out of the top of the bin
+	can.rotation = Vector3(0.35, 1.1, 0.2)
+	QuestOutline.add(can, 0.02)
+	return spot
+
+
+## "[E] Blikje pakken" at the can of `kind`: gone from the station (and from the story's
+## marks) before it goes in the pockets: add_item signals inventory_changed, on which the
+## story aims again, and this can must no longer be among the places then.
+func _take_mission_can(kind := "perron_1") -> void:
+	var spot: Node3D = _mission_cans.get(kind)
+	if spot == null or not is_instance_valid(spot) or _player == null:
+		return
+	_mission_cans.erase(kind)
+	_mission_cans_taken[kind] = true
+	_tell_story_cans(true)
+	if not bool(_player.call("add_item", "blikje")):
+		_mission_cans[kind] = spot
+		_mission_cans_taken.erase(kind)
+		_tell_story_cans(true)
+		return
+	spot.queue_free()
+
+
+## Tells the story where the cans it wants lie in the station (Story.set_station_cans: world
+## x, z, marked on the minimap while the player is in here), or none (`inside` false: out).
+func _tell_story_cans(inside: bool) -> void:
+	var story := get_tree().get_first_node_in_group("verhaal") if is_inside_tree() else null
+	if story == null or not story.has_method("set_station_cans"):
+		return
+	var spots: Array = []
+	if inside:
+		for kind: String in MISSION_CAN_KINDS:
+			var spot: Node3D = mission_cans().get(kind)
+			if spot:
+				spots.append(Vector2(spot.global_position.x, spot.global_position.z))
+	story.set_station_cans(spots)
+
+
+## The bins for the story's cans (in the station's space), up to two: the bin on a platform
+## (past the gate line) nearest the middle of the gates, then the nearest bin on another
+## platform, else the nearest one at least MISSION_CANS_APART m from the first.
+func _platform_bins() -> Array:
+	var props := get_node_or_null("Props") as GridMap
+	if props == null or props.mesh_library == null:
+		return []
+	var item := props.mesh_library.find_item_by_name(PLATFORM_BIN)
+	if item < 0:
+		return []
+	var found: Array = []
+	for cell in props.get_used_cells_by_item(item):
+		var at := props.position + props.map_to_local(cell)
+		at.y = 0.0
+		if at.z > Layout.GATE_Z + 2.0:   # not in the hall, before the gates
+			found.append(at)
+	if found.is_empty():
+		return []
+	found.sort_custom(func(first: Vector3, second: Vector3) -> bool:
+		return Vector2(first.x, first.z).length() < Vector2(second.x, second.z).length())
+	var first: Vector3 = found[0]
+	for other: Vector3 in found:
+		if _platform_at(other) != _platform_at(first):
+			return [first, other]
+	for other: Vector3 in found:
+		if Vector2(other.x - first.x, other.z - first.z).length() >= MISSION_CANS_APART:
+			return [first, other]
+	return [first]
+
+
+## The platform (index in Layout.platforms()) under `at` (the station's space), or -1.
+func _platform_at(at: Vector3) -> int:
+	var column := floori((at.x - Layout.HALL_LEFT) / Layout.CELL)
+	var platforms: Array = Layout.platforms()
+	for index in platforms.size():
+		if column >= int(platforms[index][0]) and column <= int(platforms[index][1]):
+			return index
+	return -1

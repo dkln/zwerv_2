@@ -7,7 +7,8 @@ extends RefCounted
 ##   whose "herkennen" fits how they look: "vervoer" (rolstoel, scootmobiel), "haar" (kort,
 ##   lang, kaal, pet), "rok" (true/false), "jas" (colours); none: it fits anyone), their
 ##   greetings, their own topic and its follow-up, asking for some change (now and then they
-##   give some: "gulheid", once per person, counted for the missions as found money), the
+##   give some: "gulheid", once per person, counted for the missions as found money; only
+##   once the story has unlocked "bedelen", may_beg: mission 1 after the deposit), the
 ##   way to the snack bar and goodbye; the questions you can ask ("vragen") and the mood of
 ##   each kind of line ("stemmingen", a person's own over them).
 ## - data/gesprekken/snackbarhouder.json: behind the counter of a snack bar (InteriorPerson
@@ -23,7 +24,8 @@ extends RefCounted
 ##   never give change, and are shown as officials in the story box (page "official": their
 ##   title on a name plate of their own colours, an emblem on the portrait, a lower voice).
 ##   A fare dodger talking to the conductor chasing them is caught: "betrapt", and the fine
-##   (the station's fine_the_player).
+##   (the station's fine_the_player); for not checking out (chase_reason "uitchecken")
+##   "betrapt_uitchecken" when there is one.
 ## Variants ("varianten" of a person, a shop or someone on duty): other conversations for the
 ## same kind of person, each overriding some fields (another topic, other lines); every person
 ## gets one of them (or the base) at random the first time you talk to them and keeps it
@@ -50,6 +52,14 @@ const SHOPS_FILE := "res://data/gesprekken/winkels.json"
 ## The roles (InteriorPerson.role) of who sells: talked to in the shop screen.
 const MERCHANT_ROLES := ["snackbarhouder", "verkoper"]
 const STAFF_FILE := "res://data/gesprekken/personeel.json"
+## The people of the story (Ome Wim, ...): data/gesprekken/personages.json, read once. Someone
+## with the meta CHARACTER_META is that character (scripts/story/characters.gd); which of its
+## conversations it has now is the meta TALK_META (the story sets it per step).
+const CHARACTERS_FILE := "res://data/gesprekken/personages.json"
+const CHARACTER_META := "personage"
+const TALK_META := "gesprek"
+## Skill checks the player passed (a list of ids), kept on the player: never asked again.
+const PASSED_CHECKS_META := "geslaagde_checks"
 ## The roles (StationPerson.role) of who is on duty: their own conversation and look.
 ## Who is on duty and has a conversation of their own in personeel.json (shown as such: the
 ## name plate in their colours, their emblem): the NS and enforcement at Den Haag Centraal,
@@ -67,6 +77,7 @@ const REWARD_META := "gaf_beloning"
 ## The experience a reward of a conversation brings when its "beloning" says no "xp".
 const REWARD_XP := 25
 const ItemTable = preload("res://scripts/player/items.gd")
+const DepositReturn = preload("res://scripts/world/things/deposit_return.gd")
 ## The player's method that gives a new lost bank card (its own balance, PIN and riddle).
 const BANK_CARD_METHOD := "give_found_bank_card"
 ## Hair that makes someone look old (TownsfolkFigure.HAIRS: grey, white).
@@ -74,12 +85,15 @@ const GREY_HAIRS := [Color("#8A8680"), Color("#D8D4CC")]
 ## At the station everything costs at least this many times the town's price (station_menu).
 const STATION_MARKUP := 1.3
 const MONEY_COLOUR := Color("#E8B83A")
+const CHECK_PASSED_COLOUR := Color("#8BE36B")
+const CHECK_FAILED_COLOUR := Color("#FF4D5E")
 const UiSounds = preload("res://scripts/ui/ui_sounds.gd")
 
 static var _street := {}
 static var _counter := {}
 static var _shops := {}
 static var _staff := {}
+static var _characters := {}
 
 var persona := FALLBACK_PERSONA
 var person: Node3D
@@ -124,6 +138,13 @@ static func shops() -> Dictionary:
 	return _shops
 
 
+## The people of the story (data/gesprekken/personages.json "personen": id -> data), read once.
+static func characters() -> Dictionary:
+	if _characters.is_empty():
+		_characters = _read(CHARACTERS_FILE)
+	return _characters.get("personen", {})
+
+
 ## The people on duty (data/gesprekken/personeel.json), read once.
 static func staff() -> Dictionary:
 	if _staff.is_empty():
@@ -142,6 +163,7 @@ static func is_official(someone: Node) -> bool:
 
 ## Reads them again (after changing the files, while the game runs).
 static func reload() -> void:
+	_characters = {}
 	_staff = {}
 	_street = {}
 	_counter = {}
@@ -176,6 +198,8 @@ static func question(key: String) -> String:
 static func persona_of(someone: Node) -> String:
 	if someone == null:
 		return FALLBACK_PERSONA
+	if someone.has_meta(CHARACTER_META):
+		return str(someone.get_meta(CHARACTER_META))
 	var traits := traits_of(someone)
 	for entry: Dictionary in street().get("personen", []):
 		if _fits(entry.get("herkennen", {}), traits):
@@ -251,6 +275,8 @@ func _data() -> Dictionary:
 		base = shop_data_of(person)
 	elif persona in OFFICIAL_ROLES:
 		base = (staff().get("personen", {}) as Dictionary).get(persona, {})
+	elif characters().has(persona):
+		base = character_talk(persona, str(person.get_meta(TALK_META, "")) if person else "")
 	else:
 		base = personas().get(persona, personas().get(FALLBACK_PERSONA, {}))
 	var variants := variants_of(base)
@@ -263,6 +289,21 @@ func _data() -> Dictionary:
 			person.set_meta(VARIANT_META, variant_index)
 	_chosen_data = variants[variant_index]
 	return _chosen_data
+
+
+## The conversation of character `who` (personages.json) called `key` (its "gesprekken"; "" or
+## unknown: its "standaard"), with what the character says in all of them ("spreker",
+## "stemmingen", "dag", "kleingeld_ja", "kleingeld_nee", "gulheid", "nog_iets") under it.
+static func character_talk(who: String, key: String) -> Dictionary:
+	var data: Dictionary = characters().get(who, {})
+	var talks: Dictionary = data.get("gesprekken", {})
+	if not talks.has(key):
+		key = str(data.get("standaard", ""))
+	var talk: Dictionary = (talks.get(key, {}) as Dictionary).duplicate()
+	for field in ["spreker", "stemmingen", "begroetingen", "dag", "kleingeld_ja", "kleingeld_nee", "gulheid", "nog_iets"]:
+		if data.has(field) and not talk.has(field):
+			talk[field] = data[field]
+	return talk
 
 
 ## Every conversation someone with `base` data can have: the base itself, then each of its
@@ -403,8 +444,11 @@ func _is_caught() -> bool:
 ## Caught: the fine (the station's fine_the_player), and the conductor says why.
 func _caught_page() -> Dictionary:
 	var station: Node = person.get("station")
+	# not checked out (the station's chase_reason "uitchecken"): his own line for that
+	var reason := String(station.call("chase_reason")) if station.has_method("chase_reason") else "zwartrijden"
 	var fine := float(station.call("fine_the_player"))
-	var text := _pick(_data().get("betrapt"), "Zwartrijden? Dat wordt {boete} boete.").replace("{boete}", _euros(fine))
+	var own: Variant = _data().get("betrapt_uitchecken") if reason == "uitchecken" else null
+	var text := _pick(own if own != null else _data().get("betrapt"), "Zwartrijden? Dat wordt {boete} boete.").replace("{boete}", _euros(fine))
 	return _page(text, "betrapt")
 
 
@@ -416,10 +460,12 @@ func _page(text: String, line_kind: String, follow_ups := [], own_mood := "") ->
 	var topic: Dictionary = data.get("onderwerp", {})
 	var options: Array = []
 	for follow_up: Dictionary in follow_ups:
-		options.append(["verder", str(follow_up.get("vraag", "")), follow_up])
+		if _check_passed(follow_up):
+			continue   # a skill check passed already: not asked again
+		options.append(["verder", _question_text(follow_up), follow_up])
 	if not _asked.has("onderwerp") and topic.has("vraag"):
 		options.append(["onderwerp", str(topic.vraag), topic])
-	if not _asked.has("kleingeld"):
+	if not _asked.has("kleingeld") and may_beg():
 		options.append(["kleingeld", question("kleingeld"), {}])
 	options.append(["dag", question("dag"), {}])
 	var texts: Array = options.map(func(option: Array) -> String: return option[1])
@@ -437,9 +483,13 @@ func _answer(option: Array) -> Array:
 			if is_topic:
 				_asked["onderwerp"] = true
 			var node: Dictionary = option[2]
+			if node.get("check") is Dictionary:
+				return [_try_check(node)]
 			var follow_ups := follow_ups_of(node)
 			var text := _pick(node.get("antwoord"))
 			var reward_line := _reward_for(node)
+			if node.has("koopt_blikjes"):
+				reward_line = (reward_line + " " + _buy_cans(node)).strip_edges()
 			if reward_line != "":
 				text += " " + reward_line
 			if follow_ups.is_empty() and not is_topic:
@@ -455,6 +505,55 @@ func _answer(option: Array) -> Array:
 			return [_page(_pick(data.get(line_kind)) + " " + _again(), line_kind)]
 	# goodbye: their last word, then the box closes
 	return [_with_mood({"kind": "gesprek", "speaker": speaker(), "text": _pick(data.get("dag"))}, "dag")]
+
+
+## A skill check on a question ("check": {"id", "label", "kans" in 100, "gelukt", "mislukt"}):
+## the question shows "[LABEL 50%]" before it (_question_text). Asked, it passes at that
+## chance: its "gelukt" answer and its own follow-ups, and the player keeps it
+## (PASSED_CHECKS_META: never asked again); failed: its "mislukt" answer, and it can be tried
+## again in a later conversation (not in this one). Either way the player says so
+## (PlayerController.checked: the story waits for it, Story goal "check").
+func _try_check(node: Dictionary) -> Dictionary:
+	var check: Dictionary = node.check
+	var check_id := str(check.get("id", ""))
+	_asked["check:" + check_id] = true
+	var passed := _random.randi_range(1, 100) <= int(check.get("kans", 50))
+	if passed and player:
+		var passed_checks: Array = player.get_meta(PASSED_CHECKS_META, [])
+		passed_checks.append(check_id)
+		player.set_meta(PASSED_CHECKS_META, passed_checks)
+	if player and player.has_signal("checked"):
+		player.emit_signal("checked", check_id, passed)
+	if hud and hud.has_method("show_floating_number") and person:
+		hud.show_floating_number(person.global_position + Vector3.UP * 2.3,
+			"%s %s" % [str(check.get("label", "CHECK")), "GESLAAGD" if passed else "MISLUKT"],
+			CHECK_PASSED_COLOUR if passed else CHECK_FAILED_COLOUR, 14, true)
+	if passed:
+		var follow_ups := follow_ups_of(node)
+		var text := _pick(check.get("gelukt"), "Goed dan.")
+		if follow_ups.is_empty():
+			text += " " + _again()
+		return _page(text, "doorvraag", follow_ups, str(check.get("stemming_gelukt", "")))
+	return _page(_pick(check.get("mislukt"), "Nee.") + " " + _again(), "doorvraag", [], str(check.get("stemming_mislukt", "")))
+
+
+## Whether `node` is a skill check the player passed already (or tried in this conversation).
+func _check_passed(node: Dictionary) -> bool:
+	if not node.get("check") is Dictionary:
+		return false
+	var check_id := str(node.check.get("id", ""))
+	if _asked.has("check:" + check_id):
+		return true
+	return player != null and (player.get_meta(PASSED_CHECKS_META, []) as Array).has(check_id)
+
+
+## The question of a node as you can choose it: a skill check with its label and chance first.
+static func _question_text(node: Dictionary) -> String:
+	var text := str(node.get("vraag", ""))
+	if node.get("check") is Dictionary:
+		var check: Dictionary = node.check
+		text = "[%s %d%%] %s" % [str(check.get("label", "CHECK")), int(check.get("kans", 50)), text]
+	return text
 
 
 ## A reward of topic node `node` ("beloning": {"item", "kans" in 100, "tekst", "xp"}): once
@@ -575,7 +674,7 @@ func shop_logo() -> Dictionary:
 ## The name over the conversation: a shop's or official's own "spreker", a passer-by's what
 ## they look like (name_of).
 func speaker() -> String:
-	if is_shop() or persona in OFFICIAL_ROLES:
+	if is_shop() or persona in OFFICIAL_ROLES or characters().has(persona):
 		return str(_data().get("spreker", ""))
 	return name_of(person, _data())
 
@@ -597,9 +696,14 @@ func show_mood(mood: String) -> void:
 		Emote.start(person, person.get("figure"), mood)
 
 
-## The goods: {"item", "vraag", "prijs", "naam"} each (the "menu" of the data).
+## The goods: {"item", "vraag", "prijs", "naam"} each (the "menu" of the data); one with a "slot"
+## only once the story has unlocked that ("snackkaart": the snack bar's whole menu after mission 1,
+## before that only the kroket).
 func shop_goods() -> Array:
-	return (_data().get("menu", []) as Array).filter(func(entry: Variant) -> bool: return entry is Dictionary)
+	var story: Node = person.get_tree().get_first_node_in_group("verhaal") if person and person.is_inside_tree() else null
+	return (_data().get("menu", []) as Array).filter(func(entry: Variant) -> bool:
+		return entry is Dictionary and (not entry.has("slot") or story == null or not story.has_method("is_unlocked")
+				or bool(story.is_unlocked(str(entry.slot)))))
 
 
 ## A line of the seller: {"text", "mood"}.
@@ -653,3 +757,29 @@ func shop_goodbye() -> Dictionary:
 
 static func _euros(amount: float) -> String:
 	return "€ " + ("%.2f" % amount).replace(".", ",")
+
+
+## Whether asking for change is an option: not until the story unlocks "bedelen" (Story
+## is_unlocked; mission 1 after the cans are handed in). Without a story (a test): always.
+func may_beg() -> bool:
+	var tree := person.get_tree() if person and person.is_inside_tree() else null
+	var story: Node = tree.get_first_node_in_group("verhaal") if tree else null
+	return story == null or not story.has_method("is_unlocked") or bool(story.is_unlocked("bedelen"))
+
+
+## Someone who buys your cans (a node with "koopt_blikjes": euros a can; Blikken Bertus):
+## all the cans in your pockets for that, paid out as at a deposit machine
+## (DepositReturn.pay_out: PlayerController.deposited, the story's goal "statiegeld"). The
+## line after: "gekocht" ({aantal}, {bedrag}), or "geen_blikjes" with none on you.
+func _buy_cans(node: Dictionary) -> String:
+	var count := int(player.inventory.get("blikje", 0)) if player and player.get("inventory") != null else 0
+	if count <= 0:
+		return _pick(node.get("geen_blikjes"), "Geen blikjes? Dan heb ik niks voor je.")
+	var total := snappedf(count * float(node.koopt_blikjes), 0.01)
+	for can_index in count:
+		player.call("drop_item", "blikje")
+	DepositReturn.pay_out(player, total)
+	if hud and hud.has_method("show_floating_number") and person:
+		hud.show_floating_number(person.global_position + Vector3.UP * 2.0, "+" + _euros(total), MONEY_COLOUR, 18, true)
+	UiSounds.play(person, "munt", -2.0)
+	return _pick(node.get("gekocht"), "Alsjeblieft.").replace("{aantal}", str(count)).replace("{bedrag}", _euros(total))

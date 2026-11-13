@@ -11,7 +11,8 @@ extends RefCounted
 ##   with a negative number); no "effect" = it cannot be used;
 ## - "action": the verb on the menu's button when it can be used ("ETEN", "DRINKEN", "GEBRUIKEN").
 ## What each archetype starts with: START_ITEMS (id -> count).
-## Room: every kind of item takes one slot ("vakje", however many of it), and a zwerver has
+## Room: every kind of item takes one slot ("vakje", however many of it; not the cans and
+## bottles in the plastic bag, "bag", nor the clothes worn, "worn": takes_slot), and a zwerver has
 ## only BASE_SLOTS of them in his pockets; a rucksack picked up in the town
 ## (scripts/world/things/backpacks.gd) adds BACKPACK_SLOTS. Nobody starts with a rucksack.
 const BASE_SLOTS := 4
@@ -61,7 +62,7 @@ const ITEMS := {
 		"text": "Een doosje uit de apotheek. Betaald, deze keer.",
 		"effect": {"gezondheid": 15}, "action": "GEBRUIKEN"},
 	"statiegeld": {"name": "Statiegeldflessen", "kind": "spullen", "rarity": "gewoon", "icon": "flessen",
-		"text": "Vijftien cent per stuk bij de Albert Heijn."},
+		"text": "Vijftien cent per stuk bij de Albert Heijn.", "bag": true},
 	"hoed": {"name": "Cowboyhoed", "kind": "sleutel", "rarity": "legendarisch", "icon": "hoed",
 		"text": "Van de rodeo in het Zuiderpark. Ook een kussen."},
 	"foto": {"name": "Oude foto", "kind": "sleutel", "rarity": "legendarisch", "icon": "foto",
@@ -161,12 +162,22 @@ const ITEMS := {
 	# from the waste bins in the town (scripts/world/things/litter_bins.gd): statiegeld at the
 	# machine in every supermarket (scripts/world/things/deposit_return.gd)
 	"blikje": {"name": "Leeg blikje", "kind": "spullen", "rarity": "gewoon", "icon": "blik",
-		"text": "Uit een prullenbak gevist. Vijftien cent statiegeld bij de automaat in de supermarkt."},
+		"text": "Uit een prullenbak gevist. Veertig cent statiegeld bij de automaat in de supermarkt.", "bag": true},
 	# lost bank cards (scripts/world/things/lost_bank_cards.gd): every card its own account and PIN,
 	# kept on the player (scripts/player/bank_cards.gd); the menu adds each card's riddle to
 	# this text (BankCards.description)
 	"pinpas": {"name": "Gevonden pinpas", "kind": "sleutel", "rarity": "zeldzaam", "icon": "pinpas",
 		"text": "Iemand is zijn pinpas kwijt. Op de achterkant staat met balpen een raadsel gekrabbeld."},
+	# your own identity card: stolen in your sleep at the start of the game (the first mission);
+	# the inventory always keeps a slot for it, empty while you have not got it (GameMenu)
+	"id_kaart": {"name": "ID-kaart", "kind": "sleutel", "rarity": "legendarisch", "icon": "pinpas",
+		"text": "Je eigen ID-kaart. Zonder ben je niemand: geen postadres, geen uitkering, geen kamer.",
+		"missing_text": "Gestolen terwijl je sliep. Iemand loopt nu rond met jouw gezicht in zijn zak."},
+	# from Ome Wim (the second mission): worn as soon as you have it ("worn": the player keeps
+	# warmer, hunger runs out slower: PlayerController.WORN_HUNGER_FACTOR)
+	"oude_jas": {"name": "Oude jas", "kind": "spullen", "rarity": "zeldzaam", "icon": "",
+		"text": "Van Ome Wim. De voering is kapot, maar hij houdt de wind tegen. Ruikt naar sigaren en natte hond.",
+		"worn": true},
 }
 
 const START_ITEMS := {
@@ -196,3 +207,20 @@ static func rarity_colour(item_id: String) -> Color:
 
 static func can_use(item_id: String) -> bool:
 	return ITEMS.get(item_id, {}).has("effect")
+
+
+## Whether an item takes a slot ("vakje") of the pockets: not what goes in the plastic bag
+## everyone carries for the statiegeld ("bag": cans and bottles), nor the clothes you wear
+## ("worn"). The first mission has you collect cans before you can drop anything.
+static func takes_slot(item_id: String) -> bool:
+	var entry: Dictionary = ITEMS.get(item_id, {})
+	return not bool(entry.get("bag", false)) and not bool(entry.get("worn", false))
+
+
+## The item whose slot the inventory always keeps, empty while you have not got it.
+const ALWAYS_SHOWN := "id_kaart"
+
+
+## Whether an item is worn as soon as you have it (clothes: "worn").
+static func is_worn(item_id: String) -> bool:
+	return bool(ITEMS.get(item_id, {}).get("worn", false))

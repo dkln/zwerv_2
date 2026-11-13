@@ -19,12 +19,10 @@ A composition file (tools/muziek/composities/<naam>.py, see docs/MUZIEK.md) hold
                "handklap" (a clap with the snare on 2 and 4), "stoten" ({"secties": (...),
                "klank": sound}: short chord stabs on the off-beats, spelled from the chords)
 
-    VGM        (optional) the VGM file (in composities/) the composition was read from
-               (vgm.py): the intro is then that VGM itself, played by the chip imitation (chip.py)
     AFGELEID_OCTAAF   (optional) {part: octaves}: the part that many octaves higher (+) or
                lower (-) in the derived pieces only (not in the intro)
     AFGELEIDE_KLANKEN (optional) {sound or drum kit: sound or drum kit}: in every derived piece
-               the first is replaced by the second (the voices of the VGM, "vgm:<file>:<channel>=<sound>")
+               the first is replaced by the second (the voices of the source: "tracker_<voice>=<sound>")
 
 Parts are free names (bas, pad, brass, lead, arp, gitaar, ...); each one is played by the sound
 KLANKEN gives it. "drums" is always the drum kit.
@@ -74,7 +72,6 @@ class Score:
     sections: list = field(default_factory=list)
     moments: dict = field(default_factory=dict)
     major_ending: bool = False        # BIJSTELLING majeur_slot: endings and landings in major
-    vgm: str = ""                     # VGM: the file the intro is played from
     tracker: str = ""                 # TRACKER: the tracker page or JSON the intro is played from (tracker.py)
     derived_octaves: dict = field(default_factory=dict)   # AFGELEID_OCTAAF
     derived_sounds: dict = field(default_factory=dict)    # AFGELEIDE_KLANKEN
@@ -128,6 +125,28 @@ def active_name() -> str:
     return actief.ACTIEF
 
 
+def menu_name() -> str:
+    """The second composition: the menu as written, and the pieces made from it (derive.SECONDARY_PIECES):
+    ZWERVR_MENU_COMPOSITIE, else MENU in composities/actief.py (the first when it has none)."""
+    name = os.environ.get("ZWERVR_MENU_COMPOSITIE")
+    if name:
+        return name
+    sys.path.insert(0, COMPOSITIONS_FOLDER)
+    import actief
+    return getattr(actief, "MENU", "") or active_name()
+
+
+def fight_name() -> str:
+    """The third composition, of the fight scene (derive.fight_loop): ZWERVR_GEVECHT_COMPOSITIE,
+    else GEVECHT in composities/actief.py; empty when there is none."""
+    name = os.environ.get("ZWERVR_GEVECHT_COMPOSITIE")
+    if name:
+        return name
+    sys.path.insert(0, COMPOSITIONS_FOLDER)
+    import actief
+    return getattr(actief, "GEVECHT", "")
+
+
 def load(name: str = None) -> Score:
     name = name or active_name()
     if HERE not in sys.path:
@@ -160,7 +179,6 @@ def load(name: str = None) -> Score:
                         section["soort"] if section else ""))
     score = Score(module.TITEL, float(module.TEMPO), beats_per_bar, tuple(module.TOONSOORT),
                   dict(module.KLANKEN), bars, sections, dict(getattr(module, "MOMENTEN", {})))
-    score.vgm = getattr(module, "VGM", "")
     score.tracker = getattr(module, "TRACKER", "")
     score.derived_octaves = dict(getattr(module, "AFGELEID_OCTAAF", {}))
     score.derived_sounds = dict(getattr(module, "AFGELEIDE_KLANKEN", {}))

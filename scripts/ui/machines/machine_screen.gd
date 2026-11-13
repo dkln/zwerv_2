@@ -746,6 +746,7 @@ func _make_stand_in() -> void:
 	model.archetype_id = PlayerCharacter.current_id()
 	model.figure_scale = float(player.get("FIGURE_SCALE")) if player and player.get("FIGURE_SCALE") != null else 0.78
 	model.backpack = bool(player.get("has_backpack")) if player and player.get("has_backpack") != null else false
+	model.coat = player.wears_coat() if player and player.has_method("wears_coat") else true
 	model.idle = true
 	_stage.add_child(model)
 	model.position = STAND_AT

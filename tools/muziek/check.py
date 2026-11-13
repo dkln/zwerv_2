@@ -96,9 +96,6 @@ def section_energy(folder: str, score: score_module.Score) -> None:
 
 def balance(score: score_module.Score) -> None:
     """Every part of the intro alone, at the level it has in the mix (no loudness levelling)."""
-    if score.vgm:
-        vgm_balance(score.vgm)
-        return
     piece = derive.intro(score)
     names = sorted({part for bar in piece.bars for part in bar.parts} | {"drums"})
     levels = {}
@@ -118,35 +115,24 @@ def balance(score: score_module.Score) -> None:
           + ", ".join(f"{name} {level - loudest:.1f}" for name, level in sorted(levels.items(), key=lambda item: -item[1])))
 
 
-def vgm_balance(file_name: str) -> None:
-    """The channels of the VGM the intro is, each played alone by the chip imitation: the
-    balance is the VGM's own (nothing is set here)."""
-    song = instruments.vgm_song(file_name)
-    names = song.channels() + (["psg"] if song.psg_writes else []) + (["dac"] if song.dac_writes or song.dac_streams else [])
-    names = sorted({"psg" if name.startswith("psg") else name for name in names})
-    levels = {}
-    window = int(0.1 * SAMPLE_RATE)
-    for name in names:
-        signal = chip.render_song(song, 0.0, (name,)).mean(axis=1)
-        powers = numpy.array([numpy.mean(signal[start:start + window] ** 2) for start in range(0, len(signal) - window, window)])
-        playing = powers[powers > powers.max() * 1e-3]
-        levels[name] = 10 * numpy.log10(playing.mean() + 1e-12)
-    loudest = max(levels.values())
-    print("balans van de intro (de kanalen van het VGM zelf, dB onder de luidste, elk alleen, waar het speelt): "
-          + ", ".join(f"{name} {level - loudest:.1f}" for name, level in sorted(levels.items(), key=lambda item: -item[1])))
-
-
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--map", default=MUSIC_FOLDER)
     parser.add_argument("--balans", action="store_true")
     arguments = parser.parse_args()
     score = score_module.load()
+    menu_name = score_module.menu_name()
+    menu_score = score_module.load(menu_name) if menu_name != score_module.active_name() else None
+    fight_name = score_module.fight_name()
+    fight_score = score_module.load(fight_name) if fight_name else None
     problems = []
-    for piece in derive.pieces(score):
+    for piece in derive.pieces(score, menu_score, fight_score):
         problems += check_file(piece, arguments.map)
     section_energy(arguments.map, score)
     check_key(score)
+    if menu_score:
+        print(f"menu-soundtrack: {menu_name}")
+        check_key(menu_score)
     if arguments.balans:
         balance(score)
     if problems:

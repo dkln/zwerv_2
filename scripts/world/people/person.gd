@@ -43,9 +43,16 @@ func actor_kind() -> String:
 	return ""
 
 
-## The voice of their cries and their babble (Babble.VOICES): by their look; who rides a
+## The meta with someone's own voice (voice()).
+const VOICE_META := "stem"
+
+
+## The voice of their cries and their babble (Babble.VOICES): their own (the meta VOICE_META, a
+## character of the story with a "stem": Characters), else by their look; who rides a
 ## chair or a scooter sounds old.
 func voice() -> String:
+	if has_meta(VOICE_META):
+		return str(get_meta(VOICE_META))
 	var look: Dictionary = figure.look if figure else {}
 	if look.get("hair_style", "") == "lang" or look.get("skirt", false):
 		return "vrouw"

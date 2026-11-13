@@ -103,16 +103,18 @@ func test_too_little_money_buys_nothing(test) -> void:
 	test.check(shop.spoken_text().contains("€ 2,00"), "de snackbarhouder noemt de prijs")
 
 
-## With money, Enter on the first row buys a kroket (€ 2 off, in the pockets) and that
-## finishes mission 1: its pages show over the shop, and after them you are still in the shop.
-func test_enter_buys_a_kroket_and_finishes_mission_1(test) -> void:
+## With money, Enter on the first row buys a kroket (€ 2 off, in the pockets); eaten (F) it
+## ticks off its step of mission 1: its pages show over the shop, and after them you are
+## still in the shop.
+func test_enter_buys_a_kroket_and_eating_it_ticks_off_mission_1(test) -> void:
 	var counter := await _at_the_counter_with(5.0)
 	test.check(not counter.is_empty() and hud.is_showing_shop(), "in de winkel van de snackbar")
 	if counter.is_empty():
 		return
 	var shop: Control = hud._shop_screen
 	var story: Node = scene.get_node("Verhaal")
-	story.complete_step("missie_1_kroket", "kleingeld")
+	for step_id in ["blikjes", "statiegeld", "bedelen"]:
+		story.complete_step("missie_1_lege_maag", step_id)
 	skip_story()
 	var money_before: float = player.money
 	var krokets_before := int(player.inventory.get("kroket", 0))
@@ -121,8 +123,9 @@ func test_enter_buys_a_kroket_and_finishes_mission_1(test) -> void:
 	test.check(shop.handle_input(key_press(KEY_ENTER)), "Enter in de winkel")
 	print("  gekocht: ", shop.spoken_text())
 	test.check(is_equal_approx(player.money, money_before - 2.0) and int(player.inventory.get("kroket", 0)) == krokets_before + 1, "een kroket gekocht (€ 2 eraf, in je zakken)")
-	test.check(story.step_done("missie_1_kroket", "kroket") and story.is_finished("missie_1_kroket"), "kroket gekocht: missie 1 klaar")
 	test.check(shop.notice_text() == "", "na het kopen geen melding meer")
+	test.check(not story.step_done("missie_1_lege_maag", "kroket"), "gekocht, nog niet gegeten")
+	test.check(player.eat_something() and story.step_done("missie_1_lege_maag", "kroket"), "opgegeten (F): de stap is klaar")
 	test.check(hud.is_showing_story(), "de missiepagina's over de winkel heen")
 	skip_story()
 	await frames(1)

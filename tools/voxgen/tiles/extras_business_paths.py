@@ -71,7 +71,7 @@ def biz_rooflight(b, face):
 def biz_logo(b, face):
     """Closed upper floor with a blue company sign."""
     biz_blank(b, face)
-    b.sign(face, 2, 30, 14, 21, "bord_blauw", "ZWERVR", "bord_wit")
+    b.sign(face, 2, 30, 14, 21, "bord_blauw", "POLDER", "bord_wit")
 
 
 reg_style("bedrijfspand", {"bg_roldeur": biz_roller_door, "bg_kantoor": biz_office, "bg_dicht": biz_blank,

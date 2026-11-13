@@ -78,6 +78,10 @@ VOICES = {
     "man": {"pitch": (210.0, 120.0), "formants": 1.0, "breath": 0.10, "growl": 0.35, "jitter": 0.02},
     "oude_man": {"pitch": (165.0, 95.0), "formants": 0.95, "breath": 0.22, "growl": 0.55, "jitter": 0.05},
     "vrouw": {"pitch": (430.0, 260.0), "formants": 1.17, "breath": 0.14, "growl": 0.2, "jitter": 0.02},
+    # Blikken Bertus (data/gesprekken/personages.json "stem"): a smoker's rasp, low and gravelly,
+    # air through every syllable ("rasp": breath on top of the mood's) and a crackle in the throat
+    "rasperig": {"pitch": (125.0, 78.0), "formants": 0.9, "breath": 0.4, "growl": 0.85, "jitter": 0.1,
+                 "rasp": 0.35, "crackle": 0.5},
 }
 
 ## Vowels as formant frequencies and bandwidths (Hz): F1, F2, F3, F4.
@@ -275,6 +279,10 @@ def say(speaker: dict, segments, seed: int) -> numpy.ndarray:
     breath = band_noise(sample_count, 500.0, 7000.0, seed + 1)
     # the hiss of the "s", "k" and "p" softer than the voice, so a burst is not the loudest of the shout
     source = voiced * voice_level + breath * breath_level * BREATH_GAIN
+    if speaker.get("crackle", 0.0) > 0.0:
+        # a crackle in the throat: sparse clicks while the voice sounds (a smoker's rasp)
+        clicks = numpy.random.default_rng(seed + 2).random(sample_count) < 0.0025 * speaker["crackle"]
+        source = source + clicks * voice_level * numpy.random.default_rng(seed + 3).uniform(-6.0, 6.0, sample_count)
     output = source
     for formant in range(4):
         output = resonate(output, track[f"f{formant + 1}"] * speaker.get("formants", 1.0), track[f"b{formant + 1}"])
@@ -374,7 +382,9 @@ def babble(voice_name: str, mood: str, variant: int) -> numpy.ndarray:
     seed = zlib.crc32(f"{voice_name}{mood}{variant}".encode()) % 10000
     random = numpy.random.default_rng(seed)
     speaker = {"pitch": (voice["pitch"][0] + voice["pitch"][1]) * 0.5, "formants": voice["formants"],
-               "growl": voice["growl"] * 0.5 + settings["growl"], "jitter": voice["jitter"], "drive": settings["drive"]}
+               "growl": voice["growl"] * 0.5 + settings["growl"], "jitter": voice["jitter"], "drive": settings["drive"],
+               "crackle": voice.get("crackle", 0.0)}
+    rasp = voice.get("rasp", 0.0)
     if "vibrato" in settings:
         speaker["vibrato"] = settings["vibrato"]
     # 2 to 4 syllables (the sad ones 2 or 3), so the variants differ in length too
@@ -395,7 +405,7 @@ def babble(voice_name: str, mood: str, variant: int) -> numpy.ndarray:
         if syllable == syllables - 1 and "rise" in settings:
             length *= 2.0
             swing = settings["rise"]
-        segments.append((length, vowel, vowel, pitch, pitch * (1.0 + swing), 1.0, settings["breath"]))
+        segments.append((length, vowel, vowel, pitch, pitch * (1.0 + swing), 1.0, settings["breath"] + rasp))
         # a little gap between syllables, longer for the sad and the calm
         segments.append((settings["syllable"] * 0.35, "-", "-", 1, 1, 0, 0))
     return say(speaker, segments, seed)

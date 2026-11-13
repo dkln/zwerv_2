@@ -36,10 +36,16 @@ var state := "invoeren"
 ## The checks: true makes the next can or bottle come back out (else REJECT_CHANCE, and
 ## never without `animate`).
 var force_reject := false
+## The text on the display when this machine is out of order (Story.machine_out_of_order: the
+## first one tried in the first mission); "" when it works. Out of order it takes nothing.
+var out_of_order := ""
+## Seconds the out-of-order display shows before the screen closes by itself.
+const OUT_OF_ORDER_SECONDS := 2.2
 
 
-static func show_for(for_player: Node, place := "", with_animation := true) -> CanvasLayer:
+static func show_for(for_player: Node, place := "", with_animation := true, broken := "") -> CanvasLayer:
 	var screen: CanvasLayer = (load(SCRIPT_PATH) as GDScript).new()
+	screen.set("out_of_order", broken)
 	screen.set("brand", "STATIEGELD")
 	screen.set("body_colour", Color("#E8ECEA"))
 	screen.set("trim_colour", Color("#2E9A48"))
@@ -66,7 +72,26 @@ func machine_parts() -> Dictionary:
 
 
 func _opened() -> void:
+	if out_of_order != "":
+		_show_out_of_order()
+		_close_soon()
+		return
 	_show_count()
+
+
+## Out of order: the buzz, a moment to read the display, then the screen closes by itself (the
+## story's thought about it comes right after, Story.machine_out_of_order).
+func _close_soon() -> void:
+	sound("fout")
+	await pause_for(OUT_OF_ORDER_SECONDS)
+	if is_inside_tree() and not is_closing():
+		close()
+
+
+## Out of order: the text on the display, a buzz when you try.
+func _show_out_of_order() -> void:
+	var words := out_of_order.split(" ", false)
+	show_display(words[0] if words.size() > 0 else "STORING", Array(words.slice(1)), REFUSED)
 
 
 ## A part of the machine clicked: the hole takes a can (or a bottle when you have no cans),
@@ -81,6 +106,10 @@ func hotspot_pressed(hotspot: String) -> void:
 
 ## Into the hole what you have: a can first, else a bottle.
 func insert_next() -> float:
+	if out_of_order != "":
+		sound("fout")
+		_show_out_of_order()
+		return 0.0
 	var found := DepositReturn.returnable(_inventory())
 	for item_id: String in DepositReturn.ORDER:
 		if found.has(item_id):
@@ -92,6 +121,10 @@ func insert_next() -> float:
 
 ## The BON key: the bon printed and taken at once (the money in your wallet).
 func bon() -> void:
+	if out_of_order != "":
+		sound("fout")
+		_show_out_of_order()
+		return
 	if state != "invoeren":
 		return
 	await print_bon()
@@ -145,6 +178,10 @@ func cancel() -> void:
 ## it comes back out (_rejected): an error on the display and a buzz, it stays in your pockets.
 func insert_one(item_id: String) -> float:
 	if state != "invoeren":
+		return 0.0
+	if out_of_order != "":
+		sound("fout")
+		_show_out_of_order()
 		return 0.0
 	if not DepositReturn.DEPOSIT.has(item_id) or int(_inventory().get(item_id, 0)) <= 0:
 		sound("fout")

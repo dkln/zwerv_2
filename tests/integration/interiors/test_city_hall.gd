@@ -1,6 +1,6 @@
 extends "res://tests/integration/support/town_test.gd"
-## The city hall on the Spui (scripts/world/interiors/city_hall.gd, Interiors KINDS "stadhuis"): the doors
-## in the ground floor of its two white slabs are ways in (out again where you came in); inside
+## The city hall on the Spui (scripts/world/interiors/city_hall.gd, Interiors KINDS "stadhuis"): the way
+## in is the glass door of the atrium on the Spuiplein, under the letters (out again there); inside
 ## you are on floor 0 by the entrance (only that floor shown), the reception staffed; at the
 ## lift [E] Lift asks which floor; the ride is a scene of its own (the cabin, the camera from
 ## the front, close in, you in it, the motor humming, the display showing the floor the lift
@@ -56,11 +56,12 @@ func _ride_and_check(test, hall: Node3D, number: int) -> void:
 			test.check(not _people_with_role(floor_node, "burgemeester").is_empty(), "  de burgemeester in de raadzaal")
 
 
-## The doors of the two white slabs are ways in, and at one the HUD offers [E] Naar binnen,
-## which takes you into the city hall.
-func test_in_through_a_door_of_the_slabs(test) -> void:
+## The way in is the glass door of the atrium on the Spuiplein (under the letters STADHUIS,
+## facing north), and there the HUD offers [E] Naar binnen, which takes you into the city hall.
+func test_in_through_the_door_under_the_letters(test) -> void:
 	var ways_in: Array = interiors.ways_in().filter(func(way_in: Dictionary) -> bool: return way_in.kind == "stadhuis")
-	test.check(ways_in.size() >= 2, "ingangen van het stadhuis: de deuren van de twee witte schijven (%d)" % ways_in.size())
+	test.check(ways_in.size() == 1 and (ways_in[0].outward as Vector3).is_equal_approx(Vector3.FORWARD),
+		"de ingang van het stadhuis: de glazen deur onder de letters, naar het Spuiplein (%d)" % ways_in.size())
 	if ways_in.is_empty():
 		return
 	var way_in: Dictionary = ways_in[-1]

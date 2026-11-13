@@ -577,6 +577,12 @@ def _office_gf_base(b, face):
     b.rect(face, 0, S, 20, 24, -1, 1, b.st["frame"] if b.style == "kantoor_glas" else "beton1")
 
 
+## The company over the door of each office style (the short names of the office towers,
+## details_extra.OFFICE_NAMES, as far as they fit the board).
+OFFICE_DOOR_NAMES = {"kantoor_glas": "HOFSTAD", "kantoor_beton": "POLDER", "kantoor_80": "DIJK",
+                     "kantoor_2000": "DUIN", "kantoor_modern": "HOFSTAD"}
+
+
 def f_office_gf_entrance(b, face):
     """Office entrance: glass double door, canopy with lights and a sign."""
     _office_gf_base(b, face)
@@ -591,7 +597,10 @@ def f_office_gf_entrance(b, face):
     b.rect(face, 5, 27, 17, 19, -7, 0, "metaal3")
     for u in range(8, 25, 4):
         b.put(face, u, 16, -4, "lamp_wit")
-    b.sign(face, 6, 26, 20, 24, "antraciet1", "ZWERVR", "lamp_wit")
+    name = OFFICE_DOOR_NAMES.get(b.style, "HOFSTAD")
+    _, (tw, _) = text_pixels(name)
+    half = (tw + 5) // 2
+    b.sign(face, 16 - half, 16 + half, 20, 24, "antraciet1", name, "lamp_wit")
 
 
 def f_office_gf_glass(b, face):

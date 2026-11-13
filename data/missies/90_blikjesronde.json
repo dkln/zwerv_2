@@ -1,0 +1,46 @@
+{
+	"uitleg": "Zijmissie die na missie 1 vrijkomt en daarna steeds terugkomt (herhaalbaar). Zie data/LEESMIJ.md.",
+	"id": "zij_blikjesronde",
+	"label": "ZIJMISSIE",
+	"titel": "Blikjesronde",
+	"gever": "De prullenbakken",
+	"beschrijving": "De prullenbakken lopen vanzelf weer vol. Een rondje langs de bakken en de statiegeldautomaat levert altijd wat op.",
+	"soort": "zij",
+	"start": "na:missie_1_lege_maag",
+	"herhaalbaar": true,
+	"herhaal_na": 180,
+	"xp": 30,
+	"beloningen": [
+		"STATIEGELD"
+	],
+	"start_paginas": [],
+	"stappen": [
+		{
+			"id": "blikjes",
+			"tekst": "Verzamel lege blikjes ({voortgang})",
+			"xp": 15,
+			"doel": {
+				"soort": "verzamelen",
+				"item": "blikje",
+				"aantal": 6
+			},
+			"plekken": {
+				"soort": "blikjes",
+				"aantal": 3
+			}
+		},
+		{
+			"id": "inleveren",
+			"tekst": "Lever ze in bij een statiegeldautomaat",
+			"xp": 15,
+			"doel": {
+				"soort": "statiegeld"
+			},
+			"plekken": {
+				"soort": "supermarkten",
+				"aantal": 2
+			}
+		}
+	],
+	"einde_paginas": []
+}

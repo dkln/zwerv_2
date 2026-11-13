@@ -118,9 +118,10 @@ def steps(row: str, step: float = 0.25) -> list:
 
 
 def drum_steps(row: str, step: float = 0.25) -> list:
-    """A row of drum steps ("KCK CHH OHH --- SNR ..."): a hit on every named step (STEP_DRUMS)."""
-    return [Hit(round(1.0 + index * step, 4), STEP_DRUMS[cell]) for index, cell in enumerate(row.split())
-            if cell != STEP_HOLD and cell not in STEP_STOPS]
+    """A row of drum steps ("KCK CHH OHH --- SNR ..."): a hit on every named step (STEP_DRUMS);
+    "KCK+CHH" is several drums on the same step."""
+    return [Hit(round(1.0 + index * step, 4), STEP_DRUMS[drum]) for index, cell in enumerate(row.split())
+            if cell != STEP_HOLD and cell not in STEP_STOPS for drum in cell.split("+")]
 
 
 def stabs(triggers: str, *chords: str, step: float = 0.25, length_steps: float = 2.4) -> list:
@@ -209,10 +210,18 @@ def chord_classes(name: str) -> tuple:
 
 
 def bar_chords(text: str, beats_per_bar: int) -> list:
-    """"Bb A7" -> [("Bb", 1.0, 2.0), ("A7", 3.0, 2.0)]: the chords of a bar, split evenly."""
+    """"Bb A7" -> [("Bb", 1.0, 2.0), ("A7", 3.0, 2.0)]: the chords of a bar, split evenly; with
+    their beats ("E7@1 D@4": the D from beat 4) each from where it says to the next."""
     names = text.replace("->", " ").replace("→", " ").split()
     if not names:
         return []
+    if any("@" in name for name in names):
+        placed = []
+        for index, name in enumerate(names):
+            chord_name, _at, beat = name.partition("@")
+            placed.append((chord_name, float(beat) if beat else 1.0 + index * beats_per_bar / len(names)))
+        ends = [start for _name, start in placed[1:]] + [beats_per_bar + 1.0]
+        return [(chord_name, start, end - start) for (chord_name, start), end in zip(placed, ends)]
     share = beats_per_bar / len(names)
     return [(chord_name, 1.0 + index * share, share) for index, chord_name in enumerate(names)]
 

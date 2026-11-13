@@ -691,6 +691,11 @@ func _car(root: Node3D) -> void:
 	story.set_script(load("res://scripts/story/story.gd"))
 	root.add_child(story)
 	story.owner = root
+	var characters := Node3D.new()
+	characters.name = "Personages"   # the people of the story: Ome Wim and others (scripts/story/characters.gd)
+	characters.set_script(load("res://scripts/story/characters.gd"))
+	root.add_child(characters)
+	characters.owner = root
 	var follow := Node.new()
 	follow.name = "Volgcamera"
 	follow.set_script(load("res://scripts/camera/follow_camera.gd"))
@@ -770,20 +775,21 @@ func _try_bin(p: Vector2, placed: Array[Vector2]) -> bool:
 
 
 ## The machines and things to find in the streets (each its own node; scripts in
-## scripts/world/): the cash machines (PINPUNT) flush against facades and the OV-chipkaart
-## machines at tram stops (node Straatautomaten, street_machines.gd: a marker
-## Geldautomaat_<n> / OVAutomaat_<n> each, its +z the way it faces), the cans in the waste
+## scripts/world/): the cash machines (PINPUNT) flush against facades and the OV posts
+## (ov_incheckpaal) at tram stops (node Straatautomaten, street_machines.gd: a marker
+## Geldautomaat_<n> / OVPaal_<n> each, its +z the way it faces), the cans in the waste
 ## bins (node Prullenbakken, litter_bins.gd) and the lost bank cards (node Pinpassen,
 ## lost_bank_cards.gd).
 ## Cash machines: beside every other supermarket entrance (bg_<chain>_ingang), then the
 ## other shop fronts (bg_*winkel*) and the facades on squares, spread out (at least
 ## CASH_MACHINE_SPACING m apart, at most MOST_CASH_MACHINES), each on the pavement in front of
-## the facade, 1.3 m to the side of the middle (not before the door). OV machines: beside a
-## tram shelter (ov/abri), at most MOST_OV_MACHINES, OV_MACHINE_SPACING m apart.
+## the facade, 1.3 m to the side of the middle (not before the door). OV posts: beside a
+## tram shelter (ov/abri), at most MOST_OV_POSTS, OV_POST_SPACING m apart (cards are bought
+## at the machines in the station hall).
 const MOST_CASH_MACHINES := 34
 const CASH_MACHINE_SPACING := 44.0
-const MOST_OV_MACHINES := 8
-const OV_MACHINE_SPACING := 60.0
+const MOST_OV_POSTS := 8
+const OV_POST_SPACING := 60.0
 ## The cash machine's half depth: how far its middle stands before the facade.
 const CASH_MACHINE_HALF_DEPTH := 0.27
 
@@ -858,7 +864,7 @@ func _street_machines(root: Node3D) -> void:
 				number += 1
 				break
 	print("cash machines: ", number - 1)
-	# the OV-chipkaart machines beside tram shelters
+	# the OV posts beside tram shelters
 	var shelters: Array[Vector3i] = []
 	var shelter_item := props.mesh_library.find_item_by_name("ov/abri")
 	if shelter_item >= 0:
@@ -868,10 +874,10 @@ func _street_machines(root: Node3D) -> void:
 	var ov_placed: Array[Vector2] = []
 	var ov_number := 1
 	for shelter in shelters:
-		if ov_number > MOST_OV_MACHINES:
+		if ov_number > MOST_OV_POSTS:
 			break
 		var at := Vector2(shelter.x, shelter.z) * 0.5
-		if ov_placed.any(func(other: Vector2) -> bool: return other.distance_to(at) < OV_MACHINE_SPACING):
+		if ov_placed.any(func(other: Vector2) -> bool: return other.distance_to(at) < OV_POST_SPACING):
 			continue
 		var facing := props.get_cell_item_basis(shelter) * Vector3(0, 0, 1)
 		var shelter_front := Vector2(facing.x, facing.z).normalized()
@@ -880,12 +886,13 @@ func _street_machines(root: Node3D) -> void:
 			var spot := at + shelter_along * 2.5 * side
 			if not _free_of_props(spot, shelter.y):
 				continue
-			_machine_marker(machines, root, "OVAutomaat_%d" % ov_number, spot, shelter.y * 0.5, shelter_front)
+			_machine_marker(machines, root, "OVPaal_%d" % ov_number, spot, shelter.y * 0.5, shelter_front)
 			ov_placed.append(at)
 			ov_number += 1
 			break
-	print("OV machines at tram stops: ", ov_number - 1)
-	for finds: Array in [["Prullenbakken", "res://scripts/world/things/litter_bins.gd"], ["Pinpassen", "res://scripts/world/things/lost_bank_cards.gd"]]:
+	print("OV posts at tram stops: ", ov_number - 1)
+	for finds: Array in [["Prullenbakken", "res://scripts/world/things/litter_bins.gd"], ["Pinpassen", "res://scripts/world/things/lost_bank_cards.gd"],
+			["Straatverkopers", "res://scripts/world/things/street_vendors.gd"]]:
 		var node := Node3D.new()
 		node.name = finds[0]
 		node.set_script(load(finds[1]))

@@ -1,5 +1,5 @@
 extends "res://tests/integration/support/town_test.gd"
-## The wallet and the money goal of mission 1 ("geld_verdiend", Story.money_towards_goal),
+## The wallet and a money goal ("geld_verdiend", Story.money_towards_goal: a mission of the test),
 ## without the town (fast): the real PlayerController and the real Story, with a stand-in
 ## HUD that only remembers what it was told. Checks that the mission and the wallet in the
 ## corner always say the same amount:
@@ -15,8 +15,13 @@ const PlayerController = preload("res://scripts/player/player_controller.gd")
 const Story = preload("res://scripts/story/story.gd")
 const GameHud = preload("res://scripts/ui/hud.gd")
 
-const MISSION := "missie_1_kroket"
+## A mission of its own with a money goal first (the first missions of the game have none).
+const MISSION := "test_kleingeld"
 const MONEY_STEP := "kleingeld"
+const TEST_MISSION := {"id": MISSION, "label": "TEST", "titel": "Twee euro voor een kroket", "start": "nooit",
+	"stappen": [{"id": MONEY_STEP, "tekst": "Bemachtig € 2 kleingeld ({voortgang})", "xp": 50,
+		"doel": {"soort": "geld_verdiend", "bedrag": 2.0}},
+		{"id": "kroket", "tekst": "Koop een kroket", "xp": 100, "doel": {"soort": "kopen", "item": "kroket"}}]}
 ## Coins (as LooseChange gives them) whose sum in floats is just under 2.
 const COINS_UNDER_TWO: Array[float] = [0.2, 0.5, 0.1, 0.5, 0.2, 0.5]
 
@@ -62,6 +67,7 @@ func _small_town() -> Dictionary:
 	town.add_child(story)
 	add_to_root(town)
 	await frames(1)
+	story.missions.append(TEST_MISSION.duplicate(true))
 	story.start_mission(story.mission(MISSION), false)
 	return {"player": wallet_owner, "hud": stand_in_hud, "story": story}
 

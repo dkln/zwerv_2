@@ -16,8 +16,16 @@
 			"tekst": "Au, mijn rug. Weer een nacht op de stenen van het plein. Wat een nacht was dat. Ik weet niet eens meer hoe ik hier terecht ben gekomen."
 		},
 		{
+			"soort": "verhaal",
+			"tekst": "{naam} komt kreunend overeind, slaat het vuil van de kleren en rekt zich uit. Zonder jas is de ochtend koud: de wind over het plein gaat dwars door het dunne T-shirt heen."
+		},
+		{
 			"soort": "gedachte",
 			"tekst": "En mijn maag knort harder dan de RandstadRail. Een kroket... een warme kroket van Jan Blammage. Daar zou ik een moord voor doen. Nou ja. Bijna."
+		},
+		{
+			"soort": "gedachte",
+			"tekst": "Maar eten kost geld. Lege blikjes dan: daar zit statiegeld op, veertig cent per stuk bij de automaat in de supermarkt. Zes blikjes is twee euro veertig: ruim genoeg voor een kroket. In de prullenbakken hier op het plein liggen er altijd wel een paar."
 		}
 	]
 }

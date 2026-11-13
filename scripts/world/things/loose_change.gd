@@ -1,11 +1,14 @@
 extends Node3D
-## Loose change on the streets (the node "Kleingeld" of scenes/stad.tscn): coins of 10, 20 and
-## 50 cents and now and then a euro, lying on squares and pavements round where the player
-## starts (within `reach` metres; the first few close by, so the first one is soon found).
+## Loose change on the streets (the node "Kleingeld" of scenes/stad.tscn): none until the story
+## unlocks it ("kleingeld", a later mission), then a very rare find, only a
+## coin (`count`: one) of 10, 20 or 50 cents (now and then a euro) in the whole town, on squares and
+## pavements well away from where the player starts (between `near` and `reach` metres;
+## `near_count` of them closer by, none by default: the first mission pays for its kroket
+## with cans, not coins).
 ## A coin stands on its edge, turns and bobs a little, glinting gold; walking over it (within
 ## `pick_up_distance`) picks it up: PlayerController.add_money, a chime ("munt") and its
 ## value rising from where it lay ("+€ 0,50", GameHud.show_floating_number). A pulsing rim
-## (QuestOutline) makes them stand out from the street. For mission 1 (scripts/story/story.gd).
+## (QuestOutline) makes them stand out from the street.
 
 const QuestOutline = preload("res://scripts/effects/quest_outline.gd")
 const UiSounds = preload("res://scripts/ui/ui_sounds.gd")
@@ -16,12 +19,14 @@ const VALUES := [0.1, 0.2, 0.5, 1.0]
 const VALUE_WEIGHTS := [3.0, 3.0, 3.0, 1.0]
 const COIN_GOLD := Color("#E8B83A")
 const TOWN_LAYER := 1
+## What the story unlocks before any coin lies on the streets (_unlocked).
+const UNLOCK := "kleingeld"
 
-@export var count := 20
-@export var reach := 110.0
+@export var count := 1
+@export var reach := 400.0
 ## How many of them lie within `near` metres of the start.
-@export var near_count := 3
-@export var near := 18.0
+@export var near_count := 0
+@export var near := 60.0
 @export var pick_up_distance := 1.0
 @export var random_seed := 7
 @export var player_path := NodePath("../Speler")
@@ -49,7 +54,7 @@ func _physics_process(_delta: float) -> void:
 	if _player == null or _ground == null:
 		return
 	if not _laid:
-		if _player.get("_placed"):
+		if _player.get("_placed") and _unlocked():
 			_lay_coins(_player.global_position)
 		return
 	if _player.call("is_asleep") or _player.call("is_dead"):
@@ -179,3 +184,10 @@ static func _mesh() -> CylinderMesh:
 
 static func _euros(amount: float) -> String:
 	return "€ " + ("%.2f" % amount).replace(".", ",")
+
+
+## Whether the story lets coins lie on the streets ("kleingeld", Story.UNLOCKABLE: not at the
+## start of the game; a later mission unlocks it); without a story always.
+func _unlocked() -> bool:
+	var story := get_tree().get_first_node_in_group("verhaal")
+	return story == null or not story.has_method("is_unlocked") or bool(story.is_unlocked(UNLOCK))

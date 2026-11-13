@@ -1,0 +1,213 @@
+{
+	"uitleg": "Missie 1, hoofdstuk 1 (Op straat). Zie data/LEESMIJ.md voor alle velden en de soorten doelen. De ID-diefstal (stap 6) loopt als rode draad door het spel.",
+	"id": "missie_1_lege_maag",
+	"label": "MISSIE 1",
+	"titel": "Lege maag",
+	"gever": "Je maag",
+	"beschrijving": "Je bent wakker geworden op de stenen bij Centraal en je maag knort. Lege blikjes leveren statiegeld op, veertig cent per stuk bij de automaat. Zes blikjes, twee euro veertig: ruim genoeg voor een warme kroket. Denk je.",
+	"start": "na_proloog",
+	"xp": 150,
+	"beloningen": [
+		"KROKET",
+		"+40 HONGER"
+	],
+	"start_paginas": [
+		{
+			"soort": "missie",
+			"tekst": "Zoek lege blikjes in de prullenbakken: ze staan aangewezen op je kaartje, rechtsboven. Lopen doe je met WASD of de pijltjes, rennen met Shift. Linksboven zie je hoe het met je gaat: je gezondheid, je adem en je maag. Is die balk leeg, dan kost de honger je gezondheid."
+		}
+	],
+	"stappen": [
+		{
+			"id": "blikjes",
+			"tekst": "Zoek lege blikjes in de prullenbakken ({voortgang})",
+			"xp": 50,
+			"zet_stats": {
+				"honger": 74
+			},
+			"doel": {
+				"soort": "verzamelen",
+				"item": "blikje",
+				"aantal": 6
+			},
+			"plekken": {
+				"soort": "blikjes",
+				"aantal": 4,
+				"in_zicht": true
+			},
+			"blikjes_buiten": 4,
+			"blikjes_station": 2,
+			"eerste_scherm": {
+				"kop": "GEVONDEN",
+				"titel": "Je eerste blikje"
+			},
+			"tussen_paginas": [
+				{
+					"bij": 4,
+					"paginas": [
+						{
+							"soort": "gedachte",
+							"tekst": "Vier. Op het plein is alles leeg. Maar daarbinnen, op de perrons, staan prullenbakken waar er altijd wel een paar in liggen. Twee nog, dan heb ik er zes. Zes blikjes, één kroket."
+						},
+						{
+							"soort": "gedachte",
+							"tekst": "Alleen zit er een rij poortjes tussen, en zonder geld kom ik daar niet langs. Geen kaartje, geen saldo. Dan maar vlak achter iemand aan glippen als de poortjes opengaan, en hopen dat de conducteur net de andere kant op kijkt."
+						},
+						{
+							"soort": "gedachte",
+							"tekst": "En dan nog met de buit weer naar buiten zien te komen. Voor twee blikjes van een kwartje. Wat doe ik mezelf aan."
+						}
+					]
+				}
+			],
+			"bij_binnenkomst": {
+				"binnen": "centraal",
+				"vanaf": 4,
+				"ontgrendelt": [
+					"springen"
+				],
+				"paginas": [
+					{
+						"soort": "verhaal",
+						"tekst": "In de hal van Centraal blijft {naam} staan. Achter de poortjes, op de perrons, steken twee lege blikjes uit de prullenbakken. Twee keer een kwartje, voor het oprapen."
+					},
+					{
+						"soort": "verhaal",
+						"tekst": "Alleen gaan die poortjes niet open zonder kaartje, en een kaartje is er niet. Er zal een andere manier moeten zijn om op de perrons te komen. Zo hoog zijn die poortjes nou ook weer niet. Met [SPATIE] kun je springen."
+					},
+					{
+						"soort": "verhaal",
+						"tekst": "Maar pas op voor de conducteurs. Wie ze betrappen, krijgt een boete van vijftig euro. En wie die niet kan betalen, wordt het station uit gezet en mag er voorlopig niet meer in."
+					}
+				]
+			},
+			"klaar_paginas": [
+				{
+					"soort": "gedachte",
+					"tekst": "Zes blikjes. Twee euro veertig: ruim genoeg voor een kroket. Daar om de hoek, bij het Spuiplein, zit een DERREK. Die heeft een statiegeldautomaat."
+				}
+			]
+		},
+		{
+			"id": "statiegeld",
+			"tekst": "Lever je blikjes in bij de supermarkt",
+			"tekst_storing": "Verkoop je blikjes aan Blikken Bertus op het Stationsplein [E]",
+			"xp": 40,
+			"opent_tot": "supermarkt",
+			"doel": {
+				"soort": "statiegeld"
+			},
+			"plekken": {
+				"soort": "supermarkten",
+				"aantal": 1
+			},
+			"storing": {
+				"tekst": "TIJDELIJK BUITEN GEBRUIK",
+				"persoon": "bertus",
+				"paginas": [
+					{
+						"soort": "gedachte",
+						"tekst": "\"Tijdelijk buiten gebruik.\" Met plakband erop. Dat briefje is geel van ouderdom. Tijdelijk, ja ja."
+					},
+					{
+						"soort": "gedachte",
+						"tekst": "De volgende supermarkt is een heel eind lopen. Maar wacht... op het plein bij Centraal loopt toch altijd die rare snuiter met zijn winkelkarretje vol blikjes? Blikken Bertus. Die koopt blikjes op."
+					},
+					{
+						"soort": "gedachte",
+						"tekst": "Voor een kwartje per stuk, die afzetter. De automaat geeft veertig cent. Maar die doet het niet, en Bertus wel. Geen keus."
+					}
+				]
+			},
+			"klaar_paginas": [
+				{
+					"soort": "gedachte",
+					"tekst": "Anderhalve euro. Bij de automaat was het twee euro veertig geweest. En de kroket kost twee euro. Vijftig cent te kort, dankzij Bertus."
+				},
+				{
+					"soort": "gedachte",
+					"tekst": "Meer blikjes zijn er hier niet. Misschien moet ik het mensen gewoon vragen. Een beetje kleingeld, een dubbeltje hier, twintig cent daar. De meesten lopen door, maar er zit altijd wel iemand tussen die wat geeft."
+				},
+				{
+					"soort": "gedachte",
+					"tekst": "Trots kun je niet eten. Op naar de mensen op straat dan, tot ik mijn laatste centen bij elkaar gesprokkeld heb."
+				},
+				{
+					"soort": "verhaal",
+					"tekst": "Met geld op zak kun je nu ook met handelaars praten en dingen bij ze kopen: bij de frietkar, een snackbar of de winkeltjes in het station. Loop naar de verkoper toe en druk op [E]."
+				}
+			]
+		},
+		{
+			"id": "bedelen",
+			"tekst": "Vraag mensen op straat om kleingeld [E] ({voortgang} van € 2,00)",
+			"verborgen_tot_open": true,
+			"xp": 30,
+			"ontgrendelt": [
+				"bedelen",
+				"handelaars"
+			],
+			"doel": {
+				"soort": "geld_op_zak",
+				"bedrag": 2.0
+			},
+			"klaar_paginas": [
+				{
+					"soort": "gedachte",
+					"tekst": "Twee euro. Bij elkaar geschraapt, maar het is genoeg. Op naar de frietkar."
+				}
+			]
+		},
+		{
+			"id": "kroket",
+			"tekst": "Koop een kroket bij de frietkar op het Stationsplein en eet hem op [F]",
+			"xp": 60,
+			"doel": {
+				"soort": "gebruiken",
+				"item": "kroket"
+			},
+			"plekken": {
+				"soort": "plek",
+				"plek": "frietkar_centraal"
+			},
+			"klaar_paginas": [
+				{
+					"soort": "gedachte",
+					"tekst": "Een warme kroket. Eindelijk. Het vel kraakt, de ragout is gloeiend heet. Dit is het beste moment van de week."
+				},
+				{
+					"soort": "gedachte",
+					"tekst": "Zo. Even kijken wat ik nog op zak heb."
+				}
+			]
+		},
+		{
+			"id": "rugzak",
+			"tekst": "Controleer je zakken [Tab]",
+			"verborgen_tot_open": true,
+			"xp": 20,
+			"ontgrendelt": [
+				"menu",
+				"snackkaart"
+			],
+			"doel": {
+				"soort": "menu_open",
+				"tab": "inventaris"
+			},
+			"klaar_paginas": [
+				{
+					"soort": "gedachte",
+					"tekst": "Wacht. Waar is mijn ID-kaart? Hij zat altijd in dit vakje. Weg. Gisteravond had ik hem nog."
+				},
+				{
+					"soort": "gedachte",
+					"tekst": "Iemand heeft hem gepakt terwijl ik sliep. Zonder ID ben je niemand: geen postadres, geen uitkering, geen kamer. Ik moet weten wie dit gedaan heeft."
+				}
+			]
+		}
+	],
+	"einde_paginas": [],
+	"opent_na_afloop": [
+		"plein"
+	]
+}

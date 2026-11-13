@@ -74,7 +74,7 @@ const KINDS := {
 	"alfred_steyhn": {"scene": SUPERMARKET_SCENE, "music": "", "name": "ALFRED STEYHN", "front": "_bg_alfred_steyhn_ingang",
 		"front_width": "_bg_alfred_steyhn_", "at": Vector3(-600.0, 0.0, -1400.0), "zoom": 15.0},
 	"stadhuis": {"scene": "res://scenes/binnen/stadhuis.tscn", "music": "", "name": "Stadhuis",
-		"doors": "modern_wit/modern_wit_bg_deur", "place": "stadhuis", "place_reach": 36.0,
+		"doors": "hallen/hal_glas_wand_deur_dak", "place": "stadhuis", "place_reach": 36.0,
 		"at": Vector3(-1500.0, 0.0, 900.0), "zoom": 16.0, "location": "Stadhuis"},
 }
 const SUPERMARKET_SCENE := "res://scenes/binnen/supermarkt.tscn"

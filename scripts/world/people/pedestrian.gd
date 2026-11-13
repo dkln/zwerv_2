@@ -151,6 +151,13 @@ var crowd_kind := ""
 ## everyone else. `mobility`, Person: "" walking, a wheelchair or a mobility scooter.)
 ## On its way into Den Haag Centraal (Pedestrians._send_to_station): each step a cell nearer a
 ## door, at the door it is gone (Pedestrians.into_station).
+## Held still by the story (scripts/story/characters.gd: Ome Wim waiting for you): it stands.
+var story_held := false
+## Where the story sends it (a cell; NO_STORY_GOAL: nowhere, it walks about as anyone): it goes
+## there by the route finder (Pedestrians.route_to) and stands still there (story_arrived).
+var story_goal := NO_STORY_GOAL
+const NO_STORY_GOAL := Vector3i(-99999, 0, -99999)
+signal story_arrived
 var heading_to_station := false
 ## Walking to the door of a tram or a train to get on (board_at): gone at the door.
 var boarding := false
@@ -386,6 +393,10 @@ func _physics_process(delta: float) -> void:
 		return
 	if not _waiting_become.is_empty() and TownsfolkFigure.is_prepared(_waiting_look):
 		callv("become", _waiting_become)
+	if story_held:
+		_follow_ground()
+		_walk_figure(delta, 0.0)
+		return
 	# out of sight it walks in fewer, longer steps (Sight), its limbs left alone
 	_sight_countdown -= 1
 	if _sight_countdown < 0:
@@ -719,6 +730,17 @@ func _next_on_the_way(ways: Array) -> Vector3i:
 		_way.pop_front()
 	if not _way.is_empty() and not _way[0] in ways:
 		_way.clear()
+	if story_goal != NO_STORY_GOAL:
+		# sent by the story: on to its goal, there it stands still
+		if cell == story_goal:
+			story_goal = NO_STORY_GOAL
+			story_held = true
+			_way.clear()
+			story_arrived.emit()
+			return cell
+		if _way.is_empty() and town.has_method("route_to"):
+			_way = town.route_to(cell, story_goal)
+		return _way[0] if not _way.is_empty() else cell
 	if _way.is_empty():
 		if _wander_left > 0:
 			_wander_left -= 1

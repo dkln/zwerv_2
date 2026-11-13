@@ -26,5 +26,5 @@ if ($build) {
 	Write-Output '[ stap 2/2 ] thumbnails maken'
 }
 if (-not $limit_given) { $env:GODOT_TIMEOUT = 1200 }
-& "$PSScriptRoot\godot.ps1" --script tools/build/build_previews.gd -- @all
+& "$PSScriptRoot\godot.ps1" --script tools/build/build_previews.gd '--' @all
 exit $LASTEXITCODE

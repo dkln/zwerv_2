@@ -16,6 +16,9 @@ extends RefCounted
 
 const FOLDER := "res://assets/audio/geluiden/"
 const VOICES := ["man", "oude_man", "vrouw"]
+## Voices of one person only (a character's "stem", data/gesprekken/personages.json): never handed
+## out to anyone else (DriverShout.voice_of picks from VOICES).
+const OWN_VOICES := ["rasperig"]
 const MOODS := ["neutraal", "blij", "opgewonden", "boos", "verdrietig", "vraag"]
 const VARIANTS := 8
 ## How loud the babble is in the UI (dB), how far the pitch of a word lies from 1 (share,
@@ -31,7 +34,7 @@ static var _random := RandomNumberGenerator.new()
 ## The sound name of babble in `voice` and `mood`: the variant of `word` (always the same
 ## for the same word), or without a word another variant than the last one.
 static func sound_name(voice: String, mood: String, word := "") -> String:
-	var voice_name := voice if voice in VOICES else "man"
+	var voice_name := voice if voice in VOICES or voice in OWN_VOICES else "man"
 	var mood_name := mood if mood in MOODS else "neutraal"
 	if _plain(word) != "":
 		return "brabbel_%s_%s_%d" % [voice_name, mood_name, variant_of(word)]

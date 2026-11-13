@@ -1,29 +1,37 @@
 extends Node3D
-## Lost bank cards on the streets (the node "Pinpassen" of scenes/stad.tscn): a few cards
-## lying on squares and pavements, one not far from where the player starts (within `near`),
-## the others spread further off (within `reach`, a third of it apart). A card stands up and
+## Lost bank cards on the streets (the node "Pinpassen" of scenes/stad.tscn): none until the
+## story unlocks it ("pinpassen", a later mission), then a rare find,
+## `count` (one) in the whole town, on a square or pavement well away from where the player
+## starts (between `near` and `reach` m; `near_count` of them within `near`, none by default),
+## more than one a third of `reach` apart. No story needs one. A card stands up and
 ## slowly turns, with the glowing outline of things to pick up (QuestOutline). Walking over
 ## one (within `pick_up_distance`) puts it in your pockets as a "pinpas" with its own account:
 ## a modest balance, a PIN and the riddle of it on the back (BankCards.give_found_bank_card,
-## the inventory shows the riddle). Full pockets: it stays lying.
+## the inventory shows the riddle), announced with the reward screen ("GEVONDEN", the card
+## big and turning: GameHud.show_reward). Full pockets: it stays lying.
 
 const QuestOutline = preload("res://scripts/effects/quest_outline.gd")
 const MachineModels = preload("res://scripts/world/things/machine_models.gd")
 const BankCards = preload("res://scripts/player/bank_cards.gd")
 const CARD_GROUND := ["plein/", "stoep/"]
 const TOWN_LAYER := 1
+## What the story unlocks before any card lies on the streets (_unlocked).
+const UNLOCK := "pinpassen"
 const TURN_SPEED := 1.1
 const LIFT := 0.12
 const OUTLINE_COLOUR := Color("#7AD8FF")
 
-@export var count := 5
-@export var reach := 260.0
+@export var count := 1
+@export var reach := 400.0
+## How many of them lie within `near` metres of the start.
+@export var near_count := 0
 @export var near := 60.0
 @export var pick_up_distance := 1.0
 @export var random_seed := 97
 @export var player_path := NodePath("../Speler")
 @export var ground_path := NodePath("../Grond")
 @export var buildings_path := NodePath("../Gebouwen")
+@export var hud_path := NodePath("../HUD")
 
 var _cards: Array[Node3D] = []
 var _laid := false
@@ -46,7 +54,7 @@ func _physics_process(_delta: float) -> void:
 	if _player == null or _ground == null:
 		return
 	if not _laid:
-		if _player.get("_placed"):
+		if _player.get("_placed") and _unlocked():
 			_lay_cards(_player.global_position)
 		return
 	if _player.call("is_asleep") or _player.call("is_dead") or _clock < _refused_until:
@@ -87,7 +95,7 @@ func _lay_cards(start: Vector3) -> void:
 	_shuffle(near_cells)
 	_shuffle(far_cells)
 	var chosen: Array[Vector3i] = []
-	chosen.append_array(near_cells.slice(0, 1))
+	chosen.append_array(near_cells.slice(0, near_count))
 	for cell in far_cells:
 		if chosen.size() >= count:
 			break
@@ -127,11 +135,16 @@ func pick_up(index: int) -> bool:
 	var card := _cards[index]
 	var random := RandomNumberGenerator.new()
 	random.seed = int(card.get_meta("seed", 0))
-	if not BankCards.give_found_bank_card(_player, random):
+	var hud := get_node_or_null(hud_path)
+	var announced := hud != null and hud.has_method("show_reward")
+	# quiet when the reward screen announces it (no "picked up" note as well)
+	if not BankCards.give_found_bank_card(_player, random, announced):
 		_refused_until = _clock + 3.0
 		return false
 	_cards.remove_at(index)
 	card.queue_free()
+	if announced:
+		hud.show_reward({"heading": "GEVONDEN", "title": "Op straat", "items": [{"item": BankCards.ITEM, "count": 1}]})
 	return true
 
 
@@ -145,3 +158,10 @@ func _shuffle(cells: Array[Vector3i]) -> void:
 		var kept := cells[index]
 		cells[index] = cells[other]
 		cells[other] = kept
+
+
+## Whether the story lets bank cards lie on the streets ("pinpassen", Story.UNLOCKABLE: not at
+## the start of the game; a later mission unlocks it); without a story always.
+func _unlocked() -> bool:
+	var story := get_tree().get_first_node_in_group("verhaal")
+	return story == null or not story.has_method("is_unlocked") or bool(story.is_unlocked(UNLOCK))

@@ -213,6 +213,15 @@ const RUN_BOB := 0.09
 		backpack = value
 		if is_inside_tree():
 			_rebuild()
+## In its coat (or jacket), as designed; off: in a T-shirt (_take_off_coat), as every zwerver
+## starts the game until a coat is given (PlayerController: an item "worn" in its pockets).
+@export var coat := true:
+	set(value):
+		if coat == value:
+			return
+		coat = value
+		if is_inside_tree():
+			_rebuild()
 @export var figure_scale := 1.0:
 	set(value):
 		figure_scale = value
@@ -232,8 +241,44 @@ var silhouette := Color(0, 0, 0, 0):
 		if is_inside_tree():
 			_rebuild()
 
+## Seen through what stands before it (the player in the town: figure_xray.gdshader as the
+## overlay of its meshes): behind a tree or a lamp post its shape shows, see-through.
+var xray := false:
+	set(value):
+		xray = value
+		if is_inside_tree():
+			_rebuild()
+const XRAY_SHADER := preload("res://scripts/player/figure_xray.gdshader")
+
+## A thick bright rim round a dark silhouette of the figure where something stands before it
+## (a building, a tree, a wall: whatever is drawn nearer to the camera than the whole figure).
+## Every part of the figure gets a shell (a copy of its mesh RIM_WIDTH metres bigger all round,
+## scaled round its own middle) in RIM_COLOUR, and over it the part itself as a flat dark
+## silhouette, both with figure_rim_mask.gdshader: drawn over everything (no depth test), but
+## only on the pixels where the scene's depth stands before the whole figure, so of the shells
+## only the band round the hidden parts shows, and in the open nothing does. The player has it
+## on all the time (PlayerController._update_rim); the shader decides, every pixel and frame.
+## No rebuild.
+var rim := false:
+	set(value):
+		if rim == value:
+			return
+		rim = value
+		_apply_overlay()
+const RIM_MASK_SHADER := preload("res://scripts/player/figure_rim_mask.gdshader")
+const RIM_WIDTH := 0.05
+const RIM_COLOUR := Color("#FFDB5C")
+const RIM_SHELL := "Rand"
+const RIM_SHAPE_COLOUR := Color(0.07, 0.08, 0.16)
+## Metres round the figure's length that its arms, rucksack and what it holds can reach (its
+## own parts within that never count as standing before it).
+const RIM_FIGURE_RADIUS := 0.45
+var _rim_material: ShaderMaterial         # the shells (one per model: the figure's place is set on it)
+var _rim_shape_material: ShaderMaterial   # the parts over them
+
 static var _cache := {}
 static var _materials := {}
+static var _xray_material: ShaderMaterial
 
 var _figure: Node3D           # turns, sways and bobs; the body and the joints under it
 var _joints := {}             # limb -> Node3D at its joint
@@ -259,7 +304,7 @@ func _rebuild() -> void:
 	_figure.scale = Vector3.ONE * figure_scale
 	add_child(_figure)
 	_joints.clear()
-	var parts := parts_for(archetype_id, simple, backpack)
+	var parts := parts_for(archetype_id, simple, backpack, coat)
 	_height = parts.height
 	var body := MeshInstance3D.new()
 	body.name = "Lijf"
@@ -293,6 +338,67 @@ func _rebuild() -> void:
 		for mesh_instance in _figure.find_children("*", "MeshInstance3D", true, false):
 			(mesh_instance as MeshInstance3D).material_override = flat
 			(mesh_instance as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	else:
+		_apply_overlay()
+
+
+## The overlay of the meshes: the rim (`rim`), else the see-through shape (`xray`), else none.
+func _apply_overlay() -> void:
+	if _figure == null or silhouette.a > 0.0:
+		return
+	var overlay: Material = null
+	if rim:
+		if _rim_material == null:
+			_rim_material = ShaderMaterial.new()
+			_rim_material.shader = RIM_MASK_SHADER
+			_rim_material.set_shader_parameter("colour", RIM_COLOUR)
+			_rim_material.render_priority = 10
+			_rim_shape_material = ShaderMaterial.new()
+			_rim_shape_material.shader = RIM_MASK_SHADER
+			_rim_shape_material.set_shader_parameter("colour", RIM_SHAPE_COLOUR)
+			_rim_shape_material.render_priority = 11
+		_place_rim()
+		overlay = _rim_shape_material
+	elif xray:
+		if _xray_material == null:
+			_xray_material = ShaderMaterial.new()
+			_xray_material.shader = XRAY_SHADER
+		overlay = _xray_material
+	for mesh_instance in _figure.find_children("*", "MeshInstance3D", true, false):
+		var piece := mesh_instance as MeshInstance3D
+		if piece.name == RIM_SHELL:
+			continue
+		piece.material_overlay = overlay
+		var shell := piece.get_node_or_null(RIM_SHELL) as MeshInstance3D
+		if rim and shell == null and piece.mesh:
+			# the part a little bigger all round, scaled round its own middle
+			var box := piece.mesh.get_aabb()
+			var grow := Vector3.ONE * 2.0 * RIM_WIDTH / maxf(figure_scale, 0.01)
+			var scale := (box.size + grow) / box.size.max(Vector3.ONE * 0.001)
+			shell = MeshInstance3D.new()
+			shell.name = RIM_SHELL
+			shell.mesh = piece.mesh
+			shell.material_override = _rim_material
+			shell.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			shell.layers = piece.layers
+			var middle := box.get_center()
+			shell.transform = Transform3D(Basis.from_scale(scale), middle - middle * scale)
+			piece.add_child(shell)
+		elif not rim and shell:
+			shell.queue_free()
+
+
+## Tells the rim's materials where the figure is now (its middle, half its length along its own
+## up, RIM_FIGURE_RADIUS round that): figure_rim_mask.gdshader's "before the whole figure".
+func _place_rim() -> void:
+	if _rim_material == null or _figure == null or not _figure.is_inside_tree():
+		return
+	var centre := _figure.to_global(Vector3(0.0, _height * 0.5, 0.0))
+	var half := centre - _figure.to_global(Vector3.ZERO)
+	for material: ShaderMaterial in [_rim_material, _rim_shape_material]:
+		material.set_shader_parameter("figure_centre", centre)
+		material.set_shader_parameter("figure_half", half)
+		material.set_shader_parameter("figure_radius", RIM_FIGURE_RADIUS + RIM_WIDTH)
 
 
 ## Sets a limb ("arm_left", "arm_right", "leg_left", "leg_right") to this turn round its
@@ -336,7 +442,7 @@ static func face_height(id: String) -> float:
 ## The box round the whole figure standing still (its limbs at rest), in its own space at its
 ## figure_scale: feet at y = 0, facing +z.
 func rest_bounds() -> AABB:
-	var parts := parts_for(archetype_id, simple, backpack)
+	var parts := parts_for(archetype_id, simple, backpack, coat)
 	var bounds := AABB()
 	var first := true
 	for part: String in parts.meshes:
@@ -356,6 +462,8 @@ func height() -> float:
 func _process(delta: float) -> void:
 	if _figure == null:
 		return
+	if rim:
+		_place_rim()
 	_clock += delta
 	if _hold > 0.0:
 		_hold -= delta
@@ -561,10 +669,10 @@ func _gesture_pose(time: float, seconds: float) -> Dictionary:
 ## "pivots": {limb: Vector3 joint in metres}, "height": metres}.
 ## `simple`: with fewer details (VoxelFigure.simplify), for the town, where it is seen from afar.
 ## `with_backpack`: with the rucksack on its back (BACKPACK; one picked up in the town).
-static func parts_for(id: String, simple := false, with_backpack := false) -> Dictionary:
-	var key := id + ("/eenvoudig" if simple else "") + ("/rugzak" if with_backpack else "")
+static func parts_for(id: String, simple := false, with_backpack := false, with_coat := true) -> Dictionary:
+	var key := id + ("/eenvoudig" if simple else "") + ("/rugzak" if with_backpack else "") + ("" if with_coat else "/zonder_jas")
 	if not _cache.has(key):
-		var figure := voxels_for(id, with_backpack)
+		var figure := voxels_for(id, with_backpack, with_coat)
 		if simple:
 			figure.simplify()
 		var materials := {}
@@ -575,8 +683,9 @@ static func parts_for(id: String, simple := false, with_backpack := false) -> Di
 
 
 ## The voxels of an archetype (its look), before they become meshes; `with_backpack`: with
-## the rucksack on its back.
-static func voxels_for(id: String, with_backpack := false) -> VoxelFigure:
+## the rucksack on its back. `with_coat` off: without its coat or jacket, in a T-shirt with
+## bare forearms (_take_off_coat: how every zwerver starts the game, until a coat is given).
+static func voxels_for(id: String, with_backpack := false, with_coat := true) -> VoxelFigure:
 	var figure := VoxelFigure.new()
 	figure.mark("skin", [SKIN_TAN, SKIN_PALE, SKIN_GREY, SKIN_OLD])
 	figure.mark("eye", [EYE_DARK, EYE_WHITE, TEETH])
@@ -593,12 +702,100 @@ static func voxels_for(id: String, with_backpack := false) -> VoxelFigure:
 			_build_gerrit(figure)
 		_:
 			_build_jos(figure)
+	if not with_coat:
+		_take_off_coat(figure, id)
 	if with_backpack:
 		_add_backpack(figure, BACKPACK.get(id, BACKPACK.jos))
 	if is_nan(figure.centre_cell.x):
 		# every head is x 4..9: turn round it and frame it in the middle
 		figure.centre_cell = Vector2(7.0, 3.0)
 	return figure
+
+
+# ------------------------------------------------------------------ without a coat
+
+## The T-shirts the zwervers wear under their coats (_take_off_coat).
+const T_SHIRTS := {"jos": Color("#9A3A36"), "martin": Color("#E2DED2"), "ufo_piloot": Color("#8A8A92"),
+	"willem": Color("#C8C0AE"), "sjaan": Color("#D8D0C0"), "gerrit": Color("#22305A")}
+
+
+## Takes the coat (jacket, oilskin, ...) off the figure of `id` built by its _build_*: what
+## is left is a T-shirt with short sleeves and bare forearms, its trousers up to the waist
+## where the coat came down over them. Every zwerver starts the game like that, cold (the
+## story gives a coat: Items "worn", PlayerModel.coat). The arms and the legs stay where
+## they were (the rigs, RIGS, and so the walk are the same); the shoulders still join the arms.
+static func _take_off_coat(figure: VoxelFigure, id: String) -> void:
+	var shirt: Color = T_SHIRTS.get(id, T_SHIRTS.jos)
+	match id:
+		"martin":
+			_remove_colours(figure, [Color("#4E8C84")], 25)
+			figure.box(Vector3i(4, 15, 0), Vector3i(9, 24, 2), shirt)
+			figure.box(Vector3i(6, 25, 1), Vector3i(7, 25, 2), SKIN_PALE)
+			_bare_arms(figure, [1, 11], 15, 23, 0, 1, 4, [3, 10], 21, 23, 0, 1, shirt, SKIN_PALE)
+		"ufo_piloot":
+			_remove_colours(figure, [Color("#6A4428"), Color("#DCCFB2")], 25)
+			_recolour(figure, Color("#707074"), shirt)   # the hoodie: a T-shirt now
+			figure.box(Vector3i(4, 15, 0), Vector3i(9, 24, 2), shirt)
+			figure.box(Vector3i(6, 25, 1), Vector3i(7, 25, 2), SKIN_GREY)
+			_bare_arms(figure, [0, 12], 15, 23, 0, 1, 4, [2, 11], 22, 23, 0, 2, shirt, SKIN_GREY)
+		"sjaan":
+			_remove_colours(figure, [Color("#4A6A9A"), Color("#D8D0C0")], 24)
+			figure.box(Vector3i(3, 15, 0), Vector3i(10, 24, 3), shirt)
+			_bare_arms(figure, [0, 12], 15, 24, 1, 2, 4, [2, 11], 23, 24, 0, 2, shirt, SKIN_PALE)
+		"willem":
+			_remove_colours(figure, [Color("#56604A"), Color("#A8382E")], 21)
+			# the trousers up to the waist (the hem of the coat covered their top)
+			for leg_x in [3, 8]:
+				figure.box(Vector3i(leg_x, 8, 0), Vector3i(leg_x + 2, 9, 2), Color("#7A5A3A"))
+			figure.box(Vector3i(3, 10, 0), Vector3i(10, 12, 2), Color("#7A5A3A"))
+			figure.box(Vector3i(3, 13, 0), Vector3i(10, 21, 3), shirt)
+			_bare_arms(figure, [0, 12], 12, 20, 1, 2, 4, [2, 11], 19, 20, 0, 3, shirt, SKIN_OLD)
+		"gerrit":
+			_remove_colours(figure, [Color("#E8B820"), Color("#B88A10"), Color("#22305A")], 25)
+			figure.box(Vector3i(3, 12, 0), Vector3i(10, 24, 3), shirt)
+			figure.box(Vector3i(6, 25, 1), Vector3i(7, 25, 2), Color("#D08A6A"))
+			_bare_arms(figure, [0, 12], 14, 24, 1, 2, 4, [2, 11], 23, 24, 0, 3, shirt, Color("#D08A6A"))
+		_:
+			# Jos: his red shirt over the belly was under the long coat already
+			_remove_colours(figure, [Color("#6B5236"), Color("#4A3824")], 24)
+			figure.box(Vector3i(3, 23, 0), Vector3i(10, 23, 4), shirt)
+			_bare_arms(figure, [-2, 14], 14, 23, 1, 3, 4, [], 22, 23, 1, 3, shirt, SKIN_TAN)
+			# the shoulders reach over the wide gap to the body (the coat did that before)
+			figure.box(Vector3i(-1, 22, 1), Vector3i(1, 23, 3), shirt)
+			figure.box(Vector3i(12, 22, 1), Vector3i(14, 23, 3), shirt)
+	figure.mark("cloth", [shirt])
+
+
+## Takes away every voxel of the figure in one of `colours` up to height `top` (a coat; a
+## hat of the same colour higher up stays).
+static func _remove_colours(figure: VoxelFigure, colours: Array, top: int) -> void:
+	for cell: Vector3i in figure.cells.keys():
+		if cell.y > top:
+			continue
+		var colour: Color = figure.cells[cell]
+		if colours.any(func(other: Color) -> bool: return colour.is_equal_approx(other)):
+			figure.cells.erase(cell)
+			figure.glowing.erase(cell)
+
+
+static func _recolour(figure: VoxelFigure, from: Color, to: Color) -> void:
+	for cell: Vector3i in figure.cells.keys():
+		if (figure.cells[cell] as Color).is_equal_approx(from):
+			figure.cells[cell] = to
+
+
+## Arms in a T-shirt: the two arms (2 voxels wide, from x `arm_xs`) from `bottom` to `top`
+## high, bare (`skin`, depth `skin_z0`..`skin_z1`) but for the short sleeve (`sleeve`
+## voxels at the top, as deep as the joint), and the shoulders that join them to the body
+## (one voxel wide at x `joint_xs`, `joint_bottom`..`joint_top`, depth `joint_z0`..`joint_z1`).
+static func _bare_arms(figure: VoxelFigure, arm_xs: Array, bottom: int, top: int, skin_z0: int, skin_z1: int,
+		sleeve: int, joint_xs: Array, joint_bottom: int, joint_top: int, joint_z0: int, joint_z1: int,
+		shirt: Color, skin: Color) -> void:
+	for arm_x: int in arm_xs:
+		figure.box(Vector3i(arm_x, bottom, skin_z0), Vector3i(arm_x + 1, top - sleeve, skin_z1), skin)
+		figure.box(Vector3i(arm_x, top - sleeve + 1, joint_z0), Vector3i(arm_x + 1, top, joint_z1), shirt)
+	for joint_x: int in joint_xs:
+		figure.box(Vector3i(joint_x, joint_bottom, joint_z0), Vector3i(joint_x, joint_top, joint_z1), shirt)
 
 
 ## The material of a kind, made once and shared: the fabrics and hair the fabric shader

@@ -136,20 +136,76 @@ Verhaal, missies en kleingeld
   (`PlayerPortrait`, de gekozen figuur in 3D) en rechts de tekst, die woord voor woord
   verschijnt zoals in oude avonturengames (`WORD_SECONDS`, rust na een zin of komma, een
   zacht tikje "woord"). Linksboven een banner (bijv. "PROLOOG · Wakker op Centraal",
-  "MISSIE 1 · Twee euro voor een kroket"), rechtsboven "[SPATIE] VERDER". Soorten pagina:
+  "MISSIE 1 · Lege maag"), rechtsboven "[SPATIE] VERDER". Soorten pagina:
   `verhaal` (amber, "VERTELLER"), `gedachte` (teal, tekst tussen aanhalingstekens) en
   `missie` (amber, "NIEUWE MISSIE"). Spatie/Enter/klik: de rest van de pagina meteen, of de
   volgende; het spel staat stil zolang het vak open is.
-- Verhaal (node `Verhaal`, `scripts/story/story.gd`): na het wakker worden de proloog (waar je
-  bent, je achtergrondverhaal uit het archetype, twee gedachten bij het wakker worden), dan
-  missie 1: € 2 kleingeld bemachtigen voor een kroket bij Jan Blammage. Wat je bij de start
-  al hebt telt niet mee, en wat je uitgeeft telt weer af: de missie telt het gevonden geld dat
-  je nog op zak hebt (`Story.money_towards_goal`), dus hetzelfde bedrag als je portemonnee. Bij € 2 een gedachte en de stap is afgevinkt; de
-  kroket kopen is de volgende stap: die staat op slot tot de € 2 er zijn (doorschijnend) en wijst
-  dan naar de drie dichtstbijzijnde Jan Blammages (de snackbars met het bord `naam_snackbar_2`,
-  "JAN BLAMMAGE", en een grote puntzak friet `props/terras/friet_puntzak` op de stoep) op het
-  kaartje en de kaart. Elke missie en elke stap heeft eigen XP (`add_xp`, level omhoog met
-  deuntje) en kan items geven (`geeft`); in het questlog kies je met Enter welke missie je volgt.
+- Verhaal (node `Verhaal`, `scripts/story/story.gd`, de data en alle velden in `data/LEESMIJ.md`):
+  na het wakker worden de proloog (waar je bent, je achtergrondverhaal uit het archetype, twee
+  gedachten, het opstaan in de kou zonder jas, de honger en het idee van de blikjes: verteld, geen
+  taken), dan hoofdstuk 1 (Op straat). Missie 1 "Lege maag" (de honger begint lager: `zet_stats`):
+  zes lege blikjes (`verzamelen`; het eerste dat je pakt komt in het beloningsscherm, de stap
+  `eerste_scherm`, eenmalig per spel; vier in de prullenbakken in zicht van de start (`"in_zicht"`:
+  geen gebouw ertussen, dus op het plein of bij de tramhalte, nooit achter Centraal),
+  `Prullenbakken.fill_near`, verder geen en niets bijgevuld zolang de stap loopt; de
+  laatste twee in Den Haag Centraal achter de poortjes, `Story.station_cans_wanted`,
+  `Station.put_mission_can`: elk in een eigen prullenbak op een perron, de tweede op een ander
+  perron (`_platform_bins`); buiten wijst het kaartje dan naar de ingang van Centraal
+  (`Story._station_entrance`), binnen naar de twee blikjes (`Story.set_station_cans`), met bij
+  het vierde een monoloog over zonder geld langs de poortjes glippen; binnenkomen in het station
+  vertelt de verteller eenmalig van de twee blikjes op de perrons, dat je een manier moet verzinnen
+  om erop te komen en dat conducteurs je beboeten (€ 50; niet betalen = eruit, `terug_na` seconden
+  niet meer naar binnen): `bij_binnenkomst`, en pas dan kun je springen (spatie, `ontgrendelt:
+  ["springen"]`, `PlayerController.jumping_open`)), de eerste
+  statiegeldautomaat is "TIJDELIJK BUITEN GEBRUIK" (`Story.machine_out_of_order`, de stap
+  `storing`); de automaat had € 0,40 per blikje gegeven (€ 2,40, ruim genoeg), maar op dat
+  moment komt Blikken Bertus op het Stationsplein (`storing` `persoon`, `Story._appear_wandering`,
+  vlag `verschenen:bertus`; hij blijft er voorgoed): een maffe zwerver met een eigen figuur
+  (`"model": "bertus"`, `TownsfolkFigure._bertus`: lange jas met lappen, sjaal, baard, gebreide
+  muts met pompon, sjekkie), een winkelkarretje vol blikjes dat hij langzaam over het plein duwt
+  (`Characters.wander`: zijn `zwerft`-punten, rookpauzes met een trekje en een uitgeblazen wolk,
+  `scripts/effects/cigarette_smoke.gd`: kleine grijze blokjes zoals de rook van de branden), die
+  blijft staan en je aankijkt als je komt, af en toe in zichzelf mompelt (`mompelt`, tekstballon
+  via `DriverShout.shout_line`) en een schorre stem heeft (`stem` `rasperig`). Het kaartje wijst
+  (en volgt) hem, het gebied groeit niet. Hij koopt je blikjes voor een kwartje (`koopt_blikjes`):
+  € 1,50, de kroket kost € 2. Dan een monoloog dat je mensen om geld kunt vragen en de stap `bedelen` (pas dan in de
+  takenlijst: `verborgen_tot_open`; `ontgrendelt: ["bedelen"]`, tot dan geen "kleingeld"-vraag in
+  gesprekken, `Conversations.may_beg`; doel `geld_op_zak` € 2), dan een kroket kopen bij de frietkar op het
+  Stationsplein (een verkoper erachter: `scripts/world/things/street_vendors.gd`, node
+  `Straatverkopers`; die haalt de kar bij de start uit het Props-grid en zet hem recht naar
+  de camera gedraaid terug, de pijl boven de kar, bestellen binnen 2 m van de toonbank:
+  `InteriorPerson.talk_ahead` / `talk_reach`) en opeten (`gebruiken`; F eet iets
+  zonder menu, `PlayerController.eat_something`; tot dan verkoopt de frietkar alleen kroketten:
+  `"slot": "snackkaart"` in `snackbarhouder.json`) en dan "Controleer je zakken [Tab]" (pas nu in
+  de takenlijst): het spelmenu gaat pas nu open (`ontgrendelt: ["menu", "snackkaart"]`,
+  `GameMenu.locked`), en pas bij het openen van de inventaris blijkt het vakje van je ID-kaart
+  leeg (`Items.ALWAYS_SHOWN`, doorschijnend: gestolen) en volgen de gedachten over de ID. Dan is
+  missie 1 klaar en gaat het gebied open (`opent_na_afloop: ["plein"]`). Daarna missie 2 "Bekend gezicht" en de
+  herhaalbare zijmissie "Blikjesronde". Missie 2: Ome Wim op het Plein (een personage,
+  `scripts/story/characters.gd`, node `Personages`, `data/gesprekken/personages.json`), met
+  hem praten, optioneel de check OVERTUIGEN (50 %, opnieuw te proberen in een volgend gesprek:
+  `Conversations._try_check`, `PlayerController.checked`), met hem een rondje door het Centrum
+  (`begeleiden`: hij loopt via de routes van de voetgangers, `Pedestrian.story_goal`, en wacht
+  als je achterblijft), een goededoelenwerver in de weg (`werver`: praten of erlangs) en zijn
+  oude jas (je draagt hem meteen: `Items` "worn"). Elke missie en elke stap heeft eigen XP
+  (`add_xp`, level omhoog met deuntje) en kan items geven (`geeft`); in het questlog kies je
+  met Enter welke missie je volgt. Het geld-doel (`geld_verdiend`, `Story.money_towards_goal`:
+  gevonden geld dat je nog op zak hebt) bestaat nog voor latere missies.
+- De shroud (`scripts/story/shroud.gd`, `data/gebieden.json`, `Story.shroud`): alleen wat het
+  verhaal heeft geopend is te zien op het kaartje en de kaart (`GameHud._refresh_shroud`, een
+  laag over de kaart; plekken en markeringen daarbuiten verborgen) en te belopen
+  (`Story.may_walk`, gevraagd voor elke stap van de speler; aan de rand een gedachte). Het
+  begint als een cirkel van 45 m om de startplek; met elk blikje groeit hij tot de
+  dichtstbijzijnde supermarkt (de DERREK op de hoek van het Spuiplein, 90 m), de kapotte
+  automaat laat hem groeien tot de volgende; missie 2 opent het Plein, het Centrum en daarna
+  Centraal, Malieveld/Koekamp en het Haagse Bos (die laatste ook als vaste markering op de
+  kaart). Binnenruimtes (buiten de kaart) tellen niet mee. In de integratietests staat de
+  shroud uit en het menu open, tenzij een suite `"verhaal_sloten": true` vraagt.
+- Kleding: iedereen begint zonder jas, in een T-shirt (`PlayerModel.coat`, `_take_off_coat`:
+  per archetype de jas weg, korte mouwen en blote onderarmen, de rig gelijk); met een item
+  "worn" op zak (de oude jas van Wim) het eigen ontwerp met jas, en de honger loopt langzamer
+  leeg (`WORN_HUNGER_FACTOR`). Blikjes en statiegeldflessen gaan in een plastic tasje en
+  kleding draag je: die kosten geen vakje (`Items.takes_slot`).
 - Wie is wie (`scripts/world/people/person.gd`, de basis van iedereen in de stad; `actor_kind()` zegt
   welke soort): `Pedestrian` (straat: loopt naar een plek een paar blokken verder via een route
   over stoepen, zebra's en trappen, `Pedestrians.route_to_somewhere`; steekt over, kan aangereden
@@ -198,7 +254,8 @@ Verhaal, missies en kleingeld
   scripts niet toe: `Set-ExecutionPolicy -Scope Process Bypass`.
 - Beloningsscherm (`scripts/ui/reward_screen.gd`, `GameHud.show_reward`): wat je krijgt voor een
   taak of missie (na de klaar-bladzijden) of van iemand op straat (een `beloning` in een gesprek,
-  met XP, standaard 25) komt in een eigen schermpje, niet meer als zwevend tekstje: het item groot
+  met XP, standaard 25), en het eerste item van een stap met `eerste_scherm` dat je oppakt
+  (`PlayerController.got_item`, `Story._on_got_item`, dan zonder het zwevende tekstje) komt in een eigen schermpje, niet meer als zwevend tekstje: het item groot
   in beeld, als voxelmodel langzaam draaiend (`scripts/ui/widgets/item_view.gd`, de modellen in
   code in `scripts/world/things/item_models.gd`), stralen erachter zoals bij een nieuwe missie
   (`scripts/ui/widgets/light_rays.gd`), de naam in de kleur van de zeldzaamheid, het tekstje van
@@ -214,8 +271,9 @@ Verhaal, missies en kleingeld
   brabbelen in hun stem en stemming (`scripts/audio/babble.gd`, `brabbel_<stem>_<stemming>_<n>`
   uit `tools/megadrive/stemmen.py`; een vraag gaat omhoog) en hun lichaam beweegt mee
   (`scripts/world/people/emote.gd`: boos schudt, blij huppelt, verdrietig hangt voorover).
-- Kleingeld (node `Kleingeld`, `scripts/world/things/loose_change.gd`): 20 munten (10, 20, 50 cent,
-  soms een euro) op pleinen en stoepen tot 110 m van de start, drie dichtbij. Eroverheen lopen
+- Kleingeld (node `Kleingeld`, `scripts/world/things/loose_change.gd`): aan het begin van het spel niets;
+  pas als het verhaal `kleingeld` ontgrendelt (nog geen missie doet dat) één munt (10, 20, 50 cent,
+  soms een euro) in de hele stad, op pleinen en stoepen tussen 60 en 400 m van de start, geen dichtbij. Eroverheen lopen
   raapt ze op (`add_money`, geluid "munt", het bedrag stijgt op).
 - Test: `tests/integration/ui/test_story.gd`; portemonnee en geldmissie (snel, zonder de stad):
   `tests/integration/player/test_wallet.gd`.
@@ -231,7 +289,7 @@ Automaten, blikjes en pinpassen
   `most_cans` 60) een leeg blikje bovenin (`MachineModels.can_mesh`, gloeiend). Erbij: `[E] Blikje
   pakken` (item `blikje`, via `add_item`). Elke `refill_seconds` (150 s) krijgt een lege bak
   er weer een.
-- Statiegeld (`scripts/world/things/deposit_return.gd`): `blikje` en `statiegeld` (flessen) € 0,15 per
+- Statiegeld (`scripts/world/things/deposit_return.gd`): een `blikje` € 0,40, een `statiegeld` (fles) € 0,15 per
   stuk, in te leveren bij de statiegeldautomaat in elke supermarkt.
 - Pinpassen (`scripts/player/bank_cards.gd`, item `pinpas`, een sleutelvoorwerp): elke gevonden
   pas is een eigen rekening, bewaard op de speler (metadata `pinpassen`: `pin`, `saldo` tussen
@@ -241,33 +299,42 @@ Automaten, blikjes en pinpassen
   In de inventaris staat het raadsel bij de pas (over het vakje gaan selecteert het en toont de
   tekst rechts, ook als tooltip). Geven: `BankCards.give_found_bank_card(speler)` of
   `PlayerController.give_found_bank_card() -> bool` (false bij volle zakken).
-  Op straat (`Pinpassen`, `scripts/world/things/lost_bank_cards.gd`): 5 passen op stoepen en pleinen,
-  één binnen 60 m van de start; eroverheen lopen raapt ze op.
+  Op straat (`Pinpassen`, `scripts/world/things/lost_bank_cards.gd`): aan het begin van het spel niets; pas als
+  het verhaal `pinpassen` ontgrendelt (nog geen missie doet dat) één pas in de hele stad,
+  op een stoep of plein tussen 60 en 400 m van de start (`near_count` 0); eroverheen lopen raapt hem op.
 - De automaten zijn elk een eigen scène (`scripts/ui/machines/`): de swipe, het spel staat stil,
   het hele beeld is de voorkant van de automaat tegen een bakstenen muur in de pixelstijl van de
   HUD (`machine_screen.gd`: behuizing in de huisstijl, een display, links wat eruit komt, rechts je
   zakken, CRT eroverheen). Muis en toetsen; Esc = weg. Geluiden in code (`machine_sounds.gd`,
   PSG-blokgolven en ruis zoals `ui_sounds.gd`): toetsen, kaart in/uit, foutzoemer, inslikken,
   geld tellen, blikje erin, de band, de printer.
-  - Statiegeldautomaat (`deposit_machine_screen.gd`, STATIEGELD): in elke supermarkt in de hoek
-    voorbij de karretjes, tegen de zijwand aan de ingangskant (`plan.deposit` uit
+  - Statiegeldautomaat (`deposit_machine_screen.gd`, STATIEGELD): in elke supermarkt achterin
+    tegen de achterwand, naast de personeelsdeur, naar de ingang gekeerd (`plan.deposit` uit
     `supermarket_layout.gd`, model `MachineModels.deposit_machine_mesh`, `[E] Statiegeld
     inleveren`). [1] blikje / [2] fles erin, één voor één (het schuift het gat in, rammelt, de
     band), [Enter] de bon (geprint, met wat erin ging en het totaal), nog eens [Enter] pakt hem:
     het bedrag gaat meteen in je portemonnee. Weggaan met iets erin print en betaalt ook.
   - OV-chipkaartautomaat (`ov_machine_screen.gd`, `scripts/world/station/ov_card.gd`): in de hal van
-    Centraal (`Automaat_<n>`) en bij 8 tramhaltes (naast een abri, het model van
-    `binnen/station/kaartautomaat`). Zonder kaart: kaart kopen € 7,50 (met € 2,50 saldo); met kaart:
+    Centraal (`Automaat_<n>`): de enige plek om een kaart te kopen of op te laden (bij de
+    tramhaltes staan OV-paaltjes, geen automaten). Zonder kaart: kaart kopen € 7,50 (met € 2,50 saldo); met kaart:
     saldo, opladen € 5 / € 10 / € 20; altijd: los kaartje € 3,50. Inchecken (poortjes, OV-paaltjes)
     kost € 1 van het saldo (`RIDE_FARE`; te weinig: "Saldo te laag"); een los kaartje werkt ook, bij
-    het uitchecken houdt het poortje hem. Saldo: metadata `ov_saldo` op de speler.
+    het uitchecken houdt het poortje hem. Saldo: metadata `ov_saldo` op de speler. Een rit:
+    inchecken zet `ov_ingecheckt` (en `ov_ingecheckt_met`: kaart of kaartje), uitchecken haalt
+    het weg. Het station uit zonder uit te checken (`OvCard.leave_open_trip`): met de kaart houdt
+    de volgende incheck de rest van het instaptarief in (`BOARDING_FARE` € 4, dus € 3 extra;
+    "Niet uitgecheckt: € 3,00 ingehouden"; het saldo mag onder nul, dan eerst opladen), een los
+    kaartje is dan op. Opnieuw inchecken terwijl je nog met de kaart ingecheckt bent kost hetzelfde.
   - Geldautomaat (`cash_machine_screen.gd`, PINPUNT): pas kiezen (je gevonden passen), pincode op
     het toetsenbord (0-9, Backspace = CORR, Enter = OK), drie keer fout en de pas wordt ingeslikt;
     dan een bedrag (€ 5, 10, 20, 50; niet meer dan het saldo), het geld komt eruit (de biljetten
     in het vak links), het nieuwe saldo staat erbij. Esc: de pas terug.
 - Straatautomaten (`Straatautomaten`, `scripts/world/things/street_machines.gd`): de stadsbouwer
   (`_street_machines` in `tools/build/city/finishing.gd`) zet markers `Geldautomaat_<n>` (34)
-  en `OVAutomaat_<n>` (8); hun +z is de kant waar ze naar kijken. Geldautomaten staan plat tegen
+  en `OVPaal_<n>` (8); hun +z is de kant waar ze naar kijken. Een OV-paal (het model
+  `ov/ov_incheckpaal`) staat naast de abri van een tramhalte, minstens 60 m uit elkaar; `[E]
+  Inchecken` / `[E] Uitchecken` werkt als de paaltjes in het station (`OvCard.tap`: piep,
+  "Geen OV-chipkaart" of "Saldo te laag", het instaptarief na een rit zonder uitchecken). Geldautomaten staan plat tegen
   een gevel op de stoep ernaast, 1,3 m naast het midden (niet voor de deur): eerst bij elke tweede
   supermarktingang (`_bg_<keten>_ingang`), dan bij winkelpuien (`_bg_*winkel*`), dan aan pleinen;
   minstens 44 m uit elkaar, nergens een prop binnen 1 m. In het spel staat elk op de grond (straal
@@ -485,8 +552,11 @@ Drukte (`data/drukte.json`, gelezen door `scripts/world/people/crowd.gd`, uitgel
 - `uren`: momenten van de dag (`uur`) met het aandeel voetgangers en verkeer (`voetgangers`,
   `verkeer`; 1 = `count` en `vehicle_count`), de gewichten van de soorten mensen (`mensen`) en
   van de voertuigsoorten (`voertuigen`). Tussen twee momenten loopt het geleidelijk over, ook
-  rond middernacht. Nu: 's nachts 0,08 tot 0,22; de spits duurt (7:15-8:45 en 16:30-18:30): voetgangers 1,4,
-  verkeer 1,7 met twee keer zoveel fietsers; overdag 0,85 tot 1,0; 's avonds 0,3 tot 0,8.
+  rond middernacht. Nu: 's nachts echt stil (0,04 om half vier, 0,12 om middernacht); vroeg
+  in de ochtend nog rustig (0,18 om 6:00), om 7:30 de eerste forenzen (0,7), de ochtendspits
+  8:15-9:00 (voetgangers 1,4, verkeer 1,7 met twee keer zoveel fietsers), daarna overdag
+  normaal (0,85 tot 1,0); vanaf 16:00 de avondspits (1,15), op zijn drukst 17:00-17:30
+  (voetgangers 1,55, verkeer 1,85), om 18:30 weer 1,05, 's avonds 0,8 en om 22:00 rustig (0,3).
   `voertuig_basis`: fietsen 0,8 tegen auto's 0,42 (Den Haag fietst).
 - `gebieden`: per wijk (de namen van de metadata `wijken`, zoals de HUD ze toont) een factor op
   voetgangers en verkeer en andere gewichten. Nu: Centraal Station 1,4 voetgangers / 1,1 verkeer
@@ -683,22 +753,39 @@ debugtoetsen meer (geen ander voertuig volgen, geen tijd versnellen, geen demo-b
 zit alleen nog in `tests/integration/traffic/test_crash.gd`). De auto rijdt met een vaste
 stap van 60 Hz; zijn carrosserie (node `Carrosserie`) wordt elk frame tussen de laatste
 twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
-- Zichttabel (`scripts/camera/view_table.gd`): bij het baken (`tools/bake.sh`) wordt per
-  straatcel uitgerekend hoeveel zichtlijnen een gebouw verbergt voor elk van de vier
-  kijkrichtingen van de volgcamera (gewoon, een kwartslag links of rechts, half om), en in
-  de bake-cache bewaard (`user://merged/<kaart>_zicht_<sleutel>.bin`, opnieuw zodra de
-  gebouwen veranderen). Ontbreekt hij bij het laden, dan wordt hij op een eigen thread
-  gemaakt (uit een kopie van de cellen) en bewaard. Het draaien om gebouwen zoekt de plek
-  daarin op in plaats van zelf lijnen te trekken. Laat een andere kijkrichting de speler wel
-  zien, dan draait de camera snel (`turn_after_when_free`, 0,4 s) en komt er geen kijkgat
-  (`view_hole_wanted`); helpt geen enkele draai (of mag de camera nu niet draaien), dan gaat
-  het kijkgat open. Naast de vier gewone kijkrichtingen staan ook dezelfde vier steil omlaag
-  in de tabel (`ViewTable.PITCHES`): zit je tussen hoge gebouwen en laat geen gewone richting
-  je zien, dan kijkt de camera steiler omlaag (`steep_pitch`, -62 graden) en weer terug zodra
-  een gewone richting vrij is. Draaien en kantelen glijden langzaam (`turn_glide_time`, 4 s).
-  Test: `tests/integration/camera/test_view_table.gd`.
+- Kijkrichting van de volgcamera, NU: de camera draait niet meer mee (`turn_to_streets` uit). Hij
+  staat óf op de vaste iso-stand, óf kijkt van bovenaf (`steep_pitch` -88 graden): verbergen
+  gebouwen de speler `top_down_after` (0,5 s) lang, dan glijdt hij naar boven, en weer terug als
+  het `turn_back_after` (0,4 s) vrij is, sneller glijdend dan heen (`steep_back_glide_time`, 0,5 s;
+  heen `turn_glide_time`, 4 s) (`is_top_down`). Het kijkgat (Doorkijk) staat tijdelijk uit
+  (`view_hole`). Staat er iets tussen de camera en (een deel van) de speler, dan krijgt dat deel een
+  rand: een donker silhouet met een dikke gele rand, door de muren heen (`PlayerModel.rim`: per
+  lichaamsdeel een iets groter geschaalde kopie in de randkleur, daarover het silhouet, allebei
+  `figure_rim_mask.gdshader` zonder dieptetest). De rand staat in de stad altijd aan (uit als hij
+  dood is en tijdens de afdaling door de wolken); de shader beslist per pixel en per frame: alleen
+  waar de diepte van de scène (gebouwen, bomen, bruggen, wat dan ook) vóór de hele figuur ligt
+  (het midden van de figuur min zijn reikwijdte langs de kijkrichting, `RIM_FIGURE_RADIUS`, zodat
+  zijn eigen hoofd, arm of rugzak niet meetelt, ook van bovenaf). Dus meteen, ook half verborgen
+  (alleen om het verborgen deel) en ook in de stand van bovenaf; in het vrije veld niets. De oude
+  bake per cel (`hidden_map.gd`) is weg; `tools/bake.sh` ruimt zijn cache (`user://verborgen`)
+  op. De x-ray
+  (`figure_xray.gdshader`) staat uit.
+  Test: `tests/integration/camera/test_camera_turn.gd`, `tools/shots/shot_rim.gd` (opname: iso
+  vrij / half / heel achter een muur / muur erachter, en van bovenaf vrij / half onder een dak).
+- Kijkrichting van de volgcamera met `turn_to_streets` aan (`_street_turn`): de camera kijkt
+  vanaf de straatkant naar de speler, met de gevel achter de speler. Elke 0,2 s kijkt hij naar de
+  cellen van de laag Gebouwen binnen 3 cellen (`STREET_REACH`): bebouwd is dicht, de rest open; de
+  open kant (gewogen naar afstand, minstens `STREET_CLEAR`) bepaalt welke van de vier schuine
+  (iso) standen het best boven de straat hangt. Staan er aan beide kanten van één as gebouwen en is
+  het langs die as open (een smalle straat of steeg), dan kijkt hij recht langs de straat (een
+  stand tussen de iso-standen in). Op een plein of in een park (geen duidelijke kant) blijft hij
+  staan. Pas als de straat 1,2 s (`turn_after`) om dezelfde stand vraagt en de vorige 6 s
+  (`turn_hold_time`) is vastgehouden, draait hij, altijd dezelfde kant op (`TURN_DIRECTION`: -1 is
+  rechtsom van boven gezien), nooit terug, en glijdend (`turn_glide_time`, 4 s). Verbergt een
+  gebouw de speler daarna nog een tijd, dan kijkt hij steiler omlaag (`steep_pitch`, -62 graden) en
+  weer terug zodra het vrij is; verder doet het kijkgat (Doorkijk) de rest. Niets gebakken.
 - Doorkijk (node `Doorkijk`, `scripts/world/town/building_fade.gd`): zolang de camera de speler
-  volgt (en de camera het wil, zie de zichttabel), krijgt elk gebouw (aaneengesloten cellen van de laag Gebouwen) dat tussen de
+  volgt, krijgt elk gebouw (aaneengesloten cellen van de laag Gebouwen) dat tussen de
   speler en de camera staat een rond kijkgat (`hole_radius`, 3,5 m): een buis van de speler
   naar de camera, met een geditherde rand; alleen wat aan de camerakant van de speler ligt
   wordt weggesneden, de rest van het gebouw blijft staan. Het gat gaat open en dicht in
@@ -1112,6 +1199,14 @@ buiten de kaart (`at`), staat stil en is onzichtbaar zolang je buiten bent.
     OV-chipkaart (item `ov_chipkaart`, € 7,50 uit een automaat) met € 1 saldo, of een los kaartje,
     zoemt de lezer nee (`OvCard`, `scripts/world/station/ov_card.gd`). Inchecken
     is één piep, uitchecken twee. Bij de OV-paaltjes check je met [E] in of uit.
+  - Conducteurs die boos worden (`station.gd`, `FARE_CHECK_CHANCE`): wie zonder in te checken
+    over (of achter iemand door) de poortjes naar het perron gaat, of zonder uit te checken
+    terug de hal in, wordt met een kans gezien; een conducteur roept ("zwartrijden" of
+    "uitchecken", `DriverShout`) en rent erachteraan. Ingehaald (of je praat met hem: `betrapt`,
+    `betrapt_uitchecken` in `personeel.json`): € 50 boete, bij niet uitchecken checkt hij je uit.
+    Op de perrons controleert een conducteur binnen `INSPECTION_REACH` (3 m) met kans
+    `INSPECTION_CHANCE` (eens per conducteur): niet ingecheckt (ongezien door de poortjes, of
+    uitgecheckt bij een paaltje) en hij zit je ook achterna.
   - Mensen (`station_person.gd`, met tassen uit `scripts/world/people/carried_items.gd`):
     reizigers, zakenmensen met aktetas, toeristen met rolkoffer en rugzak, scholieren met
     rugzak; hoeveel en wie hangt af van het uur (`BUSY_BY_HOUR`, `WHO_BY_HOUR`). Ze lopen om
@@ -1155,7 +1250,11 @@ buiten de kaart (`at`), staat stil en is onzichtbaar zolang je buiten bent.
   bakkerij ertussen), achterin de koelwand met de personeelsdeur. De huisstijl zit in de tiles
   (`binnen/supermarkt/*_<keten>`, `tools/voxgen/tiles/interior_supermarket.py`: rood-wit met het
   mandje, lichtblauw met de tulp), de borden boven de gangpaden, de kassanummers en de kleding
-  van het personeel.
+  van het personeel. Van de deur recht naar binnen blijft een strook van 1,6 m breed en 4 m diep
+  vrij (`entrance_lane` in het plan, `ENTRANCE_LANE_*`): geen meubels, karretjes of mandjes, en
+  geen schap-, kassa- of wachtrijplek; klanten die daar op de speler moeten wachten, wachten
+  maar kort (`PLAYER_PATIENCE_IN_ENTRANCE`). Test: `test_the_way_in_from_the_door_is_free` in
+  `tests/unit/interiors/test_supermarket_layout.gd`.
   - Winkelen: bij de ingang `[E] Karretje pakken` of `Mandje pakken` (het karretje duw je voor
     je uit, het mandje hangt aan je arm; nog eens: terugzetten). Bij een schap `[E] Pakken:
     <product> € <prijs>` (per soort schap één product, uit `data/gesprekken/supermarkten.json`;
@@ -1178,7 +1277,9 @@ buiten de kaart (`at`), staat stil en is onzichtbaar zolang je buiten bent.
     `jingle_alfred_steyhn.ogg`) en daarna de omroepstem (brabbel over de bus `Omroep` van
     `StationAudio`) met de tekst onderin beeld: een aanbieding (een product uit een schap van dit
     filiaal met zijn prijs, ALFRED STEYHN met de BONUS) of een mededeling ("kassa 3 gaat voor u open").
-  - Statiegeldautomaat in de hoek voorbij de karretjes (`plan.deposit`, `[E] Statiegeld inleveren`;
+  - Statiegeldautomaat achterin, tegen de achterwand in de cel naast de personeelsdeur, met zijn
+    voorkant naar de ingang en het bord STATIEGELD erboven: meteen te zien vanaf de deur en voor
+    de camera (`plan.deposit`, `[E] Statiegeld inleveren`;
     zie "Automaten, blikjes en pinpassen"). Hij telt mee in `Supermarket.footprints`, dus winkelende
     mensen lopen eromheen; de indelingstest controleert dat hij nergens in staat.
   - Tests: `tests/unit/interiors/test_supermarket_layout.gd` (snel, zonder de stad: 180 filialen,
@@ -1200,6 +1301,13 @@ buiten de kaart (`at`), staat stil en is onzichtbaar zolang je buiten bent.
 - Voor allebei: `InteriorSpot` (`scripts/world/interiors/interior_spot.gd`, een plek met `[E] <tekst>`) en
   `SignBoard` (`scripts/world/things/sign_board.gd`, een bord met tekst). Een binnenruimte kan
   `dress_way_in(ingang)`, `leave_offence()` en `plan_root()` hebben (zie `interiors.gd`).
+- Wat aan een muur hangt (naam en embleem van de supermarktketen, de schilderijen en het wapen
+  van het stadhuis) gaat via `WallMount.put` (`scripts/world/interiors/wall_mount.gd`), in de
+  plannen als `wall_tiles` met de gridlijn van de muur als plek. De muren (0,25 m dik) staan
+  midden op hun gridlijn, dus hun binnenkant ligt 0,125 m naast het grid van 0,5 m: een tile
+  gewoon op het grid zit half in de muur en knippert (z-fighting). `WallMount` zet hem in een
+  eigen GridMap (`Wand_<richting>_<mm>`), zo verschoven dat de achterkant van de tile 2 cm
+  vóór de muur staat. Test: `tests/unit/interiors/test_wall_mount.gd`.
 
 Binnenruimtes maken (dezelfde opzet als de snackbar):
 

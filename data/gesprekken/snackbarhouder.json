@@ -17,12 +17,14 @@
 			"item": "patat",
 			"vraag": "Een patatje met",
 			"prijs": 3.0,
+			"slot": "snackkaart",
 			"naam": "patatje met"
 		},
 		{
 			"item": "frikandel",
 			"vraag": "Een frikandel",
 			"prijs": 2.0,
+			"slot": "snackkaart",
 			"naam": "frikandel"
 		}
 	],

@@ -41,7 +41,6 @@ class Piece:
     fade_out: float = 0.0           # one-shot: seconds of fade at the very end
     last_bar_beats: float = None    # one-shot: the last bar only this long (then the tail)
     swing: float = 0.0              # 0 straight, 1 a full shuffle (the "and" on the last triplet)
-    vgm: str = ""                   # a VGM file (in composities/): the piece is that VGM, played by chip.py
     tracker: str = ""               # a tracker page or JSON (in composities/): the piece as its synth plays it (tracker.py)
 
     @property
@@ -134,29 +133,19 @@ def raw_mix(piece: Piece) -> numpy.ndarray:
     return sum(track.buffer * track.gain for track in _play(piece))
 
 
-def _play_vgm(piece: Piece) -> list:
-    """The VGM of the piece as the chips play it (chip.py), from its first note (bar 1), as
-    long as the piece (the keys released at the end of the log, ringing out in the tail): a
-    left and a right mixer channel."""
-    song = instruments.vgm_song(piece.vgm)
-    sample_count = int(round(piece.seconds * SAMPLE_RATE))
-    origin = min([note.start for note in song.notes] + [hit.start for hit in song.hits] + [song.total_samples])
-    played = chip.render_song(song, piece.tail + 0.5)[origin:origin + sample_count]
-    tracks = []
-    for side, pan in ((0, -1.0), (1, 1.0)):
-        track = megadrive.Track(f"vgm_{side}", sample_count, pan=pan, wrap=False)
-        track.buffer[:len(played)] = played[:, side]
-        tracks.append(track)
-    return tracks
-
-
 def _play_tracker(piece: Piece) -> list:
     """The score of the piece's tracker (a page or a JSON composition) as its own synth plays
     it (tracker.render: its voices, panning, master volume and compressor), as long as the
     piece: a left and a right mixer channel."""
     source = tracker.tracker_in_compositions(piece.tracker)
     sample_count = int(round(piece.seconds * SAMPLE_RATE))
-    played = tracker.render(source, piece.tail + 0.5)[:sample_count]
+    played = tracker.render(source, piece.tail + (2.0 if piece.loop else 0.5))
+    if piece.loop:
+        # a loop: what rings past the end wraps to the start (no seam, as megadrive.Track does)
+        ringing = played[sample_count:]
+        played = played[:sample_count].copy()
+        played[:len(ringing)] += ringing[:sample_count]
+    played = played[:sample_count]
     tracks = []
     for side, pan in ((0, -1.0), (1, 1.0)):
         track = megadrive.Track(f"tracker_{side}", sample_count, pan=pan, wrap=False)
@@ -170,7 +159,7 @@ def render(piece: Piece) -> numpy.ndarray:
     if piece.tracker:
         channels = _play_tracker(piece)
     else:
-        channels = _play_vgm(piece) if piece.vgm else _play(piece)
+        channels = _play(piece)
     stereo = megadrive.master(channels, target_rms_db=-14.0, peak_db=-1.0)
     if piece.tape_stop:
         stereo = megadrive.tape_stop(stereo, *piece.tape_stop)

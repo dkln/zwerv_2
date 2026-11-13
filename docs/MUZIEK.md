@@ -1,10 +1,21 @@
 # Muziek: de huisstijl van ZWERVR
 
-Alle muziek van het spel komt uit **één compositie**. Een componist (nu: Gemini) schrijft een
-nummer maat voor maat uit; dat nummer wordt letterlijk de **intro**, en elk ander stuk (menu,
-karakterkeuze, handelaar, de stad, de deuntjes) wordt daaruit **afgeleid**: dezelfde akkoorden,
-melodieën, klanken en drums, anders gearrangeerd. Zo klinkt het hele spel als één soundtrack. Af
-en toe komt er een nieuwe compositie; dan wordt alle muziek opnieuw gemaakt.
+Alle muziek van het spel komt uit de **basissoundtracks**: composities die een componist (nu:
+Gemini) maat voor maat uitschrijft. Elke basis staat op een eigen plek in
+`tools/muziek/composities/actief.py`:
+
+| plek | in `actief.py` | wordt letterlijk | wordt ervan afgeleid |
+| --- | --- | --- | --- |
+| **primair** (intro) | `ACTIEF` | de **intro** (`zwervr_intro.ogg`) | de andere deuntjes en liedjes: handelaar, de kaart, missie- en taakdeuntjes, gewonnen, dood, de supermarkten en hun jingles |
+| **secundair** (menu) | `MENU` | het **hoofdmenu** (`nachtstad_menu_loop.ogg`, als lus) | de karakterkeuze, het laadscherm, de stad (`spel_loop`), de beloning en level omhoog (`derive.SECONDARY_PIECES`) |
+| **tertiair** (vechtscène) | `GEVECHT` | de **vechtscène** (`gevecht.ogg`: het hele nummer, één bestand) | niets |
+
+Een basis die letterlijk klinkt is de partituur zoals geschreven, in de eigen synth van de bron (een
+tracker of haar eigen FM-patches). Een afgeleid stuk gebruikt dezelfde akkoorden, melodieën, klanken en drums,
+anders gearrangeerd. Alle deuntjes en liedjes zijn dus op de primaire of de secundaire gebaseerd.
+Zo klinkt het spel als één soundtrack met een eigen kleur voor de menu's. Komt er een nieuwe
+compositie, dan zeg je voor welke plek; die plek wordt vervangen en alle muziek opnieuw gemaakt.
+Zonder `MENU` komt ook het menu uit de primaire (`menu_loop`: afgeleid).
 
 Alles klinkt als een **Sega Mega Drive**-cartridge: YM2612-FM, SN76489-PSG en PCM-drums door de
 8-bit DAC (de geluidschip `tools/megadrive/megadrive.py`, dezelfde als die van de
@@ -22,44 +33,26 @@ die stemmen.
    om er de muziek van te maken; de skill **`/muziek-compositie`** doet de stappen hieronder.
 2. De tekst wordt ook bewaard als `tools/muziek/composities/<naam>.txt` (het origineel, niets
    veranderd, zodat het blijft als `composition.md` later een andere is) en overgezet in `tools/muziek/composities/<naam>.py` (de notatie hieronder).
-3. `tools/muziek/composities/actief.py`: `ACTIEF = "<naam>"`.
+3. `tools/muziek/composities/actief.py`: op de plek waar hij voor is: `ACTIEF = "<naam>"`
+   (primair, de intro), `MENU = "<naam>"` (secundair, het menu) of `GEVECHT = "<naam>"`
+   (tertiair, de vechtscène).
 4. `tools/muziek/render.sh` maakt alles in `assets/audio/muziek/` en schrijft
    `scripts/ui/intro_timing.gd`; `tools/muziek/render.sh --controle` kijkt alles na.
 
-Een compositie kan ook als **VGM-bestand** komen (het registerlog van de Mega Drive-geluidschips):
-zie "Een VGM als compositie" hieronder.
 
-Oude composities blijven staan; terug naar een eerdere is `ACTIEF` terugzetten en opnieuw
-renderen. Eerst luisteren zonder iets te vervangen: `tools/muziek/render.sh --uit <map>`, of
-`ZWERVR_COMPOSITIE=<naam> tools/muziek/render.sh --uit <map>` voor een andere compositie.
+Oude composities blijven staan; terug naar een eerdere is de plek in `actief.py` terugzetten en
+opnieuw renderen. Eerst luisteren zonder iets te vervangen: `tools/muziek/render.sh --uit <map>`, of
+met een andere compositie op een plek: `ZWERVR_COMPOSITIE=<naam>` (primair),
+`ZWERVR_MENU_COMPOSITIE=<naam>` (secundair), `ZWERVR_GEVECHT_COMPOSITIE=<naam>` (tertiair) voor
+`tools/muziek/render.sh --uit <map>`.
 
-## Een VGM als compositie
+## De nabootsing van de chips (`chip.py`)
 
-Een **VGM** (`.vgm`, of gezipt `.vgz`) is geen tekst maar het logboek van wat een nummer naar de
-geluidschips van de Mega Drive schrijft (YM2612-FM en SN76489-PSG), met de tijd in samples van
-1/44100 s. Zo'n nummer wordt **exact** de muziek van het spel:
+De FM-patches die een compositie zelf meegeeft (de tijdlijn-vorm, `docs/MUZIEK_JSON.md`: de
+klanken `patch:<bestand>:<kanaal>`) klinken door een nabootsing van de YM2612, uit de waarden van
+hun registers,
 
-- **De intro is het VGM zelf.** `tools/muziek/chip.py` bootst de twee chips na uit het
-  registerlog; `zwervr_intro.ogg` is die weergave, met alleen de afwerking die elk stuk krijgt
-  (uitklinken, het filter van de Model 1, -16 LUFS). Geen andere instrumenten, geen noten
-  afgerond, geen octaaf verschoven, niets erbij.
-- **De afgeleide stukken klinken met de stemmen van het VGM**: de patches van zijn FM-kanalen
-  (door dezelfde nabootsing gespeeld) en een drumstel van zijn PSG-ruis.
-
-```
-tools/muziek/render.sh --vgm <bestand> [naam] --toon        # alleen laten zien wat erin zit
-tools/muziek/render.sh --vgm <bestand> [naam]               # composities/<naam>.py schrijven
-tools/muziek/render.sh --vgm <bestand> [naam] --vergelijk   # composities/<naam>.py tegen het VGM
-tools/muziek/render.sh --vgm <bestand> [naam] --meet        # de nabootsing en de intro nameten
-```
-
-(`naam`: standaard de bestandsnaam; `--overschrijf` vervangt een bestaand compositiebestand,
-`--tempo 92` en `--titel "..."` als het bestand ze niet geeft.) Het VGM zelf wordt als
-`tools/muziek/composities/<naam>.vgm` bewaard: daar speelt de intro uit, het moet blijven staan.
-
-### De nabootsing van de chips (`chip.py`)
-
-Uit het registerlog, op de eigen samplefrequentie van de chip (klok / 144, 53267 Hz), daarna
+op de eigen samplefrequentie van de chip (klok / 144, 53267 Hz), daarna
 naar 44100 Hz:
 
 - **YM2612**: zes kanalen van vier operatoren in de acht algoritmen; de feedback van operator 1
@@ -78,91 +71,7 @@ niveaus als de tellers van de chip, zonder hun trapjes); de sinus en de niveaus 
 de 10-bit-tabellen van de chip; de verhouding PSG tegen FM is de gebruikelijke emulatorinstelling
 (`PSG_LEVEL`: een PSG-kanaal op vol volume half zo hard als een FM-kanaal), niet aan een console
 gemeten; het "ladder-effect" van de DAC ontbreekt. **Niet nagebootst**: de LFO (vibrato en
-tremolo), SSG-EG en de CSM-modus; gebruikt een VGM ze, dan meldt `--meet` dat.
-
-`--meet` meet de weergave na tegen het registerlog: per FM-kanaal, alleen gespeeld, de periode
-van elke noot tegen de frequentie die de registers geven (in cent); het niveau van elke
-ruis-slag tegen zijn volumeregister; en van het intro-bestand de lengte, de gelijkenis met de
-kale nabootsing (correlatie) en het niveau per achtste deel. Er is geen tweede emulator om mee
-te vergelijken (geen vgmplay, geen libgme in ffmpeg).
-
-### Het compositiebestand uit een VGM (`vgm.py`)
-
-Voor de afgeleide stukken (en voor de lengte en de `MOMENTEN` van de intro) schrijft `vgm.py` de
-noten ook uit als compositiebestand, in dezelfde vorm als een overgeschreven tekst:
-
-- **FM-kanalen** (`fm1`..`fm6`): elke key-on (register 0x28) is een noot, met de toonhoogte uit
-  F-number en blok (0xA0-0xA6) naar de dichtstbijzijnde noot, tot de key-off; verandert de
-  frequentie onder een aangehouden toets naar een andere halve toon, dan is dat een nieuwe noot.
-- **PSG-tonen** (`psg1`..`psg3`): de periode geeft de toonhoogte, het volume aan/uit en de
-  aanslagsterkte; een toon die na het wegsterven weer harder wordt, is een nieuwe noot.
-- **Drums**: het ruiskanaal van de PSG (witte ruis: hard een snare, zacht een hi-hat als het
-  bestand beide niveaus heeft, 4 dB of meer uit elkaar; lang een open hi-hat of een crash;
-  periodieke ruis een lage tom) en de **DAC** (kanaal 6, register 0x2A/0x2B, ook de datablokken
-  en stream-commando's): elke stoot samples is een slag, benoemd naar hoe de sample eruitziet
-  (een lage dreun een kick, een toon een tom, ruis een snare).
-- **Tempo en maat**: het raster is de kleinste afstand tussen noten die vaak terugkomt, op alle
-  noten gepast; het tempo is de telverdeling daarvan (zestienden, achtsten, triolen) die tussen
-  80 en 180 BPM uitkomt. Een getal aan het eind van de bestandsnaam (`_92`) wordt als tempo
-  geprobeerd en geldt alleen als het op het raster past; het bestand zegt erbij of het klopte.
-  De maat is drie of vier tellen, wat de muziek het best laat herhalen. De eerste noot is tel 1
-  van maat 1.
-- **Partijen**: het laagste kanaal is de `bas`; kanalen die samen aanslaan worden akkoorden
-  (`pad` bij lange noten, `brass` bij korte; speelt een kanaal hetzelfde als een ander, dan valt
-  de verdubbeling weg); een kanaal dat het raster bijna vult is de `arp`; wat overblijft is de
-  `lead` (en `lead2`, ...).
-- **Toonsoort, akkoorden, secties, momenten** staan niet in een VGM en worden afgeleid: de
-  toonsoort uit hoe lang elke toon klinkt (de melodie telt dubbel), het akkoord van elke maat
-  (of van haar helften) uit haar noten, de secties uit frasen van vier maten met dezelfde
-  baslijn en dezelfde bezetting (de eerste zonder melodie is de `intro`, de eerste met melodie
-  het `thema`, de drukste met ander materiaal het `refrein`, de dunste de `breakdown`, de
-  laatste de `finale`), en de `MOMENTEN` uit die secties.
-
-Wat een VGM-compositie meer heeft dan een gewone:
-
-```python
-VGM = "nitro_overdrive_92.vgm"          # de intro wordt uit dit bestand gespeeld (chip.py)
-KLANKEN = {"bas": "vgm:nitro_overdrive_92.vgm:fm1=fm_housebas", ...}
-AFGELEID_OCTAAF = {"lead": 2}           # alleen in de afgeleide stukken, niet in de intro
-AFGELEIDE_KLANKEN = {"fm_piano": "vgm:nitro_overdrive_92.vgm:fm2=fm_piano", ..., "standaard": "vgm:nitro_overdrive_92.vgm"}
-```
-
-- **`vgm:<bestand>:<kanaal>`** is een klank: de patch van dat FM-kanaal, gespeeld door de
-  nabootsing (elke toonhoogte op het F-number en blok dat een sounddriver zou kiezen). Met
-  **`=<klank>`** staat hij op de plek van die klank in de mix: dezelfde pan en breedte en even
-  hard (gemeten), zodat de balans van de afgeleide stukken blijft; zonder echo, de chip heeft
-  er geen. De omzetter kiest die plek bij de patch (veel feedback een rauwe bas of lead, enz.).
-- **`AFGELEIDE_KLANKEN`** vervangt in elk afgeleid stuk elke klank die `derive.py` gebruikt door
-  een stem van het VGM: de bas-klanken door het kanaal van de bas, de leads door dat van de
-  melodie, de akkoordklanken (pad, koper, piano, strijkers, gitaar) en de zachte klanken (klok,
-  fluit, vibrafoon, arpeggio) door een patch die het VGM wel zet maar niet speelt als die er is
-  (anders die van de akkoorden of de melodie). Welke, staat als commentaar in het bestand.
-- **Het drumstel `vgm:<bestand>`** vervangt `standaard` en `dmx`. Uit het VGM zelf: de snare en
-  de hi-hat (stoten witte PSG-ruis op de twee volumes en de lengte van zijn eigen slagen).
-  **Afgeleid**, omdat de afgeleide stukken ze nodig hebben: de open hi-hat (de hi-hat twee keer zo
-  lang), de crash (de ruis die in de 2 dB-stappen van de chip wegvalt), de clap (drie korte
-  stoten), en de kick en de toms (de patch van het laagste FM-kanaal met een vallende
-  toonhoogte). Elk even hard als dezelfde drum van het standaardstel.
-- **`AFGELEID_OCTAAF`**: de maten staan in het octaaf van het VGM. Ligt een partij ver van waar
-  de afgeleide stukken haar verwachten (de melodie rond octaaf 5, de bas rond octaaf 2), dan
-  ligt ze alleen dáár zoveel octaven anders. De intro raakt het niet.
-
-Beperkingen van de omzetting naar noten (de intro heeft ze niet, die speelt het log zelf):
-alleen YM2612 en SN76489 (commando's van andere chips worden overgeslagen en gemeld);
-toonhoogtebuigingen binnen een halve toon vallen weg; een opmaat wordt niet herkend (de eerste
-noot is altijd tel 1); het luspunt wordt gemeld maar het bestand wordt één keer gelezen. Heeft
-een noot het **hoogste F-number (2047)**, dan heeft de schrijver van het VGM de toonhoogte
-waarschijnlijk afgekapt: in de intro klinkt hij zoals de chip hem speelt (de exacte frequentie),
-in de maten staat de dichtstbijzijnde noot, hij telt niet mee voor de toonsoort en licht voor de
-akkoorden, en het bestand meldt het. Wat de omzetter afleidt (akkoorden, secties, momenten, de
-keuze van de stemmen, octaven) mag je daarna met de hand verbeteren in het compositiebestand;
-opnieuw omzetten overschrijft dat (`--overschrijf`).
-
-Nu actief: "Nitro Overdrive" (`nitro_overdrive_92.vgm`): 132 BPM (de 92 in de naam is niet het
-tempo), E majeur, 32 maten; twee FM-kanalen (`fm1` de bas, `fm3` de lead) en de PSG-ruis als
-snare en hi-hat. De afgeleide stukken: bas op de patch van `fm1`, melodie op die van `fm3`,
-akkoorden op `fm2` en zachte klanken op `fm4` (twee patches die het VGM zet maar niet speelt),
-de melodie twee octaven boven het VGM.
+tremolo), SSG-EG en de CSM-modus; vraagt een bestand erom (vibrato), dan meldt de lezer dat.
 
 ## De regels
 
@@ -303,38 +212,50 @@ droge snare, beide door de DAC op een lage samplefrequentie; hi-hats, clap, cras
 een `FmPatch` (of PSG-instelling) bij in `instruments.py`, met een naam die zegt wat hij is, en
 een regel in deze tabel. Bestaande klanken niet ombouwen voor één compositie: een nieuwe ernaast.
 
-Een **VGM-compositie** heeft daarnaast haar eigen klanken, `vgm:<bestand>:<kanaal>=<klank>`, en
-haar eigen drumstel, `vgm:<bestand>` (zie "Een VGM als compositie"). Bij zo'n compositie laat
-`--balans` de kanalen van het VGM zelf zien: die balans is van het VGM en wordt niet bijgesteld.
+Een compositie uit de tijdlijn-vorm heeft daarnaast haar eigen FM-klanken,
+`patch:<bestand>:<kanaal>` (de patches uit het bestand, op hun eigen niveau: zie "De nabootsing van de
+chips").
 
 **Balans** (`render.sh --controle --balans`: elke partij alleen, gemeten waar ze speelt, in dB
 onder de luidste): drums en lead bovenaan (0 tot -1), gitaar, solo en bas -2 tot -3, koper en
 subbas rond -4, pad en arpeggio als achtergrond -8 tot -10.
 
+Nu op de plekken: primair "Nitro Overdrive '92" (`nitro_overdrive_92.json`, 132 BPM, 32 maten),
+secundair "Street Viper '92" (`street_viper_92.json`, platte vorm: 128 BPM, E mixolydisch, 16
+maten: intro, main groove = thema, bridge = opbouw, climax = finale; geen refrein of breakdown, de
+afleidingen vallen terug op het dichtstbijzijnde), tertiair "Neon Knuckle" (`neon_knuckle.json`, de tijdlijn-vorm: 126 BPM, G dorisch, 64 maten = 122 s; de FM-kanalen in hun eigen patches uit het bestand, niet nagespeeld: de "GO!"-stem, vibrato, slides).
+
 ## Afgeleide stukken
 
-Uit `tools/muziek/derive.py`; alle bestanden in `assets/audio/muziek/`:
+Uit `tools/muziek/derive.py`; alle bestanden in `assets/audio/muziek/`. Uit de **secundaire** basis
+(het menu): het hoofdmenu (letterlijk), de karakterkeuze, het laadscherm, de stad, de beloning en level omhoog; uit de **tertiaire**
+(de vechtscène, alleen als `GEVECHT` gezet is): `gevecht.ogg`, letterlijk het hele nummer; al het andere uit de
+**primaire**. De muzak duurt ten minste 48 s (`MUZAK_SHORTEST`: een compositie met weinig rustige
+maten speelt haar muzak nog een ronde). De stukken uit de secundaire houden de **eigen groove** van
+dat nummer (`derive.GROOVE_VARIANTS`): de bas en de drums zoals de componist ze schreef, niet de
+bewerkingen die voor de primaire gemaakt zijn (half-time, wandelende bas, eigen drumpatronen).
 
 | bestand | waar | gemaakt van |
 | --- | --- | --- |
-| `zwervr_intro.ogg` | de intro (`scripts/ui/intro.gd`) | de hele compositie, letterlijk, met uitklinken; een VGM-compositie: het VGM zelf, door de nabootsing van de chips gespeeld |
-| `nachtstad_menu_loop.ogg` | hoofdmenu (lus) | de breakdown en het thema rustig: pad, arp, subbas, de melodie op klokken, zachte half-time drums |
-| `karakterkeuze_loop.ogg` | karakterkeuze (lus) | het thema twee keer: eerst alleen de groove, dan de melodie op de PSG |
+| `zwervr_intro.ogg` | de intro (`scripts/ui/intro.gd`) | de hele compositie, letterlijk, met uitklinken |
+| `nachtstad_menu_loop.ogg` | hoofdmenu (lus) | de **secundaire** compositie zelf, letterlijk, als lus in de synth van haar bron (`derive.as_written`; de uitklank loopt door naar het begin, zonder naad); zonder secundaire: de breakdown en het thema van de primaire rustig: pad, arp, subbas, de melodie op klokken, zachte half-time drums (`menu_loop`) |
+| `karakterkeuze_loop.ogg` | karakterkeuze (lus) | (secundair, in de eigen groove: bas en drums zoals geschreven) het thema twee keer: eerst zonder, dan met zijn melodie |
 | `handelaar_loop.ogg` | bij een handelaar, in de snackbar (lus) | de akkoorden van de opbouw (en de opening van het thema) op elektrische piano, wandelende bas, clap op 2 en 4 |
-| `laden_loop.ogg` | het laadscherm (lus) | de intro-sectie van de compositie (het opstarten) twee keer: eerst alleen de puls (pad, bas, arp, lichte beat), dan zoals geschreven met melodie en fill, die terugloopt naar het begin |
-| `spel_loop.ogg` | de stad (lus, `scripts/ui/hud.gd`, zacht: `CITY_LOOP_SOFTER_DB`) | **rustig en op de achtergrond**: de klank van de handelaar (elektrische piano, bas, clap) in **half-time** (kick op 1, clap op 3, de piano houdt zijn akkoorden aan, de bas loopt in halve noten), afwisselend zoals de handelaarslus: het thema als akkoorden; het thema met zijn melodie om en om per maat (vraag en antwoord); de opbouw met de stoten van de handelaar; het refrein met de melodie op klokken om de maat; de breakdown met alleen piano en bas, terug naar het begin. Recht, geen shuffle, geen doorlopende arpeggio |
+| `laden_loop.ogg` | het laadscherm (lus) | (secundair, in de eigen groove) de intro-sectie van de compositie (het opstarten) twee keer: eerst zonder melodie (bas, drums, stoten, arp), dan zoals geschreven met melodie |
+| `spel_loop.ogg` | de stad (lus, `scripts/ui/hud.gd`, zacht: `CITY_LOOP_SOFTER_DB`) | (secundair, in de eigen groove: bas en drums zoals geschreven, stoten en arp zachter) de intro als groove, het thema als groove en dan met melodie, de opbouw met melodie, het thema weer als groove; de finale blijft eruit (te luid om rond te lopen). Zonder secundaire: uit de primaire in half-time (de klank van de handelaar: elektrische piano, bas in halve noten, kick op 1, clap op 3) |
 | `deuntje_kaart_start.ogg` | de kaart opent bij het begin van het spel (`MAP_JINGLE` in `hud.gd`, hooguit 6 s) | de eerste twee maten van de intro-sectie (het opstarten van het nummer), landend op het grondakkoord met een crash; één maat als twee te lang duren |
 | `deuntje_nieuwe_missie.ogg` | nieuwe missie | het motief (eerste maat van het thema) met groove, landend op de grondtoon |
 | `deuntje_taak_klaar.ogg` | een taak gehaald | een zestiendenloop over de dominant, landend op de grondtoon |
-| `deuntje_gewonnen.ogg` | een missie gehaald | de laatste twee maten van de compositie (haar finish); heeft de compositie geen slot (geen aangehouden slotnoot of crash in de laatste maat: een VGM van een nummer dat doorloopt), dan haar laatste maat als aanloop, landend op het grondakkoord met een crash |
-| `deuntje_level_omhoog.ogg` | level omhoog | een loop over het grondakkoord naar de hoge grondtoon, met gitaar en crash |
-| `deuntje_beloning.ogg` | een beloning of item gekregen (het beloningsscherm) | het grondakkoord als een sprankel op en neer in de arp, de hoge grondtoon erboven met pad en een zachte crash |
+| `deuntje_gewonnen.ogg` | een missie gehaald | de laatste twee maten van de compositie (haar finish); heeft de compositie geen slot (geen aangehouden slotnoot of crash in de laatste maat: een export van een nummer dat doorloopt), dan haar laatste maat als aanloop, landend op het grondakkoord met een crash |
+| `deuntje_level_omhoog.ogg` | level omhoog | (secundair: de loop over de eigen drums van het thema) een loop over het grondakkoord naar de hoge grondtoon, met gitaar en crash |
+| `deuntje_beloning.ogg` | een beloning of item gekregen (het beloningsscherm) | (secundair: over de eigen drums van het thema) het grondakkoord als een sprankel op en neer in de arp, de hoge grondtoon erboven met pad en een zachte crash |
 | `deuntje_dood.ogg` | dood | het motief op halve snelheid een octaaf lager, vallend naar de lage grondtoon, tapestop |
 | `supermarkt_muzak_1.ogg` | in een supermarkt (lus, zacht op de achtergrond: `MUZAK_SOFTER_DB` in `hud.gd`; elk filiaal één van de drie, `SUPERMARKET_MUZAK` in `interiors.gd`) | **bossa nova** (100 BPM): de akkoorden van het thema alleen (vier maten), het thema op de fluit, het thema op de vibrafoon, het refrein op de fluit; bossabas, vibrafoon-stoten, strijkers, zachte bossa-drums |
 | `supermarkt_muzak_2.ogg` | idem | **trage ballade** (76 BPM): de akkoorden van de breakdown (strijkers, gebroken piano), het refrein op de vibrafoon, het thema op de fluit; lange bas, heel zacht ritme |
 | `supermarkt_muzak_3.ogg` | idem | **lichte swing** (112 BPM, swing 0,6): het thema op de piano, het refrein op klokken, het thema op de vibrafoon, het refrein op de piano; wandelende bas, vibrafoon op 2 en 4 |
 | `jingle_derrek.ogg` | de omroep van DERREK (`scripts/world/interiors/supermarket_announcer.gd`, voor een aanbieding of mededeling) | de eerste helft van het motief fel op de PSG, landend op tel 3 op de hoge grondtoon boven het grondakkoord in majeur (maj7) op koper; kick, hi-hat, crash |
 | `jingle_alfred_steyhn.ogg` | de omroep van ALFRED STEYHN | de eerste helft van de opening van het refrein op klokken, landend op de hoge grondtoon boven strijkers (maj7), alleen een zachte crash |
+| `gevecht.ogg` | de vechtscène (nog niet in het spel) | alleen als `GEVECHT` gezet is: de **tertiaire** compositie zelf, het hele nummer zoals aangeleverd, één bestand (`derive.fight_loop`) |
 
 **De muzak** (de supermarkten) is easy listening uit het materiaal van de compositie: de
 akkoorden **gezoet** (een powerchord of drieklank krijgt de terts van de toonsoort en een septiem:
@@ -365,14 +286,10 @@ ter controle). Met `--balans` ook de balans van de partijen.
 de bijstellingen (andere klank, verdubbelen, drumstel, four on the floor laat breaks en fills
 met rust), en voor elke compositie: al haar klanken bestaan, alle stukken worden gemaakt, het
 kaartdeuntje blijft onder 6 s, de muzak loopt (40-150 s, zonder chromatische maten) en de jingles
-blijven onder 6 s, de muzak zoet powerchords, elke noot valt binnen zijn maat; en de VGM-lezer op
-een klein VGM dat de test zelf maakt (FM-noten met toonhoogte, begin en lengte, PSG-tonen en
-ruis-drums, DAC-samples als drums, het tempo tegen de bestandsnaam, gzip, afgekapte F-numbers,
-partijen/akkoorden/secties, het compositiebestand dat eruit komt), elke compositie met een
-`.vgm` ernaast komt nog overeen met dat VGM, haar intro is dat VGM en haar afgeleide stukken
-gebruiken alleen stemmen en het drumstel van dat VGM; en de nabootsing van de chips (de
-frequentie van F-number en blok tot op een halve cent, de envelope, FM en feedback, de
-PSG-blokgolven, -volumes en -ruis, een heel VGM met panning).
+blijven onder 6 s, de muzak zoet powerchords, elke noot valt binnen zijn maat; de lezers van het JSON van de
+componist (de gewone vorm, de platte vorm, de tijdlijn met haar eigen patches); de basisplekken
+(het menu en de vechtscène letterlijk); en de nabootsing van de chips (de frequentie van F-number
+en blok tot op een halve cent, de envelope, FM en feedback, de PSG-blokgolven, -volumes en -ruis).
 
 De bestanden staan in `tools/muziek/`:
 
@@ -383,9 +300,10 @@ De bestanden staan in `tools/muziek/`:
 - `derive.py`: de afgeleide stukken;
 - `build.py`: alles maken (via `render.sh`), en `intro_timing.gd`;
 - `check.py`: de controle (via `render.sh --controle`);
-- `vgm.py`: een VGM-bestand lezen en als compositiebestand schrijven (via `render.sh --vgm`);
-- `chip.py`: de nabootsing van de YM2612 en de SN76489 uit hun registers (de intro van een
-  VGM-compositie, de `vgm:`-klanken en het `vgm:`-drumstel);
+- `json_bron.py`, `tijdlijn.py`, `tracker.py`: het JSON (of de tracker-pagina) van de componist
+  lezen en als compositiebestand schrijven (via `render.sh --json`);
+- `fm.py`: wat de tools delen over de YM2612 (de patch `FmVoice`, de klok) en de klanksoorten;
+- `chip.py`: de nabootsing van de YM2612 en de SN76489 uit hun registers (de `patch:`-klanken);
 - `composition.md`: de tekst van de componist die nu aan de beurt is (hier lever je aan);
-- `composities/`: de composities (`<naam>.txt` of `<naam>.vgm` het origineel, `<naam>.py` de
-  notatie) en `actief.py`.
+- `composities/`: de composities (`<naam>.txt` of `<naam>.json` het origineel, `<naam>.py` de
+  notatie) en `actief.py` (de drie plekken: `ACTIEF`, `MENU`, `GEVECHT`).

@@ -85,7 +85,7 @@ func test_inside_is_this_snack_bar_with_keeper_and_guests(test) -> void:
 
 ## Talking to the keeper opens the shop screen with the menu, and a kroket bought there
 ## (€ 2) finishes mission 1.
-func test_kroket_bought_at_the_counter_finishes_mission_1(test) -> void:
+func test_kroket_bought_at_the_counter_and_eaten_ticks_off_mission_1(test) -> void:
 	await interiors.enter(_the_bar())
 	await frames(30)
 	var interior: Node3D = interiors._interior
@@ -95,7 +95,8 @@ func test_kroket_bought_at_the_counter_finishes_mission_1(test) -> void:
 		return
 	player.add_money(5.0)
 	var story: Node = scene.get_node("Verhaal")
-	story.complete_step("missie_1_kroket", "kleingeld")
+	for step_id in ["blikjes", "statiegeld", "bedelen"]:
+		story.complete_step("missie_1_lege_maag", step_id)
 	player.talk_to(keepers[0])
 	await frames(1)
 	test.check(hud.is_showing_shop(), "praten met de snackbarhouder: het winkelscherm")
@@ -107,7 +108,8 @@ func test_kroket_bought_at_the_counter_finishes_mission_1(test) -> void:
 	var krokets_before := int(player.inventory.get("kroket", 0))
 	print("  ", shop.buy(0), ": ", shop.spoken_text())
 	test.check(is_equal_approx(player.money, money_before - 2.0) and int(player.inventory.get("kroket", 0)) == krokets_before + 1, "een kroket gekocht (€ 2)")
-	test.check(story.step_done("missie_1_kroket", "kroket") and story.is_finished("missie_1_kroket"), "kroket gekocht: missie 1 klaar")
+	test.check(not story.step_done("missie_1_lege_maag", "kroket"), "gekocht, nog niet gegeten: de stap staat nog open")
+	test.check(player.eat_something() and story.step_done("missie_1_lege_maag", "kroket"), "de kroket opgegeten (F): de stap is klaar")
 
 
 ## At the door inside [E] Naar buiten puts you back before the door outside: the street's

@@ -7,8 +7,6 @@ extends SceneTree
 ## cache in user://merged (layer_baker.gd) exactly as the game would, and waits until it is
 ## done. A map whose cache is up to date is left as it is. Afterwards it removes the cache files
 ## of maps that no longer exist (and the cache folder of older versions, user://samengevoegd).
-## It also works out the view table of each map (ViewTable: what the follow camera sees from
-## every street cell), kept in the same cache.
 ## "opnieuw" empties the cache of the maps first, so everything is baked again.
 ##
 ## usage: tools/bake.sh [opnieuw] [res://scenes/<map>.tscn ...]
@@ -18,8 +16,10 @@ const Common = preload("res://tools/tool_common.gd")
 const LevelOfDetail = preload("res://scripts/world/town/level_of_detail.gd")
 const Progress = preload("res://tools/progress.gd")
 const SCENES_DIR := "res://scenes"
-## The cache folder of an older version of level_of_detail.gd.
-const OLD_CACHE_DIR := "user://samengevoegd"
+## Cache folders no longer used: of an older version of level_of_detail.gd, and of the
+## old per-cell bake of where buildings hide the player (hidden_map.gd, gone: the rim is a
+## shader now, figure_rim_mask.gdshader).
+const OLD_CACHE_DIRS := ["user://samengevoegd", "user://verborgen"]
 ## Seconds before the tool gives up (the town takes a few minutes from scratch).
 const TIME_LIMIT := 3600.0
 
@@ -55,10 +55,6 @@ func _init() -> void:
 			progress.set_done(int(detail_level.merge_progress() * 100.0))
 			await create_timer(0.5).timeout
 		await Common.wait_for_merge(map)
-		# what the follow camera sees from every street cell (ViewTable), for turning round buildings
-		var view_started := Time.get_ticks_msec()
-		if ViewTable.bake(map):
-			print("bake: zichttabel klaar in %.1f s" % ((Time.get_ticks_msec() - view_started) / 1000.0))
 		print("bake: %s ready in %.1f s" % [map_path, (Time.get_ticks_msec() - started) / 1000.0])
 		map.queue_free()
 		await process_frame
@@ -97,7 +93,7 @@ func _empty_cache_of(map_path: String) -> void:
 			DirAccess.remove_absolute(folder)
 
 
-## Removes the cache files of maps that are no longer in SCENES_DIR, and the old cache folder.
+## Removes the cache files of maps that are no longer in SCENES_DIR, and the old cache folders.
 func _remove_stale_caches() -> void:
 	var map_names: Array[String] = []
 	for file_name in DirAccess.get_files_at(SCENES_DIR):
@@ -112,10 +108,11 @@ func _remove_stale_caches() -> void:
 		if not belongs_to_a_map:
 			DirAccess.remove_absolute(LevelOfDetail.CACHE_DIR.path_join(file_name))
 			removed += 1
-	if DirAccess.dir_exists_absolute(OLD_CACHE_DIR):
-		for file_name in DirAccess.get_files_at(OLD_CACHE_DIR):
-			DirAccess.remove_absolute(OLD_CACHE_DIR.path_join(file_name))
-			removed += 1
-		DirAccess.remove_absolute(OLD_CACHE_DIR)
+	for old_dir: String in OLD_CACHE_DIRS:
+		if DirAccess.dir_exists_absolute(old_dir):
+			for file_name in DirAccess.get_files_at(old_dir):
+				DirAccess.remove_absolute(old_dir.path_join(file_name))
+				removed += 1
+			DirAccess.remove_absolute(old_dir)
 	if removed > 0:
 		print("bake: %d old cache files removed" % removed)

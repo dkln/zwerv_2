@@ -309,9 +309,10 @@ func _centraal() -> void:
 	for x in [74, 79]:
 		D(x * 4 + 6.0, 80 * 4.0, 0.0, "luifels/luifel_kantoor", "N")
 		D(x * 4 + 6.0, 80 * 4.0, 0.0, "deuren/draaideur", "N")
-	# street food on the west side of the square, facing it
+	# the chip van on the west side of the square (street_vendors.gd turns it to the camera
+	# and puts its seller behind it)
 	Pr(77 * 4 + 2.0, 63 * 4 + 2.0, "markt/frietkar", "E")
-	Pr(77 * 4 + 2.0, 65 * 4 + 2.0, "markt/loempiakar", "E")
+	places["frietkar_centraal"] = Vector2(77 * 4 + 2.0, 63 * 4 + 2.0)
 	places["centraal"] = Vector2(83 * 4.0, 64 * 4.0)
 
 

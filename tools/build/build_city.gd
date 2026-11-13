@@ -20,8 +20,8 @@ extends "res://tools/build/city/finishing.gd"
 ##   z 31..57     Grote Kerk,          Hofvijver, Binnenhof,     Plein with the statue,
 ##                Hoogstraat, Oude     Ridderzaal, Torentje,     ministries, Tweede Kamer
 ##                Raadhuis             Mauritshuis, Buitenhof
-##   z 60..84     Grote Markt,         Grote Marktstraat with    Spuiplein, Nieuwe Kerk,
-##                Chinatown            the Bijenkorf, Passage,   white city hall, Amare
+##   z 60..84     Grote Markt,         Grote Marktstraat with    Spuiplein, city hall,
+##                Chinatown            the Bijenkorf, Passage,   Nieuwe Kerk, a DERREK
 ##                                     shops on the Spui (x 48)
 ##   The street x 48 is the Korte Vijverberg, then the Lange Poten (z 31..57), then the Spui
 ##   (z 60..84); the shops of the Lange Poten, Spui and Grote Marktstraat are on them.

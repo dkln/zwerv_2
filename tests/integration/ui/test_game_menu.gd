@@ -133,7 +133,7 @@ func test_tab_opens_the_inventory_and_pauses(test) -> void:
 	await _press(KEY_TAB)
 	test.check(menu.is_open() and tree.paused, "Tab opent het menu en pauzeert")
 	test.check(menu.current_tab() == "inventaris", "op de inventaris")
-	test.check(menu._shown_items.size() == 4, "vier soorten spullen in het raster (%d)" % menu._shown_items.size())
+	test.check(menu._shown_items.size() == 5 and menu._shown_items[0] == "id_kaart", "het lege vakje van de ID-kaart en vier soorten spullen in het raster (%d)" % menu._shown_items.size())
 	test.check(menu._character_name.text == "Willem", "naam van het karakter: " + menu._character_name.text)
 	test.check(menu._character_line.text.begins_with("LV 3"), "niveau: " + menu._character_line.text)
 	test.check(menu._money_label.text == "12,00", "geld: " + menu._money_label.text)

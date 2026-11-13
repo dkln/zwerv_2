@@ -37,7 +37,7 @@ extends Node3D
 ## people come out of its doors and go into them, most in the rush hours (the hour's
 ## "station" share, data/drukte.json). Within STATION_REACH metres of a door a newcomer comes
 ## out of a door (that share times STATION_OUT_SHARE of them, seen or not: they come from the
-## station), and someone within STATION_PULL_STEPS cells' walk of a door now and then sets off
+## station; one a door every STATION_OUT_GAP seconds at most, when it is clear), and someone within STATION_PULL_STEPS cells' walk of a door now and then sets off
 ## for it (STATION_PULL_PER_SECOND times that share), walks there cell by cell (each step one
 ## nearer, _station_steps) and is gone through the door (into_station): freed, not kept
 ## resting (someone else comes instead). A way between two cells found blocked on the way
@@ -93,7 +93,11 @@ const LONGEST_WAY := 140
 ## Den Haag Centraal: see the top.
 const STATION_KIND := "centraal"
 const STATION_REACH := 140.0
-const STATION_OUT_SHARE := 0.75
+const STATION_OUT_SHARE := 0.4
+## At most one person out of each door every STATION_OUT_GAP seconds, and only when no one
+## stands within STATION_DOOR_CLEAR metres of where they come out: no crowd jammed at the doors.
+const STATION_OUT_GAP := 1.5
+const STATION_DOOR_CLEAR := 1.6
 const STATION_PULL_STEPS := 25
 const STATION_PULL_PER_SECOND := 0.03
 ## Only who is at least this many cells from a door sets off for it (who just came out walks on first).
@@ -142,6 +146,7 @@ var _ring: Array[Vector3i] = []            # walkable cells in the ring round th
 var _ring_around := Vector3.INF
 var _station_doors: Array[Vector3] = []    # the station's door spots (Interiors), on the street
 var _station_door_cells: Array[Vector3i] = []
+var _door_last_out := {}   # door cell -> _clock when the last one came out of it
 var _station_steps := {}                   # walkable cell -> cells to walk to the nearest door
 var _station_blocked := {}                 # [from cell, to cell] -> true: no way through there
 var _station_looks_left := 5               # tries left to find the doors (Interiors sets them up)
@@ -260,6 +265,36 @@ func route_to_somewhere(from: Vector3i, mobility: String) -> Array[Vector3i]:
 			return route
 		route.clear()
 	return route
+
+
+## The cells to walk from `from` to `to` (the story sends someone somewhere:
+## Pedestrian.story_goal), without `from`; empty when it cannot get there.
+func route_to(from: Vector3i, to: Vector3i) -> Array[Vector3i]:
+	var route: Array[Vector3i] = []
+	if _routes == null or not _route_ids.has(from):
+		return route
+	var goal := to if _route_ids.has(to) else nearest_walkable(to)
+	if not _route_ids.has(goal):
+		return route
+	for point in _routes.get_point_path(int(_route_ids[from]), int(_route_ids[goal])):
+		route.append(Vector3i(roundi(point.x), roundi(point.y), roundi(point.z)))
+	if not route.is_empty():
+		route.remove_at(0)
+	return route
+
+
+## The walkable cell nearest to `cell` (itself when it is one).
+func nearest_walkable(cell: Vector3i) -> Vector3i:
+	if _route_ids.has(cell):
+		return cell
+	var best := cell
+	var best_distance := INF
+	for other: Vector3i in _walkable_cells:
+		var distance := Vector2(other.x - cell.x, other.z - cell.z).length_squared()
+		if distance < best_distance and _route_ids.has(other):
+			best = other
+			best_distance = distance
+	return best
 
 
 func links(cell: Vector3i) -> Array:
@@ -882,7 +917,23 @@ func _station_door_cell() -> Vector3i:
 		return RoadNetwork.NONE
 	if _random.randf() >= station_share() * STATION_OUT_SHARE:
 		return RoadNetwork.NONE
-	return _station_door_cells[_random.randi() % _station_door_cells.size()]
+	# a door that let someone out just now, or with someone standing before it, waits
+	var free: Array[Vector3i] = _station_door_cells.filter(func(door_cell: Vector3i) -> bool:
+		return _clock - float(_door_last_out.get(door_cell, -INF)) >= STATION_OUT_GAP and _door_is_clear(door_cell))
+	if free.is_empty():
+		return RoadNetwork.NONE
+	var chosen: Vector3i = free[_random.randi() % free.size()]
+	_door_last_out[chosen] = _clock
+	return chosen
+
+
+## Nobody within STATION_DOOR_CLEAR metres of the middle of the door cell `door_cell`.
+func _door_is_clear(door_cell: Vector3i) -> bool:
+	var spot := cell_middle(door_cell)
+	for person: Pedestrian in _people:
+		if person.global_position.distance_squared_to(spot) < STATION_DOOR_CLEAR * STATION_DOOR_CLEAR:
+			return false
+	return true
 
 
 ## Now and then someone near a door sets off into the station (see the top).

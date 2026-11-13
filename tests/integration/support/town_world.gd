@@ -21,8 +21,14 @@ const PlayerCharacter = preload("res://scripts/player/player_character.gd")
 ##   "still_camera" true: without the follow camera (Common.instantiate)
 ##   "wake"         false: the town as the game starts it (the arrival still to come, the
 ##                  player asleep, the story open); the suite takes it from there
+##   "tempo"        how much faster the game runs (Engine.time_scale; 4: four times the game
+##                  time a frame, for suites that only wait for the story and its timers)
+##   "verhaal_sloten" true: the shroud of the story and the locked game menu as in the game
+##                  (default off: the whole town open, the menu, begging, sellers, jumping, coins and bank
+##                  cards on the street unlocked, so a test of
+##                  something else can walk and open anything)
 const DEFAULTS := {"town": true, "own_process": false, "character": "martin", "traffic": false,
-	"without": ["DetailNiveau", "Rook"], "settings": {}, "still_camera": false, "wake": true}
+	"without": ["DetailNiveau", "Rook"], "settings": {}, "still_camera": false, "wake": true, "verhaal_sloten": false, "tempo": 1.0}
 const START_META := "test_start"
 ## The story as the town started with it (story_state), and what of the Story that is.
 const STORY_META := "test_story"
@@ -30,6 +36,7 @@ const STORY_PROPERTIES := ["_started", "_done", "_finished", "_targets", "_xp_gi
 ## What a test changed for itself only (set_for_test: [node, property, value before]) and
 ## the camera it took away (camera_off); reset puts them back.
 const CHANGED_META := "test_changed"
+const TEMPO_META := "test_tempo"
 const CAMERA_META := "test_camera"
 ## What was under the root before a world without a town started (reset keeps those).
 static var _root_before: Array[Node] = []
@@ -69,7 +76,12 @@ static func start(tree: SceneTree, options: Dictionary) -> Node3D:
 		if node:
 			for property: String in options.settings[node_path]:
 				node.set(property, options.settings[node_path][property])
+	var story := scene.get_node_or_null("Verhaal")
+	if story and not bool(options.get("verhaal_sloten", false)):
+		story.use_shroud = false
 	tree.root.add_child(scene)
+	scene.set_meta(TEMPO_META, float(options.get("tempo", 1.0)))
+	Engine.time_scale = float(options.get("tempo", 1.0))
 	if not bool(options.wake):
 		for frame_index in 2:
 			await tree.process_frame
@@ -89,6 +101,14 @@ static func start(tree: SceneTree, options: Dictionary) -> Node3D:
 	for frame_index in 60:
 		await tree.process_frame
 		await close_screens(tree, scene.get_node_or_null("HUD"))
+	if story and not bool(options.get("verhaal_sloten", false)) and story.has_method("unlock"):
+		story.unlock("menu")
+		story.unlock("bedelen")
+		story.unlock("handelaars")
+		story.unlock("springen")
+		story.unlock("kleingeld")
+		story.unlock("pinpassen")
+		story.unlock("snackkaart")
 	scene.set_meta(START_META, {"at": player.global_position, "money": float(player.money),
 		"inventory": (player.inventory as Dictionary).duplicate()})
 	scene.set_meta(STORY_META, story_state(scene.get_node_or_null("Verhaal")))
@@ -100,6 +120,8 @@ static func start(tree: SceneTree, options: Dictionary) -> Node3D:
 static func story_state(story: Node) -> Dictionary:
 	if story == null:
 		return {}
+	if story.has_method("snapshot"):
+		return story.snapshot()
 	var state := {}
 	for property: String in STORY_PROPERTIES:
 		state[property] = story.get(property).duplicate(true)
@@ -110,6 +132,12 @@ static func story_state(story: Node) -> Dictionary:
 ## is as before again, also in the tracker.
 static func restore_story(story: Node, state: Dictionary) -> void:
 	if story == null or state.is_empty():
+		return
+	if story.has_method("restore"):
+		story.restore(state)
+		var characters := story.get_node_or_null(story.characters_path)
+		if characters and characters.has_method("clear"):
+			characters.clear()
 		return
 	for property: String in STORY_PROPERTIES:
 		story.get(property).assign(state[property].duplicate(true))
@@ -205,7 +233,14 @@ static func close_screens(tree: SceneTree, hud: Node) -> void:
 			hud._story_box._next_page()
 			closed = true
 		if hud.has_method("rewards_waiting"):
+			# skipped, but what comes after them still comes (the next mission of the story)
+			var waiting: Array = hud.rewards_waiting().duplicate()
 			hud.rewards_waiting().clear()
+			for reward: Dictionary in waiting:
+				var done: Callable = reward.get("done", Callable())
+				if done.is_valid():
+					done.call()
+					closed = true
 		while hud.has_method("is_showing_reward") and hud.is_showing_reward():
 			hud._reward_screen.next_page()
 			closed = true
@@ -273,7 +308,7 @@ static func reset(tree: SceneTree, scene: Node3D) -> void:
 	var hud: Node = scene.get_node_or_null("HUD")
 	var player: Node3D = scene.get_node("Speler")
 	var interiors: Node = scene.get_node_or_null("Binnenruimtes")
-	Engine.time_scale = 1.0
+	Engine.time_scale = float(scene.get_meta(TEMPO_META, 1.0))
 	var crowd_changed := restore_changes(scene)
 	await back_on_feet(tree, scene)
 	await close_screens(tree, hud)

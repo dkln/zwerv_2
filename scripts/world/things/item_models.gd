@@ -110,6 +110,8 @@ static func _build(item_id: String, figure: PlayerModel.VoxelFigure) -> bool:
 		"los_kaartje": _build_paper_ticket(figure)
 		"blikje": _build_empty_can(figure)
 		"pinpas": _build_bank_card(figure)
+		"id_kaart": _build_id_card(figure)
+		"oude_jas": _build_old_coat(figure)
 		_:
 			return false
 	return true
@@ -1006,6 +1008,62 @@ static func _build_bank_card(figure: PlayerModel.VoxelFigure) -> void:
 			_box(figure, Vector3i(column, 3, 1), Vector3i(column, 3, 1), Color("#2A4AC8"), "plastic")
 	_round_card_corners(figure, 15, 9)
 
+
+
+## A Dutch identity card: light blue-grey, the photo on the left, lines of text, the red-white-
+## blue band and the chip; the back plain with the machine-readable lines.
+static func _build_id_card(figure: PlayerModel.VoxelFigure) -> void:
+	_box(figure, Vector3i(0, 0, 0), Vector3i(15, 9, 1), Color("#C8D4E0"), "plastic")
+	# the photo: a grey head and shoulders on a light ground
+	_box(figure, Vector3i(1, 1, 0), Vector3i(5, 7, 0), Color("#E8ECF0"), "plastic")
+	_box(figure, Vector3i(2, 4, 0), Vector3i(4, 6, 0), Color("#B8A898"), "plastic")
+	_box(figure, Vector3i(1, 1, 0), Vector3i(5, 3, 0), Color("#5A6070"), "plastic")
+	# the lines of text and the flag band at the top
+	for row in [2, 4, 6]:
+		_box(figure, Vector3i(7, row, 0), Vector3i(13 if row != 4 else 11, row, 0), Color("#3A4658"), "plastic")
+	_box(figure, Vector3i(7, 8, 0), Vector3i(8, 8, 0), Color("#AE1C28"), "plastic")
+	_box(figure, Vector3i(9, 8, 0), Vector3i(10, 8, 0), WHITE, "plastic")
+	_box(figure, Vector3i(11, 8, 0), Vector3i(12, 8, 0), Color("#21468B"), "plastic")
+	_box(figure, Vector3i(13, 6, 0), Vector3i(14, 7, 0), Color("#E0B830"), "metal")
+	# the back: two machine-readable lines
+	for row in [2, 4]:
+		_box(figure, Vector3i(1, row, 1), Vector3i(14, row, 1), Color("#3A4658"), "plastic")
+	_round_card_corners(figure, 15, 9)
+
+
+## The old coat of Ome Wim, as if held up by the shoulders: a long, worn grey-brown coat,
+## its sleeves hanging, the collar up, three buttons (one gone), a patch on the elbow and
+## the torn red lining showing at the hem.
+static func _build_old_coat(figure: PlayerModel.VoxelFigure) -> void:
+	var cloth := Color("#4A4438")
+	var dark := Color("#2E2A22")
+	var patch := Color("#6A5A42")
+	var lining := Color("#8A2A2A")
+	var button := Color("#1E1A16")
+	# the body, wider at the hem, open a little at the front
+	_box(figure, Vector3i(3, 0, 0), Vector3i(14, 19, 3), cloth, "cloth")
+	_box(figure, Vector3i(2, 0, 0), Vector3i(15, 5, 3), cloth, "cloth")
+	_box(figure, Vector3i(8, 0, 0), Vector3i(9, 12, 0), dark, "cloth")
+	# the collar up, round the back of the neck
+	_box(figure, Vector3i(5, 20, 0), Vector3i(12, 21, 3), dark, "cloth")
+	for x in range(7, 11):
+		for y in [20, 21]:
+			for z in [0, 1]:
+				figure.clear(x, y, z)   # the neck opening
+	# the sleeves hanging from the shoulders
+	for sleeve_x in [0, 15]:
+		_box(figure, Vector3i(sleeve_x, 6, 0), Vector3i(sleeve_x + 2, 19, 3), cloth, "cloth")
+		_box(figure, Vector3i(sleeve_x, 6, 0), Vector3i(sleeve_x + 2, 7, 3), dark, "cloth")
+	_box(figure, Vector3i(15, 12, 0), Vector3i(17, 14, 0), patch, "cloth")
+	# buttons down the front (the middle one gone, a thread left) and pockets
+	for button_y in [9, 15]:
+		_box(figure, Vector3i(10, button_y, 0), Vector3i(10, button_y, 0), button, "plastic")
+	_box(figure, Vector3i(10, 12, 0), Vector3i(10, 12, 0), Color("#B9A27A"), "cloth")
+	_box(figure, Vector3i(4, 6, 0), Vector3i(6, 7, 0), dark, "cloth")
+	_box(figure, Vector3i(11, 6, 0), Vector3i(13, 7, 0), dark, "cloth")
+	# the torn lining hanging out under the hem
+	_box(figure, Vector3i(4, 0, 0), Vector3i(7, 1, 0), lining, "cloth")
+	_box(figure, Vector3i(5, 2, 0), Vector3i(6, 2, 0), lining, "cloth")
 
 # --- shared shapes of the items ------------------------------------------------------------
 

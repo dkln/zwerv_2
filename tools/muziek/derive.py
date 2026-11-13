@@ -1,4 +1,6 @@
-"""The pieces of the game, all made from one composition (docs/MUZIEK.md, "Afgeleide stukken").
+"""The pieces of the game, made from two compositions (docs/MUZIEK.md, "Afgeleide stukken"): the
+SECONDARY_PIECES (the menu among them) from the second (composities/actief.py MENU), the rest from the first
+(ACTIEF); each piece below works on whichever it is given.
 
 The intro is the composition itself, bar for bar as the composer wrote it. Everything else is
 made from its material: its bars, chords, melodies, sounds and drums, re-arranged; nothing is
@@ -149,10 +151,9 @@ def dominant_seventh(score: Score, lowest: int) -> tuple:
 # ----------------------------------------------------------------------------- the pieces
 
 def intro(score: Score) -> Piece:
-    """The composition itself; one read from a VGM (score.vgm) is that VGM, played by the
-    chip imitation (the bars are then only its length and its moments)."""
+    """The composition itself; one from a tracker (score.tracker) played by its own synth."""
     return Piece("zwervr_intro", score.tempo, score.beats_per_bar, [bar.copy() for bar in score.bars],
-                 score.sounds, loop=False, tail=2.5, vgm=score.vgm, tracker=score.tracker)
+                 score.sounds, loop=False, tail=2.5, tracker=score.tracker)
 
 
 def menu_loop(score: Score) -> Piece:
@@ -297,7 +298,7 @@ def landing_bar(score: Score, chords: list, beats: float) -> Bar:
 
 def has_ending(score: Score) -> bool:
     """Whether the composition comes to an end in its last bar (a held last note or chord, or
-    a crash), instead of running on into a repeat (a VGM of a looping tune ends in mid-run)."""
+    a crash), instead of running on into a repeat (an export of a looping tune ends in mid-run)."""
     last = score.bars[-1]
     held = any(note.length >= 1.5 for part_notes in last.parts.values() for note in part_notes)
     return held or any(hit.drum == "crash" for hit in last.hits)
@@ -464,8 +465,9 @@ def sweet_bar(bar: Bar, score: Score) -> Bar:
 
 
 def plain_bars(bars: list) -> list:
-    """The bars with one or two chords (the chromatic climbs left out)."""
-    return [bar for bar in bars if len(bar.chords) <= 2]
+    """The bars with one or two chords (the chromatic climbs left out); all of them when none is
+    that plain."""
+    return [bar for bar in bars if len(bar.chords) <= 2] or list(bars)
 
 
 def smooth_melody(bar: Bar, grid: float = 0.5, semitones: int = -12, velocity: float = 0.8,
@@ -536,7 +538,15 @@ def muzak_bar(bar: Bar, score: Score, style: str, melody_part: str = "", grid: f
     return result
 
 
+## A muzak loop lasts at least this long (seconds): a composition with few plain bars plays its
+## muzak round again until it does.
+MUZAK_SHORTEST = 48.0
+
+
 def _muzak_piece(name: str, score: Score, style: str, bars: list) -> Piece:
+    bar_seconds = 60.0 / MUZAK_TEMPOS[style] * score.beats_per_bar
+    rounds = max(1, -(-int(MUZAK_SHORTEST / bar_seconds) // max(1, len(bars))))
+    bars = [bar.copy() for _round in range(rounds) for bar in bars]
     return Piece(name, MUZAK_TEMPOS[style], score.beats_per_bar, bars, dict(score.sounds, **MUZAK_SOUNDS),
                  part_gains={"drums": 0.55, "strijkers": 0.9, "bas": 0.9},
                  swing=0.6 if style == "swing" else 0.0)
@@ -618,10 +628,110 @@ ALL = (intro, menu_loop, character_loop, merchant_loop, loading_loop, game_loop,
        supermarket_muzak_bossa, supermarket_muzak_ballad, supermarket_muzak_swing,
        jingle_derrek, jingle_alfred_steyhn)
 
+def as_written(score: Score, name: str) -> Piece:
+    """A base composition itself as a loop, bar for bar as the composer wrote it (in its own
+    synth or its own patches, like the intro): the menu (the second composition) and the fight
+    scene (the third)."""
+    return Piece(name, score.tempo, score.beats_per_bar, [bar.copy() for bar in score.bars],
+                 score.sounds, tracker=score.tracker)
+
+
+def fight_loop(score: Score) -> Piece:
+    """The fight scene: the third composition (composities/actief.py GEVECHT) as written, the
+    whole of it, one file (gevecht.ogg) that loops; nothing else is made from it."""
+    return as_written(score, "gevecht")
+
+
+# ----------------------------------------------------------------------------- in its own groove
+
+## The pieces made from the second composition keep its own groove: its bass and its drums as the
+## composer wrote them (softer), not the re-arrangements made for the first (half time, a walking
+## bass, drum patterns of their own). GROOVE_VARIANTS: which piece of ALL each one replaces.
+
+def in_groove(bar: Bar, with_lead: bool, drums_softer: float = 0.75, chords_softer: float = 0.6,
+              arp_softer: float = 0.6, lead_softer: float = 0.75) -> Bar:
+    """The bar with its own bass and drums, its stabs and arp softer, its melody (or none)."""
+    result = keep(bar, ("bas", "brass", "arp") + (("lead",) if with_lead else ()))
+    result = softer(result, "drums", drums_softer)
+    result = softer(result, "brass", chords_softer)
+    result = softer(result, "arp", arp_softer)
+    return softer(result, "lead", lead_softer)
+
+
+def game_loop_in_groove(score: Score) -> Piece:
+    """The city's loop, in the composition's own groove and in the background: its intro as the
+    groove alone; the theme as groove, then with its melody; the lift (opbouw) with its melody;
+    the theme as groove again, back to the start. The finale (the climax) stays out: too loud for
+    roaming."""
+    opening = score.first_section("intro", "thema")
+    theme = score.first_section("thema")
+    lift = score.first_section("opbouw", "thema")
+    bars = [in_groove(bar, False) for bar in opening] + [in_groove(bar, False) for bar in theme]
+    bars += [in_groove(bar, True) for bar in theme] + [in_groove(bar, True) for bar in lift]
+    bars += [in_groove(bar, False, arp_softer=0.45) for bar in theme]
+    return Piece("spel_loop", score.tempo, score.beats_per_bar, bars, score.sounds,
+                 part_gains={"drums": 0.85, "brass": 0.9})
+
+
+def character_loop_in_groove(score: Score) -> Piece:
+    """The theme twice in its own groove: first without its melody, then with it."""
+    theme = score.first_section("thema")
+    bars = [in_groove(bar, False, drums_softer=0.8) for bar in theme]
+    bars += [in_groove(bar, True, drums_softer=0.8, lead_softer=0.85) for bar in theme]
+    return Piece("karakterkeuze_loop", score.tempo, score.beats_per_bar, bars, score.sounds)
+
+
+def loading_loop_in_groove(score: Score) -> Piece:
+    """The composition's intro (its boot-up) twice: first its groove alone (bass, drums,
+    stabs, arp), then as written, with its melody."""
+    opening = score.first_section("intro", "thema")
+    bars = [in_groove(bar, False, drums_softer=0.85) for bar in opening]
+    bars += [softer(bar.copy(), "drums", 0.85) for bar in opening]
+    return Piece("laden_loop", score.tempo, score.beats_per_bar, bars, score.sounds,
+                 part_gains={"arp": 1.1})
+
+
+def own_drums(score: Score, until: float, velocity: float = 0.7) -> list:
+    """The first beats (before `until`) of the theme's own drums: the groove of the composition
+    under a short tune instead of a pattern of its own."""
+    bar = next((bar for bar in score.first_section("thema") if bar.hits), None)
+    if bar is None:
+        return []
+    return [replace(hit, velocity=hit.velocity * velocity) for hit in bar.hits if hit.position < until - 1e-6]
+
+
+def level_up_in_groove(score: Score) -> Piece:
+    """level_up, its run over the composition's own drums (up to the landing on 2.5)."""
+    piece = level_up(score)
+    bar = piece.bars[0].copy()
+    bar.hits = own_drums(score, 2.5) + [hit for hit in bar.hits if hit.position >= 2.5 - 1e-6]
+    return replace(piece, bars=[bar])
+
+
+def reward_in_groove(score: Score) -> Piece:
+    """reward, its sparkle over the composition's own drums (up to the landing on 2.5)."""
+    piece = reward(score)
+    bar = piece.bars[0].copy()
+    bar.hits = own_drums(score, 2.5, 0.6) + [hit for hit in bar.hits if hit.position >= 2.5 - 1e-6]
+    return replace(piece, bars=[bar])
+
+
+GROOVE_VARIANTS = {game_loop: game_loop_in_groove, character_loop: character_loop_in_groove,
+                   loading_loop: loading_loop_in_groove, level_up: level_up_in_groove, reward: reward_in_groove}
+
+
+## The pieces of the second composition (composities/actief.py MENU): the main menu is that
+## composition itself as written (as_written, not menu_loop); the character choice, the loading
+## screen, the city's loop, the reward and the level up are made from it; everything else from the
+## first (ACTIEF: the intro, the merchant, the map, the mission and task tunes, the win, death, the
+## supermarkets). Without a second composition all of them come from the first (menu_loop: the
+## menu made from it).
+SECONDARY_PIECES = (menu_loop, character_loop, loading_loop, game_loop, reward, level_up)
+
 
 def in_own_voices(piece: Piece, score: Score) -> Piece:
     """The piece with the sounds and the drum kit of AFGELEIDE_KLANKEN in place of the usual
-    ones (a composition read from a VGM: everything in the voices of that VGM)."""
+    ones (a composition from a tracker: everything in the voices of that tracker)."""
     if not score.derived_sounds:
         return piece
     parts = {part for bar in piece.bars for part in bar.parts}
@@ -634,8 +744,22 @@ def in_own_voices(piece: Piece, score: Score) -> Piece:
     return replace(piece, sounds=sounds)
 
 
-def pieces(score: Score) -> list:
+def pieces(score: Score, menu_score: Score = None, fight_score: Score = None) -> list:
     """Every piece: the intro from the score as written, the others from the score for the
-    derived pieces (AFGELEID_OCTAAF), in the composition's own voices (AFGELEIDE_KLANKEN)."""
-    derived = score.for_derived()
-    return [in_own_voices(make(score if make is intro else derived), score) for make in ALL]
+    derived pieces (AFGELEID_OCTAAF), in the composition's own voices (AFGELEIDE_KLANKEN); with
+    `menu_score` (the second composition) the menu is that as written and the other
+    SECONDARY_PIECES are made from it;
+    the fight scene's loop from `fight_score` (the third) as written, when there is one."""
+    made = []
+    for make in ALL:
+        if menu_score is not None and make is menu_loop:
+            made.append(as_written(menu_score, "nachtstad_menu_loop"))
+            continue
+        if menu_score is not None and make in SECONDARY_PIECES:
+            # from the second composition, in its own groove
+            made.append(in_own_voices(GROOVE_VARIANTS.get(make, make)(menu_score.for_derived()), menu_score))
+            continue
+        made.append(in_own_voices(make(score if make is intro else score.for_derived()), score))
+    if fight_score is not None:
+        made.append(fight_loop(fight_score))
+    return made

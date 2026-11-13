@@ -108,19 +108,36 @@ const ARRIVAL_STEPS := 128
 @export_range(15.0, 180.0, 15.0) var turn_step := 90.0
 ## Seconds the turn takes (about), and how long the usual view has to be free before it turns back.
 @export var turn_glide_time := 4.0
-## When tall buildings hide the player in every iso view (the view table knows), it looks down
-## steeper instead (degrees; ViewTable.PITCHES[1]), gliding there as slowly as it turns, and
-## back to the iso pitch once an iso view is free again.
-@export var steep_pitch := -62.0
-@export var turn_back_after := 4.0
-## Seconds the player has to be hidden before the view turns, and the seconds a view is held
-## after it turned (no turning on or back meanwhile).
+## Whether the view also turns round the player to the street side (turn_step, turn_most).
+## Off: it never turns; when buildings hide the player it only goes over to the view from
+## above (steep_pitch) after `top_down_after` s, and back to the usual view once that is free
+## for `turn_back_after` s: one of two views, never others.
+@export var turn_to_streets := false
+## The view hole through buildings (Doorkijk, building_fade.gd) on or off: off for now, the player
+## behind buildings shows as a silhouette with a rim (PlayerModel.rim) and the view goes over
+## to the one from above.
+@export var view_hole := false
+@export var top_down_after := 0.5
+## When buildings still hide the player in the view the street asks for, it looks down
+## steeper instead (degrees), gliding there as slowly as it turns, and back to the iso pitch
+## once that view is free again (turn_back_after s).
+@export var steep_pitch := -88.0
+@export var turn_back_after := 0.4
+## Seconds (about) the glide back from the view from above to the usual view takes: quicker
+## than going over to it, so walking on the view is soon its usual self again.
+@export var steep_back_glide_time := 0.5
+## Seconds the street has to ask for another view before it turns (so crossing the street
+## does not swing it to and fro), and the seconds a view is held after it turned.
 @export var turn_after := 1.2
-## The same when the view table (ViewTable) shows a view where nothing hides the player: then
-## it turns soon instead of opening a view hole.
-@export var turn_after_when_free := 0.4
-const NO_FREE_VIEW := Vector2(1000.0, 0.0)
 @export var turn_hold_time := 6.0
+## Street views (_street_turn): how many cells round the player tell where the street lies,
+## how clear the street side must be to turn to it (0..1), and the way the view always turns
+## round (-1: clockwise seen from above, "rechtsom"; 1 the other way).
+const STREET_REACH := 3
+const STREET_CLEAR := 0.2
+const TURN_DIRECTION := -1.0
+var _wanted_turn := NAN              # the view the street asks for, and since how long
+var _wanted_for := 0.0
 ## Seconds between two looks round.
 @export var turn_check_interval := 0.2
 ## Heights (metres over the feet) of the points that have to stay in sight, and the
@@ -469,20 +486,27 @@ func _process(delta: float) -> void:
 	_shake_for_crash(view_size)
 
 
+## Whether the view looks down from above now (more than half way to steep_pitch).
+func is_top_down() -> bool:
+	return _steep > 0.5
+
+
 ## The yaw of the view (degrees round the vertical): Iso.ROTATION.y, turned round buildings.
 func view_yaw() -> float:
 	return Iso.ROTATION.y + _turn
 
 
-## Looks every turn_check_interval s whether buildings hide the player from the view turned
-## to its goal; if they have for turn_after s, picks the nearest turn (within turn_most) from
-## which they hide it least. Back to the usual view once that has been free for
-## turn_back_after s. A new turn is held for turn_hold_time s. Then glides there.
+## Every turn_check_interval s: which side the street is on (_street_turn: the cells round the
+## player), and once that has been the same for turn_after s (and the last turn held for
+## turn_hold_time s) the view turns to it: from the street side towards the player, the
+## facade behind them; squeezed between buildings on both sides, straight along the street.
+## Always the same way round (TURN_DIRECTION), never back. When buildings still hide the
+## player in that view for a while, it looks down steeper; the view hole (Doorkijk) does the
+## rest. Then glides there.
 func _advance_turn(target_position: Vector3, view_size: float, delta: float) -> void:
 	var may_turn := turn_round_buildings and _buildings != null and not _arriving and not _dramatic \
 			and _underground < 0.001 and _glide_over_left <= 0.0
 	if not may_turn:
-		_turn_goal = _turn_goal if _dramatic else 0.0
 		_steep_goal = 0.0
 	else:
 		_turn_check_clock -= delta
@@ -492,55 +516,43 @@ func _advance_turn(target_position: Vector3, view_size: float, delta: float) -> 
 	var glided := _glide(_turn, _turn_goal, _turn_velocity, turn_glide_time, delta)
 	_turn = glided.x
 	_turn_velocity = glided.y
-	var tilted := _glide(_steep, _steep_goal, _steep_velocity, turn_glide_time, delta)
+	# turned round once more: the same view in smaller numbers
+	if absf(_turn - _turn_goal) < 0.01 and absf(_turn_goal) >= 360.0:
+		var whole := roundf(_turn_goal / 360.0) * 360.0
+		_turn -= whole
+		_turn_goal -= whole
+	var tilted := _glide(_steep, _steep_goal, _steep_velocity, turn_glide_time if _steep_goal > _steep else steep_back_glide_time, delta)
 	_steep = clampf(tilted.x, 0.0, 1.0)
 	_steep_velocity = tilted.y
 
 
 func _choose_turn(target_position: Vector3, view_size: float) -> void:
-	var distance := Iso.distance(view_size)
-	var steep_now := _steep_goal > 0.5
-	var usual_hidden := _view_hidden(target_position, 0.0, distance)
-	_usual_free_for = _usual_free_for + turn_check_interval if usual_hidden == 0 else 0.0
 	_turn_held_for += turn_check_interval
-	if _turn_held_for < turn_hold_time:
-		return   # just turned: hold this view a while (the view hole shows the player)
-	if (_turn_goal != 0.0 or steep_now) and _usual_free_for >= turn_back_after:
-		_set_view_goal(0.0, false)
-		return
-	# looking down steeply while the iso view of this turn shows the player again: back up
-	if steep_now and _view_hidden(target_position, _turn_goal, distance) == 0:
-		_set_view_goal(_turn_goal, false)
-		return
-	var goal_hidden := usual_hidden if _turn_goal == 0.0 and not steep_now else _view_hidden(target_position, _turn_goal, distance, steep_now)
-	_hidden_for = _hidden_for + turn_check_interval if goal_hidden > 0 else 0.0
-	# with a free view to go to (the view table knows) it goes soon, rather than holing the
-	# building (view_hole_wanted); else it only tries after turn_after
-	var free_view := _free_view(target_position, distance)
-	var wait := turn_after_when_free if free_view != NO_FREE_VIEW else turn_after
-	if goal_hidden == 0 or _hidden_for < wait:
-		return
-	if free_view != NO_FREE_VIEW:
-		_set_view_goal(free_view.x, free_view.y > 0.5)
-		return
-	# nothing shows it: the nearest iso turn (from the usual view, then from where it is) that
-	# hides the least
-	var best_turn := _turn_goal
-	var best_hidden := _view_hidden(target_position, _turn_goal, distance)
-	var steps := int(turn_most / maxf(turn_step, 1.0))
-	for step in range(1, steps + 1):
-		for side: float in [1.0, -1.0]:
-			var turn := side * step * turn_step
-			# half round is the same view either way: looked at once
-			if side < 0.0 and is_equal_approx(step * turn_step, 180.0):
-				continue
-			var hidden := _view_hidden(target_position, turn, distance)
-			if hidden < best_hidden or (hidden == best_hidden and hidden < goal_hidden
-					and absf(turn - _turn) < absf(best_turn - _turn)):
-				best_turn = turn
-				best_hidden = hidden
-	if best_turn != _turn_goal or steep_now:
-		_set_view_goal(best_turn, false)
+	var wanted := _street_turn(target_position) if turn_to_streets else NAN
+	if is_nan(wanted):
+		_wanted_for = 0.0
+	elif is_nan(_wanted_turn) or absf(wrapf(wanted - _wanted_turn, -180.0, 180.0)) > 1.0:
+		_wanted_turn = wanted
+		_wanted_for = 0.0
+	else:
+		_wanted_for += turn_check_interval
+	if turn_to_streets and not is_nan(wanted) and _turn_held_for >= turn_hold_time and _wanted_for >= turn_after:
+		# how far round, the one way (TURN_DIRECTION): never the short way back
+		var ahead := wrapf((wanted - _turn_goal) * TURN_DIRECTION, 0.0, 360.0)
+		if ahead > 1.0 and ahead < 359.0:
+			_set_view_goal(_turn_goal + ahead * TURN_DIRECTION, false)
+	# buildings still before the player in this view for a while: look down steeper
+	var hidden := _hidden_points(target_position, _turn_goal, Iso.distance(view_size))
+	_hidden_for = _hidden_for + turn_check_interval if hidden > 0 else 0.0
+	if _steep_goal < 0.5 and _hidden_for >= (turn_after * 2.0 if turn_to_streets else top_down_after):
+		_steep_goal = 1.0
+	elif _steep_goal > 0.5 and hidden == 0:
+		_usual_free_for += turn_check_interval
+		if _usual_free_for >= turn_back_after:
+			_steep_goal = 0.0
+			_usual_free_for = 0.0
+	else:
+		_usual_free_for = 0.0
 
 
 ## Turns to `turn` (degrees from the usual view), looking down steeply if `steep`; held for
@@ -552,61 +564,77 @@ func _set_view_goal(turn: float, steep: bool) -> void:
 	_hidden_for = 0.0
 
 
-## How many lines buildings hide round `target_position` with the view turned `turn` (looking
-## down steeply if `steep`): from the view table worked out when the map was baked or loaded
-## (ViewTable) when the spot is in it, else tested here and now (_hidden_points). For one spot
-## all views come from the same one, so they compare fairly.
-func _view_hidden(target_position: Vector3, turn: float, distance: float, steep := false) -> int:
-	var table := ViewTable.ready_for(get_parent())
-	if table:
-		var from_table := table.hidden_at(target_position, turn, steep)
-		if from_table >= 0 and table.hidden_at(target_position, 0.0) >= 0:
-			return from_table
-	return _hidden_points(target_position, turn, distance, steep_pitch if steep else Iso.ROTATION.x)
-
-
-## A view (x: the turn in degrees, y: 1 looking down steeply) other than the one it has now
-## from which no building hides `target_position`: the iso ones nearest first, then the steep
-## ones (this turn first) when no iso one is free; NO_FREE_VIEW if there is none.
-func _free_view(target_position: Vector3, distance: float) -> Vector2:
-	var turns: Array[float] = [_turn_goal]
-	var steps := int(turn_most / maxf(turn_step, 1.0))
-	for step in range(1, steps + 1):
-		for side: float in [1.0, -1.0]:
-			var turn := side * step * turn_step
-			if side < 0.0 and is_equal_approx(step * turn_step, 180.0):
+## The view (degrees from the usual one, 0..360) the street round `target_position` asks for,
+## from the Gebouwen cells within STREET_REACH cells (at street level): built is closed, the
+## rest open. Buildings close on both sides of one axis and open along it (a narrow street):
+## straight along it (a view between the iso ones), the end that comes first going round.
+## Else the open side, weighed by nearness, if it is clear enough (STREET_CLEAR): the iso
+## view whose camera stands most on that side. NAN when neither (a square, a park, a court).
+func _street_turn(target_position: Vector3) -> float:
+	if _buildings == null:
+		return NAN
+	var local := _buildings.global_transform.affine_inverse() * target_position
+	var cell := Vector2i(floori(local.x / _buildings.cell_size.x), floori(local.z / _buildings.cell_size.z))
+	var east := _built(cell, 1, 0) or _built(cell, 2, 0)
+	var west := _built(cell, -1, 0) or _built(cell, -2, 0)
+	var south := _built(cell, 0, 1) or _built(cell, 0, 2)
+	var north := _built(cell, 0, -1) or _built(cell, 0, -2)
+	var straight := Vector2.ZERO
+	if east and west and not (north or south):
+		straight = Vector2(0.0, 1.0)   # a street running north-south
+	elif north and south and not (east or west):
+		straight = Vector2(1.0, 0.0)   # a street running east-west
+	if straight != Vector2.ZERO:
+		return _first_turn_round([45.0, 135.0, 225.0, 315.0], func(from: Vector2) -> float: return absf(from.dot(straight)))
+	var side := Vector2.ZERO
+	var total := 0.0
+	for dz in range(-STREET_REACH, STREET_REACH + 1):
+		for dx in range(-STREET_REACH, STREET_REACH + 1):
+			var offset := Vector2(dx, dz)
+			var length := offset.length()
+			if length == 0.0 or length > STREET_REACH + 0.5:
 				continue
-			turns.append(turn)
-	var steep_now := _steep_goal > 0.5
-	for steep: bool in [false, true]:
-		for turn in turns:
-			if is_equal_approx(turn, _turn_goal) and steep == steep_now:
-				continue   # the view it has now
-			if _view_hidden(target_position, turn, distance, steep) == 0:
-				return Vector2(turn, 1.0 if steep else 0.0)
-	return NO_FREE_VIEW
+			var weight := 1.0 / length
+			side += offset / length * weight * (-1.0 if _built(cell, dx, dz) else 1.0)
+			total += weight
+	side /= maxf(total, 0.001)
+	if side.length() < STREET_CLEAR:
+		return NAN
+	return _first_turn_round([0.0, 90.0, 180.0, 270.0], func(from: Vector2) -> float: return from.dot(side.normalized()))
 
 
-## Whether the view hole (building_fade.gd) should open the buildings that hide the followed:
-## not when the view table shows another view where nothing hides it (turned, or looking down
-## steeply) and the camera may go there now (it will, in turn_after_when_free); yes when no
-## view is better, the camera may not move (it just turned, indoors, underground, a close-up),
-## or the spot is not in the table.
+## Of `turns`, the one whose camera side (`score` of the flat way from the player to the camera)
+## is best; of equally good ones the first going round (TURN_DIRECTION) from where it is now.
+func _first_turn_round(turns: Array, score: Callable) -> float:
+	var best := NAN
+	var best_score := -INF
+	var best_ahead := INF
+	for turn: float in turns:
+		var to_camera := towards_camera(turn, Iso.ROTATION.x)
+		var value: float = score.call(Vector2(to_camera.x, to_camera.z).normalized())
+		var ahead := wrapf((turn - _turn_goal) * TURN_DIRECTION, 0.0, 360.0)
+		if value > best_score + 0.01 or (absf(value - best_score) <= 0.01 and ahead < best_ahead):
+			best = turn
+			best_score = value
+			best_ahead = ahead
+	return best
+
+
+## Whether a building stands at street level `dx`, `dz` cells from `cell`.
+func _built(cell: Vector2i, dx: int, dz: int) -> bool:
+	return _buildings.get_cell_item(Vector3i(cell.x + dx, 0, cell.y + dz)) != GridMap.INVALID_CELL_ITEM
+
+
+## The way from what the camera looks at to the camera (unit), the view turned `turn` degrees
+## from the usual one and looking down at `pitch` degrees.
+static func towards_camera(turn: float, pitch: float) -> Vector3:
+	return Basis.from_euler(Vector3(deg_to_rad(pitch), deg_to_rad(Iso.ROTATION.y + turn), 0.0)).z
+
+
+## Whether the view hole (Doorkijk) may open: always; the view turns to the street side by
+## itself (_street_turn) and only the hole helps when a building still stands before the player.
 func view_hole_wanted() -> bool:
-	if not turn_round_buildings or _buildings == null or _dramatic or _arriving or _underground >= 0.001:
-		return true
-	if absf(_turn - _turn_goal) >= 1.0 or absf(_steep - _steep_goal) >= 0.02 or _turn_held_for < turn_hold_time:
-		return true   # turning, or holding the view it just went to
-	var followed := target_node
-	if followed == null:
-		return true
-	var table := ViewTable.ready_for(get_parent())
-	var steep_now := _steep_goal > 0.5
-	if table == null or table.hidden_at(followed.global_position, _turn_goal, steep_now) < 0:
-		return true
-	if table.hidden_at(followed.global_position, _turn_goal, steep_now) == 0:
-		return true   # free in this view by the table: what the hole's own test finds may still open
-	return _free_view(followed.global_position, Iso.distance(_zoom)) == NO_FREE_VIEW
+	return view_hole
 
 
 ## How many of the test points round the target (turn_test_heights, and turn_test_reach to
@@ -614,16 +642,16 @@ func view_hole_wanted() -> bool:
 ## Walks each line of sight in 1 m steps (cells are 4 m) up to the camera; only cells on the
 ## camera's side of the target count (it never hides behind a building at its back).
 func _hidden_points(target_position: Vector3, turn: float, distance: float, pitch := Iso.ROTATION.x) -> int:
-	var towards_camera := ViewTable.towards_camera(turn, pitch)
-	var across := Vector3.UP.cross(towards_camera).normalized()
-	var flat_towards := Vector2(towards_camera.x, towards_camera.z)
+	var to_camera := towards_camera(turn, pitch)
+	var across := Vector3.UP.cross(to_camera).normalized()
+	var flat_towards := Vector2(to_camera.x, to_camera.z)
 	var to_map := _buildings.global_transform.affine_inverse()
 	var hidden := 0
 	for height in turn_test_heights:
 		for side: float in [-1.0, 0.0, 1.0]:
 			var start := target_position + Vector3.UP * height + across * side * turn_test_reach
 			for step in range(1, int(distance)):
-				var point := start + towards_camera * float(step)
+				var point := start + to_camera * float(step)
 				var cell := _buildings.local_to_map(to_map * point)
 				if _buildings.get_cell_item(cell) == GridMap.INVALID_CELL_ITEM:
 					continue
