@@ -1714,6 +1714,13 @@ Na het genereren (vanuit de projectmap):
 
 Previews worden bewaard in `.godot/vox_tiles_previews/` (per tile en importtijd); een
 bibliotheek die opnieuw gebouwd wordt, krijgt ze daar direct uit terug.
+Op Windows (PowerShell) heeft elk `.sh`-script een `.ps1` ernaast met dezelfde argumenten:
+`tools\godot.ps1`, `tools\bake.ps1`, `tools\thumbnails.ps1`, `tools\build\reimport_stale.ps1`,
+`tools\muziek\render.ps1`, `tools\megadrive\render.ps1`, `tests\run_integration_tests.ps1`.
+PowerShell slikt een losse `--` in: schrijf die als `'--'`
+(`tools\godot.ps1 --headless --script tests/run_unit_tests.gd '--' emote`). `godot.ps1` zoekt
+de nieuwste `Godot*_console.exe` (op PATH of in `Program Files\Godot`), of neemt `$env:GODOT`;
+de muziektools hebben `uv` nodig. Eenmalig: `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`.
 `tools/godot.sh` start Godot met een tijdslimiet (`GODOT_TIMEOUT`, standaard 600 s)
 en zonder invoer, zodat een run nooit blijft hangen; de tools in `tools/` stoppen
 bovendien zelf na een script-fout (`Common.watchdog`). Elke tool die langer dan een seconde
