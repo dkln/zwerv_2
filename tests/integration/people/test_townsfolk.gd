@@ -174,8 +174,10 @@ func test_two_wheelers_carry_their_riders(test) -> void:
 		if two_wheeler._rider == null:
 			continue
 		var outer := two_wheeler._outer_box
-		test.check(outer.encloses(Vehicle._mesh_bounds(two_wheeler._rider, two_wheeler._rider.transform).grow(-0.01)),
-			"%s: de buitenmaat (botsing, wrak) omvat de berijder" % label)
+		var rider_bounds := Vehicle._mesh_bounds(two_wheeler._rider, two_wheeler._rider.transform)
+		test.check(outer.encloses(rider_bounds.grow(-0.01)),
+			"%s: de buitenmaat (botsing, wrak) omvat de berijder (buitenmaat %s .. %s, berijder %s .. %s)" % [label,
+				outer.position, outer.end, rider_bounds.position, rider_bounds.end])
 		test.check(outer.size.y > 1.4 and outer.size.y < 2.3, "%s: hoogte met berijder %.2f m" % [label, outer.size.y])
 		var hips := two_wheeler._rider.position + two_wheeler._rider.hip_middle()
 		test.check(hips.distance_to(two_wheeler.rider_hip) < 0.01, "%s: heupen op het zadel" % label)

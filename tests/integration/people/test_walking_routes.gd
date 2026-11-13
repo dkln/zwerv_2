@@ -49,9 +49,16 @@ func test_people_walk_their_way_and_cross(test) -> void:
 		for person: Pedestrian in town.people():
 			if town.is_zebra(person.cell):
 				crossed[person.get_instance_id()] = true
+	# who is not on a way, and why (to the station, wandering a while, a role, riding)
+	var reasons := {}
 	for person: Pedestrian in town.people():
 		if not person.way_ahead().is_empty():
 			on_a_way += 1
+			continue
+		var reason := "naar station" if person.heading_to_station else "dwaalt" if person._wander_left > 0 \
+				else "rol " + person.role if person.role != "" else "valt" if person._ragdoll else "zomaar"
+		reasons[reason] = int(reasons.get(reason, 0)) + 1
+	print("  niet op weg: ", reasons)
 	var people: int = town.people().size()
 	test.check(people > 0 and on_a_way * 2 >= people, "de meesten zijn ergens naar op weg (%d van %d)" % [on_a_way, people])
 	test.check(crossed.size() >= 3, "mensen steken echt over bij een zebra (%d in 90 s)" % crossed.size())
