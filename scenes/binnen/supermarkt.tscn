@@ -1,6 +1,6 @@
 [gd_scene format=3]
 
-[ext_resource type="Script" path="res://scripts/world/supermarket.gd" id="1_vuxed"]
+[ext_resource type="Script" path="res://scripts/world/interiors/supermarket.gd" id="1_vuxed"]
 
 [node name="Supermarkt" type="Node3D" unique_id=1535700476]
 script = ExtResource("1_vuxed")

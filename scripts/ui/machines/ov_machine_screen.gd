@@ -1,7 +1,7 @@
 extends "res://scripts/ui/machines/machine_screen.gd"
-## The OV-chipkaart machine (in the hall of Den Haag Centraal, scripts/world/station.gd, and at
-## a few tram stops in the town, scripts/world/street_machines.gd), close up. With what the
-## game has (OvCard, scripts/world/ov_card.gd):
+## The OV-chipkaart machine (in the hall of Den Haag Centraal, scripts/world/station/station.gd, and at
+## a few tram stops in the town, scripts/world/things/street_machines.gd), close up. With what the
+## game has (OvCard, scripts/world/station/ov_card.gd):
 ## - no card yet: buy one (OvCard.CARD_PRICE, with START_BALANCE on it) or a single ticket;
 ## - with a card: its balance on the display, top it up (OvCard.TOP_UPS) or buy a single
 ##   ticket. Checking in costs OvCard.RIDE_FARE of the balance.
@@ -10,7 +10,7 @@ extends "res://scripts/ui/machines/machine_screen.gd"
 ## Keys: 1-4 the options, Esc away; the mouse too.
 ##   OvMachineScreen.show_for(player, "DEN HAAG CENTRAAL")
 
-const OvCard = preload("res://scripts/world/ov_card.gd")
+const OvCard = preload("res://scripts/world/station/ov_card.gd")
 const SCRIPT_PATH := "res://scripts/ui/machines/ov_machine_screen.gd"
 const OPTION_COUNT := 4
 ## Its model: the tile of the station hall (as StreetMachines OV_TILE).

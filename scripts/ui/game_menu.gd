@@ -151,7 +151,7 @@ const SUPERMARKETS := {
 	"alfred_steyhn": {"colour": Color("#2CA8E4"), "round": true, "name": "ALFRED STEYHN"},
 }
 ## The cash machines in the streets (the markers Geldautomaat_<n> under Straatautomaten,
-## scripts/world/street_machines.gd) on the map, as places: in the yellow of PINPUNT, also in
+## scripts/world/things/street_machines.gd) on the map, as places: in the yellow of PINPUNT, also in
 ## neighbourhoods not visited yet (so you can always find the nearest one to get money).
 const CASH_MACHINE_NODE := "Straatautomaten"
 const CASH_MACHINE_MARKER := "Geldautomaat"

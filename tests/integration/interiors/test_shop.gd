@@ -35,6 +35,7 @@ func _at_the_counter_with(money: float) -> Dictionary:
 	if counter.is_empty():
 		return {}
 	player.add_money(money - player.money)
+	await close_screens()   # (a story page that came up on the way in would lie under the shop)
 	player.talk_to(counter.keeper)
 	await frames(1)
 	return counter
@@ -48,6 +49,7 @@ func _goods() -> Array:
 ## Into Den Haag Centraal; returns the station (null if that failed).
 func _into_the_station() -> Node3D:
 	await enter("centraal")
+	await close_screens()   # (as in _at_the_counter_with)
 	var station: Node3D = interiors._interior
 	return station if station != null and station.has_method("departures") else null
 
@@ -235,8 +237,12 @@ func test_kiosk_sells_a_newspaper_across_the_counter(test) -> void:
 	var result: String = shop.buy(newspaper)
 	print("  krant: %s, € %.2f over: %s" % [result, player.money, shop.spoken_text()])
 	test.check(result == "ok" and int(player.inventory.get("krant", 0)) == 1 and is_equal_approx(player.money, 20.0 - 3.5), "een krant gekocht (€ 3,50)")
+	skip_story()   # (a page of the story over the shop would keep it open)
 	shop.leave()
-	await seconds(4.0)
+	await wait_until(func() -> bool:
+		skip_story()
+		return not hud.is_showing_shop(), 8.0)
+	print("  afscheid: %s (verhaal %s)" % [shop.spoken_text(), hud.is_showing_story()])
 	test.check(not hud.is_showing_shop(), "weg bij de kiosk")
 	test.check(String(hud._indoor_music) == music_in_station, "daarna de muziek van het station weer (%s)" % hud._indoor_music)
 

@@ -72,7 +72,7 @@ global uniform float zwervr_relief;
 // the hollows), the faces stay flat; so a field of identical tiles doesn't look flat.
 // Strongest on grass, weaker on paving, hardly on asphalt; 0 = off
 global uniform float zwervr_undulation;
-// ground type per 4 m cell (scripts/world/ground_map.gd, the GrondKaart node): R = type
+// ground type per 4 m cell (scripts/world/town/ground_map.gd, the GrondKaart node): R = type
 // (material index + 1 + 20 x colour group, grass 200, 0 = none), G = fake height rank / 4
 global uniform sampler2D zwervr_ground_types : filter_nearest, repeat_disable;
 global uniform vec4 zwervr_ground_area;    // x0, z0, width, depth (metres) of that map
@@ -460,7 +460,7 @@ void fragment() {
 	}
 	if (zwervr_ground_edges > 0.0 && tintable > 0.5 && !light && wnorm.y > 0.8 && vpos.y < 1.5 && zwervr_ground_area.z > 0.0) {
 		// every border between two kinds of ground tiles (grass, road, cycle path, pavement,
-		// gravel, ...) reads as a small step (ranks from scripts/world/ground_map.gd): the higher
+		// gravel, ...) reads as a small step (ranks from scripts/world/town/ground_map.gd): the higher
 		// side gets a rounded, lighter edge (the normal also tilts towards the border, so
 		// the sun lights or shades it), the lower side a contact shadow, and a dark joint
 		// lies between them

@@ -1,6 +1,6 @@
 """How a tile is baked and casts its shadow: the "bake" block of its .tile.json, collected per
 item name in the library's meta "bake" (library_builder.gd) and read by the library itself
-and by scripts/world/layer_baker.gd. The block (every key is optional):
+and by scripts/world/town/layer_baker.gd. The block (every key is optional):
 
     shadow         true/false: casts a shadow or not; left out = by its height
                    (SHADOW_MIN_HEIGHT in library_builder.gd).

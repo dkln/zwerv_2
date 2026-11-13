@@ -1,9 +1,9 @@
 extends "res://tests/integration/support/town_test.gd"
-## How often things are updated by where they are seen (scripts/world/sight.gd): every step
+## How often things are updated by where they are seen (scripts/world/town/sight.gd): every step
 ## in view, fewer just out of it, fewest far away. Without the town: only a camera.
 ##   tests/run_integration_tests.sh sight
 
-const Sight = preload("res://scripts/world/sight.gd")
+const Sight = preload("res://scripts/world/town/sight.gd")
 const Iso = preload("res://scripts/camera/iso_camera.gd")
 
 

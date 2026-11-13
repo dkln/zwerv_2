@@ -1,12 +1,12 @@
 extends RefCounted
-## Unit tests of the layouts of the supermarket branches (scripts/world/supermarket_layout.gd,
-## the boxes and the floor grid of scripts/world/supermarket.gd): for both chains, many seeds
+## Unit tests of the layouts of the supermarket branches (scripts/world/interiors/supermarket_layout.gd,
+## the boxes and the floor grid of scripts/world/interiors/supermarket.gd): for both chains, many seeds
 ## and every width of shop front the plan is made and looked over once (_survey), and the
 ## tests each check one thing of it: the tiles exist, nothing stands in something else,
 ## everything can be walked to, the branches differ, and each chain has its own checkouts.
 
-const Layout = preload("res://scripts/world/supermarket_layout.gd")
-const Supermarket = preload("res://scripts/world/supermarket.gd")
+const Layout = preload("res://scripts/world/interiors/supermarket_layout.gd")
+const Supermarket = preload("res://scripts/world/interiors/supermarket.gd")
 
 const BRANDS := ["derrek", "alfred_steyhn"]
 const SEEDS := 30

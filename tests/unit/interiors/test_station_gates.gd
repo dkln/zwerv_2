@@ -1,10 +1,10 @@
 extends RefCounted
-## Unit tests of the OV gates of Den Haag Centraal (scripts/world/station_gates.gd): the lane
+## Unit tests of the OV gates of Den Haag Centraal (scripts/world/station/station_gates.gd): the lane
 ## someone gets (the right way, the shortest queue), checking in (one at a time, the queue moves
 ## on), the paddles opening and shutting in time, the player without a card refused, and where
 ## you stand before and after a lane. The clock, the station and the player are stand-ins.
 
-const OvCard = preload("res://scripts/world/ov_card.gd")
+const OvCard = preload("res://scripts/world/station/ov_card.gd")
 
 
 ## The gates with a clock of the test's own.

@@ -1,8 +1,8 @@
 extends RefCounted
-## Unit tests of the moods of someone talking (scripts/world/emote.gd pose_of): every mood
+## Unit tests of the moods of someone talking (scripts/world/people/emote.gd pose_of): every mood
 ## its own movement of the body.
 
-const Emote = preload("res://scripts/world/emote.gd")
+const Emote = preload("res://scripts/world/people/emote.gd")
 
 
 ## The most a mood lifts, leans and sways the body over two seconds.

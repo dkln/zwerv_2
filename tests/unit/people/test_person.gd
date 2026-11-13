@@ -1,11 +1,11 @@
 extends RefCounted
-## Unit tests of what the people of the town share (scripts/world/person.gd) and how the
+## Unit tests of what the people of the town share (scripts/world/people/person.gd) and how the
 ## three kinds differ (Pedestrian, InteriorPerson, StationPerson), and of the things the
-## player uses with [E] (scripts/world/interactable.gd).
+## player uses with [E] (scripts/world/things/interactable.gd).
 
-const Person = preload("res://scripts/world/person.gd")
-const Interactable = preload("res://scripts/world/interactable.gd")
-const InteriorSpot = preload("res://scripts/world/interior_spot.gd")
+const Person = preload("res://scripts/world/people/person.gd")
+const Interactable = preload("res://scripts/world/things/interactable.gd")
+const InteriorSpot = preload("res://scripts/world/interiors/interior_spot.gd")
 
 
 ## Every kind of person is a Person and says which kind it is.

@@ -6,7 +6,7 @@ extends SceneTree
 ## usage: Godot --headless --script tools/check/mesh_audit.gd
 
 const Common = preload("res://tools/tool_common.gd")
-const Baker = preload("res://scripts/world/layer_baker.gd")
+const Baker = preload("res://scripts/world/town/layer_baker.gd")
 const LIBRARIES := ["grond", "gebouwen", "props", "details"]
 const VOXEL_FACE_AREA := 0.125 * 0.125
 

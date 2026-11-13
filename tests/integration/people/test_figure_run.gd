@@ -1,6 +1,6 @@
 extends "res://tests/integration/support/town_test.gd"
 ## The player figures (scripts/player/player_model.gd) and the townspeople
-## (scripts/world/townsfolk_figure.gd): few details (colours, lone voxels), Martin's jacket one
+## (scripts/world/people/townsfolk_figure.gd): few details (colours, lone voxels), Martin's jacket one
 ## colour, nobody with a rucksack; the run (walking above 1) a run of its own and not the
 ## walk sped up: leaning forward, the knees driven up and bent deep, the elbows bent, off the
 ## ground between the steps, the feet never under the ground; the rucksack (picked up:
@@ -12,7 +12,7 @@ extends "res://tests/integration/support/town_test.gd"
 const PlayerModel = preload("res://scripts/player/player_model.gd")
 const PlayerController = preload("res://scripts/player/player_controller.gd")
 const Items = preload("res://scripts/player/items.gd")
-const Backpacks = preload("res://scripts/world/backpacks.gd")
+const Backpacks = preload("res://scripts/world/things/backpacks.gd")
 const NEIGHBOURS: Array[Vector3i] = [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0), Vector3i(0, -1, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1)]
 
 

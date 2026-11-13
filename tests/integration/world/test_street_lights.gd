@@ -1,5 +1,5 @@
 extends "res://tests/integration/support/town_test.gd"
-## The street lights (scripts/world/street_lights.gd): the city has its lamps found, at night
+## The street lights (scripts/world/town/street_lights.gd): the city has its lamps found, at night
 ## the ones nearest the view burn (at most MAX_LIGHTS, all within reach), by day none.
 ##   tests/run_integration_tests.sh street_lights
 

@@ -426,7 +426,7 @@ def death(score: Score) -> Piece:
 
 # ----------------------------------------------------------------------------- the supermarkets
 
-## The muzak of the supermarkets (scripts/world/interiors.gd SUPERMARKET_MUZAK: each branch
+## The muzak of the supermarkets (scripts/world/interiors/interiors.gd SUPERMARKET_MUZAK: each branch
 ## plays one of the three, soft, under the sound of the shop). Easy listening made from the
 ## composition's own melodies and chords: the chords sweetened (a power chord or a triad gets
 ## the third of the key and a seventh: muzak harmony), the melody smoothed (only the notes on

@@ -1,6 +1,6 @@
 extends "res://tests/integration/support/town_test.gd"
 ## The machines and finds in the town (scenes/stad.tscn): the cash machines and OV machines
-## of the node "Straatautomaten" (scripts/world/street_machines.gd) stand on the ground with
+## of the node "Straatautomaten" (scripts/world/things/street_machines.gd) stand on the ground with
 ## a collider and an [E] spot before them; at a cash machine "[E] Pinnen" opens the cash
 ## machine's screen; the waste bins (node "Prullenbakken") have cans, "[E] Blikje pakken"
 ## puts one in the pockets; lost bank cards (node "Pinpassen") lie on the streets and walking

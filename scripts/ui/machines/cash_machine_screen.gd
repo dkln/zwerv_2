@@ -1,5 +1,5 @@
 extends "res://scripts/ui/machines/machine_screen.gd"
-## The cash machine (a PINPUNT on a facade in the town, scripts/world/street_machines.gd),
+## The cash machine (a PINPUNT on a facade in the town, scripts/world/things/street_machines.gd),
 ## close up: put in a bank card you found (Items "pinpas", BankCards: each card its own
 ## account), type its PIN on the keypad (4 digits; the riddle on the back in the inventory
 ## gives it), choose an amount and the money comes out, up to the balance. Three wrong PINs

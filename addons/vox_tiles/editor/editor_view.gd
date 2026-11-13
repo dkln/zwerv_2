@@ -5,7 +5,7 @@ extends RefCounted
 ## scene root, switched with the checkbox in the Build dock) and the dock's view switch
 ## is on "Editor" (game_view false); "Game" shows the scene with all effects, as in the
 ## game. The game itself (F5/F6 and exports) never uses the editor view.
-## LOD and merging (scripts/world/level_of_detail.gd) only run in the game, in neither view.
+## LOD and merging (scripts/world/town/level_of_detail.gd) only run in the game, in neither view.
 ##
 ## The 3D views of the editor:
 ## - render the voxel shaders matte, without costly detail, animation or reflections

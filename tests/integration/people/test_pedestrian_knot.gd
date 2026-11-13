@@ -1,5 +1,5 @@
 extends "res://tests/integration/support/town_test.gd"
-## A knot of people (scripts/world/pedestrian.gd): walkers, wheelchairs and mobility scooters
+## A knot of people (scripts/world/people/pedestrian.gd): walkers, wheelchairs and mobility scooters
 ## put on one spot, all heading through each other, must untangle (step aside, turn, at
 ## last walk through each other) and get on their way instead of standing there for good.
 ## By day (the game starts at six, when few are out and hardly anyone rides an aid) and

@@ -1,5 +1,5 @@
 extends "res://tests/integration/support/town_test.gd"
-## Into the town under the swipe of a scene change (scripts/world/level_of_detail.gd): while the
+## Into the town under the swipe of a scene change (scripts/world/town/level_of_detail.gd): while the
 ## swipe (SwipeTransition) still runs, the loading screen is already up (its waiting music
 ## playing) and nothing heavy is started, and it stays up (also when the interiors are ready
 ## under it); the merging starts once the swipe is through, under that same screen.

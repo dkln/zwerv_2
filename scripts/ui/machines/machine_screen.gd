@@ -27,7 +27,7 @@ const MachineSounds = preload("res://scripts/ui/machines/machine_sounds.gd")
 const PixelIcon = preload("res://scripts/ui/widgets/pixel_icon.gd")
 const PlayerModel = preload("res://scripts/player/player_model.gd")
 const PlayerCharacter = preload("res://scripts/player/player_character.gd")
-const MachineModels = preload("res://scripts/world/machine_models.gd")
+const MachineModels = preload("res://scripts/world/things/machine_models.gd")
 
 const NODE_NAME := "Automaatscherm"
 const DESIGN_SIZE := Vector2(1280, 720)

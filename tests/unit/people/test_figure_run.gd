@@ -1,5 +1,5 @@
 extends RefCounted
-## Unit tests of townspeople running (scripts/world/townsfolk_figure.gd walk with `run`): the
+## Unit tests of townspeople running (scripts/world/people/townsfolk_figure.gd walk with `run`): the
 ## run of the player (PlayerModel._run_pose) blended into their walk by their speed: the
 ## knee driven high, the body leant forward and bobbing higher, upright again after it.
 

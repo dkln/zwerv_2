@@ -11,7 +11,7 @@ auto_wiel, the scooter on klein_wiel (both 0.125 m voxels, small_vehicles.py).
 
 Like the cars they are drawn without their wheels, which scripts/vehicles/*.gd place and
 turn. The moped, the scooters and the motorbike are drawn without their riders too: those
-are townspeople built in code (scripts/world/townsfolk_figure.gd, the size of the player
+are townspeople built in code (scripts/world/people/townsfolk_figure.gd, the size of the player
 figures), put on by scripts/vehicles/two_wheeler.gd, which takes the seat, footrests and
 grips of these tiles. The bicycles of the traffic are built in code as well
 (scripts/vehicles/bicycle_parts.gd, with a turning fork and cranks); the fietser and fatbike

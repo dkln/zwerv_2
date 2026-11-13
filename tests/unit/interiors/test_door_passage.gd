@@ -1,10 +1,10 @@
 extends RefCounted
 ## Unit tests of walking in and out of a building seen from close by
-## (scripts/world/door_passage.gd): a stand-in of the player walks through the door while
+## (scripts/world/interiors/door_passage.gd): a stand-in of the player walks through the door while
 ## the real one is hidden and stands still, a camera of its own, the door of the place
 ## opening for them (sliding, swinging or revolving), and all as it was afterwards.
 
-const DoorPassage = preload("res://scripts/world/door_passage.gd")
+const DoorPassage = preload("res://scripts/world/interiors/door_passage.gd")
 
 ## The tree of the run (tests/run_unit_tests.gd sets it).
 var tree: SceneTree

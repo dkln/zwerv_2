@@ -1,5 +1,5 @@
 extends "res://tests/integration/support/town_test.gd"
-## Den Haag Centraal from the inside (scripts/world/station.gd and its parts): the three doors
+## Den Haag Centraal from the inside (scripts/world/station/station.gd and its parts): the three doors
 ## of the station hall on the square are ways in (west to east door 1..3), going in at the
 ## middle one puts you at Deur2 of the hall; the station has a departure on every track,
 ## trains standing, the gates before every platform (lanes in and out, shut without a card),
@@ -11,7 +11,7 @@ extends "res://tests/integration/support/town_test.gd"
 ## eastern door.
 ##   tests/run_integration_tests.sh station
 
-const Layout = preload("res://scripts/world/station_layout.gd")
+const Layout = preload("res://scripts/world/station/station_layout.gd")
 ## Seconds someone on their way may stand still before they count as stuck.
 const STILL_LIMIT := 20
 ## Seconds the travellers are watched for standing still.

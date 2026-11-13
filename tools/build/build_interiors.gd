@@ -3,7 +3,7 @@ extends SceneTree
 ## (tools/voxgen/tiles/interior.py), as a starting point: after that they are edited by hand
 ## in Godot, so a scene that is there already is left alone (unless "opnieuw" is given).
 ##   tools/godot.sh --headless --script tools/build/build_interiors.gd [-- opnieuw]
-## The snack bar (scenes/binnen/snackbar.tscn, script scripts/world/interior.gd): 12 x 8 m,
+## The snack bar (scenes/binnen/snackbar.tscn, script scripts/world/interiors/interior.gd): 12 x 8 m,
 ## the floor in the GridMap Vloer (its top at y = 0), walls and furniture in Inrichting: high
 ## walls at the back (+z, the counter, the fryer and the menu board against it) and the left
 ## (-x, the fridge), low walls at the front (-z, with the door in the middle) and the right,
@@ -13,8 +13,8 @@ extends SceneTree
 ## marker does). Two warm lamps (OmniLight3D). All tiles in the variant "zwartwit"; the other
 ## variants are swapped in per snack bar (Interior.dress).
 
-## Den Haag Centraal (scenes/binnen/centraal.tscn, script scripts/world/station.gd): the plan
-## of StationLayout (scripts/world/station_layout.gd): the hall with its stone floor (Vloer),
+## Den Haag Centraal (scenes/binnen/centraal.tscn, script scripts/world/station/station.gd): the plan
+## of StationLayout (scripts/world/station/station_layout.gd): the hall with its stone floor (Vloer),
 ## walls, shops, ticket machines, boards, clock, columns and glass fences (Inrichting), the
 ## platforms and tracks from the town's ground tiles (Sporen, PLATFORM_DROP down), benches,
 ## bins and OV posts from the props (Props), lamps, and markers: Deur1..3 (the entrances),
@@ -23,15 +23,15 @@ extends SceneTree
 ## Winkel_<n> and Verkoper_<n> (the front of a shop and who works in it; metadata "kind" and
 ## "shop_name"), Automaat_<n> (before a ticket machine).
 ##   tools/godot.sh --headless --script tools/build/build_interiors.gd [-- opnieuw] [-- centraal]
-## The supermarket (scenes/binnen/supermarkt.tscn, script scripts/world/supermarket.gd): only
-## its root: every branch lays itself out as you walk in (scripts/world/supermarket_layout.gd).
-## The city hall (scenes/binnen/stadhuis.tscn, script scripts/world/city_hall.gd): the five
-## floors of CityHallLayout (scripts/world/city_hall_layout.gd) side by side, Etage0..Etage4
+## The supermarket (scenes/binnen/supermarkt.tscn, script scripts/world/interiors/supermarket.gd): only
+## its root: every branch lays itself out as you walk in (scripts/world/interiors/supermarket_layout.gd).
+## The city hall (scenes/binnen/stadhuis.tscn, script scripts/world/interiors/city_hall.gd): the five
+## floors of CityHallLayout (scripts/world/interiors/city_hall_layout.gd) side by side, Etage0..Etage4
 ## (each its GridMaps Vloer and Inrichting, its lamps and markers: Lift (where you call it,
 ## facing out of it), Liftdeur (the middle of its doors), Persoon_<n> (metadata "role",
 ## "sit", "seat"), Bord_<n> (metadata "text": a sign), Loket_<n> (the number board of a
 ## counter), Nummerautomaat), and Deur (the entrance, on floor 0). The lift is a scene of its own.
-## The lift (scenes/binnen/lift.tscn, script scripts/world/lift_ride.gd): the cabin of
+## The lift (scenes/binnen/lift.tscn, script scripts/world/interiors/lift_ride.gd): the cabin of
 ## LiftRide.cabin_plan() (GridMaps Vloer and Inrichting, a lamp); any building with floors uses it.
 ## Names after "--" pick the scenes (snackbar, centraal, supermarkt, stadhuis, lift; none = all).
 
@@ -40,9 +40,9 @@ const SCENE := "res://scenes/binnen/snackbar.tscn"
 const STATION_SCENE := "res://scenes/binnen/centraal.tscn"
 const SUPERMARKET_SCENE := "res://scenes/binnen/supermarkt.tscn"
 const CITY_HALL_SCENE := "res://scenes/binnen/stadhuis.tscn"
-const CityHallLayout = preload("res://scripts/world/city_hall_layout.gd")
+const CityHallLayout = preload("res://scripts/world/interiors/city_hall_layout.gd")
 const LIFT_SCENE := "res://scenes/binnen/lift.tscn"
-const LiftRide = preload("res://scripts/world/lift_ride.gd")
+const LiftRide = preload("res://scripts/world/interiors/lift_ride.gd")
 const SCENES := {"snackbar": SCENE, "centraal": STATION_SCENE, "supermarkt": SUPERMARKET_SCENE, "stadhuis": CITY_HALL_SCENE,
 	"lift": LIFT_SCENE}
 const LIBRARY := "res://assets/libraries/binnen.res"
@@ -51,7 +51,7 @@ const PROPS_LIBRARY := "res://assets/libraries/props.res"
 const VARIANT := "zwartwit"
 const PREFIX := "snackbar/"
 const STATION_PREFIX := "station/"
-const Layout = preload("res://scripts/world/station_layout.gd")
+const Layout = preload("res://scripts/world/station/station_layout.gd")
 ## The shops of the hall: [kind (tile winkel_<kind>), name on the sign], in the order they
 ## are put down (the left wall first, then the block in the middle).
 const SHOPS := [
@@ -101,7 +101,7 @@ func _init() -> void:
 func _build_snack_bar(library: MeshLibrary) -> void:
 	var root := Node3D.new()
 	root.name = "Snackbar"
-	root.set_script(load("res://scripts/world/interior.gd"))
+	root.set_script(load("res://scripts/world/interiors/interior.gd"))
 	var floor_map := _grid("Vloer", library, Vector3(0.0, -0.125, 0.0))
 	var furniture := _grid("Inrichting", library, Vector3.ZERO)
 	root.add_child(floor_map)
@@ -198,7 +198,7 @@ func _build_station(library: MeshLibrary) -> void:
 	var props_library: MeshLibrary = load(PROPS_LIBRARY)
 	var root := Node3D.new()
 	root.name = "Centraal"
-	root.set_script(load("res://scripts/world/station.gd"))
+	root.set_script(load("res://scripts/world/station/station.gd"))
 	var floor_map := _grid("Vloer", library, Vector3(0.0, -0.125, 0.0))
 	var furniture := _grid("Inrichting", library, Vector3.ZERO)
 	var props := _grid("Props", props_library, Vector3.ZERO)
@@ -434,7 +434,7 @@ func _marker_at(root: Node3D, marker_name: String, at: Vector3, turn: float) -> 
 func _build_supermarket() -> void:
 	var root := Node3D.new()
 	root.name = "Supermarkt"
-	root.set_script(load("res://scripts/world/supermarket.gd"))
+	root.set_script(load("res://scripts/world/interiors/supermarket.gd"))
 	_save(root, SUPERMARKET_SCENE, "elk filiaal deelt zich zelf in")
 
 
@@ -443,7 +443,7 @@ func _build_supermarket() -> void:
 func _build_city_hall(library: MeshLibrary) -> void:
 	var root := Node3D.new()
 	root.name = "Stadhuis"
-	root.set_script(load("res://scripts/world/city_hall.gd"))
+	root.set_script(load("res://scripts/world/interiors/city_hall.gd"))
 	var missing := []
 	var people := 0
 	for plan: Dictionary in CityHallLayout.floors():
@@ -518,7 +518,7 @@ func _save(root: Node3D, path: String, what: String) -> void:
 func _build_lift(library: MeshLibrary) -> void:
 	var root := Node3D.new()
 	root.name = "Lift"
-	root.set_script(load("res://scripts/world/lift_ride.gd"))
+	root.set_script(load("res://scripts/world/interiors/lift_ride.gd"))
 	var plan := LiftRide.cabin_plan()
 	var missing := []
 	var floor_map := _grid("Vloer", library, Vector3(0.0, -0.125, 0.0))

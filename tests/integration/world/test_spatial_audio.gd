@@ -12,7 +12,7 @@ const Babble = preload("res://scripts/audio/babble.gd")
 const PlayerController = preload("res://scripts/player/player_controller.gd")
 ## The scripts besides spatial_audio.gd that name sounds (the horns and bells: play_signal).
 const SOUND_USERS := ["res://scripts/vehicles/vehicle.gd", "res://scripts/vehicles/fire_engine.gd",
-	"res://scripts/world/pedestrian.gd", "res://scripts/effects/vehicle_fire.gd", "res://scripts/world/interiors.gd"]
+	"res://scripts/world/people/pedestrian.gd", "res://scripts/effects/vehicle_fire.gd", "res://scripts/world/interiors/interiors.gd"]
 
 
 static func world_options() -> Dictionary:

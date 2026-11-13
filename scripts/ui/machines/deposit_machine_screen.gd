@@ -1,6 +1,6 @@
 extends "res://scripts/ui/machines/machine_screen.gd"
 ## The deposit machine of a supermarket (STATIEGELD, by the entrance of every DERREK and
-## ALFRED STEYHN: scripts/world/supermarket.gd), close up: put in your empty cans (Items
+## ALFRED STEYHN: scripts/world/interiors/supermarket.gd), close up: put in your empty cans (Items
 ## "blikje", from the waste bins) and bottles ("statiegeld") one by one: each goes into the
 ## round hole (it slides in, rattles, the belt carries it off) and counts on the display;
 ## then BON: the machine prints the bon with what you put in and the total, and taking the
@@ -8,7 +8,7 @@ extends "res://scripts/ui/machines/machine_screen.gd"
 ## Keys: 1 a can, 2 a bottle, Enter the bon (then Enter takes it), Esc away; the mouse too.
 ##   DepositMachineScreen.show_for(player, "DERREK")
 
-const DepositReturn = preload("res://scripts/world/deposit_return.gd")
+const DepositReturn = preload("res://scripts/world/things/deposit_return.gd")
 const Items = preload("res://scripts/player/items.gd")
 const SCRIPT_PATH := "res://scripts/ui/machines/deposit_machine_screen.gd"
 const NAMES := {"blikje": "BLIKJE", "statiegeld": "FLES"}

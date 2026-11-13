@@ -1,6 +1,6 @@
 extends Control
 ## Numbers that float up from a point in the world and fade: the money picked up ("+€ 0,50",
-## scripts/world/loose_change.gd) and the damage the player takes ("-12",
+## scripts/world/things/loose_change.gd) and the damage the player takes ("-12",
 ## PlayerController._hurt). Drawn in the HUD picture (hud.gd, show_floating_number), not in
 ## 3D, so they stay sharp whatever the 3D render scale is: a pixel font at a fixed size on
 ## the screen, with the faux 3D of the game's texts: a copy of the text a few pixels lower,

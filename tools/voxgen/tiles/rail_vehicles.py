@@ -4,7 +4,7 @@ at y=0, z up. A cab car has a driver's cab at the front: a narrowing nose with a
 that leans back, a sign above it, lamps and a bumper under it and a side window for the
 driver; every car has bogies under it, a band of windows, doors on both sides and something
 on its roof, some cars a pantograph whose contact strip reaches up to the contact wire of
-scripts/world/overhead_lines.gd (`pantograph_top`: the voxel of the strip, counted from
+scripts/world/town/overhead_lines.gd (`pantograph_top`: the voxel of the strip, counted from
 the wheels; the car stands `model_lift` above the rails). The last car of a train is a cab
 car turned round, so that end looks the same.
 The door leaves are models of their own (props/voertuigen/*_deur): the car has an opening

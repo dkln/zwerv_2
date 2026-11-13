@@ -1,5 +1,5 @@
 extends "res://tests/integration/support/town_test.gd"
-## People coming out of Den Haag Centraal and going into it (scripts/world/pedestrians.gd,
+## People coming out of Den Haag Centraal and going into it (scripts/world/people/pedestrians.gd,
 ## the "station" share of data/drukte.json): in the morning rush, with the player near a
 ## station door, newcomers come out of the doors, people near it set off for a door and are
 ## gone through it; far off the station none of that.

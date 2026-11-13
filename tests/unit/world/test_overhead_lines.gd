@@ -1,10 +1,10 @@
 extends RefCounted
-## Unit tests of the overhead lines (scripts/world/overhead_lines.gd): where a point lies on a
+## Unit tests of the overhead lines (scripts/world/town/overhead_lines.gd): where a point lies on a
 ## piece of wire, the key that joins the pieces, where a mast's span crosses the wires (only
 ## across, within its reach), and how the carrier wire hangs: carrier_rise above the level
 ## contact wire at a support, sagging deepest halfway between two supports, none past the last.
 
-const OverheadLines = preload("res://scripts/world/overhead_lines.gd")
+const OverheadLines = preload("res://scripts/world/town/overhead_lines.gd")
 
 
 func _lines() -> Node3D:

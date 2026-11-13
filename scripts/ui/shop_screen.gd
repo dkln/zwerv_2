@@ -29,7 +29,7 @@ signal finished
 
 const UiStyle = preload("res://scripts/ui/ui_style.gd")
 const UiSounds = preload("res://scripts/ui/ui_sounds.gd")
-const Interiors = preload("res://scripts/world/interiors.gd")
+const Interiors = preload("res://scripts/world/interiors/interiors.gd")
 const PlayerPortrait = preload("res://scripts/ui/widgets/player_portrait.gd")
 const PixelIcon = preload("res://scripts/ui/widgets/pixel_icon.gd")
 ## Screen pixels per pixel of the logo in the header.

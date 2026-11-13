@@ -1,4 +1,4 @@
-// See-through buildings, shared by the voxel shaders: scripts/world/building_fade.gd (the
+// See-through buildings, shared by the voxel shaders: scripts/world/town/building_fade.gd (the
 // Doorkijk node) fades out the buildings that stand between the followed vehicle and the
 // camera. The shaders only test it when compiled with ZWERVR_FADE: a shader that can
 // discard pixels is much slower on tile-based GPUs (Apple), so building_fade.gd gives
@@ -11,7 +11,7 @@
 // (ZWERVR_HOLE_EDGE). Only what lies on the camera's side of the player is cut. The
 // building's shadow stays: the shadow pass (an orthographic projection) is skipped.
 // Bay windows, shop fronts, awnings and signs stick out of their building's cell into
-// the street; scripts/world/layer_baker.gd gives every vertex of the merged buildings
+// the street; scripts/world/town/layer_baker.gd gives every vertex of the merged buildings
 // (and of the facade details baked into them) the centre of the cell it belongs to in
 // CUSTOM0, so it fades with its own building, as a whole. Shaders decode it in vertex()
 // with fade_owner_from(CUSTOM0) into a varying; vec4(0.0) = none, then the cell the

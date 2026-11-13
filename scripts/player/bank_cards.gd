@@ -4,7 +4,7 @@ extends RefCounted
 ## the back whose answer is the PIN (shown in the inventory: description). The cards are
 ## kept on the player, as the metadata CARDS_META (an Array of Dictionaries, the order they
 ## were found in), and the inventory counts them as "pinpas" (one slot however many).
-## Used by the lost cards in the town (scripts/world/lost_bank_cards.gd), the cash machines
+## Used by the lost cards in the town (scripts/world/things/lost_bank_cards.gd), the cash machines
 ## (scripts/ui/machines/cash_machine_screen.gd) and a conversation that gives one.
 ##   const BankCards = preload("res://scripts/player/bank_cards.gd")
 ##   BankCards.give_found_bank_card(player)          # true: a new card in the pockets

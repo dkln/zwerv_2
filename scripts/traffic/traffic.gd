@@ -27,8 +27,8 @@ extends Node
 ## the whole road network at the start, at random but repeatable spots at least `spacing`
 ## metres apart, and all of them kept.
 
-const Crowd = preload("res://scripts/world/crowd.gd")
-const Sight = preload("res://scripts/world/sight.gd")
+const Crowd = preload("res://scripts/world/people/crowd.gd")
+const Sight = preload("res://scripts/world/town/sight.gd")
 const CAR = "res://scripts/vehicles/car.gd"
 const SUV = "res://scripts/vehicles/suv.gd"
 const HATCHBACK = "res://scripts/vehicles/hatchback.gd"

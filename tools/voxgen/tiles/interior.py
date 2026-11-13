@@ -4,7 +4,7 @@ bar (binnen/snackbar/): tiled floors, tiled walls (high at the back and sides, l
 front, so the iso view looks in over them), a counter with its glass display of snacks, the
 fryer, the menu board, a drinks fridge, formica tables and chairs, and a doormat at the way
 out. Floors and walls come in a few colour variants (VARIANTS), so no two snack bars look
-quite alike: scripts/world/interior.gd swaps them per snack bar.
+quite alike: scripts/world/interiors/interior.gd swaps them per snack bar.
 
 Voxels of 0.125 m (the ordinary size); the pivot is the middle of the bottom of the frame,
 the front the side with the lowest y. A floor tile and a wall are a 4 m cell wide.
@@ -160,7 +160,7 @@ for _variant, (_floor_a, _floor_b, _tiles, _band, _front) in VARIANTS.items():
 # tracks under one roof (scenes/binnen/centraal.tscn, tools/build/build_interiors.gd). The
 # platforms and the tracks are the tiles of the town (grond/spoor/perron, trein_recht,
 # trein_stootblok); these are the rest: the stone floor of the hall, its walls, the OV gates
-# (a cabinet per tile, the glass paddles a tile of their own that scripts/world/station.gd
+# (a cabinet per tile, the glass paddles a tile of their own that scripts/world/station/station.gd
 # slides open and shut), glass fences, the departure boards and platform displays (their text
 # is drawn by the game), the track signs, the clock, ticket machines, columns and the shops.
 

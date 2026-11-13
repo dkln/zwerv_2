@@ -1,5 +1,5 @@
 extends "res://tests/integration/support/town_test.gd"
-## The set of people and traffic round the player (scripts/world/pedestrians.gd,
+## The set of people and traffic round the player (scripts/world/people/pedestrians.gd,
 ## scripts/traffic/traffic.gd, Crowd and data/drukte.json): as many as the hour and the
 ## neighbourhood want; at night fewer (the rest out of the tree, kept), in the morning rush
 ## more again and of other kinds (commuters, business people); after a jump of the player
@@ -108,7 +108,7 @@ func test_morning_rush_more_again_and_other_people(test) -> void:
 	test.check(traffic._town.size() == wanted.x, "ochtendspits: weer zoveel verkeer als gewenst")
 	test.check(int(kinds.get("forens", 0)) + int(kinds.get("zakenmens", 0)) + int(kinds.get("kantoormens", 0)) > 0,
 			"forenzen en zakenmensen in de spits")
-	if ResourceLoader.exists("res://scripts/world/carried_items.gd"):
+	if ResourceLoader.exists("res://scripts/world/people/carried_items.gd"):
 		test.check(int(carrying.get("aktetas", 0)) > 0, "aktetassen in de ochtendspits")
 		test.check(walkers.people().filter(func(person: Pedestrian) -> bool: return person.carried != "").all(
 				func(person: Pedestrian) -> bool: return person._carried_item != null and person._carried_item.is_inside_tree()),

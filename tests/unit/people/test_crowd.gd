@@ -1,10 +1,10 @@
 extends RefCounted
-## Unit tests of Crowd (scripts/world/crowd.gd) and its table data/drukte.json: the file reads,
+## Unit tests of Crowd (scripts/world/people/crowd.gd) and its table data/drukte.json: the file reads,
 ## the rush hours are busier than the night, the neighbourhoods differ (Centraal busy, the
 ## parks quiet for cars, the A12 without walkers but full of cars, lorries in the Binckhorst),
 ## the kinds of people change with the hour, and each kind gets a look of its own.
 
-const Crowd = preload("res://scripts/world/crowd.gd")
+const Crowd = preload("res://scripts/world/people/crowd.gd")
 
 
 ## data/drukte.json reads: hours (in order) and areas in the table, each with a pace.

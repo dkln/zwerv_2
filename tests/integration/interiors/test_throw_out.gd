@@ -6,7 +6,7 @@ extends "res://tests/integration/support/town_test.gd"
 ## while); going out before they are there; and a BOA coming for you in Den Haag Centraal.
 ##   tests/run_integration_tests.sh throw_out
 
-const Interiors = preload("res://scripts/world/interiors.gd")
+const Interiors = preload("res://scripts/world/interiors/interiors.gd")
 ## Metres within which who comes for the player has them (Eviction.CATCH_REACH and a little).
 const AT_THE_PLAYER := 1.2
 

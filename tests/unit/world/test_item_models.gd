@@ -1,10 +1,10 @@
 extends RefCounted
-## Unit tests of the voxel models of the items (scripts/world/item_models.gd), as the reward
+## Unit tests of the voxel models of the items (scripts/world/things/item_models.gd), as the reward
 ## screen shows them: every item of Items.ITEMS has a model of its own, not empty, standing on
 ## y = 0, centred in x and z, about 10 to 24 voxels in its longest direction (an icon, not to
 ## scale); an unknown id gets the fallback bag.
 
-const ItemModels = preload("res://scripts/world/item_models.gd")
+const ItemModels = preload("res://scripts/world/things/item_models.gd")
 const Items = preload("res://scripts/player/items.gd")
 
 ## The longest side of a model, in voxels: what an icon may be.

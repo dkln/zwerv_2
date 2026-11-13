@@ -328,7 +328,7 @@ Uit `tools/muziek/derive.py`; alle bestanden in `assets/audio/muziek/`:
 | `supermarkt_muzak_1.ogg` | in een supermarkt (lus, zacht op de achtergrond: `MUZAK_SOFTER_DB` in `hud.gd`; elk filiaal één van de drie, `SUPERMARKET_MUZAK` in `interiors.gd`) | **bossa nova** (100 BPM): de akkoorden van het thema alleen (vier maten), het thema op de fluit, het thema op de vibrafoon, het refrein op de fluit; bossabas, vibrafoon-stoten, strijkers, zachte bossa-drums |
 | `supermarkt_muzak_2.ogg` | idem | **trage ballade** (76 BPM): de akkoorden van de breakdown (strijkers, gebroken piano), het refrein op de vibrafoon, het thema op de fluit; lange bas, heel zacht ritme |
 | `supermarkt_muzak_3.ogg` | idem | **lichte swing** (112 BPM, swing 0,6): het thema op de piano, het refrein op klokken, het thema op de vibrafoon, het refrein op de piano; wandelende bas, vibrafoon op 2 en 4 |
-| `jingle_derrek.ogg` | de omroep van DERREK (`scripts/world/supermarket_announcer.gd`, voor een aanbieding of mededeling) | de eerste helft van het motief fel op de PSG, landend op tel 3 op de hoge grondtoon boven het grondakkoord in majeur (maj7) op koper; kick, hi-hat, crash |
+| `jingle_derrek.ogg` | de omroep van DERREK (`scripts/world/interiors/supermarket_announcer.gd`, voor een aanbieding of mededeling) | de eerste helft van het motief fel op de PSG, landend op tel 3 op de hoge grondtoon boven het grondakkoord in majeur (maj7) op koper; kick, hi-hat, crash |
 | `jingle_alfred_steyhn.ogg` | de omroep van ALFRED STEYHN | de eerste helft van de opening van het refrein op klokken, landend op de hoge grondtoon boven strijkers (maj7), alleen een zachte crash |
 
 **De muzak** (de supermarkten) is easy listening uit het materiaal van de compositie: de

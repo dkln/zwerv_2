@@ -1,11 +1,11 @@
 extends RefCounted
 ## Unit tests of money and things (scripts/player/player_controller.gd, scripts/player/items.gd,
-## scripts/ui/hud.gd, scripts/world/loose_change.gd): amounts written as the Dutch write them,
+## scripts/ui/hud.gd, scripts/world/things/loose_change.gd): amounts written as the Dutch write them,
 ## buying (not without the money, not with full pockets), what is earned, and the items each
 ## character starts with.
 
 const Items = preload("res://scripts/player/items.gd")
-const LooseChange = preload("res://scripts/world/loose_change.gd")
+const LooseChange = preload("res://scripts/world/things/loose_change.gd")
 
 
 ## Amounts are written the Dutch way (euro sign, comma), also for a loose coin.

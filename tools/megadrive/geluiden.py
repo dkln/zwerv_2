@@ -41,7 +41,7 @@ so you can tell them apart):
     explosie.ogg               a burning wreck blowing up: a deep boom, a rush of debris, a rumble dying away
     deur_binnen.ogg            going into a shop or the station: the electronic door chime, "pling-plong"
     deur_buiten.ogg            going out again: the same chime
-The station (Den Haag Centraal, scripts/world/station.gd):
+The station (Den Haag Centraal, scripts/world/station/station.gd):
     omroep_gong.ogg            the chime before an announcement in the hall (three soft notes: middle, low, high)
     conducteur_fluit.ogg       the conductor's pea whistle before a train leaves
     trein_deuren_dicht.ogg     a Sprinter's doors about to close: a row of beeps, then the hiss

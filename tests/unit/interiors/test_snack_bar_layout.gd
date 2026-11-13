@@ -1,9 +1,9 @@
 extends RefCounted
-## Unit tests of the layouts of the snack bars (scripts/world/snack_bar_layout.gd) and of the
-## one interior building itself from them (scripts/world/interior.gd dress): every snack bar
+## Unit tests of the layouts of the snack bars (scripts/world/interiors/snack_bar_layout.gd) and of the
+## one interior building itself from them (scripts/world/interiors/interior.gd dress): every snack bar
 ## its own room, the same one every time for the same place.
 
-const SnackBarLayout = preload("res://scripts/world/snack_bar_layout.gd")
+const SnackBarLayout = preload("res://scripts/world/interiors/snack_bar_layout.gd")
 const SCENE := "res://scenes/binnen/snackbar.tscn"
 const LIBRARY := "res://assets/libraries/binnen.res"
 

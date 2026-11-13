@@ -1,5 +1,5 @@
 extends "res://tests/integration/support/town_test.gd"
-## Wheelchairs and mobility scooters (scripts/world/mobility_aid.gd, Pedestrian `mobility`):
+## Wheelchairs and mobility scooters (scripts/world/people/mobility_aid.gd, Pedestrian `mobility`):
 ## some townspeople ride them; they ride about (the wheels rolling through the wheel shader,
 ## the casters swivelling round their upright axle, the scooter's front wheel steering), the
 ## rider sits with the feet on the footrests and the hands on the rims or grips, the collider

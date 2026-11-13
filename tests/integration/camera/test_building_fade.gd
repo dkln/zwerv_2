@@ -1,5 +1,5 @@
 extends "res://tests/integration/support/town_test.gd"
-## See-through buildings (scripts/world/building_fade.gd): a building between the one followed
+## See-through buildings (scripts/world/town/building_fade.gd): a building between the one followed
 ## and the camera counts as in front (it may fade), one behind it does not (you see them standing
 ## in front of it, so it stays); and the view hole lies round the player and only cuts what
 ## is on the camera's side of them.

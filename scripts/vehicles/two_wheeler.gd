@@ -26,7 +26,7 @@ extends Vehicle
 ## the saddle again.
 
 const Wheelie = preload("res://scripts/vehicles/wheelie.gd")
-const KnockDown = preload("res://scripts/world/knock_down.gd")
+const KnockDown = preload("res://scripts/world/people/knock_down.gd")
 
 ## Going down: the roll (rad/s) round its length that tips the wreck over, the height of its
 ## centre of mass (share of its height), and the rider thrown off: their mass (kg), the share

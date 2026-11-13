@@ -1,6 +1,6 @@
 [gd_scene format=3]
 
-[ext_resource type="Script" path="res://scripts/world/city_hall.gd" id="1_487kp"]
+[ext_resource type="Script" path="res://scripts/world/interiors/city_hall.gd" id="1_487kp"]
 [ext_resource type="MeshLibrary" path="res://assets/libraries/binnen.res" id="2_u8mmr"]
 
 [node name="Stadhuis" type="Node3D" unique_id=1545029480]

@@ -1,5 +1,5 @@
 extends "res://tests/integration/support/town_test.gd"
-## The terraces (scripts/world/terraces.gd): on the café tables of the Plein and the Grote Markt
+## The terraces (scripts/world/people/terraces.gd): on the café tables of the Plein and the Grote Markt
 ## people sit (on a chair: by a table, facing it, at seat height), you can talk to them, and
 ## the terraces have fewer parasols than plain tables.
 ##   tests/run_integration_tests.sh terrace

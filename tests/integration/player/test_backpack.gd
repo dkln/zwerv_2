@@ -1,5 +1,5 @@
 extends "res://tests/integration/support/town_test.gd"
-## The rucksacks in the town (scripts/world/backpacks.gd, the node "Rugzakken" of
+## The rucksacks in the town (scripts/world/things/backpacks.gd, the node "Rugzakken" of
 ## scenes/stad.tscn): they lie on open ground once the player is placed, one near the start;
 ## the player starts without one and with only the pockets (Items.BASE_SLOTS); walking onto
 ## one puts it on (more room, worn on the figure: PlayerModel.backpack), it is gone from the

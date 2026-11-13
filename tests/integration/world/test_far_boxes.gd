@@ -1,5 +1,5 @@
 extends "res://tests/integration/support/town_test.gd"
-## Far out the people and vehicles are blocks (scripts/world/far_boxes.gd): zoomed out (the
+## Far out the people and vehicles are blocks (scripts/world/town/far_boxes.gd): zoomed out (the
 ## arrival, 300 m in view) their own models are hidden and there is one block for each; zoomed
 ## in again their models are back and the blocks gone. The town with its traffic.
 ##   tests/run_integration_tests.sh far_boxes

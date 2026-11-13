@@ -21,7 +21,7 @@ extends Node3D
 ## corners, and stops:
 ## - before a zebra crossing (weg/zebrapad) when someone waits to cross there, for
 ##   `zebra_wait` seconds, then drives on, and for as long as someone is on it
-##   (_someone_crossing: the pedestrians, scripts/world/pedestrians.gd);
+##   (_someone_crossing: the pedestrians, scripts/world/people/pedestrians.gd);
 ## - at traffic lights (Verkeerslichten, scripts/traffic/traffic_lights.gd) until its
 ##   stream is green, before the zebra or the crossing, whichever comes first (the lights
 ##   of the whole crossing, found from its middle; a zebra right before it goes with it).
@@ -99,7 +99,7 @@ extends Node3D
 ## Top speed of the vehicle itself (km/h); it never goes faster than the speed limit.
 @export var top_speed_kmh := 130.0
 ## Cells it looks ahead over a crossing for whether a heading leads on (see _leads_on).
-const Sight = preload("res://scripts/world/sight.gd")
+const Sight = preload("res://scripts/world/town/sight.gd")
 const CROSSING_LOOKAHEAD := 4
 ## Speed through a corner (m/s).
 @export var corner_speed := 4.5
@@ -470,7 +470,7 @@ const HEAVY_HORN_MASS := 3500.0
 
 ## Out of sight: a vehicle off the screen by more than UNSEEN_MARGIN (a share of the screen
 ## size round it), or further than UNSEEN_DISTANCE from a perspective camera (used to put a
-## lost one down unseen). How often it steps goes by Sight (scripts/world/sight.gd): out of
+## lost one down unseen). How often it steps goes by Sight (scripts/world/town/sight.gd): out of
 ## sight every other step, far from the view every fourth (with the time of all of them),
 ## and then it leaves its wheels and lamps alone; it looks every SIGHT_CHECK_STEPS physics
 ## steps where it is.
@@ -1538,7 +1538,7 @@ func _must_stop(from_cell: Vector3i, to_cell: Vector3i, distance: float) -> Stri
 
 
 ## True if someone is on or about to step onto zebra `cell` (a pedestrian has claimed it,
-## scripts/world/pedestrians.gd). Once it has waited there it drives on, unless someone is
+## scripts/world/people/pedestrians.gd). Once it has waited there it drives on, unless someone is
 ## on the zebra.
 func _someone_crossing(cell: Vector3i) -> bool:
 	return Pedestrians.someone_at_zebra(cell)

@@ -1,5 +1,5 @@
 extends "res://tests/integration/support/town_test.gd"
-## Walking into a snack bar (scripts/world/interiors.gd, scripts/world/interior.gd): the snack
+## Walking into a snack bar (scripts/world/interiors/interiors.gd, scripts/world/interiors/interior.gd): the snack
 ## bars are found with a door each (one by the deer camp in the Koekamp, close to Centraal),
 ## at a door "[E] Naar binnen" shows, going in swipes into the interior (dressed: its name,
 ## the one behind the counter, people at the tables), the camera follows at once and does not

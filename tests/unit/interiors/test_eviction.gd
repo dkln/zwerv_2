@@ -1,16 +1,16 @@
 extends RefCounted
-## Unit tests of being put out of an interior: the rules of a chase (scripts/world/pursuit.gd,
+## Unit tests of being put out of an interior: the rules of a chase (scripts/world/interiors/pursuit.gd,
 ## shared by the conductor of the station and whoever puts the player out), the eviction
-## itself (scripts/world/eviction.gd: who comes, after the player, caught only once at them,
+## itself (scripts/world/interiors/eviction.gd: who comes, after the player, caught only once at them,
 ## put back after), the walk of the base interior over its free floor round a counter
-## (scripts/world/interior.gd floor_path, walk_evictor, evictor_done) and Interiors making
-## the player unwelcome instead of throwing them out at once (scripts/world/interiors.gd).
+## (scripts/world/interiors/interior.gd floor_path, walk_evictor, evictor_done) and Interiors making
+## the player unwelcome instead of throwing them out at once (scripts/world/interiors/interiors.gd).
 ## The interior, the player and the HUD are stand-ins; the nodes go into the test's tree.
 
-const Pursuit = preload("res://scripts/world/pursuit.gd")
-const Eviction = preload("res://scripts/world/eviction.gd")
-const Interior = preload("res://scripts/world/interior.gd")
-const Interiors = preload("res://scripts/world/interiors.gd")
+const Pursuit = preload("res://scripts/world/interiors/pursuit.gd")
+const Eviction = preload("res://scripts/world/interiors/eviction.gd")
+const Interior = preload("res://scripts/world/interiors/interior.gd")
+const Interiors = preload("res://scripts/world/interiors/interiors.gd")
 
 
 ## An interior that says who comes and walks them straight at the player.

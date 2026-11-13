@@ -1,9 +1,9 @@
 extends RefCounted
-## Unit tests of the plans of the city hall (scripts/world/city_hall_layout.gd): five floors,
+## Unit tests of the plans of the city hall (scripts/world/interiors/city_hall_layout.gd): five floors,
 ## each its own layout, not all the same size, the lift in one place on all of them, and a
 ## reception by the door on the ground floor.
 
-const Layout = preload("res://scripts/world/city_hall_layout.gd")
+const Layout = preload("res://scripts/world/interiors/city_hall_layout.gd")
 
 
 ## The kinds of tile of a floor plan that make its layout (not the walls, not the lift).

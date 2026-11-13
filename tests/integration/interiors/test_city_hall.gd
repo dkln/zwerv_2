@@ -1,5 +1,5 @@
 extends "res://tests/integration/support/town_test.gd"
-## The city hall on the Spui (scripts/world/city_hall.gd, Interiors KINDS "stadhuis"): the doors
+## The city hall on the Spui (scripts/world/interiors/city_hall.gd, Interiors KINDS "stadhuis"): the doors
 ## in the ground floor of its two white slabs are ways in (out again where you came in); inside
 ## you are on floor 0 by the entrance (only that floor shown), the reception staffed; at the
 ## lift [E] Lift asks which floor; the ride is a scene of its own (the cabin, the camera from
@@ -10,7 +10,7 @@ extends "res://tests/integration/support/town_test.gd"
 ## down and out of the door. The plans themselves: tests/unit/interiors/test_city_hall_layout.gd.
 ##   tests/run_integration_tests.sh city_hall
 
-const Layout = preload("res://scripts/world/city_hall_layout.gd")
+const Layout = preload("res://scripts/world/interiors/city_hall_layout.gd")
 
 
 ## Into the city hall through its last door, at once; returns the hall (null if that failed).

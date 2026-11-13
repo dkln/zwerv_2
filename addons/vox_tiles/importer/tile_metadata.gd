@@ -40,7 +40,7 @@ extends RefCounted
 ##     flag) or leave it a separate mesh (false; left out = merged unless its shader cannot
 ##     be), and whether a detail fades with the building beside it (left out = yes). Written
 ##     by tools/voxgen/bake.py, collected per item name in the library's meta "bake"
-##     (library_builder.gd) and read by scripts/world/layer_baker.gd.
+##     (library_builder.gd) and read by scripts/world/town/layer_baker.gd.
 ##
 ##   An alias tile has only this file, no model: {"id": 121, "same_as": "weg/weg_vlak"}.
 ##   same_as: another tile of the same category (path below assets/tiles/<category>);

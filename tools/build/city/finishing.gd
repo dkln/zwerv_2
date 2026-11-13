@@ -8,11 +8,11 @@ extends "res://tools/build/city/rail.gd"
 # ------------------------------------------------------------------ east of the singel
 
 ## The Zebraklok on the square before Centraal Station (Jaap Karman, 1977): a node with
-## scripts/world/zebra_clock.gd, which builds the clock and sets its hands to the time.
+## scripts/world/town/zebra_clock.gd, which builds the clock and sets its hands to the time.
 func _zebra_clock(root: Node3D) -> void:
 	var clock := Node3D.new()
 	clock.name = "Zebraklok"
-	clock.set_script(load("res://scripts/world/zebra_clock.gd"))
+	clock.set_script(load("res://scripts/world/town/zebra_clock.gd"))
 	clock.position = Vector3(ZEBRA_CLOCK_AT.x, 0.0, ZEBRA_CLOCK_AT.y)
 	clock.rotation_degrees.y = ZEBRA_CLOCK_TURN
 	root.add_child(clock)
@@ -618,7 +618,7 @@ func _camera(root: Node3D) -> void:
 		rail_vehicle.owner = root
 	var tunnel_lights := Node.new()
 	tunnel_lights.name = "Tunnelverlichting"
-	tunnel_lights.set_script(load("res://scripts/world/tunnel_lights.gd"))
+	tunnel_lights.set_script(load("res://scripts/world/town/tunnel_lights.gd"))
 	root.add_child(tunnel_lights)
 	tunnel_lights.owner = root
 	var lens := CanvasLayer.new()
@@ -633,9 +633,9 @@ func _camera(root: Node3D) -> void:
 ## scripts/player/player_controller.gd: the chosen zwerver walking round), the camera that
 ## follows it (node Volgcamera), the rest of the traffic (node Verkeer,
 ## scripts/traffic/traffic.gd, spreads it at the start), the pedestrians (node Voetgangers,
-## scripts/world/pedestrians.gd) and
+## scripts/world/people/pedestrians.gd) and
 ## the see-through buildings while it follows (node Doorkijk,
-## scripts/world/building_fade.gd). The car finds its lanes in the ground tiles themselves
+## scripts/world/town/building_fade.gd). The car finds its lanes in the ground tiles themselves
 ## (their "traffic" metadata, scripts/traffic/road_network.gd).
 func _car(root: Node3D) -> void:
 	var car := Node3D.new()
@@ -662,28 +662,28 @@ func _car(root: Node3D) -> void:
 	root.add_child(player)
 	player.owner = root
 	var loose_change := Node3D.new()
-	loose_change.name = "Kleingeld"   # coins on the streets (scripts/world/loose_change.gd)
-	loose_change.set_script(load("res://scripts/world/loose_change.gd"))
+	loose_change.name = "Kleingeld"   # coins on the streets (scripts/world/things/loose_change.gd)
+	loose_change.set_script(load("res://scripts/world/things/loose_change.gd"))
 	root.add_child(loose_change)
 	loose_change.owner = root
 	var backpacks := Node3D.new()
-	backpacks.name = "Rugzakken"   # rucksacks to pick up, more room (scripts/world/backpacks.gd)
-	backpacks.set_script(load("res://scripts/world/backpacks.gd"))
+	backpacks.name = "Rugzakken"   # rucksacks to pick up, more room (scripts/world/things/backpacks.gd)
+	backpacks.set_script(load("res://scripts/world/things/backpacks.gd"))
 	root.add_child(backpacks)
 	backpacks.owner = root
 	var pedestrians := Node3D.new()
-	pedestrians.name = "Voetgangers"   # people walking the pavements (scripts/world/pedestrians.gd)
-	pedestrians.set_script(load("res://scripts/world/pedestrians.gd"))
+	pedestrians.name = "Voetgangers"   # people walking the pavements (scripts/world/people/pedestrians.gd)
+	pedestrians.set_script(load("res://scripts/world/people/pedestrians.gd"))
 	root.add_child(pedestrians)
 	pedestrians.owner = root
 	var terraces := Node3D.new()
-	terraces.name = "Terrassen"   # people sitting at the café tables (scripts/world/terraces.gd)
-	terraces.set_script(load("res://scripts/world/terraces.gd"))
+	terraces.name = "Terrassen"   # people sitting at the café tables (scripts/world/people/terraces.gd)
+	terraces.set_script(load("res://scripts/world/people/terraces.gd"))
 	root.add_child(terraces)
 	terraces.owner = root
 	var interiors := Node3D.new()
-	interiors.name = "Binnenruimtes"   # the snack bars you walk into (scripts/world/interiors.gd)
-	interiors.set_script(load("res://scripts/world/interiors.gd"))
+	interiors.name = "Binnenruimtes"   # the snack bars you walk into (scripts/world/interiors/interiors.gd)
+	interiors.set_script(load("res://scripts/world/interiors/interiors.gd"))
 	root.add_child(interiors)
 	interiors.owner = root
 	var story := Node.new()
@@ -698,7 +698,7 @@ func _car(root: Node3D) -> void:
 	follow.owner = root
 	var see_through := Node.new()
 	see_through.name = "Doorkijk"
-	see_through.set_script(load("res://scripts/world/building_fade.gd"))
+	see_through.set_script(load("res://scripts/world/town/building_fade.gd"))
 	root.add_child(see_through)
 	see_through.owner = root
 
@@ -791,7 +791,7 @@ const CASH_MACHINE_HALF_DEPTH := 0.27
 func _street_machines(root: Node3D) -> void:
 	var machines := Node3D.new()
 	machines.name = "Straatautomaten"
-	machines.set_script(load("res://scripts/world/street_machines.gd"))
+	machines.set_script(load("res://scripts/world/things/street_machines.gd"))
 	root.add_child(machines)
 	machines.owner = root
 	# the facades: supermarkets first (every other one), then shops, then squares
@@ -885,7 +885,7 @@ func _street_machines(root: Node3D) -> void:
 			ov_number += 1
 			break
 	print("OV machines at tram stops: ", ov_number - 1)
-	for finds: Array in [["Prullenbakken", "res://scripts/world/litter_bins.gd"], ["Pinpassen", "res://scripts/world/lost_bank_cards.gd"]]:
+	for finds: Array in [["Prullenbakken", "res://scripts/world/things/litter_bins.gd"], ["Pinpassen", "res://scripts/world/things/lost_bank_cards.gd"]]:
 		var node := Node3D.new()
 		node.name = finds[0]
 		node.set_script(load(finds[1]))

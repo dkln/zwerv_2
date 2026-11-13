@@ -1,5 +1,5 @@
 extends RefCounted
-## Unit tests of small rules of the people (scripts/world/pedestrian.gd) and the player
+## Unit tests of small rules of the people (scripts/world/people/pedestrian.gd) and the player
 ## (scripts/player/player_controller.gd): the look of a pedestrian's figure (its own, or one of
 ## its seed, as MobilityAid picks one for a rider), and the player's collider with room for the
 ## idle movement of the figure.

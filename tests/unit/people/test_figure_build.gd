@@ -1,6 +1,6 @@
 extends RefCounted
 ## Unit tests of building the voxel figures (scripts/player/player_model.gd VoxelFigure,
-## scripts/world/townsfolk_figure.gd): only the faces against the air are drawn; faces side
+## scripts/world/people/townsfolk_figure.gd): only the faces against the air are drawn; faces side
 ## by side of one colour, material and even shade become one rectangle (merge_faces) that
 ## looks just as the separate faces did; every corner carries its outward direction for the
 ## outline and the outline's shell stays closed where merged faces meet in a T; and a

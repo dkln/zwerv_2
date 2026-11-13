@@ -719,7 +719,7 @@ func quest_targets() -> Array:
 ## on the minimap, its chip and its beam in the town; how close counts as there (metres).
 const WAYPOINT_COLOUR := Color("#FF5ACD")
 const WAYPOINT_ARRIVED := 8.0
-const WaypointBeacon = preload("res://scripts/world/waypoint_beacon.gd")
+const WaypointBeacon = preload("res://scripts/world/town/waypoint_beacon.gd")
 
 
 ## A marker on `at` (world x, z), named `place_name`: on the minimap (an arrow on its edge

@@ -1,6 +1,6 @@
 extends SubViewportContainer
 ## An item in a little 3D picture of its own (the reward screen, scripts/ui/reward_screen.gd):
-## its voxel model (ItemModels, scripts/world/item_models.gd) turning slowly round, a little
+## its voxel model (ItemModels, scripts/world/things/item_models.gd) turning slowly round, a little
 ## tilted towards you, bobbing; its own world, a transparent background and the plain light
 ## of the portraits (widgets/player_portrait.gd: a warm key from the front left and above, a
 ## soft fill, a white rim from behind, a low grey ambient). The camera frames the whole
@@ -16,7 +16,7 @@ const TILT_DEGREES := 18.0
 const ROOM := 1.35
 const BOB_SHARE := 0.04
 const BOB_SPEED := 2.0
-const ItemModels = preload("res://scripts/world/item_models.gd")
+const ItemModels = preload("res://scripts/world/things/item_models.gd")
 
 var _viewport: SubViewport
 var _camera: Camera3D

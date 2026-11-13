@@ -1,12 +1,12 @@
 extends "res://tests/integration/support/town_test.gd"
-## The Zebraklok (scripts/world/zebra_clock.gd): a black pole with the head on it (its size),
+## The Zebraklok (scripts/world/town/zebra_clock.gd): a black pole with the head on it (its size),
 ## a flat square stood on its point (45 degrees), with straight black and white stripes and a white dial
 ## round the hands on both faces, its white really white (no grey shading), the hands
 ## turning clockwise as seen from in front of a face, pointing at the time, and its collider
 ## round the pole, the foot and the head. Without the town: only the clock.
 ##   tests/run_integration_tests.sh zebra_clock
 
-const ZebraClock = preload("res://scripts/world/zebra_clock.gd")
+const ZebraClock = preload("res://scripts/world/town/zebra_clock.gd")
 
 
 static func world_options() -> Dictionary:

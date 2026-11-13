@@ -147,23 +147,23 @@ Verhaal, missies en kleingeld
   "JAN BLAMMAGE", en een grote puntzak friet `props/terras/friet_puntzak` op de stoep) op het
   kaartje en de kaart. Elke missie en elke stap heeft eigen XP (`add_xp`, level omhoog met
   deuntje) en kan items geven (`geeft`); in het questlog kies je met Enter welke missie je volgt.
-- Wie is wie (`scripts/world/person.gd`, de basis van iedereen in de stad; `actor_kind()` zegt
+- Wie is wie (`scripts/world/people/person.gd`, de basis van iedereen in de stad; `actor_kind()` zegt
   welke soort): `Pedestrian` (straat: loopt naar een plek een paar blokken verder via een route
   over stoepen, zebra's en trappen, `Pedestrians.route_to_somewhere`; steekt over, kan aangereden
   worden), `InteriorPerson` (binnen: heeft een vaste plek; wie verkoopt is handelaar; personeel
   waarschuwt en zet je eruit) en `StationPerson` (station: loopt routes stap voor stap, de
   conducteur achtervolgt). Gedeeld: rol, figuur, stem, aanspreekbaar, `walk_cycle` (lopen, en op
   snelheid de ren-animatie van de speler: `TownsfolkFigure.walk(fase, hoeveel, ren)`).
-- Waar je [E] op doet (`scripts/world/interactable.gd`, groep `deuren`): elk ding heeft een `kind`:
+- Waar je [E] op doet (`scripts/world/things/interactable.gd`, groep `deuren`): elk ding heeft een `kind`:
   `deur` (ingang/uitgang), `plek` (karretje, schap, kassa, lift), `automaat` (pin, statiegeld, OV),
   `poortje` (OV-poortje, paal) en `oppakken` (blikje). Mensen spreek je aan (groep `aanspreekbaar`).
-- Naar binnen en naar buiten (`scripts/world/door_passage.gd`): eerst een korte scène van dichtbij
+- Naar binnen en naar buiten (`scripts/world/interiors/door_passage.gd`): eerst een korte scène van dichtbij
   met een stand-in van de speler en een eigen camera; de deur van de plek beweegt (`door_kind` in
   `Interiors.KINDS`: `schuif` supermarkt en station, `klap` snackbar, `draai` stadhuis).
-- Snackbars zijn elk een andere kamer (`scripts/world/snack_bar_layout.gd`, uit de seed van de
+- Snackbars zijn elk een andere kamer (`scripts/world/interiors/snack_bar_layout.gd`, uit de seed van de
   zaak: 8-16 m breed, 8 of 12 m diep, deur, toonbank en tafels op een eigen plek); de ene scène
   `scenes/binnen/snackbar.tscn` bouwt zich bij binnenkomst op (`Interior.dress`, `_lay_out`).
-- De fijne laag van de samengevoegde stad wordt gestreamd (`scripts/world/region_stream.gd`): de
+- De fijne laag van de samengevoegde stad wordt gestreamd (`scripts/world/town/region_stream.gd`): de
   bake bewaart hem per regio van 32 m met gedeelde materialen (`user://merged/<sleutel>/`), het
   spel laadt alleen de regio's binnen 80 m van camera en speler (op een thread) en laat ze los
   voorbij 130 m. De grove laag laadt na de start op de achtergrond; de afdaling begint daarom op
@@ -178,7 +178,7 @@ Verhaal, missies en kleingeld
   taak of missie (na de klaar-bladzijden) of van iemand op straat (een `beloning` in een gesprek,
   met XP, standaard 25) komt in een eigen schermpje, niet meer als zwevend tekstje: het item groot
   in beeld, als voxelmodel langzaam draaiend (`scripts/ui/widgets/item_view.gd`, de modellen in
-  code in `scripts/world/item_models.gd`), stralen erachter zoals bij een nieuwe missie
+  code in `scripts/world/things/item_models.gd`), stralen erachter zoals bij een nieuwe missie
   (`scripts/ui/widgets/light_rays.gd`), de naam in de kleur van de zeldzaamheid, het tekstje van
   het item en de XP; een eigen deuntje (`deuntje_beloning`). Wegdrukken met Enter (meer items:
   één scherm per item). Het wacht tot er niets anders openstaat. Test: `tests/unit/ui/test_rewards.gd`.
@@ -191,8 +191,8 @@ Verhaal, missies en kleingeld
   één). Winkels en de snackbar hebben meerdere tips en afscheidszinnen. Ze
   brabbelen in hun stem en stemming (`scripts/audio/babble.gd`, `brabbel_<stem>_<stemming>_<n>`
   uit `tools/megadrive/stemmen.py`; een vraag gaat omhoog) en hun lichaam beweegt mee
-  (`scripts/world/emote.gd`: boos schudt, blij huppelt, verdrietig hangt voorover).
-- Kleingeld (node `Kleingeld`, `scripts/world/loose_change.gd`): 20 munten (10, 20, 50 cent,
+  (`scripts/world/people/emote.gd`: boos schudt, blij huppelt, verdrietig hangt voorover).
+- Kleingeld (node `Kleingeld`, `scripts/world/things/loose_change.gd`): 20 munten (10, 20, 50 cent,
   soms een euro) op pleinen en stoepen tot 110 m van de start, drie dichtbij. Eroverheen lopen
   raapt ze op (`add_money`, geluid "munt", het bedrag stijgt op).
 - Test: `tests/integration/ui/test_story.gd`; portemonnee en geldmissie (snel, zonder de stad):
@@ -204,12 +204,12 @@ Automaten, blikjes en pinpassen
   blikjes in prullenbakken, pinpassen) krijgt `QuestOutline.add` (`scripts/effects/quest_outline.gd`):
   een pulserende rand (`quest_outline.gdshader`) en als volgende pass een zachte gloed eromheen
   (`quest_outline_glow.gdshader`, `GLOW_GROW` keer zo breed, opgeteld bij wat erachter ligt).
-- Blikjes (`Prullenbakken`, `scripts/world/litter_bins.gd`): van de prullenbakken in de laag
+- Blikjes (`Prullenbakken`, `scripts/world/things/litter_bins.gd`): van de prullenbakken in de laag
   Props (`straat/prullenbak_paal`, `_rond`) heeft bij de start een deel (`can_share` 0,3, hooguit
   `most_cans` 60) een leeg blikje bovenin (`MachineModels.can_mesh`, gloeiend). Erbij: `[E] Blikje
   pakken` (item `blikje`, via `add_item`). Elke `refill_seconds` (150 s) krijgt een lege bak
   er weer een.
-- Statiegeld (`scripts/world/deposit_return.gd`): `blikje` en `statiegeld` (flessen) € 0,15 per
+- Statiegeld (`scripts/world/things/deposit_return.gd`): `blikje` en `statiegeld` (flessen) € 0,15 per
   stuk, in te leveren bij de statiegeldautomaat in elke supermarkt.
 - Pinpassen (`scripts/player/bank_cards.gd`, item `pinpas`, een sleutelvoorwerp): elke gevonden
   pas is een eigen rekening, bewaard op de speler (metadata `pinpassen`: `pin`, `saldo` tussen
@@ -219,7 +219,7 @@ Automaten, blikjes en pinpassen
   In de inventaris staat het raadsel bij de pas (over het vakje gaan selecteert het en toont de
   tekst rechts, ook als tooltip). Geven: `BankCards.give_found_bank_card(speler)` of
   `PlayerController.give_found_bank_card() -> bool` (false bij volle zakken).
-  Op straat (`Pinpassen`, `scripts/world/lost_bank_cards.gd`): 5 passen op stoepen en pleinen,
+  Op straat (`Pinpassen`, `scripts/world/things/lost_bank_cards.gd`): 5 passen op stoepen en pleinen,
   één binnen 60 m van de start; eroverheen lopen raapt ze op.
 - De automaten zijn elk een eigen scène (`scripts/ui/machines/`): de swipe, het spel staat stil,
   het hele beeld is de voorkant van de automaat tegen een bakstenen muur in de pixelstijl van de
@@ -233,7 +233,7 @@ Automaten, blikjes en pinpassen
     inleveren`). [1] blikje / [2] fles erin, één voor één (het schuift het gat in, rammelt, de
     band), [Enter] de bon (geprint, met wat erin ging en het totaal), nog eens [Enter] pakt hem:
     het bedrag gaat meteen in je portemonnee. Weggaan met iets erin print en betaalt ook.
-  - OV-chipkaartautomaat (`ov_machine_screen.gd`, `scripts/world/ov_card.gd`): in de hal van
+  - OV-chipkaartautomaat (`ov_machine_screen.gd`, `scripts/world/station/ov_card.gd`): in de hal van
     Centraal (`Automaat_<n>`) en bij 8 tramhaltes (naast een abri, het model van
     `binnen/station/kaartautomaat`). Zonder kaart: kaart kopen € 7,50 (met € 2,50 saldo); met kaart:
     saldo, opladen € 5 / € 10 / € 20; altijd: los kaartje € 3,50. Inchecken (poortjes, OV-paaltjes)
@@ -243,14 +243,14 @@ Automaten, blikjes en pinpassen
     het toetsenbord (0-9, Backspace = CORR, Enter = OK), drie keer fout en de pas wordt ingeslikt;
     dan een bedrag (€ 5, 10, 20, 50; niet meer dan het saldo), het geld komt eruit (de biljetten
     in het vak links), het nieuwe saldo staat erbij. Esc: de pas terug.
-- Straatautomaten (`Straatautomaten`, `scripts/world/street_machines.gd`): de stadsbouwer
+- Straatautomaten (`Straatautomaten`, `scripts/world/things/street_machines.gd`): de stadsbouwer
   (`_street_machines` in `tools/build/city/finishing.gd`) zet markers `Geldautomaat_<n>` (34)
   en `OVAutomaat_<n>` (8); hun +z is de kant waar ze naar kijken. Geldautomaten staan plat tegen
   een gevel op de stoep ernaast, 1,3 m naast het midden (niet voor de deur): eerst bij elke tweede
   supermarktingang (`_bg_<keten>_ingang`), dan bij winkelpuien (`_bg_*winkel*`), dan aan pleinen;
   minstens 44 m uit elkaar, nergens een prop binnen 1 m. In het spel staat elk op de grond (straal
   omlaag), met een botsvorm zo groot als het model en `[E] Pinnen` ervoor.
-- De modellen (`scripts/world/machine_models.gd`) zijn in code uit voxels gemaakt
+- De modellen (`scripts/world/things/machine_models.gd`) zijn in code uit voxels gemaakt
   (`PlayerModel.VoxelFigure`, voxels van 6,25 cm; blikje en pas 5 cm), dus zonder tiles: geldautomaat
   0,75 x 1,75 x 0,5 m, statiegeldautomaat 0,875 x 1,875 x 0,625 m; `MachineModels.instance` geeft
   er een StaticBody3D (laag 1) met een doos van precies die maat bij.
@@ -316,7 +316,7 @@ niet het verkeer van de hele stad:
   `brommer`, `vracht`, `bus`, `landbouw`, `klein`, de derde kolom van `MIX`) getrokken met de
   gewichten van het uur en van de wijk waar het verschijnt, dan een van die soort die de
   rijstrook toestaat. Een fietspad komt zo vaak aan de beurt als er fietsers en brommers zijn.
-  Alles in `data/drukte.json` (`scripts/world/crowd.gd`, zie hieronder).
+  Alles in `data/drukte.json` (`scripts/world/people/crowd.gd`, zie hieronder).
 - Per halve seconde (`tick_seconds`) hooguit `changes_per_tick` (4) wissels, na een sprong van de
   speler (een warp, een geladen spel) alles in één keer. In een binnenruimte staat het stil.
   Zonder camera (de tools) is niets buiten beeld, dus gaat er niets weg
@@ -370,7 +370,7 @@ niet het verkeer van de hele stad:
 | `tractor.gd` (trekker, 25 km/h) | `trekker`, `_rood` + `tractor_wiel` (achter) en `auto_wiel` (voor) | 3,75 m | 4500 kg | 2250 Nm |
 
 De tweewielers zijn allemaal een `TwoWheeler` (`scripts/vehicles/two_wheeler.gd`) met een
-berijder: een stadsbewoner (`scripts/world/townsfolk_figure.gd`, in code gebouwd uit voxels van
+berijder: een stadsbewoner (`scripts/world/people/townsfolk_figure.gd`, in code gebouwd uit voxels van
 5 cm zoals de spelerfiguren, 1,75 m), zijn uiterlijk uit de `route_seed` (`rider_kind`: bloot
 hoofd of pet op de fiets, open helm op brommer en scooter, integraalhelm en zwart leer op de
 motor). Heupen op het zadel, handen aan de handvatten (het lijf leunt zo ver voorover als de
@@ -400,7 +400,7 @@ staal `metal` (`rvs`, `metaal*`), banden en zitjes mat (`opaque`), lampen en ref
 motor stuurt hooguit 15 graden, van de fietsen 25; fietsen hebben geen remlicht en
 richtingaanwijzers.
 
-Voetgangers (node `Voetgangers`, `scripts/world/pedestrians.gd` en `pedestrian.gd`):
+Voetgangers (node `Voetgangers`, `scripts/world/people/pedestrians.gd` en `pedestrian.gd`):
 stadsbewoners lopen over de stoep- en pleintiles (`stoep/`, `plein/`, zonder gebouw erop) in de
 buurt van de speler, van cel naar cel, nu en dan even stilstaand; een plek waar ze niet in een
 rechte lijn kunnen komen zonder tegen iets van de stad te lopen (lantaarnpaal, bank, boom)
@@ -429,7 +429,7 @@ route daarna over. Test: `tests/integration/interiors/test_station_flow.gd`. Wie
 scholieren na school, winkelend publiek, ouderen, toeristen (rolkoffer, rugzak) en wandelaars
 overdag, werklui in geel in de Binckhorst, uitgaanspubliek 's avonds en nachtbrakers 's nachts;
 gekleed als die soort (`Crowd.look_for`), op het tempo van die soort, met wat die soort draagt
-(`CarriedItems`, `scripts/world/carried_items.gd`, als dat script er is). Een vast aandeel van
+(`CarriedItems`, `scripts/world/people/carried_items.gd`, als dat script er is). Een vast aandeel van
 elke soort zit in een rolstoel of op een scootmobiel (`Pedestrians._aid_for`: geen toeval, het
 aandeel komt precies uit), vooral ouderen. Wie doodgereden wordt, begint opnieuw als iemand
 anders (`Pedestrians.start_again`). De lijst `TownsfolkFigure._parts` houdt hooguit `PARTS_KEPT`
@@ -448,7 +448,7 @@ hun pad en waarschuwen met hun toeter: `auto_toeter`, `bus_toeter` (bus en vrach
 3500 kg), `brommer_toeter`, `fiets_bel` (fiets, fatbike), `tram_bel`, `trein_hoorn`,
 `brandweer_hoorn` (`horn_sound` of `_horn()`), als iemand binnen 2,5 s op hun pad is of na 3 s
 nog in de weg staat, hooguit elke 5 s. Controle: `tests/integration/people/test_people_traffic.gd`. Een deel
-zit in een rolstoel of op een scootmobiel (zie hierboven; `Pedestrian.mobility`, `scripts/world/mobility_aid.gd`, in code
+zit in een rolstoel of op een scootmobiel (zie hierboven; `Pedestrian.mobility`, `scripts/world/people/mobility_aid.gd`, in code
 gebouwd in voxels, de berijder een zittende stadsbewoner): ze rijden de kant op waar ze naar kijken en
 draaien hooguit `TURN_RATE` per seconde; de wielen zijn de wielmodellen van de voertuigen
 (`fiets_wiel`, `klein_wiel`, verkleind) en draaien via de wielshader (`voxel_wheel.gdshader`,
@@ -458,7 +458,7 @@ scootmobiel mag ook over de fietspaden (`Pedestrians.may_use`: cellen waar fiets
 auto's niet) en toetert (`scootmobiel_toeter`) als iemand voor hem blijft staan. De botsvorm
 omvat stoel en berijder. Controle: `tests/integration/people/test_mobility.gd`.
 
-Drukte (`data/drukte.json`, gelezen door `scripts/world/crowd.gd`, uitgelegd in
+Drukte (`data/drukte.json`, gelezen door `scripts/world/people/crowd.gd`, uitgelegd in
 `data/LEESMIJ.md`): één tabel voor wanneer en waar het druk is en met wie.
 - `uren`: momenten van de dag (`uur`) met het aandeel voetgangers en verkeer (`voetgangers`,
   `verkeer`; 1 = `count` en `vehicle_count`), de gewichten van de soorten mensen (`mensen`) en
@@ -503,7 +503,7 @@ karakterscherm (`PlayerModel.simple`, `VoxelFigure.simplify`): bijna gelijke kle
 één kleur en losse spikkels (knopen, steken, vlekjes) nemen de kleur eromheen aan; de vorm en
 de ogen blijven. Controle: `tests/unit/people/test_simple_figure.gd`. De bio op het
 karakterscherm typt zich uit met de blokcursor, zoals het verhaal (`widgets/typewriter.gd`).
-Buiten beeld kosten ze minder CPU-tijd (`scripts/world/sight.gd`): wat in beeld is (met 30 %
+Buiten beeld kosten ze minder CPU-tijd (`scripts/world/town/sight.gd`): wat in beeld is (met 30 %
 marge rond het scherm) doet elke physics-stap, wat erbuiten is om de 2 stappen en wat ook nog
 verder dan 150 m van het kijkpunt (of 300 m van de camera) is om de 4, telkens met de tijd van
 alle overgeslagen stappen; dan draaien ook wielen, trappers en ledematen niet mee. Voertuigen
@@ -675,7 +675,7 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
   je zien, dan kijkt de camera steiler omlaag (`steep_pitch`, -62 graden) en weer terug zodra
   een gewone richting vrij is. Draaien en kantelen glijden langzaam (`turn_glide_time`, 4 s).
   Test: `tests/integration/camera/test_view_table.gd`.
-- Doorkijk (node `Doorkijk`, `scripts/world/building_fade.gd`): zolang de camera de speler
+- Doorkijk (node `Doorkijk`, `scripts/world/town/building_fade.gd`): zolang de camera de speler
   volgt (en de camera het wil, zie de zichttabel), krijgt elk gebouw (aaneengesloten cellen van de laag Gebouwen) dat tussen de
   speler en de camera staat een rond kijkgat (`hole_radius`, 3,5 m): een buis van de speler
   naar de camera, met een geditherde rand; alleen wat aan de camerakant van de speler ligt
@@ -741,7 +741,7 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
   (busbaan, trambaan). De generator schrijft deze blokken (`tools/voxgen/traffic.py`,
   één regel per groep tiles; `generate.py --meta` werkt ze bij, ook voor aliassen). De
   bibliotheekbouwer zet ze per item op de MeshLibrary (meta `traffic`).
-- Bovenleiding (node `Bovenleiding`, `scripts/world/overhead_lines.gd`): een rijdraad boven
+- Bovenleiding (node `Bovenleiding`, `scripts/world/town/overhead_lines.gd`): een rijdraad boven
   elk tram- en treinspoor, gemaakt uit de `rails` van de grondtiles, dus ook op een kaart die
   je met de hand bouwt. Hij volgt het spoor door bochten, over kruisingen en wissels en
   hellingen op en af. Vanaf elke bovenleidingmast in de props (`ov/tram_bovenleiding_mast`,
@@ -1000,7 +1000,7 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
   `sirene_yelp_loop.ogg`), voorbijrazen met sirene (`*_voorbij.ogg`), `brandweer_hoorn.ogg` en
   de politiehelikopter (`helikopter_loop.ogg`, `helikopter_voorbij.ogg`); zie `docs/GELUIDEN.md`.
   Ver uitgezoomd (vanaf 95 m in beeld, terug onder 85 m) zijn voetgangers en voertuigen blokjes
-  (`scripts/world/far_boxes.gd`, node VerreBlokjes): hun eigen modellen verborgen, per soort één
+  (`scripts/world/town/far_boxes.gd`, node VerreBlokjes): hun eigen modellen verborgen, per soort één
   MultiMesh met een blok in hun maat en kleur. Test: `tests/integration/world/test_far_boxes.gd`.
   Achtergrondgeluid (`scripts/audio/ambience.gd`, vanuit `interiors.gd`): zacht het geroezemoes van
   de straat, de stationshal of een winkel, uit vrije opnames (`assets/audio/omgeving/`, bronnen in
@@ -1053,19 +1053,19 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
 
 Binnenruimtes (snackbars, Den Haag Centraal, supermarkten, stadhuis)
 --------------------------------------------------------------------
-Gebouwen waar je in kunt lopen staan in `scripts/world/interiors.gd` (node `Binnenruimtes`),
+Gebouwen waar je in kunt lopen staan in `scripts/world/interiors/interiors.gd` (node `Binnenruimtes`),
 één regel per soort in `KINDS`. Voor elke ingang op de kaart staat een deinende oranje pijl
 (groot, op en neer, met de nep-3D-schaduw van de teksten) en "[E] Naar binnen". Naar binnen
 en buiten gaan klinkt als het elektronische deurgeluid van een winkel ("pling-plong",
 `deur_binnen`/`deur_buiten` in `tools/megadrive/geluiden.py`). De binnenruimte ligt ver
 buiten de kaart (`at`), staat stil en is onzichtbaar zolang je buiten bent.
 
-- Snackbars (`scenes/binnen/snackbar.tscn`, `scripts/world/interior.gd`): elke gevel
+- Snackbars (`scenes/binnen/snackbar.tscn`, `scripts/world/interiors/interior.gd`): elke gevel
   `_bg_snackbar` is een ingang; naam, kleurvariant en gasten per snackbar.
-- Den Haag Centraal (`scenes/binnen/centraal.tscn`, `scripts/world/station.gd`): de drie
+- Den Haag Centraal (`scenes/binnen/centraal.tscn`, `scripts/world/station/station.gd`): de drie
   deuren van de stationshal aan het Stationsplein (west naar oost deur 1..3) komen uit bij
   Deur1..3 binnen; naar buiten ga je bij de deur waar je uitloopt. De indeling staat in
-  `scripts/world/station_layout.gd` (één bron voor bouwer en spel): een kopstation met 12
+  `scripts/world/station/station_layout.gd` (één bron voor bouwer en spel): een kopstation met 12
   sporen en 7 perrons (`grond/spoor/perron`, `trein_recht`, `trein_stootblok` van de stad,
   `PLATFORM_DROP` omlaag zodat de perrons gelijk liggen met de hal), een hal van 96 x 32 m met
   13 winkels (o.a. Smikkels met automatiekwand, Broodje Seinstoring, Duwus Bertus; een
@@ -1088,9 +1088,9 @@ buiten de kaart (`at`), staat stil en is onzichtbaar zolang je buiten bent.
     uit (naar de hal), glazen klepjes die echt dichtzitten (botsvorm) en open zwaaien de kant
     op die je gaat. Groen lampje aan de kant waar je in mag, rood aan de andere. Zonder
     OV-chipkaart (item `ov_chipkaart`, € 7,50 uit een automaat) met € 1 saldo, of een los kaartje,
-    zoemt de lezer nee (`OvCard`, `scripts/world/ov_card.gd`). Inchecken
+    zoemt de lezer nee (`OvCard`, `scripts/world/station/ov_card.gd`). Inchecken
     is één piep, uitchecken twee. Bij de OV-paaltjes check je met [E] in of uit.
-  - Mensen (`station_person.gd`, met tassen uit `scripts/world/carried_items.gd`):
+  - Mensen (`station_person.gd`, met tassen uit `scripts/world/people/carried_items.gd`):
     reizigers, zakenmensen met aktetas, toeristen met rolkoffer en rugzak, scholieren met
     rugzak; hoeveel en wie hangt af van het uur (`BUSY_BY_HOUR`, `WHO_BY_HOUR`). Ze lopen om
     winkels en obstakels heen, wachten bij een poortje tot het open is, checken in, wachten
@@ -1106,9 +1106,9 @@ buiten de kaart (`at`), staat stil en is onzichtbaar zolang je buiten bent.
     zwartrijden niet kunnen betalen (station). Eerst waarschuwt iemand van de plek je
     (`waarschuwing` in `uitzetten.json`, `Interiors._warn`: de dichtstbijzijnde van die rol roept
     het, boven je "Waarschuwing 1 van 2"; winkeldiefstal: eerst "eerst afrekenen"). Alleen iemand van de plek kan je eruit zetten
-    (gedeeld voor elke binnenruimte: `scripts/world/eviction.gd`): die roept wat er mis is
+    (gedeeld voor elke binnenruimte: `scripts/world/interiors/eviction.gd`): die roept wat er mis is
     (`roep`) en komt op je af, met dezelfde regels als de conducteur bij zwartrijden
-    (`scripts/world/pursuit.gd`: pas binnen 1 m gepakt). Wie er komt en hoe die loopt zegt de
+    (`scripts/world/interiors/pursuit.gd`: pas binnen 1 m gepakt). Wie er komt en hoe die loopt zegt de
     binnenruimte (`evictor_for`, `walk_evictor`, `evictor_done` in `interior.gd`: de dichtstbijzijnde
     van die rol, over de vrije vloer om toonbank en tafels heen; het station een handhaver langs
     zijn eigen routes, de supermarkt een kassamedewerker die opstaat, het stadhuis de beveiliger,
@@ -1121,10 +1121,10 @@ buiten de kaart (`at`), staat stil en is onzichtbaar zolang je buiten bent.
     een vertrekkende trein, instappen, niemand vast, naar buiten bij deur 3).
 
 - Supermarkten, DERREK en ALFRED STEYHN (`scenes/binnen/supermarkt.tscn`,
-  `scripts/world/supermarket.gd`; KINDS `derrek` en `alfred_steyhn`): elke gevel
+  `scripts/world/interiors/supermarket.gd`; KINDS `derrek` en `alfred_steyhn`): elke gevel
   `_bg_<keten>_ingang` is een ingang, met de breedte van de winkelpui (`width`, in cellen). Er is
   één scène voor beide; elk filiaal deelt zich bij binnenkomst opnieuw in
-  (`scripts/world/supermarket_layout.gd`, uit keten, seed en breedte), dus geen twee filialen
+  (`scripts/world/interiors/supermarket_layout.gd`, uit keten, seed en breedte), dus geen twee filialen
   zijn gelijk: zo breed als de pui (16-28 m), 16, 20 of 24 m diep, de ingang (DERREK ergens in de
   pui, ALFRED STEYHN naast een hoek), de kassa's aan de brede kant ervan, karretjes, mandjes en
   wat je het eerst ziet aan de andere (DERREK actiepallets met LAAGSTE PRIJS, ALFRED STEYHN
@@ -1147,10 +1147,10 @@ buiten de kaart (`at`), staat stil en is onzichtbaar zolang je buiten bent.
     een rooster van de vrije vloer (`AStarGrid2D`) om de schappen heen en wachten als je in de
     weg staat. Caissières zitten aan de kassa, medewerkers (`personeel.json`) vullen de schappen.
   - Muziek: zachte muzak op de achtergrond, elk filiaal één van de drie (`supermarkt_muzak_1..3.ogg`,
-    gekozen op de seed van het filiaal: `SUPERMARKET_MUZAK` in `scripts/world/interiors.gd`), via
+    gekozen op de seed van het filiaal: `SUPERMARKET_MUZAK` in `scripts/world/interiors/interiors.gd`), via
     `set_indoor_music` in plaats van de stadslus en nog `MUZAK_SOFTER_DB` (6 dB) zachter dan
     andere binnenmuziek (`scripts/ui/hud.gd`), ongeveer zo hard als het winkelgeluid.
-  - Omroepen, net als op het station (`scripts/world/supermarket_announcer.gd`, teksten in
+  - Omroepen, net als op het station (`scripts/world/interiors/supermarket_announcer.gd`, teksten in
     `data/gesprekken/omroep_supermarkt.json`): af en toe gaat de muziek omlaag
     (`GameHud.duck_music`), klinkt de jingle van de keten (`jingle_derrek.ogg`,
     `jingle_alfred_steyhn.ogg`) en daarna de omroepstem (brabbel over de bus `Omroep` van
@@ -1161,8 +1161,8 @@ buiten de kaart (`at`), staat stil en is onzichtbaar zolang je buiten bent.
     mensen lopen eromheen; de indelingstest controleert dat hij nergens in staat.
   - Tests: `tests/unit/interiors/test_supermarket_layout.gd` (snel, zonder de stad: 180 filialen,
     alles bereikbaar, niets in elkaar) en `tests/integration/interiors/test_supermarket.gd` (in de stad).
-- Het stadhuis aan het Spui (`scenes/binnen/stadhuis.tscn`, `scripts/world/city_hall.gd`,
-  indeling `scripts/world/city_hall_layout.gd`, tiles `binnen/stadhuis/` in
+- Het stadhuis aan het Spui (`scenes/binnen/stadhuis.tscn`, `scripts/world/interiors/city_hall.gd`,
+  indeling `scripts/world/interiors/city_hall_layout.gd`, tiles `binnen/stadhuis/` in
   `tools/voxgen/tiles/interior_city_hall.py`): de deuren in de begane grond van de twee witte
   schijven zijn de ingangen (naar buiten bij de deur waar je binnenkwam). Vijf etages, elk met
   een eigen indeling en maat, naast elkaar in de scène (`Etage0..4`, alleen de etage waar je
@@ -1175,8 +1175,8 @@ buiten de kaart (`at`), staat stil en is onzichtbaar zolang je buiten bent.
   en je stapt uit op de andere etage (`lift_ding`, de etage bovenin beeld). De mensen praten als
   zichzelf (`personeel.json`: receptioniste, beveiliger, ambtenaar, raadslid, burgemeester).
   Test: `tests/integration/interiors/test_city_hall.gd`.
-- Voor allebei: `InteriorSpot` (`scripts/world/interior_spot.gd`, een plek met `[E] <tekst>`) en
-  `SignBoard` (`scripts/world/sign_board.gd`, een bord met tekst). Een binnenruimte kan
+- Voor allebei: `InteriorSpot` (`scripts/world/interiors/interior_spot.gd`, een plek met `[E] <tekst>`) en
+  `SignBoard` (`scripts/world/things/sign_board.gd`, een bord met tekst). Een binnenruimte kan
   `dress_way_in(ingang)`, `leave_offence()` en `plan_root()` hebben (zie `interiors.gd`).
 
 Binnenruimtes maken (dezelfde opzet als de snackbar):
@@ -1191,8 +1191,8 @@ Binnenruimtes maken (dezelfde opzet als de snackbar):
    `binnen`, eventueel `Props` en grondtiles, markers (`Deur` of `Deur1..n`, plekken voor
    mensen), lampen. Bouwen: `tools/godot.sh --headless --script tools/build/build_interiors.gd -- <naam>`
    (een bestaande scène blijft staan; `-- opnieuw <naam>` bouwt hem over).
-3. Een script: `scripts/world/interior.gd` als basis; met meer leven een script dat het
-   uitbreidt (`extends "res://scripts/world/interior.gd"`) en `dress()`, `doors()`,
+3. Een script: `scripts/world/interiors/interior.gd` als basis; met meer leven een script dat het
+   uitbreidt (`extends "res://scripts/world/interiors/interior.gd"`) en `dress()`, `doors()`,
    `player_came_in()`/`player_went_out()` invult.
 4. Een regel in `KINDS` van `interiors.gd`: `scene`, `music`, `at` (een eigen plek ver buiten
    de kaart), en waar de ingangen zijn: `front` (deel van de naam van een geveltile) of
@@ -1497,9 +1497,9 @@ dichte gebouwblokken een doos van 4x3x4 m; props een omhullende doos.
 
 Kleur en tint aanpassen (zonder de .gox te wijzigen)
 ----------------------------------------------------
-In elke kaart zit een node `TintKaart` (script `scripts/world/tint_map.gd`):
+In elke kaart zit een node `TintKaart` (script `scripts/world/town/tint_map.gd`):
 - `variation`: geeft elke 4x4 m cel automatisch een net iets andere kleur.
-- Voeg een kind-node toe met script `scripts/world/tint_area.gd` (TintArea), schuif
+- Voeg een kind-node toe met script `scripts/world/town/tint_area.gd` (TintArea), schuif
   hem over een gebouw of stuk grond en kies `color`, `brightness`, `strength`
   en `size` (in cellen). De tint werkt live in de editor.
   Wit = geen verandering; helderheid > 1 is lichter, < 1 donkerder.
@@ -1775,8 +1775,8 @@ Hoe het werkt (techniek)
   met previews en collision. Item-ID's blijven stabiel op naam.
 - `addons/vox_tiles/plugin.gd`: houdt de bibliotheken automatisch bij als er
   tiles bijkomen, verdwijnen of opnieuw geïmporteerd worden.
-- `scripts/camera/free_camera.gd`: vliegcamera; `scripts/world/tint_map.gd` en
-  `scripts/world/tint_area.gd`: tint-systeem.
+- `scripts/camera/free_camera.gd`: vliegcamera; `scripts/world/town/tint_map.gd` en
+  `scripts/world/town/tint_area.gd`: tint-systeem.
 - `tools/build/build_city.gd`: bouwt de stad via code. De bouwer staat in
   `tools/build/city/`, een keten van
   scripts die elk het vorige uitbreiden. Eerst de algemene delen: `base` (toestand, scene,
@@ -1834,7 +1834,7 @@ Prestaties en uiterlijk
   grijstint met een bolle bovenkant waarop de zon glinstert, plus zachte slijtplekken;
   dichtbij worden de voxelblokjes van 12,5 cm eerst verzacht (gemiddeld met de
   buur-texels), zodat het patroon de structuur draagt en niet het voxelraster.
-- `DetailNiveau` (`scripts/world/level_of_detail.gd`): schakelt bij het uitzoomen naar
+- `DetailNiveau` (`scripts/world/town/level_of_detail.gd`): schakelt bij het uitzoomen naar
   grove tiles (`coarse_from`, standaard 100 m in beeld: daar is een voxel al kleiner
   dan een pixel), voor Grond, Gebouwen en Props: **hooguit twee niveaus**, gewoon en grof
   (`_lod`; de heel grove `_lod2` gebruikt alleen nog de kaart achter het menu), verbergt
@@ -1859,7 +1859,7 @@ Prestaties en uiterlijk
   geometrie opnieuw en is de grootste kostenpost na de geometrie zelf.
 - Rendering (`project.godot`): render-resolutie 85% met temporele upscaling (vrijwel niet te zien naast 100%, ~13% sneller; bij 77% werd het van ver korrelig en kartelig) en anti-aliasing: MetalFX op macOS, FSR 2 elders (MSAA/FXAA uit), debanding,
   depth prepass uit; GridMaps gebruiken octant-grootte 4 (snelst gemeten).
-- Samenvoegen (`scripts/world/layer_baker.gd`, aangestuurd door `DetailNiveau`, export
+- Samenvoegen (`scripts/world/town/layer_baker.gd`, aangestuurd door `DetailNiveau`, export
   `merge_layers`): bij het starten worden de lagen Gebouwen en Grond samengevoegd tot
   grote meshes (chunks van 8x8 cellen, per LOD-niveau). Zijden die tegen een
   dichte buurcel liggen en alle onderkanten vallen daarbij weg. De importer
@@ -1874,7 +1874,7 @@ Prestaties en uiterlijk
   tiles niet veranderen). `tools/bake.sh` vult die cache vooraf (zie "Baken en thumbnails").
   Je bewerkt gewoon de GridMaps; botsingen blijven daar ook. Tiles met een vlag
   blijven losse meshes (de vlag-shader rekent in lokale coördinaten).
-- `Dagcyclus` (`scripts/world/day_cycle.gd`): basis voor dag en nacht (`time_of_day`,
+- `Dagcyclus` (`scripts/world/town/day_cycle.gd`): basis voor dag en nacht (`time_of_day`,
   start 6:00 (het hoofdmenu heeft zijn eigen tijd); `speed` 0,08 uur per seconde, overdag `daylight_slowdown` 4× langzamer en in het donker `night_speedup` 1,6× sneller: ~11 minuten licht en ~1,5 minuut schemer en nacht, 0 = stilstaan; in het menu ~1 minuut licht en 12 s donker; een
   Nederlandse zomerdag: zon op `SUNRISE` 5:30, onder `SUNSET` 22:00, blauw uur tot ruim tien,
   pas rond half twaalf echt donker). De tijd
@@ -1913,7 +1913,7 @@ Prestaties en uiterlijk
 - Randen tussen grondtiles (`zwervr_ground_edges`, 0 = uit): waar een grondtile een
   andere soort grond raakt (gras, weg, fietspad, stoep, grind, klinkers, ...), tekent de
   shader een rand die leest als een klein hoogteverschil, zonder echte geometrie. De
-  `GrondKaart` (`scripts/world/ground_map.gd`, globals `zwervr_ground_types` en
+  `GrondKaart` (`scripts/world/town/ground_map.gd`, globals `zwervr_ground_types` en
   `zwervr_ground_area`) kent elke 4 x 4 m-cel een soort toe (hoofdmateriaal plus
   kleurgroep, dus rood fietspadasfalt is iets anders dan grijs wegasfalt) en een
   nep-hoogte (`RANK`: weg laagst, fietspad, klinkers, grind en aarde, gras, stoep
@@ -1946,7 +1946,7 @@ Prestaties en uiterlijk
   In de polder naast het park ligt een bollenveld.
 - Gras: `natuur/gras` (kort, in de stad) en `natuur/gras_hoog` (hoog, in de polder) zijn
   dezelfde egale tile; ze verschillen alleen in de lengte van de grassprieten
-  (`SHORT_GRASS`/`TALL_GRASS` in `scripts/world/ground_map.gd`: kort gras ~30 cm, hoog
+  (`SHORT_GRASS`/`TALL_GRASS` in `scripts/world/town/ground_map.gd`: kort gras ~30 cm, hoog
   gras ~65 cm). Ook `gras_droog` is in het palet gewoon gras.
   Dichtbij tekent de shader lange, dunne grassprieten van ~30 cm die in de windrichting overhellen
   en elk een beetje wiegen, en op elke afstand trekken windvlagen als lichtere stroken
@@ -2009,7 +2009,7 @@ Prestaties en uiterlijk
     `Geldautomaat_<n>` onder `Straatautomaten`) als geel blokje, kiesbaar voor een marker. Enter of rechtsklik zet een marker op de
     gekozen plek (`hud.set_waypoint`): een roze ruit op het kaartje (aan de rand een pijl die de
     kant op wijst), naam en afstand eronder, een lichtbaken in de stad
-    (`scripts/world/waypoint_beacon.gd`); nog eens Enter haalt hem weg, aangekomen is hij weg.
+    (`scripts/world/town/waypoint_beacon.gd`); nog eens Enter haalt hem weg, aangekomen is hij weg.
   - Toetsen: Tab opent het menu op de tab waar je het verliet (de eerste keer de inventaris),
     I de inventaris, J de quests, M de kaart; Q/E wisselt van tab; Tab,
     Escape of nog eens dezelfde letter sluit. Pijltjes of WASD kiezen, Enter gebruikt, X

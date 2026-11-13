@@ -1,5 +1,5 @@
 """The lift cabin (category binnen, binnen/lift/): the ride from floor to floor of any building
-with floors is a scene of its own in it (scenes/binnen/lift.tscn, scripts/world/lift_ride.gd).
+with floors is a scene of its own in it (scenes/binnen/lift.tscn, scripts/world/interiors/lift_ride.gd).
 
 Voxels of 0.125 m; the pivot is the middle of the bottom of the frame, the front the side with
 the lowest y (Godot +z).
@@ -7,7 +7,7 @@ the lowest y (Godot +z).
 from common import tile, register
 from vox import V
 
-# The lift cabin (scenes/binnen/lift.tscn, scripts/world/lift_ride.gd): any building with floors
+# The lift cabin (scenes/binnen/lift.tscn, scripts/world/interiors/lift_ride.gd): any building with floors
 # uses it for the ride from floor to floor (the city hall first). 3 m wide, 2 m deep, 2.6 m high, brushed steel,
 # a mirror at the back, a handrail, the button panel on the left wall; low at the front and
 # the right like every interior (the iso view looks in), its doors low too. Separate pieces,

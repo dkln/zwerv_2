@@ -13,7 +13,7 @@ extends RefCounted
 ## What each archetype starts with: START_ITEMS (id -> count).
 ## Room: every kind of item takes one slot ("vakje", however many of it), and a zwerver has
 ## only BASE_SLOTS of them in his pockets; a rucksack picked up in the town
-## (scripts/world/backpacks.gd) adds BACKPACK_SLOTS. Nobody starts with a rucksack.
+## (scripts/world/things/backpacks.gd) adds BACKPACK_SLOTS. Nobody starts with a rucksack.
 const BASE_SLOTS := 4
 const BACKPACK_SLOTS := 8
 
@@ -151,18 +151,18 @@ const ITEMS := {
 	"banaan": {"name": "Banaan", "kind": "eten", "rarity": "gewoon", "icon": "appel",
 		"text": "Geel met bruine stipjes: precies goed.",
 		"effect": {"honger": 14, "gezondheid": 3}, "action": "ETEN"},
-	# from the machines in Den Haag Centraal (scripts/world/station.gd): opens the OV gates
+	# from the machines in Den Haag Centraal (scripts/world/station/station.gd): opens the OV gates
 	"ov_chipkaart": {"name": "OV-chipkaart", "kind": "sleutel", "rarity": "bijzonder", "icon": "ov_chipkaart",
 		"text": "Anoniem, blauw, € 7,50 uit de automaat (met € 2,50 reissaldo). Piep bij binnenkomst, piep-piep bij vertrek."},
 	# from the OV-chipkaart machines (scripts/ui/machines/ov_machine_screen.gd): one ride,
 	# taken in at the gate where you check out
 	"los_kaartje": {"name": "Los kaartje", "kind": "spullen", "rarity": "gewoon", "icon": "kaartje",
 		"text": "Eén enkele reis, wegwerp. Bij het uitchecken houdt het poortje hem."},
-	# from the waste bins in the town (scripts/world/litter_bins.gd): statiegeld at the
-	# machine in every supermarket (scripts/world/deposit_return.gd)
+	# from the waste bins in the town (scripts/world/things/litter_bins.gd): statiegeld at the
+	# machine in every supermarket (scripts/world/things/deposit_return.gd)
 	"blikje": {"name": "Leeg blikje", "kind": "spullen", "rarity": "gewoon", "icon": "blik",
 		"text": "Uit een prullenbak gevist. Vijftien cent statiegeld bij de automaat in de supermarkt."},
-	# lost bank cards (scripts/world/lost_bank_cards.gd): every card its own account and PIN,
+	# lost bank cards (scripts/world/things/lost_bank_cards.gd): every card its own account and PIN,
 	# kept on the player (scripts/player/bank_cards.gd); the menu adds each card's riddle to
 	# this text (BankCards.description)
 	"pinpas": {"name": "Gevonden pinpas", "kind": "sleutel", "rarity": "zeldzaam", "icon": "pinpas",

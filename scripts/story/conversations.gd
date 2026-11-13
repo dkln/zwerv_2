@@ -41,8 +41,8 @@ extends RefCounted
 ##   var talk := Conversations.new(person, player, hud)
 ##   hud.show_story(talk.opening(), talk.finish)      # or, for a seller: hud.show_shop(talk, ...)
 
-const Emote = preload("res://scripts/world/emote.gd")
-const Interiors = preload("res://scripts/world/interiors.gd")
+const Emote = preload("res://scripts/world/people/emote.gd")
+const Interiors = preload("res://scripts/world/interiors/interiors.gd")
 const STREET_FILE := "res://data/gesprekken/voorbijgangers.json"
 const COUNTER_FILE := "res://data/gesprekken/snackbarhouder.json"
 const COUNTER_PERSONA := "snackbarhouder"

@@ -16,9 +16,9 @@ extends "res://tests/integration/support/town_test.gd"
 
 const PlayerController = preload("res://scripts/player/player_controller.gd")
 const BankCards = preload("res://scripts/player/bank_cards.gd")
-const DepositReturn = preload("res://scripts/world/deposit_return.gd")
-const OvCard = preload("res://scripts/world/ov_card.gd")
-const MachineModels = preload("res://scripts/world/machine_models.gd")
+const DepositReturn = preload("res://scripts/world/things/deposit_return.gd")
+const OvCard = preload("res://scripts/world/station/ov_card.gd")
+const MachineModels = preload("res://scripts/world/things/machine_models.gd")
 const CashMachineScreen = preload("res://scripts/ui/machines/cash_machine_screen.gd")
 const DepositMachineScreen = preload("res://scripts/ui/machines/deposit_machine_screen.gd")
 const OvMachineScreen = preload("res://scripts/ui/machines/ov_machine_screen.gd")

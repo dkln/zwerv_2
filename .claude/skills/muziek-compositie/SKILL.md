@@ -50,9 +50,9 @@ stap 1 en 2 anders: zie "Een VGM-bestand" hieronder; stap 3 tot en met 8 blijven
    **altijd het deuntje voor de start van de kaart** (`deuntje_kaart_start.ogg`, hooguit 6 s:
    `MAP_JINGLE` in `scripts/ui/hud.gd`), en **altijd de supermarkten**: de drie muzaklussen
    `supermarkt_muzak_1.ogg` (bossa), `_2` (ballade), `_3` (lichte swing), zacht op de
-   achtergrond in elk filiaal (`SUPERMARKET_MUZAK` in `scripts/world/interiors.gd`), en de
+   achtergrond in elk filiaal (`SUPERMARKET_MUZAK` in `scripts/world/interiors/interiors.gd`), en de
    jingles `jingle_derrek.ogg` en `jingle_alfred_steyhn.ogg` (voor de omroep in de winkel,
-   `scripts/world/supermarket_announcer.gd`, hooguit 6 s); `derive.py` maakt ze uit het thema en
+   `scripts/world/interiors/supermarket_announcer.gd`, hooguit 6 s); `derive.py` maakt ze uit het thema en
    het refrein (zie "De muzak" in `docs/MUZIEK.md`), dus ze komen vanzelf mee. Heeft een
    compositie geen thema of refrein, of klinkt de gezoete harmonie vreemd (andere toonsoort,
    modus), pas dan `derive.py` algemeen aan. Nooit een oud bestand van een vorige compositie laten

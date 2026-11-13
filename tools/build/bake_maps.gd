@@ -3,7 +3,7 @@ extends SceneTree
 ## from the cache instead of baking them first (minutes for the town).
 ##
 ## It opens each map (by default every scene in res://scenes with a DetailNiveau node:
-## scripts/world/level_of_detail.gd), lets its DetailNiveau merge the layers into the
+## scripts/world/town/level_of_detail.gd), lets its DetailNiveau merge the layers into the
 ## cache in user://merged (layer_baker.gd) exactly as the game would, and waits until it is
 ## done. A map whose cache is up to date is left as it is. Afterwards it removes the cache files
 ## of maps that no longer exist (and the cache folder of older versions, user://samengevoegd).
@@ -15,7 +15,7 @@ extends SceneTree
 ##   or:  GODOT_TIMEOUT=3600 tools/godot.sh --headless --script tools/build/bake_maps.gd -- [opnieuw] [map ...]
 
 const Common = preload("res://tools/tool_common.gd")
-const LevelOfDetail = preload("res://scripts/world/level_of_detail.gd")
+const LevelOfDetail = preload("res://scripts/world/town/level_of_detail.gd")
 const Progress = preload("res://tools/progress.gd")
 const SCENES_DIR := "res://scenes"
 ## The cache folder of an older version of level_of_detail.gd.

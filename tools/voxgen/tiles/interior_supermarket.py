@@ -1,7 +1,7 @@
 """The supermarkets you walk into (category binnen, binnen/supermarkt/): DERREK and ALFRED
 STEYHN, the two parody chains of the town (their facades, signs and carts: details_extra,
-props). One scene for both (scenes/binnen/supermarkt.tscn): scripts/world/supermarket.gd
-lays the shop out anew for every branch (scripts/world/supermarket_layout.gd: its size from
+props). One scene for both (scenes/binnen/supermarkt.tscn): scripts/world/interiors/supermarket.gd
+lays the shop out anew for every branch (scripts/world/interiors/supermarket_layout.gd: its size from
 the width of its shop front, the layout from its seed and the chain), with these tiles.
 
 The house style of each chain comes back in every tile that has a `_<brand>` in its name:
@@ -39,7 +39,7 @@ BRANDS = {
                       "basket": "winkel_lichtblauw", "trim": "lak_blauw1"},
 }
 
-# the goods on a shelf of each category (scripts/world/supermarket_layout.gd CATEGORIES):
+# the goods on a shelf of each category (scripts/world/interiors/supermarket_layout.gd CATEGORIES):
 # the colours of the packs, and how high a pack stands (voxels)
 GOODS = {
     "droog": (["lak_geel1", "bord_rood", "hout3", "bord_blauw", "lak_wit1"], 2),

@@ -1,5 +1,5 @@
 {
-	"uitleg": "Hoe druk het is rond de speler (scripts/world/crowd.gd): per uur van de dag en per gebied hoeveel voetgangers en voertuigen er zijn, wie er rondloopt en wat er rijdt. Zie data/LEESMIJ.md.",
+	"uitleg": "Hoe druk het is rond de speler (scripts/world/people/crowd.gd): per uur van de dag en per gebied hoeveel voetgangers en voertuigen er zijn, wie er rondloopt en wat er rijdt. Zie data/LEESMIJ.md.",
 
 	"voertuig_basis": {
 		"auto": 0.42, "fiets": 0.8, "brommer": 0.18, "vracht": 0.1, "bus": 0.04, "landbouw": 0.03, "klein": 0.05

@@ -169,7 +169,7 @@ func car_phase(pos: Vector3, north_south: bool, radius := 14.0) -> int:
 ## Whether someone on foot at `pos` (metres), crossing along z (`along_z`, beside the
 ## north-south stream) or along x, may start crossing at the nearest intersection with
 ## pedestrian lights within `radius` metres: 0 green (in the first `pedestrian_time` seconds
-## of its stream's green), 1 red (wait), -1 no pedestrian lights there (scripts/world/pedestrian.gd).
+## of its stream's green), 1 red (wait), -1 no pedestrian lights there (scripts/world/people/pedestrian.gd).
 func pedestrian_phase(pos: Vector3, along_z: bool, radius := 16.0) -> int:
 	var best := -1
 	var best_distance := radius

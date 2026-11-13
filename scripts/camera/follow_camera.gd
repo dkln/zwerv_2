@@ -31,7 +31,7 @@ extends Node
 const CloudShroud = preload("res://scripts/effects/cloud_shroud.gd")
 const LoadingScreenScript = preload("res://scripts/ui/loading_screen.gd")
 const Iso = preload("res://scripts/camera/iso_camera.gd")
-const TunnelLights = preload("res://scripts/world/tunnel_lights.gd")
+const TunnelLights = preload("res://scripts/world/town/tunnel_lights.gd")
 ## Layer of the ground layer that tunnel tiles are placed on.
 const TUNNEL_LEVEL := -6
 ## Above this speed (m/s) between two frames the vehicle did not drive but jumped.
@@ -212,7 +212,7 @@ var _usual_free_for := 0.0           # seconds the usual view (no turn) has been
 var _hidden_for := 0.0               # seconds the player has been hidden from the view turned to its goal
 var _turn_held_for := 1000.0         # seconds since the view last chose a new turn
 
-## The followed node (for scripts/world/building_fade.gd and the HUD).
+## The followed node (for scripts/world/town/building_fade.gd and the HUD).
 var target_node: Node3D:
 	get:
 		return _followed

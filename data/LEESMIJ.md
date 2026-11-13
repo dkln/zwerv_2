@@ -250,7 +250,7 @@ Controle: `tests/run_integration_tests.sh shop`.
 
 ## De supermarkten — `gesprekken/supermarkten.json`
 
-DERREK en ALFRED STEYHN (`scripts/world/supermarket.gd`). Je pakt bij de ingang een karretje of
+DERREK en ALFRED STEYHN (`scripts/world/interiors/supermarket.gd`). Je pakt bij de ingang een karretje of
 een mandje, uit elk schap één product, en rekent af bij de kassa. Per keten (`ketens`):
 
 | veld | wat |
@@ -269,8 +269,8 @@ De medewerkers in de winkel (`medewerker_derrek`, `medewerker_alfred_steyhn`) pr
 
 ## Omroepen in de supermarkt — `gesprekken/omroep_supermarkt.json`
 
-Net als op het station (`scripts/world/station.gd`) wordt er in de supermarkten af en toe iets
-omgeroepen (`scripts/world/supermarket_announcer.gd`): de muzak gaat zachter, de jingle van de
+Net als op het station (`scripts/world/station/station.gd`) wordt er in de supermarkten af en toe iets
+omgeroepen (`scripts/world/interiors/supermarket_announcer.gd`): de muzak gaat zachter, de jingle van de
 keten klinkt (`assets/audio/muziek/jingle_derrek.ogg`, `jingle_alfred_steyhn.ogg`, gemaakt door
 `tools/muziek/`), dan praat de omroepstem door de luidsprekers en verschijnt de tekst onderin beeld.
 
@@ -295,9 +295,9 @@ op je af, net als de conducteur bij zwartrijden; onderweg roept die af en toe ee
 uit en tuimelt de straat op; als hij weer staat, vertelt de verteller wat er gebeurde, en een
 tijdje (`terug_na` seconden) mag hij er niet in. Ga je zelf eerder de deur uit, dan ben je
 weg, maar mag je er die tijd ook niet in. Herbruikbaar voor elke plek
-(`scripts/world/interiors.gd`: `Interiors.note_offence(tree, overtreding)`; het achter je aan
-komen is gedeeld: `scripts/world/eviction.gd`, met de regels van de achtervolging van
-`scripts/world/pursuit.gd`, ook die van de conducteur).
+(`scripts/world/interiors/interiors.gd`: `Interiors.note_offence(tree, overtreding)`; het achter je aan
+komen is gedeeld: `scripts/world/interiors/eviction.gd`, met de regels van de achtervolging van
+`scripts/world/interiors/pursuit.gd`, ook die van de conducteur).
 
 | veld | wat |
 |---|---|
@@ -359,12 +359,12 @@ ook "Automaten, blikjes en pinpassen" in `INSTRUCTIONS.md`):
 | wat | waar |
 |---|---|
 | de spullen `blikje`, `pinpas`, `los_kaartje` (naam, tekst) | `scripts/player/items.gd` |
-| statiegeld per blikje of fles (€ 0,15) | `DEPOSIT` in `scripts/world/deposit_return.gd` |
-| prijs OV-chipkaart, startsaldo, ritprijs, los kaartje, opwaardeerbedragen | `scripts/world/ov_card.gd` |
+| statiegeld per blikje of fles (€ 0,15) | `DEPOSIT` in `scripts/world/things/deposit_return.gd` |
+| prijs OV-chipkaart, startsaldo, ritprijs, los kaartje, opwaardeerbedragen | `scripts/world/station/ov_card.gd` |
 | saldo van een gevonden pinpas (€ 8 - € 60), de raadsels bij de pincode, de namen op de pas | `scripts/player/bank_cards.gd` (`BALANCE_RANGE`, `DIGIT_RIDDLES`, `OWNERS`) |
 | bedragen bij de geldautomaat (€ 5, 10, 20, 50), pogingen voor de pas wordt ingeslikt (3) | `AMOUNTS` in `scripts/ui/machines/cash_machine_screen.gd`, `MOST_TRIES` in `bank_cards.gd` |
-| hoeveel prullenbakken een blikje hebben, hoe vaak er een bijkomt | `can_share`, `most_cans`, `refill_seconds` in `scripts/world/litter_bins.gd` |
-| hoeveel pinpassen er op straat liggen | `count`, `near`, `reach` in `scripts/world/lost_bank_cards.gd` |
+| hoeveel prullenbakken een blikje hebben, hoe vaak er een bijkomt | `can_share`, `most_cans`, `refill_seconds` in `scripts/world/things/litter_bins.gd` |
+| hoeveel pinpassen er op straat liggen | `count`, `near`, `reach` in `scripts/world/things/lost_bank_cards.gd` |
 
 Een raadsel bij de cijfers (`DIGIT_RIDDLES`) moet echt dat cijfer opleveren: rij 0 is het
 cijfer 0, rij 8 het cijfer 8 ("de poten van een spin"). Controleer na een wijziging met

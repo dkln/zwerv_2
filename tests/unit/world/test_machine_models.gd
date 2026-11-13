@@ -1,8 +1,8 @@
 extends RefCounted
-## Unit tests of the models of the machines and finds (scripts/world/machine_models.gd):
+## Unit tests of the models of the machines and finds (scripts/world/things/machine_models.gd):
 ## their size, and a collider as big as the mesh.
 
-const MachineModels = preload("res://scripts/world/machine_models.gd")
+const MachineModels = preload("res://scripts/world/things/machine_models.gd")
 
 
 ## The cash machine is man-high and less than a metre wide.

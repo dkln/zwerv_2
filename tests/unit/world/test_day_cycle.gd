@@ -1,9 +1,9 @@
 extends RefCounted
-## Unit tests of the colours of the day (scripts/world/day_cycle.gd, DAY_COLOURS): every moment
+## Unit tests of the colours of the day (scripts/world/town/day_cycle.gd, DAY_COLOURS): every moment
 ## has every colour, they blend without jumps, the night is dark and the day light, and the day
 ## ends where it begins.
 
-const DayCycle = preload("res://scripts/world/day_cycle.gd")
+const DayCycle = preload("res://scripts/world/town/day_cycle.gd")
 
 
 ## Every moment in DAY_COLOURS has every colour.

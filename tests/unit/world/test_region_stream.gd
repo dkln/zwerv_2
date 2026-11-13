@@ -1,9 +1,9 @@
 extends RefCounted
-## Unit tests of the streamed finest level of the merged town (scripts/world/region_stream.gd):
+## Unit tests of the streamed finest level of the merged town (scripts/world/town/region_stream.gd):
 ## a baked layer saved per region with its materials shared, only the regions near an anchor
 ## loaded, those far off dropped again, and `regions_changed` when chunks come or go.
 
-const RegionStream = preload("res://scripts/world/region_stream.gd")
+const RegionStream = preload("res://scripts/world/town/region_stream.gd")
 const FOLDER := "user://proef_regios"
 
 ## The tree of the run (tests/run_unit_tests.gd sets it).

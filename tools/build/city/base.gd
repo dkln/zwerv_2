@@ -181,11 +181,11 @@ func _make_scene(node_name: String) -> Node3D:
 	root.add_child(cam)
 	var dn := Node.new()
 	dn.name = "DetailNiveau"
-	dn.set_script(load("res://scripts/world/level_of_detail.gd"))
+	dn.set_script(load("res://scripts/world/town/level_of_detail.gd"))
 	root.add_child(dn)
 	var dc := Node.new()
 	dc.name = "Dagcyclus"
-	dc.set_script(load("res://scripts/world/day_cycle.gd"))
+	dc.set_script(load("res://scripts/world/town/day_cycle.gd"))
 	root.add_child(dc)
 	var tl := Node.new()
 	tl.name = "Verkeerslichten"
@@ -201,19 +201,19 @@ func _make_scene(node_name: String) -> Node3D:
 	root.add_child(smoke)
 	var tk := Node3D.new()
 	tk.name = "TintKaart"
-	tk.set_script(load("res://scripts/world/tint_map.gd"))
+	tk.set_script(load("res://scripts/world/town/tint_map.gd"))
 	root.add_child(tk)
 	var gk := Node.new()
 	gk.name = "GrondKaart"
-	gk.set_script(load("res://scripts/world/ground_map.gd"))
+	gk.set_script(load("res://scripts/world/town/ground_map.gd"))
 	root.add_child(gk)
 	var overhead := Node3D.new()
 	overhead.name = "Bovenleiding"   # contact wires over the tram and train tracks
-	overhead.set_script(load("res://scripts/world/overhead_lines.gd"))
+	overhead.set_script(load("res://scripts/world/town/overhead_lines.gd"))
 	root.add_child(overhead)
 	var far_boxes := Node3D.new()
 	far_boxes.name = "VerreBlokjes"   # far out the people and vehicles as blocks (far_boxes.gd)
-	far_boxes.set_script(load("res://scripts/world/far_boxes.gd"))
+	far_boxes.set_script(load("res://scripts/world/town/far_boxes.gd"))
 	root.add_child(far_boxes)
 	var hud := CanvasLayer.new()
 	hud.name = "HUD"   # player stats, minimap, clock, quests, money (scripts/ui/hud.gd)

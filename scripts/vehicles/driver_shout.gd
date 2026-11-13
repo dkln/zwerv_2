@@ -222,7 +222,7 @@ static func shout(speaker: Node3D, kind: String, mood: String, roof_height: floa
 
 ## Always shouts `line` over `speaker` (`head_height` m above its origin), babbling in
 ## `babble_mood` (a line ending in "?" asks): someone of a place who comes to put the player
-## out (scripts/world/eviction.gd). Returns whether it could (in the tree, with a camera).
+## out (scripts/world/interiors/eviction.gd). Returns whether it could (in the tree, with a camera).
 static func shout_line(speaker: Node3D, line: String, head_height: float, babble_mood := "boos") -> bool:
 	if speaker == null or not speaker.is_inside_tree() or line == "":
 		return false

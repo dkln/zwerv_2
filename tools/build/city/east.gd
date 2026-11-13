@@ -267,7 +267,7 @@ func _centraal() -> void:
 	for x in range(80, 87):
 		_g(x, 64, "parkeren/parkeerstrook_langs", "E")
 	Pr(80 * 4 + 1.0, 64 * 4 + 1.0, "borden/bord_parkeren", "E")
-	# the Zebraklok (a node of its own: scripts/world/zebra_clock.gd, placed by _zebra_clock)
+	# the Zebraklok (a node of its own: scripts/world/town/zebra_clock.gd, placed by _zebra_clock)
 	_taken[Vector2i(floori(ZEBRA_CLOCK_AT.x / 4.0), floori(ZEBRA_CLOCK_AT.y / 4.0))] = true
 	Pr(90 * 4.0, 63 * 4.0, "straat/kiosk")
 	Pr(76 * 4.0, 63 * 4.0, "ov/reclamezuil")
@@ -317,7 +317,7 @@ func _centraal() -> void:
 
 ## A Jan Blammage in the Koekamp, by the deer camp, close to Centraal Station: a white pavilion
 ## of two cells and one storey on the grass just south of the gravel path (x 92..93, z 44),
-## its front to the path (N): the snack bar (you walk into it: scripts/world/interiors.gd)
+## its front to the path (N): the snack bar (you walk into it: scripts/world/interiors/interiors.gd)
 ## and a window, flat roofs, its name sign and the big fries cone on the path before it.
 func _deer_camp_snack_bar() -> void:
 	var z := 44

@@ -136,7 +136,7 @@ bewerkt tot naadloze lussen: een stuk eruit, het eind 3 s in het begin overgevlo
 -16 LUFS. Maken: `uv run --with numpy --with soundfile python3 tools/megadrive/omgeving.py`
 (downloadt de opnames één keer; decoderen via ffmpeg). In het spel: `scripts/audio/ambience.gd`
 (per plek een lus en een niveau, `PLACES`; bij een wissel 2 s overvloeien), aangestuurd door
-`scripts/world/interiors.gd` (`AMBIENCE_OF`). Een plek erbij: een opname in `RECORDINGS` van
+`scripts/world/interiors/interiors.gd` (`AMBIENCE_OF`). Een plek erbij: een opname in `RECORDINGS` van
 omgeving.py, een regel in `PLACES` en in `AMBIENCE_OF`.
 
 Toonhoogte: elk geluidseffect klinkt elke keer een fractie anders (`scripts/audio/sound_variation.gd`:

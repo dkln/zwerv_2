@@ -7,7 +7,7 @@ extends RefCounted
 ## (keyed by colour group + the AO of the 4 corners); equal neighbours in the
 ## mask are merged into rectangles (greedy meshing), which become two triangles.
 ## There is one surface per material (Model.MAT_*), with the triangles sorted
-## into the 7 GROUPS so scripts/world/layer_baker.gd can drop hidden cell sides.
+## into the 7 GROUPS so scripts/world/town/layer_baker.gd can drop hidden cell sides.
 ##
 ## Axes: MagicaVoxel (x, y, z-up) -> Godot (x, z, -y).
 ## Origin: centre of the model in x/z, bottom in y.
@@ -57,7 +57,7 @@ const DIRECTIONS := [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0), V
 ## quickly over a few decimetres above the ground) or "float" (bobs on the water).
 ## block: size of the grid cell (e.g. 4x3x4). Triangles are then grouped per side
 ## of that cell (meta "face_ranges" and "solid_faces"), so merging
-## (scripts/world/layer_baker.gd) can drop faces that lie against a neighbouring block.
+## (scripts/world/town/layer_baker.gd) can drop faces that lie against a neighbouring block.
 ## textured: faces are merged by material and AO only, regardless of colour; the colour
 ## of every voxel goes into a small texture per tile (meta "albedo", an Image; UV points
 ## into it). The vertex colour then holds the face's average colour (rgb, for far away)

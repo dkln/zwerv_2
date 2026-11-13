@@ -74,7 +74,7 @@ extends Node3D
 ## shows the new level and plays the level jingle (GameHud.show_level_up).
 ## Inventory: `inventory` (item id -> count, scripts/player/items.gd), use_item applies an
 ## item's effect to the stats. Room for only Items.BASE_SLOTS kinds of item (inventory_slots);
-## a rucksack picked up in the town (pick_up_backpack, scripts/world/backpacks.gd) adds
+## a rucksack picked up in the town (pick_up_backpack, scripts/world/things/backpacks.gd) adds
 ## Items.BACKPACK_SLOTS and is worn on the figure's back (PlayerModel.backpack; the collider
 ## grows with it). Nobody starts with one.
 
@@ -90,7 +90,7 @@ signal bought(item_id: String)
 ## A conversation started with someone (talk_to), the kind of person (Conversations.persona).
 signal talked(persona: String)
 
-const KnockDown = preload("res://scripts/world/knock_down.gd")
+const KnockDown = preload("res://scripts/world/people/knock_down.gd")
 const GroundShadow = preload("res://scripts/effects/ground_shadow.gd")
 const PlayerCharacter = preload("res://scripts/player/player_character.gd")
 const PlayerModel = preload("res://scripts/player/player_model.gd")
@@ -219,7 +219,7 @@ var _figure_box := AABB(Vector3(-0.3, 0.0, -0.2), Vector3(0.6, 1.9, 0.4))
 var _body: AnimatableBody3D
 var _body_shape: CollisionShape3D
 var _walk_shape := CylinderShape3D.new()
-## What the player pushes before them (a shopping trolley, scripts/world/supermarket.gd): its box
+## What the player pushes before them (a shopping trolley, scripts/world/interiors/supermarket.gd): its box
 ## in the player's own space (feet at y = 0, facing +z), tested with the figure wherever it
 ## walks or turns (_fits, _turn_to); an empty AABB without one.
 var _pushed_box := AABB()

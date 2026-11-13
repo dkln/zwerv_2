@@ -1,5 +1,5 @@
 extends "res://tests/integration/support/town_test.gd"
-## The supermarkets in the town (scripts/world/supermarket.gd, Interiors KINDS "derrek" and
+## The supermarkets in the town (scripts/world/interiors/supermarket.gd, Interiors KINDS "derrek" and
 ## "alfred_steyhn"): every DERREK and ALFRED STEYHN has a way in with the width of its front;
 ## going in lays out that branch (as wide as its front, its own entrance); a trolley taken at
 ## the entrance is pushed before you, a shelf puts its product in it; out of the door with
@@ -10,8 +10,8 @@ extends "res://tests/integration/support/town_test.gd"
 ## (a quarter off on two kinds of shelf); two branches of one chain are laid out differently.
 ##   tests/run_integration_tests.sh supermarket
 
-const Supermarket = preload("res://scripts/world/supermarket.gd")
-const Layout = preload("res://scripts/world/supermarket_layout.gd")
+const Supermarket = preload("res://scripts/world/interiors/supermarket.gd")
+const Layout = preload("res://scripts/world/interiors/supermarket_layout.gd")
 
 ## Simulated time for the shoppers (seconds), in steps of SIMULATION_STEP.
 const SIMULATED := 420.0

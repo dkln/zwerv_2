@@ -1,7 +1,7 @@
 """The inside of the city hall on the Spui (category binnen, binnen/stadhuis/): the white
 city hall, five floors joined by a lift (scenes/binnen/stadhuis.tscn, built by
-tools/build/build_interiors.gd from scripts/world/city_hall_layout.gd, run by
-scripts/world/city_hall.gd). Every floor has a layout of its own: the hall with the
+tools/build/build_interiors.gd from scripts/world/interiors/city_hall_layout.gd, run by
+scripts/world/interiors/city_hall.gd). Every floor has a layout of its own: the hall with the
 reception, Burgerzaken with its counters, the open-plan office, the meeting rooms and the
 archive, and at the top the council chamber.
 
