@@ -38,6 +38,12 @@ static func crowd_at_hour(suite: RefCounted, hour: float) -> void:
 	traffic.changes_per_tick = changes_per_tick
 	walkers.unseen_without_camera = false
 	traffic.unseen_without_camera = false
+	# who was told to become someone else does so once the new figure is built: wait for
+	# that too, or the people a test picks change under its hands
+	for attempt in 600:
+		if not walkers.people().any(func(person: Pedestrian) -> bool: return not person._waiting_become.is_empty()):
+			break
+		await suite.tree.physics_frame
 
 
 ## A pavement spot (just above it, to put the player on) at least `metres` from every door

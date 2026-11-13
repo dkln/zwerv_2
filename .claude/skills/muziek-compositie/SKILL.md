@@ -1,6 +1,6 @@
 ---
 name: muziek-compositie
-description: Gebruik als de gebruiker een nieuwe compositie aanlevert (een uitgeschreven nummer van Gemini of een andere componist: tempo, toonsoort, instrumenten, akkoorden en noten per maat; in tools/muziek/composition.md of geplakt; of een VGM-bestand, .vgm/.vgz, het registerlog van de Mega Drive-geluidschips) en vraagt daar de muziek van ZWERVR van te maken; zet de compositie letterlijk om naar tools/muziek/composities/<naam>.py (een VGM met tools/muziek/render.sh --vgm), rendert de intro en alle afgeleide stukken (menu, karakterkeuze, handelaar, laadscherm, spel, deuntjes, ook het deuntje voor de start van de kaart, de drie muzaklussen van de supermarkten en de jingles van de twee supermarktketens) in Mega Drive-klank en controleert ze.
+description: Gebruik als de gebruiker een nieuwe compositie aanlevert (een uitgeschreven nummer van Gemini of een andere componist: tempo, toonsoort, instrumenten, akkoorden en noten per maat; in tools/muziek/composition.md of geplakt; of een VGM-bestand, .vgm/.vgz, het registerlog van de Mega Drive-geluidschips) en vraagt daar de muziek van ZWERVR van te maken; zet de compositie letterlijk om naar tools/muziek/composities/<naam>.py (een VGM met tools/muziek/render.sh --vgm: de intro is dan het VGM zelf, exact nagebootst uit het registerlog, en de afgeleide stukken klinken met de patches van het VGM), rendert de intro en alle afgeleide stukken (menu, karakterkeuze, handelaar, laadscherm, spel, deuntjes, ook het deuntje voor de start van de kaart, de drie muzaklussen van de supermarkten en de jingles van de twee supermarktketens) in Mega Drive-klank en controleert ze.
 ---
 
 # Een nieuwe compositie wordt de muziek van ZWERVR
@@ -77,9 +77,13 @@ stap 1 en 2 anders: zie "Een VGM-bestand" hieronder; stap 3 tot en met 8 blijven
    `tools/godot.sh --headless --script tests/integration/world/test_city_music.gd`.
 ## Een VGM-bestand
 
-Een VGM is het logboek van de registers van de YM2612 (FM) en de SN76489 (PSG); de noten staan
-er niet in maar volgen uit de key-ons, frequenties en volumes. `tools/muziek/vgm.py` doet de
-omzetting (docs/MUZIEK.md, "Een VGM als compositie"); schrijf de noten niet met de hand over.
+Een VGM is het logboek van de registers van de YM2612 (FM) en de SN76489 (PSG). Het wordt
+**exact** de muziek (docs/MUZIEK.md, "Een VGM als compositie"): de **intro is het VGM zelf**,
+gespeeld door de nabootsing van de chips (`tools/muziek/chip.py`: de patches, de exacte
+frequenties uit F-number en blok, de envelopes, de volumes, de panning), en de afgeleide stukken
+klinken met de **stemmen van het VGM** (de patches van zijn kanalen, een drumstel van zijn
+PSG-ruis). Dus: geen bestaande klanken uit `instruments.py` in plaats van de patches, geen
+octaaf verschoven in de intro, geen noten met de hand overschrijven of "verbeteren".
 
 1. **Bekijk het bestand**: `tools/muziek/render.sh --vgm <bestand> [naam] --toon` (`<naam>`:
    standaard de bestandsnaam in kleine letters met underscores). Lees wat het meldt: de chips, per
@@ -88,31 +92,44 @@ omzetting (docs/MUZIEK.md, "Een VGM als compositie"); schrijf de noten niet met 
    toonsoort, de secties, de akkoorden en elke "let op".
 2. **Zet het om**: `tools/muziek/render.sh --vgm <bestand> [naam]` schrijft
    `tools/muziek/composities/<naam>.py` en bewaart het VGM ongewijzigd als
-   `tools/muziek/composities/<naam>.vgm` (staat het VGM elders in het project, haal het daar dan
-   weg). Klopt het tempo niet (de noten liggen ver van het raster, of het getal in de naam is wel
-   het tempo maar wordt niet gevonden), geef dan `--tempo <BPM>`; bestaat het bestand al, dan
-   `--overschrijf`. Lees daarna het compositiebestand na en verbeter met de hand wat de omzetter
-   alleen kan raden, met de reden als commentaar:
+   `tools/muziek/composities/<naam>.vgm` (de intro wordt daaruit gespeeld: het moet daar blijven;
+   staat het VGM elders in het project, haal het daar dan weg). Klopt het tempo niet (de noten
+   liggen ver van het raster, of het getal in de naam is wel het tempo maar wordt niet gevonden),
+   geef dan `--tempo <BPM>`; bestaat het bestand al, dan `--overschrijf`. Het bestand heeft
+   `VGM` (de intro), `KLANKEN` en `AFGELEIDE_KLANKEN` met `vgm:<bestand>:<kanaal>=<klank>` (de
+   patch van dat kanaal, op de plek in de mix van die klank) en zo nodig `AFGELEID_OCTAAF`
+   (alleen de afgeleide stukken). Lees het na en verbeter met de hand alleen wat de omzetter
+   raadt, met de reden als commentaar:
    - de `soort` van de secties (en hun grenzen) als de vorm anders is dan gevonden;
    - akkoorden die niet bij de noten van de maat passen;
-   - `KLANKEN`: de omzetter kiest per kanaal een klank bij de FM-patch (de reden staat in het
-     bestand); past er geen, maak dan een nieuwe klank (docs/MUZIEK.md, "Een nieuwe klank");
    - `MOMENTEN` (zelfde regels als bij een tekst, stap 2 hierboven);
-   - de noten zelf **niet**: die staan er zoals de chip ze speelt. Het octaaf waarin een partij
-     klinkt, staat in `BIJSTELLING["octaaf"]` (door de omzetter gezet als de partij ver van het
-     gewone register ligt), een wens van de gebruiker ook in `BIJSTELLING`.
+   - welke patch van het VGM welke soort klank speelt in de afgeleide stukken
+     (`AFGELEIDE_KLANKEN`: altijd een `vgm:`-stem van ditzelfde VGM, nooit een gewone klank);
+   - de noten in `MATEN` **niet**, en `VGM` niet weghalen: zonder `VGM` wordt de intro weer uit
+     de noten nagespeeld in plaats van uit het log.
+   Een wens van de gebruiker die de intro verandert (ander tempo, andere klank) kan niet samen
+   met "exact het VGM": zeg dat, en doe het alleen als de gebruiker het dan nog wil.
 3. Ga verder met stap 3 tot en met 7 hierboven (actief zetten, renderen, controleren, de vorm,
    de speltests). Bij het **controleren** komt erbij:
-   `tools/muziek/render.sh --vgm <bestand> [naam] --vergelijk`: elke partij van het
-   compositiebestand moet "gelijk" zijn aan het VGM (aantal noten, plek, toonhoogte, lengte, de
-   drums) en de intro even lang als het VGM (plus het uitklinken); "ANDERS" na handwerk aan de
-   noten is een fout. De unit tests doen dezelfde vergelijking voor elke compositie met een
-   `.vgm` ernaast.
-4. **Meld** (stap 8) ook: wat het VGM bevatte (chips, kanalen en hun partij en klank, tempo en
-   hoe het met de bestandsnaam zat, toonsoort, lengte), wat de omzetter heeft afgeleid of
-   verschoven (akkoorden, secties, octaven) en wat je met de hand hebt verbeterd, en wat niet
-   omgezet kon worden: elke "let op" (afgekapte F-numbers, overgeslagen commando's, de speciale
-   modus van kanaal 3), kanalen zonder noten, ontbrekende drums (bv. geen kick).
+   - `tools/muziek/render.sh --vgm <bestand> [naam] --vergelijk`: elke partij van het
+     compositiebestand moet "gelijk" zijn aan het VGM (aantal noten, plek, toonhoogte, lengte, de
+     drums); "ANDERS" is een fout;
+   - `tools/muziek/render.sh --vgm <bestand> [naam] --meet` (na het renderen): de nabootsing
+     tegen het registerlog (de toonhoogte van elke noot per kanaal in cent, het niveau van de
+     ruis-slagen) en de intro tegen de nabootsing (lengte, correlatie, niveau per deel); het
+     moet eindigen met "de nabootsing komt overeen met het registerlog", en elke regel "niet
+     nagebootst" (LFO, SSG-EG, CSM) moet in het verslag;
+   - de balans van de intro is die van het VGM (`--balans` laat zijn kanalen zien): niet
+     bijstellen, ook niet als hij van de richtlijn afwijkt.
+   De unit tests doen de vergelijking en kijken of de intro het VGM is en de afgeleide stukken
+   alleen `vgm:`-stemmen gebruiken, voor elke compositie met een `.vgm` ernaast.
+4. **Meld** (stap 8) ook: wat het VGM bevatte (chips, kanalen en hun partij, tempo en hoe het
+   met de bestandsnaam zat, toonsoort, lengte); dat de intro het VGM zelf is en wat daarin
+   exact is en wat benaderd (docs/MUZIEK.md, "De nabootsing van de chips") of niet nagebootst;
+   de uitkomst van `--meet`; welke patch welke klank speelt in de afgeleide stukken en welke
+   drums afgeleid zijn (wat het VGM zelf niet heeft: bv. kick, crash); wat de omzetter heeft
+   afgeleid (akkoorden, secties, octaven) en wat je met de hand hebt verbeterd; en elke "let op"
+   (afgekapte F-numbers, overgeslagen commando's), kanalen zonder noten, ontbrekende drums.
 
 ## Melden
 

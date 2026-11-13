@@ -17,7 +17,9 @@ import sys
 import numpy
 import soundfile
 
+import chip
 import derive
+import instruments
 import mixer
 import score as score_module
 
@@ -94,6 +96,9 @@ def section_energy(folder: str, score: score_module.Score) -> None:
 
 def balance(score: score_module.Score) -> None:
     """Every part of the intro alone, at the level it has in the mix (no loudness levelling)."""
+    if score.vgm:
+        vgm_balance(score.vgm)
+        return
     piece = derive.intro(score)
     names = sorted({part for bar in piece.bars for part in bar.parts} | {"drums"})
     levels = {}
@@ -110,6 +115,24 @@ def balance(score: score_module.Score) -> None:
         levels[name] = 10 * numpy.log10(playing.mean() + 1e-12)
     loudest = max(levels.values())
     print("balans van de intro (dB onder de luidste, elk alleen, waar hij speelt): "
+          + ", ".join(f"{name} {level - loudest:.1f}" for name, level in sorted(levels.items(), key=lambda item: -item[1])))
+
+
+def vgm_balance(file_name: str) -> None:
+    """The channels of the VGM the intro is, each played alone by the chip imitation: the
+    balance is the VGM's own (nothing is set here)."""
+    song = instruments.vgm_song(file_name)
+    names = song.channels() + (["psg"] if song.psg_writes else []) + (["dac"] if song.dac_writes or song.dac_streams else [])
+    names = sorted({"psg" if name.startswith("psg") else name for name in names})
+    levels = {}
+    window = int(0.1 * SAMPLE_RATE)
+    for name in names:
+        signal = chip.render_song(song, 0.0, (name,)).mean(axis=1)
+        powers = numpy.array([numpy.mean(signal[start:start + window] ** 2) for start in range(0, len(signal) - window, window)])
+        playing = powers[powers > powers.max() * 1e-3]
+        levels[name] = 10 * numpy.log10(playing.mean() + 1e-12)
+    loudest = max(levels.values())
+    print("balans van de intro (de kanalen van het VGM zelf, dB onder de luidste, elk alleen, waar het speelt): "
           + ", ".join(f"{name} {level - loudest:.1f}" for name, level in sorted(levels.items(), key=lambda item: -item[1])))
 
 

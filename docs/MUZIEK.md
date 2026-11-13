@@ -32,27 +32,65 @@ renderen. Eerst luisteren zonder iets te vervangen: `tools/muziek/render.sh --ui
 
 Een **VGM** (`.vgm`, of gezipt `.vgz`) is geen tekst maar het logboek van wat een nummer naar de
 geluidschips van de Mega Drive schrijft (YM2612-FM en SN76489-PSG), met de tijd in samples van
-1/44100 s. `tools/muziek/vgm.py` leest het en schrijft er een compositiebestand van, in dezelfde
-vorm als een overgeschreven tekst:
+1/44100 s. Zo'n nummer wordt **exact** de muziek van het spel:
+
+- **De intro is het VGM zelf.** `tools/muziek/chip.py` bootst de twee chips na uit het
+  registerlog; `zwervr_intro.ogg` is die weergave, met alleen de afwerking die elk stuk krijgt
+  (uitklinken, het filter van de Model 1, -16 LUFS). Geen andere instrumenten, geen noten
+  afgerond, geen octaaf verschoven, niets erbij.
+- **De afgeleide stukken klinken met de stemmen van het VGM**: de patches van zijn FM-kanalen
+  (door dezelfde nabootsing gespeeld) en een drumstel van zijn PSG-ruis.
 
 ```
 tools/muziek/render.sh --vgm <bestand> [naam] --toon        # alleen laten zien wat erin zit
 tools/muziek/render.sh --vgm <bestand> [naam]               # composities/<naam>.py schrijven
 tools/muziek/render.sh --vgm <bestand> [naam] --vergelijk   # composities/<naam>.py tegen het VGM
+tools/muziek/render.sh --vgm <bestand> [naam] --meet        # de nabootsing en de intro nameten
 ```
 
 (`naam`: standaard de bestandsnaam; `--overschrijf` vervangt een bestaand compositiebestand,
 `--tempo 92` en `--titel "..."` als het bestand ze niet geeft.) Het VGM zelf wordt als
-`tools/muziek/composities/<naam>.vgm` bewaard (het origineel, zoals de `.txt` van een tekst).
+`tools/muziek/composities/<naam>.vgm` bewaard: daar speelt de intro uit, het moet blijven staan.
 
-Wat eruit gelezen wordt:
+### De nabootsing van de chips (`chip.py`)
 
-- **FM-kanalen** (YM2612, `fm1`..`fm6`): elke key-on (register 0x28) is een noot, met de
-  toonhoogte uit F-number en blok (0xA0-0xA6) van dat moment, tot de key-off; verandert de
+Uit het registerlog, op de eigen samplefrequentie van de chip (klok / 144, 53267 Hz), daarna
+naar 44100 Hz:
+
+- **YM2612**: zes kanalen van vier operatoren in de acht algoritmen; de feedback van operator 1
+  (sample voor sample); per operator de verhouding (MUL), de detune (DT), het niveau (TL) en de
+  envelope (attack, decay tot het sustain-niveau, sustain-rate, release, met key scaling);
+  key-on en key-off per operator (key-on zet de fase op nul); de **frequentie exact** uit
+  F-number en blok (F-number 2047 in blok 1 is 103,98 Hz, geen G#); de speciale modus van kanaal 3
+  (een frequentie per operator); de panning links/rechts; de DAC op kanaal 6; per kanaal de
+  begrenzing en de 9 bits van de uitgang.
+- **SN76489**: drie blokgolven (periode naar frequentie), de ruis (wit of periodiek, het
+  schuifregister van Sega, op de drie vaste snelheden of die van toon 3; schrijven naar het
+  ruisregister zet het terug), zestien volumes van 2 dB.
+
+**Benaderd, niet cyclus-exact**: de envelopes zijn als krommen uitgerekend (dezelfde tijden en
+niveaus als de tellers van de chip, zonder hun trapjes); de sinus en de niveaus komen niet uit
+de 10-bit-tabellen van de chip; de verhouding PSG tegen FM is de gebruikelijke emulatorinstelling
+(`PSG_LEVEL`: een PSG-kanaal op vol volume half zo hard als een FM-kanaal), niet aan een console
+gemeten; het "ladder-effect" van de DAC ontbreekt. **Niet nagebootst**: de LFO (vibrato en
+tremolo), SSG-EG en de CSM-modus; gebruikt een VGM ze, dan meldt `--meet` dat.
+
+`--meet` meet de weergave na tegen het registerlog: per FM-kanaal, alleen gespeeld, de periode
+van elke noot tegen de frequentie die de registers geven (in cent); het niveau van elke
+ruis-slag tegen zijn volumeregister; en van het intro-bestand de lengte, de gelijkenis met de
+kale nabootsing (correlatie) en het niveau per achtste deel. Er is geen tweede emulator om mee
+te vergelijken (geen vgmplay, geen libgme in ffmpeg).
+
+### Het compositiebestand uit een VGM (`vgm.py`)
+
+Voor de afgeleide stukken (en voor de lengte en de `MOMENTEN` van de intro) schrijft `vgm.py` de
+noten ook uit als compositiebestand, in dezelfde vorm als een overgeschreven tekst:
+
+- **FM-kanalen** (`fm1`..`fm6`): elke key-on (register 0x28) is een noot, met de toonhoogte uit
+  F-number en blok (0xA0-0xA6) naar de dichtstbijzijnde noot, tot de key-off; verandert de
   frequentie onder een aangehouden toets naar een andere halve toon, dan is dat een nieuwe noot.
-  De patch van het kanaal (algoritme, feedback, de operatoren) wordt onthouden.
-- **PSG-tonen** (SN76489, `psg1`..`psg3`): de periode geeft de toonhoogte, het volume aan/uit en
-  de aanslagsterkte; een toon die na het wegsterven weer harder wordt, is een nieuwe noot.
+- **PSG-tonen** (`psg1`..`psg3`): de periode geeft de toonhoogte, het volume aan/uit en de
+  aanslagsterkte; een toon die na het wegsterven weer harder wordt, is een nieuwe noot.
 - **Drums**: het ruiskanaal van de PSG (witte ruis: hard een snare, zacht een hi-hat als het
   bestand beide niveaus heeft, 4 dB of meer uit elkaar; lang een open hi-hat of een crash;
   periodieke ruis een lage tom) en de **DAC** (kanaal 6, register 0x2A/0x2B, ook de datablokken
@@ -67,33 +105,59 @@ Wat eruit gelezen wordt:
 - **Partijen**: het laagste kanaal is de `bas`; kanalen die samen aanslaan worden akkoorden
   (`pad` bij lange noten, `brass` bij korte; speelt een kanaal hetzelfde als een ander, dan valt
   de verdubbeling weg); een kanaal dat het raster bijna vult is de `arp`; wat overblijft is de
-  `lead` (en `lead2`, ...). Elke partij krijgt een klank uit de tabel hieronder die bij de patch
-  past: veel feedback en hard gestuurde modulatoren een rauwe bas (`fm_housebas`) of lead
-  (`fm_lead_zuur`, `fm_lead_snerpend`), een trage aanzet een pad, hoge modulatorverhoudingen
-  metalige stoten of klokken, een PSG-kanaal een blokgolf. De reden staat in het bestand.
+  `lead` (en `lead2`, ...).
 - **Toonsoort, akkoorden, secties, momenten** staan niet in een VGM en worden afgeleid: de
   toonsoort uit hoe lang elke toon klinkt (de melodie telt dubbel), het akkoord van elke maat
   (of van haar helften) uit haar noten, de secties uit frasen van vier maten met dezelfde
   baslijn en dezelfde bezetting (de eerste zonder melodie is de `intro`, de eerste met melodie
   het `thema`, de drukste met ander materiaal het `refrein`, de dunste de `breakdown`, de
   laatste de `finale`), en de `MOMENTEN` uit die secties.
-- **Register**: de maten staan in het octaaf van het VGM. Ligt een partij ver van waar de
-  afgeleide stukken haar verwachten (de melodie rond octaaf 5, de bas rond octaaf 2), dan zet de
-  omzetter `BIJSTELLING = {"octaaf": {...}}` erbij; weghalen geeft het octaaf van het VGM terug.
 
-Beperkingen: alleen YM2612 en SN76489 (commando's van andere chips worden overgeslagen en
-gemeld); de speciale modus van kanaal 3 (een frequentie per operator), LFO, panning en
-toonhoogtebuigingen binnen een halve toon worden niet overgenomen; een opmaat wordt niet herkend
-(de eerste noot is altijd tel 1); het luspunt wordt gemeld maar het bestand wordt één keer
-gelezen. Heeft een noot het **hoogste F-number (2047)**, dan heeft de schrijver van het VGM de
-toonhoogte waarschijnlijk afgekapt: de noot blijft zoals de chip hem speelt, telt niet mee voor de
-toonsoort en licht voor de akkoorden, en het bestand meldt het. Wat de omzetter afleidt
-(akkoorden, secties, momenten, klanken, octaven) mag je daarna met de hand verbeteren in het
-compositiebestand; opnieuw omzetten overschrijft dat (`--overschrijf`).
+Wat een VGM-compositie meer heeft dan een gewone:
+
+```python
+VGM = "nitro_overdrive_92.vgm"          # de intro wordt uit dit bestand gespeeld (chip.py)
+KLANKEN = {"bas": "vgm:nitro_overdrive_92.vgm:fm1=fm_housebas", ...}
+AFGELEID_OCTAAF = {"lead": 2}           # alleen in de afgeleide stukken, niet in de intro
+AFGELEIDE_KLANKEN = {"fm_piano": "vgm:nitro_overdrive_92.vgm:fm2=fm_piano", ..., "standaard": "vgm:nitro_overdrive_92.vgm"}
+```
+
+- **`vgm:<bestand>:<kanaal>`** is een klank: de patch van dat FM-kanaal, gespeeld door de
+  nabootsing (elke toonhoogte op het F-number en blok dat een sounddriver zou kiezen). Met
+  **`=<klank>`** staat hij op de plek van die klank in de mix: dezelfde pan en breedte en even
+  hard (gemeten), zodat de balans van de afgeleide stukken blijft; zonder echo, de chip heeft
+  er geen. De omzetter kiest die plek bij de patch (veel feedback een rauwe bas of lead, enz.).
+- **`AFGELEIDE_KLANKEN`** vervangt in elk afgeleid stuk elke klank die `derive.py` gebruikt door
+  een stem van het VGM: de bas-klanken door het kanaal van de bas, de leads door dat van de
+  melodie, de akkoordklanken (pad, koper, piano, strijkers, gitaar) en de zachte klanken (klok,
+  fluit, vibrafoon, arpeggio) door een patch die het VGM wel zet maar niet speelt als die er is
+  (anders die van de akkoorden of de melodie). Welke, staat als commentaar in het bestand.
+- **Het drumstel `vgm:<bestand>`** vervangt `standaard` en `dmx`. Uit het VGM zelf: de snare en
+  de hi-hat (stoten witte PSG-ruis op de twee volumes en de lengte van zijn eigen slagen).
+  **Afgeleid**, omdat de afgeleide stukken ze nodig hebben: de open hi-hat (de hi-hat twee keer zo
+  lang), de crash (de ruis die in de 2 dB-stappen van de chip wegvalt), de clap (drie korte
+  stoten), en de kick en de toms (de patch van het laagste FM-kanaal met een vallende
+  toonhoogte). Elk even hard als dezelfde drum van het standaardstel.
+- **`AFGELEID_OCTAAF`**: de maten staan in het octaaf van het VGM. Ligt een partij ver van waar
+  de afgeleide stukken haar verwachten (de melodie rond octaaf 5, de bas rond octaaf 2), dan
+  ligt ze alleen dáár zoveel octaven anders. De intro raakt het niet.
+
+Beperkingen van de omzetting naar noten (de intro heeft ze niet, die speelt het log zelf):
+alleen YM2612 en SN76489 (commando's van andere chips worden overgeslagen en gemeld);
+toonhoogtebuigingen binnen een halve toon vallen weg; een opmaat wordt niet herkend (de eerste
+noot is altijd tel 1); het luspunt wordt gemeld maar het bestand wordt één keer gelezen. Heeft
+een noot het **hoogste F-number (2047)**, dan heeft de schrijver van het VGM de toonhoogte
+waarschijnlijk afgekapt: in de intro klinkt hij zoals de chip hem speelt (de exacte frequentie),
+in de maten staat de dichtstbijzijnde noot, hij telt niet mee voor de toonsoort en licht voor de
+akkoorden, en het bestand meldt het. Wat de omzetter afleidt (akkoorden, secties, momenten, de
+keuze van de stemmen, octaven) mag je daarna met de hand verbeteren in het compositiebestand;
+opnieuw omzetten overschrijft dat (`--overschrijf`).
 
 Nu actief: "Nitro Overdrive" (`nitro_overdrive_92.vgm`): 132 BPM (de 92 in de naam is niet het
-tempo), E majeur, 32 maten; twee FM-kanalen (bas en lead) en de PSG-ruis als snare en hi-hat. De
-lead klinkt twee octaven boven het VGM (`BIJSTELLING`).
+tempo), E majeur, 32 maten; twee FM-kanalen (`fm1` de bas, `fm3` de lead) en de PSG-ruis als
+snare en hi-hat. De afgeleide stukken: bas op de patch van `fm1`, melodie op die van `fm3`,
+akkoorden op `fm2` en zachte klanken op `fm4` (twee patches die het VGM zet maar niet speelt),
+de melodie twee octaven boven het VGM.
 
 ## De regels
 
@@ -234,6 +298,10 @@ droge snare, beide door de DAC op een lage samplefrequentie; hi-hats, clap, cras
 een `FmPatch` (of PSG-instelling) bij in `instruments.py`, met een naam die zegt wat hij is, en
 een regel in deze tabel. Bestaande klanken niet ombouwen voor één compositie: een nieuwe ernaast.
 
+Een **VGM-compositie** heeft daarnaast haar eigen klanken, `vgm:<bestand>:<kanaal>=<klank>`, en
+haar eigen drumstel, `vgm:<bestand>` (zie "Een VGM als compositie"). Bij zo'n compositie laat
+`--balans` de kanalen van het VGM zelf zien: die balans is van het VGM en wordt niet bijgesteld.
+
 **Balans** (`render.sh --controle --balans`: elke partij alleen, gemeten waar ze speelt, in dB
 onder de luidste): drums en lead bovenaan (0 tot -1), gitaar, solo en bas -2 tot -3, koper en
 subbas rond -4, pad en arpeggio als achtergrond -8 tot -10.
@@ -244,7 +312,7 @@ Uit `tools/muziek/derive.py`; alle bestanden in `assets/audio/muziek/`:
 
 | bestand | waar | gemaakt van |
 | --- | --- | --- |
-| `zwervr_intro.ogg` | de intro (`scripts/ui/intro.gd`) | de hele compositie, letterlijk, met uitklinken |
+| `zwervr_intro.ogg` | de intro (`scripts/ui/intro.gd`) | de hele compositie, letterlijk, met uitklinken; een VGM-compositie: het VGM zelf, door de nabootsing van de chips gespeeld |
 | `nachtstad_menu_loop.ogg` | hoofdmenu (lus) | de breakdown en het thema rustig: pad, arp, subbas, de melodie op klokken, zachte half-time drums |
 | `karakterkeuze_loop.ogg` | karakterkeuze (lus) | het thema twee keer: eerst alleen de groove, dan de melodie op de PSG |
 | `handelaar_loop.ogg` | bij een handelaar, in de snackbar (lus) | de akkoorden van de opbouw (en de opening van het thema) op elektrische piano, wandelende bas, clap op 2 en 4 |
@@ -295,8 +363,11 @@ kaartdeuntje blijft onder 6 s, de muzak loopt (40-150 s, zonder chromatische mat
 blijven onder 6 s, de muzak zoet powerchords, elke noot valt binnen zijn maat; en de VGM-lezer op
 een klein VGM dat de test zelf maakt (FM-noten met toonhoogte, begin en lengte, PSG-tonen en
 ruis-drums, DAC-samples als drums, het tempo tegen de bestandsnaam, gzip, afgekapte F-numbers,
-partijen/akkoorden/secties, het compositiebestand dat eruit komt), en elke compositie met een
-`.vgm` ernaast komt nog overeen met dat VGM.
+partijen/akkoorden/secties, het compositiebestand dat eruit komt), elke compositie met een
+`.vgm` ernaast komt nog overeen met dat VGM, haar intro is dat VGM en haar afgeleide stukken
+gebruiken alleen stemmen en het drumstel van dat VGM; en de nabootsing van de chips (de
+frequentie van F-number en blok tot op een halve cent, de envelope, FM en feedback, de
+PSG-blokgolven, -volumes en -ruis, een heel VGM met panning).
 
 De bestanden staan in `tools/muziek/`:
 
@@ -308,6 +379,8 @@ De bestanden staan in `tools/muziek/`:
 - `build.py`: alles maken (via `render.sh`), en `intro_timing.gd`;
 - `check.py`: de controle (via `render.sh --controle`);
 - `vgm.py`: een VGM-bestand lezen en als compositiebestand schrijven (via `render.sh --vgm`);
+- `chip.py`: de nabootsing van de YM2612 en de SN76489 uit hun registers (de intro van een
+  VGM-compositie, de `vgm:`-klanken en het `vgm:`-drumstel);
 - `composition.md`: de tekst van de componist die nu aan de beurt is (hier lever je aan);
 - `composities/`: de composities (`<naam>.txt` of `<naam>.vgm` het origineel, `<naam>.py` de
   notatie) en `actief.py`.

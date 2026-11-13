@@ -18,6 +18,9 @@ import traceback
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
+import numpy  # noqa: E402
+
+import chip  # noqa: E402
 import derive  # noqa: E402
 import instruments  # noqa: E402
 import notation  # noqa: E402
@@ -449,6 +452,143 @@ def test_a_composition_without_an_ending_lands_its_win_jingle():
     assert jingle.bars[0].parts["lead"] == running.bars[-1].parts["lead"]
     assert jingle.bars[-1].parts["lead"][0].pitches[0] % 12 == running.tonic(), "lands on the tonic"
     assert any(hit.drum == "crash" for hit in jingle.bars[-1].hits) and jingle.last_bar_beats == 2.0
+
+
+# ----------------------------------------------------------------------------- the chip imitation
+
+def _sine_voice(release_rate: int = 15, **changes):
+    """A patch that is one sine: algorithm 7 with only operator 4 sounding."""
+    settings = dict(algorithm=7, feedback=0, multiples=(1, 1, 1, 1), total_levels=(127, 127, 127, 0),
+                    attack_rates=(31, 31, 31, 31), decay_rates=(0, 0, 0, 0), sustain_levels=(0, 0, 0, 0),
+                    detunes=(0, 0, 0, 0), rate_scalings=(0, 0, 0, 0), sustain_rates=(0, 0, 0, 0),
+                    release_rates=(release_rate,) * 4)
+    settings.update(changes)
+    return vgm.FmVoice(**settings)
+
+
+def _period_hz(signal, wanted_hz: float) -> float:
+    """The frequency a signal repeats with, near `wanted_hz` (zero crossings upward, interpolated)."""
+    signs = numpy.signbit(signal)
+    rising = numpy.nonzero(signs[:-1] & ~signs[1:])[0]
+    exact = rising + signal[rising] / (signal[rising] - signal[rising + 1])
+    assert len(exact) > 4, wanted_hz
+    return chip.OUTPUT_RATE * (len(exact) - 1) / (exact[-1] - exact[0])
+
+
+def test_chip_plays_the_frequency_of_f_number_and_block():
+    clock = float(VGM_FM_CLOCK)
+    for f_number, block in ((1083, 4), (2047, 1), (644, 3), (181, 5)):
+        hertz = vgm.fm_hz(f_number, block, clock)
+        events = chip.voice_events(_sine_voice()) + [(0, "frequency", f_number, block), (0, "key", 0x0F)]
+        mono, _left, _right = chip.fm_channel(events, 30000)
+        played = chip.resample(mono, chip.native_rate(clock))
+        found = _period_hz(played[2000:22000], hertz)
+        assert abs(1200.0 * math.log2(found / hertz)) < 0.5, (f_number, block, hertz, found)
+    # no rounding to a note: F-number 2047 in block 1 is 103.98 Hz, 2.5 cents above G#2
+    assert abs(vgm.fm_hz(2047, 1, clock) - 103.98) < 0.01
+
+
+def test_chip_envelope_attack_decay_sustain_and_release():
+    clock = float(VGM_FM_CLOCK)
+    rate = chip.native_rate(clock)
+    # decay rate 12 with the key scaling of this pitch (rate 26: 6/8 of a step every 32 envelope ticks
+    # of 3 samples) falls 39 dB a second to the sustain level (2: 6 dB down), then holds (sustain rate 0)
+    voice = _sine_voice(release_rate=10, decay_rates=(12,) * 4, sustain_levels=(2,) * 4)
+    events = chip.voice_events(voice) + [(0, "frequency", 1083, 4), (0, "key", 0x0F), (int(1.0 * rate), "key", 0)]
+    mono, _left, _right = chip.fm_channel(events, int(1.6 * rate))
+    peak = lambda start, end: float(numpy.abs(mono[int(start * rate):int(end * rate)]).max())
+    assert peak(0.0, 0.01) > 0.95, "the attack at rate 31 is at once"
+    assert abs(20 * math.log10(peak(0.1, 0.11)) + 3.9) < 0.4, peak(0.1, 0.11)       # 39 dB/s for 0.1 s
+    assert abs(20 * math.log10(peak(0.6, 0.9)) + 6.0) < 0.3, peak(0.6, 0.9)         # the sustain level
+    assert peak(1.3, 1.6) == 0.0, "released: silent 0.3 s after the key-off"
+
+
+def test_chip_feedback_and_modulation_change_the_sound_not_the_pitch():
+    clock = float(VGM_FM_CLOCK)
+    plain = chip.voice_note(_sine_voice(), clock, 220.0, 0.3)
+    modulated_voice = _sine_voice(algorithm=0, feedback=3, total_levels=(22, 22, 22, 0))
+    modulated = chip.voice_note(modulated_voice, clock, 220.0, 0.3)
+    harmonics = lambda signal: float(numpy.abs(numpy.fft.rfft(signal[2000:12000]))[int(1500 * 10000 / 44100):].sum())
+    assert harmonics(modulated) > 5 * harmonics(plain), "FM adds overtones"
+    spectrum = numpy.abs(numpy.fft.rfft(modulated[2000:12000] * numpy.hanning(10000), 1 << 16)) ** 2
+    spacing = 220.0 * (1 << 16) / 44100
+    near_partials = sum(spectrum[int(round(spacing * partial)) - 20:int(round(spacing * partial)) + 21].sum()
+                        for partial in range(1, 40))
+    assert near_partials > 0.9 * spectrum.sum(), "the overtones are multiples of the note"
+
+
+def test_chip_psg_squares_volumes_and_noise():
+    rate = 53267.0
+    period = 254                                                    # A4: 3579545 / (32 * 254) = 440.4 Hz
+    writes = [(0, 0x80 | (period & 0x0F)), (0, period >> 4), (0, 0x90), (20000, 0x93)]
+    tone = chip.psg(writes, 40000, float(VGM_PSG_CLOCK), rate)
+    wanted = VGM_PSG_CLOCK / (32.0 * period)
+    assert abs(_period_hz(tone[1000:19000], wanted) * rate / chip.OUTPUT_RATE - wanted) < 0.5
+    loud, soft = numpy.abs(tone[1000:19000]).max(), numpy.abs(tone[21000:39000]).max()
+    assert abs(loud - chip.PSG_LEVEL) < 0.01 and abs(20 * math.log10(soft / loud) + 6.0) < 0.2, (loud, soft)
+    white = chip.psg([(0, 0xE4), (0, 0xF0)], 30000, float(VGM_PSG_CLOCK), rate)
+    periodic = chip.psg([(0, 0xE0), (0, 0xF0)], 30000, float(VGM_PSG_CLOCK), rate)
+    assert set(numpy.unique(numpy.abs(white[2000:]))) == {chip.PSG_LEVEL}
+    # periodic noise repeats every 16 shifts (6991 shifts a second), white noise does not
+    repeat = int(round(16 * rate / (VGM_PSG_CLOCK / 512.0)))
+    alike = lambda signal: float(numpy.mean(signal[2000:20000] * signal[2000 + repeat:20000 + repeat])) / chip.PSG_LEVEL ** 2
+    assert alike(periodic) > 0.8 and abs(alike(white)) < 0.2, (alike(periodic), alike(white))
+
+
+def test_chip_plays_a_whole_vgm_with_its_panning():
+    events = [(0, _fm_patch(0, 4, 3) + bytes([0x52, 0xB4, 0x80])), (0, _fm_key_on(0, 57)), (0, _psg_noise(15)),
+              (4 * VGM_STEP, _fm_key_off(0)), (4 * VGM_STEP, _psg_noise(2)), (6 * VGM_STEP, _psg_noise(15))]
+    with tempfile.TemporaryDirectory() as folder:
+        path = os.path.join(folder, "heel.vgm")
+        with open(path, "wb") as vgm_file:
+            vgm_file.write(_vgm_file(events, 8 * VGM_STEP))
+        song = vgm.read(path)
+    stereo = chip.render_song(song, tail_seconds=0.5)
+    assert abs(len(stereo) - (8 * VGM_STEP + 22050)) <= 2
+    level = lambda start, end, side: float(numpy.sqrt(numpy.mean(stereo[start * VGM_STEP:end * VGM_STEP, side] ** 2)))
+    assert level(0, 4, 0) > 0.1 and level(0, 4, 1) < 0.01, "the FM channel is panned left"
+    assert abs(level(4, 6, 0) - level(4, 6, 1)) < 0.02 and level(5, 6, 1) > 0.3, "the PSG noise in the middle"
+    assert level(7, 8, 0) < 0.01 and level(7, 8, 1) < 0.01
+    only_fm = chip.render_song(song, channels=("fm1",))
+    assert float(numpy.abs(only_fm[5 * VGM_STEP:6 * VGM_STEP]).max()) < 0.01
+    assert chip.unsupported(song) == []
+
+
+def test_the_sounds_of_the_vgm_tool_cover_every_sound():
+    listed = {sound for sounds in vgm.SOUND_KINDS.values() for sound in sounds}
+    plain = {name for name in instruments.SOUNDS if not name.startswith("vgm:")}
+    assert listed == plain, (listed ^ plain)
+    assert set(vgm.DRUM_KIT_NAMES) == {name for name in instruments.DRUM_KITS if not name.startswith("vgm:")}
+
+
+def test_a_vgm_composition_plays_its_vgm_and_its_own_voices():
+    for name in COMPOSITIONS:
+        score = score_module.load(name)
+        if not score.vgm:
+            continue
+        song = instruments.vgm_song(score.vgm)
+        made = derive.pieces(score)
+        assert made[0].name == "zwervr_intro" and made[0].vgm == score.vgm
+        assert abs(made[0].bars_seconds - song.seconds) < 0.1, (name, made[0].bars_seconds, song.seconds)
+        # the intro is the VGM as written: no octave moved in the score it is timed by
+        assert all(part not in score.derived_octaves or made[0].bars[4].parts[part] == score.bars[4].parts[part]
+                   for part in score.bars[4].parts)
+        for piece in made[1:]:
+            assert not piece.vgm
+            for part in {part for bar in piece.bars for part in bar.parts}:
+                assert piece.sound_of(part).startswith("vgm:" + score.vgm), (name, piece.name, part, piece.sound_of(part))
+            assert piece.sounds["drumstel"] == "vgm:" + score.vgm, (name, piece.name)
+        voice = instruments.SOUNDS[score.sounds["lead"]]
+        assert voice.kind == "chip" and voice.chip_voice == song.patches[score.sounds["lead"].split(":")[2].split("=")[0]]
+        assert voice.echo == 0.0 and len(voice.render((69,), 0.25, 1.0)) >= int(0.25 * 44100)
+        kit = instruments.DRUM_KITS["vgm:" + score.vgm]
+        assert set(kit) == set(instruments.DRUM_KITS["standaard"])
+        moved = derive.pieces(score)[2].bars       # the character loop: the melody where the derived pieces want it
+        if score.derived_octaves.get("lead"):
+            lead_low = min(pitch for bar in score.bars for note in bar.parts.get("lead", []) for pitch in note.pitches)
+            derived_low = min(pitch for bar in score.for_derived().bars for note in bar.parts.get("lead", [])
+                              for pitch in note.pitches)
+            assert derived_low - lead_low == 12 * score.derived_octaves["lead"] and moved
 
 
 def main() -> int:

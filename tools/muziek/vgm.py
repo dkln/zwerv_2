@@ -1605,7 +1605,7 @@ def compare(arrangement: Arrangement, name: str) -> list:
 def measure(song: VgmSong, intro_path: str = None) -> list:
     """Measures the chip imitation (chip.py) against the register log, and the rendered intro
     against the imitation. Per FM and PSG tone channel, played alone: the pitch of every note
-    (the strongest partial near the frequency the registers give, in cents from it). The PSG
+    (the period it repeats with, near the one the registers give, in cents from it). The PSG
     noise: the level of every hit against its volume register. The intro file: its length, how
     alike it is to the bare imitation (correlation) and the level of every eighth of it against
     the imitation's. Returns the problems (Dutch); prints the measurements."""
@@ -1622,14 +1622,17 @@ def measure(song: VgmSong, intro_path: str = None) -> list:
         for note in song.notes:
             if note.channel != channel or note.end - note.start < window_least:
                 continue
-            piece = alone[note.start:note.end]
-            piece = piece * numpy.hanning(len(piece))
-            size = 1 << 17
-            spectrum = numpy.abs(numpy.fft.rfft(piece, size))
+            # the period: the lag near the one the registers give at which the note repeats best
+            piece = alone[note.start + 256:note.end - 64]
             wanted = 440.0 * 2 ** ((note.pitch - 69) / 12.0)
-            low, high = int(wanted * 0.94 * size / VGM_RATE), int(wanted * 1.06 * size / VGM_RATE) + 1
-            peak = low + int(spectrum[low:high].argmax())
-            found = peak * VGM_RATE / size
+            lags = range(int(VGM_RATE / wanted * 0.94), int(VGM_RATE / wanted * 1.06) + 2)
+            alike = [float(numpy.dot(piece[:-lag], piece[lag:])) / (len(piece) - lag) for lag in lags]
+            best = int(numpy.argmax(alike))
+            shift = 0.0
+            if 0 < best < len(alike) - 1:
+                bend = alike[best - 1] - 2.0 * alike[best] + alike[best + 1]
+                shift = 0.5 * (alike[best - 1] - alike[best + 1]) / bend if bend else 0.0
+            found = VGM_RATE / (lags[best] + shift)
             cents.append(1200.0 * math.log2(found / wanted))
         if cents:
             worst = max(abs(value) for value in cents)

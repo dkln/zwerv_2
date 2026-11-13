@@ -189,13 +189,14 @@ func test_columns_crash_by_themselves(test) -> void:
 		return
 	var there_before := map.get_children()
 	var wreck_name := [""]
-	var began := Time.get_ticks_msec()
+	var frames_waited := [0]
 	await wait_until(func() -> bool:
+		frames_waited[0] += 1
 		for node in map.get_children():
 			if node.name.begins_with("Wrak") and not there_before.has(node):
 				wreck_name[0] = node.name
 		return wreck_name[0] != "", 240.0)
-	print("  wrak %s na %d ms" % [wreck_name[0], Time.get_ticks_msec() - began])
+	print("  wrak %s na %d frames" % [wreck_name[0], frames_waited[0]])
 	test.check(wreck_name[0] != "", "vanzelf gebotst (%s)" % wreck_name[0])
 
 

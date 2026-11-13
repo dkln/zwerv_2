@@ -248,7 +248,7 @@ func test_stop_line_takes_the_limit_of_its_lane(test) -> void:
 	_restore_choices(ground)
 
 
-## Places on the map where a lane runs into a crossing cell with a way straight on and a
+## Places on the map where a lane for cars runs into a crossing cell (of the road) with a way straight on and a
 ## way to the side: [{approach, crossing, heading, exit}].
 func _turns(network: RoadNetwork) -> Array[Dictionary]:
 	var found: Array[Dictionary] = []
@@ -259,10 +259,14 @@ func _turns(network: RoadNetwork) -> Array[Dictionary]:
 		var ahead := network.step(cell, heading)
 		if ahead == RoadNetwork.NONE or not network.is_crossing(ahead) or network.step(cell, -heading) == RoadNetwork.NONE:
 			continue
+		# (a car's crossing: not one of the tram's or the cycle path's)
+		if not network.allows(cell, "auto") or not network.allows(ahead, "auto") or not network.tile_name(ahead).begins_with("weg/"):
+			continue
 		if not network.lanes(ahead).has(heading) or network.step(ahead, heading) == RoadNetwork.NONE:
 			continue
 		for option in network.lanes(ahead):
-			if option != heading and option != -heading and network.step(ahead, option) != RoadNetwork.NONE:
+			if option != heading and option != -heading and network.step(ahead, option) != RoadNetwork.NONE \
+					and network.allows(network.step(ahead, option), "auto"):
 				found.append({"approach": cell, "crossing": ahead, "heading": heading, "exit": option})
 				break
 	return found
@@ -295,6 +299,23 @@ func _hatchback(start_cell: Vector3i, heading: Vector2i) -> Vehicle:
 	camera_off()   # nothing out of sight: the car takes every step, wherever it is
 	scene.add_child(car)
 	return car
+
+
+## Cells a car starts before the crossing it is to take: its first cells are laid straight
+## ahead, so it has to plan the crossing while driving.
+const RUN_UP_CELLS := 5
+
+
+## The cell up to RUN_UP_CELLS back from `approach` along the lane heading `heading` (as far
+## as that lane runs straight, for cars, without a crossing).
+func _run_up_start(network: RoadNetwork, approach: Vector3i, heading: Vector2i) -> Vector3i:
+	var start := approach
+	for cell_index in RUN_UP_CELLS:
+		var behind := network.step(start, -heading)
+		if behind == RoadNetwork.NONE or network.is_crossing(behind) or network.lanes(behind) != [heading] or not network.allows(behind, "auto"):
+			break
+		start = behind
+	return start
 
 
 ## The headings with which `car` plans to leave `crossing`, added to `headings` (as keys).
@@ -336,7 +357,7 @@ func test_vehicle_leaves_a_crossing_by_the_chosen_lane(test) -> void:
 		if network.heading_of_side(turning.crossing, side) == turning.exit:
 			exit_side = side
 	var network_before := _put_choices_on(ground, {turning.crossing: {"tile": _tile_at(ground, turning.crossing), "lanes": [exit_side]}})
-	var car := _hatchback(turning.approach, turning.heading)
+	var car := _hatchback(_run_up_start(network, turning.approach, turning.heading), turning.heading)
 	var headings := {}
 	var elapsed := 0.0
 	while elapsed < DRIVE_SECONDS and headings.is_empty():
@@ -360,7 +381,7 @@ func test_vehicle_keeps_off_a_cell_closed_to_cars(test) -> void:
 	var avoiding: Dictionary = turns[turns.size() / 2]
 	var closed := network.step(avoiding.crossing, avoiding.exit)
 	var network_before := _put_choices_on(ground, {closed: {"tile": _tile_at(ground, closed), "kinds": ["fiets"]}})
-	var car := _hatchback(avoiding.approach, avoiding.heading)
+	var car := _hatchback(_run_up_start(network, avoiding.approach, avoiding.heading), avoiding.heading)
 	var headings := {}
 	var drove_on_closed := false
 	var elapsed := 0.0

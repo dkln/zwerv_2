@@ -87,26 +87,40 @@ func test_collider_holds_aid_and_rider(test) -> void:
 func test_they_ride_about_wheels_rolling_and_steering(test) -> void:
 	var riders := await _riders()
 	test.check(not riders.is_empty(), "er zijn berijders (%d)" % riders.size())
+	# nobody renewed for riding too far from the player while the test watches
+	set_for_test(scene.get_node("Voetgangers"), "reach", 1000.0)
+	# who rides on to the end of the test (one who wanders too far from the player, or into
+	# a tram, becomes someone else: Pedestrians renews them) -> where they started
 	var start := {}
 	for person: Pedestrian in riders:
 		start[person] = person.global_position
+	var farthest := {}
+	var rolled_most := {}
 	var swivelled := 0.0
 	var steered := 0.0
 	for frame_index in 60 * RIDE_SECONDS:
 		await tree.physics_frame
-		for person: Pedestrian in riders:
+		for person: Variant in start.keys():
+			if not is_instance_valid(person) or person.aid == null:
+				start.erase(person)
+				continue
+			farthest[person] = maxf(float(farthest.get(person, 0.0)), person.global_position.distance_to(start[person]))
+			var wheel: Array = person.aid._wheels[0]
+			if (wheel[0] as GeometryInstance3D).material_override is ShaderMaterial:
+				rolled_most[person] = maxf(float(rolled_most.get(person, 0.0)), absf(wheel[2]))
 			for caster: Array in person.aid._casters:
 				swivelled = maxf(swivelled, absf((caster[0] as Node3D).rotation.y))
 			if person.aid._steering:
 				steered = maxf(steered, absf(person.aid._steering.rotation.y))
 	var moved := 0
 	var rolled := 0
-	for person: Pedestrian in riders:
-		if person.global_position.distance_to(start[person]) > 3.0:
+	for person: Variant in start:
+		if float(farthest.get(person, 0.0)) > 3.0:
 			moved += 1
-		var wheel: Array = person.aid._wheels[0]
-		if absf(wheel[2]) > 0.5 and (wheel[0] as GeometryInstance3D).material_override is ShaderMaterial:
+		if float(rolled_most.get(person, 0.0)) > 0.5:
 			rolled += 1
+	riders = start.keys()
+	test.check(riders.size() >= 2, "berijders die blijven rijden (%d)" % riders.size())
 	test.check(moved >= riders.size() - 1, "ze rijden rond (%d van %d meer dan 3 m)" % [moved, riders.size()])
 	test.check(rolled >= riders.size() - 1, "de wielen rollen (wielshader, %d van %d)" % [rolled, riders.size()])
 	test.check(swivelled > 0.3, "zwenkwieltjes draaien om hun as (tot %.2f rad)" % swivelled)
@@ -119,13 +133,22 @@ func test_scooter_hoots_at_who_stands_in_front(test) -> void:
 	test.check(not scooters.is_empty(), "er is een scootmobiel")
 	if scooters.is_empty():
 		return
-	var scooter: Pedestrian = scooters[0]
 	var hooted := false
-	for frame_index in 180:
-		var ahead := Vector3(sin(scooter.rotation.y), 0.0, cos(scooter.rotation.y))
-		player.global_position = scooter.global_position + ahead * 1.0
-		await tree.physics_frame
-		if scooter._horn_clock > 0.0:
-			hooted = true
+	for scooter: Pedestrian in scooters:
+		# riding on (not waiting somewhere) and not hooting already
+		scooter._pause = 0.0
+		scooter._horn_clock = 0.0
+		scooter._honked_while_blocked = false
+		for frame_index in 180:
+			if scooter.aid == null:
+				break
+			var ahead := Vector3(sin(scooter.rotation.y), 0.0, cos(scooter.rotation.y))
+			player.global_position = scooter.global_position + ahead * 1.0
+			await tree.physics_frame
+			if scooter._horn_clock > 0.0:
+				hooted = true
+				break
+		if hooted:
 			break
+		print("  %s toetert niet: pauze %.1f, geblokt %.1f, geest %.1f" % [scooter.name, scooter._pause, scooter._blocked, scooter._ghost_left])
 	test.check(hooted, "de scootmobiel toetert naar wie voor hem staat")
