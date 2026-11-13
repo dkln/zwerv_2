@@ -49,7 +49,7 @@ extends CanvasLayer
 const LoadingScreenScript = preload("res://scripts/ui/loading_screen.gd")
 const SwipeTransition = preload("res://scripts/ui/swipe_transition.gd")
 const MAP_JINGLE := "res://assets/audio/muziek/deuntje_kaart_start.ogg"
-const MAP_JINGLE_VOLUME_DB := -4.5
+const MAP_JINGLE_VOLUME_DB := -5.0
 ## The music while roaming the city: one loop everywhere (CITY_MUSIC, tools/muziek/: made from
 ## the composition, docs/MUZIEK.md). It starts when the jingle ends, fading in. Going into a
 ## building with music of its own (set_indoor_music: the merchant's) crossfades to that and
@@ -61,9 +61,9 @@ const MUSIC_FOLDER := "res://assets/audio/muziek/"
 const CITY_MUSIC := "spel_loop.ogg"
 ## Inside a building: how fast its music takes over; how much softer the music is under a jingle.
 const INDOOR_MUSIC_FADE := 1.2
-const JINGLE_DUCK_DB := 8.0
-const CITY_MUSIC_VOLUME_DB := -13.5
-const CITY_MUSIC_PAUSED_DB := -20.5
+const JINGLE_DUCK_DB := 6.0
+const CITY_MUSIC_VOLUME_DB := -7.0
+const CITY_MUSIC_PAUSED_DB := -13.0
 ## The city's own loop (CITY_MUSIC) plays this much softer still: it runs quietly in the
 ## background, under the sounds of the town; music of a building (the merchant's) does not.
 const CITY_LOOP_SOFTER_DB := 3.0
@@ -551,7 +551,7 @@ func set_xp(points: float, points_for_level: float) -> void:
 ## A step of a mission done (Story): a short triumph; the whole mission: the longer one.
 const TASK_JINGLE := "res://assets/audio/muziek/deuntje_taak_klaar.ogg"
 const MISSION_DONE_JINGLE := "res://assets/audio/muziek/deuntje_gewonnen.ogg"
-const TASK_JINGLE_VOLUME_DB := -2.0
+const TASK_JINGLE_VOLUME_DB := -4.0
 
 
 ## A task of a mission done: its triumph tune (the whole mission done: the longer one).
@@ -560,7 +560,7 @@ func play_task_done(mission_done := false) -> void:
 
 
 const LEVEL_JINGLE := "res://assets/audio/muziek/deuntje_level_omhoog.ogg"
-const LEVEL_JINGLE_VOLUME_DB := -1.0
+const LEVEL_JINGLE_VOLUME_DB := -3.0
 
 
 ## A level up: the new level on the badge, "LEVEL 3" announced at the top with the jingle.
@@ -579,7 +579,7 @@ func set_player(new_name: String, level: int) -> void:
 const AREA_HEADING := "— NIEUW GEBIED ONTDEKT —"
 const MISSION_HEADING := "— NIEUWE MISSIE —"
 const MISSION_JINGLE := "res://assets/audio/muziek/deuntje_nieuwe_missie.ogg"
-const MISSION_JINGLE_VOLUME_DB := 0.5
+const MISSION_JINGLE_VOLUME_DB := -3.0
 ## Width of the notice (a mission title is longer than an area name).
 const NOTICE_WIDTH := 720.0
 
@@ -663,26 +663,54 @@ func _play_jingle(path: String, volume_db: float, player_name: String) -> void:
 ## its title). A step may have "targets" (Array of world x, z: where to go for it, shown on
 ## the minimap and the map while it is the step under way of the tracked quest) and
 ## "locked" (it can only be done after the steps before it: shown muted, no targets yet).
+## "done": the whole quest is finished; it can no longer be followed: the tracker then goes
+## on to the first open quest after it (next_open_quest_id).
 func set_quests(quests: Array) -> void:
+	var previous_ids: Array = _quests.map(func(quest: Dictionary) -> String: return quest_id(quest))
 	_quests = quests.duplicate(true)
-	if quest_by_id(_tracked_quest_id).is_empty():
-		_tracked_quest_id = quest_id(_quests[0]) if not _quests.is_empty() else ""
+	var tracked := quest_by_id(_tracked_quest_id)
+	if tracked.is_empty() or tracked.get("done", false):
+		_tracked_quest_id = next_open_quest_id(_tracked_quest_id, previous_ids)
 	_rebuild_quest_tracker()
+
+
+static func is_quest_done(quest: Dictionary) -> bool:
+	return quest.get("done", false)
+
+
+## The quest to follow once `after_id` is done (or gone): the first open (not done) one after
+## it in the list (`previous_ids`: the order before, as a quest that is gone is no longer in
+## the list), else the first open one at all; "" when none is open.
+func next_open_quest_id(after_id: String, previous_ids: Array = []) -> String:
+	var start := 0
+	var at := -1
+	for index in _quests.size():
+		if quest_id(_quests[index]) == after_id:
+			at = index
+	if at == -1 and previous_ids.has(after_id):
+		# gone from the list: start where it stood
+		for later_id: String in previous_ids.slice(previous_ids.find(after_id) + 1):
+			var later := quest_by_id(later_id)
+			if not later.is_empty() and not is_quest_done(later):
+				return later_id
+	if at != -1:
+		start = at + 1
+	for offset in _quests.size():
+		var quest: Dictionary = _quests[(start + offset) % _quests.size()]
+		if not is_quest_done(quest):
+			return quest_id(quest)
+	return ""
 
 
 func _rebuild_quest_tracker() -> void:
 	for child in _quest_list.get_children():
 		child.queue_free()
 	_tracked_distance = null
-	# the tracked one on top
-	var ordered := _quests.duplicate()
+	# only the quest you follow is in view (the others are in the quest log of the game menu)
 	var tracked := quest_by_id(_tracked_quest_id)
 	if not tracked.is_empty():
-		ordered.erase(tracked)
-		ordered.push_front(tracked)
-	for quest: Dictionary in ordered:
-		_quest_list.add_child(_main_quest_panel(quest) if quest.get("kind", "verhaal") == "verhaal" else _side_quest_panel(quest))
-	_quest_list.visible = not _quests.is_empty()
+		_quest_list.add_child(_main_quest_panel(tracked) if tracked.get("kind", "verhaal") == "verhaal" else _side_quest_panel(tracked))
+	_quest_list.visible = not tracked.is_empty()
 	_update_quest_distance()
 
 
@@ -699,7 +727,8 @@ func quest_by_id(id: String) -> Dictionary:
 
 ## Follows this quest (its places on the minimap and the map, on top of the tracker).
 func track_quest(id: String) -> void:
-	if quest_by_id(id).is_empty() or id == _tracked_quest_id:
+	var quest := quest_by_id(id)
+	if quest.is_empty() or is_quest_done(quest) or id == _tracked_quest_id:
 		return
 	_tracked_quest_id = id
 	_rebuild_quest_tracker()
@@ -1470,7 +1499,7 @@ func is_showing_story() -> bool:
 const RewardScreen = preload("res://scripts/ui/reward_screen.gd")
 ## Its own short tune (tools/muziek/derive.py "deuntje_beloning"), as a task done has one.
 const REWARD_JINGLE := "res://assets/audio/muziek/deuntje_beloning.ogg"
-const REWARD_JINGLE_VOLUME_DB := -2.0
+const REWARD_JINGLE_VOLUME_DB := -4.0
 
 var _reward_screen: Control
 var _rewards_waiting: Array[Dictionary] = []
@@ -1491,6 +1520,8 @@ func _build_reward_screen() -> void:
 	if _story_box:
 		_story_box.keep_paused = func() -> bool:
 			return is_showing_reward() or is_showing_shop() or (_pause_layer != null and _pause_layer.visible)
+		# a conversation waits under the reward screen and goes on where it was after it
+		_story_box.on_hold = is_showing_reward
 	if _shop_screen:
 		_shop_screen.keep_paused = func() -> bool:
 			return is_showing_reward() or is_showing_story() or (_pause_layer != null and _pause_layer.visible)
@@ -1580,7 +1611,7 @@ func is_showing_shop() -> bool:
 ## fades out and the death tune plays once. Enter starts again with the same zwerver
 ## (the scene reloaded), Escape goes to the main menu.
 const DEATH_JINGLE := "res://assets/audio/muziek/deuntje_dood.ogg"
-const DEATH_JINGLE_VOLUME_DB := -3.9
+const DEATH_JINGLE_VOLUME_DB := -5.0
 const DEATH_CAUSES := {
 	"honger": "%s is van de honger omgekomen.",
 	"aangereden": "%s is aangereden en niet meer opgestaan.",

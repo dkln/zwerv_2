@@ -498,6 +498,10 @@ static func _build_voxels(figure: PlayerModel.VoxelFigure, figure_look: Dictiona
 	_hair(figure, figure_look, hair)
 	if str(figure_look.get("model", "")) == "bertus":
 		_bertus(figure, figure_look)
+	if CHEST_PRINTS.has(str(figure_look.get("opdruk", ""))):
+		_chest_print(figure, str(figure_look.opdruk), Color(str(figure_look.get("opdruk_kleur", "#F4F4F4"))))
+	if BACK_PRINTS.has(str(figure_look.get("rugopdruk", ""))):
+		_back_print(figure, str(figure_look.rugopdruk), Color(str(figure_look.get("rugopdruk_kleur", "#F4F4F4"))))
 	figure.mark("skin", [skin, skin.darkened(0.05), skin.darkened(0.08)])
 	figure.mark("eye", [EYE])
 	figure.mark("hair", [hair])
@@ -507,6 +511,52 @@ static func _build_voxels(figure: PlayerModel.VoxelFigure, figure_look: Dictiona
 	figure.mark("cloth", [figure_look.cap, (figure_look.cap as Color).darkened(0.45)])
 	figure.mark("plastic", [figure_look.helmet])
 	figure.mark("glass", [Color("#20242E")])
+
+
+## Big letters on the front of the shirt ("opdruk" of a look, in "opdruk_kleur"; the telephone
+## sellers of Lebaarmoeder their L): rows from the top, "#" a voxel, as seen from the front
+## (the first column on the viewer's left: high x, the figure faces -z).
+const CHEST_PRINTS := {
+	"L": ["#...", "#...", "#...", "#...", "#...", "####"],
+}
+
+
+## A logo on the back of the shirt ("rugopdruk", in "rugopdruk_kleur"; the Lebaarmoeder sellers:
+## a mobile phone with its aerial), eight wide over the whole back, rows from the top, as seen from behind (the
+## first column on the viewer's left: low x).
+const BACK_PRINTS := {
+	"telefoon": [
+		".....#..",
+		"..####..",
+		"..#..#..",
+		"..#..#..",
+		"..####..",
+		"..####..",
+		"..####..",
+	],
+}
+
+
+static func _back_print(figure: PlayerModel.VoxelFigure, logo: String, colour: Color) -> void:
+	var rows: Array = BACK_PRINTS[logo]
+	var top := 24
+	for row_index in rows.size():
+		var row := str(rows[row_index])
+		for column in row.length():
+			if row[column] == "#":
+				figure.put(2 + column, top - row_index, 3, colour)
+	figure.mark("cloth", [colour])
+
+
+static func _chest_print(figure: PlayerModel.VoxelFigure, letter: String, colour: Color) -> void:
+	var rows: Array = CHEST_PRINTS[letter]
+	var top := 23
+	for row_index in rows.size():
+		var row := str(rows[row_index])
+		for column in row.length():
+			if row[column] == "#":
+				figure.put(7 - column, top - row_index, 0, colour)
+	figure.mark("cloth", [colour])
 
 
 ## A look of its own ("model": "bertus", Blikken Bertus of data/gesprekken/personages.json):

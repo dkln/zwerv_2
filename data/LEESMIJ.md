@@ -86,14 +86,14 @@ Soorten **doel**:
 | `gebruiken` | `item` | je het gegeten, gedronken of gebruikt hebt (in het menu, of met F: eet iets uit je zakken) |
 | `verzamelen` | `item`, `aantal` | je er zoveel van op zak hebt |
 | `statiegeld` | | een statiegeldautomaat je geld heeft gegeven |
-| `praten_met` | `persoon` | je met zo iemand praat (een `id` uit de gesprekken of een personage, of `"iemand"`) |
+| `praten_met` | `persoon` | je met zo iemand gepraat hebt (een `id` uit de gesprekken of een personage, of `"iemand"`); klaar als het gesprek voorbij is, de `klaar_paginas` komen erna |
 | `naar_plek` | `plek`, `straal` | je binnen `straal` meter van die plek bent |
 | `naar_persoon` | `persoon`, `straal` | je binnen `straal` meter van dat personage bent |
 | `lopen` | `meter` | je zover gelopen hebt sinds de stap begon |
 | `stat_onder` | `stat`, `waarde` | die stat onder de waarde zakt (bv. `honger`) |
 | `menu_open` | `tab` | je het spelmenu op die tab opent (`inventaris`, `quests`, `kaart`) |
 | `check` | `check` | een vaardigheidscheck in een gesprek gelukt is (zie **Personages**) |
-| `begeleiden` | `persoon`, `route` | je met het personage langs de plekken van `route` gelopen bent (het wacht als je achterblijft) |
+| `begeleiden` | `persoon`, `route`, `wacht` | je met het personage langs de plekken van `route` gelopen bent (het wacht als je achterblijft; met `"wacht": false` loopt het in één keer door en ben je klaar zodra je er ook bent) |
 | `werver` | `persoon`, `straal`, `plek`, `voorbij` | het personage staat op `plek` in de weg; klaar als je ermee praat of er voorbij bent (dichter bij `voorbij`) |
 
 **Plekken** op het kaartje en de kaart (optioneel): `{"soort": "snackbars", "aantal": 3}`
@@ -125,6 +125,25 @@ tellen niet mee.
 - `gebieden`: gebieden met een naam die een missie opent (`opent`, `opent_na_afloop`), elk uit
   `cirkels` (zoals de start), `wijken` (namen van `metadata/wijken`, zoals `"Centrum"`) en/of
   `rechthoeken` (`[x0, z0, x1, z1]` in cellen van 4 m).
+
+## Missies testen
+
+Start het spel meteen bij een missie (of een stap ervan), zonder intro, menu en eerdere missies:
+
+```
+Godot --path . res://scenes/snel_starten.tscn -- --snel --missie 2
+Godot --path . res://scenes/snel_starten.tscn -- --snel --missie 2 --stap verkopers
+```
+
+`--missie` is het nummer uit het `label` ("MISSIE 2") of het `id`; `--stap` het `id` van een
+stap. Je staat dan vlak bij het personage waar de stap om draait (Ome Wim op het Plein), of
+met `--plek <plek>` op een plek van de kaart (`--plek plein`).
+
+Een goede startplek voor het testen zet je in het missiebestand: `"debug_start": "plein"` bij de
+missie (voor `--missie`), en/of bij een stap (voor `--stap`). Het is een plek van de kaart (de
+`places` van de stad, zoals bij `route`). `--plek` gaat voor, daarna die van de stap, dan die van
+de missie, en anders sta je bij het personage van de stap. In het spel zelf doet het niets. De missies ervoor worden afgerond en hun pagina's weggeklikt; wat de missie of de stap
+zelf laat zien, zie je gewoon (`scripts/debug/mission_jump.gd`).
 
 ## Personages — `gesprekken/personages.json`
 
@@ -163,6 +182,23 @@ dezelfde achter elkaar). `stem`: een eigen stem voor het gebrabbel (`rasperig`: 
 `brabbel_rasperig_*` uit `tools/megadrive/stemmen.py`). In `uiterlijk` geeft `"model": "bertus"`
 hem een eigen figuur (lange jas met lappen, sjaal, baard, gebreide muts met pompon, sjekkie;
 kleuren `patch`, `scarf`, `pompom`: `TownsfolkFigure._bertus`).
+
+Een gesprek dat je **niet kunt afbreken** (de telefoonverkopers van Lebaarmoeder): zet in het
+gesprek `"klampt_vast": true`. Dan is er geen "dag" en geen kleingeld; loopt een tak dood, dan
+zeggen ze een regel uit `opnieuw` en beginnen ze weer bij de eerste keuzes van het `onderwerp`.
+Elk antwoord maakt je `prikkels` overprikkelder. Alleen een vraag met een `check` laat je
+gaan: met `"kans": 100` en `"verborgen": true` (geen `[LABEL 100%]` ervoor, geen melding) is
+het gewoon het goede antwoord; zijn `gelukt` is hun laatste woord.
+
+Een stap kan iemand **achter je aan sturen**: `"achtervolgen": {"persoon": "telefoonverkoper",
+"groep": ["telefoonverkoper_kevin", ...]}`. Een paar seconden later verschijnen ze achter je, lopen
+op je af, blijven je volgen en de `persoon` begint zelf het gesprek (na afloop opnieuw);
+`eerst_paginas` (zoals `klaar_paginas`) komen één keer vlak daarvoor, bv. de verteller die je waarschuwt. Is de
+stap klaar (doel `check` met het id van die verborgen check), dan lopen ze weg.
+
+Opdruk op de kleren in `uiterlijk`: `"opdruk": "L"` (een grote letter op de buik, kleur
+`opdruk_kleur`) en `"rugopdruk": "telefoon"` (een logo op de rug, `rugopdruk_kleur`); de
+patronen staan in `TownsfolkFigure.CHEST_PRINTS` en `BACK_PRINTS`.
 
 ## De proloog — `verhaal/proloog.json`
 

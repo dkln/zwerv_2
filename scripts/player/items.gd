@@ -16,6 +16,9 @@ extends RefCounted
 ## only BASE_SLOTS of them in his pockets; a rucksack picked up in the town
 ## (scripts/world/things/backpacks.gd) adds BACKPACK_SLOTS. Nobody starts with a rucksack.
 const BASE_SLOTS := 4
+## An effect of this much fills the stat to its maximum, whatever that is for the character
+## (the kroket: your stomach full again); shown as "VOL".
+const FULL := 999
 const BACKPACK_SLOTS := 8
 
 const ITEMS := {
@@ -27,7 +30,7 @@ const ITEMS := {
 		"effect": {"honger": 40, "gezondheid": -2}, "action": "ETEN"},
 	"kroket": {"name": "Warme kroket", "kind": "eten", "rarity": "bijzonder", "icon": "kroket",
 		"text": "Knapperig, gloeiend heet van binnen. Uit de muur of over de toonbank: een Haagse kroket.",
-		"effect": {"honger": 40, "overprikkeldheid": -5}, "action": "ETEN"},
+		"effect": {"honger": FULL, "overprikkeldheid": -5}, "action": "ETEN"},
 	"patat": {"name": "Patatje met", "kind": "eten", "rarity": "bijzonder", "icon": "patat",
 		"text": "Een puntzak patat met mayonaise. Vet, zout en warm: precies goed.",
 		"effect": {"honger": 50, "gezondheid": -1}, "action": "ETEN"},

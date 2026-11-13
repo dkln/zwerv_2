@@ -10,9 +10,9 @@ extends Node
 const FOLDER := "res://assets/audio/omgeving/"
 ## Per place: its loop and how loud it plays (dB: soft, the sounds of the game over it).
 const PLACES := {
-	"straat": {"file": "straat_loop.ogg", "volume_db": -22.0},
-	"station": {"file": "station_loop.ogg", "volume_db": -19.0},
-	"winkel": {"file": "winkel_loop.ogg", "volume_db": -21.0},
+	"straat": {"file": "straat_loop.ogg", "volume_db": -16.0},
+	"station": {"file": "station_loop.ogg", "volume_db": -13.0},
+	"winkel": {"file": "winkel_loop.ogg", "volume_db": -15.0},
 }
 const FADE_SECONDS := 2.0
 const SILENT_DB := -60.0

@@ -19,8 +19,13 @@ extends RefCounted
 
 const SoundVariation = preload("res://scripts/audio/sound_variation.gd")
 const MIX_RATE := 22050
-## The volume of the effects (dB).
-const VOLUME_DB := -8.0
+## The volume of the effects (dB): with LEVEL_TRIM_DB a menu sound is heard at about -22 LUFS
+## (mono on two speakers: +3 dB), as loud as a word of babble, under the menu music (-20).
+const VOLUME_DB := -9.0
+## Per sound how far it sits from -16 LUFS as made (measured once: the waveforms below are
+## fixed, docs/GELUIDEN.md "Eén mix"), so every sound plays equally loud; "terug" on purpose
+## a little softer, "tekst" (a blip on every word) keeps its own level (Typewriter).
+const LEVEL_TRIM_DB := {"kies": -0.3, "doe": -7.4, "terug": -2.3, "plop": 1.5, "munt": -5.7, "item": -6.5}
 
 static var _sounds := {}
 
@@ -35,7 +40,7 @@ static func play(node: Node, sound_name: String, softer_db := 0.0, pitch_scale :
 		return
 	var player := AudioStreamPlayer.new()
 	player.stream = stream
-	player.volume_db = VOLUME_DB + softer_db
+	player.volume_db = VOLUME_DB + LEVEL_TRIM_DB.get(sound_name, 0.0) + softer_db
 	player.pitch_scale = pitch_scale * SoundVariation.pitch(SoundVariation.UI_SPREAD)
 	# it keeps sounding while the game is paused, and after a scene change
 	player.process_mode = Node.PROCESS_MODE_ALWAYS

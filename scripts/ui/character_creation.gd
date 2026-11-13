@@ -39,11 +39,11 @@ const CITY_SCENE := "res://scenes/stad.tscn"
 const MENU_SCENE := "res://scenes/hoofdmenu.tscn"
 const MUSIC := "res://assets/audio/muziek/karakterkeuze_loop.ogg"
 ## Soft, in the background; it fades in over MUSIC_FADE_IN seconds.
-const MUSIC_VOLUME_DB := -9.8
+const MUSIC_VOLUME_DB := -6.0
 const MUSIC_FADE_IN := 2.5
 const MUSIC_FADE_OUT := 1.6
 const SHOUT_FOLDER := "res://assets/audio/kreten/"
-const SHOUT_VOLUME_DB := -6.5
+const SHOUT_VOLUME_DB := -6.0
 const SHOUT_FIRST_DELAY := 0.6
 ## The tip of the balloon's tail from the top of the head (px): a little to the side and up.
 const BALLOON_OFFSET := Vector2(26, -6)

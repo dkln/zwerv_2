@@ -369,10 +369,16 @@ BABBLE_MOODS = {
     "vraag": {"pitch": (1.0, 1.02), "syllable": 0.08, "swing": 0.03, "drive": 3.0, "growl": 0.0, "breath": 0.05,
               "rise": 0.65},
 }
-BABBLE_VARIANTS = 8
-## The syllables babble is made of: a consonant (or none) and a vowel.
-BABBLE_CONSONANTS = ["d", "k", "p", "m", "l", "-", "d", "m"]
-BABBLE_VOWELS = ["a", "e", "o", "i", "uh", "oe", "eu", "a"]
+BABBLE_VARIANTS = 16
+## The syllables babble is made of: a consonant (or none), a vowel or a gliding one (two
+## vowels: "ei", "au", "ui"), and now and then a consonant closing it ("dam", "kos", "pil").
+## "t" is a short sharp "d", "b" a soft voiced "p", "n" the nasal "ng" open, "h" breath only.
+BABBLE_CONSONANTS = ["d", "k", "p", "m", "l", "s", "n", "t", "b", "h", "-", "-"]
+BABBLE_VOWELS = [("a", "a"), ("e", "e"), ("o", "o"), ("i", "i"), ("uh", "uh"), ("oe", "oe"), ("eu", "eu"),
+                 ("uu", "uu"), ("u", "u"), ("e", "i"), ("a", "oe"), ("eu", "i")]
+BABBLE_CODAS = ["m", "l", "s", "k", "n", "t"]
+## The share of syllables closed by a consonant.
+BABBLE_CODA_SHARE = 0.3
 
 
 def babble(voice_name: str, mood: str, variant: int) -> numpy.ndarray:
@@ -387,28 +393,53 @@ def babble(voice_name: str, mood: str, variant: int) -> numpy.ndarray:
     rasp = voice.get("rasp", 0.0)
     if "vibrato" in settings:
         speaker["vibrato"] = settings["vibrato"]
-    # 2 to 4 syllables (the sad ones 2 or 3), so the variants differ in length too
-    syllables = 2 + variant % 3 if mood != "verdrietig" else 2 + variant % 2
+    # 1 to 5 syllables (the sad ones 2 to 3, a question at least 2), so the variants differ in length too
+    if mood == "verdrietig":
+        syllables = 2 + variant % 2
+    else:
+        syllables = [1, 2, 3, 2, 4, 3, 5, 2][variant % 8]
+        if mood == "vraag":
+            syllables = max(syllables, 2)
     start, end = settings["pitch"]
     segments = []
     for syllable in range(syllables):
         share = syllable / max(syllables - 1, 1)
-        pitch = start + (end - start) * share + random.uniform(-0.05, 0.05)
+        pitch = start + (end - start) * share + random.uniform(-0.07, 0.07)
         consonant = BABBLE_CONSONANTS[random.integers(len(BABBLE_CONSONANTS))]
-        vowel = BABBLE_VOWELS[random.integers(len(BABBLE_VOWELS))]
-        if consonant in ("d", "k", "p"):
-            segments.append((0.025, consonant, consonant, 1.0, 1.0, 0.0, 0.8))
-        elif consonant in ("m", "l"):
-            segments.append((0.04, consonant, consonant, pitch, pitch, 0.6, 0.0))
-        length = settings["syllable"] * random.uniform(0.8, 1.25)
+        first_vowel, last_vowel = BABBLE_VOWELS[random.integers(len(BABBLE_VOWELS))]
+        _babble_consonant(segments, consonant, pitch)
+        length = settings["syllable"] * random.uniform(0.7, 1.4)
+        if first_vowel != last_vowel:
+            length *= 1.3   # a gliding vowel takes a little longer
         swing = settings["swing"]
         if syllable == syllables - 1 and "rise" in settings:
             length *= 2.0
             swing = settings["rise"]
-        segments.append((length, vowel, vowel, pitch, pitch * (1.0 + swing), 1.0, settings["breath"] + rasp))
-        # a little gap between syllables, longer for the sad and the calm
-        segments.append((settings["syllable"] * 0.35, "-", "-", 1, 1, 0, 0))
+        segments.append((length, first_vowel, last_vowel, pitch, pitch * (1.0 + swing), 1.0, settings["breath"] + rasp))
+        if random.uniform() < BABBLE_CODA_SHARE and not (syllable == syllables - 1 and "rise" in settings):
+            _babble_consonant(segments, BABBLE_CODAS[random.integers(len(BABBLE_CODAS))], pitch * (1.0 + swing))
+        # a little gap between syllables (longer for the sad and the calm), now and then none
+        if random.uniform() < 0.8:
+            segments.append((settings["syllable"] * random.uniform(0.2, 0.5), "-", "-", 1, 1, 0, 0))
     return say(speaker, segments, seed)
+
+
+def _babble_consonant(segments: list, consonant: str, pitch: float) -> None:
+    """The segment of one consonant of babble (see BABBLE_CONSONANTS); nothing for "-"."""
+    if consonant in ("d", "k", "p"):
+        segments.append((0.025, consonant, consonant, 1.0, 1.0, 0.0, 0.8))
+    elif consonant == "t":
+        segments.append((0.018, "d", "d", 1.0, 1.0, 0.0, 1.0))
+    elif consonant == "b":
+        segments.append((0.03, "p", "p", pitch, pitch, 0.35, 0.4))
+    elif consonant in ("m", "l"):
+        segments.append((0.04, consonant, consonant, pitch, pitch, 0.6, 0.0))
+    elif consonant == "n":
+        segments.append((0.04, "ng", "ng", pitch, pitch, 0.6, 0.0))
+    elif consonant == "s":
+        segments.append((0.05, "s", "s", 1.0, 1.0, 0.0, 0.9))
+    elif consonant == "h":
+        segments.append((0.035, "uh", "uh", 1.0, 1.0, 0.0, 0.7))
 
 
 SOUNDS = {"lichaam_klap": body_hit}

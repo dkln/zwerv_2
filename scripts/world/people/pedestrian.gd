@@ -142,6 +142,9 @@ const ZEBRA_LOOK := 45.0
 var wanted_look := {}
 ## Its pace against the usual (Crowd.pace_of its kind).
 var pace_factor := 1.0
+## How tall it is against the usual (a character of the story that must stand out: its
+## "lengte", Characters); the collider grows with it.
+var figure_scale := 1.0
 ## What it carries (a kind of CarriedItems; "" nothing), and the kind of person it is
 ## (data/drukte.json "mensen"; "" none in particular).
 var carried := ""
@@ -253,6 +256,8 @@ func _dress() -> void:
 		_drawn = figure
 		_pace = _random.randf_range(SLOWEST, FASTEST) * pace_factor
 		_carry()
+	if not is_equal_approx(figure_scale, 1.0):
+		_drawn.scale = Vector3.ONE * figure_scale
 	_add_collider()
 
 

@@ -265,6 +265,8 @@ func _binnenhof() -> void:
 	# an ice-cream tricycle by the pond
 	Pr(31 * 4 + 2.0, 39 * 4 + 2.0, "markt/ijscokar", "N")
 	places["hofvijver"] = Vector2(38 * 4.0, 35 * 4.0)
+	# the footpath at the east end of the pond, across the street from the Plein (Ome Wim's story)
+	places["hofvijver_rand"] = Vector2(47 * 4 + 2.0, 35 * 4 + 2.0)
 	places["binnenhof"] = Vector2(37 * 4.0, 47 * 4.0)
 	places["buitenhof"] = Vector2(28 * 4.0, 45 * 4.0)
 

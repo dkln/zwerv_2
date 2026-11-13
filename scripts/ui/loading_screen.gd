@@ -23,7 +23,7 @@ const MUSIC := "res://assets/audio/muziek/laden_loop.ogg"
 ## While a loading screen is up (this group) only its waiting music plays: the sounds of the
 ## town (RuimtelijkGeluid, scripts/audio/spatial_audio.gd) and its music (the HUD) wait.
 const GROUP := "laadscherm"
-const MUSIC_VOLUME_DB := -8.2
+const MUSIC_VOLUME_DB := -6.0
 const MUSIC_FADE_IN := 1.2
 const MUSIC_FADE_OUT := 0.7
 

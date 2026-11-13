@@ -132,6 +132,7 @@ metadata/places = {
 "halte_centraal_viaduct": Vector2(364, 370),
 "hoftoren": Vector2(302, 326),
 "hofvijver": Vector2(152, 140),
+"hofvijver_rand": Vector2(190, 142),
 "huis_ten_bosch": Vector2(464, 36),
 "kasteel_binckhorst": Vector2(656, 648),
 "koekamp": Vector2(364, 152),

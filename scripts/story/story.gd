@@ -24,7 +24,8 @@ extends Node
 ##     verzamelen     {"item": "blikje", "aantal": 4}  that many in the pockets
 ##     statiegeld     {}                    a deposit machine paid out (PlayerController.deposited)
 ##     praten_met     {"persoon": "toerist"} talked to (a kind of passer-by, a character of
-##                                            data/gesprekken/personages.json, or "iemand")
+##                                            data/gesprekken/personages.json, or "iemand"):
+##                                            done when the conversation is over
 ##     naar_plek      {"plek": "koekamp", "straal": 12}  come within "straal" m of a place
 ##     naar_persoon   {"persoon": "ome_wim", "straal": 6} come within "straal" m of a character
 ##     lopen          {"meter": 4}          walked that far since the step began
@@ -33,6 +34,8 @@ extends Node
 ##     check          {"check": "overtuigen_wim"}  a skill check in a conversation passed
 ##     begeleiden     {"persoon": "ome_wim", "route": ["plein", ...]}  walked with a
 ##                                            character along the places to the last one
+##                                            ("wacht": false: it walks there in one go, you
+##                                            follow; done once you are there with it)
 ##     werver         {"persoon": "werver", "straal": 9}  a character stands in the way of
 ##                                            the one you walk with: talk to it or pass it
 ##   then its "klaar_paginas" show; when all are, the "einde_paginas" (a page with "als":
@@ -69,6 +72,7 @@ signal unlocked(what: String)
 
 const PlayerCharacter = preload("res://scripts/player/player_character.gd")
 const Shroud = preload("res://scripts/story/shroud.gd")
+const Conversations = preload("res://scripts/story/conversations.gd")
 const MISSIONS_FOLDER := "res://data/missies/"
 const PROLOGUE_FILE := "res://data/verhaal/proloog.json"
 ## A snack bar's shop front (in the name of a Gebouwen item: "<style>/<style>_bg_snackbar").
@@ -151,7 +155,8 @@ func _ready() -> void:
 	if _player.has_signal("deposited"):
 		_player.deposited.connect(func(_euros: float) -> void: _goal_met("statiegeld", {}))
 	if _player.has_signal("talked"):
-		_player.talked.connect(func(persona: String) -> void: _goal_met("praten_met", {"persoon": persona}))
+		# done once the conversation is over: its "klaar_paginas" come after it, not under it
+		_player.talk_ended.connect(func(persona: String) -> void: _goal_met.call_deferred("praten_met", {"persoon": persona}))
 	if _player.has_signal("checked"):
 		_player.checked.connect(_on_checked)
 	if _player.has_signal("inventory_changed"):
@@ -288,9 +293,15 @@ func prologue_pages() -> Array:
 
 ## Starts every mission that starts on `trigger` ("na_proloog", "na:<mission id>").
 func _start_missions(trigger: String) -> void:
+	var followed := false
 	for data: Dictionary in missions:
 		if str(data.get("start", "")) == trigger and not _started.has(str(data.id)):
 			start_mission(data)
+			# the mission that follows on the one just done is the one you follow now (the
+			# tracker went on to another open one when that was done: GameHud.set_quests)
+			if trigger.begins_with("na:") and not followed and _hud and _hud.has_method("track_quest"):
+				_hud.track_quest(str(data.id))
+				followed = true
 
 
 ## Starts a mission: in the tracker, its first pages (unless `with_pages` is off: they were
@@ -343,14 +354,14 @@ func _begin_steps(data: Dictionary) -> void:
 			opened = shroud.open_area(str(area)) or opened
 		if opened:
 			shroud_changed.emit()
-		_prepare_characters(step)
+		_prepare_characters(data, step)
 		_prepare_cans(step)
 		_open_to(step)
 		_aim(data, step)
 
 
 ## The characters a step needs: where they stand, who they walk with.
-func _prepare_characters(step: Dictionary) -> void:
+func _prepare_characters(data: Dictionary, step: Dictionary) -> void:
 	var characters := get_node_or_null(characters_path)
 	if characters == null:
 		return
@@ -366,9 +377,13 @@ func _prepare_characters(step: Dictionary) -> void:
 				var at := _place(str(place_key))
 				if at != Vector2.INF:
 					points.append(at)
-			characters.lead(who, points)
+			characters.lead(who, points, bool(goal.get("wacht", true)))
 		"werver":
 			characters.in_the_way(who, float(goal.get("straal", 9.0)), _place(str(goal.get("plek", ""))), _place(str(goal.get("voorbij", ""))))
+	var chase_data: Dictionary = step.get("achtervolgen", {})
+	if not chase_data.is_empty() and characters.has_method("chase"):
+		characters.chase(str(chase_data.get("persoon", "")), chase_data.get("groep", []),
+			_pages(chase_data.get("eerst_paginas", []), _banner(data), data))
 	for talker: String in step.get("gesprekken", {}):
 		characters.set_talk(talker, str(step.gesprekken[talker]))
 
@@ -579,6 +594,10 @@ func _complete(data: Dictionary, step: Dictionary) -> void:
 		return
 	_done[key] = true
 	_targets.erase(key)
+	var chase_data: Dictionary = step.get("achtervolgen", {})
+	var characters := get_node_or_null(characters_path)
+	if not chase_data.is_empty() and characters and characters.has_method("stop_chasing"):
+		characters.stop_chasing.call_deferred(str(chase_data.get("persoon", "")))
 	if step.has("blikjes_buiten"):
 		var bins := get_node_or_null(bins_path)
 		if bins:
@@ -1095,7 +1114,7 @@ func _quest(data: Dictionary) -> Dictionary:
 	return {"id": id, "kind": "zij" if str(data.get("soort", "verhaal")) == "zij" else "verhaal",
 		"xp": int(data.get("xp", 0)), "label": str(data.get("label", "")), "title": str(data.get("titel", "")),
 		"distance": "", "giver": str(data.get("gever", "")), "description": str(data.get("beschrijving", "")),
-		"rewards": rewards, "steps": steps, "hidden_left": hidden_left}
+		"rewards": rewards, "steps": steps, "hidden_left": hidden_left, "done": is_finished(id)}
 
 
 ## Gives the XP of every step done and every quest done (all its steps) that has not had it.
@@ -1137,9 +1156,32 @@ func _pages(entries: Array, banner: Dictionary, data: Dictionary) -> Array:
 		var page := {"kind": str(entry.get("soort", "verhaal")), "text": _fill(str(entry.get("tekst", "")), data, {})}
 		if entry.has("spreker"):
 			page["speaker"] = str(entry.spreker)
+			_as_the_character(page, str(entry.spreker), str(entry.get("stemming", "neutraal")))
 		page.merge(banner)
 		pages.append(page)
 	return pages
+
+
+## A line of a character of the story (its "spreker" in personages.json, Ome Wim): its face in
+## the portrait (its look, its pose live from its figure in the world) and its babble, as in a
+## conversation with it; nothing for any other speaker.
+func _as_the_character(page: Dictionary, speaker_name: String, mood: String) -> void:
+	var characters := get_node_or_null(characters_path)
+	if characters == null or not characters.has_method("person_of"):
+		return
+	for who: String in Conversations.characters():
+		if str((Conversations.characters()[who] as Dictionary).get("spreker", "")) != speaker_name:
+			continue
+		var person: Node3D = characters.person_of(who)
+		if person == null or person.get("figure") == null:
+			return
+		var figure: Node3D = person.get("figure")
+		page["portrait_look"] = figure.get("look")
+		page["portrait_figure"] = figure
+		if person.has_method("voice"):
+			page["voice"] = person.voice()
+			page["mood"] = mood
+		return
 
 
 ## The placeholders of a text filled in (see the top).

@@ -24,7 +24,7 @@ const BLINK_SECONDS := 0.8
 ## Between the last word and the cursor: two non-breaking spaces (they stay on the word's line).
 const CURSOR_GAP := "\u00A0\u00A0"
 ## The blip: dB softer than the menu sounds, and how far its pitch wanders (share).
-const BLIP_SOFTER_DB := -12.0
+const BLIP_SOFTER_DB := -11.0
 const BLIP_PITCH_SPREAD := 0.06
 ## How fast the text scrolls after the cursor (share of the distance left per second, about).
 const FOLLOW_SPEED := 8.0

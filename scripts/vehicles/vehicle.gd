@@ -1357,6 +1357,8 @@ func _siren_oncoming() -> Vehicle:
 ## True if `other` has gone by: its back is clear ahead of its front (one coming towards
 ## it: behind its back).
 func _is_past(other: Vehicle) -> bool:
+	if not other.is_inside_tree():
+		return true   # parked out of the town (Traffic): gone
 	var forward := Vector2(global_basis.z.x, global_basis.z.z).normalized()
 	var relative := Vector2(other.global_position.x - global_position.x, other.global_position.z - global_position.z)
 	var their_forward := Vector2(other.global_basis.z.x, other.global_basis.z.z).normalized()

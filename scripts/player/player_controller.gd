@@ -46,7 +46,8 @@ extends Node3D
 ##   `stamina_recovery_delay` s; run empty you are exhausted and walk until it is back
 ##   at `exhausted_until` of the maximum;
 ## - gezondheid: at 0 the player is dead (died, the HUD shows the death screen);
-## - overprikkeldheid: starts at 0 (of 100), only items change it so far.
+## - overprikkeldheid: starts at 0 (of 100); items change it, and a conversation that holds on
+##   ("klampt_vast": the telephone sellers) raises it with every answer ("prikkels").
 ## Every hurt makes the figure blink as in old games (`hurt_blink_time`), but not the one it
 ## dies of: dying (the slow motion, the fall) and dead it never blinks.
 ##
@@ -92,6 +93,8 @@ signal money_changed
 signal bought(item_id: String)
 ## A conversation started with someone (talk_to), the kind of person (Conversations.persona).
 signal talked(persona: String)
+## A conversation is over (the story box or the shop closed): what it was with, as `talked`.
+signal talk_ended(persona: String)
 ## Something eaten, drunk or used (use_item), its item id.
 signal used(item_id: String)
 ## A deposit machine paid out (DepositReturn.pay_out), the euros.
@@ -753,6 +756,7 @@ func talk_to(person: Node3D) -> void:
 		follow.talk_close_up(person)
 	var done := func() -> void:
 		talk.finish()
+		talk_ended.emit(talk.persona)
 		if follow and follow.has_method("talk_close_up"):
 			follow.talk_close_up(null)
 	# someone who sells: the shop screen (their goods), everyone else the story box

@@ -524,6 +524,9 @@ func _track_selected_quest() -> void:
 	var id: String = GameHud.quest_id(quests[_selected_quest])
 	if id == _tracked_id():
 		return
+	if GameHud.is_quest_done(quests[_selected_quest]):
+		UiSounds.play(self, "terug")   # done: nothing left to follow
+		return
 	UiSounds.play(self, "doe")
 	_hud.track_quest(id)
 	_refresh_quests()
@@ -1131,7 +1134,7 @@ func _refresh_item_detail() -> void:
 		var change := float(effect[stat_name])
 		var better := change < 0.0 if stat_name in LOWER_IS_BETTER else change > 0.0
 		_detail_lines.add_child(_detail_line(STAT_LABELS.get(stat_name, stat_name.to_upper()),
-				"%+d" % roundi(change), GOOD if better else BAD))
+				"VOL" if change >= Items.FULL else "%+d" % roundi(change), GOOD if better else BAD))
 	var text: String = item.get("text", "")
 	if _selected_item == BankCards.ITEM:
 		# every card found: its holder and the riddle of its PIN (BankCards)
@@ -1524,10 +1527,12 @@ func _fill_quest_detail(quest: Dictionary) -> void:
 			goals.add_child(row)
 		_quest_detail_column.add_child(goals)
 	var followed := GameHud.quest_id(quest) == _tracked_id()
-	var follow := _box(_style(RAISED if followed else UiStyle.INK, colour if followed else UiStyle.BORDER, 2, 12, 6), 0.0, not followed)
+	var finished := GameHud.is_quest_done(quest)
+	var follow := _box(_style(RAISED if followed else UiStyle.INK, colour if followed else UiStyle.BORDER, 2, 12, 6), 0.0, not followed and not finished)
 	follow.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	follow.add_child(_label("◆ JE VOLGT DEZE OPDRACHT" if followed else "[ENTER] VOLGEN", _font_pixel, 11, colour if followed else UiStyle.TEXT))
-	if not followed:
+	var follow_text := "◆ JE VOLGT DEZE OPDRACHT" if followed else ("AFGEROND" if finished else "[ENTER] VOLGEN")
+	follow.add_child(_label(follow_text, _font_pixel, 11, colour if followed else (UiStyle.MUTED if finished else UiStyle.TEXT)))
+	if not followed and not finished:
 		follow.pressed.connect(_track_selected_quest)
 	_quest_detail_column.add_child(follow)
 	_quest_detail_column.add_child(_spacer())

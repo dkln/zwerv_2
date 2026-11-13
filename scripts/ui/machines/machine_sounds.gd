@@ -15,6 +15,9 @@ extends RefCounted
 
 const MIX_RATE := 22050
 const VOLUME_DB := -9.0
+## The sounds that came out louder than the rest (measured: docs/GELUIDEN.md "Eén mix"), brought
+## back to about -16 LUFS as made, so with VOLUME_DB they are heard at about -22.
+const LEVEL_TRIM_DB := {"blik": -4.8, "fout": -2.2, "goed": -1.4}
 
 static var _sounds := {}
 
@@ -27,7 +30,7 @@ static func play(node: Node, sound_name: String, softer_db := 0.0) -> void:
 		return
 	var player := AudioStreamPlayer.new()
 	player.stream = stream
-	player.volume_db = VOLUME_DB + softer_db
+	player.volume_db = VOLUME_DB + LEVEL_TRIM_DB.get(sound_name, 0.0) + softer_db
 	player.process_mode = Node.PROCESS_MODE_ALWAYS
 	node.get_tree().root.add_child(player)
 	player.finished.connect(player.queue_free)

@@ -51,7 +51,11 @@ func test_the_game_loop_plays_at_its_level(test) -> void:
 		return
 	print("niveau stadsmuziek: %.1f dB" % hud._city_level_db)
 	var expected: float = hud.CITY_MUSIC_PAUSED_DB if tree.paused else hud.CITY_MUSIC_VOLUME_DB
-	test.check(absf(hud._city_level_db - expected) < 0.5, "stadsmuziek op %.0f dB (%s)" % [expected, "gepauzeerd" if tree.paused else "spelend"])
+	# under a jingle (a mission announced at the start) the music is held down
+	if hud._jingles_playing > 0:
+		expected -= hud.JINGLE_DUCK_DB
+	test.check(absf(hud._city_level_db - expected) < 0.5, "stadsmuziek op %.0f dB (%s%s)" % [expected,
+		"gepauzeerd" if tree.paused else "spelend", ", onder een deuntje" if hud._jingles_playing > 0 else ""])
 	test.check(hud._city_music_file == hud.CITY_MUSIC, "de spelmuziek (%s) speelt" % hud.CITY_MUSIC)
 	var outdoor: AudioStreamPlayer = hud._city_players.get(hud._city_music_file)
 	if outdoor:

@@ -42,7 +42,7 @@ const QUICK_START_SCENE := "res://scenes/snel_starten.tscn"
 ## The music of the intro, its volume (dB), and the seconds it fades out in when the intro
 ## ends or is broken off.
 const MUSIC := "res://assets/audio/muziek/zwervr_intro.ogg"
-const MUSIC_VOLUME_DB := 0.0
+const MUSIC_VOLUME_DB := -2.0
 const MUSIC_FADE_OUT := 2.0
 const DESIGN_SIZE := Vector2(1280, 720)
 const OPENING_LINE := "Niet zo lang geleden, in een stad hier niet ver vandaan…"

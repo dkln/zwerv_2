@@ -6,6 +6,7 @@
 	"gever": "Ome Wim",
 	"beschrijving": "Ome Wim slaapt al twintig jaar op straat en kent iedereen in het Centrum. Als iemand weet wie er 's nachts met andermans spullen vandoor gaat, is hij het.",
 	"start": "na:missie_1_lege_maag",
+	"debug_start": "plein",
 	"xp": 200,
 	"beloningen": [
 		"OUDE JAS",
@@ -13,35 +14,15 @@
 	],
 	"start_paginas": [
 		{
+			"soort": "missie",
+			"tekst": "Je maag is weer even stil, maar je ID-kaart is nog steeds weg. Zonder pas geen uitkering, geen bed in de opvang, niks. Iemand moet gezien hebben wie hem heeft gejat. Ome Wim slaapt al twintig jaar op straat en kent iedereen in het Centrum: hij staat op het Plein, aangewezen op je kaartje rechtsboven."
+		},
+		{
 			"soort": "gedachte",
 			"tekst": "Ome Wim. Die staat elke ochtend op het Plein, bij het standbeeld. Hij ziet alles en hij hoort alles. Misschien weet hij wie mijn pas heeft."
 		}
 	],
 	"stappen": [
-		{
-			"id": "zoeken",
-			"tekst": "Zoek Ome Wim op het Plein",
-			"xp": 20,
-			"opent": [
-				"plein"
-			],
-			"doel": {
-				"soort": "naar_persoon",
-				"persoon": "ome_wim",
-				"straal": 6
-			},
-			"klaar_paginas": []
-		},
-		{
-			"id": "praten",
-			"tekst": "Praat met hem over je gestolen pas",
-			"xp": 30,
-			"doel": {
-				"soort": "praten_met",
-				"persoon": "ome_wim"
-			},
-			"klaar_paginas": []
-		},
 		{
 			"id": "overtuigen",
 			"tekst": "Optioneel: overtuig hem om meer te vertellen",
@@ -54,9 +35,47 @@
 			"klaar_paginas": []
 		},
 		{
-			"id": "rondje",
-			"tekst": "Loop met Ome Wim een rondje door het Centrum",
-			"xp": 60,
+			"id": "praten",
+			"tekst": "Zoek Ome Wim op het Plein en praat met hem over je gestolen pas",
+			"xp": 50,
+			"opent": [
+				"plein"
+			],
+			"doel": {
+				"soort": "praten_met",
+				"persoon": "ome_wim"
+			},
+			"klaar_paginas": [
+				{
+					"soort": "gesprek",
+					"spreker": "OME WIM",
+					"tekst": "Twintig jaar, jong. Twintig jaar sta ik hier nou. Daarvoor zat ik in de haven van Scheveningen, op de visafslag. Om vier uur 's nachts de vis van de kotters, om twaalf uur aan de koffie. Mooi werk was dat."
+				},
+				{
+					"soort": "gesprek",
+					"spreker": "OME WIM",
+					"tekst": "Toen ging de afslag dicht, en de rest ging er achteraan. Eerst de baan, toen m'n vrouw, toen het huis. In die volgorde. Je denkt dat het jou niet overkomt. Dat dacht ik ook."
+				},
+				{
+					"soort": "gesprek",
+					"spreker": "OME WIM",
+					"tekst": "Maar weet je wat het is? Op straat leer je de stad kennen zoals niemand hem kent. Welke bakker 's avonds z'n brood weggeeft. Welk portiek droog blijft. Welke agent een oogje toeknijpt en welke niet."
+				},
+				{
+					"soort": "gedachte",
+					"tekst": "Hij praat alsof hij het al honderd keer verteld heeft. Of alsof niemand het ooit heeft willen horen."
+				},
+				{
+					"soort": "gesprek",
+					"spreker": "OME WIM",
+					"tekst": "Weet je wat? Jij bent nieuw. Ik laat je wel eens even zien wat Den Haag te bieden heeft. Kom mee, eerst naar de Hofvijver. Daar begint alles in deze stad."
+				}
+			]
+		},
+		{
+			"id": "hofvijver",
+			"tekst": "Volg Ome Wim naar de Hofvijver",
+			"xp": 20,
 			"gesprekken": {
 				"ome_wim": "rondje"
 			},
@@ -67,13 +86,86 @@
 				"soort": "begeleiden",
 				"persoon": "ome_wim",
 				"route": [
-					"plein",
+					"hofvijver_rand"
+				],
+				"wacht": false
+			},
+			"klaar_paginas": [
+				{
+					"soort": "gesprek",
+					"spreker": "OME WIM",
+					"tekst": "Kijk. De Hofvijver. Daarachter het Binnenhof, waar ze de hele dag vergaderen over mensen zoals wij. Ze kijken uit hun raam precies op dit bankje. Gezien hebben ze me nog nooit."
+				},
+				{
+					"soort": "gesprek",
+					"spreker": "OME WIM",
+					"tekst": "Vroeger, toen ik net op straat stond, sliep ik hier op dat bankje. Elke ochtend om zes uur kwam er een man met een hondje langs. Elke ochtend een broodje kaas naast me neergelegd. Nooit een woord gezegd."
+				},
+				{
+					"soort": "gesprek",
+					"spreker": "OME WIM",
+					"tekst": "Op een dag kwam hij niet meer. Toen pas zag ik in de krant wie het was. Een minister, jong. Een échte. Zo zie je maar: in Den Haag weet je nooit wie er naast je staat."
+				},
+				{
+					"soort": "gesprek",
+					"spreker": "OME WIM",
+					"tekst": "Die eendjes daar, die zijn de enigen die hier écht wonen. De rest komt en gaat. Kom, we lopen door. Ik laat je de Grote Markt zien."
+				}
+			]
+		},
+		{
+			"id": "verkopers",
+			"tekst": "Een groepje telefoonverkopers komt op je af: kom van ze af",
+			"xp": 40,
+			"achtervolgen": {
+				"persoon": "telefoonverkoper",
+				"groep": [
+					"telefoonverkoper_kevin",
+					"telefoonverkoper_sanne"
+				],
+				"eerst_paginas": [
+					{
+						"soort": "verhaal",
+						"tekst": "Let op. Niet iedereen op straat wil je helpen. Sommige mensen praten zo lang op je in dat ze de oren van je kop zeiken."
+					},
+					{
+						"soort": "verhaal",
+						"tekst": "Van zo'n gesprek raak je langzaam overprikkeld: houd de balk linksboven in de gaten. Weglopen gaat niet. Alleen het juiste antwoord helpt je van ze af."
+					}
+				]
+			},
+			"doel": {
+				"soort": "check",
+				"check": "verkopers_af"
+			},
+			"klaar_paginas": [
+				{
+					"soort": "gesprek",
+					"spreker": "OME WIM",
+					"tekst": "Haha! Die zie je nooit meer terug. Dat is het voordeel van niks hebben, jong: ze kunnen je ook niks verkopen. Kom, we lopen door."
+				}
+			],
+			"verborgen_tot_open": true,
+			"debug_start": "hofvijver_rand"
+		},
+		{
+			"id": "rondje",
+			"tekst": "Loop met Ome Wim verder een rondje door het Centrum",
+			"xp": 60,
+			"gesprekken": {
+				"ome_wim": "rondje"
+			},
+			"doel": {
+				"soort": "begeleiden",
+				"persoon": "ome_wim",
+				"route": [
 					"buitenhof",
 					"grote_markt",
 					"grote_marktstraat"
 				]
 			},
-			"klaar_paginas": []
+			"klaar_paginas": [],
+			"debug_start": "hofvijver_rand"
 		},
 		{
 			"id": "werver",

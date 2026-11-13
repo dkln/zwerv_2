@@ -20,10 +20,10 @@ const VOICES := ["man", "oude_man", "vrouw"]
 ## out to anyone else (DriverShout.voice_of picks from VOICES).
 const OWN_VOICES := ["rasperig"]
 const MOODS := ["neutraal", "blij", "opgewonden", "boos", "verdrietig", "vraag"]
-const VARIANTS := 8
+const VARIANTS := 16
 ## How loud the babble is in the UI (dB), how far the pitch of a word lies from 1 (share,
 ## the same for that word) and how much it wobbles on top of that each time it plays.
-const UI_DB := -6.0
+const UI_DB := -7.0
 const PITCH_SPREAD := 0.06
 const PITCH_WOBBLE := 0.04
 
@@ -56,15 +56,25 @@ static func _plain(word: String) -> String:
 	return plain
 
 
-## Which of the VARIANTS (1..) the word `word` sounds as: always the same for that word.
+## Which of the VARIANTS (1..VARIANTS) the word `word` sounds as: a number from the hash of the
+## word (word_hash), so always the same for that word, and spread evenly over all the sounds.
 static func variant_of(word: String) -> int:
-	return int(hash(_plain(word)) % VARIANTS) + 1
+	return word_hash(_plain(word)) % VARIANTS + 1
+
+
+## A hash of `text` that never changes (FNV-1a, 32 bits, over its UTF-8 bytes; not Godot's
+## hash(), which may differ between versions): the same word always the same sound.
+static func word_hash(text: String) -> int:
+	var value := 2166136261
+	for byte in text.to_utf8_buffer():
+		value = ((value ^ byte) * 16777619) & 0xFFFFFFFF
+	return value
 
 
 ## How high the word `word` sounds (the pitch of its sound, within PITCH_SPREAD of 1):
 ## always the same for that word.
 static func pitch_of(word: String) -> float:
-	var share := float(hash(_plain(word) + "/toon") % 1000) / 999.0   # 0..1
+	var share := float(word_hash(_plain(word) + "/toon") % 1000) / 999.0   # 0..1
 	return 1.0 + (share * 2.0 - 1.0) * PITCH_SPREAD
 
 

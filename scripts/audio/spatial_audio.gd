@@ -70,14 +70,14 @@ const RAIL_SILENT_BELOW := 1.5
 const MAX_PITCH := 1.45
 const DOPPLER_BOOST := 1.6
 const SPEED_OF_SOUND := 343.0
-const SIREN_VOLUME_DB := -3.5
+const SIREN_VOLUME_DB := -6.0
 ## The levels of the one-shots (the files are all equally loud: their loudest moment at -16 LUFS,
 ## tools/megadrive/loudness.py): what happens to you or right by you (a crash, a hit, a cry, a splash)
 ## loudest, the signals of the traffic (horns, bells) a little under that, what goes on in the
 ## background (passing by, brakes) under those.
-const EVENT_DB := 5.5
-const SIGNAL_DB := 2.5
-const BACKGROUND_DB := -0.5
+const EVENT_DB := 1.0
+const SIGNAL_DB := -1.0
+const BACKGROUND_DB := -1.5
 const HARD_CRASH_SPEED := 9.0
 const HELICOPTER_SOUND := "helikopter_loop"
 const HELICOPTER_SCRIPT := "police_helicopter.gd"
@@ -90,7 +90,7 @@ const PASS_BY_MIN_SHARE := 0.6
 const HELICOPTER_PASS_BY_MIN_SPEED := 8.0
 const PASS_BY_DUCK_DB := -14.0
 const PASS_BY_REARM := 40.0
-const PASS_BY_VOLUME_DB := -0.5   # BACKGROUND_DB
+const PASS_BY_VOLUME_DB := -1.5   # BACKGROUND_DB
 ## The yelp (see the top): below and above which share of the cruising speed.
 const YELP_SOUND := "sirene_yelp_loop"
 const YELP_BELOW := 0.5
@@ -103,8 +103,8 @@ const PAUSED_DB := -14.0
 ## evens out the loud moments (a siren racing past, a crash next to you), a limiter keeps
 ## every peak under LIMITER_CEILING_DB; Master gets a limiter of its own as a last guard.
 const BUS_VOLUME_DB := -3.0
-const COMPRESSOR_THRESHOLD_DB := -24.0
-const COMPRESSOR_RATIO := 6.0
+const COMPRESSOR_THRESHOLD_DB := -16.0
+const COMPRESSOR_RATIO := 3.0
 const LIMITER_CEILING_DB := -3.0
 const MASTER_CEILING_DB := -1.0
 
@@ -630,7 +630,7 @@ func _ensure_bus() -> void:
 	compressor.ratio = COMPRESSOR_RATIO
 	compressor.attack_us = 5000.0
 	compressor.release_ms = 180.0
-	compressor.gain = 2.0
+	compressor.gain = 0.0
 	AudioServer.add_bus_effect(_bus_index, compressor)
 	var limiter := AudioEffectHardLimiter.new()
 	limiter.ceiling_db = LIMITER_CEILING_DB

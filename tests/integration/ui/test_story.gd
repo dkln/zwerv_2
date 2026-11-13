@@ -403,7 +403,7 @@ func test_the_kroket_and_the_stolen_id(test) -> void:
 	test.check(story.is_started("zij_blikjesronde"), "de blikjesronde komt vrij")
 
 
-## Mission 2: Ome Wim stands on the Plein; come to him and talk; the skill check can be
+## Mission 2: Ome Wim stands on the Plein; found only once talked to; the skill check can be
 ## tried again; the walk through the Centrum opens it; the fundraiser stands in the way
 ## until talked to; at the Spui the old coat, worn at once.
 func test_ome_wim_and_his_coat(test) -> void:
@@ -419,28 +419,70 @@ func test_ome_wim_and_his_coat(test) -> void:
 	test.check(wim != null, "Ome Wim staat in de stad")
 	if wim == null:
 		return
+	test.check(hud.tracked_quest_id() == MISSION_2, "na missie 1 volg je vanzelf missie 2 (%s)" % hud.tracked_quest_id())
+	test.check(not hud.quest_by_id(MISSION_1).is_empty() and hud.quest_by_id(MISSION_1).get("done", false),
+		"missie 1 staat als afgerond in de lijst")
+	hud.track_quest(MISSION_1)
+	test.check(hud.tracked_quest_id() == MISSION_2, "een afgeronde missie kun je niet meer volgen")
+	test.check(is_equal_approx((wim as Pedestrian).figure_scale, 1.15) and is_equal_approx((wim as Pedestrian).figure.scale.y, 1.15),
+		"Ome Wim is langer dan de anderen")
 	print("Ome Wim op ", wim.global_position)
 	test.check(Vector2(wim.global_position.x, wim.global_position.z).distance_to(story._place("plein")) < 12.0, "op het Plein")
 	test.check(story.shroud.is_open(wim.global_position.x, wim.global_position.z), "het Plein is open")
 	player.global_position = wim.global_position + Vector3(2.0, 0.0, 0.0)
 	await _let_the_story_look()
-	test.check(_step_done("zoeken", MISSION_2), "Ome Wim gevonden")
+	test.check(not _step_done("praten", MISSION_2), "bij hem staan is nog niet genoeg: praten")
 	player.talk_to(wim)
 	await frames(2)
-	test.check(_step_done("praten", MISSION_2), "met hem gepraat")
-	await close_screens()
-	# the check: failed it can be tried again (a later conversation), passed it is done
+	test.check(not _step_done("praten", MISSION_2), "tijdens het gesprek nog niet klaar")
+	# the check, in the conversation: failed it can be tried again (a later one), passed it is done
 	player.emit_signal("checked", "overtuigen_wim", false)
 	test.check(not _step_done("overtuigen", MISSION_2), "mislukt: nog te proberen")
 	player.emit_signal("checked", "overtuigen_wim", true)
 	await frames(2)
 	test.check(_step_done("overtuigen", MISSION_2) and story.has_flag("check:overtuigen_wim"), "overtuigd")
+	skip_story()   # the conversation over (only that: the pages after it stay)
+	await frames(3)
+	test.check(_step_done("praten", MISSION_2), "met hem gepraat (na het gesprek)")
+	var box: Control = hud._story_box
+	var told: bool = box.is_showing() and str(box._pages[0].get("text", "")).contains("Twintig jaar")
+	test.check(told, "daarna vertelt hij zijn verhaal")
+	test.check(told and box._pages[0].has("portrait_look") and box._pages[0].has("voice"), "met zijn gezicht en zijn stem")
 	await close_screens()
-	test.check(story.shroud.is_open(100.0, 200.0), "het rondje: het Centrum is open")
+	test.check(story.shroud.is_open(100.0, 200.0), "naar de Hofvijver: het Centrum is open")
 	test.check((wim as Pedestrian).story_goal != Pedestrian.NO_STORY_GOAL or not (wim as Pedestrian).story_held, "Ome Wim loopt")
-	characters.arrived.emit("ome_wim")
+	var goal_cell: Vector3i = (wim as Pedestrian).story_goal
+	var edge: Vector2 = story._place("hofvijver_rand")
+	var plein: Vector2 = story._place("plein")
+	print("Ome Wim loopt naar cel %s (rand %s, plein %s)" % [goal_cell, edge / 4.0, plein / 4.0])
+	test.check(Vector2(goal_cell.x, goal_cell.z).distance_to(edge / 4.0) < 2.5, "hij loopt naar het voetpad aan de vijver, tegenover het Plein")
+	test.check(not characters._leading["ome_wim"].waits, "hij loopt in één keer door, zonder op je te wachten")
+	test.check(wim.get_node_or_null("Meeloopmarkering") != null, "een markering boven Ome Wim als je met hem meeloopt")
+	test.check(absf(float(wim.get("_pace")) - 2.2) < 0.01, "Ome Wim loopt op zijn tempo_meelopen")
+	var listed := (story._quest(story.mission(MISSION_2)).steps as Array).map(func(step: Dictionary) -> String: return str(step.text))
+	test.check(not listed.any(func(text: String) -> bool: return text.contains("telefoonverkopers")), "de verkopers nog niet in de lijst")
+	player.global_position = wim.global_position + Vector3(40.0, 0.0, 0.0)
+	characters._on_arrived("ome_wim")   # he is there
 	await frames(2)
+	test.check(not _step_done("hofvijver", MISSION_2), "zijn verhaal wacht tot jij er ook bent")
+	player.global_position = wim.global_position + Vector3(3.0, 0.0, 0.0)
+	await frames(3)
+	test.check(_step_done("hofvijver", MISSION_2), "bij de Hofvijver")
+	test.check(box.is_showing() and str(box._pages[0].get("text", "")).contains("Hofvijver"), "daar vertelt hij een verhaaltje")
+	await close_screens()
+	await _phone_sellers(test, characters)
+	await close_screens()
+	for point in range(8):   # along the whole round at once
+		if not characters._leading.has("ome_wim"):
+			break
+		characters._on_arrived("ome_wim")
+	await frames(2)
+	if not _step_done("rondje", MISSION_2):
+		characters.arrived.emit("ome_wim")
+		await frames(2)
 	test.check(_step_done("rondje", MISSION_2), "rondje gelopen")
+	test.check(wim.get_node_or_null("Meeloopmarkering") == null or wim.get_node("Meeloopmarkering").is_queued_for_deletion() \
+		or characters._leading.has("ome_wim"), "de markering weg na het rondje (of weer aan voor het volgende stuk)")
 	await close_screens()
 	var fundraiser: Node3D = characters.person_of("werver")
 	test.check(fundraiser != null, "de goededoelenwerver staat in de weg")
@@ -457,3 +499,75 @@ func test_ome_wim_and_his_coat(test) -> void:
 	test.check(int(player.inventory.get("oude_jas", 0)) == 1 and player.call("wears_coat"), "de oude jas aan")
 	test.check(story.is_finished(MISSION_2), "missie 2 klaar")
 	test.check(story.markers().has("haagse_bos") and story.shroud.is_open(328.0, 28.0), "het Haagse Bos op de kaart en open")
+
+
+## The telephone sellers of Lebaarmoeder after the Hofvijver: they come after you, in blue with
+## an L and a telephone on the back; their conversation has no way out (no goodbye; a dead end starts
+## again), wears you out, and only two answers in the whole tree let you go.
+func _phone_sellers(test, characters: Node) -> void:
+	test.check(characters.is_chasing("telefoonverkoper"), "de telefoonverkopers komen achter je aan")
+	characters._chasing["telefoonverkoper"].wait = 0.0   # now, not after CHASE_DELAY
+	await frames(3)
+	var seller := characters.person_of("telefoonverkoper") as Pedestrian
+	test.check(seller != null and characters.person_of("telefoonverkoper_kevin") != null and characters.person_of("telefoonverkoper_sanne") != null,
+		"een groepje van drie")
+	if seller == null:
+		return
+	var look: Dictionary = seller.figure.get("look")
+	test.check(absf(float(seller.get("_pace")) - characters.CHASE_PACE) < 0.01, "ze lopen even hard als jij")
+	# lost far behind: they turn up behind you again
+	player.global_position += Vector3(60.0, 0.0, 0.0)
+	await frames(3)
+	var near_again := Vector2(seller.global_position.x - player.global_position.x, seller.global_position.z - player.global_position.z).length()
+	test.check(near_again < characters.CHASE_LOST, "kwijtgeraakt duiken ze weer achter je op (%.0f m)" % near_again)
+	# at the player: first the narrator's warning, then their conversation
+	player.global_position = seller.global_position + Vector3(1.0, 0.0, 0.0)
+	await wait_until(func() -> bool: return hud.is_showing_story(), 3.0)
+	var warned: bool = hud.is_showing_story() and str(hud._story_box._pages[0].get("text", "")).contains("oren van je kop")
+	test.check(warned, "de verteller waarschuwt eerst")
+	skip_story()
+	await wait_until(func() -> bool: return hud.is_showing_story(), 3.0)
+	test.check(hud.is_showing_story() and str(hud._story_box._pages[0].get("speaker", "")) == "LEBAARMOEDER", "daarna begint de verkoper zelf het gesprek")
+	skip_story()   # no way out for the player: closed by the test
+	await frames(2)
+	test.check(str(look.get("opdruk", "")) == "L" and str(look.get("rugopdruk", "")) == "telefoon", "blauw shirt met een L, een telefoon op de rug")
+	# the whole tree, path by path (no player: a check passed is not kept)
+	var goodbye := Conversations.new(seller, null, null).question("dag")
+	var again_lines: Array = Conversations.character_talk("telefoonverkoper", "verkopen").get("opnieuw", [])
+	var paths: Array = [[]]
+	var wins := 0
+	var dead_ends := 0
+	var way_out := false
+	while not paths.is_empty():
+		var path: Array = paths.pop_front()
+		var talk := Conversations.new(seller, null, null)
+		var page: Dictionary = talk.opening()[0]
+		for index: int in path:
+			page = (page.on_choice as Callable).call(index)[0]
+		var choices: Array = page.get("choices", [])
+		if choices.has(goodbye):
+			way_out = true
+		var text := str(page.get("text", ""))
+		if path.size() > 0 and again_lines.any(func(line: String) -> bool: return text.ends_with(line)):
+			dead_ends += 1
+			continue
+		if choices.is_empty():
+			wins += 1
+			continue
+		if path.size() < 8:
+			for index in choices.size():
+				paths.append(path + [index])
+	print("telefoonverkopers: %d goed, %d doodlopend" % [wins, dead_ends])
+	test.check(not way_out, "geen 'dag': je kunt het gesprek niet afbreken")
+	test.check(wins == 2, "precies twee antwoorden laten je gaan (%d)" % wins)
+	test.check(dead_ends >= 6, "de rest loopt dood en begint opnieuw (%d)" % dead_ends)
+	# with the player: every answer more overstimulated
+	var before: float = (player.stat("overprikkeldheid") as Vector2).x
+	var worn := Conversations.new(seller, player, null)
+	(worn.opening()[0].on_choice as Callable).call(0)
+	test.check((player.stat("overprikkeldheid") as Vector2).x > before, "van het gesprek raak je overprikkeld")
+	player.emit_signal("checked", "verkopers_af", true)
+	await frames(2)
+	test.check(_step_done("verkopers", MISSION_2), "van de verkopers af")
+	await frames(2)
+	test.check(not characters.is_chasing("telefoonverkoper"), "ze lopen weg")

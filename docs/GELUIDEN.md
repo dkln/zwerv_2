@@ -113,15 +113,44 @@ Een getal in het spel is dus de echte verhouding: twee spelers op `volume_db` 0 
 Controleren: `ffmpeg -i bestand.ogg -af ebur128 -f null -` (I: voor lussen en muziek, de hoogste
 M: voor eenmalige geluiden).
 
-Hoe hard iets in het spel klinkt, bepaalt alleen het spel. In `scripts/audio/spatial_audio.gd`:
-gebeurtenissen (aangereden worden, een botsing, een kreet, een plons) op `EVENT_DB` (+5,5 dB,
-`play_event`), signalen van het verkeer (toeters, bellen, hoorns) op `SIGNAL_DB` (+2,5 dB,
-`play_signal`), de achtergrond (voorbijrijden, remmen) op `BACKGROUND_DB` (-0,5 dB), de motoren
-per voertuig in `MOTOR_VOLUME_DB`, de sirenes op `SIREN_VOLUME_DB`. De muziek: de `MUSIC_VOLUME_DB`
-van intro, menu, laden en karakterkeuze, en in `hud.gd` de stad en de deuntjes.
+Hoe hard iets in het spel klinkt, bepaalt alleen het spel.
 
-Toen de bestanden gelijk werden getrokken (nov. 2026) zijn die getallen meeverschoven, zodat de
-mix in het spel gelijk bleef aan hoe hij was afgesteld.
+### Eén mix (13 nov. 2026)
+
+Alle niveaus staan op één schaal: hoe luid je het **hoort** (LUFS, op de Master-bus; eenmalige
+geluiden op hun luidste moment). Gemeten in Godot zelf (een AudioEffectCapture op Master, headless),
+want twee dingen wijken af van de bestanden:
+
+- **mono op twee speakers is +3 dB.** Alle effecten, kreten en stemmen zijn mono, de muziek en de
+  omgeving stereo. Een mono-geluid zonder plek (`AudioStreamPlayer`: menu, gebrabbel in gesprekken,
+  deur) klinkt 3 dB harder dan het bestand meet; in 3D recht voor je klopt het wel.
+- **de bus `Verkeer` heeft een compressor** (drempel -16 dB, 3:1; de oude -24 dB, 6:1 drukte een
+  motor 15 dB weg, zodat motoren en sirenes verdronken onder toeters en klappen). De bus
+  `Voorvallen` heeft alleen een limiter; beide staan op -3 dB.
+
+| laag | gehoord | waar |
+|---|---|---|
+| intro-muziek | -18 | `intro.gd` MUSIC_VOLUME_DB -2 |
+| menumuziek | -20 | `main_menu.gd` -4 |
+| laden, karakterkeuze | -22 | `loading_screen.gd`, `character_creation.gd` -6 |
+| muziek in de stad | -26 (pauze -32) | `hud.gd` CITY_MUSIC_VOLUME_DB -7, CITY_LOOP_SOFTER_DB 3 |
+| muziek van een gebouw (handelaar) / muzak | -23 / -29 | `hud.gd` |
+| deuntjes | -19 tot -21 (muziek 6 dB omlaag eronder) | `hud.gd` *_JINGLE_VOLUME_DB |
+| klap, botsing, kreet, plons | -18 | `spatial_audio.gd` EVENT_DB +1 |
+| gebrabbel in gesprek, kreet in karakterkeuze | -20, -19 | `babble.gd` UI_DB -7, SHOUT_VOLUME_DB -6 |
+| toeter, bel, hoorn, geroep op straat | -20 | SIGNAL_DB -1 |
+| sirene dichtbij | -22 | SIREN_VOLUME_DB -6 |
+| voorbijrijden (luidste moment), remmen | -21 | BACKGROUND_DB -1,5 |
+| menu- en automaatgeluiden | -22 | `ui_sounds.gd`, `machine_sounds.gd` VOLUME_DB -9 + LEVEL_TRIM_DB |
+| deur | -21 | `interiors.gd` DOOR_SOUND_DB -8 |
+| brand op een wrak | -22 | `vehicle_fire.gd` FIRE_SOUND_DB -3 |
+| auto naast je (tram, trein iets meer) | -27 | MOTOR_VOLUME_DB |
+| omgeving straat / winkel / station | -32 / -31 / -29 | `ambience.gd` |
+
+Dus: wat jou overkomt boven alles, dan stemmen en signalen, dan de muziek van de stad op de hoogte
+van het verkeer naast je, de omgeving eronder. De menu- en automaatgeluiden worden in code gemaakt
+en staan niet op -16 LUFS; `LEVEL_TRIM_DB` trekt ze recht (eenmalig gemeten). Verander je een
+golfvorm, meet dan opnieuw.
 
 Een diepe stem en een heldere met veel s-klanken klinken zo even hard. Het "Sega-filter" van de stemmen
 (`megadrive_voice`) snijdt de stem steil af onder de helft van de samplerate (11025 Hz) voor de

@@ -12,7 +12,7 @@ extends Node3D
 const MenuFire = preload("res://scripts/effects/menu_fire.gd")
 const FIRE_SOUND := "brand_loop"
 const EXPLOSION_SOUND := "explosie"
-const FIRE_SOUND_DB := 2.0
+const FIRE_SOUND_DB := -3.0
 const CrashBurst = preload("res://scripts/effects/crash_burst.gd")
 
 ## Closing speed (m/s, about 50 km/h) from which a crash sets the vehicles alight.

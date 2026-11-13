@@ -178,8 +178,22 @@ func _notification(what: int) -> void:
 	if what == NOTIFICATION_EXIT_TREE or what == NOTIFICATION_PREDELETE:
 		for vehicle in _parked:
 			if is_instance_valid(vehicle):
-				vehicle.free()
+				_free_parked(vehicle)
 		_parked.clear()
+
+
+## Frees a vehicle that is out of the tree. Its materials are let go first: freed with it, a
+## material that only it held went before the drawing that used it, and the renderer then
+## asked for a material that was gone ("Parameter "material" is null", once per mesh).
+static func _free_parked(vehicle: Vehicle) -> void:
+	for drawn: GeometryInstance3D in vehicle.find_children("*", "GeometryInstance3D", true, false):
+		drawn.material_override = null
+		drawn.material_overlay = null
+		var mesh_instance := drawn as MeshInstance3D
+		if mesh_instance:
+			for surface in mesh_instance.get_surface_override_material_count():
+				mesh_instance.set_surface_override_material(surface, null)
+	vehicle.free()
 
 
 ## The vehicles it keeps in the town now (for the tests): the town traffic and the services.
@@ -466,7 +480,7 @@ func _take_out(vehicle: Vehicle) -> void:
 	while _parked.size() > parked_kept:
 		var oldest: Vehicle = _parked.pop_front()
 		_entry_of.erase(oldest)
-		oldest.free()
+		_free_parked(oldest)
 
 
 ## Not now: a wreck (until it is towed back), or one that is not in the town.

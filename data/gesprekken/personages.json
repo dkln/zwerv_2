@@ -5,16 +5,18 @@
 			"spreker": "OME WIM",
 			"plek": "plein",
 			"tempo": 0.8,
+			"tempo_meelopen": 2.2,
+			"lengte": 1.15,
 			"uiterlijk": {
 				"skin": "#E8B896",
 				"hair": "#D8D4CC",
 				"hair_style": "pet",
-				"coat": "#4A4438",
+				"coat": "#5A4A2E",
 				"trim": "#2E2A22",
 				"trousers": "#3A3A40",
 				"skirt": false,
 				"shoes": "#2A2420",
-				"cap": "#3C3A34",
+				"cap": "#B8322A",
 				"helmet": "#22242A"
 			},
 			"stemmingen": {
@@ -24,6 +26,18 @@
 				"kleingeld_nee": "neutraal",
 				"dag": "blij"
 			},
+			"onderweg": [
+				"Daar, bij die bank. Daar sliep ik in de winter van tachtig. Koud, jong.",
+				"Die snackbar? Nooit doen. Die frikandellen hebben een strafblad.",
+				"Kijk uit voor de tram. Die stopt voor niemand, ook niet voor mij.",
+				"Het Binnenhof. Daar praten ze de hele dag over mensen zoals wij. Met ons praten ze nooit.",
+				"Hier kun je 's avonds schuilen als het regent. Zeg niet dat je het van mij hebt.",
+				"Ken je die meeuwen? Die jatten je patat uit je hand. Haagse meeuwen, jong.",
+				"Twintig jaar loop ik hier. Ik ken elke stoeptegel bij naam.",
+				"Niet te hard, hè. Mijn knieën zijn ouder dan de Hofvijver.",
+				"Bij de Grote Markt hangt het 's nachts vol met lui. Daar moet je oppassen.",
+				"Zie je dat portiek? Droog, uit de wind. Goud waard."
+			],
 			"dag": [
 				"Hou je taai, jong.",
 				"Pas op jezelf. En op je spullen."
@@ -136,9 +150,29 @@
 				"pompom": "#E8C83A"
 			},
 			"zwerft": {
-				"punten": [[4, -8], [16, -9], [20, -4], [10, -3]],
+				"punten": [
+					[
+						4,
+						-8
+					],
+					[
+						16,
+						-9
+					],
+					[
+						20,
+						-4
+					],
+					[
+						10,
+						-3
+					]
+				],
 				"tempo": 0.55,
-				"rookpauze": [5.0, 10.0],
+				"rookpauze": [
+					5.0,
+					10.0
+				],
 				"karretje": true,
 				"rookt": true
 			},
@@ -262,6 +296,274 @@
 								"stemming": "verdrietig"
 							}
 						]
+					}
+				}
+			}
+		},
+		"telefoonverkoper": {
+			"spreker": "LEBAARMOEDER",
+			"plek": "hofvijver",
+			"tempo": 1.3,
+			"uiterlijk": {
+				"skin": "#E0B090",
+				"hair": "#2A2018",
+				"hair_style": "kort",
+				"coat": "#1F5FD0",
+				"trim": "#163F8C",
+				"trousers": "#22242E",
+				"skirt": false,
+				"shoes": "#F4F2EC",
+				"cap": "#1F5FD0",
+				"helmet": "#22242A",
+				"opdruk": "L",
+				"opdruk_kleur": "#F4F4F4",
+				"rugopdruk": "telefoon",
+				"rugopdruk_kleur": "#E8508A"
+			},
+			"stemmingen": {
+				"begroeting": "opgewonden",
+				"onderwerp": "opgewonden",
+				"doorvraag": "opgewonden",
+				"kleingeld_nee": "opgewonden",
+				"dag": "blij"
+			},
+			"dag": [
+				"Fijne dag nog! ...Hé meneer! Heeft ú al 5G?"
+			],
+			"kleingeld_nee": [
+				"Kleingeld? Wij doen alleen automatische incasso. Veel makkelijker!"
+			],
+			"gulheid": {
+				"kans": 0,
+				"bedrag": 0.0
+			},
+			"nog_iets": [
+				"En verder?"
+			],
+			"standaard": "verkopen",
+			"gesprekken": {
+				"verkopen": {
+					"klampt_vast": true,
+					"begroetingen": [
+						"Hé hallo! Eén vraagje maar, heel snel: heb jij al een telefoonabonnement? Niet weglopen, hè!"
+					],
+					"opnieuw": [
+						"Maar goed! Even terug naar het begin, want je twijfelt, dat zie ik.",
+						"Jongens, nog één keer vanaf het begin. Hij is er bijna.",
+						"Weet je wat? We beginnen gewoon opnieuw. Ik heb tijd. Heel veel tijd."
+					],
+					"onderwerp": {
+						"vraag": "Eh... ik heb niet eens een telefoon.",
+						"antwoord": "NIET EENS EEN TELEFOON?! Jongens, horen jullie dat? Dan is dit je geluksdag, want Lebaarmoeder heeft nú een actie!",
+						"verder": [
+							{
+								"vraag": "Ik heb geen geld.",
+								"antwoord": "Geld is maar een gevoel! Voor €39,95 per maand heb je al een toestel, 5G én een gratis hoesje.",
+								"verder": [
+									{
+										"vraag": "Ik heb ook geen bankrekening.",
+										"antwoord": "Geen probleem! Dan sturen we de rekening naar je huisadres. Wat is je adres?",
+										"verder": [
+											{
+												"vraag": "Bankje drie, aan de Hofvijver.",
+												"check": {
+													"id": "verkopers_af",
+													"label": "AFWIMPELEN",
+													"kans": 100,
+													"verborgen": true,
+													"gelukt": "Het... bankje. Kevin, pakt het systeem een bankje? Nee. Oké. Jongens, we gaan. Eh, succes nog.",
+													"stemming_gelukt": "verdrietig"
+												}
+											},
+											{
+												"vraag": "Postbus 1, Den Haag.",
+												"antwoord": "Postbus 1? Da's het Binnenhof, gast. Die hebben al zeventig abonnementen.",
+												"stemming": "boos"
+											}
+										]
+									},
+									{
+										"vraag": "Hoeveel is dat in totaal?",
+										"antwoord": "24 maanden keer 39,95, plus aansluitkosten, min de korting, plus de hoesjesverzekering... veel minder dan je denkt!",
+										"verder": [
+											{
+												"vraag": "Dat is te duur.",
+												"antwoord": "Te duur bestaat niet, alleen te weinig korting! Kevin, geef hem nog tien procent."
+											},
+											{
+												"vraag": "Mag ik erover nadenken?",
+												"antwoord": "Natuurlijk! Neem gerust de tijd. ...Tien seconden. Klaar? Mooi."
+											}
+										]
+									}
+								]
+							},
+							{
+								"vraag": "Ik heb geen interesse.",
+								"antwoord": "Dat zeggen ze allemaal! Tot ze onze 5G proberen. Dan willen ze nooit meer iets anders.",
+								"verder": [
+									{
+										"vraag": "Nee, echt. Geen interesse.",
+										"antwoord": "Echt écht? Want dan heb ik een nóg betere actie. Speciaal voor mensen zonder interesse."
+									},
+									{
+										"vraag": "Wat is 5G eigenlijk?",
+										"antwoord": "Dat is... nou... sneller dan 4G. Kevin, wat is 5G? Kevin weet het ook niet. Maar het is wél heel snel."
+									}
+								]
+							},
+							{
+								"vraag": "Mijn telefoon is gestolen. Samen met mijn ID.",
+								"antwoord": "Gestolen?! Wat erg! Dan heb je dus een nieuw toestel nodig. Mag ik heel even je ID zien?",
+								"verder": [
+									{
+										"vraag": "Die is dus ook gestolen.",
+										"check": {
+											"id": "verkopers_af",
+											"label": "AFWIMPELEN",
+											"kans": 100,
+											"verborgen": true,
+											"gelukt": "Geen ID... Dan mag ik je wettelijk niks verkopen. Kevin, inpakken. We gaan naar het Spui, daar lopen toeristen.",
+											"stemming_gelukt": "verdrietig"
+										}
+									},
+									{
+										"vraag": "Ik heb alleen een bibliotheekpas.",
+										"antwoord": "Een bibliotheekpas! Heel goed. Daar kun je boeken mee lenen. Geen telefoons, helaas. Maar luister..."
+									},
+									{
+										"vraag": "Kunnen jullie mijn telefoon niet terugvinden?",
+										"antwoord": "Terugvinden? Wij verkopen alleen nieuwe. Oud is zó 2023."
+									}
+								]
+							},
+							{
+								"vraag": "Kennen jullie Ome Wim?",
+								"antwoord": "Die ouwe met die rode pet? Die heeft al drie abonnementen bij ons. Hij weet het alleen nog niet.",
+								"verder": [
+									{
+										"vraag": "Wim! Help eens!",
+										"antwoord": "Wim hoort je niet, gast. Die staat met de eendjes te praten. Dus! Waar waren we?"
+									},
+									{
+										"vraag": "Hoe kan hij drie abonnementen hebben?",
+										"antwoord": "Hij zei 'ja hoor' tegen de duiven. Kevin stond ernaast. Telt.",
+										"stemming": "blij"
+									}
+								]
+							}
+						]
+					},
+					"prikkels": 4
+				},
+				"klaar": {
+					"begroetingen": [
+						"Jij weer? Nee, nee. Jij zit niet in het systeem. Loop maar door."
+					],
+					"onderwerp": {
+						"vraag": "Hebben jullie al iets verkocht vandaag?",
+						"antwoord": "Drie abonnementen. Twee aan toeristen, één aan een standbeeld. Kevin twijfelt nog over dat laatste."
+					}
+				}
+			}
+		},
+		"telefoonverkoper_kevin": {
+			"spreker": "LEBAARMOEDER",
+			"plek": "hofvijver",
+			"tempo": 1.3,
+			"uiterlijk": {
+				"skin": "#C8906A",
+				"hair": "#C89A50",
+				"hair_style": "kort",
+				"coat": "#1F5FD0",
+				"trim": "#163F8C",
+				"trousers": "#22242E",
+				"skirt": false,
+				"shoes": "#F4F2EC",
+				"cap": "#1F5FD0",
+				"helmet": "#22242A",
+				"opdruk": "L",
+				"opdruk_kleur": "#F4F4F4",
+				"rugopdruk": "telefoon",
+				"rugopdruk_kleur": "#E8508A"
+			},
+			"stemmingen": {
+				"begroeting": "opgewonden",
+				"onderwerp": "opgewonden",
+				"doorvraag": "opgewonden",
+				"kleingeld_nee": "opgewonden",
+				"dag": "blij"
+			},
+			"dag": [
+				"Doei! Bel ons!"
+			],
+			"kleingeld_nee": [
+				"Daar moet je bij Dennis zijn. Die is senior."
+			],
+			"gulheid": {
+				"kans": 0,
+				"bedrag": 0.0
+			},
+			"standaard": "meelopen",
+			"gesprekken": {
+				"meelopen": {
+					"begroetingen": [
+						"Ik ben nog in opleiding. Praat maar met Dennis, die doet de deals."
+					],
+					"onderwerp": {
+						"vraag": "Vind je dit leuk werk?",
+						"antwoord": "Ik krijg per abonnement betaald. Ik ben hier sinds maandag. Dus... nog niet heel leuk, nee.",
+						"stemming": "verdrietig"
+					}
+				}
+			}
+		},
+		"telefoonverkoper_sanne": {
+			"spreker": "LEBAARMOEDER",
+			"plek": "hofvijver",
+			"tempo": 1.3,
+			"uiterlijk": {
+				"skin": "#8A5A3C",
+				"hair": "#6A3A22",
+				"hair_style": "lang",
+				"coat": "#1F5FD0",
+				"trim": "#163F8C",
+				"trousers": "#22242E",
+				"skirt": false,
+				"shoes": "#F4F2EC",
+				"cap": "#1F5FD0",
+				"helmet": "#22242A",
+				"opdruk": "L",
+				"opdruk_kleur": "#F4F4F4",
+				"rugopdruk": "telefoon",
+				"rugopdruk_kleur": "#E8508A"
+			},
+			"stemmingen": {
+				"begroeting": "opgewonden",
+				"onderwerp": "opgewonden",
+				"doorvraag": "opgewonden",
+				"kleingeld_nee": "opgewonden",
+				"dag": "blij"
+			},
+			"dag": [
+				"Doei! Bel ons!"
+			],
+			"kleingeld_nee": [
+				"Daar moet je bij Dennis zijn. Die is senior."
+			],
+			"gulheid": {
+				"kans": 0,
+				"bedrag": 0.0
+			},
+			"standaard": "meelopen",
+			"gesprekken": {
+				"meelopen": {
+					"begroetingen": [
+						"Hij is écht goed hè, Dennis? Hij heeft vorige week een abonnement aan een duif verkocht."
+					],
+					"onderwerp": {
+						"vraag": "Waarom heet het eigenlijk Lebaarmoeder?",
+						"antwoord": "Omdat wij je verzorgen van begin tot eind! Zegt de folder. Ik heb het ook nooit helemaal begrepen."
 					}
 				}
 			}

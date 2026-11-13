@@ -84,7 +84,7 @@ const SUPERMARKET_MUZAK := ["supermarkt_muzak_1.ogg", "supermarkt_muzak_2.ogg", 
 const SOUND_FOLDER := "res://assets/audio/geluiden/"
 const DOOR_IN_SOUND := "deur_binnen"
 const DOOR_OUT_SOUND := "deur_buiten"
-const DOOR_SOUND_DB := -2.0
+const DOOR_SOUND_DB := -8.0
 const SNACK_BAR := "Snackbar"
 ## The name signs of the snack bars (Details items) and the names on them.
 const NAMES := {"tekst/naam_snackbar_1": "Frietje Fatsoen", "tekst/naam_snackbar_2": "Jan Blammage"}

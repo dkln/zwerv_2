@@ -97,6 +97,9 @@ var _was_paused := false
 ## Whether the game must stay paused when this closes (another screen still up: the reward
 ## screen, the shop, the pause menu; GameHud sets it). Else as it was before it opened.
 var keep_paused := Callable()
+## Whether the conversation must wait (a "taak volbracht" or an item got: the reward screen
+## over it; GameHud sets it): the text stops typing, the voice stops, nothing goes on.
+var on_hold := Callable()
 var _blink_clock := 0.0
 var _dim: ColorRect
 var _banner: PanelContainer
@@ -173,7 +176,7 @@ func show_pages(pages: Array, done := Callable()) -> void:
 
 ## A key press while open: true if the box used it.
 func handle_input(event: InputEvent) -> bool:
-	if not visible:
+	if not visible or (on_hold.is_valid() and bool(on_hold.call())):
 		return false
 	var go_on: bool = event.is_action_pressed("ui_accept") \
 		or (event is InputEventKey and event.pressed and not event.echo and (event as InputEventKey).keycode == KEY_SPACE) \
@@ -204,6 +207,14 @@ func handle_input(event: InputEvent) -> bool:
 
 func _process(delta: float) -> void:
 	if not visible:
+		return
+	var holding := on_hold.is_valid() and bool(on_hold.call())
+	if is_instance_valid(_babble):
+		_babble.stream_paused = holding
+	if holding:
+		if _portrait:
+			_portrait.speaking = false
+		_more.visible = false
 		return
 	_blink_clock += delta
 	_typewriter.update(delta)

@@ -404,6 +404,9 @@ func _refresh_detail() -> void:
 			var effects: Array[String] = []
 			for stat: String in (item.get("effect", {}) as Dictionary):
 				var amount := int(item.effect[stat])
+				if amount >= Items.FULL:
+					effects.append("%s VOL" % STAT_WORDS.get(stat, stat.to_upper()))
+					continue
 				effects.append("%s%d %s" % ["+" if amount > 0 else "", amount, STAT_WORDS.get(stat, stat.to_upper())])
 			_detail_effect.text = "   ".join(effects) if not effects.is_empty() else str(item.get("rarity", "")).to_upper()
 		"tip":

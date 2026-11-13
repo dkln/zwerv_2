@@ -101,6 +101,10 @@ var player: Node
 var hud: Node
 var _asked := {}
 var _random := RandomNumberGenerator.new()
+## A conversation that holds on ("klampt_vast", the telephone sellers): no goodbye, no begging;
+## a branch that ends begins again ("opnieuw" + the first choices of the topic); only a check
+## passed lets go (its "gelukt" is the last word).
+var _let_go := false
 ## The lines of this conversation: the person's data with their variant over it (_data).
 var _chosen_data := {}
 
@@ -378,6 +382,11 @@ func opening() -> Array:
 	return [_page(_pick(_data().get("begroetingen"), "Ja?"), "begroeting")]
 
 
+## Whether this conversation holds on to you (see _let_go).
+func holds_on() -> bool:
+	return bool(_data().get("klampt_vast", false)) and not _let_go
+
+
 ## The conversation is over: the body as it was.
 func finish() -> void:
 	Emote.stop(person)
@@ -465,9 +474,10 @@ func _page(text: String, line_kind: String, follow_ups := [], own_mood := "") ->
 		options.append(["verder", _question_text(follow_up), follow_up])
 	if not _asked.has("onderwerp") and topic.has("vraag"):
 		options.append(["onderwerp", str(topic.vraag), topic])
-	if not _asked.has("kleingeld") and may_beg():
-		options.append(["kleingeld", question("kleingeld"), {}])
-	options.append(["dag", question("dag"), {}])
+	if not holds_on():
+		if not _asked.has("kleingeld") and may_beg():
+			options.append(["kleingeld", question("kleingeld"), {}])
+		options.append(["dag", question("dag"), {}])
 	var texts: Array = options.map(func(option: Array) -> String: return option[1])
 	return _with_mood({"kind": "gesprek", "speaker": speaker(), "text": text, "choices": texts,
 		"on_choice": func(index: int) -> Array: return _answer(options[index])}, line_kind, own_mood)
@@ -475,6 +485,9 @@ func _page(text: String, line_kind: String, follow_ups := [], own_mood := "") ->
 
 func _answer(option: Array) -> Array:
 	var data := _data()
+	# a conversation that holds on wears you out: every answer a little more overstimulated
+	if holds_on() and player and player.has_method("change_stat"):
+		player.change_stat("overprikkeldheid", float(data.get("prikkels", 0.0)))
 	match str(option[0]):
 		"onderwerp", "verder":
 			# a node of the topic tree: its answer, then its own follow-ups (none left: the
@@ -493,7 +506,12 @@ func _answer(option: Array) -> Array:
 			if reward_line != "":
 				text += " " + reward_line
 			if follow_ups.is_empty() and not is_topic:
-				text += " " + _again()
+				if holds_on():
+					# a dead end: they start all over again
+					text += " " + _pick(data.get("opnieuw"), "Maar goed, waar was ik?")
+					follow_ups = follow_ups_of(data.get("onderwerp", {}))
+				else:
+					text += " " + _again()
 			return [_page(text, "onderwerp" if is_topic else "doorvraag", follow_ups, str(node.get("stemming", "")))]
 		"kleingeld":
 			_asked["kleingeld"] = true
@@ -518,16 +536,23 @@ func _try_check(node: Dictionary) -> Dictionary:
 	var check_id := str(check.get("id", ""))
 	_asked["check:" + check_id] = true
 	var passed := _random.randi_range(1, 100) <= int(check.get("kans", 50))
+	var holding := holds_on()
+	if passed and holding:
+		_let_go = true
 	if passed and player:
 		var passed_checks: Array = player.get_meta(PASSED_CHECKS_META, [])
 		passed_checks.append(check_id)
 		player.set_meta(PASSED_CHECKS_META, passed_checks)
 	if player and player.has_signal("checked"):
 		player.emit_signal("checked", check_id, passed)
-	if hud and hud.has_method("show_floating_number") and person:
+	if hud and hud.has_method("show_floating_number") and person and not check.get("verborgen", false):
 		hud.show_floating_number(person.global_position + Vector3.UP * 2.3,
 			"%s %s" % [str(check.get("label", "CHECK")), "GESLAAGD" if passed else "MISLUKT"],
 			CHECK_PASSED_COLOUR if passed else CHECK_FAILED_COLOUR, 14, true)
+	if passed and holding:
+		# let go: their last word, then the box closes
+		return _with_mood({"kind": "gesprek", "speaker": speaker(), "text": _pick(check.get("gelukt"), "Goed dan.")}, "dag",
+			str(check.get("stemming_gelukt", "")))
 	if passed:
 		var follow_ups := follow_ups_of(node)
 		var text := _pick(check.get("gelukt"), "Goed dan.")
@@ -550,7 +575,7 @@ func _check_passed(node: Dictionary) -> bool:
 ## The question of a node as you can choose it: a skill check with its label and chance first.
 static func _question_text(node: Dictionary) -> String:
 	var text := str(node.get("vraag", ""))
-	if node.get("check") is Dictionary:
+	if node.get("check") is Dictionary and not (node.check as Dictionary).get("verborgen", false):
 		var check: Dictionary = node.check
 		text = "[%s %d%%] %s" % [str(check.get("label", "CHECK")), int(check.get("kans", 50)), text]
 	return text
