@@ -77,9 +77,12 @@ func _set_edge(value: float) -> void:
 func _run() -> void:
 	# the picture as it is now (the last frame drawn), held
 	await get_tree().process_frame
-	var image := get_viewport().get_texture().get_image()
-	if image and not image.is_empty():
-		_still.texture = ImageTexture.create_from_image(image)
+	# (headless, as in the checks, nothing is drawn: no picture to hold, and asking for one
+	# only makes the renderer complain "Parameter t is null")
+	if DisplayServer.get_name() != "headless":
+		var image := get_viewport().get_texture().get_image()
+		if image and not image.is_empty():
+			_still.texture = ImageTexture.create_from_image(image)
 	_set_edge(0.0)
 	has_covered = true
 	covered.emit()

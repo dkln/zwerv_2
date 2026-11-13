@@ -395,6 +395,10 @@ static func is_blank(img: Image) -> bool:
 
 ## Stores a rendered preview in the cache, replacing those of older imports of the item.
 static func _cache_preview(cat: String, key: String, stamp: int, tex: Texture2D) -> void:
+	# a preview that has no picture (yet): nothing to store (asking for its image only makes
+	# the renderer complain "Parameter t is null" in texture_2d_get)
+	if tex == null or not tex.get_rid().is_valid() or tex.get_width() <= 0 or DisplayServer.get_name() == "headless":
+		return
 	var dir := PREVIEW_CACHE.path_join(cat)
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(dir))
 	var prefix := key.replace("/", "__") + "_"

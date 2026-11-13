@@ -1658,11 +1658,19 @@ func _update_crt() -> void:
 # ------------------------------------------------------------------ layout
 
 ## Scales the design to the window (the smaller of the two ratios) and keeps the corners
-## in the corners.
+## in the corners. The HUD's own picture is drawn at the window's real pixels (the project
+## stretches the design of 1280 x 720 to the window, "canvas_items"), its texts sharp.
 func _fit_to_window() -> void:
 	var window := get_viewport().get_visible_rect().size
 	if _ui_viewport:
-		_ui_viewport.size = Vector2i(window)
+		var pixels := Vector2i(window)
+		if get_window() and get_window().size.x > 0:
+			pixels = get_window().size
+		_ui_viewport.size = pixels
+		_ui_viewport.size_2d_override = Vector2i(window)
+		_ui_viewport.size_2d_override_stretch = true
+		if "oversampling_override" in _ui_viewport:
+			_ui_viewport.set("oversampling_override", float(pixels.y) / maxf(window.y, 1.0))
 	var factor := minf(window.x / DESIGN_SIZE.x, window.y / DESIGN_SIZE.y)
 	_root.scale = Vector2(factor, factor)
 	_root.size = window / factor

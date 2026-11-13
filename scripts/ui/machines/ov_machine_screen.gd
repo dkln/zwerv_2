@@ -28,6 +28,7 @@ static func show_for(for_player: Node, place := "", with_animation := true) -> C
 	screen.set("trim_colour", Color("#1E5AC8"))
 	screen.set("screen_colour", Color("#FFD23A"))
 	screen.set("place_name", place)
+	screen.set("screen_controls_width", 360.0)   # its choices are long
 	screen.set("backdrop", "station" if place.to_upper().contains("CENTRAAL") else "straat")
 	return present(screen, for_player, with_animation)
 
@@ -65,6 +66,7 @@ func _opened() -> void:
 	_show_menu()
 
 
+## On the touch screen: the choices and STOP.
 func build_controls(box: VBoxContainer) -> void:
 	for option_index in OPTION_COUNT:
 		var option := button("", _option.bind(option_index), 0, Color("#1E5AC8"))
@@ -73,9 +75,6 @@ func build_controls(box: VBoxContainer) -> void:
 		_options.append(option)
 		_option_actions.append(Callable())
 	box.add_child(button("[ESC] STOPPEN", cancel, 0, Color("#7A7E86")))
-	var slots := label("▬ MUNTEN ▬           ▬ KAARTJES ▬", font_pixel, 11, Color("#3A3830"))
-	slots.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	box.add_child(slots)
 
 
 func pocket_lines() -> Array:

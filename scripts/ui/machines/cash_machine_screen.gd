@@ -29,6 +29,7 @@ var paid_out := 0.0
 var bank := ""
 var _logo: Control
 var _options: Array[Button] = []
+var _keypad_grid: GridContainer
 var _option_actions: Array[Callable] = []
 
 
@@ -60,6 +61,9 @@ func show_display(title: String, lines: Array, colour := Color(0, 0, 0, 0)) -> v
 	super(title, lines, colour)
 	if _logo:
 		_logo.visible = state == "start"
+	# the touch screen: its keypad while the PIN is asked, its choices otherwise
+	if _keypad_grid:
+		_keypad_grid.visible = state == "pin"
 
 
 ## The cash machine of the town (MachineModels.cash_machine_mesh, voxels of 6,25 cm, 12 x 28
@@ -69,10 +73,8 @@ func machine_parts() -> Dictionary:
 		"screen_sunk": 0.125, "keys": Vector3(-0.09, 0.66, 0.25), "slot": Vector3(0.0, 0.28, 0.25)}
 
 
+## On the touch screen: the keypad (while the PIN is asked), the choices and STOP.
 func build_controls(box: VBoxContainer) -> void:
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 14)
-	box.add_child(row)
 	var keypad := GridContainer.new()
 	keypad.columns = 3
 	keypad.add_theme_constant_override("h_separation", 6)
@@ -83,23 +85,18 @@ func build_controls(box: VBoxContainer) -> void:
 			colour = Color("#C8A020")
 		elif key_text == "OK":
 			colour = Color("#2E9A48")
-		var key_button := button(key_text, _keypad.bind(key_text), 62, colour)
+		var key_button := button(key_text, _keypad.bind(key_text), 92, colour)
 		keypad.add_child(key_button)
-	row.add_child(keypad)
-	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 6)
-	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	keypad.visible = false
+	box.add_child(keypad)
+	_keypad_grid = keypad
 	for option_index in OPTION_COUNT:
 		var option := button("", _option.bind(option_index), 0)
 		option.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		column.add_child(option)
+		box.add_child(option)
 		_options.append(option)
 		_option_actions.append(Callable())
-	column.add_child(button("STOP", cancel, 0, Color("#B8302A")))
-	row.add_child(column)
-	var slot := label("▬▬ PAS ▬▬        ▬▬▬▬ GELD ▬▬▬▬", font_pixel, 11, trim_colour)
-	slot.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	box.add_child(slot)
+	box.add_child(button("STOP", cancel, 0, Color("#B8302A")))
 
 
 func pocket_lines() -> Array:

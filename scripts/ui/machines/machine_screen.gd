@@ -6,10 +6,14 @@ extends CanvasLayer
 ## close as it opens (CAMERA_FROM, CAMERA_AT), the plain light of the portraits and the glow of
 ## its screen. On that screen what the machine says (show_display: a title and lines in
 ## `screen_colour` on dark glass, drawn in a little picture of its own laid on the model's
-## screen); a key pressed lights up at its keypad (press_feedback); what comes out (the bon,
+## screen, as on a little CRT) and, on a machine with a touch screen, its buttons beside them
+## (build_controls: a keypad, choices): you click them on the screen itself (the click is
+## carried from the 3D screen into its picture, _screen_point). Parts of the machine itself
+## can be clicked too (machine_parts "hotspots": the hole of the deposit machine, its BON
+## key; hotspot_pressed). The camera comes in close on the part you use (machine_parts
+## "focus"). A key pressed lights up at its keypad (press_feedback); what comes out (the bon,
 ## the money, the card: show_tray) slides out of its slot as a little thing of its own, and
-## is listed in the panel on the left. Right what you carry (pocket_lines), the buttons of the
-## machine for the mouse (build_controls: a keypad, buttons) and the keys. In the pixel look of
+## is listed in the panel on the left, under it what you carry (pocket_lines) and the keys. In the pixel look of
 ## the HUD (UiStyle: hard panels, the pixel fonts, the CRT over it). The game is paused
 ## meanwhile (the scene keeps moving). Esc leaves (cancel), then the swipe back and `finished`.
 ## The machines: DepositMachineScreen (statiegeld, the supermarkets), OvMachineScreen
@@ -47,6 +51,19 @@ const CAMERA_AT := Vector3(0.42, 1.45, 1.25)
 const LOOK_AT := Vector3(-0.05, 1.05, 0.0)
 const CAMERA_SLIDE := 0.8
 const CAMERA_FOV := 42.0
+## The close-up on the part you use (machine_parts "focus"): its share of the height of the
+## view (unless the machine gives "focus_share"), the most of the width it may take, and
+## where its middle is across the window (px: right of the panels on the left).
+const FOCUS_SHARE := 0.6
+const FOCUS_WIDTH_SHARE := 0.62
+const FOCUS_CENTRE_X := 790.0
+## The picture on the screen: its width (px; the height follows the screen), the width of
+## the column of buttons beside the text on a touch screen, the size of a button's text and
+## its height.
+const DISPLAY_WIDTH := 720
+const SCREEN_CONTROLS_WIDTH := 300.0
+const SCREEN_BUTTON_TEXT := 18
+const SCREEN_BUTTON_HEIGHT := 46.0
 ## The wall and the ground of each backdrop: its colour and the colour of its joints.
 const BACKDROPS := {
 	"straat": {"wall": Color("#8A4A3A"), "joint": Color("#B8A898"), "ground": Color("#8C8A92"), "ground_joint": Color("#6E6C76"), "brick": true},
@@ -85,7 +102,16 @@ var _parts := {}                       # machine_parts()
 var _display_viewport: SubViewport     # the picture on its screen
 var _display_title: Label
 var _display_text: Label
+## The column of the screen's buttons (build_controls), right of its text.
 var _controls: VBoxContainer
+## The title and the text of the screen (px), set by a machine before it is built; a
+## machine with a little screen shows a few big words.
+var display_title_size := 28
+var display_text_size := 20
+## How wide the column of the screen's buttons is (px).
+var screen_controls_width := SCREEN_CONTROLS_WIDTH
+var _display_holder: Node3D
+var _display_mesh: MeshInstance3D
 var _tray: VBoxContainer
 var _tray_title: Label
 var _pockets: VBoxContainer
@@ -156,6 +182,7 @@ func close() -> void:
 		await swipe.covered
 	visible = false
 	_crt_layer.visible = false
+	Input.set_default_cursor_shape(Input.CURSOR_ARROW)
 	get_tree().paused = _was_paused
 	finished.emit()
 	queue_free()
@@ -197,8 +224,14 @@ func press_feedback() -> void:
 		_press_light.light_energy = 0.0
 
 
-## The controls of the machine under its display (a keypad, buttons).
+## The buttons of the machine on its screen, beside its text (a keypad, choices). Nothing:
+## the screen only shows (the deposit machine: you use its hole and its BON key).
 func build_controls(_box: VBoxContainer) -> void:
+	pass
+
+
+## A part of the machine clicked (machine_parts "hotspots": its "name").
+func hotspot_pressed(_hotspot: String) -> void:
 	pass
 
 
@@ -335,6 +368,9 @@ static func _money_text(amount: float) -> String:
 func _input(event: InputEvent) -> void:
 	if not visible or _closing:
 		return
+	if event is InputEventMouse:
+		_mouse(event as InputEventMouse)
+		return
 	if event is InputEventKey:
 		get_viewport().set_input_as_handled()
 		var key_event := event as InputEventKey
@@ -344,6 +380,78 @@ func _input(event: InputEvent) -> void:
 			cancel()
 		elif _key(key_event.physical_keycode):
 			press_feedback()
+
+
+## The mouse over the machine: on its screen the event goes into the screen's picture (its
+## buttons), on a part (hotspots) a click uses it; the hand over both.
+func _mouse(event: InputEventMouse) -> void:
+	var design := transform.affine_inverse() * event.position
+	var on_screen := _screen_point(design)
+	var hotspot := _hotspot_at(design)
+	Input.set_default_cursor_shape(Input.CURSOR_POINTING_HAND if (on_screen.x >= 0.0 and _controls.get_child_count() > 0) or hotspot != "" else Input.CURSOR_ARROW)
+	if on_screen.x >= 0.0 and _controls.get_child_count() > 0:
+		var carried := event.duplicate() as InputEventMouse
+		carried.position = on_screen
+		carried.global_position = on_screen
+		_display_viewport.push_input(carried, true)
+		get_viewport().set_input_as_handled()
+	elif hotspot != "" and event is InputEventMouseButton:
+		var click := event as InputEventMouseButton
+		get_viewport().set_input_as_handled()
+		if click.pressed and click.button_index == MOUSE_BUTTON_LEFT and not _busy:
+			press_feedback()
+			hotspot_pressed(hotspot)
+
+
+## Where the ray of the camera through `design` (a point of the window, in design pixels)
+## meets the plane at `z` (the scene's metres); null when it does not.
+func _ray_to_plane(design: Vector2, z: float) -> Variant:
+	if _camera == null:
+		return null
+	var origin := _camera.project_ray_origin(design)
+	var way := _camera.project_ray_normal(design)
+	if absf(way.z) < 0.0001:
+		return null
+	var along := (z - origin.z) / way.z
+	return origin + way * along if along > 0.0 else null
+
+
+## The pixel of the screen's picture under `design` (a point of the window), the bulge of
+## its glass (machine_display.gdshader) taken into account; (-1, -1) when it is not on it.
+func _screen_point(design: Vector2) -> Vector2:
+	if _display_mesh == null:
+		return Vector2(-1, -1)
+	var hit: Variant = _ray_to_plane(design, _display_mesh.global_position.z)
+	if hit == null:
+		return Vector2(-1, -1)
+	var screen: Rect2 = _parts.get("screen", Rect2(-0.25, 1.0, 0.5, 0.32))
+	var local: Vector3 = (hit as Vector3) - _display_holder.global_position
+	var uv := Vector2((local.x - screen.position.x) / screen.size.x, (screen.position.y + screen.size.y - local.y) / screen.size.y)
+	if uv.x < 0.0 or uv.y < 0.0 or uv.x > 1.0 or uv.y > 1.0:
+		return Vector2(-1, -1)
+	var centred := uv * 2.0 - Vector2.ONE
+	var curvature := float((_display_mesh.material_override as ShaderMaterial).get_shader_parameter("curvature"))
+	var bent := centred * (Vector2.ONE + curvature * Vector2(centred.y * centred.y, centred.x * centred.x))
+	var picture_uv := bent * 0.5 + Vector2(0.5, 0.5)
+	if picture_uv.x < 0.0 or picture_uv.y < 0.0 or picture_uv.x > 1.0 or picture_uv.y > 1.0:
+		return Vector2(-1, -1)
+	return picture_uv * Vector2(_display_viewport.size)
+
+
+## The name of the part of the machine (machine_parts "hotspots") under `design`, or "".
+func _hotspot_at(design: Vector2) -> String:
+	var hotspots: Array = _parts.get("hotspots", [])
+	if hotspots.is_empty() or _display_holder == null:
+		return ""
+	var front := float(_parts.get("front", 0.25))
+	var hit: Variant = _ray_to_plane(design, _display_holder.global_position.z + front)
+	if hit == null:
+		return ""
+	var local: Vector3 = (hit as Vector3) - _display_holder.global_position
+	for hotspot: Dictionary in hotspots:
+		if (hotspot.rect as Rect2).has_point(Vector2(local.x, local.y)):
+			return String(hotspot.name)
+	return ""
 
 
 func _fit() -> void:
@@ -365,13 +473,14 @@ func _build() -> void:
 	add_child(_root)
 	_build_display()
 	_build_stage()
-	# the tray and your pockets on the left, the buttons of the machine on the right
-	_tray = _side_panel(TRAY_RECT, "UIT DE AUTOMAAT")
+	# the tray and your pockets on the left; the buttons of the machine are on its screen
+	_tray = _side_panel(TRAY_RECT, "UIT DE AUTOMAAT" + ("  ·  " + place_name if place_name != "" else ""))
 	_tray_title = label("", font_pixel, 16, UiStyle.ACCENT)
 	_tray.add_child(_tray_title)
 	_pockets = _side_panel(POCKETS_RECT, "")
-	_controls = _side_panel(CONTROLS_RECT, brand + ("  ·  " + place_name if place_name != "" else ""))
 	build_controls(_controls)
+	_controls.visible = _controls.get_child_count() > 0
+	_style_screen_buttons(_controls)
 	_keys_label = label("", font_pixel, 11, UiStyle.TEXT)
 	_keys_label.position = Vector2(0, DESIGN_SIZE.y - 32)
 	_keys_label.size = Vector2(DESIGN_SIZE.x, 24)
@@ -395,27 +504,50 @@ func _build_display() -> void:
 	var screen: Rect2 = _parts.get("screen", Rect2(-0.25, 1.0, 0.5, 0.32))
 	_display_viewport = SubViewport.new()
 	_display_viewport.name = "Schermbeeld"
-	_display_viewport.size = Vector2i(480, maxi(roundi(480.0 * screen.size.y / maxf(screen.size.x, 0.01)), 120))
+	_display_viewport.size = Vector2i(DISPLAY_WIDTH, maxi(roundi(DISPLAY_WIDTH * screen.size.y / maxf(screen.size.x, 0.01)), 180))
 	_display_viewport.disable_3d = true
 	_display_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	_display_viewport.canvas_item_default_texture_filter = Viewport.DEFAULT_CANVAS_ITEM_TEXTURE_FILTER_NEAREST
 	_root.add_child(_display_viewport)
 	var glass := PanelContainer.new()
 	var glass_style := UiStyle.box_style(GLASS, Color("#1A1C22"), 6)
-	glass_style.content_margin_left = 16
-	glass_style.content_margin_right = 16
-	glass_style.content_margin_top = 10
-	glass_style.content_margin_bottom = 10
+	# margins a little wider than the bulge of the glass takes off at the edges
+	glass_style.content_margin_left = 34
+	glass_style.content_margin_right = 34
+	glass_style.content_margin_top = 26
+	glass_style.content_margin_bottom = 26
 	glass.add_theme_stylebox_override("panel", glass_style)
 	glass.size = Vector2(_display_viewport.size)
 	_display_viewport.add_child(glass)
 	var glass_column := VBoxContainer.new()
-	glass_column.add_theme_constant_override("separation", 6)
-	_display_title = label("", font_pixel, 24, screen_colour)
-	_display_text = label("", font_pixel, 17, screen_colour)
+	glass_column.add_theme_constant_override("separation", 10)
+	_display_title = label("", font_pixel, display_title_size, screen_colour)
+	_display_text = label("", font_pixel, display_text_size, screen_colour)
 	glass_column.add_child(_display_title)
-	glass_column.add_child(_display_text)
+	# the text, and on a touch screen the column of its buttons beside it
+	var body := HBoxContainer.new()
+	body.add_theme_constant_override("separation", 18)
+	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_display_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_display_text.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	body.add_child(_display_text)
+	_controls = VBoxContainer.new()
+	_controls.name = "Knoppen"
+	_controls.add_theme_constant_override("separation", 8)
+	_controls.custom_minimum_size.x = screen_controls_width
+	body.add_child(_controls)
+	glass_column.add_child(body)
 	glass.add_child(glass_column)
+
+
+## The buttons on the screen a size to be read there (button makes them for the panels).
+func _style_screen_buttons(node: Node) -> void:
+	for child in node.get_children():
+		if child is Button:
+			(child as Button).add_theme_font_size_override("font_size", SCREEN_BUTTON_TEXT)
+			(child as Button).custom_minimum_size.y = SCREEN_BUTTON_HEIGHT
+			(child as Button).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		_style_screen_buttons(child)
 
 
 ## The 3D scene: its own world behind everything, the wall and the ground, the machine with
@@ -464,6 +596,7 @@ func _build_stage() -> void:
 	holder.name = "Automaat"
 	holder.position = Vector3(0.0, 0.0, -front)
 	_stage.add_child(holder)
+	_display_holder = holder
 	_machine = MeshInstance3D.new()
 	_machine.name = "Model"
 	_machine.mesh = _parts.get("mesh")
@@ -486,6 +619,7 @@ func _build_stage() -> void:
 	var sunk := float(_parts.get("screen_sunk", 0.0))
 	display.position = Vector3(screen.position.x + screen.size.x * 0.5, screen.position.y + screen.size.y * 0.5, front - sunk + 0.004)
 	holder.add_child(display)
+	_display_mesh = display
 	var glow := OmniLight3D.new()
 	glow.light_color = screen_colour
 	glow.light_energy = 0.5
@@ -560,18 +694,39 @@ func _make_stand_in() -> void:
 	_stand_in = model
 
 
-## The camera from a little back to over your shoulder as the machine comes up.
+## The camera from a little back, over your shoulder, in close on the part you use
+## (_close_up) as the machine comes up.
 func _slide_camera_in() -> void:
 	if _camera == null:
 		return
+	var close: Array = _close_up()
+	var close_at: Vector3 = close[0]
+	var close_look: Vector3 = close[1]
 	if not animate:
-		_camera.look_at_from_position(CAMERA_AT, LOOK_AT, Vector3.UP)
+		_camera.look_at_from_position(close_at, close_look, Vector3.UP)
 		return
 	_camera.look_at_from_position(CAMERA_FROM, LOOK_AT, Vector3.UP)
 	var slide := _camera.create_tween()
 	slide.tween_method(func(share: float) -> void:
-		_camera.look_at_from_position(CAMERA_FROM.lerp(CAMERA_AT, share), LOOK_AT, Vector3.UP),
-		0.0, 1.0, CAMERA_SLIDE).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		_camera.look_at_from_position(CAMERA_FROM.lerp(close_at, share), LOOK_AT.lerp(close_look, share), Vector3.UP),
+		0.0, 1.0, CAMERA_SLIDE * 1.4).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+
+
+## Where the camera stands and looks for the close-up: straight before the part you use
+## (machine_parts "focus", else its screen), far enough off for it to take FOCUS_SHARE of the
+## height of the view (or FOCUS_WIDTH_SHARE of its width), its middle at FOCUS_CENTRE_X.
+## [position, point looked at].
+func _close_up() -> Array:
+	var focus: Rect2 = _parts.get("focus", _parts.get("screen", Rect2(-0.25, 1.0, 0.5, 0.32)))
+	var share := float(_parts.get("focus_share", FOCUS_SHARE))
+	var tangent := tan(deg_to_rad(CAMERA_FOV * 0.5))
+	var aspect := DESIGN_SIZE.x / DESIGN_SIZE.y
+	var distance := maxf(focus.size.y / (share * 2.0 * tangent), focus.size.x / (FOCUS_WIDTH_SHARE * 2.0 * tangent * aspect))
+	var metres_per_pixel := 2.0 * distance * tangent / DESIGN_SIZE.y
+	var aside := (FOCUS_CENTRE_X - DESIGN_SIZE.x * 0.5) * metres_per_pixel
+	var middle := Vector3(focus.get_center().x, focus.get_center().y, 0.0)
+	var look := middle - Vector3(aside, 0.0, 0.0)
+	return [look + Vector3(0.0, 0.0, distance), look]
 
 
 ## Something slides out of the slot (a slip in `colour`: the bon, the notes, the card); the
