@@ -130,6 +130,9 @@ const CLOTH := {
 	"hair": {"pattern": 4, "strength": 0.12, "scale": 1.0, "depth": 0.3, "weft": 0.0, "slub": 0.0,
 			"roughness": 0.55, "specular": 0.5, "rim": 0.3},
 }
+## How strongly the structure of the fabrics shows (their strength, relief, weft and slubs
+## of CLOTH times this): 1 as set there, lower is calmer.
+const CLOTH_INTENSITY := 0.5
 ## the others are ordinary materials with this roughness, metallic, specular and rim:
 const MATERIALS := {
 	"leather": {"roughness": 0.42, "metallic": 0.0, "specular": 0.55, "rim": 0.1},
@@ -617,12 +620,12 @@ static func material_for(kind: String, outlined := false) -> Material:
 			var fabric := ShaderMaterial.new()
 			fabric.shader = SHADER
 			fabric.set_shader_parameter("pattern", settings.pattern)
-			fabric.set_shader_parameter("pattern_strength", settings.strength)
+			fabric.set_shader_parameter("pattern_strength", settings.strength * CLOTH_INTENSITY)
 			fabric.set_shader_parameter("pattern_scale", settings.scale)
 			fabric.set_shader_parameter("voxel_size", VOXEL)
-			fabric.set_shader_parameter("relief_depth", settings.depth)
-			fabric.set_shader_parameter("weft_lightness", settings.weft)
-			fabric.set_shader_parameter("slub_strength", settings.slub)
+			fabric.set_shader_parameter("relief_depth", settings.depth * CLOTH_INTENSITY)
+			fabric.set_shader_parameter("weft_lightness", settings.weft * CLOTH_INTENSITY)
+			fabric.set_shader_parameter("slub_strength", settings.slub * CLOTH_INTENSITY)
 			fabric.set_shader_parameter("roughness_value", settings.roughness)
 			fabric.set_shader_parameter("specular_value", settings.specular)
 			fabric.set_shader_parameter("rim_value", settings.rim)

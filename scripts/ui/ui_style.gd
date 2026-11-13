@@ -144,12 +144,7 @@ static func box_style(background: Color, border: Color, border_width: int, left_
 ## A full-window CRT overlay of its own (the menu, the intro, the loading screen): the CRT
 ## shader with these settings, without a HUD picture over it; it bends what is drawn
 ## before it.
-## How much darker every third line of the picture is with the scanlines on (the settings:
-## SCANLIJNEN, on by default): visible but subtle.
-const SCANLINE_STRENGTH := 0.14
-
-
-static func make_crt_overlay(curvature: float, corner: float, scanline_strength: float, screen_size: Vector2) -> ColorRect:
+static func make_crt_overlay(curvature: float, corner: float, screen_size: Vector2) -> ColorRect:
 	var overlay := ColorRect.new()
 	overlay.name = "CRT"
 	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -158,7 +153,6 @@ static func make_crt_overlay(curvature: float, corner: float, scanline_strength:
 	material.set_shader_parameter("curvature", curvature)
 	material.set_shader_parameter("ui_curvature", 0.0)
 	material.set_shader_parameter("corner", corner)
-	material.set_shader_parameter("scanline_strength", scanline_strength)
 	material.set_shader_parameter("screen_size", screen_size)
 	overlay.material = material
 	overlay.set_anchors_preset(Control.PRESET_FULL_RECT)

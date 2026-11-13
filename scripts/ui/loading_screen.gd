@@ -29,8 +29,7 @@ const MUSIC_FADE_OUT := 0.7
 
 ## What is loading (shown in capitals, without the ellipsis).
 var text := "Stad laden…"
-## The HUD whose CRT settings it copies (crt_curvature, crt_corner, scanlines,
-## scanline_strength), if any.
+## The HUD whose CRT settings it copies (crt_curvature, crt_corner), if any.
 var hud: Node
 
 var _panel: ColorRect
@@ -86,10 +85,7 @@ func _ready() -> void:
 	column.add_child(box)
 	var curvature: float = _hud_setting("crt_curvature", 0.05)
 	var corner: float = _hud_setting("crt_corner", 0.035)
-	var scanline_strength: float = _hud_setting("scanline_strength", UiStyle.SCANLINE_STRENGTH)
-	if hud and hud.get("scanlines") == false:
-		scanline_strength = 0.0
-	_crt = UiStyle.make_crt_overlay(curvature, corner, scanline_strength, get_viewport().get_visible_rect().size)
+	_crt = UiStyle.make_crt_overlay(curvature, corner, get_viewport().get_visible_rect().size)
 	add_child(_crt)
 
 

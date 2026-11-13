@@ -91,7 +91,7 @@ static func _hall() -> Dictionary:
 		_tile(plan, "receptie", Vector3(x, 0.0, 0.5), PI)
 	_person(plan, "receptioniste", Vector3(-1.5, 0.0, 1.6), PI)
 	_person(plan, "receptioniste", Vector3(2.5, 0.0, 1.6), PI)
-	_tile(plan, "wapen", Vector3(0.0, 1.5, 9.875), PI)
+	_tile(plan, "wapen", Vector3(0.0, 1.5, 10.0), PI)   # on the wall's cell: it stands proud of it
 	for x in [-3.0, 3.0]:
 		_tile(plan, "vlag", Vector3(x, 0.0, 9.5), PI)
 	plan.signs.append({"at": Vector3(0.0, 2.9, 0.0), "turn": PI, "text": "RECEPTIE"})
@@ -230,7 +230,7 @@ static func _council_chamber() -> Dictionary:
 	var back := 10.0
 	_tile(plan, "voorzittersbank", Vector3(0.0, 0.0, back - 2.25), PI)
 	_person(plan, "burgemeester", Vector3(0.0, 0.25, back - 1.9), PI)
-	_tile(plan, "wapen", Vector3(0.0, 1.5, back - 0.125), PI)
+	_tile(plan, "wapen", Vector3(0.0, 1.5, back), PI)
 	for x in [-3.5, 3.5]:
 		_tile(plan, "vlag", Vector3(x, 0.0, back - 0.5), PI)
 	# the U: a row each side facing the middle, one across the front facing the bench

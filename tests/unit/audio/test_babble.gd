@@ -35,7 +35,10 @@ func test_a_word_has_its_own_sound(test) -> void:
 	test.check(is_equal_approx(Babble.pitch_of("kroket"), Babble.pitch_of("kroket")), "en dezelfde toonhoogte")
 	test.check(absf(Babble.pitch_of("kroket") - 1.0) <= Babble.PITCH_SPREAD + 0.0001, "binnen de spreiding")
 	var variants := {}
-	for word: String in ["ja", "nee", "kroket", "tram", "geld", "morgen", "station", "fiets", "koffie", "weer"]:
+	for word: String in ["ja", "nee", "kroket", "tram", "geld", "morgen", "station", "fiets", "koffie", "weer",
+			"hallo", "dag", "brood", "kaas", "fiets", "bus", "trein", "stad", "huis", "markt", "regen", "zon",
+			"water", "brug", "plein", "kerk", "winkel", "snoep", "patat", "friet", "jas", "hond", "kat",
+			"boom", "auto", "school", "werk", "baas", "vriend", "buurman"]:
 		variants[Babble.variant_of(word)] = true
 		test.check(Babble.variant_of(word) >= 1 and Babble.variant_of(word) <= Babble.VARIANTS, "%s: een bestaande variant" % word)
 	test.check(variants.size() == Babble.VARIANTS, "verschillende woorden gebruiken alle varianten")
@@ -54,3 +57,13 @@ func test_a_line_sounds_the_same_every_time(test) -> void:
 	test.check(Babble.word_at(line, 0) == "Heb" and Babble.word_at(line, 2) == "misschien", "het zoveelste geluid is het zoveelste woord")
 	test.check(Babble.word_at(line, 50) == "me?", "na het laatste woord: dat woord nog eens")
 	test.check(Babble.word_at("", 0) == "" and Babble.sound_name("man", "blij", "").begins_with("brabbel_man_blij_"), "zonder woord: zomaar een variant")
+
+
+## Played twice, a word is a little higher or lower each time, but near its own pitch.
+func test_a_word_wobbles_in_pitch_each_time(test) -> void:
+	var pitches := {}
+	for play_index in 12:
+		var pitch := Babble.played_pitch("kroket")
+		pitches[snappedf(pitch, 0.0001)] = true
+		test.check(absf(pitch / Babble.pitch_of("kroket") - 1.0) <= Babble.PITCH_WOBBLE + 0.0001, "dicht bij de toon van het woord (%.3f)" % pitch)
+	test.check(pitches.size() > 1, "niet elke keer precies even hoog (%d toonhoogtes)" % pitches.size())

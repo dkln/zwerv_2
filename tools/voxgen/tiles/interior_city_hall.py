@@ -321,7 +321,11 @@ def public_gallery():
 @tile("binnen/stadhuis/wapen")
 def coat_of_arms():
     """The coat of arms of the city on a wall (1.5 m): a gold shield with a black stork
-    holding an eel in its beak, a crown over it."""
+    holding an eel in its beak, a crown over it.
+
+    Four deep with the shield in the front two: it sits on the wall's cell (the interiors
+    lay tiles on a 0.5 m grid), and the wall, two deep, fills the middle of that cell, so
+    the shield stands 12.5 cm proud of it instead of in the same plane (z-fighting)."""
     rows = [
         "....#..#..#....",
         "...#########...",
@@ -341,7 +345,7 @@ def coat_of_arms():
         "...##.....#....",
         ".....#####.....",
     ]
-    model = V(15, 2, len(rows))
+    model = V(15, 4, len(rows))
     for row_index, line in enumerate(rows):
         z = len(rows) - 1 - row_index
         if row_index < 3:

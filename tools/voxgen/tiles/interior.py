@@ -323,13 +323,36 @@ def station_clock():
 
 @tile("binnen/station/kaartautomaat")
 def ticket_machine():
-    """A ticket machine: dark blue with a yellow top, a screen, a card reader and a tray."""
-    model = V(6, 4, 14)
-    model.box(0, 0, 0, 6, 4, 14, "bord_blauw")
-    model.box(0, 0, 12, 6, 4, 14, "lak_geel1")
-    model.box(1, 0, 7, 5, 1, 11, "scherm")
-    model.box(1, 0, 5, 3, 1, 6, "lak_geel2")                    # the card reader
-    model.box(3, 0, 3, 5, 1, 4, "metaal_donker")                # the tray
+    """A ticket machine (OV-chipkaart), 0.75 x 0.5 x 1.75 m in voxels of 6.25 cm (its import
+    has voxel_size 0.0625): dark blue with a yellow top. The face of the body is y = 1, what
+    stands out of it y = 0. From the top: a hood over the screen, sunk two voxels deep in a
+    dark bezel; under it a dark panel with the buttons standing out (six choices, a green
+    and a red one); the yellow reader you lay your card or ticket on, a card on it drawn
+    in white; and the tray the ticket drops into, sunk deep, dark inside."""
+    model = V(12, 8, 28)
+    model.box(0, 1, 2, 12, 8, 28, "bord_blauw")
+    model.box(0, 0, 0, 12, 8, 2, "metaal_donker")               # the foot
+    model.box(0, 1, 24, 12, 8, 28, "lak_geel1")                 # the yellow top
+    # the screen: a dark bezel, the glass sunk behind it, a hood over it
+    model.box(1, 1, 14, 11, 2, 22, "metaal_donker")
+    model.clear(2, 1, 15, 10, 2, 21)
+    model.box(2, 2, 15, 10, 3, 21, "scherm")
+    model.box(1, 0, 22, 11, 1, 23, "metaal_donker")
+    # the buttons: a dark panel, six light choices, a green and a red one standing out
+    model.box(1, 1, 9, 11, 2, 13, "metaal_donker")
+    for x in (2, 4, 6):
+        for z in (10, 12):
+            model.box(x, 0, z, x + 1, 1, z + 1, "lak_wit1")
+    model.box(9, 0, 12, 10, 1, 13, "stoplicht_groen")
+    model.box(9, 0, 10, 10, 1, 11, "stoplicht_rood")
+    # the reader you lay your card or ticket on: a yellow pad standing out, a card drawn on it
+    model.box(1, 0, 5, 6, 1, 8, "lak_geel2")
+    model.box(2, 0, 6, 5, 1, 7, "lak_wit1")
+    # the tray the ticket drops into: a steel rim, deep and dark inside
+    model.box(7, 0, 3, 11, 1, 8, "rvs")
+    model.clear(8, 0, 4, 10, 4, 7)
+    model.box(8, 4, 4, 10, 5, 7, "bord_zwart")
+    model.box(7, 1, 3, 11, 4, 4, "bord_zwart")                  # its floor
     return model
 
 

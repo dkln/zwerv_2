@@ -50,11 +50,15 @@ func machine_parts() -> Dictionary:
 			library.get_item_mesh_transform(item).origin - Vector3(box.get_center().x, box.position.y, box.get_center().z)))
 		tool.commit(placed)
 		placed.surface_set_material(placed.get_surface_count() - 1, mesh.surface_get_material(surface))
+	# where its parts are (the tile: 12 x 8 x 28 voxels, tools/voxgen/tiles/interior.py
+	# ticket_machine): the screen sunk two voxels, the buttons under it, the tray low right
 	var width := box.size.x
 	var height := box.size.y
 	var front := box.size.z * 0.5
-	return {"mesh": placed, "screen": Rect2(-width * 0.3, height * 0.58, width * 0.6, height * 0.2), "front": front,
-		"keys": Vector3(0.0, height * 0.45, front), "slot": Vector3(0.0, height * 0.3, front)}
+	var voxel := height / 28.0
+	return {"mesh": placed, "screen": Rect2(-width / 3.0, voxel * 15.0, width * 2.0 / 3.0, voxel * 6.0), "front": front,
+		"screen_sunk": voxel * 2.0, "keys": Vector3(-voxel, voxel * 11.5, front),
+		"slot": Vector3(voxel * 3.0, voxel * 4.5, front)}
 
 
 func _opened() -> void:

@@ -13,6 +13,7 @@ extends Node3D
 const MachineModels = preload("res://scripts/world/things/machine_models.gd")
 const InteriorSpot = preload("res://scripts/world/interiors/interior_spot.gd")
 const CashMachineScreen = preload("res://scripts/ui/machines/cash_machine_screen.gd")
+const Banks = preload("res://scripts/world/things/banks.gd")
 const OvMachineScreen = preload("res://scripts/ui/machines/ov_machine_screen.gd")
 const INTERIOR_LIBRARY := "res://assets/libraries/binnen.res"
 const OV_TILE := "station/kaartautomaat"
@@ -63,7 +64,10 @@ func _dress() -> void:
 			(machine.get_node("Model") as Node3D).transform = ov_transform
 			(machine.get_node("Botsvorm") as Node3D).transform = ov_transform   # the collider on the mesh
 		place.add_child(machine)
-		var use := _open_cash_machine if is_cash else _open_ov_machine
+		# a cash machine belongs to a bank: random, but always the same one for this place
+		if is_cash:
+			place.set_meta("bank", Banks.bank_for(place.global_position))
+		var use := _open_cash_machine.bind(String(place.get_meta("bank", ""))) if is_cash else _open_ov_machine
 		# (a machine with a screen of its own: Interactable.KIND_MACHINE, set below)
 		var spot: Node3D = InteriorSpot.create("Plek", Vector3(0.0, 0.0, SPOT_AHEAD + 0.25), "Pinnen" if is_cash else "OV-chipkaartautomaat",
 			use, SPOT_REACH)
@@ -81,9 +85,9 @@ func _settle_on_ground(place: Node3D) -> void:
 		place.global_position.y = (hit.position as Vector3).y
 
 
-func _open_cash_machine() -> void:
+func _open_cash_machine(bank := "") -> void:
 	if _player:
-		CashMachineScreen.show_for(_player)
+		CashMachineScreen.show_for(_player, "", true, bank)
 
 
 func _open_ov_machine() -> void:

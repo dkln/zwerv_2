@@ -2064,17 +2064,15 @@ func _move_place_selection(direction: Vector2) -> void:
 
 # ------------------------------------------------------------------ CRT and layout
 
-## Scanlines and a slight bend over the menu, with the HUD's settings (the menu bends as
-## little as the HUD itself does).
+## A slight bend over the menu, with the HUD's settings (the menu bends as little as the
+## HUD itself does).
 func _build_crt() -> void:
 	var curvature := 0.02
 	var corner := 0.035
-	var scanline_strength := UiStyle.SCANLINE_STRENGTH
 	if _hud and "crt_ui_curvature" in _hud:
 		curvature = minf(_hud.crt_ui_curvature, _hud.crt_curvature)
 		corner = _hud.crt_corner if curvature > 0.0 else 0.0
-		scanline_strength = _hud.scanline_strength if _hud.scanlines else 0.0
-	_crt_overlay = UiStyle.make_crt_overlay(curvature, corner, scanline_strength, DESIGN_SIZE)
+	_crt_overlay = UiStyle.make_crt_overlay(curvature, corner, DESIGN_SIZE)
 	add_child(_crt_overlay)
 	_crt_overlay.resized.connect(func() -> void:
 		(_crt_overlay.material as ShaderMaterial).set_shader_parameter("screen_size", _crt_overlay.size))

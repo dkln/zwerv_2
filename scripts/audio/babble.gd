@@ -7,7 +7,9 @@ extends RefCounted
 ## A word has its own sound: given the word that is spoken (`word`), which of the VARIANTS
 ## it is and how high it sounds follow from the word itself (variant_of, pitch_of), so the
 ## same text always sounds the same; a conversation plays one sound per word of its line
-## (word_at: the nth sound of a line is its nth word). Without a word: any variant.
+## (word_at: the nth sound of a line is its nth word). Without a word: any variant. Every
+## time it plays it is a little higher or lower still (PITCH_WOBBLE), so a word said twice
+## does not sound like one recording played again.
 ##   Babble.play_near(self, "vrouw", "blij", "kroket")   # in the UI, the sound of that word
 ##   Babble.play_near(self, "vrouw", "blij")             # in the UI
 ##   Babble.play_at(vehicle.global_position, "man", "boos")   # in the world
@@ -15,10 +17,12 @@ extends RefCounted
 const FOLDER := "res://assets/audio/geluiden/"
 const VOICES := ["man", "oude_man", "vrouw"]
 const MOODS := ["neutraal", "blij", "opgewonden", "boos", "verdrietig", "vraag"]
-const VARIANTS := 3
-## How loud the babble is in the UI (dB), and how much its pitch may wander (share).
+const VARIANTS := 8
+## How loud the babble is in the UI (dB), how far the pitch of a word lies from 1 (share,
+## the same for that word) and how much it wobbles on top of that each time it plays.
 const UI_DB := -6.0
 const PITCH_SPREAD := 0.06
+const PITCH_WOBBLE := 0.04
 
 static var _last_variant := {}   # "voice/mood" -> the variant played last (never twice in a row)
 static var _random := RandomNumberGenerator.new()
@@ -61,6 +65,13 @@ static func pitch_of(word: String) -> float:
 	return 1.0 + (share * 2.0 - 1.0) * PITCH_SPREAD
 
 
+## The pitch a sound of `word` plays at this time: that of the word (pitch_of; without a
+## word anywhere in PITCH_SPREAD), a little higher or lower each time (PITCH_WOBBLE).
+static func played_pitch(word := "") -> float:
+	var base := pitch_of(word) if _plain(word) != "" else 1.0 + _random.randf_range(-PITCH_SPREAD, PITCH_SPREAD)
+	return base * (1.0 + _random.randf_range(-PITCH_WOBBLE, PITCH_WOBBLE))
+
+
 ## The word of `text` that the sound number `index` (0: the first) of its line is: its nth
 ## word, the last ones again when the line has fewer; "" for a text without words.
 static func word_at(text: String, index: int) -> String:
@@ -84,7 +95,7 @@ static func play_near(owner: Node, voice: String, mood: String, word := "") -> A
 	var player := AudioStreamPlayer.new()
 	player.stream = stream
 	player.volume_db = UI_DB
-	player.pitch_scale = pitch_of(word) if _plain(word) != "" else 1.0 + _random.randf_range(-PITCH_SPREAD, PITCH_SPREAD)
+	player.pitch_scale = played_pitch(word)
 	player.process_mode = Node.PROCESS_MODE_ALWAYS
 	owner.add_child(player)
 	player.finished.connect(player.queue_free)

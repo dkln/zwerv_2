@@ -163,6 +163,10 @@ func test_deposit_machine_pays_for_cans_and_bottles(test) -> void:
 	var money_before: float = returner.money
 	var screen: Node = DepositMachineScreen.show_for(returner, "DERREK", false)
 	await frames(1)
+	# now and then one comes back out: not counted, still in your pockets, the display says so
+	screen.force_reject = true
+	test.check(is_equal_approx((await screen.insert_one("blikje")), 0.0) and int(returner.inventory.get("blikje", 0)) == 3
+		and String(screen._display_title.text).contains("NIET HERKEND"), "een blikje komt terug: niet herkend, nog in je zakken")
 	for can_index in 3:
 		await screen.insert_one("blikje")
 	await screen.insert_one("statiegeld")

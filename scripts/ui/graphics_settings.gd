@@ -88,3 +88,13 @@ static func _store(key: String, value: Variant) -> void:
 	var config := _config()
 	config.set_value("beeld", key, value)
 	config.save(SETTINGS_PATH)
+
+
+## A SubViewport that draws 3D of its own (a portrait, an item, a machine's close-up, the
+## pictures of the intro): always at full size, without the project's upscaler, which it would
+## take over otherwise (FSR 2: no transparent background, and it fails on small pictures, so
+## they came out black or green).
+static func plain_3d(viewport: SubViewport) -> void:
+	viewport.scaling_3d_mode = Viewport.SCALING_3D_MODE_BILINEAR
+	viewport.scaling_3d_scale = 1.0
+	viewport.use_taa = false

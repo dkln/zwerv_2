@@ -24,6 +24,7 @@ extends SubViewportContainer
 
 signal gesture_cue
 
+const GraphicsSettings = preload("res://scripts/ui/graphics_settings.gd")
 const PlayerModel = preload("res://scripts/player/player_model.gd")
 
 ## Share of the size the picture is rendered at (smaller = blockier).
@@ -119,6 +120,7 @@ func _init() -> void:
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_viewport = SubViewport.new()
+	GraphicsSettings.plain_3d(_viewport)
 	_viewport.name = "Beeld"
 	_viewport.own_world_3d = true
 	_viewport.transparent_bg = true

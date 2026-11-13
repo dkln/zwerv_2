@@ -11,6 +11,7 @@ extends SubViewportContainer
 
 ## How fast it turns (radians a second), how far it leans towards you (degrees), how much
 ## room there is round it (share of its size), and its bob (metres per metre of model, per second).
+const GraphicsSettings = preload("res://scripts/ui/graphics_settings.gd")
 const TURN_SPEED := 0.9
 const TILT_DEGREES := 18.0
 const ROOM := 1.35
@@ -32,6 +33,7 @@ func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_viewport = SubViewport.new()
+	GraphicsSettings.plain_3d(_viewport)
 	_viewport.name = "Beeld"
 	_viewport.own_world_3d = true
 	_viewport.transparent_bg = true

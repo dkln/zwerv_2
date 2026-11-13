@@ -11,7 +11,7 @@ extends "res://scripts/ui/menu/menu_map.gd"
 ## - VERDERGAAN and LADEN: greyed out and skipped until there are saved games;
 ## - NIEUW SPEL: opens the character creation screen (scenes/karakter.tscn, its own step:
 ##   choose the archetype there, then the town opens);
-## - INSTELLINGEN: the CRT effect and the scanlines on or off (user://instellingen.cfg, read
+## - INSTELLINGEN: the CRT effect on or off (user://instellingen.cfg, read
 ##   by the HUD);
 ## - CREDITS: who made it, rolling (every role, the same name);
 ## - AFSLUITEN: quits.
@@ -101,7 +101,7 @@ func _ready() -> void:
 	GraphicsSettings.apply(get_tree())
 	var settings := _read_settings()
 	_crt = UiStyle.make_crt_overlay(0.05 if settings.crt else 0.0, 0.035 if settings.crt else 0.0,
-			UiStyle.SCANLINE_STRENGTH if settings.scanlines else 0.0, get_viewport().get_visible_rect().size)
+			get_viewport().get_visible_rect().size)
 	add_child(_crt)
 	# now and then the picture is disturbed (a rolling band, VHS tracking)
 	_crt.add_child(load("res://scripts/ui/crt_disturbance.gd").new())
@@ -390,7 +390,7 @@ func _open_settings() -> void:
 		func() -> void: GraphicsSettings.next_anti_aliasing(get_tree()))
 	_add_panel_item(column, func() -> String: return "RENDERSCHAAL: %s" % GraphicsSettings.render_scale_text(),
 		func() -> void: GraphicsSettings.next_render_scale(get_tree()))
-	for entry: Array in [["CRT-BEELD", "crt"], ["SCANLIJNEN", "scanlines"]]:
+	for entry: Array in [["CRT-BEELD", "crt"]]:
 		var setting: String = entry[1]
 		var label := func() -> String: return "%s: %s" % [entry[0], "AAN" if settings[setting] else "UIT"]
 		_add_panel_item(column, label, func() -> void:
@@ -578,14 +578,13 @@ func _choose_in_panel(index: int) -> void:
 static func _read_settings() -> Dictionary:
 	var config := ConfigFile.new()
 	config.load(SETTINGS_PATH)
-	return {"crt": config.get_value("beeld", "crt", true), "scanlines": config.get_value("beeld", "scanlijnen", false)}
+	return {"crt": config.get_value("beeld", "crt", true)}
 
 
 static func _write_settings(settings: Dictionary) -> void:
 	var config := ConfigFile.new()
 	config.load(SETTINGS_PATH)
 	config.set_value("beeld", "crt", settings.crt)
-	config.set_value("beeld", "scanlijnen", settings.scanlines)
 	config.save(SETTINGS_PATH)
 
 
@@ -593,7 +592,6 @@ func _apply_crt(settings: Dictionary) -> void:
 	var material := _crt.material as ShaderMaterial
 	material.set_shader_parameter("curvature", 0.05 if settings.crt else 0.0)
 	material.set_shader_parameter("corner", 0.035 if settings.crt else 0.0)
-	material.set_shader_parameter("scanline_strength", UiStyle.SCANLINE_STRENGTH if settings.scanlines else 0.0)
 
 
 # ------------------------------------------------------------------ the picture

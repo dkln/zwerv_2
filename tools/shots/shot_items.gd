@@ -18,6 +18,7 @@ func _init() -> void:
 	var size := int(Common.arg_float(2, 480))
 	Common.render_size(self, Vector2i(size, size))
 	var view := SubViewport.new()
+	view.scaling_3d_mode = Viewport.SCALING_3D_MODE_BILINEAR   # not the project's upscaler (FSR 2)
 	view.size = Vector2i(size, size)
 	view.transparent_bg = true
 	view.own_world_3d = true

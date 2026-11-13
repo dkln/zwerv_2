@@ -361,7 +361,7 @@ BABBLE_MOODS = {
     "vraag": {"pitch": (1.0, 1.02), "syllable": 0.08, "swing": 0.03, "drive": 3.0, "growl": 0.0, "breath": 0.05,
               "rise": 0.65},
 }
-BABBLE_VARIANTS = 3
+BABBLE_VARIANTS = 8
 ## The syllables babble is made of: a consonant (or none) and a vowel.
 BABBLE_CONSONANTS = ["d", "k", "p", "m", "l", "-", "d", "m"]
 BABBLE_VOWELS = ["a", "e", "o", "i", "uh", "oe", "eu", "a"]
@@ -377,7 +377,8 @@ def babble(voice_name: str, mood: str, variant: int) -> numpy.ndarray:
                "growl": voice["growl"] * 0.5 + settings["growl"], "jitter": voice["jitter"], "drive": settings["drive"]}
     if "vibrato" in settings:
         speaker["vibrato"] = settings["vibrato"]
-    syllables = 3 + variant % 2 if mood != "verdrietig" else 2 + variant % 2
+    # 2 to 4 syllables (the sad ones 2 or 3), so the variants differ in length too
+    syllables = 2 + variant % 3 if mood != "verdrietig" else 2 + variant % 2
     start, end = settings["pitch"]
     segments = []
     for syllable in range(syllables):

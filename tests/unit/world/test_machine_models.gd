@@ -17,9 +17,14 @@ func test_deposit_machine_size_as_in_the_layout(test) -> void:
 	test.check((deposit.size - Vector3(0.875, 1.875, 0.625)).length() < 0.001, "statiegeldautomaat zo groot als in de indeling (%s)" % deposit.size)
 
 
-## The can and the bank card have a mesh of a sensible size.
+## The can, the bottle and the bank card have a mesh of a sensible size; the can and the
+## bottle fit through the deposit machine's hole lying down.
 func test_can_and_bank_card_have_a_mesh(test) -> void:
 	test.check(MachineModels.can_mesh().get_aabb().size.y > 0.1 and MachineModels.bank_card_mesh().get_aabb().size.x > 0.2, "blikje en pinpas")
+	var hole := Vector2(MachineModels.HOLE_TO - MachineModels.HOLE_FROM + Vector2i.ONE) * MachineModels.MACHINE_VOXEL
+	for mesh: Mesh in [MachineModels.can_mesh(), MachineModels.bottle_mesh()]:
+		var box := mesh.get_aabb()
+		test.check(box.size.x < hole.x and box.size.z < hole.y, "past door het gat (%s, gat %s)" % [box.size, hole])
 
 
 ## A machine made with MachineModels.instance gets a box collider of the size and place of its mesh.

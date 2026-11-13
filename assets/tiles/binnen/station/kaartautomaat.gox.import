@@ -13,7 +13,7 @@ dest_files=["res://.godot/imported/kaartautomaat.gox-d1cf2cd58c0a09b55ccb8a652ea
 
 [params]
 
-voxel_size=0.125
+voxel_size=0.0625
 ambient_occlusion=true
 color_merge=14
 lod_color_tolerance=24

@@ -338,12 +338,20 @@ func enter(bar: Dictionary) -> void:
 	# first seen from close behind: walking to the door and through it as it opens
 	var kind: String = bar.get("kind", "snackbar")
 	_passing_door = true
-	await DoorPassage.play(get_parent(), _player, bar.door, bar.outward, String(KINDS[kind].get("door_kind", DEFAULT_DOOR)), true)
-	_passing_door = false
+	# held at its last picture (through the door), so the swipe's still is that and not the
+	# street the game's camera would show again
+	var passage: Node3D = await DoorPassage.play(get_parent(), _player, bar.door, bar.outward,
+			String(KINDS[kind].get("door_kind", DEFAULT_DOOR)), true, true)
 	if not is_inside_tree():
+		_passing_door = false
+		if passage and is_instance_valid(passage):
+			passage.release()
 		return
 	var swipe := SwipeTransition.swipe(get_tree())
 	await swipe.covered
+	if passage and is_instance_valid(passage):
+		passage.release()
+	_passing_door = false
 	_set_music(_music_of(bar))
 	_ambience.set_place(String(AMBIENCE_OF.get(kind, "winkel")))
 	_set_location(String(KINDS[kind].get("location", "")))
@@ -587,12 +595,13 @@ func throw_out(offence_name: String) -> void:
 	_player.visible = false
 	_barred_until[kind] = Time.get_ticks_msec() + int(float(_throw_outs().get("terug_na", 90)) * 1000.0)
 	_offences = {}
-	# the throw only once the swipe is through, so it is seen whole
+	# the throw only once the swipe is through (the street in view), so it is seen whole
 	if is_instance_valid(_last_swipe) and _last_swipe.is_inside_tree():
 		await _last_swipe.finished
-	_player.visible = true
-	# the BANG at the door before it flies: a KLAP, a burst and a flash, a moment's stillness
+	# the BANG at the door before it flies: a KLAP, a burst and a flash, a moment's stillness;
+	# the player still unseen (not standing before the door), only flying out of it
 	await _bang_at(_player.global_position + Vector3.UP * 1.0)
+	_player.visible = true
 	if _player.has_method("thrown_out"):
 		# out of the entrance, a little to the left or right each time
 		var turn := randf_range(-THROW_SPREAD, THROW_SPREAD)

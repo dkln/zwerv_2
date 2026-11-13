@@ -40,7 +40,7 @@ extends CanvasLayer
 ##   waits until nothing else holds the game (a conversation, the shop, a menu);
 ## - a CRT look over the whole picture: the world bulges like a tube, its edges bending in
 ##   to black rounded corners (`crt_curvature`); the HUD bends with it, but less
-##   (`crt_ui_curvature`), so its corners stay readable; faint scanlines (`scanlines`).
+##   (`crt_ui_curvature`), so its corners stay readable.
 ## Fonts: Silkscreen, Pixelify Sans and JetBrains Mono (assets/fonts, OFL); Rubik when
 ## one is missing.
 
@@ -154,16 +154,6 @@ const EXAMPLE_QUESTS := [
 	{"kind": "zij", "label": "ZIJMISSIE", "title": "Voorbeeld zijmissie — 2/5"},
 ]
 
-## Faint CRT scanlines over the picture.
-@export var scanlines := false:
-	set(value):
-		scanlines = value
-		_update_crt()
-## How dark a scanline is (0..1).
-@export_range(0.0, 0.5) var scanline_strength := UiStyle.SCANLINE_STRENGTH:
-	set(value):
-		scanline_strength = value
-		_update_crt()
 ## How far the picture bulges like the glass of a CRT tube (0 = flat; the edges bend in by
 ## about this share of the screen at the corners).
 @export_range(0.0, 0.2) var crt_curvature := 0.05:
@@ -1639,8 +1629,8 @@ func _build_crt() -> void:
 	_update_crt()
 
 
-## The settings of the main menu (MainMenu.SETTINGS_PATH): the CRT look and the scanlines
-## off if the player turned them off there.
+## The settings of the main menu (MainMenu.SETTINGS_PATH): the CRT look off if the player
+## turned it off there.
 func _read_menu_settings() -> void:
 	var config := ConfigFile.new()
 	if config.load(MainMenu.SETTINGS_PATH) != OK:
@@ -1648,8 +1638,6 @@ func _read_menu_settings() -> void:
 	if not config.get_value("beeld", "crt", true):
 		crt_curvature = 0.0
 		crt_ui_curvature = 0.0
-	# scanlines are off unless switched on in the settings
-	scanlines = config.get_value("beeld", "scanlijnen", false)
 
 
 ## Hands the CRT settings to its shader; off altogether when it would change nothing.
@@ -1660,7 +1648,6 @@ func _update_crt() -> void:
 	material.set_shader_parameter("curvature", crt_curvature)
 	material.set_shader_parameter("ui_curvature", minf(crt_ui_curvature, crt_curvature))
 	material.set_shader_parameter("corner", crt_corner if crt_curvature > 0.0 else 0.0)
-	material.set_shader_parameter("scanline_strength", scanline_strength if scanlines else 0.0)
 	material.set_shader_parameter("screen_size", _crt_overlay.size if _crt_overlay.size.x > 0.0 else Vector2(1280, 720))
 	# always drawn: it also lays the HUD's picture over the world
 

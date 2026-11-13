@@ -49,6 +49,35 @@ func test_walking_in_through_a_sliding_door(test) -> void:
 	game_camera.free()
 
 
+## Held (going in, before the swipe): at the end the last picture stays, its camera current
+## and the real player still away, until release() gives everything back.
+func test_held_passage_keeps_its_picture_until_released(test) -> void:
+	var player := Node3D.new()
+	tree.root.add_child(player)
+	var game_camera := Camera3D.new()
+	tree.root.add_child(game_camera)
+	game_camera.make_current()
+	var passage: Node3D = DoorPassage.new()
+	passage.set("_hold", true)
+	tree.root.add_child(passage)
+	passage._begin(player, Vector3(10.0, 0.0, 5.0), Vector3(0.0, 0.0, 1.0), "klap", true)
+	var ended := [false]
+	passage.finished.connect(func() -> void: ended[0] = true)
+	for step in 200:
+		if ended[0]:
+			break
+		passage._process(0.05)
+	var parts: Dictionary = passage.parts()
+	test.check(ended[0], "door de deur: klaar")
+	test.check((parts.camera as Camera3D).is_current() and not game_camera.is_current(), "het beeld van de deur blijft staan")
+	test.check(is_instance_valid(parts.stand_in) and not player.visible, "de stand-in blijft, de echte speler nog weg")
+	passage.release()
+	test.check(player.visible and game_camera.is_current(), "na release() alles als voorheen")
+	passage.free()
+	player.free()
+	game_camera.free()
+
+
 ## Every kind of door, in and out: a swinging door turns on its hinge, a revolving one
 ## turns with the walker, and going out starts inside and ends on the pavement.
 func test_every_kind_of_door_both_ways(test) -> void:

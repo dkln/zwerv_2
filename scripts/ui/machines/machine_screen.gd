@@ -20,6 +20,7 @@ extends CanvasLayer
 
 signal finished
 
+const GraphicsSettings = preload("res://scripts/ui/graphics_settings.gd")
 const UiStyle = preload("res://scripts/ui/ui_style.gd")
 const UiSounds = preload("res://scripts/ui/ui_sounds.gd")
 const SwipeTransition = preload("res://scripts/ui/swipe_transition.gd")
@@ -171,7 +172,8 @@ func _opened() -> void:
 
 ## The model of the machine and where its parts are on it (metres, in the model's space: it
 ## stands on y = 0, centred, its front facing +z): {"mesh": Mesh, "screen": Rect2 (x and y of
-## its lower left corner, its size), "front": z of its front, "keys": Vector3 (the keypad),
+## its lower left corner, its size), "front": z of its front, "screen_sunk": how far the
+## screen lies behind the front (m, 0 if left out), "keys": Vector3 (the keypad),
 ## "slot": Vector3 (where things come out)}. Without one: a box with the parts where a
 ## machine has them.
 func machine_parts() -> Dictionary:
@@ -381,7 +383,7 @@ func _build() -> void:
 	_crt_layer.layer = LAYER + 1
 	_crt_layer.visible = false
 	add_child(_crt_layer)
-	_crt_layer.add_child(UiStyle.make_crt_overlay(0.03, 0.02, UiStyle.SCANLINE_STRENGTH, get_viewport().get_visible_rect().size))
+	_crt_layer.add_child(UiStyle.make_crt_overlay(0.03, 0.02, get_viewport().get_visible_rect().size))
 
 
 ## The picture on the machine's screen: the title and the lines on dark glass (show_display),
@@ -425,6 +427,7 @@ func _build_stage() -> void:
 	container.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(container)
 	_stage = SubViewport.new()
+	GraphicsSettings.plain_3d(_stage)
 	_stage.own_world_3d = true
 	_stage.msaa_3d = Viewport.MSAA_DISABLED
 	_stage.render_target_update_mode = SubViewport.UPDATE_ALWAYS
@@ -476,7 +479,9 @@ func _build_stage() -> void:
 	display_material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 	display.material_override = display_material
 	display.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	display.position = Vector3(screen.position.x + screen.size.x * 0.5, screen.position.y + screen.size.y * 0.5, front + 0.004)
+	# on the glass, sunk into the machine as far as its screen is (machine_parts "screen_sunk")
+	var sunk := float(_parts.get("screen_sunk", 0.0))
+	display.position = Vector3(screen.position.x + screen.size.x * 0.5, screen.position.y + screen.size.y * 0.5, front - sunk + 0.004)
 	holder.add_child(display)
 	var glow := OmniLight3D.new()
 	glow.light_color = screen_colour

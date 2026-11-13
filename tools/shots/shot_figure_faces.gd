@@ -80,6 +80,7 @@ func _show(parts: Dictionary, wireframe: bool) -> SubViewportContainer:
 	container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	container.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	var view := SubViewport.new()
+	view.scaling_3d_mode = Viewport.SCALING_3D_MODE_BILINEAR   # not the project's upscaler (FSR 2)
 	view.own_world_3d = true
 	view.msaa_3d = Viewport.MSAA_4X
 	if wireframe:

@@ -193,7 +193,7 @@ func _ready() -> void:
 	GraphicsSettings.apply(get_tree())
 	var settings := MainMenu._read_settings()
 	var crt := UiStyle.make_crt_overlay(0.05 if settings.crt else 0.0, 0.035 if settings.crt else 0.0,
-			UiStyle.SCANLINE_STRENGTH if settings.scanlines else 0.0, get_viewport().get_visible_rect().size)
+			get_viewport().get_visible_rect().size)
 	add_child(crt)
 	# the disturbances of the menu too: a rolling band, now and then VHS tracking
 	crt.add_child(load("res://scripts/ui/crt_disturbance.gd").new())
@@ -502,6 +502,7 @@ void fragment() {
 
 func _build_crawl() -> void:
 	var picture := SubViewport.new()
+	GraphicsSettings.plain_3d(picture)
 	picture.name = "Verhaalbeeld"
 	picture.size = CRAWL_PICTURE
 	picture.transparent_bg = true
@@ -585,6 +586,7 @@ func _update_prompts(time: float) -> void:
 func _build_drifter() -> void:
 	_drifter_random.randomize()
 	_drifter_picture = SubViewport.new()
+	GraphicsSettings.plain_3d(_drifter_picture)
 	_drifter_picture.name = "Trekkerbeeld"
 	_drifter_picture.size = Vector2i(DRIFTER_PICTURE, DRIFTER_PICTURE)
 	_drifter_picture.transparent_bg = true

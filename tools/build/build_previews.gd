@@ -93,6 +93,7 @@ func _init() -> void:
 ## A preview slot: a small transparent viewport with its own world, light and camera.
 func _make_slot() -> Array:
 	var vp := SubViewport.new()
+	vp.scaling_3d_mode = Viewport.SCALING_3D_MODE_BILINEAR   # not the project's upscaler (FSR 2)
 	vp.size = Vector2i(Builder.PREVIEW_SIZE, Builder.PREVIEW_SIZE)
 	vp.transparent_bg = true
 	vp.own_world_3d = true

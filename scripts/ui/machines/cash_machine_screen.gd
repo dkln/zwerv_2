@@ -8,9 +8,13 @@ extends "res://scripts/ui/machines/machine_screen.gd"
 ## the card swallowed, the whirr and the notes counted out.
 ## Keys: 0-9 the keypad (or the options 1-4 in the menu), Backspace CORR, Enter OK, Esc STOP
 ## (the card comes back); the mouse too.
-##   CashMachineScreen.show_for(player)
+## Every machine belongs to a bank (Banks: Brabobank, OG Bank, Bonk Bank); its welcome
+## screen shows that bank's logo (BankLogo).
+##   CashMachineScreen.show_for(player, "", true, "og_bank")
 
 const BankCards = preload("res://scripts/player/bank_cards.gd")
+const Banks = preload("res://scripts/world/things/banks.gd")
+const BankLogo = preload("res://scripts/ui/widgets/bank_logo.gd")
 const SCRIPT_PATH := "res://scripts/ui/machines/cash_machine_screen.gd"
 const AMOUNTS := [5.0, 10.0, 20.0, 50.0]
 const OPTION_COUNT := 4
@@ -21,12 +25,16 @@ var card: Dictionary = {}
 var entered := ""
 ## What came out this time (euros), for the checks.
 var paid_out := 0.0
+## The bank of this machine (Banks), its logo on the welcome screen.
+var bank := ""
+var _logo: Control
 var _options: Array[Button] = []
 var _option_actions: Array[Callable] = []
 
 
-static func show_for(for_player: Node, place := "", with_animation := true) -> CanvasLayer:
+static func show_for(for_player: Node, place := "", with_animation := true, bank_id := "") -> CanvasLayer:
 	var screen: CanvasLayer = (load(SCRIPT_PATH) as GDScript).new()
+	screen.set("bank", bank_id if Banks.BANKS.has(bank_id) else Banks.ORDER[0])
 	screen.set("brand", "PINPUNT")
 	screen.set("body_colour", Color("#3A4250"))
 	screen.set("trim_colour", Color("#F2B705"))
@@ -37,14 +45,28 @@ static func show_for(for_player: Node, place := "", with_animation := true) -> C
 
 
 func _opened() -> void:
+	# the bank's logo over the welcome on the screen
+	_logo = BankLogo.new()
+	_logo.name = "Banklogo"
+	_logo.show_bank(bank, UiStyle.font(UiStyle.FONT_PIXEL_BOLD))
+	var column := _display_title.get_parent()
+	column.add_child(_logo)
+	column.move_child(_logo, 0)
 	_show_start()
+
+
+## The display, the bank's logo over it only on the welcome screen.
+func show_display(title: String, lines: Array, colour := Color(0, 0, 0, 0)) -> void:
+	super(title, lines, colour)
+	if _logo:
+		_logo.visible = state == "start"
 
 
 ## The cash machine of the town (MachineModels.cash_machine_mesh, voxels of 6,25 cm, 12 x 28
 ## x 8): its screen, keypad and the slot the money comes out of.
 func machine_parts() -> Dictionary:
 	return {"mesh": MachineModels.cash_machine_mesh(), "screen": Rect2(-0.25, 1.0, 0.5, 0.3125), "front": 0.25,
-		"keys": Vector3(-0.0625, 0.75, 0.25), "slot": Vector3(0.0, 0.47, 0.25)}
+		"screen_sunk": 0.125, "keys": Vector3(-0.09, 0.66, 0.25), "slot": Vector3(0.0, 0.28, 0.25)}
 
 
 func build_controls(box: VBoxContainer) -> void:

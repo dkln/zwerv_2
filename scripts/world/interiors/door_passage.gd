@@ -10,6 +10,12 @@ extends Node3D
 ## comes back after. The door stands flush before the facade (FACADE_BACK behind the door
 ## point of the way in) and is gone when the scene ends.
 ##   await DoorPassage.play(town, player, way_in.door, way_in.outward, "schuif", true)
+## Held (`hold`): the last picture stays (camera, stand-in, door) until release(), so a
+## transition can take its still of it before the game's camera comes back (going in: the
+## swipe holds the walk through the door, not the street behind it).
+##   var passage = await DoorPassage.play(town, player, door, outward, "schuif", true, true)
+##   await SwipeTransition.swipe(tree).covered
+##   passage.release()
 
 signal finished
 
@@ -51,22 +57,31 @@ var _to := Vector3.ZERO
 var _door_moved := 0.0
 var _done := false
 var _player_moved_before := true
+var _hold := false
 
 
 ## Plays the passage under `parent` for `player` at the way in whose door point is `door`
 ## and whose street side is `outward`, with a door of `kind`; `going_in`: into the building,
 ## else out of it. Await it: it returns when the walk is over (the real player shown again,
 ## the game's camera back). Returns at once without a camera to give back or a player.
-static func play(parent: Node, player: Node3D, door: Vector3, outward: Vector3, kind: String, going_in: bool) -> void:
+## `hold`: the walk's last picture stays and the passage is returned; call release() on it
+## (the player and the game's camera back, the scene gone). Otherwise it returns null.
+static func play(parent: Node, player: Node3D, door: Vector3, outward: Vector3, kind: String, going_in: bool,
+		hold := false) -> Node3D:
 	if parent == null or player == null or not parent.is_inside_tree():
-		return
+		return null
 	var passage: Node3D = (load("res://scripts/world/interiors/door_passage.gd") as GDScript).new()
 	passage.name = "Deurscène"
+	passage.set("_hold", hold)
 	parent.add_child(passage)
 	passage.call("_begin", player, door, outward.normalized() if outward.length() > 0.01 else Vector3.BACK, kind, going_in)
 	if not bool(passage.get("_done")):
 		await passage.finished
-	passage.queue_free()
+	if hold and is_instance_valid(passage):
+		return passage
+	if is_instance_valid(passage):
+		passage.queue_free()
+	return null
 
 
 ## How long the whole passage takes (s), for whoever waits beside it.
@@ -118,6 +133,24 @@ func _process(delta: float) -> void:
 
 func _end() -> void:
 	_done = true
+	if _hold:
+		# the last picture stays until release()
+		finished.emit()
+		return
+	_give_back()
+	finished.emit()
+
+
+## A held passage (play with `hold`) ends: the real player and the game's camera back, the
+## scene gone. Safe to call more than once.
+func release() -> void:
+	_hold = false
+	_give_back()
+	queue_free()
+
+
+## The stand-in gone, the game's camera current and the real player shown and moving again.
+func _give_back() -> void:
 	if _stand_in and is_instance_valid(_stand_in):
 		_stand_in.queue_free()
 	if _camera_before and is_instance_valid(_camera_before):
@@ -125,7 +158,7 @@ func _end() -> void:
 	if _player and is_instance_valid(_player):
 		_player.visible = true
 		_player.set_physics_process(_player_moved_before)
-	finished.emit()
+	_player = null
 
 
 ## The door in its frame: two leaves that slide apart, one that swings in, or four wings

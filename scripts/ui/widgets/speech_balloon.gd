@@ -32,6 +32,8 @@ const BALLOON_DEPTH := 4
 const TAIL_HEIGHT := 12.0
 const TAIL_WIDTH := 14.0
 const BORDER_WIDTH := 2
+## The space between wrapped rows (px).
+const LINE_SEPARATION := 4
 const POP_SECONDS := 0.14
 const FADE_SECONDS := 0.3
 
@@ -64,7 +66,7 @@ func _init() -> void:
 	_text.add_theme_font_override("normal_font", UiStyle.font(UiStyle.FONT_PIXEL_BOLD))
 	_text.add_theme_font_size_override("normal_font_size", TEXT_SIZE)
 	_text.add_theme_color_override("default_color", UiStyle.TEXT)
-	_text.add_theme_constant_override("line_separation", 4)
+	_text.add_theme_constant_override("line_separation", LINE_SEPARATION)
 	# the text plain (only the balloon has the faux 3D)
 	_text.add_theme_constant_override("outline_size", 0)
 	_panel.add_child(_text)
@@ -96,6 +98,9 @@ func say(line: String, hold := 1.6) -> void:
 	var font := UiStyle.font(UiStyle.FONT_PIXEL_BOLD)
 	var line_width := font.get_string_size(line + " ", HORIZONTAL_ALIGNMENT_LEFT, -1, TEXT_SIZE).x
 	_text.custom_minimum_size.x = minf(ceilf(line_width) + 2.0, MAX_TEXT_WIDTH)
+	# and as high as the whole line wrapped at that width, so a long line (a warning) does not
+	# stretch the balloon taller row by row while its words type out
+	_text.custom_minimum_size.y = text_height(line, _text.custom_minimum_size.x)
 	_typewriter.start(line)
 	_panel.reset_size()
 	visible = true
@@ -104,6 +109,17 @@ func say(line: String, hold := 1.6) -> void:
 	pivot_offset = Vector2.ZERO
 	create_tween().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT).tween_property(self, "scale", Vector2.ONE, POP_SECONDS)
 	_place()
+
+
+## How high `line` stands in the balloon's text when wrapped at `width` px: its rows of the
+## font with the line separation between them.
+static func text_height(line: String, width: float) -> float:
+	var font := UiStyle.font(UiStyle.FONT_PIXEL_BOLD)
+	var row := font.get_height(TEXT_SIZE)
+	var wrapped := font.get_multiline_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, width, TEXT_SIZE, -1,
+			TextServer.BREAK_MANDATORY | TextServer.BREAK_WORD_BOUND | TextServer.BREAK_ADAPTIVE)
+	var rows := maxi(1, roundi(wrapped.y / row))
+	return ceilf(rows * row + (rows - 1) * LINE_SEPARATION)
 
 
 ## Keeps the balloon over `node` (head_height m up), seen through `camera`.

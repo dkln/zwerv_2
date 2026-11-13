@@ -2,7 +2,7 @@
 // the main menu, the intro and the loading screen): it takes the picture so far (the
 // world, the vignette) and draws it again bent like the glass of a tube, with black
 // rounded corners, lays the HUD's own picture (ui_texture) over it bent less
-// (ui_curvature), and puts scanlines over both. crt_disturbance.gd drives the glitch and
+// (ui_curvature). No scanlines. crt_disturbance.gd drives the glitch and
 // tracking uniforms now and then.
 shader_type canvas_item;
 uniform sampler2D screen_texture : hint_screen_texture, filter_linear, repeat_disable;
@@ -10,7 +10,6 @@ uniform sampler2D ui_texture : filter_linear, repeat_disable, hint_default_trans
 uniform float curvature = 0.05;
 uniform float ui_curvature = 0.02;
 uniform float corner = 0.035;
-uniform float scanline_strength = 0.14;
 uniform vec2 screen_size = vec2(1280.0, 720.0);
 uniform float opacity = 1.0;
 // a rolling disturbance: a band at this height of the screen (0 top .. 1 bottom; off when
@@ -52,9 +51,6 @@ void fragment() {
 	vec4 ui = texture(ui_texture, clamp(ui_uv, 0.0, 1.0));
 	float ui_inside = step(0.0, ui_uv.x) * step(ui_uv.x, 1.0) * step(0.0, ui_uv.y) * step(ui_uv.y, 1.0);
 	picture = mix(picture, ui.rgb, ui.a * ui_inside);
-	// one darker line in every three, on the bent picture
-	float line = step(mod(uv.y * screen_size.y, 3.0), 1.0);
-	picture *= 1.0 - scanline_strength * line;
 	// tracking noise, most in the frayed strip
 	float speck = fract(sin(dot(floor(SCREEN_UV * screen_size * 0.5), vec2(12.9898, 78.233)) + floor(TIME * 30.0)) * 43758.5453);
 	picture += vec3(speck - 0.5) * 0.22 * tracking * (0.25 + frayed);
