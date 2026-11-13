@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://dlv101626va41"
+path="res://.godot/imported/fabriek_dak_plat_eind.vox-32e8e4815b6c6b6cc95798bd5d5ca2c1.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/gebouwen/fabriek/fabriek_dak_plat_eind.vox"
+dest_files=["res://.godot/imported/fabriek_dak_plat_eind.vox-32e8e4815b6c6b6cc95798bd5d5ca2c1.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(4, 3, 4)

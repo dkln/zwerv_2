@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://do2wq5s7leio6"
+path="res://.godot/imported/bedrijfspand_bg_roldeur_hoek.vox-f9ef904cfc4ce417b6b8c8b65fe8ee25.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/gebouwen/bedrijfspand/bedrijfspand_bg_roldeur_hoek.vox"
+dest_files=["res://.godot/imported/bedrijfspand_bg_roldeur_hoek.vox-f9ef904cfc4ce417b6b8c8b65fe8ee25.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(4, 3, 4)

@@ -1,4 +1,4 @@
-"""Voxel model with drawing helpers, the Goxel (.gox) tile writer, the colour ->
+"""Voxel model with drawing helpers, the MagicaVoxel (.vox) tile writer, the colour ->
 material table and the .tile.json metadata writer.
 
 Pipeline position: palette.py defines the global colours -> tile modules build a
@@ -15,7 +15,7 @@ import struct
 from array import array
 
 from palette import PALETTE, P, godot_material
-from gox import write_layers
+from voxfile import write_colours
 from common import SLOPES, CURVES, SMOOTH
 from bake import tile_bake
 from traffic import ramp_traffic, tile_platform, tile_traffic
@@ -235,11 +235,12 @@ class V:
         return sum(1 for v in self.d if v)
 
 
-# ---------------------------------------------------------------- .gox writing
+# ---------------------------------------------------------------- .vox writing
 
 def write_tile(path, m):
-    """Write model ``m`` (global colour ids) to ``path`` as a Goxel .gox with one layer
-    "model"; returns the voxel count. The colour of a voxel is all a tile stores: the
+    """Write model ``m`` (global colour ids) to ``path`` as a MagicaVoxel .vox (voxfile.py:
+    its palette the colours it uses, then the rest of the Zwervr palette to draw with);
+    returns the voxel count. The colour of a voxel is all a tile stores: the
     importer looks its material up in the colour table (write_material_table)."""
     voxels = {}
     for z in range(m.sz):
@@ -249,7 +250,7 @@ def write_tile(path, m):
                 c = m.d[base + x]
                 if c:
                     voxels[(x, y, z)] = PALETTE[c]
-    return write_layers(path, (m.sx, m.sy, m.sz), [("model", None, voxels)])
+    return write_colours(path, (m.sx, m.sy, m.sz), voxels, [PALETTE[gid] for gid in sorted(PALETTE)])
 
 
 # Material names of the Godot importer (addons/vox_tiles/importer/voxel_model.gd

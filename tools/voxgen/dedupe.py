@@ -1,30 +1,30 @@
 """Replace identical tiles by aliases.
 
-Two tiles of the same category are identical when their .gox files hold the same
+Two tiles of the same category are identical when their .vox files hold the same
 voxels with the same colours and materials (colour table, material layers and
 .tile.json "materials"), and they import with the same animation, slopes and import
 options. Of every group of identical tiles the one with the shortest path (then
-alphabetical) keeps its .gox; the others become alias tiles: only a
+alphabetical) keeps its .vox; the others become alias tiles: only a
 ``<name>.tile.json`` with ``{"id": <their id>, "same_as": "<path of the kept tile>"}``
 (path within the category, like the MeshLibrary item names). The library builder
 (addons/vox_tiles/library/library_builder.gd) gives an alias its own item (same name and id
-as before, so maps keep working) with the mesh of the kept tile. Tiles saved as .vox
-(made by hand in MagicaVoxel) are left alone.
+as before, so maps keep working) with the mesh of the kept tile. Tiles saved as .gox
+(made by hand in Goxel) are left alone.
 
 An alias follows its tile: to make it different again, delete its .tile.json and
-regenerate it (or save a .gox under its name).
+regenerate it (or save a .vox under its name).
 """
 import hashlib
 import json
 import os
 
-from gox import read_gox
+from voxfile import read_vox
 from vox import tile_animation, material_table, MATERIAL_NAMES
 from bake import tile_bake
 from traffic import tile_traffic
 
 # Extensions of a tile model, in the order the Godot importer prefers them
-TILE_EXTENSIONS = (".gox", ".vox")
+TILE_EXTENSIONS = (".vox", ".gox")
 
 _TABLE = None
 
@@ -36,7 +36,7 @@ def _import_params(tile_path):
     path = tile_path + ".import"
     if not os.path.exists(path):
         folder = os.path.dirname(tile_path)
-        others = sorted(f for f in os.listdir(folder) if f.endswith(".gox.import"))
+        others = sorted(f for f in os.listdir(folder) if f.endswith(".vox.import"))
         if not others:
             return ""
         path = os.path.join(folder, others[0])
@@ -44,25 +44,25 @@ def _import_params(tile_path):
     return text[text.find("[params]"):]
 
 
-def signature(gox_path, name):
+def signature(vox_path, name):
     """Hash of everything that ends up in the imported mesh of tile ``name``."""
     global _TABLE
     if _TABLE is None:
         _TABLE = material_table()
-    meta_path = os.path.splitext(gox_path)[0] + ".tile.json"
+    meta_path = os.path.splitext(vox_path)[0] + ".tile.json"
     meta = json.load(open(meta_path)) if os.path.exists(meta_path) else {}
     overrides = meta.get("materials", {}) if isinstance(meta.get("materials"), dict) else {}
-    model = read_gox(gox_path, MATERIAL_NAMES)
+    size, voxels, palette = read_vox(vox_path)
     rows = []
-    for (x, y, z), (rgb, forced) in model.voxels.items():
-        key = "#%02x%02x%02x" % rgb
-        mat = overrides.get(key) or forced or _TABLE.get(key, "opaque")
+    for x, y, z, slot in voxels:
+        key = "#%02x%02x%02x" % palette[slot]
+        mat = overrides.get(str(slot)) or overrides.get(key) or _TABLE.get(key, "opaque")
         rows.append(f"{x},{y},{z},{key},{mat}")
     rows.sort()
     h = hashlib.sha1()
-    for part in (repr(model.size), "\n".join(rows), repr(meta.get("animation", tile_animation(name))),
+    for part in (repr(tuple(size)), "\n".join(rows), repr(meta.get("animation", tile_animation(name))),
                  repr(meta.get("slopes")), repr(meta.get("curve")), repr(meta.get("smooth")),
-                 _import_params(gox_path)):
+                 _import_params(vox_path)):
         h.update(part.encode())
         h.update(b"\0")
     return h.hexdigest()
@@ -74,11 +74,11 @@ def dedupe(out_dir, dry_run=False):
     groups = {}   # (category, signature) -> [tile path]
     for folder, _, files in os.walk(out_dir):
         for f in sorted(files):
-            if f.endswith(".gox") and not f.endswith(".lod.gox"):
+            if f.endswith(".vox") and not f.endswith(".lod.vox"):
                 name = os.path.relpath(os.path.join(folder, f), out_dir)[:-4].replace(os.sep, "/")
                 if any(os.path.exists(os.path.join(out_dir, name + ".lod" + e)) for e in TILE_EXTENSIONS):
                     continue   # a hand-made coarse version makes the tile unique
-                key = (name.partition("/")[0], signature(os.path.join(out_dir, name + ".gox"), name))
+                key = (name.partition("/")[0], signature(os.path.join(out_dir, name + ".vox"), name))
                 groups.setdefault(key, []).append(name)
     out = []
     for (cat, _), names in sorted(groups.items()):
@@ -100,7 +100,7 @@ def dedupe(out_dir, dry_run=False):
                 alias["bake"] = bake
             with open(base + ".tile.json", "w") as fh:
                 fh.write(json.dumps(alias, indent="\t") + "\n")
-            for ext in (".gox", ".gox.import"):
+            for ext in (".vox", ".vox.import", ".gox", ".gox.import"):
                 if os.path.exists(base + ext):
                     os.remove(base + ext)
     if not dry_run:

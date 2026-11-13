@@ -382,12 +382,14 @@ func _grote_markt() -> void:
 ## Along the Grote Marktstraat (tram on clinkers): the Bijenkorf and modern stores; the
 ## Passage, a glass-roofed arcade with shops on both sides; homes and offices behind.
 func _grote_marktstraat() -> void:
-	block(27, 61, 8, 6, "jaren30", 5, {"front": "N", "gf": ["bg_kleding", "bg_winkel", "bg_kleding", "bg_portiek"], "gf_side": "bg_winkel",
-		"gf_corner": "bg_winkel_hoek", "upper": ["verd_raam", "verd_trappenhuis", "verd_raam", "verd_erker"], "upper_corner": "verd_raam_hoek",
-		"roof": "flat"})
-	D(30 * 4.0, 61 * 4.0, 12.0, "gevel/vlag", "N")
-	for x in range(28, 35, 2):
-		D(x * 4.0, 61 * 4.0, 2.5, "luifels/luifel_effen_groen", "N")
+	# the Bijenkorf (Piet Kramer, 1926, Amsterdam School): five storeys of red-brown brick,
+	# undulating walls broken by tall strips of leaded glass, the corners rounded
+	# (jaren30_*_rond_hoek), shop windows all along under one canopy, the entrance in the middle of the front
+	block(27, 61, 8, 6, "jaren30", 5, {"front": "N", "gf": ["bg_winkel_luifel", "bg_winkel_luifel", "bg_winkel_luifel", "bg_portiek"],
+		"gf_side": "bg_winkel_luifel", "gf_corner": "bg_winkel_rond_hoek", "upper": ["verd_trappenhuis", "verd_raam"],
+		"upper_corner": "verd_rond_hoek", "roof": "flat"})
+	D(31 * 4.0, 61 * 4.0, 12.5, "tekst/tekst_bijenkorf", "N")
+	D(27 * 4.0 + 1.0, 61 * 4.0, 12.0, "gevel/vlag", "N")
 	block(37, 61, 10, 5, "modern_donker", 4, {"front": "N", "gf": ["bg_kleding", "bg_winkel", "bg_juwelier", "bg_telefoon"],
 		"gf_side": "bg_winkel", "gf_corner": "bg_raam_hoek", "upper": ["verd_raam_breed", "verd_dicht", "verd_frans"],
 		"upper_corner": "verd_raam_breed_hoek", "roof": "flat"})
@@ -415,6 +417,10 @@ func _grote_marktstraat() -> void:
 	places["passage"] = Vector2(36 * 4.0, 66 * 4.0)
 
 
+## Storeys of the glass of the city hall's atrium (its roof on top of them).
+const CITY_HALL_ATRIUM_LEVELS := 10
+
+
 ## Spuiplein with the Nieuwe Kerk and the white city hall (two slabs with the glass atrium
 ## between them); south of the church cafes on the Spui and a little square beside the
 ## city hall (Amare stands at the Dirigentplein by De Resident, _de_resident).
@@ -428,13 +434,24 @@ func _spui() -> void:
 	_trees([Vector2i(51, 75), Vector2i(54, 74)], ["bomen/linde"])
 	# a street organ on the Spuiplein, playing to the people going by
 	Pr(53 * 4 + 2.0, 62 * 4 + 2.0, "markt/draaiorgel", "S")
-	# city hall: two white slabs of ten storeys, a glass hall between
-	for s in [[56, "W"], [60, "E"]]:
-		block(s[0], 69, 2, 15, "modern_wit", 10, {"front": s[1], "gf": ["bg_deur", "bg_raam"], "gf_side": "bg_raam", "gf_corner": "bg_raam_hoek",
-			"upper": ["verd_raam_breed", "verd_raam", "verd_raam_breed"], "upper_corner": "verd_raam_breed_hoek", "roof": "flat"})
+	# city hall (Richard Meier, 1995, the "IJspaleis"): two white slabs, 10 storeys (the Spui
+	# side) and 12, of white panels with square windows on a grid, and between them the
+	# atrium: glass ends the full height and a glass roof over it; the entrance on the
+	# Spuiplein with the flags of Den Haag (yellow over green) before it
+	for s in [[56, "W", 10], [60, "E", 12]]:
+		block(s[0], 69, 2, 15, "modern_wit", s[2], {"front": s[1], "gf": ["bg_deur", "bg_raam"], "gf_side": "bg_raam", "gf_corner": "bg_raam_hoek",
+			"upper": ["verd_raam", "verd_dicht", "verd_raam", "verd_raam"], "upper_corner": "verd_raam_hoek", "roof": "flat"})
 	_hall(58, 69, 2, 15, "hal_glas", Vector2i(58, 69))
-	D(59 * 4.0, 69 * 4.0, 4.5, "tekst/tekst_raadhuis", "N")
+	for x in [58, 59]:
+		for level in range(1, CITY_HALL_ATRIUM_LEVELS):
+			B(x, level, 69, "kantoor_glas/kantoor_glas_verd_vliesgevel", "N")
+			B(x, level, 83, "kantoor_glas/kantoor_glas_verd_vliesgevel", "S")
+		for z in range(69, 84):
+			B(x, CITY_HALL_ATRIUM_LEVELS, z, "hallen/hal_glas_dak", "S")
+	D(59 * 4.0, 69 * 4.0, 4.5, "tekst/tekst_stadhuis", "N")
 	D(57 * 4.0, 69 * 4.0, 27.0, "gevel/vlag_denhaag", "N")
+	for flag_x in [57 * 4 + 3.0, 60 * 4 + 1.0]:
+		Pr(flag_x, 68 * 4 + 1.5, "straat/vlaggenmast_denhaag", "N")
 	places["stadhuis"] = Vector2(59 * 4.0, 69 * 4.0)
 	# cafes along the Spui, a square with trees between them and the city hall
 	_shops(Vector2i(51, 76), Vector2i(0, 1), 8, "W", 2, HORECA, AWNINGS, 3, true)

@@ -4,10 +4,12 @@ extends "res://scripts/ui/machines/machine_screen.gd"
 ## "blikje", from the waste bins) and bottles ("statiegeld") one by one: each goes into the
 ## round hole (it slides in, bottom first, rattles, the belt carries it off) and counts on
 ## the display. Now and then (REJECT_CHANCE) the machine does not take it: it comes back out
-## of the hole, the display says so with a buzz, and you can try again;
-## then BON: the machine prints the bon with what you put in and the total, and taking the
-## bon pays it out (DepositReturn.pay_out). Leaving with something in it prints the bon too.
-## Keys: 1 a can, 2 a bottle, Enter the bon (then Enter takes it), Esc away; the mouse too.
+## of the hole, the display says so with a buzz, and you can try again; then the BON key on
+## the machine: it prints the bon with what you put in and the total and pays it out at once
+## (DepositReturn.pay_out). Leaving with something in it does the same.
+## Its little screen only shows (a few big words); you use the machine itself: click its
+## hole (a can, or a bottle when you have no cans) and its BON key (machine_parts
+## "hotspots"). Keys: 1 a can, 2 a bottle, Enter the bon, Esc away.
 ##   DepositMachineScreen.show_for(player, "DERREK")
 
 const DepositReturn = preload("res://scripts/world/things/deposit_return.gd")
@@ -31,10 +33,6 @@ var inserted := {}
 var total := 0.0
 ## "invoeren", "bon" (printed, not taken yet), "klaar".
 var state := "invoeren"
-var _insert_buttons := {}
-var _bon_button: Button
-var _hole: Panel
-var _flying: Control
 ## The checks: true makes the next can or bottle come back out (else REJECT_CHANCE, and
 ## never without `animate`).
 var force_reject := false
@@ -48,53 +46,58 @@ static func show_for(for_player: Node, place := "", with_animation := true) -> C
 	screen.set("screen_colour", Color("#9CFF7A"))
 	screen.set("place_name", place)
 	screen.set("backdrop", "supermarkt")
+	# a little screen: a few big words
+	screen.set("display_title_size", 78)
+	screen.set("display_text_size", 64)
 	return present(screen, for_player, with_animation)
 
 
 ## The deposit machine of the supermarkets (MachineModels.deposit_machine_mesh, 14 x 30 x
-## 10 voxels of 6,25 cm): its little screen, the button by it and the slot of the bon.
+## 10 voxels of 6,25 cm): its little screen, the BON key by it and the slot of the bon, the
+## hole; the close-up takes in the screen, the key and the hole (all you use), and the hole
+## and the key can be clicked.
 func machine_parts() -> Dictionary:
 	return {"mesh": MachineModels.deposit_machine_mesh(), "screen": Rect2(-0.125, 1.375, 0.25, 0.1875), "front": 0.3125,
 		"screen_sunk": 0.125, "keys": Vector3(0.28, 1.47, 0.3125), "slot": Vector3(0.28, 1.22, 0.3125),
-		"hole": Vector3(0.0, 0.97, 0.3125)}
+		"hole": Vector3(0.0, 0.97, 0.3125),
+		"focus": Rect2(-0.25, 0.72, 0.62, 0.92), "focus_share": 0.95,
+		"hotspots": [{"name": "gat", "rect": Rect2(-0.1875, 0.75, 0.375, 0.4375)},
+			{"name": "bon", "rect": Rect2(0.2, 1.39, 0.16, 0.16)}]}
 
 
 func _opened() -> void:
 	_show_count()
 
 
-func build_controls(box: VBoxContainer) -> void:
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 16)
-	box.add_child(row)
-	# the round hole: a dark mouth in a steel collar
-	var collar := PanelContainer.new()
-	collar.add_theme_stylebox_override("panel", UiStyle.box_style(Color("#8C939E"), Color("#5A606A"), 4))
-	collar.custom_minimum_size = Vector2(150, 150)
-	_hole = Panel.new()
-	var mouth := UiStyle.box_style(Color("#0A0B0E"), Color("#2A2C32"), 6)
-	mouth.set_corner_radius_all(60)
-	mouth.anti_aliasing = false
-	_hole.add_theme_stylebox_override("panel", mouth)
-	_hole.custom_minimum_size = Vector2(130, 130)
-	_hole.clip_contents = true
-	collar.add_child(_hole)
-	row.add_child(collar)
-	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 8)
-	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	for index in DepositReturn.ORDER.size():
-		var item_id: String = DepositReturn.ORDER[index]
-		var insert := button("", insert_one.bind(item_id), 0, Color("#2E7A40"))
-		insert.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		column.add_child(insert)
-		_insert_buttons[item_id] = insert
-	_bon_button = button("[ENTER] BON", print_bon, 0, Color("#C8A020"))
-	column.add_child(_bon_button)
-	column.add_child(button("[ESC] WEG", cancel, 0, Color("#7A7E86")))
-	row.add_child(column)
-	var hint := label("Plaats de verpakking met de bodem eerst in de opening.", font_body, 13, Color("#3A4038"))
-	box.add_child(hint)
+## A part of the machine clicked: the hole takes a can (or a bottle when you have no cans),
+## the BON key prints the bon and pays it out.
+func hotspot_pressed(hotspot: String) -> void:
+	match hotspot:
+		"gat":
+			insert_next()
+		"bon":
+			bon()
+
+
+## Into the hole what you have: a can first, else a bottle.
+func insert_next() -> float:
+	var found := DepositReturn.returnable(_inventory())
+	for item_id: String in DepositReturn.ORDER:
+		if found.has(item_id):
+			return await insert_one(item_id)
+	sound("fout")
+	show_display("LEEG?", ["NIETS OM IN", "TE LEVEREN"], REFUSED)
+	return 0.0
+
+
+## The BON key: the bon printed and taken at once (the money in your wallet).
+func bon() -> void:
+	if state != "invoeren":
+		return
+	await print_bon()
+	if state == "bon":
+		await pause_for(0.5)
+		await take_bon()
 
 
 func pocket_lines() -> Array:
@@ -110,7 +113,7 @@ func pocket_lines() -> Array:
 
 
 func key_hints() -> String:
-	return "[1] BLIKJE   [2] FLES   [ENTER] BON   [ESC] WEG"
+	return "[KLIK] GAT / BON-KNOP   [1] BLIKJE   [2] FLES   [ENTER] BON   [ESC] WEG"
 
 
 func _key(keycode: Key) -> bool:
@@ -124,7 +127,7 @@ func _key(keycode: Key) -> bool:
 		KEY_2, KEY_KP_2:
 			insert_one("statiegeld")
 		KEY_ENTER, KEY_KP_ENTER:
-			print_bon()
+			bon()
 	return true
 
 
@@ -145,16 +148,15 @@ func insert_one(item_id: String) -> float:
 		return 0.0
 	if not DepositReturn.DEPOSIT.has(item_id) or int(_inventory().get(item_id, 0)) <= 0:
 		sound("fout")
-		show_display("GEEN %s" % String(NAMES.get(item_id, "VERPAKKING")), ["Je hebt er geen bij je."] + _count_lines(), REFUSED)
+		show_display("GEEN %s" % String(NAMES.get(item_id, "VERPAKKING")), ["HEB JE NIET"], REFUSED)
 		return 0.0
 	_busy = true
 	var rejected := _rejected()
-	_fly_in(item_id)
 	sound("blik")
 	await _into_hole(item_id, rejected)
 	if rejected:
 		sound("fout")
-		show_display("NIET HERKEND", ["De %s komt terug." % String(NAMES[item_id]).to_lower(), "Probeer het nog een keer."] + _count_lines(), REFUSED)
+		show_display("NIET HERKEND", ["PROBEER", "OPNIEUW"], REFUSED)
 		_busy = false
 		return 0.0
 	var value := DepositReturn.insert_one(player, item_id)
@@ -212,10 +214,10 @@ func print_bon() -> void:
 		return
 	if total <= 0.0:
 		sound("fout")
-		show_display("NIETS INGEVOERD", ["Plaats eerst een blikje of fles."], Color("#FFB547"))
+		show_display("NIETS", ["INGEVOERD"], REFUSED)
 		return
 	_busy = true
-	show_display("BON WORDT GEPRINT", ["Even geduld..."])
+	show_display("EVEN", ["GEDULD..."])
 	sound("printer")
 	await pause_for(0.7)
 	state = "bon"
@@ -226,10 +228,8 @@ func print_bon() -> void:
 			lines.append("%d × %s   %s" % [count, String(NAMES[item_id]), euros(count * float(DepositReturn.DEPOSIT[item_id]))])
 	lines.append("----------------")
 	lines.append("TOTAAL   " + euros(total))
-	lines.append("")
-	lines.append("[ENTER] Bon pakken")
 	show_tray("STATIEGELDBON", lines, Color("#F2F2EC"))
-	show_display("NEEM UW BON", ["Totaal: " + euros(total), "", "Bedankt voor het inleveren!"])
+	show_display("BEDANKT", [euros(total)])
 	_busy = false
 
 
@@ -249,38 +249,13 @@ func take_bon() -> void:
 
 
 func _show_count() -> void:
-	show_display("STATIEGELD", ["Plaats uw blikjes en flessen", "één voor één in de opening.", ""] + _count_lines())
-	for item_id: String in _insert_buttons:
-		var count := int(_inventory().get(item_id, 0))
-		(_insert_buttons[item_id] as Button).text = "[%d] %s ERIN  (%d)" % [DepositReturn.ORDER.find(item_id) + 1, String(NAMES[item_id]), count]
+	show_display("STATIEGELD", _count_lines())
 
 
 func _count_lines() -> Array:
 	var count := 0
 	for item_id: String in inserted:
 		count += int(inserted[item_id])
-	return ["Ingevoerd: %d   %s" % [count, euros(total)]]
+	return ["%d STUKS" % count, euros(total)]
 
 
-## The can or bottle sliding into the hole and away.
-func _fly_in(item_id: String) -> void:
-	if not animate or _hole == null:
-		return
-	if _flying and is_instance_valid(_flying):
-		_flying.queue_free()
-	# the item's own pixel icon (the game menu's: "blik", "flessen")
-	var icon_name := String(Items.item(item_id).get("icon", "blik"))
-	var icon := PixelIcon.new()
-	icon.pixel = 6.0
-	var icons: Dictionary = GameMenu.ITEM_ICONS
-	if icons.has(icon_name):
-		icon.bitmap = icons[icon_name].rows
-		icon.colour = icons[icon_name].colour
-	_flying = icon
-	_flying.position = Vector2(40, -70)
-	_hole.add_child(_flying)
-	var slide := _flying.create_tween()
-	slide.tween_property(_flying, "position", Vector2(40, 25), 0.25).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	slide.tween_property(_flying, "scale", Vector2(0.4, 0.4), 0.3)
-	slide.parallel().tween_property(_flying, "modulate:a", 0.0, 0.3)
-	slide.tween_callback(_flying.queue_free)

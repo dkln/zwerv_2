@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://2y620opvvhv2"
+path="res://.godot/imported/raadstafel.vox-1e101074a7d397bd3b6d7fa22a91f756.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/binnen/stadhuis/raadstafel.vox"
+dest_files=["res://.godot/imported/raadstafel.vox-1e101074a7d397bd3b6d7fa22a91f756.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(0, 0, 0)

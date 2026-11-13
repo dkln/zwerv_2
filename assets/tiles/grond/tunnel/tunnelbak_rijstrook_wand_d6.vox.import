@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://lifo1p27whjr"
+path="res://.godot/imported/tunnelbak_rijstrook_wand_d6.vox-d8697b2974852a0c7f485c31ed763dcf.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/grond/tunnel/tunnelbak_rijstrook_wand_d6.vox"
+dest_files=["res://.godot/imported/tunnelbak_rijstrook_wand_d6.vox-d8697b2974852a0c7f485c31ed763dcf.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(4, 1.5, 4)

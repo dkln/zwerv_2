@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://es3q3al137xv"
+path="res://.godot/imported/naam_kleding_1.vox-8f08ed67b50ec884ae94e86cf9ef6d69.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/details/tekst/naam_kleding_1.vox"
+dest_files=["res://.godot/imported/naam_kleding_1.vox-8f08ed67b50ec884ae94e86cf9ef6d69.mesh"]
+
+[params]
+
+voxel_size=0.0893
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(0, 0, 0)

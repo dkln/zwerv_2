@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://chcebsobaprhk"
+path="res://.godot/imported/tekst_kerk.vox-9420ce90e3cad5c02c859275f6737198.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/details/tekst/tekst_kerk.vox"
+dest_files=["res://.godot/imported/tekst_kerk.vox-9420ce90e3cad5c02c859275f6737198.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(0, 0, 0)

@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://dwj41uodkri5e"
+path="res://.godot/imported/kantoor_glas_dak_groen_rand.vox-aa4a7a513e11881c41817b541fe8f3db.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/gebouwen/kantoor_glas/kantoor_glas_dak_groen_rand.vox"
+dest_files=["res://.godot/imported/kantoor_glas_dak_groen_rand.vox-aa4a7a513e11881c41817b541fe8f3db.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(4, 3, 4)

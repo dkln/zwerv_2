@@ -112,6 +112,10 @@ var _baked_into := {}
 var _waiting_for_swipe := false
 ## The streamed finest levels (RegionStream), told every frame what to keep round.
 var _streams: Array[Node3D] = []
+## Hitches (debug builds): a frame longer than HITCH_MS is reported with how many regions are
+## loaded, so a stutter while walking into a new part of the town shows up in the output.
+const HITCH_MS := 50.0
+var _last_frame_usec := 0
 
 
 func _ready() -> void:
@@ -523,6 +527,7 @@ func _save(node: Node3D, path: String) -> void:
 ## Per frame: picks the LOD level from the zoom, toggles Details/Props, and scales the
 ## shadow distance with the camera distance.
 func _process(_delta: float) -> void:
+	_watch_hitches()
 	if _cam == null:
 		return
 	if not _streams.is_empty():
@@ -569,3 +574,18 @@ func _process(_delta: float) -> void:
 			_sun.directional_shadow_split_1 = maxf(nearest_in_view, 0.05)
 			_sun.directional_shadow_split_2 = nearest_in_view + (1.0 - nearest_in_view) * 0.25
 			_sun.directional_shadow_split_3 = nearest_in_view + (1.0 - nearest_in_view) * 0.55
+
+
+## Reports a frame longer than HITCH_MS (debug builds only; not while merging under the
+## loading screen, where long frames are expected).
+func _watch_hitches() -> void:
+	var now := Time.get_ticks_usec()
+	var took := (now - _last_frame_usec) / 1000.0
+	_last_frame_usec = now
+	if not OS.is_debug_build() or _screen != null or is_merging() or took < HITCH_MS or took > 5000.0:
+		return
+	var loaded := 0
+	for stream in _streams:
+		if is_instance_valid(stream):
+			loaded += (stream.call("region_counts") as Vector2i).y
+	print("hapering: frame van %.0f ms (%d regio's geladen)" % [took, loaded])

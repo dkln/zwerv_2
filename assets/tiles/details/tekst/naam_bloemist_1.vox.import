@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://d0vxvgp7d32vn"
+path="res://.godot/imported/naam_bloemist_1.vox-79dd668a60be7a0090154db2b69c4c78.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/details/tekst/naam_bloemist_1.vox"
+dest_files=["res://.godot/imported/naam_bloemist_1.vox-79dd668a60be7a0090154db2b69c4c78.mesh"]
+
+[params]
+
+voxel_size=0.075
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(0, 0, 0)

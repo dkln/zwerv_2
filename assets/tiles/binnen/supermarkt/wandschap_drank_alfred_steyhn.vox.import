@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://bbtpjejucngyi"
+path="res://.godot/imported/wandschap_drank_alfred_steyhn.vox-4df02852475a0e4559f1a59eaee9c7a5.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/binnen/supermarkt/wandschap_drank_alfred_steyhn.vox"
+dest_files=["res://.godot/imported/wandschap_drank_alfred_steyhn.vox-4df02852475a0e4559f1a59eaee9c7a5.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(0, 0, 0)

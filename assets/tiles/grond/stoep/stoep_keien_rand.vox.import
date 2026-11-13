@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://d0hwicphlaq0p"
+path="res://.godot/imported/stoep_keien_rand.vox-47238197b09dcc0fd81209dbb6fcba9e.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/grond/stoep/stoep_keien_rand.vox"
+dest_files=["res://.godot/imported/stoep_keien_rand.vox-47238197b09dcc0fd81209dbb6fcba9e.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(4, 1.5, 4)

@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://twd1gp4kd8gq"
+path="res://.godot/imported/voetganger_groen.vox-bbccd7f5b0857b41e00381ff1d82abb1.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/props/verkeerslichten/voetganger_groen.vox"
+dest_files=["res://.godot/imported/voetganger_groen.vox-bbccd7f5b0857b41e00381ff1d82abb1.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(0, 0, 0)

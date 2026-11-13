@@ -128,7 +128,8 @@ static func deposit_machine_mesh() -> ArrayMesh:
 		# the sign on top
 		_box(figure, Vector3i(0, 26, face), Vector3i(width - 1, 29, back), DEPOSIT_TRIM, "glow", true)
 		_box(figure, Vector3i(2, 27, face), Vector3i(width - 3, 28, face), DEPOSIT_BODY, "plastic")
-		figure.mark("metal", [STEEL])
+		# the steel of the collar and the rollers matt (as metal it mirrors the dark and goes black)
+		figure.mark("plastic", [STEEL])
 		_meshes["statiegeldautomaat"] = _mesh_of(figure, MACHINE_VOXEL)
 	return _meshes["statiegeldautomaat"]
 

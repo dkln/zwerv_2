@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://5q26n8mmpybo"
+path="res://.godot/imported/mandjes_alfred_steyhn.vox-f2e5dfb0a051a7683bcd77f50f7e8505.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/binnen/supermarkt/mandjes_alfred_steyhn.vox"
+dest_files=["res://.godot/imported/mandjes_alfred_steyhn.vox-f2e5dfb0a051a7683bcd77f50f7e8505.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(0, 0, 0)

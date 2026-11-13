@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://cos8npej11kho"
+path="res://.godot/imported/rijstrook_geen_kant_hoek_links_stoep.vox-7c2cef8bf0356cb0b4aa023e1936de42.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/grond/weg/rijstrook_geen_kant_hoek_links_stoep.vox"
+dest_files=["res://.godot/imported/rijstrook_geen_kant_hoek_links_stoep.vox-7c2cef8bf0356cb0b4aa023e1936de42.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(4, 1.5, 4)

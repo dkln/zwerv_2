@@ -625,7 +625,7 @@ func _build_drifter() -> void:
 ## upside-down protest flag, as scripts/vehicles/tractor.gd puts them (the hubs, the big rear and small front wheels),
 ## its middle at the origin; null if the model is missing.
 static func _make_tractor(model_name: String) -> Node3D:
-	var body_path := "res://assets/tiles/props/voertuigen/%s.gox" % model_name
+	var body_path := "res://assets/tiles/props/voertuigen/%s.vox" % model_name
 	if not ResourceLoader.exists(body_path):
 		return null
 	var tractor := Node3D.new()
@@ -638,7 +638,7 @@ static func _make_tractor(model_name: String) -> Node3D:
 		[Vector3(-0.5625, 0.375, 1.25), "auto_wiel", 0.375], [Vector3(0.5625, 0.375, 1.25), "auto_wiel", 0.375],
 		[Vector3(-0.75, 0.625, -0.875), "tractor_wiel", 0.625], [Vector3(0.75, 0.625, -0.875), "tractor_wiel", 0.625]]
 	for wheel: Array in wheels:
-		var wheel_path := "res://assets/tiles/props/voertuigen/%s.gox" % wheel[1]
+		var wheel_path := "res://assets/tiles/props/voertuigen/%s.vox" % wheel[1]
 		if not ResourceLoader.exists(wheel_path):
 			continue
 		var wheel_instance := MeshInstance3D.new()

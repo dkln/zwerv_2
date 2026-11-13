@@ -296,7 +296,7 @@ static func _add_chunks(job: BakeJob) -> void:
 			await _next_frame(job)
 		var instance := MeshInstance3D.new()
 		instance.mesh = mesh
-		instance.cast_shadow = key.z
+		instance.cast_shadow = _shadow_casting(key.z)
 		job.output.add_child(instance)
 
 
@@ -332,7 +332,7 @@ static func _add_loose_meshes(job: BakeJob) -> void:
 		var instance := MeshInstance3D.new()
 		instance.mesh = loose[0]
 		instance.transform = loose[1]
-		instance.cast_shadow = loose[2]
+		instance.cast_shadow = _shadow_casting(loose[2])
 		job.output.add_child(instance)
 
 
@@ -645,3 +645,10 @@ static func _split(mesh: ArrayMesh, bake_flags := false) -> Array:
 			low.append(low_faces)
 		surfaces.append({"material": material, "groups": groups, "low": low})
 	return surfaces
+
+
+## How a merged mesh casts its shadow: what casts one casts it from both sides of its faces,
+## so the light does not leak through the hollow buildings and the seams between merged
+## faces (loose light pixels in a shadow); the rest as set.
+static func _shadow_casting(setting: int) -> int:
+	return GeometryInstance3D.SHADOW_CASTING_SETTING_DOUBLE_SIDED if setting == GeometryInstance3D.SHADOW_CASTING_SETTING_ON else setting

@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://cqic40wruxdry"
+path="res://.godot/imported/wand_spoor.vox-bfd7c68161175b3acc77874023e9909d.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/binnen/station/wand_spoor.vox"
+dest_files=["res://.godot/imported/wand_spoor.vox-bfd7c68161175b3acc77874023e9909d.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(0, 0, 0)

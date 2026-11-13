@@ -284,14 +284,6 @@ static func reset(tree: SceneTree, scene: Node3D) -> void:
 			await tree.process_frame
 			await close_screens(tree, hud)
 			waited += 1
-		# a walk through a door still shown (DoorPassage): let it end, and the swipe after it
-		var passing := 0
-		while bool(interiors.get("_passing_door")) and passing < 900:
-			await tree.process_frame
-			passing += 1
-		if passing > 0:
-			for frame_index in 90:
-				await tree.process_frame
 		if interiors.is_inside():
 			interiors.call("_end_eviction")
 			await interiors._go_out(0)

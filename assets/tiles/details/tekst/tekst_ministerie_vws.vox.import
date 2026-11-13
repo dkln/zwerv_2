@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://ddgqlnivafhj3"
+path="res://.godot/imported/tekst_ministerie_vws.vox-59867caf94459cb18cb70472a2e1a6d6.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/details/tekst/tekst_ministerie_vws.vox"
+dest_files=["res://.godot/imported/tekst_ministerie_vws.vox-59867caf94459cb18cb70472a2e1a6d6.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(0, 0, 0)

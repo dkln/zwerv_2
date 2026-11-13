@@ -1515,6 +1515,65 @@ reg_style("jaren30",
              ("bg_cafe_hoek", "bg_cafe", "bg_raam")],
           _pitched_and_flat("jaren30"))
 
+# Rounded corners (the Bijenkorf of Piet Kramer): the corner block with its front-right corner
+# cut round, a quarter circle of ROUND_RADIUS voxels.
+ROUND_RADIUS = 12
+
+
+def round_corner(style, front, right, kind):
+    """Corner block whose front-right corner is a quarter circle (ROUND_RADIUS voxels): the
+    front and right facades as on the straight corner, the curve a wall of its own. Upper
+    floor ("verd"): tall strips of leaded glass between brick piers, a stone band on top;
+    ground floor ("bg"): shop glass in frames on a low plinth, brick above."""
+    def fn():
+        b = Bld(style, style + "rond" + kind + front.__name__ + right.__name__)
+        b.body()
+        front(b, "v")
+        right(b, "r")
+        m = b.m
+        radius = ROUND_RADIUS
+        cx, cy = O + S - radius, O + radius
+        for z in range(m.sz):
+            for x in range(O + S - radius, W):
+                for y in range(0, O + radius):
+                    dx, dy = x + 0.5 - cx, cy - (y + 0.5)
+                    if dx <= 0 or dy <= 0:
+                        continue
+                    d = math.hypot(dx, dy)
+                    if d > radius:
+                        m.set(x, y, z, 0)
+                    elif d > radius - 2:
+                        outer = d > radius - 1
+                        along = math.atan2(dy, dx) * radius   # voxels along the curve
+                        m.set(x, y, z, _round_wall(b, kind, outer, along, x, y, z))
+        return m
+    return fn
+
+
+def _round_wall(b, kind, outer, along, x, y, z):
+    """The colour of the curved wall at (x, y, z), `along` voxels along the curve."""
+    wall = b.st["wall"]
+    if kind == "verd":
+        if z >= HGT - 2:
+            return b.st["trim"]
+        strip = int(along / 3) % 2 == 1
+        if strip and 1 <= z < HGT - 3 and outer:
+            return pick(["glas_lood_geel", "glas_lood_geel", "glas1", "glas_lood_rood"], int(along), z, b.seed, 237)
+        return wall
+    # ground floor: shop glass in frames on a plinth
+    if z < 2:
+        return b.st["plinth"]
+    if z < 17:
+        if not outer:
+            return "glas2"
+        return b.st["frame"] if int(along) % 6 == 0 else "glas1"
+    return wall
+
+
+# the Bijenkorf's corner (tools/build/city/old_centre.gd): leaded-glass strips above, shop glass below
+register("gebouwen/jaren30/jaren30_verd_rond_hoek", round_corner("jaren30", y30_up_stairwell, y30_up_window, "verd"))
+register("gebouwen/jaren30/jaren30_bg_winkel_rond_hoek", round_corner("jaren30", f_gf_shop, f_gf_shop, "bg"))
+
 # 1960s: corners pair each piece with a blank side wall
 _p = {"bg_deur": y60_gf_door, "bg_raam": y60_gf_window, "bg_berging": y60_gf_storage, "verd_raam": y60_up_window,
       "verd_raam_klein": y60_up_window_small, "verd_galerij_deur": y60_gallery_door, "verd_galerij_raam": y60_gallery_window,

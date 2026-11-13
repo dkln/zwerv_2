@@ -57,10 +57,6 @@ extends Node3D
 const SwipeTransition = preload("res://scripts/ui/swipe_transition.gd")
 ## No longer welcome: someone of the place comes after the player first (offence, Eviction).
 const Eviction = preload("res://scripts/world/interiors/eviction.gd")
-## Walking in and out seen from close by, the door of the place moving (KINDS "door_kind":
-## "schuif" sliding, "klap" swinging, "draai" revolving; else DEFAULT_DOOR).
-const DoorPassage = preload("res://scripts/world/interiors/door_passage.gd")
-const DEFAULT_DOOR := "klap"
 const SoundVariation = preload("res://scripts/audio/sound_variation.gd")
 const SNACK_BAR_SCENE := "res://scenes/binnen/snackbar.tscn"
 const SNACK_BAR_FRONT := "_bg_snackbar"
@@ -69,17 +65,17 @@ const SNACK_BAR_FRONT := "_bg_snackbar"
 const SNACK_BAR_MUSIC := "handelaar_loop.ogg"
 const KINDS := {
 	"snackbar": {"scene": SNACK_BAR_SCENE, "music": SNACK_BAR_MUSIC, "front": SNACK_BAR_FRONT,
-		"at": Vector3(-600.0, 0.0, -600.0), "door_kind": "klap"},
+		"at": Vector3(-600.0, 0.0, -600.0)},
 	"centraal": {"scene": "res://scenes/binnen/centraal.tscn", "music": "", "name": "Den Haag Centraal",
 		"doors": "hallen/hal_glas_wand_deur_dak", "place": "centraal", "place_reach": 70.0,
-		"at": Vector3(-900.0, 0.0, 300.0), "zoom": 20.0, "location": "Centraal Station", "door_kind": "schuif"},
+		"at": Vector3(-900.0, 0.0, 300.0), "zoom": 20.0, "location": "Centraal Station"},
 	"derrek": {"scene": SUPERMARKET_SCENE, "music": "", "name": "DERREK", "front": "_bg_derrek_ingang",
-		"front_width": "_bg_derrek_", "at": Vector3(-600.0, 0.0, -1000.0), "zoom": 15.0, "door_kind": "schuif"},
+		"front_width": "_bg_derrek_", "at": Vector3(-600.0, 0.0, -1000.0), "zoom": 15.0},
 	"alfred_steyhn": {"scene": SUPERMARKET_SCENE, "music": "", "name": "ALFRED STEYHN", "front": "_bg_alfred_steyhn_ingang",
-		"front_width": "_bg_alfred_steyhn_", "at": Vector3(-600.0, 0.0, -1400.0), "zoom": 15.0, "door_kind": "schuif"},
+		"front_width": "_bg_alfred_steyhn_", "at": Vector3(-600.0, 0.0, -1400.0), "zoom": 15.0},
 	"stadhuis": {"scene": "res://scenes/binnen/stadhuis.tscn", "music": "", "name": "Stadhuis",
 		"doors": "modern_wit/modern_wit_bg_deur", "place": "stadhuis", "place_reach": 36.0,
-		"at": Vector3(-1500.0, 0.0, 900.0), "zoom": 16.0, "location": "Stadhuis", "door_kind": "draai"},
+		"at": Vector3(-1500.0, 0.0, 900.0), "zoom": 16.0, "location": "Stadhuis"},
 }
 const SUPERMARKET_SCENE := "res://scenes/binnen/supermarkt.tscn"
 ## The muzak of the supermarkets (tools/muziek/derive.py), soft in the background (GameHud
@@ -162,7 +158,6 @@ var _throw_out_data := {}
 var _ambience: Ambience             # the background sound of where the player is
 var _last_swipe: Node                # the swipe of the last way out (_go_out), to wait for its end
 var _eviction: Eviction              # someone of the place coming to put the player out (offence)
-var _passing_door := false           # walking in or out is being shown (DoorPassage)
 ## For the checks: the warnings given (offence), the last one {"offence", "line", "by"}.
 var warnings_given := 0
 var last_warning := {}
@@ -323,7 +318,7 @@ func interior_of(kind: String) -> Node3D:
 ## Goes in through `bar` (a way in): the swipe, and under it into the dressed interior, at
 ## the door that matches the way in.
 func enter(bar: Dictionary) -> void:
-	if is_inside() or _player == null or _throwing or _passing_door:
+	if is_inside() or _player == null or _throwing:
 		return
 	var kind_barred := String(bar.get("kind", "snackbar"))
 	if Time.get_ticks_msec() < int(_barred_until.get(kind_barred, 0)):
@@ -335,23 +330,9 @@ func enter(bar: Dictionary) -> void:
 		return
 	_offences = {}
 	_play_sound(DOOR_IN_SOUND)
-	# first seen from close behind: walking to the door and through it as it opens
 	var kind: String = bar.get("kind", "snackbar")
-	_passing_door = true
-	# held at its last picture (through the door), so the swipe's still is that and not the
-	# street the game's camera would show again
-	var passage: Node3D = await DoorPassage.play(get_parent(), _player, bar.door, bar.outward,
-			String(KINDS[kind].get("door_kind", DEFAULT_DOOR)), true, true)
-	if not is_inside_tree():
-		_passing_door = false
-		if passage and is_instance_valid(passage):
-			passage.release()
-		return
 	var swipe := SwipeTransition.swipe(get_tree())
 	await swipe.covered
-	if passage and is_instance_valid(passage):
-		passage.release()
-	_passing_door = false
 	_set_music(_music_of(bar))
 	_ambience.set_place(String(AMBIENCE_OF.get(kind, "winkel")))
 	_set_location(String(KINDS[kind].get("location", "")))
@@ -378,7 +359,7 @@ func enter(bar: Dictionary) -> void:
 ## Goes back out through door `door_index` of the interior: the swipe, and under it onto the
 ## pavement before the matching way in (or the one you came in through), facing the street.
 func leave(door_index := 0) -> void:
-	if not is_inside() or _throwing or _passing_door:
+	if not is_inside() or _throwing:
 		return
 	# not out with what is not paid for (a supermarket): that is an offence (uitzetten.json),
 	# and the way out stays shut until someone of the place has come for you
@@ -393,14 +374,7 @@ func leave(door_index := 0) -> void:
 	# out of the door before who came for you was there: away, but not welcome back yet
 	if is_evicting():
 		_barred_until[String(_inside.kind)] = Time.get_ticks_msec() + int(float(_throw_outs().get("terug_na", 90)) * 1000.0)
-	var bar := await _go_out(door_index)
-	# out of the door seen from close by, onto the pavement, the door shutting behind
-	_passing_door = true
-	await DoorPassage.play(get_parent(), _player, bar.door, bar.outward,
-		String(KINDS[String(bar.kind)].get("door_kind", DEFAULT_DOOR)), false)
-	_passing_door = false
-	if is_inside_tree():
-		_put_player(bar.door + (bar.outward as Vector3) * (DoorPassage.WALK_FROM - DoorPassage.FACADE_BACK), bar.outward)
+	await _go_out(door_index)
 
 
 ## The ways out of the interior of `kind` where its doors are now (a supermarket moves its

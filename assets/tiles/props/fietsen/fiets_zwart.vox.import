@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://cy4qsdyvg7w0g"
+path="res://.godot/imported/fiets_zwart.vox-14ffd7bdae709b5d4c56c5f9a28a716e.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/props/fietsen/fiets_zwart.vox"
+dest_files=["res://.godot/imported/fiets_zwart.vox-14ffd7bdae709b5d4c56c5f9a28a716e.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(0, 0, 0)

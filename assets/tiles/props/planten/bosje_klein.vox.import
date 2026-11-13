@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://dw3b8k8h3fgws"
+path="res://.godot/imported/bosje_klein.vox-b3d846f6e91fc7d579efe50eb8a5f479.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/props/planten/bosje_klein.vox"
+dest_files=["res://.godot/imported/bosje_klein.vox-b3d846f6e91fc7d579efe50eb8a5f479.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(0, 0, 0)

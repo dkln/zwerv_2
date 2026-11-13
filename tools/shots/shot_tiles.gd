@@ -1,5 +1,5 @@
 extends SceneTree
-## Renders an overview grid of all tiles (.gox, recursively) in a folder with a simple
+## Renders an overview grid of all tiles (.vox or .gox, recursively) in a folder with a simple
 ## sky, sun and SSAO, and saves a screenshot.
 ## usage: Godot --script tools/shots/shot_tiles.gd -- <folder> <output.png> [columns] [spacing]
 ## spacing = distance between tile centres in metres (default 4.5; tiles are 4 m).

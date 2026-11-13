@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://5itb5ey283wj"
+path="res://.godot/imported/muur_alfred_steyhn.vox-3fc6d5651ffdbf7d5d188bba5218327d.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/binnen/supermarkt/muur_alfred_steyhn.vox"
+dest_files=["res://.godot/imported/muur_alfred_steyhn.vox-3fc6d5651ffdbf7d5d188bba5218327d.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(0, 0, 0)

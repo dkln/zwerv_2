@@ -122,7 +122,9 @@ func _make_scene(node_name: String) -> Node3D:
 	e.ssao_power = 1.6
 	e.ssao_detail = 0.8
 	e.ssao_light_affect = 0.15
-	e.ssil_enabled = false
+	# light bounced off bright faces onto their neighbours (a red facade tints the pavement
+	# before it a little): the faces of the voxels lit gradually, not each one evenly
+	e.ssil_enabled = true
 	e.ssil_radius = 6.0
 	e.ssil_intensity = 0.9
 	# soft glow only round the lamps (emit material, energy 6): a lower threshold and more glow
@@ -149,7 +151,7 @@ func _make_scene(node_name: String) -> Node3D:
 	sun.shadow_opacity = 0.9
 	sun.shadow_bias = 0.05
 	sun.shadow_normal_bias = 1.5
-	sun.shadow_blur = 0.1   # crisp shadow edges
+	sun.shadow_blur = 0.0   # hard shadows (project: soft_shadow_filter_quality 0): straight, filled edges
 	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
 	sun.directional_shadow_max_distance = 500.0
 	root.add_child(sun)

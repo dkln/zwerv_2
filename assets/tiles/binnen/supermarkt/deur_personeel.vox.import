@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://dq1i3qn438w6"
+path="res://.godot/imported/deur_personeel.vox-79fee3f8847c807ac3aafa6fd2480123.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/binnen/supermarkt/deur_personeel.vox"
+dest_files=["res://.godot/imported/deur_personeel.vox-79fee3f8847c807ac3aafa6fd2480123.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(0, 0, 0)

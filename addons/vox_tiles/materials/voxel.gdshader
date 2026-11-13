@@ -85,6 +85,19 @@ varying vec3 wpos;
 varying vec3 vpos;
 varying vec3 wnorm;
 
+// Height shading of walls: the sky lights a wall less low down (the street, the buildings
+// across take its light) than high up, so a wall darkens gradually towards the street:
+// HEIGHT_SHADE_LOW at street level, full light from HEIGHT_SHADE_TOP metres up. Only on
+// faces that stand up (a floor or a roof is lit evenly).
+const float HEIGHT_SHADE_LOW = 0.84;
+const float HEIGHT_SHADE_TOP = 10.0;
+
+float height_shade(vec3 p, vec3 n) {
+	float upright = 1.0 - abs(n.y);
+	float lit = mix(HEIGHT_SHADE_LOW, 1.0, smoothstep(0.0, HEIGHT_SHADE_TOP, p.y));
+	return mix(1.0, lit, upright);
+}
+
 float hash(vec2 p) {
 	return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
 }
@@ -590,6 +603,8 @@ void fragment() {
 	}
 	if (light) {
 		c *= 1.0 - 0.6 * tile_border(vpos, wnorm);
+	} else {
+		c *= height_shade(vpos, wnorm);
 	}
 	ALBEDO = c;
 	ROUGHNESS = light ? 1.0 : clamp(rough, 0.0, 1.0);   // editor: matte, no reflections

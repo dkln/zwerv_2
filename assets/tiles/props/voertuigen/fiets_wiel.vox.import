@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://domahllvo66gr"
+path="res://.godot/imported/fiets_wiel.vox-c212326eff66460426639b003e8a67a3.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/props/voertuigen/fiets_wiel.vox"
+dest_files=["res://.godot/imported/fiets_wiel.vox-c212326eff66460426639b003e8a67a3.mesh"]
+
+[params]
+
+voxel_size=0.0625
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(0, 0, 0)

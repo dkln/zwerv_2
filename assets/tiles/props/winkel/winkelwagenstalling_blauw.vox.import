@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://ba8npf3fq1d7k"
+path="res://.godot/imported/winkelwagenstalling_blauw.vox-b7f85ce512869f27d7dbf6bf1d661ed0.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/props/winkel/winkelwagenstalling_blauw.vox"
+dest_files=["res://.godot/imported/winkelwagenstalling_blauw.vox-b7f85ce512869f27d7dbf6bf1d661ed0.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(0, 0, 0)

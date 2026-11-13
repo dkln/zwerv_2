@@ -81,7 +81,7 @@ func test_ground_floor_by_the_entrance_with_reception(test) -> void:
 	if hall == null:
 		return
 	test.check(hall.current_floor == 0 and hall.floor_node(0).visible and not hall.floor_node(1).visible, "op de begane grond, alleen die te zien")
-	test.check(player.global_position.distance_to(hall.to_global(Vector3(0.0, 0.0, -9.1))) < 1.5, "binnen bij de ingang")
+	test.check(player.global_position.distance_to(hall.to_global(Vector3(0.0, 0.0, -13.1))) < 1.5, "binnen bij de ingang")
 	var receptionists: Array = hall.people().filter(func(person: Node) -> bool: return person.role == "receptioniste")
 	test.check(receptionists.size() == 2, "twee receptionistes achter de balie (%d)" % receptionists.size())
 	test.check(hall.people().any(func(person: Node) -> bool: return person.role == "beveiliger"), "een beveiliger bij de deur")

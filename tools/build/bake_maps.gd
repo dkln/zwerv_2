@@ -81,12 +81,20 @@ func _maps_with_detail_level() -> Array[String]:
 	return maps
 
 
-## Removes the cache files of one map (all its layers and levels).
+## Removes the cache of one map (all its layers and levels): its files, and the folders of
+## its streamed finest levels (RegionStream: one scene per region; left there, they would be
+## used again as they are).
 func _empty_cache_of(map_path: String) -> void:
 	var prefix := map_path.get_file().get_basename() + "_"
 	for file_name in DirAccess.get_files_at(LevelOfDetail.CACHE_DIR):
 		if file_name.begins_with(prefix):
 			DirAccess.remove_absolute(LevelOfDetail.CACHE_DIR.path_join(file_name))
+	for folder_name in DirAccess.get_directories_at(LevelOfDetail.CACHE_DIR):
+		if folder_name.begins_with(prefix):
+			var folder := LevelOfDetail.CACHE_DIR.path_join(folder_name)
+			for file_name in DirAccess.get_files_at(folder):
+				DirAccess.remove_absolute(folder.path_join(file_name))
+			DirAccess.remove_absolute(folder)
 
 
 ## Removes the cache files of maps that are no longer in SCENES_DIR, and the old cache folder.

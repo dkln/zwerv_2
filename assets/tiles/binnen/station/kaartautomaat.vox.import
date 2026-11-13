@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://c7383jwbvgdyr"
+path="res://.godot/imported/kaartautomaat.vox-3ad6d27dcb6dbdbbf6b7f8d956b5b60d.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/binnen/station/kaartautomaat.vox"
+dest_files=["res://.godot/imported/kaartautomaat.vox-3ad6d27dcb6dbdbbf6b7f8d956b5b60d.mesh"]
+
+[params]
+
+voxel_size=0.0625
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(0, 0, 0)

@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://cjo045obrh6oh"
+path="res://.godot/imported/luxe_appartement_dak_groen_rand.vox-1798696ae4df91c7f8195b6f037fe91b.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/gebouwen/luxe_appartement/luxe_appartement_dak_groen_rand.vox"
+dest_files=["res://.godot/imported/luxe_appartement_dak_groen_rand.vox-1798696ae4df91c7f8195b6f037fe91b.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(4, 3, 4)

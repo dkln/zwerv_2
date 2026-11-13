@@ -25,6 +25,8 @@ const LOAD_DISTANCE := 80.0
 const DROP_DISTANCE := 130.0
 ## Regions loading at once (headless one: the dummy rendering server is not thread-safe).
 const LOADS_AT_ONCE := 3
+## Regions put into the scene per update (a frame) once loaded; the others wait their turn.
+const PLACED_PER_UPDATE := 1
 const INDEX_FILE := "index.json"
 const NOT_LOADED := 0
 const LOADING := 1
@@ -134,6 +136,10 @@ func update(anchors: Array) -> void:
 		local_anchors.append(Vector2(local.x, local.z))
 	var most := 1 if DisplayServer.get_name() == "headless" else LOADS_AT_ONCE
 	var changed := false
+	# loaded in the thread, but put into the scene (instantiate, add_child: the main thread,
+	# and the meshes go to the video card) at most PLACED_PER_UPDATE a frame, so several
+	# regions done at once do not make one frame stutter; the rest waits a frame, loaded
+	var placed := 0
 	for region in _regions:
 		var distance := INF
 		for anchor in local_anchors:
@@ -148,6 +154,9 @@ func update(anchors: Array) -> void:
 				var status := ResourceLoader.load_threaded_get_status(String(region.path))
 				if status == ResourceLoader.THREAD_LOAD_IN_PROGRESS:
 					continue
+				if status == ResourceLoader.THREAD_LOAD_LOADED and placed >= PLACED_PER_UPDATE:
+					continue   # loaded: put in on a next frame
+				placed += 1
 				_loading -= 1
 				var packed := ResourceLoader.load_threaded_get(String(region.path)) as PackedScene if status == ResourceLoader.THREAD_LOAD_LOADED else null
 				if packed == null:

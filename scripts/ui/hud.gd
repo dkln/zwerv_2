@@ -37,7 +37,8 @@ extends CanvasLayer
 ##   (a snack bar, the shops of Den Haag Centraal), their goods to buy;
 ## - the reward screen (show_reward, scripts/ui/reward_screen.gd): what a task, a mission or
 ##   someone in the street gave you, the item big and turning, with its own jingle; it
-##   waits until nothing else holds the game (a conversation, the shop, a menu);
+##   comes at once, over a conversation or the shop too (they go on after it), only a menu,
+##   a machine or the loading screen it waits for;
 ## - a CRT look over the whole picture: the world bulges like a tube, its edges bending in
 ##   to black rounded corners (`crt_curvature`); the HUD bends with it, but less
 ##   (`crt_ui_curvature`), so its corners stay readable.
@@ -1485,10 +1486,18 @@ func rewards_waiting() -> Array[Dictionary]:
 	return _rewards_waiting
 
 
+## A reward comes at once, also over a conversation or the shop (which wait under it and go
+## on after); not over the pause menu, the game menu, a machine's close-up, the loading
+## screen or the death screen (it waits for those).
 func _open_waiting_reward() -> void:
-	if _rewards_waiting.is_empty() or is_showing_reward() or not is_inside_tree() or get_tree().paused:
+	if _rewards_waiting.is_empty() or is_showing_reward() or not is_inside_tree():
 		return
-	if _death_layer and _death_layer.visible:
+	if (_death_layer and _death_layer.visible) or (_pause_layer and _pause_layer.visible):
+		return
+	var game_menu := get_node_or_null("Spelmenu")
+	if game_menu and game_menu.has_method("is_open") and game_menu.call("is_open"):
+		return
+	if get_tree().root.has_node("Automaatscherm") or LoadingScreenScript.showing(get_tree()):
 		return
 	var reward: Dictionary = _rewards_waiting.pop_front()
 	_reward_screen.open(reward, reward.get("done", Callable()))

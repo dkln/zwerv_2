@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://d05qswkreha0h"
+path="res://.godot/imported/winkelwagens_rij_blauw.vox-ed4f314aa5f9ceabe03fb6c2bcf3d929.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/props/winkel/winkelwagens_rij_blauw.vox"
+dest_files=["res://.godot/imported/winkelwagens_rij_blauw.vox-ed4f314aa5f9ceabe03fb6c2bcf3d929.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(0, 0, 0)

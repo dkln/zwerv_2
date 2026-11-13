@@ -18,6 +18,13 @@ const BankLogo = preload("res://scripts/ui/widgets/bank_logo.gd")
 const SCRIPT_PATH := "res://scripts/ui/machines/cash_machine_screen.gd"
 const AMOUNTS := [5.0, 10.0, 20.0, 50.0]
 const OPTION_COUNT := 4
+## The card in the scene (_card_motion): its size against the model of a found card
+## (MachineModels.bank_card_mesh, 30 x 20 cm: so about 9 x 6 cm), and the seconds it takes to
+## the slot, into it, and the time it sticks out before it is taken back.
+const CARD_SCALE := 0.3
+const CARD_TO_SLOT := 0.3
+const CARD_IN := 0.35
+const CARD_TAKEN_AFTER := 0.6
 
 ## "start" (no card in), "pin", "menu", "bezig" (counting out), "klaar".
 var state := "start"
@@ -70,7 +77,10 @@ func show_display(title: String, lines: Array, colour := Color(0, 0, 0, 0)) -> v
 ## x 8): its screen, keypad and the slot the money comes out of.
 func machine_parts() -> Dictionary:
 	return {"mesh": MachineModels.cash_machine_mesh(), "screen": Rect2(-0.25, 1.0, 0.5, 0.3125), "front": 0.25,
-		"screen_sunk": 0.125, "keys": Vector3(-0.09, 0.66, 0.25), "slot": Vector3(0.0, 0.28, 0.25)}
+		"screen_sunk": 0.125, "keys": Vector3(-0.09, 0.66, 0.25), "slot": Vector3(0.0, 0.28, 0.25),
+		"card": Vector3(0.25, 0.78, 0.25),
+		# the close-up takes in the screen and, under it, the card reader (you see your card go in)
+		"focus": Rect2(-0.3, 0.72, 0.6, 0.62), "focus_share": 0.75}
 
 
 ## On the touch screen: the keypad (while the PIN is asked), the choices and STOP.
@@ -139,7 +149,7 @@ func cancel() -> void:
 		show_tray("PINPAS %d" % int(card.nummer), ["Je pas komt terug uit de gleuf."])
 		card = {}
 		_busy = true
-		await pause_for(0.9)
+		await _card_motion(true)
 		_busy = false
 	close()
 
@@ -167,12 +177,14 @@ func _show_start() -> void:
 func insert_card(chosen: Dictionary) -> void:
 	card = chosen
 	entered = ""
-	sound("kaart")
 	clear_tray()
 	_set_options([])
 	_busy = true
+	# the card slides into the reader, then it is read
+	await _card_motion(false)
+	sound("kaart")
 	show_display("EEN MOMENT...", ["Uw pas wordt gelezen."])
-	await pause_for(0.8)
+	await pause_for(0.6)
 	_busy = false
 	_show_pin()
 
@@ -318,3 +330,36 @@ static func _digit_of(keycode: Key) -> String:
 	if keycode >= KEY_KP_0 and keycode <= KEY_KP_9:
 		return str(keycode - KEY_KP_0)
 	return ""
+
+
+## The card in the scene, lying flat with its chip first: into the slit of the reader
+## (machine_parts "card") and gone; `back`: out of it again, sticking out a moment, then taken.
+## Returns when that is over (at once without `animate`).
+func _card_motion(back: bool) -> void:
+	var slit: Variant = _parts.get("card")
+	if not animate or _machine == null or not slit is Vector3:
+		return
+	var piece := MeshInstance3D.new()
+	piece.name = "Pinpas"
+	piece.mesh = MachineModels.bank_card_mesh()
+	piece.scale = Vector3.ONE * CARD_SCALE
+	# flat, its far edge (the chip end) towards the machine
+	piece.rotation_degrees.x = -90.0
+	var length := 0.2 * CARD_SCALE
+	var at_slit: Vector3 = slit
+	var before := at_slit + Vector3(0.0, 0.0, length + 0.22)
+	var at_mouth := at_slit + Vector3(0.0, 0.0, length)
+	var inside := at_slit + Vector3(0.0, 0.0, -0.01)
+	(_machine.get_parent() as Node3D).add_child(piece)
+	var move := piece.create_tween().set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	if back:
+		piece.position = inside
+		move.tween_property(piece, "position", at_mouth, CARD_IN).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		move.tween_interval(CARD_TAKEN_AFTER)
+		move.tween_property(piece, "position", before, CARD_TO_SLOT).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	else:
+		piece.position = before
+		move.tween_property(piece, "position", at_mouth, CARD_TO_SLOT).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		move.tween_property(piece, "position", inside, CARD_IN).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	move.tween_callback(piece.queue_free)
+	await move.finished

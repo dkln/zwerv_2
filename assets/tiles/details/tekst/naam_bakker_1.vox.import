@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://dxn7jrb7na1pi"
+path="res://.godot/imported/naam_bakker_1.vox-b10e5282ba69b9bdf4b3ffdfd2144bf1.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/details/tekst/naam_bakker_1.vox"
+dest_files=["res://.godot/imported/naam_bakker_1.vox-b10e5282ba69b9bdf4b3ffdfd2144bf1.mesh"]
+
+[params]
+
+voxel_size=0.0815
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(0, 0, 0)

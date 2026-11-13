@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://bm2tef0xag2fc"
+path="res://.godot/imported/jaren30_verd_trappenhuis.vox-fc01c8d642a441607bee7c2a07c3a957.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/gebouwen/jaren30/jaren30_verd_trappenhuis.vox"
+dest_files=["res://.godot/imported/jaren30_verd_trappenhuis.vox-fc01c8d642a441607bee7c2a07c3a957.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(4, 3, 4)

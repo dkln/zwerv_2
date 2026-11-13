@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://b7x7v01qq2a7"
+path="res://.godot/imported/schap_droog_derrek.vox-832e408be1fb7b72687f0903761fd574.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/binnen/supermarkt/schap_droog_derrek.vox"
+dest_files=["res://.godot/imported/schap_droog_derrek.vox-832e408be1fb7b72687f0903761fd574.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(0, 0, 0)

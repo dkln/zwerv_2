@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://dcvkisfcegdv3"
+path="res://.godot/imported/muur_laag_geel.vox-3c1d9f42a1c8a01d5a5c05aae7bbc085.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/binnen/snackbar/muur_laag_geel.vox"
+dest_files=["res://.godot/imported/muur_laag_geel.vox-3c1d9f42a1c8a01d5a5c05aae7bbc085.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(0, 0, 0)

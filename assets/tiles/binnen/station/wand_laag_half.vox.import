@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://btff6xs44alrr"
+path="res://.godot/imported/wand_laag_half.vox-ee4ce053a132119f939e704a85c9fb94.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/binnen/station/wand_laag_half.vox"
+dest_files=["res://.godot/imported/wand_laag_half.vox-ee4ce053a132119f939e704a85c9fb94.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(0, 0, 0)

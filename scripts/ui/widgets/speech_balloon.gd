@@ -55,6 +55,9 @@ var _camera: Camera3D
 func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	visible = false
+	# also while the game stands still (a conversation: someone of the place warns you while
+	# you talk): else its pop, its place over the speaker and its typing stop halfway
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	_panel = PanelContainer.new()
 	_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_panel)

@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://r75p1xr48ew7"
+path="res://.godot/imported/modern_donker_bg_garage.vox-3f55894b7c8d11fe753ef186816003cb.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/gebouwen/modern_donker/modern_donker_bg_garage.vox"
+dest_files=["res://.godot/imported/modern_donker_bg_garage.vox-3f55894b7c8d11fe753ef186816003cb.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(4, 3, 4)

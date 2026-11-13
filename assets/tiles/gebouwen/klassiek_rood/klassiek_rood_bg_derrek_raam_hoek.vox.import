@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://dkxq5qsbnxhv2"
+path="res://.godot/imported/klassiek_rood_bg_derrek_raam_hoek.vox-2f0b3eb221429f48e7167341a74f611b.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/gebouwen/klassiek_rood/klassiek_rood_bg_derrek_raam_hoek.vox"
+dest_files=["res://.godot/imported/klassiek_rood_bg_derrek_raam_hoek.vox-2f0b3eb221429f48e7167341a74f611b.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(4, 3, 4)

@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://bxq487wmkwbp3"
+path="res://.godot/imported/snelweg_middenberm_beton_hoek_links.vox-2a971d5260e067ea1709996f1f66516e.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/grond/snelweg/snelweg_middenberm_beton_hoek_links.vox"
+dest_files=["res://.godot/imported/snelweg_middenberm_beton_hoek_links.vox-2a971d5260e067ea1709996f1f66516e.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(4, 1.5, 4)

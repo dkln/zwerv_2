@@ -2,10 +2,13 @@
 ZWERVR GAME
 ===========
 
-Een tile-gebaseerde wereldbouwer in Godot 4.7 met voxel-tiles uit Goxel.
+Een tile-gebaseerde wereldbouwer in Godot 4.7 met voxel-tiles uit MagicaVoxel.
 Je bouwt kaarten met vier GridMap-lagen (grond, gebouwen, details, props). Elke
-tile is een los `.gox` bestand dat je in Goxel (open source) kunt openen en aanpassen.
-Na opslaan importeert Godot hem automatisch opnieuw.
+tile is een los `.vox` bestand dat je in MagicaVoxel kunt openen en aanpassen.
+Na opslaan importeert Godot hem automatisch opnieuw. Een Goxel-bestand (`.gox`) wordt
+ook nog ingelezen (dezelfde importer); `tools/voxgen/convert_gox.py` zet zulke tiles om
+naar `.vox` (controle: `tools/check/gox_vox.gd`). Waar hieronder nog `.gox` staat, geldt
+hetzelfde voor `.vox`.
 
 Er zijn ongeveer 2000 tiles. De kaart van het spel is `scenes/stad.tscn`. Niet elke tile
 ligt daarin: `tools/check/coverage.gd` telt welke wel.
@@ -157,9 +160,8 @@ Verhaal, missies en kleingeld
 - Waar je [E] op doet (`scripts/world/things/interactable.gd`, groep `deuren`): elk ding heeft een `kind`:
   `deur` (ingang/uitgang), `plek` (karretje, schap, kassa, lift), `automaat` (pin, statiegeld, OV),
   `poortje` (OV-poortje, paal) en `oppakken` (blikje). Mensen spreek je aan (groep `aanspreekbaar`).
-- Naar binnen en naar buiten (`scripts/world/interiors/door_passage.gd`): eerst een korte scène van dichtbij
-  met een stand-in van de speler en een eigen camera; de deur van de plek beweegt (`door_kind` in
-  `Interiors.KINDS`: `schuif` supermarkt en station, `klap` snackbar, `draai` stadhuis).
+- Naar binnen en naar buiten (`Interiors.enter`, `leave`): meteen de swipe (`scripts/ui/swipe_transition.gd`),
+  zonder loopscène bij de deur; onder de swipe sta je binnen bij de deur, of buiten op de stoep ervoor.
 - Snackbars zijn elk een andere kamer (`scripts/world/interiors/snack_bar_layout.gd`, uit de seed van de
   zaak: 8-16 m breed, 8 of 12 m diep, deur, toonbank en tafels op een eigen plek); de ene scène
   `scenes/binnen/snackbar.tscn` bouwt zich bij binnenkomst op (`Interior.dress`, `_lay_out`).

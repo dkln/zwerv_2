@@ -57,6 +57,8 @@ const CAMERA_FOV := 42.0
 const FOCUS_SHARE := 0.6
 const FOCUS_WIDTH_SHARE := 0.62
 const FOCUS_CENTRE_X := 790.0
+## How far into the slide to the close-up you (the stand-in) are no longer shown.
+const STAND_IN_GONE_AT := 0.45
 ## The picture on the screen: its width (px; the height follows the screen), the width of
 ## the column of buttons beside the text on a touch screen, the size of a button's text and
 ## its height.
@@ -69,6 +71,15 @@ const BACKDROPS := {
 	"straat": {"wall": Color("#8A4A3A"), "joint": Color("#B8A898"), "ground": Color("#8C8A92"), "ground_joint": Color("#6E6C76"), "brick": true},
 	"supermarkt": {"wall": Color("#E8E4DA"), "joint": Color("#C8C2B4"), "ground": Color("#D8D2C4"), "ground_joint": Color("#B8B0A0"), "brick": false},
 	"station": {"wall": Color("#C8C4BC"), "joint": Color("#9A968E"), "ground": Color("#6A6A70"), "ground_joint": Color("#56565C"), "brick": false},
+}
+## The tiles of the town each backdrop is made of (the library, the item): the wall behind
+## the machine and the ground before it; "derrek" becomes "alfred_steyhn" in an ALFRED
+## STEYHN. Without the library (or the item): the plain boxes of BACKDROPS.
+const LIBRARY_FOLDER := "res://assets/libraries/"
+const BACKDROP_TILES := {
+	"straat": {"wall": ["gebouwen", "klassiek_rood/klassiek_rood_blok_dicht"], "ground": ["grond", "stoep/stoep_vol"]},
+	"supermarkt": {"wall": ["binnen", "supermarkt/muur_derrek"], "ground": ["binnen", "supermarkt/vloer_derrek"]},
+	"station": {"wall": ["binnen", "station/wand"], "ground": ["binnen", "station/vloer"]},
 }
 ## How long the light of a key shines, and what slides out of the slot (seconds, metres).
 const PRESS_SECONDS := 0.18
@@ -645,9 +656,11 @@ func _build_stage() -> void:
 ## The wall the machine stands against and the ground before it (BACKDROPS): boxes in the
 ## colour of the place, the joints of the bricks or panels and of the tiles laid over them.
 func _build_backdrop() -> void:
-	var look: Dictionary = BACKDROPS.get(backdrop, BACKDROPS.straat)
 	var front := float(_parts.get("front", 0.25))
 	var wall_z := -front * 2.0 - 0.02
+	if _build_tile_backdrop(wall_z):
+		return
+	var look: Dictionary = BACKDROPS.get(backdrop, BACKDROPS.straat)
 	_stage.add_child(_box_of(Vector3(8.0, 4.0, 0.2), Vector3(0.0, 2.0, wall_z - 0.1), look.wall))
 	_stage.add_child(_box_of(Vector3(8.0, 0.1, 6.0), Vector3(0.0, -0.05, wall_z + 3.0), look.ground))
 	var brick := bool(look.brick)
@@ -665,6 +678,52 @@ func _build_backdrop() -> void:
 		var along := -3.0 + line * 0.5
 		_stage.add_child(_box_of(Vector3(8.0, 0.004, 0.012), Vector3(0.0, 0.002, wall_z + along + 3.0), look.ground_joint))
 		_stage.add_child(_box_of(Vector3(0.012, 0.004, 6.0), Vector3(along, 0.002, wall_z + 3.0), look.ground_joint))
+
+
+## The backdrop of the town's own tiles (BACKDROP_TILES): the wall tile side by side and
+## stacked behind the machine, its face at `wall_z`, the ground tiles before it with their
+## top at y = 0. False when a tile is missing (then the boxes).
+func _build_tile_backdrop(wall_z: float) -> bool:
+	var tiles: Dictionary = BACKDROP_TILES.get(backdrop, BACKDROP_TILES.straat)
+	var wall := _library_tile(tiles.wall)
+	var ground := _library_tile(tiles.ground)
+	if wall.is_empty() or ground.is_empty():
+		return false
+	var wall_box: AABB = (wall[1] as Transform3D) * (wall[0] as Mesh).get_aabb()
+	var rows := ceili(4.5 / maxf(wall_box.size.y, 0.5))
+	for column in range(-2, 3):
+		for row in rows:
+			_lay_tile(wall, Vector3(column * wall_box.size.x - wall_box.get_center().x, row * wall_box.size.y - wall_box.position.y,
+				wall_z - wall_box.end.z))
+	var ground_box: AABB = (ground[1] as Transform3D) * (ground[0] as Mesh).get_aabb()
+	for column in range(-2, 3):
+		for row in 3:
+			_lay_tile(ground, Vector3(column * ground_box.size.x - ground_box.get_center().x, -ground_box.end.y,
+				wall_z + row * ground_box.size.z - ground_box.position.z))
+	return true
+
+
+## [mesh, its transform] of a tile (["binnen", "station/wand"]) from its library, or [].
+func _library_tile(tile: Array) -> Array:
+	var path := LIBRARY_FOLDER + String(tile[0]) + ".res"
+	if not ResourceLoader.exists(path):
+		return []
+	var library := load(path) as MeshLibrary
+	var item_name := String(tile[1])
+	if place_name.to_upper().contains("ALFRED"):
+		item_name = item_name.replace("derrek", "alfred_steyhn")
+	var item := library.find_item_by_name(item_name) if library else -1
+	if item < 0 or library.get_item_mesh(item) == null:
+		return []
+	return [library.get_item_mesh(item), library.get_item_mesh_transform(item)]
+
+
+func _lay_tile(tile: Array, at: Vector3) -> void:
+	var instance := MeshInstance3D.new()
+	instance.mesh = tile[0]
+	var placed: Transform3D = tile[1]
+	instance.transform = Transform3D(placed.basis, placed.origin + at)
+	_stage.add_child(instance)
 
 
 static func _box_of(box_size: Vector3, at: Vector3, colour: Color) -> MeshInstance3D:
@@ -704,11 +763,16 @@ func _slide_camera_in() -> void:
 	var close_look: Vector3 = close[1]
 	if not animate:
 		_camera.look_at_from_position(close_at, close_look, Vector3.UP)
+		if _stand_in:
+			_stand_in.visible = false
 		return
 	_camera.look_at_from_position(CAMERA_FROM, LOOK_AT, Vector3.UP)
 	var slide := _camera.create_tween()
 	slide.tween_method(func(share: float) -> void:
-		_camera.look_at_from_position(CAMERA_FROM.lerp(close_at, share), LOOK_AT.lerp(close_look, share), Vector3.UP),
+		_camera.look_at_from_position(CAMERA_FROM.lerp(close_at, share), LOOK_AT.lerp(close_look, share), Vector3.UP)
+		# over your shoulder at first; close in, the camera is where you stand: you out of the way
+		if _stand_in:
+			_stand_in.visible = share < STAND_IN_GONE_AT,
 		0.0, 1.0, CAMERA_SLIDE * 1.4).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 
 

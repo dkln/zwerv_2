@@ -48,7 +48,7 @@ func test_going_in_at_the_door_swipes_inside(test) -> void:
 	await stand_at(bar.door)
 	test.check(prompts() == [["E", "Naar binnen"]], "bij de deur: [E] Naar binnen")
 	use_prompt()
-	# first the walk through the door from close by (DoorPassage), then the swipe
+	# straight into the swipe (no walk through the door shown first)
 	var swiped := await wait_until(func() -> bool: return tree.root.has_node("Swipe"), 6.0)
 	test.check(swiped, "met een swipe")
 	await wait_until(func() -> bool: return interiors.is_inside(), 6.0)

@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://rm2qsdpj2l67"
+path="res://.godot/imported/fietsstrook_hoek_links_klinker.vox-fa775cb969b63441e90fb86ddd891bc7.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/grond/weg/fietsstrook_hoek_links_klinker.vox"
+dest_files=["res://.godot/imported/fietsstrook_hoek_links_klinker.vox-fa775cb969b63441e90fb86ddd891bc7.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(4, 1.5, 4)

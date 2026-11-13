@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate all tiles as Goxel .gox files (plus .tile.json metadata) into assets/tiles/.
+"""Generate all tiles as MagicaVoxel .vox files (plus .tile.json metadata) into assets/tiles/.
 
 Usage:
   python3 tools/voxgen/generate.py             # only create missing tiles
@@ -10,13 +10,13 @@ Usage:
   python3 tools/voxgen/generate.py --dedup     # only replace identical tiles by aliases (dedupe.py)
   python3 tools/voxgen/generate.py --palettes  # Goxel palette, colour chart and handbook
 
-By default existing tiles (.gox, or a .vox made by hand) are NOT overwritten, so
-manual changes made in Goxel are kept; --force replaces a .vox by the generated .gox.
+By default existing tiles (.vox, or a .gox made by hand in Goxel) are NOT overwritten, so
+manual changes are kept; --force replaces them by the generated .vox.
 Alias tiles (dedupe.py) count as existing. After creating tiles, identical tiles are
 replaced by aliases. Every run also writes the colour -> material table
 (assets/tiles/materialen.json, vox.write_material_table). Importing the tiles package
 (tiles/) fills common.TILES via the @tile/register calls of its modules; each tile
-path maps to <OUT>/<path>.gox.
+path maps to <OUT>/<path>.vox.
 """
 import argparse
 import os
@@ -37,7 +37,7 @@ OUT = os.path.normpath(os.path.join(HERE, "..", "..", "assets", "tiles"))
 
 def main():
     """Command line entry point; see the module docstring for the options."""
-    ap = argparse.ArgumentParser(description="Generate the tiles into <OUT>/<path>.gox (Goxel).")
+    ap = argparse.ArgumentParser(description="Generate the tiles into <OUT>/<path>.vox (MagicaVoxel).")
     ap.add_argument("--force", action="store_true", help="overwrite existing tiles")
     ap.add_argument("--only", default=None, metavar="TEXT", help="only tiles whose path contains TEXT")
     ap.add_argument("--list", action="store_true", help="list the tile paths and exit")
@@ -89,7 +89,7 @@ def main():
     made = skipped = 0
     t0 = time.time()
     for tile_number, n in enumerate(names, 1):
-        path = os.path.join(OUT, n + ".gox")
+        path = os.path.join(OUT, n + ".vox")
         exists = any(os.path.exists(os.path.join(OUT, n + e)) for e in TILE_EXTENSIONS)
         if (exists or is_alias(OUT, n)) and not a.force:
             skipped += 1
@@ -97,7 +97,7 @@ def main():
         os.makedirs(os.path.dirname(path), exist_ok=True)
         m = TILES[n]()
         cnt = write_tile(path, m)
-        for ext in (".vox", ".vox.import"):   # a .vox under the same name would be a second tile
+        for ext in (".gox", ".gox.import"):   # a .gox under the same name would be a second tile
             if os.path.exists(os.path.join(OUT, n + ext)):
                 os.remove(os.path.join(OUT, n + ext))
         write_metadata(path, n)

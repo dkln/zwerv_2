@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://uvpo6fdce0wv"
+path="res://.godot/imported/overheid_dak_zadel.vox-5d3827ce978e2f1121c8382437bfba6b.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/gebouwen/overheid/overheid_dak_zadel.vox"
+dest_files=["res://.godot/imported/overheid_dak_zadel.vox-5d3827ce978e2f1121c8382437bfba6b.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(4, 3, 4)

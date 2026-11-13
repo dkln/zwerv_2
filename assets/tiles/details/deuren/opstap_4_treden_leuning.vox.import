@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://cxahg2ejj57rs"
+path="res://.godot/imported/opstap_4_treden_leuning.vox-1b813b20d3008aaab77853176ab338a6.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/details/deuren/opstap_4_treden_leuning.vox"
+dest_files=["res://.godot/imported/opstap_4_treden_leuning.vox-1b813b20d3008aaab77853176ab338a6.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(0, 0, 0)

@@ -1,5 +1,13 @@
 # Tiles maken en aanpassen in Goxel
 
+> **Let op:** de tiles van Zwervr zijn sinds november 2026 MagicaVoxel-bestanden (`.vox`),
+> gemaakt door `tools/voxgen/generate.py` (`voxfile.py`) of omgezet met
+> `tools/voxgen/convert_gox.py`. Elke `.vox` heeft het palet van de kleuren die hij
+> gebruikt, aangevuld met de rest van het palet van Zwervr. Een materiaal dat niet uit de
+> kleurentabel komt, staat in de `.tile.json` (`"materials"`, als `"#rrggbb"` of als
+> paletnummer van de `.vox`). Goxel-bestanden (`.gox`) worden nog steeds ingelezen; wat
+> hieronder over Goxel staat, geldt daarvoor.
+
 Elke tile in Zwervr is een los Goxel-bestand (`.gox`). [Goxel](https://goxel.xyz) is
 een open-source voxeleditor (GPL) voor macOS, Windows en Linux. Godot importeert de
 bestanden zelf en zet ze in de GridMap-bibliotheken. Dit document legt uit hoe je een

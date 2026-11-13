@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://b1hq7fit2ltdt"
+path="res://.godot/imported/airco_buitenunit.vox-1c28e4b012f1403b7c9503e0363c08cb.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/details/dak/airco_buitenunit.vox"
+dest_files=["res://.godot/imported/airco_buitenunit.vox-1c28e4b012f1403b7c9503e0363c08cb.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(0, 0, 0)

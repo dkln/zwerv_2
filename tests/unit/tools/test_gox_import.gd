@@ -288,7 +288,7 @@ func _some_tiles() -> Array[String]:
 
 func _first_tile(folder: String) -> String:
 	for file_name in DirAccess.get_files_at(folder):
-		if file_name.ends_with(".gox") and not file_name.ends_with(".lod.gox"):
+		if (file_name.ends_with(".vox") or file_name.ends_with(".gox")) and not file_name.get_basename().ends_with(".lod"):
 			return folder + file_name
 	for sub in DirAccess.get_directories_at(folder):
 		var path := _first_tile(folder + sub + "/")

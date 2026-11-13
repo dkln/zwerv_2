@@ -1,0 +1,23 @@
+[remap]
+
+importer="zwervr.vox_tile"
+importer_version=7
+type="ArrayMesh"
+uid="uid://dsxd8nj7xgs4i"
+path="res://.godot/imported/stationsbord_voorburg.vox-5f3aa9e1c59ce069d6606e30a952c01e.mesh"
+
+[deps]
+
+source_file="res://assets/tiles/props/borden/stationsbord_voorburg.vox"
+dest_files=["res://.godot/imported/stationsbord_voorburg.vox-5f3aa9e1c59ce069d6606e30a952c01e.mesh"]
+
+[params]
+
+voxel_size=0.125
+ambient_occlusion=true
+color_merge=14
+lod_color_tolerance=24
+lod2_downscale=2
+textured=true
+animation=0
+cell_block=Vector3(0, 0, 0)
