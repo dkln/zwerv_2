@@ -111,7 +111,7 @@ func _run(instance: RefCounted, test_name: String, test: IntegrationTest, state:
 static func _asked(options: Dictionary) -> String:
 	var asked: Array[String] = []
 	for option: String in options:
-		if options[option] != TownWorld.DEFAULTS[option]:
+		if str(options[option]) != str(TownWorld.DEFAULTS[option]):
 			asked.append("%s: %s" % [option, options[option]])
 	return "de gewone stad" if asked.is_empty() else ", ".join(asked)
 

@@ -25,7 +25,7 @@ func _branches(kind := "") -> Array:
 	return interiors.supermarkets().filter(func(way_in: Dictionary) -> bool: return kind == "" or way_in.kind == kind)
 
 
-## The layout of the branch behind `way_in` (SupermarketLayout.plan).
+## The layout of the branch behind `way_in` (Layout.plan).
 func _plan_of(way_in: Dictionary) -> Dictionary:
 	return Layout.plan(String(way_in.kind), int(way_in.seed), int(way_in.width))
 
@@ -126,7 +126,12 @@ func test_derrek_is_laid_out_for_its_front_and_staffed(test) -> void:
 	if shop == null:
 		return
 	var plan: Dictionary = shop.plan
-	test.check(is_equal_approx(float(plan.width), clampi(int(way_in.width), 4, 7) * 4.0), "zo breed als de gevel (%d m)" % int(plan.width))
+	# as wide as its front on the map, a few cells more or less (Layout.EXTRA_CELLS)
+	var front_cells := int(way_in.width)
+	var fewest := clampi(front_cells + Layout.EXTRA_CELLS.x, Layout.FEWEST_CELLS, Layout.MOST_CELLS)
+	var most := clampi(front_cells + Layout.EXTRA_CELLS.y, Layout.FEWEST_CELLS, Layout.MOST_CELLS)
+	test.check(float(plan.width) >= fewest * Layout.CELL - 0.01 and float(plan.width) <= most * Layout.CELL + 0.01,
+		"zo breed als de gevel (%d m, gevel %d cellen)" % [int(plan.width), front_cells])
 	var exit: Node3D = interiors._exits["derrek"][0]
 	test.check(exit.global_position.distance_to(shop.to_global((plan.door as Transform3D).origin)) < 0.1, "de uitgang bij de ingang van dit filiaal")
 	test.check(shop.get_node("Indeling/Inrichting").get_used_cells().size() > 40, "ingericht (%d tiles)" % shop.get_node("Indeling/Inrichting").get_used_cells().size())
@@ -174,8 +179,9 @@ func test_shelf_puts_its_product_in_the_trolley(test) -> void:
 	test.check(player.get_node("Winkelkarretje/Spullen").get_child_count() == 3, "te zien in het karretje")
 
 
-## Out of the door with unpaid goods: thrown out and barred for a while, nothing paid and
-## nothing gained, the trolley left inside.
+## Out of the door with unpaid goods: the first time warned (the gates stay shut), the second
+## time someone comes for you and you are thrown out and barred for a while, nothing paid
+## and nothing gained, the trolley left inside.
 func test_out_with_unpaid_goods_gets_you_thrown_out(test) -> void:
 	var shop := await _go_into_first(test, "derrek")
 	if shop == null:
@@ -187,8 +193,17 @@ func test_out_with_unpaid_goods_gets_you_thrown_out(test) -> void:
 	var inventory_before: Dictionary = player.inventory.duplicate()
 	await put_player_in(shop, (shop.plan.door as Transform3D).origin)
 	test.check(prompts() == [["E", "Naar buiten"]], "bij de deur: [E] Naar buiten")
+	# the first time the gates stay shut and you are warned: back into the shop, to pay first
 	use_prompt()
-	for wait in 80:
+	await frames(2)
+	test.check(interiors.is_inside() and interiors.warnings_given == 1 and not interiors.is_evicting(),
+		"de eerste keer: een waarschuwing, nog binnen (%d)" % interiors.warnings_given)
+	# the second time someone of the shop comes for you, and throws you out once they are there
+	await put_player_in(shop, (shop.plan.door as Transform3D).origin)
+	use_prompt()
+	await frames(2)
+	test.check(interiors.is_inside() and interiors.is_evicting(), "de tweede keer: iemand komt je halen")
+	for wait in 400:
 		await seconds(0.1)
 		await close_screens()
 		if not interiors.is_inside() and not interiors._throwing:

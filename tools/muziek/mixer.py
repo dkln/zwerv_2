@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 import numpy
 
 import chip
+import tracker
 import instruments
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "megadrive"))
@@ -41,6 +42,7 @@ class Piece:
     last_bar_beats: float = None    # one-shot: the last bar only this long (then the tail)
     swing: float = 0.0              # 0 straight, 1 a full shuffle (the "and" on the last triplet)
     vgm: str = ""                   # a VGM file (in composities/): the piece is that VGM, played by chip.py
+    tracker: str = ""               # a tracker page or JSON (in composities/): the piece as its synth plays it (tracker.py)
 
     @property
     def beat_seconds(self) -> float:
@@ -148,9 +150,28 @@ def _play_vgm(piece: Piece) -> list:
     return tracks
 
 
+def _play_tracker(piece: Piece) -> list:
+    """The score of the piece's tracker (a page or a JSON composition) as its own synth plays
+    it (tracker.render: its voices, panning, master volume and compressor), as long as the
+    piece: a left and a right mixer channel."""
+    source = tracker.tracker_in_compositions(piece.tracker)
+    sample_count = int(round(piece.seconds * SAMPLE_RATE))
+    played = tracker.render(source, piece.tail + 0.5)[:sample_count]
+    tracks = []
+    for side, pan in ((0, -1.0), (1, 1.0)):
+        track = megadrive.Track(f"tracker_{side}", sample_count, pan=pan, wrap=False)
+        track.buffer[:len(played)] = played[:, side]
+        tracks.append(track)
+    return tracks
+
+
 def render(piece: Piece) -> numpy.ndarray:
     """The piece mastered: filtered like the Model 1, at the house loudness, peaks limited."""
-    stereo = megadrive.master(_play_vgm(piece) if piece.vgm else _play(piece), target_rms_db=-14.0, peak_db=-1.0)
+    if piece.tracker:
+        channels = _play_tracker(piece)
+    else:
+        channels = _play_vgm(piece) if piece.vgm else _play(piece)
+    stereo = megadrive.master(channels, target_rms_db=-14.0, peak_db=-1.0)
     if piece.tape_stop:
         stereo = megadrive.tape_stop(stereo, *piece.tape_stop)
     if not piece.loop:

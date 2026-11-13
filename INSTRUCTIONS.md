@@ -174,6 +174,26 @@ Verhaal, missies en kleingeld
 - Tests: zie het hoofdstuk "Tests draaien" (unit-tests in
   `tests/unit/<categorie>/`, integratietests in `tests/integration/<categorie>/` met
   `test_`-functies op een gedeelde stad: `tests/run_integration_tests.sh <naam>|<categorie>|alle`).
+- Tooling op macOS/Linux en Windows: elk script is er als `.sh` en als `.ps1` (PowerShell), met
+  dezelfde argumenten:
+
+  | wat | macOS / Linux | Windows PowerShell |
+  |---|---|---|
+  | Godot met tijdslimiet, zonder stdin | `tools/godot.sh ...` | `tools\godot.ps1 ...` |
+  | importeren | `tools/import.sh` | `tools\import.ps1` |
+  | baken | `tools/bake.sh [opnieuw]` | `tools\bake.ps1 [opnieuw]` |
+  | unit-tests | `tests/run_unit_tests.sh [naam of categorie]` | `tests\run_unit_tests.ps1 [...]` |
+  | integratietests | `tests/run_integration_tests.sh <naam>, <categorie> of alle` | `tests\run_integration_tests.ps1 ...` |
+  | muziek | `tools/muziek/render.sh [...]` | `tools\muziek\render.ps1 [...]` |
+  | geluiden en stemmen | `tools/megadrive/render.sh [...]` | `tools\megadrive\render.ps1 [...]` |
+  | thumbnails | `tools/thumbnails.sh [bouwen] [alles]` | `tools\thumbnails.ps1 [...]` |
+  | verouderde tiles importeren | `tools/build/reimport_stale.sh` | `tools\build\reimport_stale.ps1` |
+
+  Op Windows: zet `$env:GODOT` op de console-versie van Godot (`Godot_v4.x-stable_win64_console.exe`;
+  anders zoekt `godot.ps1` `godot`/`godot4` op het PATH en in de gebruikelijke mappen), en
+  installeer `uv` voor de Python-tools (en `node` voor `render --tracker`). Tijdslimieten:
+  `$env:GODOT_TIMEOUT`, `$env:TEST_TIMEOUT`, `$env:TEST_FPS`. Staat PowerShell het draaien van
+  scripts niet toe: `Set-ExecutionPolicy -Scope Process Bypass`.
 - Beloningsscherm (`scripts/ui/reward_screen.gd`, `GameHud.show_reward`): wat je krijgt voor een
   taak of missie (na de klaar-bladzijden) of van iemand op straat (een `beloning` in een gesprek,
   met XP, standaard 25) komt in een eigen schermpje, niet meer als zwevend tekstje: het item groot

@@ -1,6 +1,6 @@
 ---
 name: muziek-compositie
-description: Gebruik als de gebruiker een nieuwe compositie aanlevert (een uitgeschreven nummer van Gemini of een andere componist: tempo, toonsoort, instrumenten, akkoorden en noten per maat; in tools/muziek/composition.md of geplakt; of een VGM-bestand, .vgm/.vgz, het registerlog van de Mega Drive-geluidschips) en vraagt daar de muziek van ZWERVR van te maken; zet de compositie letterlijk om naar tools/muziek/composities/<naam>.py (een VGM met tools/muziek/render.sh --vgm: de intro is dan het VGM zelf, exact nagebootst uit het registerlog, en de afgeleide stukken klinken met de patches van het VGM), rendert de intro en alle afgeleide stukken (menu, karakterkeuze, handelaar, laadscherm, spel, deuntjes, ook het deuntje voor de start van de kaart, de drie muzaklussen van de supermarkten en de jingles van de twee supermarktketens) in Mega Drive-klank en controleert ze.
+description: Gebruik als de gebruiker een nieuwe compositie aanlevert en vraagt daar de muziek van ZWERVR van te maken. De voorkeursbron is een compositie in JSON (docs/MUZIEK_JSON.md: de export van de tracker van Gemini of een andere componist, met metadata, sections, synthParameters en bars; tools/muziek/render.sh --json); het kan ook een uitgeschreven nummer zijn (tempo, toonsoort, instrumenten, akkoorden en noten per maat; in tools/muziek/composition.md of geplakt), een tracker-pagina (HTML, render.sh --tracker) of een VGM-bestand (.vgm/.vgz, render.sh --vgm). Zet de compositie letterlijk om naar tools/muziek/composities/&lt;naam&gt;.py, rendert de intro en alle afgeleide stukken (menu, karakterkeuze, handelaar, laadscherm, spel, deuntjes, ook het deuntje voor de start van de kaart en dat van een beloning, de drie muzaklussen van de supermarkten en de jingles van de twee supermarktketens) en controleert ze.
 ---
 
 # Een nieuwe compositie wordt de muziek van ZWERVR
@@ -75,6 +75,37 @@ stap 1 en 2 anders: zie "Een VGM-bestand" hieronder; stap 3 tot en met 8 blijven
 7. **Speltests** (één tegelijk, headless):
    `tests/run_integration_tests.sh intro` en
    `tests/run_integration_tests.sh city_music`.
+## Een compositie in JSON (de voorkeursbron)
+
+Een JSON-bestand zoals `docs/MUZIEK_JSON.md` het beschrijft (de export van de tracker van de
+componist: `metadata`, `sections`, `synthParameters`, `bars` met per maat het akkoord en zes sporen
+van zestien stappen) is de beste bron: de partituur staat er letterlijk in, niets hoeft terug
+geluisterd of omgerekend.
+
+1. Bekijk wat erin zit: `tools/muziek/render.sh --json <bestand.json> [naam] --toon`. Een bestand
+   dat niet compleet is wordt geweigerd met per regel wat er mis is (een spoor dat ontbreekt, een
+   spoor met een ander aantal vakjes dan 16, een onbekende noot of drum, maten niet op volgorde):
+   geef dat door aan de gebruiker, verzin niets erbij.
+2. Schrijf de compositie: `tools/muziek/render.sh --json <bestand.json> [naam] --overschrijf`. Het
+   JSON wordt naast de compositie bewaard (`composities/<naam>.json`) en `composities/<naam>.py`
+   krijgt elke rij zoals het JSON hem geeft, met `TRACKER = "<naam>.json"`.
+3. Maak hem actief (`composities/actief.py`), render alles (`tools/muziek/render.sh`), draai
+   `render.sh --test` en `render.sh --controle`.
+4. Meet de weergave: `render.sh --json composities/<naam>.json <naam> --meet [wav]`: de toonhoogte
+   van de stemmen tegen de noten van de bron, links tegen rechts, de balans, en met een WAV van de
+   componist erbij ook het spectrum en het niveau daartegen.
+
+De intro is de partituur één keer gespeeld door de nagebouwde synth van de tracker van de
+componist (`tools/muziek/tracker.py`: zijn zes stemmen, panning, mastervolume en compressor); de
+afgeleide stukken gebruiken dezelfde stemmen (`tracker_bas`, `tracker_brass`, `tracker_lead`,
+`tracker_harmonie`, `tracker_arp`, drumstel `tracker`).
+
+**Let op bij wat een tracker-pagina exporteert.** Zo'n pagina kan drie verschillende dingen laten
+horen: zijn eigen synth (wat je hoort bij afspelen: dát bouwen wij na), een WAV-export met een
+versimpelde synth, en een VGM-export. Bij `nitro_overdrive_92` miste het VGM vier van de zes
+stemmen en waren de toonhoogtes fout omgerekend (afgekapt op F-number 2047). Vertrouw dus het
+JSON (of de pagina zelf, `render.sh --tracker <pagina.html>`), niet het VGM van zo'n pagina.
+
 ## Een VGM-bestand
 
 Een VGM is het logboek van de registers van de YM2612 (FM) en de SN76489 (PSG). Het wordt

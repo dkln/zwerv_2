@@ -21,7 +21,7 @@ beat, "16off" the 2nd and 4th sixteenth of every beat, "16-off" every sixteenth 
 
 Chords (the "akkoord" of a bar; two chords in one bar split it in halves: "Bb A7"):
 root (C, C#, Db, ... B) and a quality: "" m 5 6 m6 7 m7 maj7 9 m9 maj9 add9 sus2 sus4 7sus4
-dim m7b5 aug; "Asus4->A7" and "Asus4 -> A7" are read as "Asus4 A7".
+dim m7b5 aug; a slash chord ("Dadd9/E") counts as the chord before the slash; "Asus4->A7" and "Asus4 -> A7" are read as "Asus4 A7".
 """
 from dataclasses import dataclass, replace
 
@@ -33,7 +33,13 @@ CHORD_QUALITIES = {
     "sus4": (0, 5, 7), "7sus4": (0, 5, 7, 10), "dim": (0, 3, 6), "m7b5": (0, 3, 6, 10), "aug": (0, 4, 8),
 }
 DRUM_SHORT_NAMES = {"K": "kick", "S": "snare", "HH": "hihat", "OH": "open", "CR": "crash", "CL": "clap",
-                    "HT": "tom_hoog", "MT": "tom_mid", "LT": "tom_laag"}
+                    "HT": "tom_hoog", "MT": "tom_mid", "LT": "tom_laag", "FT": "tom_vloer"}
+## The drum names of a row of steps (drum_steps): as a tracker writes them.
+STEP_DRUMS = {"KCK": "kick", "SNR": "snare", "CHH": "hihat", "OHH": "open", "CRS": "crash", "CLP": "clap",
+              "TOM1": "tom_hoog", "TOM2": "tom_mid", "TOM3": "tom_laag", "TOM4": "tom_vloer"}
+## A row of steps: a cell that holds the note before it (or is a rest), and one that stops it.
+STEP_HOLD = "---"
+STEP_STOPS = ("===", "=")
 DRUM_NAMES = set(DRUM_SHORT_NAMES.values())
 
 
@@ -94,6 +100,43 @@ def notes(text: str) -> list:
     return result
 
 
+def steps(row: str, step: float = 0.25) -> list:
+    """A row of steps as a tracker writes it ("E1 E1 E2 --- === G1 ..."): a note sounds until
+    the next cell that is not STEP_HOLD (another note, a stop, the end of the row)."""
+    cells = row.split()
+    result = []
+    for index, cell in enumerate(cells):
+        if cell == STEP_HOLD or cell in STEP_STOPS:
+            continue
+        held = 1
+        for later in cells[index + 1:]:
+            if later != STEP_HOLD:
+                break
+            held += 1
+        result.append(Note(round(1.0 + index * step, 4), pitches(cell), round(held * step, 4)))
+    return result
+
+
+def drum_steps(row: str, step: float = 0.25) -> list:
+    """A row of drum steps ("KCK CHH OHH --- SNR ..."): a hit on every named step (STEP_DRUMS)."""
+    return [Hit(round(1.0 + index * step, 4), STEP_DRUMS[cell]) for index, cell in enumerate(row.split())
+            if cell != STEP_HOLD and cell not in STEP_STOPS]
+
+
+def stabs(triggers: str, *chords: str, step: float = 0.25, length_steps: float = 2.4) -> list:
+    """Chord stabs: `triggers` a row of 1 and 0 per step, `chords` the chord(s) of the bar
+    ("E3+B3+D4+E4"), each for an equal part of it (two: the halves, four: the beats); a stab
+    sounds `length_steps` steps."""
+    cells = triggers.split()
+    result = []
+    for index, cell in enumerate(cells):
+        if cell != "1":
+            continue
+        chord = chords[min(len(chords) - 1, index * len(chords) // len(cells))]
+        result.append(Note(round(1.0 + index * step, 4), pitches(chord), round(length_steps * step, 4)))
+    return result
+
+
 def cycle(figure: str, step: float, start: float = 1.0, end: float = 5.0, length: float = None,
           velocity: float = 1.0) -> list:
     """The figure (pitches, "-" a rest) repeated step by step from `start` up to `end`."""
@@ -149,8 +192,9 @@ def drum_run(figure: str, step: float, start: float = 1.0, velocity: float = 1.0
 
 
 def chord_parts(name: str) -> tuple:
-    """("D", "m7") for "Dm7"."""
-    name = name.strip()
+    """("D", "m7") for "Dm7"; a slash chord without its bass note: ("D", "add9") for "Dadd9/E"
+    (the bass plays that note itself)."""
+    name = name.strip().split("/")[0]
     root_length = 2 if len(name) > 1 and name[1] in "#b" else 1
     return name[:root_length], name[root_length:]
 

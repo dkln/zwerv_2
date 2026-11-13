@@ -12,6 +12,11 @@ const TIME_SCALE := 8.0
 const QUIET_SECONDS := 400.0
 
 
+## A long ride (most of an hour of game time) with an argument, so a run of its own.
+static func world_options() -> Dictionary:
+	return {"own_process": true}
+
+
 ## The trams and trains of the town.
 func _rail_vehicles() -> Array[RailVehicle]:
 	var vehicles: Array[RailVehicle] = []

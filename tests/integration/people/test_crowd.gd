@@ -6,14 +6,17 @@ extends "res://tests/integration/support/town_test.gd"
 ## (as a warp) all of them round the new spot; a vehicle taken out and put back drives on.
 ## The town with its traffic; each test sets the hour and lets the crowd follow at once,
 ## without a camera (PeopleHelp.crowd_at_hour: without one nothing counts as unseen, so the
-## test lets it, unseen_without_camera).
+## test lets it, unseen_without_camera). A run of its own: the big changes of the crowd in
+## one step can bring the engine down (vehicles taken out of the town and freed within the
+## physics frame other vehicles still look at them in: Traffic._take_out, Vehicle.near),
+## which would take the rest of the category with it.
 ##   tests/run_integration_tests.sh crowd
 
 const PeopleHelp = preload("res://tests/integration/support/people_help.gd")
 
 
 static func world_options() -> Dictionary:
-	return {"traffic": true}
+	return {"traffic": true, "own_process": true}
 
 
 ## The people on foot of the town.
@@ -57,7 +60,8 @@ func test_midday_as_many_as_wanted_round_the_player(test) -> void:
 			traffic._town.size(), wanted.x, wanted.y])
 	test.check(walkers.people().size() == walkers.wanted_count(), "voetgangers zoals gewenst om 13:00")
 	test.check(traffic._town.size() == wanted.x and traffic._services.size() == wanted.y, "verkeer zoals gewenst om 13:00")
-	test.check(_all_within(walkers.people(), player.global_position, walkers.reach), "voetgangers rond de speler")
+	# (a cell further at most: they walk on their routes between two looks of Pedestrians)
+	test.check(_all_within(walkers.people(), player.global_position, walkers.reach + 4.0), "voetgangers rond de speler")
 	test.check(_vehicles_within(player.global_position, traffic.appear_within + 5.0), "verkeer rond de speler")
 
 

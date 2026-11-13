@@ -11,6 +11,11 @@ Alles klinkt als een **Sega Mega Drive**-cartridge: YM2612-FM, SN76489-PSG en PC
 geluidseffecten, `docs/GELUIDEN.md`). Noemt een compositie moderne instrumenten (een zaagtand-pad,
 een distortion-gitaar), dan worden dat FM-klanken die op de chip passen.
 
+Een nieuwe compositie aanleveren: het liefst als JSON, zie `docs/MUZIEK_JSON.md`
+(`tools/muziek/render.sh --json`); de intro is dan de partituur gespeeld door de nagebouwde synth van
+de tracker van de componist (`tools/muziek/tracker.py`, `json_bron.py`), de afgeleide stukken gebruiken
+die stemmen.
+
 ## Een nieuwe compositie aanleveren
 
 1. Zet de tekst van de componist in **`tools/muziek/composition.md`** (de vorige eruit) en vraag

@@ -21,7 +21,9 @@ func _stand_before_someone() -> Pedestrian:
 	await physics_frames(120)
 	var person: Pedestrian = null
 	for someone: Pedestrian in _walkers().people():
-		if not someone.has_meta(Conversations.GAVE_META):
+		# (someone plain, on foot and there: not a rider, not lying down, not just changing)
+		if not someone.has_meta(Conversations.GAVE_META) and someone.mobility == "" and someone.role == "" \
+				and someone._ragdoll == null and someone._waiting_become.is_empty() and someone.is_inside_tree():
 			person = someone
 			break
 	if person == null:

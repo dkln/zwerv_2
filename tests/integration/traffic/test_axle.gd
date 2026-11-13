@@ -4,7 +4,7 @@ extends "res://tests/integration/support/town_test.gd"
 ## slip of the rear axle (should be about 0), of the front wheels against where the front
 ## axle moves, the corner radius and how far the steering goes; for a trailer the slip of
 ## its axle and the largest angle to its vehicle. Fails if a rear axle slips or a mesh
-## sticks out of a footprint.
+## sticks out of a footprint. A long drive with an argument, so a run of its own.
 ##   tests/run_integration_tests.sh axle [-- <simulated seconds, default 150>]
 
 const TrafficHelp = preload("res://tests/integration/support/traffic_help.gd")
@@ -21,7 +21,7 @@ var _sticking_out: Array[String] = []
 
 
 static func world_options() -> Dictionary:
-	return {"traffic": true}
+	return {"traffic": true, "own_process": true}
 
 
 ## Every corner of every mesh of every vehicle (its body, trailer and rail cars) lies

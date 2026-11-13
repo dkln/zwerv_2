@@ -152,7 +152,7 @@ def intro(score: Score) -> Piece:
     """The composition itself; one read from a VGM (score.vgm) is that VGM, played by the
     chip imitation (the bars are then only its length and its moments)."""
     return Piece("zwervr_intro", score.tempo, score.beats_per_bar, [bar.copy() for bar in score.bars],
-                 score.sounds, loop=False, tail=2.5, vgm=score.vgm)
+                 score.sounds, loop=False, tail=2.5, vgm=score.vgm, tracker=score.tracker)
 
 
 def menu_loop(score: Score) -> Piece:

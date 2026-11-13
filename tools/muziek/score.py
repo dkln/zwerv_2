@@ -75,6 +75,7 @@ class Score:
     moments: dict = field(default_factory=dict)
     major_ending: bool = False        # BIJSTELLING majeur_slot: endings and landings in major
     vgm: str = ""                     # VGM: the file the intro is played from
+    tracker: str = ""                 # TRACKER: the tracker page or JSON the intro is played from (tracker.py)
     derived_octaves: dict = field(default_factory=dict)   # AFGELEID_OCTAAF
     derived_sounds: dict = field(default_factory=dict)    # AFGELEIDE_KLANKEN
 
@@ -160,6 +161,7 @@ def load(name: str = None) -> Score:
     score = Score(module.TITEL, float(module.TEMPO), beats_per_bar, tuple(module.TOONSOORT),
                   dict(module.KLANKEN), bars, sections, dict(getattr(module, "MOMENTEN", {})))
     score.vgm = getattr(module, "VGM", "")
+    score.tracker = getattr(module, "TRACKER", "")
     score.derived_octaves = dict(getattr(module, "AFGELEID_OCTAAF", {}))
     score.derived_sounds = dict(getattr(module, "AFGELEIDE_KLANKEN", {}))
     tune(score, getattr(module, "BIJSTELLING", {}))

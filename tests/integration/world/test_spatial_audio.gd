@@ -10,9 +10,8 @@ extends "res://tests/integration/support/town_test.gd"
 
 const Babble = preload("res://scripts/audio/babble.gd")
 const PlayerController = preload("res://scripts/player/player_controller.gd")
-## The scripts besides spatial_audio.gd that name sounds (the horns and bells: play_signal).
-const SOUND_USERS := ["res://scripts/vehicles/vehicle.gd", "res://scripts/vehicles/fire_engine.gd",
-	"res://scripts/world/people/pedestrian.gd", "res://scripts/effects/vehicle_fire.gd", "res://scripts/world/interiors/interiors.gd"]
+## Where the code that plays sounds is looked for (every script under it).
+const SCRIPTS_FOLDER := "res://scripts/"
 
 
 static func world_options() -> Dictionary:
@@ -104,12 +103,21 @@ func test_bus_has_only_compressor_and_limiter(test) -> void:
 	test.check(effects == ["AudioEffectCompressor", "AudioEffectHardLimiter"], "geen echo of galm, wel compressor en limiter")
 
 
+## The text of every script under `folder` (and its sub folders), one after the other.
+func _code_under(folder: String) -> String:
+	var code := ""
+	for file_name in DirAccess.get_files_at(folder):
+		if file_name.ends_with(".gd"):
+			code += FileAccess.get_file_as_string(folder.path_join(file_name))
+	for sub_folder in DirAccess.get_directories_at(folder):
+		code += _code_under(folder.path_join(sub_folder))
+	return code
+
+
 ## Every sound file is imported (so an exported game has it), loads, and is used by the code.
 func test_every_sound_is_imported_loads_and_is_used(test) -> void:
 	var spatial := await _spatial()
-	var code := FileAccess.get_file_as_string(spatial.get_script().resource_path)
-	for user_path: String in SOUND_USERS:
-		code += FileAccess.get_file_as_string(user_path)
+	var code := _code_under(SCRIPTS_FOLDER)
 	var unused: Array[String] = []
 	var not_imported: Array[String] = []
 	var broken: Array[String] = []

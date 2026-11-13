@@ -59,8 +59,13 @@ func test_in_the_rush_people_come_out_and_go_in(test) -> void:
 	walkers.went_into_station = 0
 	var most_heading := 0
 	var trace := OS.get_environment("STATION_TRACE") != ""
-	for step in WATCH_STEPS:
+	var watched_steps := 0
+	# (twice as long at most when nobody has reached a door yet: they come from far)
+	for step in WATCH_STEPS * 2:
+		if step >= WATCH_STEPS and walkers.went_into_station > 0:
+			break
 		await tree.physics_frame
+		watched_steps += 1
 		if step % 60 != 0:
 			continue
 		var heading := _heading_to_station(walkers)
@@ -76,7 +81,7 @@ func test_in_the_rush_people_come_out_and_go_in(test) -> void:
 				walkers.station_steps(person.cell), person.global_position.snapped(Vector3.ONE * 0.1), person._target.snapped(Vector3.ONE * 0.1),
 				person._next_cell, person._pause, person._blocked, person._entering_station])
 	print("in %d s bij de deur (%.0f m van de speler): %d naar buiten, %d naar binnen, tot %d tegelijk op weg naar binnen, %d voetgangers" % [
-		WATCH_STEPS / 60, door.distance_to(player.global_position), walkers.came_out_of_station, walkers.went_into_station,
+		watched_steps / 60, door.distance_to(player.global_position), walkers.came_out_of_station, walkers.went_into_station,
 		most_heading, walkers.people().size()])
 	test.check(walkers.came_out_of_station > 0, "in de spits komen er mensen uit het station")
 	test.check(most_heading > 0, "in de spits gaan er mensen op weg naar het station")

@@ -10,6 +10,7 @@ import gzip
 import io
 import math
 import os
+import json
 import struct
 import sys
 import tempfile
@@ -26,6 +27,8 @@ import instruments  # noqa: E402
 import notation  # noqa: E402
 import score as score_module  # noqa: E402
 import vgm  # noqa: E402
+import json_bron  # noqa: E402
+import tracker  # noqa: E402
 from notation import Hit, Note, cycle, drum_run, drums, notes, run  # noqa: E402
 from score import Bar, Score  # noqa: E402
 
@@ -431,7 +434,8 @@ def test_every_vgm_composition_still_matches_its_vgm():
     for name in COMPOSITIONS:
         for extension in (".vgm", ".vgz"):
             path = os.path.join(HERE, "composities", name + extension)
-            if not os.path.exists(path):
+            # (a composition that is no longer read from the VGM beside it: its JSON is the source)
+            if not os.path.exists(path) or not score_module.load(name).vgm:
                 continue
             song = vgm.read(path)
             arrangement = vgm.arrange(song, vgm.find_timing(song, score_module.load(name).tempo))
@@ -556,9 +560,124 @@ def test_chip_plays_a_whole_vgm_with_its_panning():
 
 def test_the_sounds_of_the_vgm_tool_cover_every_sound():
     listed = {sound for sounds in vgm.SOUND_KINDS.values() for sound in sounds}
-    plain = {name for name in instruments.SOUNDS if not name.startswith("vgm:")}
+    plain = {name for name in instruments.SOUNDS if not name.startswith(("vgm:", "tracker"))}
     assert listed == plain, (listed ^ plain)
-    assert set(vgm.DRUM_KIT_NAMES) == {name for name in instruments.DRUM_KITS if not name.startswith("vgm:")}
+    assert set(vgm.DRUM_KIT_NAMES) == {name for name in instruments.DRUM_KITS if not name.startswith(("vgm:", "tracker"))}
+
+
+# ----------------------------------------------------------------------------- a composition in JSON
+
+def _json_source() -> dict:
+    """A small valid composition in the composer's JSON form: two bars, every track."""
+    def bar(number: int) -> dict:
+        return {"barNumber": number, "section": "01: INTRO",
+                "chord": {"name": "E7sus4", "voicingSteps_1_to_8": ["E3", "B3", "D4", "E4"],
+                          "voicingSteps_9_to_16": ["D3", "A3", "B3", "F#4"]},
+                "channels": {
+                    "FM1_bass": ["E1", "E1", "E2", "---"] * 4,
+                    "FM2_stabs": [1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
+                    "FM3_lead": ["E4", "---", "=", "---"] + ["---"] * 12,
+                    "FM4_harmony": ["---"] * 16,
+                    "PSG_arp": ["E4", "B4", "D5", "E5"] * 4,
+                    "drums": ["KCK", "CHH", "SNR", "---"] * 3 + ["TOM1", "TOM2", "TOM3", "TOM4"]}}
+    return {"metadata": {"title": "Proef", "bpm": 120, "stepsPerBar": 16, "key": "E Mixolydian"},
+            "sections": [{"id": "01_INTRO", "name": "01: INTRO", "startBar": 1, "endBar": 2}],
+            "synthParameters": {"FM1_SlapBass": {"volume": 0.5}},
+            "bars": [bar(1), bar(2)]}
+
+
+def _json_file(data: dict) -> str:
+    folder = tempfile.mkdtemp()
+    path = os.path.join(folder, "proef.json")
+    with open(path, "w", encoding="utf-8") as json_file:
+        json.dump(data, json_file)
+    return path
+
+
+def test_rows_of_steps_as_a_tracker_writes_them():
+    row = notation.steps("E1 --- --- E2 === --- G1 ---")
+    assert [(note.position, note.pitches, note.length) for note in row] == [
+        (1.0, (28,), 0.75), (1.75, (40,), 0.25), (2.5, (31,), 0.5)], row
+    hits = notation.drum_steps("KCK --- SNR TOM4")
+    assert [(hit.position, hit.drum) for hit in hits] == [(1.0, "kick"), (1.5, "snare"), (1.75, "tom_vloer")]
+    two = notation.stabs("1 0 0 0 1 0 0 0", "C3+G3", "D3+A3")
+    assert [(note.position, note.pitches) for note in two] == [(1.0, (48, 55)), (2.0, (50, 57))], two
+    assert abs(two[0].length - 0.6) < 1e-6, "a stab sounds 2.4 steps"
+    assert notation.chord_classes("Dadd9/E") == notation.chord_classes("Dadd9"), "a slash chord is the chord before the slash"
+
+
+def test_a_json_composition_is_read_track_by_track():
+    source = json_bron.read(_json_file(_json_source()))
+    assert source.bpm == 120.0 and source.title == "Proef" and source.mode == "E MIXOLYDIAN"
+    assert len(source.bars) == 2 and source.volumes[0] == 0.5 and source.volumes[5] == tracker.DEFAULT_VOLUMES[5]
+    first = source.bars[0]
+    assert first["bass"][:4] == ["E1", "E1", "E2", "---"] and first["holds"]["bass"][:4] == [1, 1, 2, 0]
+    assert first["lead"][2] == "===", "a single '=' stops the note, as '==='"
+    assert first["holds"]["lead"][0] == 2, "held until the stop"
+    assert first["chords"][0] == ["E3", "B3", "D4", "E4"] and first["chords"][8] == ["D3", "A3", "B3", "F#4"]
+    played = tracker.render(source, 0.2)
+    assert played.shape[1] == 2 and abs(len(played) / 44100.0 - (2 * 16 * 0.125 + 0.2)) < 0.01
+    assert float(numpy.abs(played).max()) > 0.05, "it sounds"
+
+
+def test_a_json_composition_that_is_not_complete_is_refused():
+    def wrong(change) -> str:
+        data = _json_source()
+        change(data)
+        return " | ".join(json_bron.problems(data))
+
+    assert json_bron.problems(_json_source()) == []
+    assert "bpm" in wrong(lambda data: data["metadata"].pop("bpm"))
+    assert "'PSG_arp' ontbreekt" in wrong(lambda data: data["bars"][1]["channels"].pop("PSG_arp"))
+    assert "15 vakjes" in wrong(lambda data: data["bars"][0]["channels"]["FM1_bass"].pop())
+    assert "geen noot" in wrong(lambda data: data["bars"][0]["channels"]["FM3_lead"].__setitem__(0, "H9"))
+    assert "onbekende drum" in wrong(lambda data: data["bars"][0]["channels"]["drums"].__setitem__(0, "BOEM"))
+    assert "geen 0 of 1" in wrong(lambda data: data["bars"][0]["channels"]["FM2_stabs"].__setitem__(0, 2))
+    assert "onbekend spoor" in wrong(lambda data: data["bars"][0]["channels"].__setitem__("FM9", []))
+    assert "geen noten" in wrong(lambda data: data["bars"][0].__setitem__("chord", {"name": "E"}))
+    assert "op volgorde" in wrong(lambda data: data["bars"][1].__setitem__("barNumber", 5))
+    assert "'sections' ontbreekt" in wrong(lambda data: data.pop("sections"))
+    try:
+        json_bron.read(_json_file({"metadata": {}}))
+        assert False, "refused"
+    except ValueError as error:
+        assert "kan zo niet gebruikt worden" in str(error)
+
+
+def test_a_composition_from_json_plays_its_source_and_its_voices():
+    found = 0
+    for name in COMPOSITIONS:
+        score = score_module.load(name)
+        if not score.tracker:
+            continue
+        found += 1
+        source = tracker.tracker_in_compositions(score.tracker)
+        assert len(source.bars) == len(score.bars), (name, len(source.bars), len(score.bars))
+        intro = derive.pieces(score)[0]
+        assert intro.name == "zwervr_intro" and intro.tracker == score.tracker, "the intro is the source itself"
+        # every row of the composition file is the row of the source
+        for bar, written in zip(source.bars, score.bars):
+            starts = sum(1 for cell in bar["bass"] if cell not in ("---", "==="))
+            assert len(written.parts.get("bas", [])) == starts, (name, bar["barNum"])
+            assert len(written.hits) == sum(1 for cell in bar["drums"] if cell != "---"), (name, bar["barNum"])
+        for piece in derive.pieces(score)[1:]:
+            for part in {part for bar in piece.bars for part in bar.parts}:
+                assert piece.sound_of(part).startswith("tracker_"), (piece.name, part, piece.sound_of(part))
+            assert piece.sounds.get("drumstel", "standaard") == "tracker", piece.name
+    assert found >= 1, "the active composition comes from a JSON"
+
+
+def test_the_voices_and_the_drums_of_the_tracker():
+    for voice_name in ("bas", "brass", "lead", "harmonie", "arp"):
+        sound = instruments.SOUNDS["tracker_" + voice_name]
+        note = sound.render((57,), 0.3, 1.0)
+        assert len(note) > 0 and float(numpy.abs(note).max()) > 0.01, voice_name
+    placed = instruments.SOUNDS["tracker_lead=fm_lead_helder"]
+    assert placed.pan == instruments.SOUNDS["fm_lead_helder"].pan
+    kit = instruments.DRUM_KITS["tracker"]
+    assert set(notation.DRUM_NAMES) <= set(kit), set(notation.DRUM_NAMES) - set(kit)
+    kick = numpy.abs(numpy.fft.rfft(kit["kick"].samples, 16384))
+    assert int(kick.argmax()) * 44100.0 / 16384 < 120.0, "the kick is low"
 
 
 def test_a_vgm_composition_plays_its_vgm_and_its_own_voices():

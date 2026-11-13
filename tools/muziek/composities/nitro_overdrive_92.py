@@ -1,267 +1,382 @@
-"""Nitro Overdrive: omgezet uit het VGM-bestand nitro_overdrive_92.vgm (het registerlog van de Mega
-Drive-geluidschips: YM2612 (7670454 Hz) en SN76489 (3579545 Hz)) door tools/muziek/vgm.py, maat voor
-maat in de notatie van tools/muziek/notation.py. De intro van het spel is het VGM zelf, door de
-nabootsing van de chips gespeeld (tools/muziek/chip.py; VGM hieronder): exacte frequenties, de
-patches en de volumes uit het registerlog. De maten hieronder zijn dezelfde noten op het raster
-(toonhoogte uit F-number en blok naar de dichtstbijzijnde noot, begin en lengte uit key-on en
-key-off): daar worden de andere stukken van afgeleid, in de stemmen van het VGM (AFGELEIDE_KLANKEN).
+"""Nitro Overdrive '92 (Turbo Edition): de partituur van nitro_overdrive_92.json (de compositie in JSON van de componist,
+letterlijk: elke maat en elk spoor zoals het JSON ze geeft (tools/muziek/json_bron.py). Elke rij hieronder is een rij
+van de bron: zestien stappen (zestienden), '---' houdt de noot aan of is een rust, '===' stopt hem.
 
-Bron: 58.18 s (2565632 samples van 1/44100 s), geen luspunt.
-Raster: een stap is 5011.0 samples, 4 stappen per tel: 132 BPM, 4 tellen per maat, 32 maten (de
-noten liggen gemiddeld 0.000 stap van het raster).
-De 92 in de bestandsnaam is niet het tempo: geen telverdeling van het raster komt daarop uit.
+De intro van het spel is deze partituur, één keer gespeeld door de nagebouwde synth van de pagina (TRACKER
+hieronder); de andere stukken worden uit deze maten afgeleid en klinken met dezelfde stemmen
+(AFGELEIDE_KLANKEN).
 
-Partijen (kanaal -> partij; de partij klinkt met de patch van dat kanaal, op de plek in de mix van
-de klank die bij de patch past):
-- bas: fm1: algoritme 0, feedback 6, MUL 1/1/1/1, TL 22/22/22/0, AR 31/31/31/31: hoge feedback, hard
-  gestuurde modulatoren (een rauwe bas) -> de plek van fm_housebas
-- lead: fm3: algoritme 4, feedback 7, MUL 1/1/1/1, TL 22/22/22/0, AR 31/31/31/31: feedback bijna op
-  zijn hoogst (een rauwe lead) -> de plek van fm_lead_zuur
-- drums: hihat (PSG-ruis, 225x), snare (PSG-ruis, 86x)
-
-Afgeleid uit de noten (het VGM zegt ze niet): de toonsoort, het akkoord van elke maat, de secties
-met hun soort en de MOMENTEN van de intro.
-
-Let op: fm1: 301 van de 467 noten hebben het hoogste F-number (2047); de schrijver van het VGM heeft
-de toonhoogte daar waarschijnlijk afgekapt (de noot is overgenomen zoals de chip hem speelt; hij
-telt niet mee voor de toonsoort en licht voor de akkoorden).
+Uit de pagina: de titel, het tempo (132 BPM), de toonsoort (E MIXOLYDIAN), de zes
+kanalen, de secties (de soort bij de naam: intro, verse = thema, chorus = refrein, breakdown, final = finale),
+de akkoordnamen (waar de pagina een maat geen akkoordnaam geeft, staat het akkoord dat zij daar speelt, met
+haar naam als commentaar) en alle noten. Niet uit de pagina: de MOMENTEN van de intro-beelden.
 """
-from notation import drums, notes
+from notation import drum_steps, stabs, steps
 
-TITEL = "Nitro Overdrive"
+TITEL = "Nitro Overdrive '92 (Turbo Edition)"
 TEMPO = 132
 TELLEN_PER_MAAT = 4
-TOONSOORT = ("E", "majeur")
+TOONSOORT = ("E", "mixolydisch")   # de pagina: E MIXOLYDIAN
 
-# het VGM waar de intro letterlijk uit gespeeld wordt (in deze map)
-VGM = "nitro_overdrive_92.vgm"
+# de pagina waar de intro uit gespeeld wordt (in deze map)
+TRACKER = "nitro_overdrive_92.json"
 
-# elke partij met de patch van haar eigen kanaal ("vgm:<bestand>:<kanaal>=<klank>": even hard en op
-# dezelfde plek in de mix als die klank)
+# de zes kanalen van de pagina, elk in zijn eigen nagebouwde klank
 KLANKEN = {
-    "bas": "vgm:nitro_overdrive_92.vgm:fm1=fm_housebas",   # fm1
-    "lead": "vgm:nitro_overdrive_92.vgm:fm3=fm_lead_zuur",   # fm3
+    "bas": "tracker_bas",           # kanaal 1
+    "brass": "tracker_brass",       # kanaal 2
+    "lead": "tracker_lead",         # kanaal 3
+    "harmonie": "tracker_harmonie", # kanaal 4
+    "arp": "tracker_arp",           # kanaal 5
+    "drumstel": "tracker",          # kanaal 6
 }
 
-# de afgeleide stukken in de stemmen van het VGM: elke klank die ze gebruiken wordt de patch van een
-# kanaal van het VGM (op de plek en het niveau van die klank), het drumstel dat van het VGM (snare en
-# hi-hat de PSG-ruis van het VGM; kick, toms, clap, open hi-hat en crash daarvan afgeleid)
-# - lead: fm3 (het kanaal van de melodie)
-# - bas: fm1 (het kanaal van de bas)
-# - akkoord: fm2 (een patch die het VGM zet maar niet speelt (de meeste dragers))
-# - zacht: fm4 (een patch die het VGM zet maar niet speelt (de minste feedback))
+# de afgeleide stukken in de stemmen van de pagina: elke klank die ze gebruiken wordt een stem van de
+# tracker, op de plek en het niveau van die klank; het drumstel dat van de tracker
 AFGELEIDE_KLANKEN = {
-    "fm_lead_helder": "vgm:nitro_overdrive_92.vgm:fm3=fm_lead_helder",
-    "fm_lead_snerpend": "vgm:nitro_overdrive_92.vgm:fm3=fm_lead_snerpend",
-    "fm_lead_zuur": "vgm:nitro_overdrive_92.vgm:fm3=fm_lead_zuur",
-    "fm_housebas_lead": "vgm:nitro_overdrive_92.vgm:fm3=fm_housebas_lead",
-    "psg_lead_arp": "vgm:nitro_overdrive_92.vgm:fm3=psg_lead_arp",
-    "psg_lead_fel": "vgm:nitro_overdrive_92.vgm:fm3=psg_lead_fel",
-    "psg_lead": "vgm:nitro_overdrive_92.vgm:fm3=psg_lead",
-    "overdrive_gitaar_solo": "vgm:nitro_overdrive_92.vgm:fm3=overdrive_gitaar_solo",
-    "clean_gitaar_solo": "vgm:nitro_overdrive_92.vgm:fm3=clean_gitaar_solo",
-    "fm_slapbas": "vgm:nitro_overdrive_92.vgm:fm1=fm_slapbas",
-    "fm_housebas": "vgm:nitro_overdrive_92.vgm:fm1=fm_housebas",
-    "fm_subbas": "vgm:nitro_overdrive_92.vgm:fm1=fm_subbas",
-    "synthwave_pad": "vgm:nitro_overdrive_92.vgm:fm2=synthwave_pad",
-    "synth_brass": "vgm:nitro_overdrive_92.vgm:fm2=synth_brass",
-    "fm_stoot_metaal": "vgm:nitro_overdrive_92.vgm:fm2=fm_stoot_metaal",
-    "overdrive_gitaar": "vgm:nitro_overdrive_92.vgm:fm2=overdrive_gitaar",
-    "clean_gitaar": "vgm:nitro_overdrive_92.vgm:fm2=clean_gitaar",
-    "fm_piano": "vgm:nitro_overdrive_92.vgm:fm2=fm_piano",
-    "fm_strijkers": "vgm:nitro_overdrive_92.vgm:fm2=fm_strijkers",
-    "psg_arp": "vgm:nitro_overdrive_92.vgm:fm4=psg_arp",
-    "fm_klok": "vgm:nitro_overdrive_92.vgm:fm4=fm_klok",
-    "fm_vibrafoon": "vgm:nitro_overdrive_92.vgm:fm4=fm_vibrafoon",
-    "fm_fluit": "vgm:nitro_overdrive_92.vgm:fm4=fm_fluit",
-    "standaard": "vgm:nitro_overdrive_92.vgm",
-    "dmx": "vgm:nitro_overdrive_92.vgm",
+    "fm_slapbas": "tracker_bas=fm_slapbas",
+    "fm_housebas": "tracker_bas=fm_housebas",
+    "fm_subbas": "tracker_bas=fm_subbas",
+    "fm_lead_helder": "tracker_lead=fm_lead_helder",
+    "fm_lead_snerpend": "tracker_lead=fm_lead_snerpend",
+    "fm_lead_zuur": "tracker_lead=fm_lead_zuur",
+    "fm_housebas_lead": "tracker_lead=fm_housebas_lead",
+    "psg_lead_arp": "tracker_lead=psg_lead_arp",
+    "psg_lead_fel": "tracker_lead=psg_lead_fel",
+    "psg_lead": "tracker_lead=psg_lead",
+    "overdrive_gitaar_solo": "tracker_lead=overdrive_gitaar_solo",
+    "clean_gitaar_solo": "tracker_lead=clean_gitaar_solo",
+    "psg_arp": "tracker_arp=psg_arp",
+    "fm_klok": "tracker_harmonie=fm_klok",
+    "fm_vibrafoon": "tracker_harmonie=fm_vibrafoon",
+    "fm_fluit": "tracker_harmonie=fm_fluit",
+    "synthwave_pad": "tracker_brass=synthwave_pad",
+    "synth_brass": "tracker_brass=synth_brass",
+    "fm_stoot_metaal": "tracker_brass=fm_stoot_metaal",
+    "overdrive_gitaar": "tracker_brass=overdrive_gitaar",
+    "clean_gitaar": "tracker_brass=clean_gitaar",
+    "fm_piano": "tracker_brass=fm_piano",
+    "fm_strijkers": "tracker_brass=fm_strijkers",
+    "standaard": "tracker",
+    "dmx": "tracker",
 }
 
-# waar de intro-beelden wisselen (scripts/ui/intro.gd): het logo op het thema, het verhaal een
-# frase later, dan het refrein, de breakdown en de finale; de rust op de laatste maat
+# waar de intro-beelden wisselen (scripts/ui/intro.gd): het logo op het thema, het verhaal een frase
+# later, dan het refrein, de breakdown en de finale; de rust op de laatste maat
 MOMENTEN = {"logo": 5, "verhaal": 9, "hoogtepunt": 13, "duel": 21, "crash": 25, "rust": (32, 1.0)}
 
-# de maten hieronder staan in het octaaf van het VGM, en zo klinkt de intro; alleen in de afgeleide
-# stukken liggen deze partijen zoveel octaven hoger (+) of lager (-), in het register waar die
-# stukken op rekenen (de melodie rond octaaf 5, de bas rond octaaf 2)
-AFGELEID_OCTAAF = {"lead": 2}
-
-BAS_A = notes("1 G#2 0.25, 1.25 G#2 0.25, 1.5 E3 0.25, 1.75 G#2 0.5, 2.25 G#2 0.25, 2.5 E3 0.25, "
-              "2.75 D3 0.25, 3 G#2 0.25, 3.25 G#2 0.25, 3.5 G#2 0.25, 3.75 G#2 0.25, 4 G#2 0.25, "
-              "4.25 G#2 0.25, 4.5 D3 0.25, 4.75 G#2 0.25")   # maat 1, 5, 9, 25, 29
-DRUMS_A = drums(hihat="1.25 1.5 2.25 2.5 3 3.5 3.75 4.25", snare="2 4 4.75")   # maat 1, 5, 9, 13, 17, 25, 29
-BAS_B = notes("1 G#2 0.25, 1.25 G#2 0.25, 1.5 E3 0.25, 1.75 G#2 0.5, 2.25 G#2 0.25, 2.5 F#3 0.25, "
-              "2.75 E3 0.25, 3 G#2 0.25, 3.25 G#2 0.25, 3.5 D3 0.25, 3.75 G#2 0.5, 4.25 G#2 0.25, "
-              "4.5 G#2 0.25, 4.75 D3 0.25")   # maat 2, 6, 10, 26, 30
-DRUMS_B = drums(hihat="1.25 1.5 1.75 2.25 2.5 3.25 3.5 4.25 4.5", snare="2 4")   # maat 2, 6, 10, 14, 18, 26, 30
-BAS_C = notes("1 G#2 0.25, 1.25 G#2 0.25, 1.5 E3 0.25, 1.75 G#2 0.5, 2.25 G#2 0.25, 2.5 C#3 0.25, "
-              "2.75 G#2 0.25, 3 G#2 0.25, 3.25 G#2 0.25, 3.5 G#3 0.25, 3.75 G#2 0.5, 4.25 G#2 0.25, "
-              "4.5 G#2 0.25, 4.75 G#2 0.25")   # maat 3, 7, 11, 27, 31
-DRUMS_C = drums(hihat="1.25 1.5 2.25 2.5 3 3.5 3.75 4.25 4.5 4.75", snare="2 4")   # maat 3, 7, 11, 15, 19, 27, 31
-BAS_D = notes("1 G#2 0.25, 1.25 C3 0.25, 1.5 G#2 0.25, 1.75 C3 0.25, 2 G#2 0.25, 2.25 C3 0.25, 2.5 G#2 0.25, "
-              "2.75 G#2 0.25, 3 G#2 0.25, 3.25 D3 0.25, 3.5 G#2 0.25, 3.75 D3 0.25, 4 G#2 0.25, 4.25 D3 0.25, "
-              "4.5 G#2 0.25, 4.75 G#2 0.25")   # maat 4, 8, 12, 16, 20, 28
-DRUMS_D = drums(hihat="1.25 1.75 2.25 2.75 3.25", snare="2 3.5 3.75")   # maat 4, 8, 12, 16, 20, 28
-LEAD_A = notes("1 E3 0.5, 1.5 G3 0.25, 1.75 G#3 0.25, 2.5 B3 0.75, 3.25 A3 0.5, 3.75 G#3 0.75, 4.5 E3 0.5")   # maat 5, 9, 25, 29
-LEAD_B = notes("1 F#3 0.75, 1.75 A3 0.75, 2.5 F#3 0.5, 3 E3 0.5, 3.5 D3 1, 4.5 E3 0.5")   # maat 6, 10, 26, 30
-LEAD_C = notes("1 C#3 0.75, 1.75 B3 0.75, 2.5 A3 0.5, 3 G#3 0.5, 3.5 F#3 0.5, 4 E3 0.5, 4.5 F#3 0.5")   # maat 7, 11
-LEAD_D = notes("1 G3 1.5, 2.5 E3 0.5, 3 A3 1, 4 B3 0.5, 4.5 D3 0.5")   # maat 8, 12
-BAS_E = notes("1 G#2 0.25, 1.25 G#3 0.25, 1.5 G#2 0.25, 1.75 G#3 0.25, 2 E3 0.25, 2.25 G#2 0.25, "
-              "2.5 G#3 0.25, 2.75 G#3 0.25, 3 G#2 0.25, 3.25 G#3 0.25, 3.5 G#2 0.25, 3.75 G#3 0.25, "
-              "4 G#2 0.25, 4.25 G#2 0.25, 4.5 G#2 0.25, 4.75 G#2 0.25")   # maat 13, 17
-LEAD_E = notes("1 C#3 0.75, 1.75 E3 0.75, 2.5 C#3 0.5, 3 B3 0.5, 3.5 A3 0.5, 4 E3 0.5, 4.5 A3 0.5")   # maat 13, 17
-BAS_F = notes("1 G#2 0.25, 1.25 G#3 0.25, 1.5 G#2 0.25, 1.75 G#3 0.25, 2 F#3 0.25, 2.25 G#2 0.25, "
-              "2.5 G#2 0.25, 2.75 G#2 0.25, 3 G#2 0.25, 3.25 G#3 0.25, 3.5 G#2 0.25, 3.75 G#3 0.25, "
-              "4 F#3 0.25, 4.25 D#3 0.25, 4.5 C#3 0.25, 4.75 G#2 0.25")   # maat 14, 18
-LEAD_F = notes("1 B3 0.75, 1.75 C#3 0.75, 2.5 D#3 0.5, 3 F#3 0.75, 3.75 E3 0.5, 4.25 D#3 0.5, 4.75 B3 0.25")   # maat 14, 18
-BAS_G = notes("1 G#2 0.25, 1.25 E3 0.25, 1.5 G#2 0.25, 1.75 E3 0.25, 2 G#2 0.25, 2.25 E3 0.25, 2.5 D3 0.25, "
-              "2.75 G#2 0.25, 3 G#2 0.25, 3.25 C#3 0.25, 3.5 G#2 0.25, 3.75 C#3 0.25, 4 G#2 0.25, "
-              "4.25 C#3 0.25, 4.5 G#2 0.25, 4.75 G#2 0.25")   # maat 15, 19
-LEAD_G = notes("1 G#3 0.75, 1.75 E3 0.75, 2.5 B3 0.5, 3 E3 0.75, 3.75 C#3 0.5, 4.25 B3 0.5, 4.75 A3 0.25")   # maat 15, 19
-LEAD_H = notes("1 G3 0.75, 1.75 E3 0.5, 2.25 C3 0.5, 2.75 B3 0.25, 3 A3 0.75, 3.75 B3 0.5, 4.25 D3 0.5, "
-               "4.75 E3 0.25")   # maat 16, 20
-BAS_H = notes("1 E3 0.5, 1.5 E3 0.5, 2 G3 0.25, 2.25 G#3 0.25, 2.5 G#3 0.5, 3 G#3 0.5, 3.5 D3 0.5, 4 E3 0.5, "
-              "4.5 D3 0.25, 4.75 G#3 0.25")   # maat 21, 22, 23
-LEAD_I = notes("1 E3 0.5, 1.5 E3 0.5, 2 G3 0.25, 2.25 G#3 0.25, 2.5 A3 0.5, 3 B3 0.5, 3.5 D3 0.5, 4 E3 0.5, "
-               "4.5 D3 0.25, 4.75 B3 0.25")   # maat 21, 22, 23, 24
-DRUMS_E = drums(hihat="2.5 4.5", snare="2 4 4.75")   # maat 21, 22, 23
-DRUMS_F = drums(snare="1.5 2 2.25 2.75 4.75")   # maat 24, 32
-LEAD_J = notes("1 C#3 0.5, 1.5 E3 0.5, 2 A3 0.5, 2.5 G#3 0.5, 3 F#3 0.5, 3.5 E3 0.5, 4 C#3 0.5, 4.5 B3 0.5")   # maat 27, 31
+BAS_A = steps("E1 E1 E2 E1 --- E1 E2 D2 E1 E1 G1 G#1 A1 B1 D2 B1")
+ARP_A = steps("E4 B4 D5 E5 B4 D5 E4 B4 D5 E5 B4 D5 E4 B4 D5 B4")
+DRUMS_A = drum_steps("KCK CHH OHH KCK SNR CHH OHH KCK CHH KCK OHH CHH SNR CHH KCK SNR")
+BAS_B = steps("E1 E1 E2 E1 --- E1 F#2 E2 D1 D1 D2 D1 --- A1 B1 D2")
+ARP_B = steps("D4 A4 E5 F#5 A4 E5 D4 A4 E5 F#5 A4 E5 D4 A4 F#5 A4")
+DRUMS_B = drum_steps("KCK CHH OHH CHH SNR CHH OHH KCK KCK CHH OHH KCK SNR CHH OHH KCK")
+BAS_C = steps("E1 E1 E2 E1 --- E1 C#2 B1 A1 A1 A2 A1 --- E1 F#1 G#1")
+ARP_C = steps("C#4 E4 A4 C#5 E4 A4 C#4 E4 A4 C#5 E4 A4 C#4 E4 A4 E4")
+DRUMS_C = drum_steps("KCK CHH OHH KCK SNR CHH OHH KCK CHH KCK OHH CHH SNR CHH OHH OHH")
+BAS_D = steps("C1 C2 C1 C2 G1 C2 C1 C#1 D1 D2 D1 D2 A1 D2 B1 A1")
+LEAD_A = steps("--- --- --- --- --- --- --- --- A4 --- B4 --- D5 --- E5 ---")
+ARP_D = steps("C4 G4 B4 E5 G4 B4 C4 G4 D4 A4 B4 F#5 A4 B4 D4 A4")
+DRUMS_D = drum_steps("KCK CHH KCK CHH SNR CHH KCK CHH KCK CHH SNR SNR TOM1 TOM2 TOM3 TOM4")
+LEAD_B = steps("E4 --- G4 G#4 === --- B4 --- --- A4 --- G#4 --- --- E4 ---")
+LEAD_C = steps("F#4 --- --- A4 --- --- F#4 --- E4 --- D4 --- --- --- E4 ---")
+LEAD_D = steps("C#5 --- --- B4 --- --- A4 --- G#4 --- F#4 --- E4 --- F#4 ---")
+LEAD_E = steps("G4 --- --- --- --- --- E4 --- A4 --- --- --- B4 --- D5 ---")
+HARMONIE_A = steps("B3 --- D4 E4 === --- G#4 --- --- F#4 --- E4 --- --- B3 ---")
+HARMONIE_B = steps("D4 --- --- F#4 --- --- D4 --- C#4 --- A3 --- --- --- C#4 ---")
+HARMONIE_C = steps("A4 --- --- G#4 --- --- E4 --- E4 --- D4 --- C#4 --- D4 ---")
+HARMONIE_D = steps("E4 --- --- --- --- --- C4 --- F#4 --- --- --- G4 --- B4 ---")
+BAS_E = steps("A1 A2 A1 A2 E2 A1 A2 G#2 A1 A2 A1 A2 E1 F#1 G#1 A1")
+LEAD_F = steps("C#5 --- --- E5 --- --- C#5 --- B4 --- A4 --- E4 --- A4 ---")
+HARMONIE_E = steps("A4 --- --- C#5 --- --- A4 --- G#4 --- E4 --- C#4 --- E4 ---")
+ARP_E = steps("A4 C#5 E5 B5 C#5 E5 A4 C#5 E5 B5 C#5 E5 A4 C#5 E5 C#5")
+BAS_F = steps("B1 B2 B1 B2 F#2 B1 A1 B1 B1 B2 B1 B2 F#2 D#2 C#2 B1")
+LEAD_G = steps("B4 --- --- C#5 --- --- D#5 --- F#5 --- --- E5 --- D#5 --- B4")
+HARMONIE_F = steps("F#4 --- --- A4 --- --- B4 --- D#5 --- --- B4 --- B4 --- F#4")
+ARP_F = steps("B4 E5 F#5 A5 E5 F#5 B4 E5 B4 D#5 F#5 A5 D#5 F#5 B4 D#5")
+BAS_G = steps("E1 E2 E1 E2 B1 E2 D2 B1 C#1 C#2 C#1 C#2 G#1 C#2 B1 G#1")
+LEAD_H = steps("G#5 --- --- E5 --- --- B4 --- E5 --- --- C#5 --- B4 --- A4")
+HARMONIE_G = steps("E5 --- --- B4 --- --- G#4 --- C#5 --- --- G#4 --- G#4 --- E4")
+ARP_G = steps("E4 B4 E5 G#5 B4 E5 E4 B4 C#4 G#4 B4 E5 G#4 B4 C#4 G#4")
+LEAD_I = steps("G5 --- --- E5 --- C5 --- B4 A4 --- --- B4 --- D5 --- E5")
+HARMONIE_H = steps("E5 --- --- C5 --- G4 --- G4 F#4 --- --- G4 --- A4 --- B4")
+BAS_H = steps("E2 --- E2 --- G2 G#2 A2 --- B2 --- D3 --- E3 --- D3 B2")
+LEAD_J = steps("E4 --- E4 --- G4 G#4 A4 --- B4 --- D5 --- E5 --- D5 B4")
+HARMONIE_I = steps("B3 --- B3 --- D4 E4 E4 --- G#4 --- A4 --- B4 --- A4 G#4")
+ARP_H = steps("E4 --- E4 --- G4 G#4 A4 --- B4 E5 D5 B4 E5 B4 G4 E4")
+DRUMS_E = drum_steps("KCK --- KCK --- SNR --- OHH --- KCK --- KCK --- SNR --- OHH SNR")
+BAS_I = steps("E2 --- E2 --- G2 G#2 A2 B2 C2 C2 C#2 C#2 D2 D2 D#2 D#2")
+DRUMS_F = drum_steps("KCK KCK SNR KCK SNR SNR KCK SNR TOM1 TOM1 TOM2 TOM2 TOM3 TOM3 TOM4 SNR")
+LEAD_K = steps("E5 --- G5 G#5 === --- B5 --- --- A5 --- G#5 --- --- E5 ---")
+HARMONIE_J = steps("B4 --- D5 E5 === --- G#5 --- --- F#5 --- E5 --- --- B4 ---")
+LEAD_L = steps("F#5 --- --- A5 --- --- F#5 --- E5 --- D5 --- --- --- E5 ---")
+HARMONIE_K = steps("D5 --- --- F#5 --- --- D5 --- C#5 --- A4 --- --- --- C#5 ---")
+LEAD_M = steps("C#5 --- E5 --- A5 --- G#5 --- F#5 --- E5 --- C#5 --- B4 ---")
+HARMONIE_L = steps("A4 --- C#5 --- E5 --- E5 --- D5 --- C#5 --- A4 --- G#4 ---")
+LEAD_N = steps("G5 --- --- E5 --- --- C5 --- A5 --- --- F#5 --- D5 --- B4")
+HARMONIE_M = steps("E5 --- --- C5 --- --- G4 --- F#5 --- --- D5 --- A4 --- G4")
+BAS_J = steps("C2 C3 C2 C3 C#2 C#3 C#2 C#3 D2 D3 D2 D3 D#2 D#3 D#2 D#3")
+LEAD_O = steps("C5 --- C5 --- C#5 --- C#5 --- D5 --- D5 --- D#5 --- F#5 G#5")
+HARMONIE_N = steps("G4 --- G4 --- G#4 --- G#4 --- A4 --- A4 --- A#4 --- D#5 E5")
+ARP_I = steps("C4 G4 C5 G4 C#4 G#4 C#5 G#4 D4 A4 D5 A4 D#4 A#4 D#5 A#4")
 
 SECTIES = [
-    {"naam": "Intro", "soort": "intro", "maten": (1, 4)},
-    {"naam": "Thema", "soort": "thema", "maten": (5, 12), "standaard": {"drums": DRUMS_A}},
-    {"naam": "Refrein", "soort": "refrein", "maten": (13, 20), "standaard": {"drums": DRUMS_A}},
-    {"naam": "Breakdown", "soort": "breakdown", "maten": (21, 24), "standaard": {"drums": DRUMS_E}},
-    {"naam": "Finale", "soort": "finale", "maten": (25, 32), "standaard": {"drums": DRUMS_A}},
+    {"naam": "INTRO — IGNITION", "soort": "intro", "maten": (1, 4)},
+    {"naam": "VERSE A — NIGHT HIGHWAY", "soort": "thema", "maten": (5, 12)},
+    {"naam": "REDLINE CHORUS — BOOST", "soort": "refrein", "maten": (13, 20)},
+    {"naam": "BREAKDOWN — ASPHALT RIFF", "soort": "breakdown", "maten": (21, 24)},
+    {"naam": "FINAL OVERDRIVE — CLIMAX", "soort": "finale", "maten": (25, 32)},
 ]
 
 MATEN = {
-    # ------------------------------------------------------------------ Intro (intro)
-    1: {"akkoord": "E7",
+    # ------------------------------------------------------------------ 01: INTRO — IGNITION
+    # E5 / E7sus4
+    1: {"akkoord": "E7sus4",
         "bas": BAS_A,
+        "brass": stabs("1 0 0 0 0 0 1 0 0 0 0 1 0 0 1 0", "E3+B3+D4+E4"),
+        "arp": ARP_A,
         "drums": DRUMS_A},
-    2: {"akkoord": "E7",
+    # Dadd9/E
+    2: {"akkoord": "Dadd9/E",
         "bas": BAS_B,
+        "brass": stabs("1 0 0 0 0 0 1 0 0 0 0 1 0 0 1 0", "E3+A3+D4+F#4"),
+        "arp": ARP_B,
         "drums": DRUMS_B},
-    3: {"akkoord": "C#m",
+    # A/E
+    3: {"akkoord": "A/E",
         "bas": BAS_C,
+        "brass": stabs("1 0 0 0 0 0 1 0 0 0 0 1 0 0 1 0", "E3+A3+C#4+E4"),
+        "arp": ARP_C,
         "drums": DRUMS_C},
-    4: {"akkoord": "G# E7",
+    # Cmaj7 -> D6
+    4: {"akkoord": "Cmaj7 D6",
         "bas": BAS_D,
-        "lead": notes("3 A3 0.5, 3.5 B3 0.5, 4 D3 0.5, 4.5 E3 0.5"),
+        "brass": stabs("1 0 0 1 0 0 0 0 1 0 0 1 0 0 0 0", "C3+G3+B3+E4", "D3+A3+B3+F#4"),
+        "lead": LEAD_A,
+        "arp": ARP_D,
         "drums": DRUMS_D},
-    # ------------------------------------------------------------------ Thema (thema)
-    5: {"akkoord": "E7",
+    # ------------------------------------------------------------------ 02: VERSE A — NIGHT HIGHWAY
+    # E5 / E7sus4
+    5: {"akkoord": "E7sus4",
         "bas": BAS_A,
-        "lead": LEAD_A},
-    6: {"akkoord": "E7",
-        "bas": BAS_B,
+        "brass": stabs("1 0 0 0 0 0 1 0 0 0 0 1 0 0 1 0", "E3+B3+D4+E4"),
         "lead": LEAD_B,
-        "drums": DRUMS_B},
-    7: {"akkoord": "E",
-        "bas": BAS_C,
+        "arp": ARP_A,
+        "drums": DRUMS_A},
+    # Dadd9/E
+    6: {"akkoord": "Dadd9/E",
+        "bas": BAS_B,
+        "brass": stabs("1 0 0 0 0 0 1 0 0 0 0 1 0 0 1 0", "E3+A3+D4+F#4"),
         "lead": LEAD_C,
-        "drums": DRUMS_C},
-    8: {"akkoord": "C D5",
-        "bas": BAS_D,
+        "arp": ARP_B,
+        "drums": DRUMS_B},
+    # A/E
+    7: {"akkoord": "A/E",
+        "bas": BAS_C,
+        "brass": stabs("1 0 0 0 0 0 1 0 0 0 0 1 0 0 1 0", "E3+A3+C#4+E4"),
         "lead": LEAD_D,
+        "arp": ARP_C,
+        "drums": DRUMS_C},
+    # Cmaj7 -> D6
+    8: {"akkoord": "Cmaj7 D6",
+        "bas": BAS_D,
+        "brass": stabs("1 0 0 1 0 0 0 0 1 0 0 1 0 0 0 0", "C3+G3+B3+E4", "D3+A3+B3+F#4"),
+        "lead": LEAD_E,
+        "arp": ARP_D,
         "drums": DRUMS_D},
-    9: {"akkoord": "E7",
+    # E5 / E7sus4
+    9: {"akkoord": "E7sus4",
         "bas": BAS_A,
-        "lead": LEAD_A},
-    10: {"akkoord": "E7",
+        "brass": stabs("1 0 0 0 0 0 1 0 0 0 0 1 0 0 1 0", "E3+B3+D4+E4"),
+        "lead": LEAD_B,
+        "harmonie": HARMONIE_A,
+        "arp": ARP_A,
+        "drums": DRUMS_A},
+    # Dadd9/E
+    10: {"akkoord": "Dadd9/E",
          "bas": BAS_B,
-         "lead": LEAD_B,
-         "drums": DRUMS_B},
-    11: {"akkoord": "E",
-         "bas": BAS_C,
+         "brass": stabs("1 0 0 0 0 0 1 0 0 0 0 1 0 0 1 0", "E3+A3+D4+F#4"),
          "lead": LEAD_C,
-         "drums": DRUMS_C},
-    12: {"akkoord": "C D5",
-         "bas": BAS_D,
+         "harmonie": HARMONIE_B,
+         "arp": ARP_B,
+         "drums": DRUMS_B},
+    # A/E
+    11: {"akkoord": "A/E",
+         "bas": BAS_C,
+         "brass": stabs("1 0 0 0 0 0 1 0 0 0 0 1 0 0 1 0", "E3+A3+C#4+E4"),
          "lead": LEAD_D,
-         "drums": DRUMS_D},
-    # ------------------------------------------------------------------ Refrein (refrein)
-    13: {"akkoord": "Amaj7",
-         "bas": BAS_E,
-         "lead": LEAD_E},
-    14: {"akkoord": "G#m7",
-         "bas": BAS_F,
-         "lead": LEAD_F,
-         "drums": DRUMS_B},
-    15: {"akkoord": "E7 C#m7",
-         "bas": BAS_G,
-         "lead": LEAD_G,
+         "harmonie": HARMONIE_C,
+         "arp": ARP_C,
          "drums": DRUMS_C},
-    16: {"akkoord": "Cmaj7 D5",
+    # Cmaj7 -> D6
+    12: {"akkoord": "Cmaj7 D6",
          "bas": BAS_D,
-         "lead": LEAD_H,
+         "brass": stabs("1 0 0 1 0 0 0 0 1 0 0 1 0 0 0 0", "C3+G3+B3+E4", "D3+A3+B3+F#4"),
+         "lead": LEAD_E,
+         "harmonie": HARMONIE_D,
+         "arp": ARP_D,
          "drums": DRUMS_D},
-    17: {"akkoord": "Amaj7",
+    # ------------------------------------------------------------------ 03: REDLINE CHORUS — BOOST
+    # Aadd9
+    13: {"akkoord": "Aadd9",
          "bas": BAS_E,
-         "lead": LEAD_E},
-    18: {"akkoord": "G#m7",
-         "bas": BAS_F,
+         "brass": stabs("1 0 0 1 0 0 1 0 1 0 0 1 0 0 1 0", "A3+C#4+E4+B4"),
          "lead": LEAD_F,
-         "drums": DRUMS_B},
-    19: {"akkoord": "E7 C#m7",
-         "bas": BAS_G,
+         "harmonie": HARMONIE_E,
+         "arp": ARP_E,
+         "drums": DRUMS_A},
+    # B7sus4 -> B7
+    14: {"akkoord": "B7sus4 B7",
+         "bas": BAS_F,
+         "brass": stabs("1 0 0 1 0 0 1 0 1 0 0 1 0 0 1 0", "B3+E4+F#4+A4", "B3+D#4+F#4+A4"),
          "lead": LEAD_G,
-         "drums": DRUMS_C},
-    20: {"akkoord": "Cmaj7 D5",
-         "bas": BAS_D,
+         "harmonie": HARMONIE_F,
+         "arp": ARP_F,
+         "drums": DRUMS_B},
+    # E5 -> C#m7
+    15: {"akkoord": "E5 C#m7",
+         "bas": BAS_G,
+         "brass": stabs("1 0 0 1 0 0 1 0 1 0 0 1 0 0 1 0", "E3+B3+E4+G#4", "C#3+G#3+B3+E4"),
          "lead": LEAD_H,
+         "harmonie": HARMONIE_G,
+         "arp": ARP_G,
+         "drums": DRUMS_C},
+    # Cmaj7 -> D6
+    16: {"akkoord": "Cmaj7 D6",
+         "bas": BAS_D,
+         "brass": stabs("1 0 0 1 0 0 1 0 1 0 0 1 0 0 1 0", "C3+G3+B3+E4", "D3+A3+B3+F#4"),
+         "lead": LEAD_I,
+         "harmonie": HARMONIE_H,
+         "arp": ARP_D,
          "drums": DRUMS_D},
-    # ------------------------------------------------------------------ Breakdown (breakdown)
+    # Aadd9
+    17: {"akkoord": "Aadd9",
+         "bas": BAS_E,
+         "brass": stabs("1 0 0 1 0 0 1 0 1 0 0 1 0 0 1 0", "A3+C#4+E4+B4"),
+         "lead": LEAD_F,
+         "harmonie": HARMONIE_E,
+         "arp": ARP_E,
+         "drums": DRUMS_A},
+    # B7sus4 -> B7
+    18: {"akkoord": "B7sus4 B7",
+         "bas": BAS_F,
+         "brass": stabs("1 0 0 1 0 0 1 0 1 0 0 1 0 0 1 0", "B3+E4+F#4+A4", "B3+D#4+F#4+A4"),
+         "lead": LEAD_G,
+         "harmonie": HARMONIE_F,
+         "arp": ARP_F,
+         "drums": DRUMS_B},
+    # E5 -> C#m7
+    19: {"akkoord": "E5 C#m7",
+         "bas": BAS_G,
+         "brass": stabs("1 0 0 1 0 0 1 0 1 0 0 1 0 0 1 0", "E3+B3+E4+G#4", "C#3+G#3+B3+E4"),
+         "lead": LEAD_H,
+         "harmonie": HARMONIE_G,
+         "arp": ARP_G,
+         "drums": DRUMS_C},
+    # Cmaj7 -> D6
+    20: {"akkoord": "Cmaj7 D6",
+         "bas": BAS_D,
+         "brass": stabs("1 0 0 1 0 0 1 0 1 0 0 1 0 0 1 0", "C3+G3+B3+E4", "D3+A3+B3+F#4"),
+         "lead": LEAD_I,
+         "harmonie": HARMONIE_H,
+         "arp": ARP_D,
+         "drums": DRUMS_D},
+    # ------------------------------------------------------------------ 04: BREAKDOWN — ASPHALT RIFF
+    # E Mixo Blues Riff
     21: {"akkoord": "E7",
          "bas": BAS_H,
-         "lead": LEAD_I},
+         "brass": stabs("1 0 1 0 1 1 1 0 1 0 1 0 1 0 0 0", "E3+G#3+B3+D4"),
+         "lead": LEAD_J,
+         "harmonie": HARMONIE_I,
+         "arp": ARP_H,
+         "drums": DRUMS_E},
+    # E Mixo Blues Riff
     22: {"akkoord": "E7",
          "bas": BAS_H,
-         "lead": LEAD_I},
+         "brass": stabs("1 0 1 0 1 1 1 0 1 0 1 0 1 0 0 0", "E3+G#3+B3+D4"),
+         "lead": LEAD_J,
+         "harmonie": HARMONIE_I,
+         "arp": ARP_H,
+         "drums": DRUMS_E},
+    # E Mixo Blues Riff
     23: {"akkoord": "E7",
          "bas": BAS_H,
-         "lead": LEAD_I},
+         "brass": stabs("1 0 1 0 1 1 1 0 1 0 1 0 1 0 0 0", "E3+G#3+B3+D4"),
+         "lead": LEAD_J,
+         "harmonie": HARMONIE_I,
+         "arp": ARP_H,
+         "drums": DRUMS_E},
+    # E7#9 -> BUILD
     24: {"akkoord": "E7",
-         "bas": notes("1 E3 0.5, 1.5 E3 0.5, 2 G3 0.25, 2.25 G#3 0.25, 2.5 G#3 0.25, 2.75 G#3 0.25, 3 C3 0.25, "
-                     "3.25 C3 0.25, 3.5 C#3 0.25, 3.75 C#3 0.25, 4 D3 0.25, 4.25 D3 0.25, 4.5 D#3 0.25, "
-                     "4.75 D#3 0.25"),
-         "lead": LEAD_I,
+         "bas": BAS_I,
+         "brass": stabs("1 0 1 0 1 1 1 0 1 0 1 0 1 0 0 0", "E3+G#3+B3+D4"),
+         "lead": LEAD_J,
+         "harmonie": HARMONIE_I,
+         "arp": ARP_H,
          "drums": DRUMS_F},
-    # ------------------------------------------------------------------ Finale (finale)
-    25: {"akkoord": "E7",
+    # ------------------------------------------------------------------ 05: FINAL OVERDRIVE — CLIMAX
+    # E7sus4 (Overdrive)
+    25: {"akkoord": "E7sus4",
          "bas": BAS_A,
-         "lead": LEAD_A},
-    26: {"akkoord": "E7",
+         "brass": stabs("1 0 0 1 0 0 1 0 1 0 0 1 0 1 0 1", "E3+B3+D4+E4"),
+         "lead": LEAD_K,
+         "harmonie": HARMONIE_J,
+         "arp": ARP_A,
+         "drums": DRUMS_A},
+    # Dadd9/E (Overdrive)
+    26: {"akkoord": "Dadd9/E",
          "bas": BAS_B,
-         "lead": LEAD_B,
+         "brass": stabs("1 0 0 1 0 0 1 0 1 0 0 1 0 1 0 1", "E3+A3+D4+F#4"),
+         "lead": LEAD_L,
+         "harmonie": HARMONIE_K,
+         "arp": ARP_B,
          "drums": DRUMS_B},
-    27: {"akkoord": "E",
+    # A/E (Overdrive)
+    27: {"akkoord": "A/E",
          "bas": BAS_C,
-         "lead": LEAD_J,
+         "brass": stabs("1 0 0 1 0 0 1 0 1 0 0 1 0 1 0 1", "E3+A3+C#4+E4"),
+         "lead": LEAD_M,
+         "harmonie": HARMONIE_L,
+         "arp": ARP_C,
          "drums": DRUMS_C},
-    28: {"akkoord": "C D",
+    # Cmaj7 -> D6
+    28: {"akkoord": "Cmaj7 D6",
          "bas": BAS_D,
-         "lead": notes("1 G3 0.75, 1.75 E3 0.75, 2.5 C3 0.5, 3 A3 0.75, 3.75 F#3 0.5, 4.25 D3 0.5, 4.75 B3 0.25"),
+         "brass": stabs("1 0 0 1 0 0 1 0 1 0 0 1 0 1 0 1", "C3+G3+B3+E4", "D3+A3+B3+F#4"),
+         "lead": LEAD_N,
+         "harmonie": HARMONIE_M,
+         "arp": ARP_D,
          "drums": DRUMS_D},
-    29: {"akkoord": "E7",
+    # E7sus4 (Overdrive)
+    29: {"akkoord": "E7sus4",
          "bas": BAS_A,
-         "lead": LEAD_A},
-    30: {"akkoord": "E7",
+         "brass": stabs("1 0 0 1 0 0 1 0 1 0 0 1 0 1 0 1", "E3+B3+D4+E4"),
+         "lead": LEAD_K,
+         "harmonie": HARMONIE_J,
+         "arp": ARP_A,
+         "drums": DRUMS_A},
+    # Dadd9/E (Overdrive)
+    30: {"akkoord": "Dadd9/E",
          "bas": BAS_B,
-         "lead": LEAD_B,
+         "brass": stabs("1 0 0 1 0 0 1 0 1 0 0 1 0 1 0 1", "E3+A3+D4+F#4"),
+         "lead": LEAD_L,
+         "harmonie": HARMONIE_K,
+         "arp": ARP_B,
          "drums": DRUMS_B},
-    31: {"akkoord": "E",
+    # A/E (Overdrive)
+    31: {"akkoord": "A/E",
          "bas": BAS_C,
-         "lead": LEAD_J,
+         "brass": stabs("1 0 0 1 0 0 1 0 1 0 0 1 0 1 0 1", "E3+A3+C#4+E4"),
+         "lead": LEAD_M,
+         "harmonie": HARMONIE_L,
+         "arp": ARP_C,
          "drums": DRUMS_C},
-    32: {"akkoord": "C#maj7 D#maj7",
-         "bas": notes("1 C3 0.25, 1.25 C3 0.25, 1.5 C3 0.25, 1.75 C3 0.25, 2 C#3 0.25, 2.25 C#3 0.25, "
-                     "2.5 C#3 0.25, 2.75 C#3 0.25, 3 D3 0.25, 3.25 D3 0.25, 3.5 D3 0.25, 3.75 D3 0.25, "
-                     "4 D#3 0.25, 4.25 D#3 0.25, 4.5 D#3 0.25, 4.75 D#3 0.25"),
-         "lead": notes("1 C3 0.5, 1.5 C3 0.5, 2 C#3 0.5, 2.5 C#3 0.5, 3 D3 0.5, 3.5 D3 0.5, 4 D#3 0.5, "
-                      "4.5 F#3 0.25, 4.75 G#3 0.25"),
+    # C5 -> C#5 -> D5 -> D#5
+    32: {"akkoord": "C5 C#5 D5 D#5",
+         "bas": BAS_J,
+         "brass": stabs("1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 1", "C3+G3+C4+E4", "C#3+G#3+C#4+F4", "D3+A3+D4+F#4", "D#3+A#3+D#4+G4"),
+         "lead": LEAD_O,
+         "harmonie": HARMONIE_N,
+         "arp": ARP_I,
          "drums": DRUMS_F},
 }

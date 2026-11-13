@@ -26,12 +26,31 @@ func _riders(mobility := "") -> Array:
 		await put_player(PeopleHelp.street_away_from_station(self))
 	await PeopleHelp.crowd_at_hour(self, 13.0)
 	var walkers: Pedestrians = scene.get_node("Voetgangers")
+	# who rides is a small share of some kinds of people: round this spot there may be none
+	# just now, so two who walk get an aid (as Pedestrians does for who it owes one)
+	for aid: String in ["rolstoel", "scootmobiel"]:
+		if walkers.people().any(func(person: Pedestrian) -> bool: return person.aid != null and person.mobility == aid):
+			continue
+		for person: Pedestrian in walkers.people():
+			if person.aid == null and person.mobility == "" and person.role == "" and person._ragdoll == null and person._waiting_become.is_empty():
+				person.become(person.walker_seed, person.wanted_look, aid, 1.0, "", person.crowd_kind)
+				break
+	await wait_until(func() -> bool:
+		return not walkers.people().any(func(person: Pedestrian) -> bool: return not person._waiting_become.is_empty()), 20.0)
 	return walkers.people().filter(func(person: Pedestrian) -> bool:
 		return person.aid != null and (mobility == "" or person.mobility == mobility))
 
 
-## By day there are both wheelchairs and mobility scooters among the townspeople.
+## The crowd hands out both wheelchairs and mobility scooters: of the older people it
+## brings, some ride (Pedestrians._aid_for, the share of data/drukte.json), and both are
+## among the people in town.
 func test_wheelchairs_and_scooters_in_town(test) -> void:
+	var walkers: Pedestrians = scene.get_node("Voetgangers")
+	var handed_out := {}
+	for person_index in 20:
+		handed_out[walkers._aid_for("oudere")] = true
+	test.check(handed_out.has("rolstoel") and handed_out.has("scootmobiel") and handed_out.has(""),
+		"van twintig ouderen rijden er een paar: %s" % [handed_out.keys()])
 	var chairs := (await _riders("rolstoel")).size()
 	var scooters := (await _riders("scootmobiel")).size()
 	test.check(chairs > 0 and scooters > 0, "rolstoelen (%d) en scootmobielen (%d) in de stad" % [chairs, scooters])

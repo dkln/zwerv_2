@@ -136,16 +136,37 @@ static func camera_off(tree: SceneTree, scene: Node3D) -> void:
 		camera.clear_current(false)
 
 
-## What set_for_test and camera_off changed, put back.
-static func restore_changes(scene: Node3D) -> void:
+## What set_for_test and camera_off changed, put back. Returns whether the test had its hand
+## on the crowd (the hour, the people on foot): then who walks round is of another hour or
+## place, and reset brings new people (renew_crowd).
+static func restore_changes(scene: Node3D) -> bool:
+	var crowd_changed := false
 	for change: Array in scene.get_meta(CHANGED_META, []):
 		if is_instance_valid(change[0]):
 			(change[0] as Node).set(change[1], change[2])
+			crowd_changed = crowd_changed or String((change[0] as Node).name) in ["Dagcyclus", "Voetgangers"]
 	scene.set_meta(CHANGED_META, [])
 	var camera: Variant = scene.get_meta(CAMERA_META) if scene.has_meta(CAMERA_META) else null
 	if camera != null and is_instance_valid(camera):
 		(camera as Camera3D).make_current()
 	scene.set_meta(CAMERA_META, null)
+	return crowd_changed
+
+
+## The people on foot round the player all someone new of this hour and this place, started
+## afresh out of sight (Pedestrians.start_again), and waited for until their figures are built.
+static func renew_crowd(tree: SceneTree, scene: Node3D) -> void:
+	var walkers := scene.get_node_or_null("Voetgangers")
+	if walkers == null or not walkers.has_method("start_again"):
+		return
+	walkers._keep_round_player()
+	for person: Node in walkers.people():
+		if person._ragdoll == null and String(person.role) == "":
+			walkers.start_again(person)
+	for frame_index in 600:
+		if not walkers.people().any(func(person: Node) -> bool: return not person._waiting_become.is_empty()):
+			break
+		await tree.physics_frame
 
 
 ## Takes the town away again (before the next one).
@@ -225,6 +246,7 @@ static func back_on_feet(tree: SceneTree, scene: Node3D) -> void:
 		var camera := scene.get_node_or_null("Volgcamera")
 		if camera and camera.has_method("dramatic_close_up"):
 			camera.dramatic_close_up(false)
+			camera._zoom = camera.zoom_still   # (not still zooming out when the next test looks)
 	for step_index in 1200:
 		if player._ragdoll == null and player._rising_left <= 0.0:
 			break
@@ -235,8 +257,9 @@ static func back_on_feet(tree: SceneTree, scene: Node3D) -> void:
 		player._model.idle = true
 		for limb: String in ["arm_left", "arm_right", "leg_left", "leg_right"]:
 			player._model.pose_limb(limb, Vector3.ZERO)
-		player._blink_left = 0.0
-		player._invulnerable_left = 0.0
+	# (also after a knock they got up from during the test: not still untouchable in the next)
+	player._blink_left = 0.0
+	player._invulnerable_left = 0.0
 
 
 ## Between two tests: the screens closed, out of any interior, welcome everywhere again,
@@ -251,7 +274,7 @@ static func reset(tree: SceneTree, scene: Node3D) -> void:
 	var player: Node3D = scene.get_node("Speler")
 	var interiors: Node = scene.get_node_or_null("Binnenruimtes")
 	Engine.time_scale = 1.0
-	restore_changes(scene)
+	var crowd_changed := restore_changes(scene)
 	await back_on_feet(tree, scene)
 	await close_screens(tree, hud)
 	if interiors:
@@ -289,6 +312,8 @@ static func reset(tree: SceneTree, scene: Node3D) -> void:
 		for stat_name: String in ["gezondheid", "uithoudingsvermogen", "honger"]:
 			var stat: Vector2 = player._stats.get(stat_name, Vector2.ZERO)
 			player.change_stat(stat_name, stat.y - stat.x)
+	if crowd_changed:
+		await renew_crowd(tree, scene)
 	await close_screens(tree, hud)
 	for frame_index in 10:
 		await tree.process_frame

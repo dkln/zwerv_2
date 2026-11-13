@@ -263,7 +263,7 @@ func test_pedestrians_walk_round_on_the_ground(test) -> void:
 	for person in people:
 		if not is_instance_valid(person):
 			continue
-		if person.global_position.distance_to(starts[person]) > 3.0:
+		if starts.has(person) and person.global_position.distance_to(starts[person]) > 3.0:
 			walked += 1
 		if _on_ground(person):
 			standing += 1

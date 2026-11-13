@@ -1277,6 +1277,26 @@ def find_moments(arrangement: Arrangement) -> dict:
     return moments
 
 
+def moments_from_sections(sections: list, bar_count: int, bar_seconds: float) -> dict:
+    """MOMENTEN from sections that are known by name (a tracker, a JSON composition): as
+    find_moments, the logo on the theme, the story a phrase later, the chorus, the breakdown,
+    the finale, the rest on the last bar; spread evenly where they do not come in that order."""
+    def first_bar(kind: str):
+        return next((section["maten"][0] for section in sections if section["soort"] == kind), None)
+
+    earliest = int(math.ceil(LOGO_EARLIEST_SECONDS / bar_seconds)) + 1
+    logo = max(first_bar("thema") or 1, earliest)
+    wanted = [logo, logo + PHRASE_BARS, first_bar("refrein"), first_bar("breakdown"), first_bar("finale")]
+    in_order = all(bar is not None for bar in wanted) and all(
+        earlier < later for earlier, later in zip(wanted, wanted[1:])) and wanted[-1] <= bar_count
+    if not in_order:
+        logo = min(logo, max(1, bar_count - 5))
+        wanted = [min(bar_count, logo + int(round(index * (bar_count - logo) / 5.0))) for index in range(5)]
+    moments = dict(zip(("logo", "verhaal", "hoogtepunt", "duel", "crash"), wanted))
+    moments["rust"] = (bar_count, 1.0)
+    return moments
+
+
 # ----------------------------------------------------------------------------- the composition file
 
 def _number(value: float) -> str:

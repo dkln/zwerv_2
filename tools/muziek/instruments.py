@@ -20,6 +20,7 @@ import megadrive  # noqa: E402
 from megadrive import FmPatch, Operator  # noqa: E402
 
 import chip  # noqa: E402
+import tracker  # noqa: E402
 import vgm  # noqa: E402
 
 SAMPLE_RATE = megadrive.SAMPLE_RATE
@@ -44,6 +45,7 @@ class Sound:
     octave: int = 0               # played that many octaves up (+) or down (-)
     chip_voice: object = None     # "chip": the patch of a VGM's FM channel (vgm.FmVoice), played by chip.py
     chip_clock: float = 0.0       # "chip": the YM2612 clock of that VGM
+    tracker_voice: str = ""       # "tracker": a voice of the composer's tracker synth (tracker.voice: bas, brass, ...)
 
     def render(self, pitches: tuple, seconds: float, velocity: float, detune_cents: float = 0.0) -> numpy.ndarray:
         seconds = round(seconds, 4)
@@ -62,6 +64,13 @@ class Sound:
             return velocity * _sum([chip.voice_note(self.chip_voice, self.chip_clock,
                                                     round(megadrive.midi_to_frequency(pitch), 3), seconds)
                                     for pitch in shifted])
+        if self.kind == "tracker":
+            # the voice sounds the part of the note the tracker gives it (its gate); in a chord
+            # the notes alternate as the tracker's brass does (its detune left and right)
+            gate = tracker.GATES.get(self.tracker_voice, 1.0)
+            return velocity * _sum([tracker.voice(self.tracker_voice, megadrive.midi_to_frequency(pitch),
+                                                  max(0.03, seconds * gate), index % 2)
+                                    for index, pitch in enumerate(shifted)])
         raise ValueError(self.kind)
 
 
@@ -226,7 +235,7 @@ class _VgmNames(dict):
         self.build = build
 
     def __missing__(self, name: str):
-        if not str(name).startswith("vgm:"):
+        if not str(name).startswith(("vgm:", "tracker")):
             raise KeyError(name)
         self[name] = self.build(name)
         return self[name]
@@ -274,6 +283,32 @@ def _vgm_sound(name: str) -> Sound:
     return replace(plain, pan=reference.pan, width=reference.width, gain=reference.gain * wanted / max(own, 1e-9))
 
 
+## Where each voice of the tracker stands by itself (the page pans its brass and its arp to
+## and fro per note: here the middle and a little to the right).
+TRACKER_PANS = {"bas": 0.0, "brass": 0.0, "lead": -0.15, "harmonie": 0.38, "arp": 0.3}
+
+
+def _tracker_sound(name: str) -> Sound:
+    """"tracker_<voice>" a voice of the composer's tracker synth (tracker.py: bas, brass, lead,
+    harmonie, arp) at its own level; "tracker_<voice>=<sound>" with the place in the mix of
+    that sound: its pan and width, and as loud as it (measured on LEVEL_PITCHES). No echo."""
+    own_name, _equals, reference_name = name.partition("=")
+    voice_name = own_name[len("tracker_"):]
+    if voice_name not in tracker.CHANNEL_OF or voice_name == "drums":
+        raise KeyError(f"{name}: the tracker has no voice {voice_name!r}")
+    plain = Sound(name, "tracker", tracker_voice=voice_name, pan=TRACKER_PANS[voice_name], gain=2.2)
+    if not reference_name:
+        return plain
+    reference = SOUNDS[reference_name]
+    own = _level(numpy.concatenate([plain.render((pitch,), 0.4, 1.0) for pitch in LEVEL_PITCHES]))
+    wanted = _level(numpy.concatenate([reference.render((pitch,), 0.4, 1.0) for pitch in LEVEL_PITCHES]))
+    return replace(plain, pan=reference.pan, width=reference.width, gain=reference.gain * wanted / max(own, 1e-9))
+
+
+def _named_sound(name: str) -> Sound:
+    return _tracker_sound(name) if name.startswith("tracker") else _vgm_sound(name)
+
+
 SOUNDS = _VgmNames({sound.name: sound for sound in (
     Sound("fm_slapbas", "fm", SLAP_BASS, pan=0.0, gain=0.75),
     Sound("fm_housebas", "fm", HOUSE_BASS, pan=0.0, gain=0.85),
@@ -308,7 +343,7 @@ SOUNDS = _VgmNames({sound.name: sound for sound in (
     Sound("fm_vibrafoon", "fm", VIBRAPHONE, pan=0.2, gain=0.42, echo=0.75, echo_level=0.25, echo_repeats=2),
     Sound("fm_fluit", "fm", FLUTE, pan=-0.15, gain=0.45, echo=0.75, echo_level=0.22, echo_repeats=2),
     Sound("fm_strijkers", "fm", SOFT_STRINGS, pan=0.0, gain=0.16, width=12.0),
-)}, _vgm_sound)
+)}, _named_sound)
 
 
 # ----------------------------------------------------------------------------- the drum kit
@@ -398,5 +433,34 @@ def _vgm_kit(name: str) -> dict:
 
 ## The drum kits a composition can choose (BIJSTELLING "drumstel"; the mixer reads it from the
 ## piece's sounds under "drumstel"); "vgm:<file>" is the kit made of that VGM's own sounds.
-DRUM_KITS = _VgmNames({"standaard": _drum_kit(), "dmx": _dmx_kit()}, _vgm_kit)
+def _tracker_kit(_name: str) -> dict:
+    """"tracker": the drums of the composer's tracker synth (tracker.drum: kick, snare, the two
+    hi-hats, four toms). Derived from its noise, since a derived piece needs them: the crash
+    (its hi-hat noise ringing out) and the clap (three short bursts of its snare noise). Each
+    as loud as the same drum of the standard kit, at its place (the floor tom as the low tom)."""
+    volume = tracker.DEFAULT_VOLUMES[tracker.CHANNEL_OF["drums"]]
+    made = {here: numpy.array(tracker.drum(theirs, volume)) for theirs, here in tracker.DRUM_NAMES.items()}
+    ring = numpy.array(tracker._filtered_noise(0.9, 5200.0))
+    made["crash"] = ring * numpy.exp(-numpy.arange(len(ring)) / (0.22 * SAMPLE_RATE)) * 0.16
+    burst = numpy.array(tracker._filtered_noise(0.2, 650.0))
+    clap = numpy.zeros(int(0.2 * SAMPLE_RATE))
+    for start_seconds, level in ((0.0, 0.5), (0.012, 0.6), (0.026, 1.0)):
+        start = int(start_seconds * SAMPLE_RATE)
+        piece = burst[:len(clap) - start] * numpy.exp(-numpy.arange(len(clap) - start) / (0.03 * SAMPLE_RATE))
+        clap[start:start + len(piece)] += piece * level * 0.3
+    made["clap"] = clap
+    standard_kit = _drum_kit()
+    kit = {}
+    for drum, samples in made.items():
+        standard = standard_kit.get(drum, standard_kit["tom_laag"])
+        kit[drum] = Drum(samples * (_loudest_moment(standard.samples) / max(_loudest_moment(samples), 1e-9)),
+                         standard.pan, standard.gain)
+    return kit
+
+
+def _named_kit(name: str) -> dict:
+    return _tracker_kit(name) if name.startswith("tracker") else _vgm_kit(name)
+
+
+DRUM_KITS = _VgmNames({"standaard": _drum_kit(), "dmx": _dmx_kit()}, _named_kit)
 DRUMS = DRUM_KITS["standaard"]
