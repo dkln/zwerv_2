@@ -1,16 +1,16 @@
 class_name RandstadRail
 extends RailVehicle
-## A RandstadRail tram of two articulated cars (props/voertuigen/randstadrail_kop,
-## tools/voxgen/tiles/rail_vehicles.py) with a cab at both ends: 22.25 m, for the stops of
-## 6 cells (24 m). Of kind "tram", so it only rides on the tram rails, and it obeys the
+## A RandstadRail tram of three articulated cars (props/voertuigen/randstadrail_kop at both
+## ends, a cab each, randstadrail_midden between them; tools/voxgen/tiles/rail_vehicles.py):
+## 33.5 m, longer than the stops of 6 cells (24 m). Of kind "tram", so it only rides on the tram rails, and it obeys the
 ## traffic lights it shares with the cars.
 
 
 func _init() -> void:
 	vehicle_kind = "tram"
 	model = "voertuigen/randstadrail_kop"
-	car_models = ["voertuigen/randstadrail_kop"]
-	reversed_cars = [1]
+	car_models = ["voertuigen/randstadrail_midden", "voertuigen/randstadrail_kop"]
+	reversed_cars = [2]
 	door_model = "voertuigen/randstadrail_deur"
 	car_length = 11.0
 	car_gap = 0.25

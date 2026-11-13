@@ -1174,7 +1174,8 @@ func _slow_motion_death(cause: String) -> void:
 		camera.dramatic_close_up(true)
 	_normal_physics_ticks = Engine.physics_ticks_per_second
 	_set_game_speed(DEATH_SLOW_MOTION)
-	var speed_up := create_tween().set_ignore_time_scale(true)
+	# on while the game is paused too (the story box): never left slowed down
+	var speed_up := create_tween().set_ignore_time_scale(true).set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
 	speed_up.tween_interval(DEATH_SLOW_SECONDS)
 	speed_up.tween_method(_set_game_speed, DEATH_SLOW_MOTION, 1.0, DEATH_SPEED_UP).set_trans(Tween.TRANS_SINE)
 	speed_up.tween_callback(func() -> void:
@@ -1182,7 +1183,8 @@ func _slow_motion_death(cause: String) -> void:
 			_hud.show_death(cause))
 
 
-## The speed of the game (Engine.time_scale), the physics stepping with it and the sound.
+## The speed of the game (Engine.time_scale), the physics stepping with it and the sound (the
+## music not: the HUD keeps its loops at their own speed, GameHud._update_city_music).
 func _set_game_speed(speed: float) -> void:
 	Engine.time_scale = speed
 	Engine.physics_ticks_per_second = roundi(_normal_physics_ticks / speed)
@@ -1320,7 +1322,8 @@ func thrown_out(push: Vector3) -> void:
 		camera.dramatic_close_up(true)
 	_normal_physics_ticks = Engine.physics_ticks_per_second
 	_set_game_speed(THROW_SLOW_MOTION)
-	var speed_up := create_tween().set_ignore_time_scale(true)
+	# on while the game is paused too (the story box): never left slowed down
+	var speed_up := create_tween().set_ignore_time_scale(true).set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
 	speed_up.tween_interval(THROW_SLOW_SECONDS)
 	speed_up.tween_method(_set_game_speed, THROW_SLOW_MOTION, 1.0, THROW_SPEED_UP).set_trans(Tween.TRANS_SINE)
 

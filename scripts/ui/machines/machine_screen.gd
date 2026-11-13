@@ -31,6 +31,8 @@ const PlayerCharacter = preload("res://scripts/player/player_character.gd")
 const MachineModels = preload("res://scripts/world/things/machine_models.gd")
 
 const NODE_NAME := "Automaatscherm"
+## The look of the machine's screen: a little CRT (no scanlines).
+const DISPLAY_SHADER := preload("res://scripts/ui/machines/machine_display.gdshader")
 const DESIGN_SIZE := Vector2(1280, 720)
 const LAYER := 90
 const TRAY_RECT := Rect2(40, 40, 300, 330)
@@ -473,10 +475,11 @@ func _build_stage() -> void:
 	var quad := QuadMesh.new()
 	quad.size = screen.size
 	display.mesh = quad
-	var display_material := StandardMaterial3D.new()
-	display_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	display_material.albedo_texture = _display_viewport.get_texture()
-	display_material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	# as on a little CRT: bulging, rounded corners, a glow (machine_display.gdshader)
+	var display_material := ShaderMaterial.new()
+	display_material.shader = DISPLAY_SHADER
+	display_material.set_shader_parameter("picture", _display_viewport.get_texture())
+	display_material.set_shader_parameter("picture_size", Vector2(_display_viewport.size))
 	display.material_override = display_material
 	display.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	# on the glass, sunk into the machine as far as its screen is (machine_parts "screen_sunk")

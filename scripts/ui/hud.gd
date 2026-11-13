@@ -434,8 +434,11 @@ func _update_city_music(delta: float) -> void:
 	if _jingles_playing > 0:
 		level_target -= JINGLE_DUCK_DB
 	_city_level_db = move_toward(_city_level_db, level_target, CITY_MUSIC_LEVEL_SPEED * delta)
+	# slow motion slows every sound down (AudioServer.playback_speed_scale), but not the music
+	var music_pitch := 1.0 / maxf(AudioServer.playback_speed_scale, 0.01)
 	for file: String in _city_players.keys():
 		var player: AudioStreamPlayer = _city_players[file]
+		player.pitch_scale = music_pitch
 		var weight: float = move_toward(_city_weights[file], 1.0 if file == _city_music_file else 0.0, delta / _city_fade)
 		_city_weights[file] = weight
 		if weight <= 0.0 and file != _city_music_file:
