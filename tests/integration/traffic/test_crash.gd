@@ -28,16 +28,12 @@ func _head_on(test, sent_heavy: bool) -> void:
 	while elapsed < RUN_UP_SECONDS:
 		await tree.physics_frame
 		elapsed += TrafficHelp.STEP
-	print("DBG before: sent %s speed %.1f route %d reckless %s | target %s speed %.1f route %d unseen %s" % [sent.global_position, sent.speed, sent._route_cells.size(), sent.reckless, target.global_position, target.speed, target._route_cells.size(), target.unseen])
 	sent.drive_into(target)
-	print("DBG after: sent %s speed %.1f route %d reckless %s" % [sent.global_position, sent.speed, sent._route_cells.size(), sent.reckless])
 	var heavy_health := heavy.health
 	var light_health := light.health
 	while not heavy.crashed and not light.crashed and elapsed < RUN_UP_SECONDS + HIT_WITHIN_SECONDS:
 		await tree.physics_frame
 		elapsed += TrafficHelp.STEP
-		if int(elapsed * 60) % 180 == 0:
-			print("DBG %.1f sent %s v %.1f target %s v %.1f" % [elapsed, sent.global_position, sent.speed, target.global_position, target.speed])
 		if heavy.health < heavy_health or light.health < light_health:
 			print("klap: zwaar %.0f -> %.0f HP, licht %.0f -> %.0f HP" % [heavy_health, heavy.health, light_health, light.health])
 			heavy_health = heavy.health
