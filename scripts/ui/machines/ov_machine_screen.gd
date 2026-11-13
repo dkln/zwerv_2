@@ -13,6 +13,9 @@ extends "res://scripts/ui/machines/machine_screen.gd"
 const OvCard = preload("res://scripts/world/ov_card.gd")
 const SCRIPT_PATH := "res://scripts/ui/machines/ov_machine_screen.gd"
 const OPTION_COUNT := 4
+## Its model: the tile of the station hall (as StreetMachines OV_TILE).
+const INTERIOR_LIBRARY := "res://assets/libraries/binnen.res"
+const OV_TILE := "station/kaartautomaat"
 
 var _options: Array[Button] = []
 var _option_actions: Array[Callable] = []
@@ -25,7 +28,33 @@ static func show_for(for_player: Node, place := "", with_animation := true) -> C
 	screen.set("trim_colour", Color("#1E5AC8"))
 	screen.set("screen_colour", Color("#FFD23A"))
 	screen.set("place_name", place)
+	screen.set("backdrop", "station" if place.to_upper().contains("CENTRAAL") else "straat")
 	return present(screen, for_player, with_animation)
+
+
+## The OV-chipkaart machine: the tile of the station hall (binnen/station/kaartautomaat, as
+## in the streets: StreetMachines), its parts where such a machine has them on its front.
+func machine_parts() -> Dictionary:
+	var library: MeshLibrary = load(INTERIOR_LIBRARY) if ResourceLoader.exists(INTERIOR_LIBRARY) else null
+	var item := library.find_item_by_name(OV_TILE) if library else -1
+	if item < 0 or library.get_item_mesh(item) == null:
+		return super()
+	# the mesh moved so it stands on y = 0, centred in x and z
+	var mesh: Mesh = library.get_item_mesh(item)
+	var box := library.get_item_mesh_transform(item) * mesh.get_aabb()
+	var placed := ArrayMesh.new()
+	var tool := SurfaceTool.new()
+	for surface in mesh.get_surface_count():
+		tool.clear()
+		tool.append_from(mesh, surface, Transform3D(library.get_item_mesh_transform(item).basis,
+			library.get_item_mesh_transform(item).origin - Vector3(box.get_center().x, box.position.y, box.get_center().z)))
+		tool.commit(placed)
+		placed.surface_set_material(placed.get_surface_count() - 1, mesh.surface_get_material(surface))
+	var width := box.size.x
+	var height := box.size.y
+	var front := box.size.z * 0.5
+	return {"mesh": placed, "screen": Rect2(-width * 0.3, height * 0.58, width * 0.6, height * 0.2), "front": front,
+		"keys": Vector3(0.0, height * 0.45, front), "slot": Vector3(0.0, height * 0.3, front)}
 
 
 func _opened() -> void:

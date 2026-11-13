@@ -22,6 +22,7 @@ const SwipeTransition = preload("res://scripts/ui/swipe_transition.gd")
 const Bakker = preload("res://scripts/world/layer_baker.gd")
 const Iso = preload("res://scripts/camera/iso_camera.gd")
 const LoadingScreen = preload("res://scripts/ui/loading_screen.gd")
+const RegionStream = preload("res://scripts/world/region_stream.gd")
 const CACHE_DIR := "user://merged"
 ## File-name suffixes of the MeshLibraries per LOD level: normal, coarse (two levels at most).
 const LEVEL_SUFFIXES := ["", "_lod"]
@@ -32,9 +33,14 @@ const FINE_CHUNK_CELLS := 4
 
 ## All layers have been merged (or there was nothing to merge).
 signal merge_finished
+## The chunk meshes of the merged layers came or went (a level in place, a region of the
+## streamed finest level loaded or dropped): who keeps a list of them looks again (BuildingFade).
+signal chunks_changed
 
 @export var camera_path := NodePath("../Camera")
 @export var sun_path := NodePath("../Zon")
+## The player: the streamed finest level keeps its regions round them (and the camera).
+@export var player_path := NodePath("../Speler")
 ## GridMap layers (node names under the scene root) that get LOD copies.
 @export var layers: Array[String] = ["Grond", "Gebouwen", "Props"]
 ## These layers are merged at startup into large meshes without hidden
@@ -104,6 +110,8 @@ var _generation := 0
 var _baked_into := {}
 ## Still waiting for the swipe of the scene change to go through before setting up.
 var _waiting_for_swipe := false
+## The streamed finest levels (RegionStream), told every frame what to keep round.
+var _streams: Array[Node3D] = []
 
 
 func _ready() -> void:
@@ -141,7 +149,9 @@ func setup() -> void:
 		var pair := [gm]
 		for suffix in LEVEL_SUFFIXES.slice(1):
 			var path := _library_path(gm, suffix)
-			if not ResourceLoader.exists(path):
+			# a merged layer gets its coarse level from the bake: no GridMap copy of the whole
+			# town for it (making one took seconds at every start)
+			if not ResourceLoader.exists(path) or layer_name in merge_layers:
 				pair.append(null)
 				continue
 			pair.append(_lod_copy(gm, layer_name + suffix, load(path)))
@@ -196,6 +206,7 @@ func clear() -> void:
 				if p[i] != null and is_instance_valid(p[i]):
 					p[i].queue_free()
 	_pairs.clear()
+	_streams.clear()
 	_names.clear()
 	_baked_into.clear()
 	_progress.clear()
@@ -298,9 +309,14 @@ func _close_screen_when_done() -> void:
 
 
 ## Replaces the GridMap rendering of layer `index` (_pairs) with merged meshes for every
-## LOD level (scripts/world/layer_baker.gd), loaded from the user://merged cache when possible.
-## Spread over frames; a fresh bake is stored so the next start is ready immediately
-## (as long as the map and the tiles don't change). Frees the LOD GridMap copies.
+## LOD level (scripts/world/layer_baker.gd), from the user://merged cache when possible.
+## The finest level is streamed (RegionStream: saved per region, only what is round the
+## camera and the player is loaded, the rest as they come near); the layer counts as done
+## once those regions are there. The coarse level (only seen zoomed out) then loads on in the
+## background, when it is in the cache. A level not in the cache is baked first (spread
+## over frames, under the loading screen) and stored, so the next start is ready at once
+## (as long as the map and the tiles don't change). A finest level cached as one file (an
+## older cache) is cut into regions once.
 func _merge(index: int, layer_name: String, gm: GridMap) -> void:
 	var t := Time.get_ticks_msec()
 	var generation := _generation
@@ -312,7 +328,10 @@ func _merge(index: int, layer_name: String, gm: GridMap) -> void:
 		if extra and extra.mesh_library:
 			extra_grids.append(extra)
 	var result := []
-	for suffix in LEVEL_SUFFIXES:
+	var finished := false   # the layer has been counted as done (the rest loads behind the game)
+	var baked_now := false  # a level was baked this time: everything under the loading screen
+	for level in LEVEL_SUFFIXES.size():
+		var suffix: String = LEVEL_SUFFIXES[level]
 		var path := _library_path(gm, suffix)
 		if not ResourceLoader.exists(path):
 			result.append(null)
@@ -336,12 +355,45 @@ func _merge(index: int, layer_name: String, gm: GridMap) -> void:
 			hash(data.get("cells", PackedInt32Array())), hash([gm.transform, chunk_cells]), extras_key,
 			FileAccess.get_modified_time(path) + Bakker.VERSION]
 		var cache := CACHE_DIR.path_join(key + ".scn")
+		var region_folder := CACHE_DIR.path_join(key)
+		var streamed := level == 0
 		var baked: Node3D
 		var job: String = layer_name + suffix
-		if bake_only and ResourceLoader.exists(cache):
+		if streamed and RegionStream.is_saved(region_folder):
+			if bake_only:
+				result.append(null)
+				_set_progress(job, 1.0)
+				continue
+			# the finest level from its regions: only what is near, the rest as it comes near
+			var stream := RegionStream.open(region_folder, layer_name + "_merged", gm.transform)
+			stream.visible = false
+			if not root.is_node_ready():
+				await root.ready   # the town is still setting up its children
+			root.add_child(stream)
+			stream.connect("regions_changed", func() -> void: chunks_changed.emit())
+			_streams.append(stream)
+			while is_inside_tree() and generation == _generation and not bool(stream.call("is_ready_around", _anchors())):
+				stream.call("update", _anchors())
+				_set_progress(job, float(stream.call("share_ready_around", _anchors())))
+				await get_tree().process_frame
+			if not is_inside_tree() or generation != _generation:
+				_drop(result)
+				return
+			result.append(stream)
+			_set_progress(job, 1.0)
+			continue
+		if not streamed and bake_only and ResourceLoader.exists(cache):
 			result.append(null)
 			_set_progress(job, 1.0)
 			continue
+		if not streamed and not baked_now and not bake_only and not finished and ResourceLoader.exists(cache):
+			# the coarse level is only seen zoomed out: the layer is done, it loads on behind the game
+			result.append(null)
+			_apply(index, gm, extra_grids, result)
+			result.pop_back()
+			finished = true
+			print("%s merged in %d ms" % [layer_name, Time.get_ticks_msec() - t])
+			_layer_finished()
 		if ResourceLoader.exists(cache):
 			# headless the dummy rendering server is not thread-safe: one cache at a time
 			var one_at_a_time := DisplayServer.get_name() == "headless"
@@ -351,7 +403,8 @@ func _merge(index: int, layer_name: String, gm: GridMap) -> void:
 			ResourceLoader.load_threaded_request(cache)
 			var loaded := []
 			while ResourceLoader.load_threaded_get_status(cache, loaded) == ResourceLoader.THREAD_LOAD_IN_PROGRESS:
-				_set_progress(job, loaded[0])
+				if not finished:
+					_set_progress(job, loaded[0])
 				if not is_inside_tree():
 					break   # the town was left while loading (back to the main menu)
 				await get_tree().process_frame
@@ -362,7 +415,12 @@ func _merge(index: int, layer_name: String, gm: GridMap) -> void:
 				return
 			if ps:
 				baked = ps.instantiate()
+			if baked and streamed:
+				# an older cache, the whole level in one file: cut into regions, once
+				RegionStream.save_regions(baked, region_folder)
+				_remove_old(key, true)
 		if baked == null:
+			baked_now = true
 			baked = await Bakker.bake(gm, load(path), layer_name + "_merged" + suffix, layer_name in hide_top_layers,
 				func(fraction: float): _set_progress(job, fraction), extras, layer_name in fade_layers, layer_name in filled_shadow_layers, chunk_cells)
 			if not is_inside_tree() or generation != _generation or baked == null:
@@ -370,7 +428,11 @@ func _merge(index: int, layer_name: String, gm: GridMap) -> void:
 					baked.free()
 				_drop(result)
 				return
-			_save(baked, cache)
+			if streamed:
+				RegionStream.save_regions(baked, region_folder)
+				_remove_old(key, true)
+			else:
+				_save(baked, cache)
 		if bake_only:
 			baked.free()
 			result.append(null)
@@ -379,22 +441,63 @@ func _merge(index: int, layer_name: String, gm: GridMap) -> void:
 		baked.visible = false
 		root.add_child(baked)
 		result.append(baked)
-		_set_progress(job, 1.0)
+		if not finished:
+			_set_progress(job, 1.0)
 	if not is_inside_tree() or generation != _generation:
 		_drop(result)
 		return
-	var old: Array = _pairs[index]
-	_pairs[index] = result
+	_apply(index, gm, extra_grids, result)
+	if not finished:
+		print("%s merged in %d ms" % [layer_name, Time.get_ticks_msec() - t])
+		_layer_finished()
+	else:
+		print("%s: the coarse level there after %d ms" % [layer_name, Time.get_ticks_msec() - t])
+
+
+## The merged nodes of `result` (per level; null: not there (yet)) take the place of what
+## layer `index` showed at those levels; its GridMap and the extra layers baked into it are
+## hidden.
+func _apply(index: int, gm: GridMap, extra_grids: Array[GridMap], result: Array) -> void:
+	var shown: Array = _pairs[index]
+	for level in mini(result.size(), shown.size()):
+		if result[level] == null or result[level] == shown[level]:
+			continue
+		if shown[level] != null and shown[level] != gm and is_instance_valid(shown[level]):
+			shown[level].queue_free()
+		shown[level] = result[level]
 	gm.visible = false
 	for extra in extra_grids:
 		extra.visible = false
-		_baked_into[str(extra.name)] = layer_name
-	for i in old.size():
-		if old[i] != null and old[i] != gm:
-			old[i].queue_free()
+		_baked_into[str(extra.name)] = str(_names[index])
 	_level = -1   # reapply visibility
-	print("%s merged in %d ms" % [layer_name, Time.get_ticks_msec() - t])
-	_layer_finished()
+	chunks_changed.emit()
+
+
+## What the streamed levels keep their regions round (global positions): what the camera
+## looks at, and the player.
+func _anchors() -> Array:
+	var anchors: Array = []
+	if _cam and is_instance_valid(_cam) and _cam.is_inside_tree():
+		anchors.append(Iso.ground_focus(_cam))
+	var player := get_parent().get_node_or_null(player_path) as Node3D
+	if player and player.is_inside_tree():
+		anchors.append(player.global_position)
+	return anchors
+
+
+## Removes the older cache of the same scene, layer and level as `key` (files and region
+## folders); `whole_file_too`: also the single file of this very key (now saved as regions).
+func _remove_old(key: String, whole_file_too := false) -> void:
+	var prefix := key.split("__")[0] + "__"
+	for file_name in DirAccess.get_files_at(CACHE_DIR):
+		if file_name.begins_with(prefix) and (file_name != key + ".scn" or whole_file_too):
+			DirAccess.remove_absolute(CACHE_DIR.path_join(file_name))
+	for folder_name in DirAccess.get_directories_at(CACHE_DIR):
+		if folder_name.begins_with(prefix) and folder_name != key:
+			var folder := CACHE_DIR.path_join(folder_name)
+			for file_name in DirAccess.get_files_at(folder):
+				DirAccess.remove_absolute(folder.path_join(file_name))
+			DirAccess.remove_absolute(folder)
 
 
 ## Frees the merged nodes of a merge that was overtaken by clear().
@@ -409,10 +512,7 @@ func _drop(nodes: Array) -> void:
 func _save(node: Node3D, path: String) -> void:
 	DirAccess.make_dir_recursive_absolute(CACHE_DIR)
 	# clean up old versions of this layer (and this LOD level)
-	var prefix := path.get_file().split("__")[0] + "__"
-	for f in DirAccess.get_files_at(CACHE_DIR):
-		if f.begins_with(prefix) and f != path.get_file():
-			DirAccess.remove_absolute(CACHE_DIR.path_join(f))
+	_remove_old(path.get_file().get_basename())
 	for k in node.get_children():
 		k.owner = node
 	var ps := PackedScene.new()
@@ -425,6 +525,11 @@ func _save(node: Node3D, path: String) -> void:
 func _process(_delta: float) -> void:
 	if _cam == null:
 		return
+	if not _streams.is_empty():
+		var anchors := _anchors()
+		for stream in _streams:
+			if is_instance_valid(stream):
+				stream.call("update", anchors)
 	var zoom := Iso.view_size(_cam)
 	var distance := Iso.distance_to_ground(_cam)
 	var level := 1 if zoom > coarse_from else 0

@@ -55,7 +55,7 @@ static func make_card(random: RandomNumberGenerator) -> Dictionary:
 ## Gives `player` a new found card (its own balance, PIN and riddle): in the pockets as one
 ## more "pinpas" and kept on the player. False (nothing given) if the pockets are full.
 ## `random`: where the card comes from (null: a fresh, randomised one).
-static func give_found_bank_card(player: Node, random: RandomNumberGenerator = null) -> bool:
+static func give_found_bank_card(player: Node, random: RandomNumberGenerator = null, quiet := false) -> bool:
 	if player == null or not player.has_method("add_item"):
 		return false
 	if random == null:
@@ -67,7 +67,7 @@ static func give_found_bank_card(player: Node, random: RandomNumberGenerator = n
 	card["nummer"] = _next_number(player)
 	cards.append(card)
 	player.set_meta(CARDS_META, cards)
-	if not bool(player.call("add_item", ITEM)):
+	if not bool(player.call("add_item", ITEM, 1, quiet)):
 		cards.erase(card)
 		player.set_meta(CARDS_META, cards)
 		return false

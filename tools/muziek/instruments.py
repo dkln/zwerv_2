@@ -10,7 +10,7 @@ eighth, with its level and repeats, on the other side of the stereo picture).
 """
 import os
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from functools import lru_cache
 
 import numpy
@@ -18,6 +18,9 @@ import numpy
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "megadrive"))
 import megadrive  # noqa: E402
 from megadrive import FmPatch, Operator  # noqa: E402
+
+import chip  # noqa: E402
+import vgm  # noqa: E402
 
 SAMPLE_RATE = megadrive.SAMPLE_RATE
 
@@ -39,6 +42,8 @@ class Sound:
     psg_vibrato: float = 0.0
     drive: float = 6.0            # gitaar: how hard it is driven
     octave: int = 0               # played that many octaves up (+) or down (-)
+    chip_voice: object = None     # "chip": the patch of a VGM's FM channel (vgm.FmVoice), played by chip.py
+    chip_clock: float = 0.0       # "chip": the YM2612 clock of that VGM
 
     def render(self, pitches: tuple, seconds: float, velocity: float, detune_cents: float = 0.0) -> numpy.ndarray:
         seconds = round(seconds, 4)
@@ -52,6 +57,11 @@ class Sound:
             return _sum(voices)
         if self.kind == "gitaar":
             return _guitar(self.patch, shifted, seconds, velocity, self.drive)
+        if self.kind == "chip":
+            # the chip has no velocity: a softer note is the same note, lower
+            return velocity * _sum([chip.voice_note(self.chip_voice, self.chip_clock,
+                                                    round(megadrive.midi_to_frequency(pitch), 3), seconds)
+                                    for pitch in shifted])
         raise ValueError(self.kind)
 
 
@@ -207,7 +217,64 @@ SOFT_STRINGS = FmPatch("fm_strijkers", algorithm=4, feedback=0.45, vibrato_depth
     Operator(ratio=1.0, detune_cents=-7, level=0.7, attack=0.45, decay=2.0, sustain=0.9, release=0.6),
 ))
 
-SOUNDS = {sound.name: sound for sound in (
+class _VgmNames(dict):
+    """A table that also knows the names made from a VGM ("vgm:<file>..."): they are built
+    when first asked for (`build`) and then kept."""
+
+    def __init__(self, entries: dict, build) -> None:
+        super().__init__(entries)
+        self.build = build
+
+    def __missing__(self, name: str):
+        if not str(name).startswith("vgm:"):
+            raise KeyError(name)
+        self[name] = self.build(name)
+        return self[name]
+
+    def __contains__(self, name) -> bool:
+        if dict.__contains__(self, name):
+            return True
+        try:
+            self[name]
+        except (KeyError, OSError, ValueError):
+            return False
+        return True
+
+
+@lru_cache(maxsize=None)
+def vgm_song(file_name: str):
+    """The VGM next to the compositions (tools/muziek/composities/<file_name>), read once."""
+    return vgm.read(os.path.join(vgm.COMPOSITIONS_FOLDER, file_name))
+
+
+## The notes a VGM voice is weighed with against the sound whose place in the mix it takes.
+LEVEL_PITCHES = (45, 57, 69)
+
+
+def _level(samples: numpy.ndarray) -> float:
+    return float(numpy.sqrt(numpy.mean(samples ** 2))) if len(samples) else 0.0
+
+
+def _vgm_sound(name: str) -> Sound:
+    """"vgm:<file>:<channel>" the patch of that FM channel of the VGM, played by the chip
+    imitation (chip.py); "vgm:<file>:<channel>=<sound>" with the place in the mix of that
+    sound: its pan and width, and as loud as it (measured on LEVEL_PITCHES). No echo: the
+    chip has none."""
+    _prefix, file_name, rest = name.split(":", 2)
+    channel, _equals, reference_name = rest.partition("=")
+    song = vgm_song(file_name)
+    if channel not in song.patches:
+        raise KeyError(f"{name}: the VGM has no patch on {channel} (it has {sorted(song.patches)})")
+    reference = SOUNDS[reference_name] if reference_name else None
+    plain = Sound(name, "chip", chip_voice=song.patches[channel], chip_clock=float(song.fm_clock))
+    if reference is None:
+        return replace(plain, gain=0.5)
+    own = _level(numpy.concatenate([plain.render((pitch,), 0.4, 1.0) for pitch in LEVEL_PITCHES]))
+    wanted = _level(numpy.concatenate([reference.render((pitch,), 0.4, 1.0) for pitch in LEVEL_PITCHES]))
+    return replace(plain, pan=reference.pan, width=reference.width, gain=reference.gain * wanted / max(own, 1e-9))
+
+
+SOUNDS = _VgmNames({sound.name: sound for sound in (
     Sound("fm_slapbas", "fm", SLAP_BASS, pan=0.0, gain=0.75),
     Sound("fm_housebas", "fm", HOUSE_BASS, pan=0.0, gain=0.85),
     # the house bass's FM voice as a melody: its growl on every note, its sub an octave below
@@ -241,7 +308,7 @@ SOUNDS = {sound.name: sound for sound in (
     Sound("fm_vibrafoon", "fm", VIBRAPHONE, pan=0.2, gain=0.42, echo=0.75, echo_level=0.25, echo_repeats=2),
     Sound("fm_fluit", "fm", FLUTE, pan=-0.15, gain=0.45, echo=0.75, echo_level=0.22, echo_repeats=2),
     Sound("fm_strijkers", "fm", SOFT_STRINGS, pan=0.0, gain=0.16, width=12.0),
-)}
+)}, _vgm_sound)
 
 
 # ----------------------------------------------------------------------------- the drum kit
@@ -276,7 +343,60 @@ def _dmx_kit() -> dict:
     return kit
 
 
+def _loudest_moment(samples: numpy.ndarray) -> float:
+    """The level of the loudest 20 ms."""
+    window = int(0.02 * SAMPLE_RATE)
+    if len(samples) <= window:
+        return _level(samples)
+    return max(_level(samples[start:start + window]) for start in range(0, len(samples) - window, window // 2))
+
+
+def _vgm_kit(name: str) -> dict:
+    """"vgm:<file>": a drum kit in the sound of that VGM. What the VGM has itself: the snare
+    and the hi-hat are bursts of white PSG noise at the two volumes and the length its own
+    noise hits have. Derived from it, since a derived piece needs them: the open hi-hat (the
+    hi-hat twice as long), the crash (the noise falling away in the chip's 2 dB steps), the
+    clap (three short bursts), and the kick and the toms (the patch of the VGM's lowest FM
+    channel with its pitch falling; without FM: periodic PSG noise). Each as loud as the same
+    drum of the standard kit, at its place."""
+    file_name = name.split(":", 2)[1]
+    song = vgm_song(file_name)
+    noise = [hit for hit in song.hits if hit.source == "psg_ruis" and hit.white]
+    levels = sorted({round(-hit.level_db / 2.0) for hit in noise}) or [1, 5]
+    loud = int(levels[0])
+    soft = int(levels[-1]) if len(levels) > 1 else min(14, loud + 4)
+    lengths = sorted((hit.end - hit.start) / vgm.VGM_RATE for hit in noise) or [0.1]
+    burst = min(0.25, max(0.03, lengths[len(lengths) // 2]))
+    clock = float(song.psg_clock)
+    made = {
+        "snare": chip.noise_hit([(burst, loud)], clock),
+        "hihat": chip.noise_hit([(burst, soft)], clock),
+        "open": chip.noise_hit([(2.0 * burst, soft)], clock),
+        "crash": chip.noise_hit([(0.09, attenuation) for attenuation in range(loud, 15)], clock),
+        "clap": chip.noise_hit([(0.012, loud), (0.01, 15), (0.012, loud), (0.01, 15), (0.05, loud), (0.03, min(14, loud + 4))], clock),
+    }
+    played = {}
+    for note in song.notes:
+        if note.channel.startswith("fm"):
+            played.setdefault(note.channel, []).append(note.pitch)
+    lowest = min(played, key=lambda channel: sorted(played[channel])[len(played[channel]) // 2], default=None)
+    lowest = lowest or next(iter(sorted(song.patches)), None)
+    falls = {"kick": (170.0, 45.0, 0.09), "tom_hoog": (270.0, 170.0, 0.14), "tom_mid": (205.0, 130.0, 0.14),
+             "tom_laag": (155.0, 95.0, 0.16)}
+    for drum, (from_hz, to_hz, seconds) in falls.items():
+        if lowest is not None:
+            made[drum] = chip.voice_sweep(song.patches[lowest], float(song.fm_clock), from_hz, to_hz, seconds)
+        else:
+            made[drum] = chip.noise_hit([(seconds * 0.5, loud), (seconds * 0.5, min(14, loud + 3))], clock, white=False,
+                                        divider=2 if drum in ("kick", "tom_laag") else 1)
+    kit = {}
+    for drum, standard in _drum_kit().items():
+        samples = made[drum] * (_loudest_moment(standard.samples) / max(_loudest_moment(made[drum]), 1e-9))
+        kit[drum] = Drum(samples, standard.pan, standard.gain)
+    return kit
+
+
 ## The drum kits a composition can choose (BIJSTELLING "drumstel"; the mixer reads it from the
-## piece's sounds under "drumstel").
-DRUM_KITS = {"standaard": _drum_kit(), "dmx": _dmx_kit()}
+## piece's sounds under "drumstel"); "vgm:<file>" is the kit made of that VGM's own sounds.
+DRUM_KITS = _VgmNames({"standaard": _drum_kit(), "dmx": _dmx_kit()}, _vgm_kit)
 DRUMS = DRUM_KITS["standaard"]

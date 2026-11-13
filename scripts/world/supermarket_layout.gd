@@ -2,9 +2,10 @@ extends RefCounted
 ## The layout of a supermarket branch (DERREK or ALFRED STEYHN), worked out from the chain,
 ## the seed of the branch and the width of its shop front on the map: one source for the
 ## game (scripts/world/supermarket.gd builds it into its GridMaps) and the checks
-## (tools/check/supermarket_test.gd). No two branches are the same:
-## - size: as wide as its shop front (4 m a cell, FEWEST_CELLS..MOST_CELLS), 16, 20 or 24 m
-##   deep (from the seed);
+## (tests/integration/interiors/test_supermarket.gd). No two branches are the same:
+## - size: wider than its shop front (4 m a cell: the shop runs on behind its neighbours,
+##   EXTRA_CELLS more, FEWEST_CELLS..MOST_CELLS in all), 24 to 36 m deep (DEPTHS; both from
+##   the seed);
 ## - the entrance: DERREK somewhere along the front, ALFRED STEYHN near a corner (which one
 ##   from the seed); the checkouts on the wider side of it, the trolleys, baskets and the
 ##   first things to see (DERREK its promotion pallets, ALFRED STEYHN flowers and the fruit
@@ -23,9 +24,10 @@ extends RefCounted
 ##   var plan := SupermarketLayout.plan("derrek", 1234, 6)
 
 const CELL := 4.0
-const FEWEST_CELLS := 4
-const MOST_CELLS := 7
-const DEPTHS := [16.0, 20.0, 24.0]
+const FEWEST_CELLS := 5
+const MOST_CELLS := 10
+const EXTRA_CELLS := Vector2i(1, 3)
+const DEPTHS := [24.0, 28.0, 32.0, 36.0]
 ## The front zone (entrance and checkouts) is this deep, metres from the front wall.
 const FRONT_ZONE := 6.5
 ## From the back wall: the fridge wall and the aisle before it; from the left wall: the wall
@@ -89,7 +91,7 @@ const CART_COLOURS := {"derrek": "rood", "alfred_steyhn": "blauw"}
 static func plan(brand: String, seed: int, front_cells: int) -> Dictionary:
 	var random := RandomNumberGenerator.new()
 	random.seed = hash([brand, seed])
-	var cells := clampi(front_cells, FEWEST_CELLS, MOST_CELLS)
+	var cells := clampi(front_cells + random.randi_range(EXTRA_CELLS.x, EXTRA_CELLS.y), FEWEST_CELLS, MOST_CELLS)
 	var width := cells * CELL
 	var depth: float = DEPTHS[random.randi() % DEPTHS.size()]
 	var result := {"brand": brand, "width": width, "depth": depth, "tiles": [], "floor": [], "props": [],

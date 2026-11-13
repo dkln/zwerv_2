@@ -36,9 +36,11 @@ static func cash_machine_mesh() -> ArrayMesh:
 		var figure := PlayerModel.VoxelFigure.new()
 		var width := 12
 		var depth := 8
-		var front := depth - 1
-		_box(figure, Vector3i(0, 0, 0), Vector3i(width - 1, 1, front), DARK, "metal")
-		_box(figure, Vector3i(0, 2, 0), Vector3i(width - 1, 23, front - 1), ATM_BODY, "plastic")
+		# the front is voxel z = 0 (VoxelFigure mirrors z: z = 0 faces +z), the back against the wall
+		var front := 0
+		var back := depth - 1
+		_box(figure, Vector3i(0, 0, 0), Vector3i(width - 1, 1, back), DARK, "metal")
+		_box(figure, Vector3i(0, 2, front + 1), Vector3i(width - 1, 23, back), ATM_BODY, "plastic")
 		# the front face: a recess round the screen, a hood over it
 		_box(figure, Vector3i(1, 2, front), Vector3i(width - 2, 22, front), ATM_BODY.darkened(0.15), "plastic")
 		_box(figure, Vector3i(2, 16, front), Vector3i(width - 3, 20, front), ATM_SCREEN, "glow", true)
@@ -51,7 +53,7 @@ static func cash_machine_mesh() -> ArrayMesh:
 		_box(figure, Vector3i(8, 11, front), Vector3i(8, 11, front), Color("#3CE06A"), "glow", true)
 		_box(figure, Vector3i(3, 7, front), Vector3i(8, 7, front), DARK, "plastic")            # money slot
 		# the sign on top
-		_box(figure, Vector3i(0, 24, 0), Vector3i(width - 1, 27, front), ATM_TRIM, "glow", true)
+		_box(figure, Vector3i(0, 24, 0), Vector3i(width - 1, 27, back), ATM_TRIM, "glow", true)
 		_box(figure, Vector3i(2, 25, front), Vector3i(width - 3, 26, front), ATM_BODY, "plastic")
 		figure.mark("metal", [STEEL])
 		_meshes["geldautomaat"] = _mesh_of(figure, MACHINE_VOXEL)
@@ -65,16 +67,18 @@ static func deposit_machine_mesh() -> ArrayMesh:
 		var figure := PlayerModel.VoxelFigure.new()
 		var width := 14
 		var depth := 10
-		var front := depth - 1
-		_box(figure, Vector3i(0, 0, 0), Vector3i(width - 1, 1, front), DARK, "metal")
-		_box(figure, Vector3i(0, 2, 0), Vector3i(width - 1, 25, front), DEPOSIT_BODY, "plastic")
+		# the front is voxel z = 0 (VoxelFigure mirrors z: z = 0 faces +z)
+		var front := 0
+		var back := depth - 1
+		_box(figure, Vector3i(0, 0, 0), Vector3i(width - 1, 1, back), DARK, "metal")
+		_box(figure, Vector3i(0, 2, 0), Vector3i(width - 1, 25, back), DEPOSIT_BODY, "plastic")
 		# the hole: a dark ring in a steel collar
 		_box(figure, Vector3i(4, 12, front), Vector3i(9, 17, front), STEEL, "metal")
 		_box(figure, Vector3i(5, 13, front), Vector3i(8, 16, front), DARK, "plastic")
 		_box(figure, Vector3i(4, 20, front), Vector3i(9, 23, front), DEPOSIT_SCREEN, "glow", true)
 		_box(figure, Vector3i(10, 9, front), Vector3i(12, 9, front), DARK, "plastic")          # the bon
 		_box(figure, Vector3i(11, 13, front), Vector3i(11, 14, front), Color("#E83A30"), "glow", true)
-		_box(figure, Vector3i(0, 26, 0), Vector3i(width - 1, 29, front), DEPOSIT_TRIM, "glow", true)
+		_box(figure, Vector3i(0, 26, 0), Vector3i(width - 1, 29, back), DEPOSIT_TRIM, "glow", true)
 		_box(figure, Vector3i(2, 27, front), Vector3i(width - 3, 28, front), DEPOSIT_BODY, "plastic")
 		_meshes["statiegeldautomaat"] = _mesh_of(figure, MACHINE_VOXEL)
 	return _meshes["statiegeldautomaat"]

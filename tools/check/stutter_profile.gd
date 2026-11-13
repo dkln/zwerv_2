@@ -74,6 +74,11 @@ func _init() -> void:
 			hud._story_box._pages = hud._story_box._pages.slice(-1)
 			hud._story_box._page_index = 0
 			hud._story_box._next_page()
+		# and the reward screen after it (a task done: GameHud.show_reward)
+		if hud.has_method("rewards_waiting"):
+			hud.rewards_waiting().clear()
+		while hud.has_method("is_showing_reward") and hud.is_showing_reward():
+			hud._reward_screen.next_page()
 	# the merging (DetailNiveau) may start late and pauses the game while it runs
 	var detail: Node = scene.get_node_or_null("DetailNiveau")
 	var calm_frames := 0
@@ -84,6 +89,11 @@ func _init() -> void:
 			hud._story_box._pages = hud._story_box._pages.slice(-1)
 			hud._story_box._page_index = 0
 			hud._story_box._next_page()
+		# and the reward screen after it (a task done: GameHud.show_reward)
+		if hud.has_method("rewards_waiting"):
+			hud.rewards_waiting().clear()
+		while hud.has_method("is_showing_reward") and hud.is_showing_reward():
+			hud._reward_screen.next_page()
 		var busy: bool = paused or (detail != null and detail.has_method("is_merging") and detail.is_merging())
 		calm_frames = 0 if busy else calm_frames + 1
 	print("rustig na %.1f s (gepauzeerd %s, samenvoegen %s)" % [(Time.get_ticks_msec() - waited_from) / 1000.0,

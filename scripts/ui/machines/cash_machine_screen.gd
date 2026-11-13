@@ -32,11 +32,19 @@ static func show_for(for_player: Node, place := "", with_animation := true) -> C
 	screen.set("trim_colour", Color("#F2B705"))
 	screen.set("screen_colour", Color("#5FE0FF"))
 	screen.set("place_name", place)
+	screen.set("backdrop", "straat")
 	return present(screen, for_player, with_animation)
 
 
 func _opened() -> void:
 	_show_start()
+
+
+## The cash machine of the town (MachineModels.cash_machine_mesh, voxels of 6,25 cm, 12 x 28
+## x 8): its screen, keypad and the slot the money comes out of.
+func machine_parts() -> Dictionary:
+	return {"mesh": MachineModels.cash_machine_mesh(), "screen": Rect2(-0.25, 1.0, 0.5, 0.3125), "front": 0.25,
+		"keys": Vector3(-0.0625, 0.75, 0.25), "slot": Vector3(0.0, 0.47, 0.25)}
 
 
 func build_controls(box: VBoxContainer) -> void:

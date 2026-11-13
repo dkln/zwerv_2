@@ -1,5 +1,5 @@
 class_name InteriorPerson
-extends Node3D
+extends "res://scripts/world/person.gd"
 ## Someone in an interior (scripts/world/interior.gd): the man or woman behind the counter
 ## (`role` "snackbarhouder") or someone at a table (`role` "klant", sitting on its chair); and
 ## the people on the terraces in the town (scripts/world/terraces.gd), sitting as well.
@@ -11,7 +11,6 @@ extends Node3D
 ##   var person := InteriorPerson.create("klant", 17, true)
 
 ## Everyone the player can talk to (pedestrians too): PlayerController looks in it.
-const TALKABLE_GROUP := "aanspreekbaar"
 ## Seat height (metres: the top of the chair, binnen/snackbar/stoel) and how far forward the
 ## feet stand from the hips (sitting).
 const SEAT_HEIGHT := 0.625
@@ -32,10 +31,6 @@ const FRONT_SIDE := 0.2
 const PLAYER_GROUP := "speler"
 const InteractionMark = preload("res://scripts/world/interaction_mark.gd")
 
-var role := "klant"
-var mobility := ""
-var figure: TownsfolkFigure
-var sitting := false
 var seat_height := SEAT_HEIGHT
 var _mark: InteractionMark
 var _body: AnimatableBody3D
@@ -166,13 +161,6 @@ func _sit() -> void:
 		figure.aim_arm(side, Vector3(shoulder.x * 0.8, seat_height + 0.15, 0.4) - figure.position)
 
 
-## Standing still and straight at once (PlayerController.talk_to: the conversation pauses
-## the game, so someone walking would keep a leg in the air): the shoppers of a supermarket.
-func stand_neutral() -> void:
-	if figure and not sitting:
-		figure.walk(0.0, 0.0)
-
-
 ## How far off the player can talk to them: across the counter for who sells.
 func reach() -> float:
 	return COUNTER_REACH if role in MERCHANT_ROLES else TALK_REACH
@@ -189,11 +177,10 @@ func action_text() -> String:
 	return "Praten"
 
 
-## The voice of the cries and the babble (as Pedestrian.voice).
-func voice() -> String:
-	var look: Dictionary = figure.look if figure else {}
-	if look.get("hair_style", "") == "lang" or look.get("skirt", false):
-		return "vrouw"
-	if look.get("hair_style", "") == "kaal":
-		return "oude_man"
-	return "man"
+func actor_kind() -> String:
+	return ACTOR_INTERIOR
+
+
+## Whether they sell (MERCHANT_ROLES): talking to them opens the shop screen.
+func is_merchant() -> bool:
+	return role in MERCHANT_ROLES

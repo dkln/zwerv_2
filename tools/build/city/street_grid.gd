@@ -162,10 +162,10 @@ const STREET_THEMES := ["standaard", "fietsstraat", "fietsstroken", "inhaalverbo
 const ASPHALT_THEMES := ["standaard", "fietsstroken", "inhaalverbod", "lijnen", "fietsstrook"]
 ## Most intersections with traffic lights, and the least distance (cells, along either
 ## axis) between two of them.
-const MAX_LIT_INTERSECTIONS := 8
-const LIT_SPACING := 14
+const MAX_LIT_INTERSECTIONS := 16
+const LIT_SPACING := 9
 ## Sections at least this long (cells) get a zebra crossing halfway along as well.
-const MID_ZEBRA_LENGTH := 9
+const MID_ZEBRA_LENGTH := 6
 const ARROWS := ["rijstrook_pijl_rechtdoor", "rijstrook_pijl_links", "rijstrook_pijl_rechts", "rijstrook_pijl_rechtdoor_links", "rijstrook_pijl_rechtdoor_rechts"]
 
 
@@ -307,10 +307,6 @@ func _dress_section(run: Array, horizontal: bool, theme: String, inter: Dictiona
 			G(c0.x, c0.y, t0, rot0)
 		if t1 != "":
 			G(c1.x, c1.y, t1, rot1)
-	# arrows and block markings before a crossing are asphalt tiles: only on asphalt streets
-	# (on clinkers, old asphalt or a bicycle street they would lie there as loose patches)
-	if not theme in ASPHALT_THEMES:
-		return
 	# approaches: lane 0 drives towards +x/+z... (west/south): its last cell in driving
 	# direction is run[0] - step for westbound, run[-1] for southbound; lane 1 the other way
 	var step := Vector2i(1, 0) if horizontal else Vector2i(0, 1)
@@ -319,6 +315,15 @@ func _dress_section(run: Array, horizontal: bool, theme: String, inter: Dictiona
 		ends = [[run[0], rot0, run[0] - step, run[0] + step], [run[-1] + other, rot1, run[-1] + other + step, run[-1] + other - step]]
 	else:
 		ends = [[run[-1], rot0, run[-1] + step, run[-1] - step], [run[0] + other, rot1, run[0] + other - step, run[0] + other + step]]
+	# arrows and block markings before a crossing are asphalt tiles: only on asphalt streets
+	# (on clinkers, old asphalt or a bicycle street they would lie there as loose patches);
+	# those streets do get their zebras before a crossing (half of the approaches)
+	if not theme in ASPHALT_THEMES:
+		for e in ends:
+			if inter.has(e[2]) and n >= 3 and _r(e[2].x, e[2].y, 4) >= 2:
+				_zebra_over_both(e[0], e[1], rot0, rot1, other)
+		_mid_zebra(run, rot0, rot1, other)
+		return
 	for e in ends:
 		var cell: Vector2i = e[0]
 		if not inter.has(e[2]) or n < 2:
@@ -328,7 +333,7 @@ func _dress_section(run: Array, horizontal: bool, theme: String, inter: Dictiona
 		if horizontal and kind == 2 and n >= 5:
 			# a zebra right before the crossing, the arrow and block marking further back
 			var further: Vector2i = before + (before - cell)
-			G(cell.x, cell.y, "weg/zebrapad", e[1])
+			_zebra_over_both(cell, e[1], rot0, rot1, other)
 			G(before.x, before.y, "weg/" + ARROWS[(section + (0 if e[1] == rot0 else 2)) % ARROWS.size()], e[1])
 			G(further.x, further.y, "weg/rijstrook_blok_kant" if e[1] == rot0 else "weg/rijstrook_blok_geen", e[1])
 		elif horizontal:
@@ -343,13 +348,28 @@ func _dress_section(run: Array, horizontal: bool, theme: String, inter: Dictiona
 			G(cell.x, cell.y, "weg/rijstrook_haaientanden", e[1])
 		else:
 			# half of the north-south approaches get a zebra crossing
-			G(cell.x, cell.y, "weg/zebrapad", e[1])
+			_zebra_over_both(cell, e[1], rot0, rot1, other)
 			if n >= 3:
 				G(before.x, before.y, "weg/pianostrepen", e[1])
-	# a long street gets a zebra crossing between its intersections too, over both lanes
-	# (away from the middle, where the drains and manholes lie)
+	_mid_zebra(run, rot0, rot1, other)
+
+
+## A zebra over both lanes of the street at `cell` (on the lane turned `turn`: rot0 the first
+## lane, rot1 the second, which lies `other` further): people on foot cross only where the
+## stripes run from pavement to pavement (Pedestrians._crosses).
+func _zebra_over_both(cell: Vector2i, turn: Variant, rot0: Variant, rot1: Variant, other: Vector2i) -> void:
+	var on_first: bool = turn == rot0
+	var partner := cell + other if on_first else cell - other
+	G(cell.x, cell.y, "weg/zebrapad", turn)
+	G(partner.x, partner.y, "weg/zebrapad", rot1 if on_first else rot0)
+
+
+## A long street gets a zebra crossing between its intersections too, over both lanes
+## (away from the middle, where the drains and manholes lie).
+func _mid_zebra(run: Array, rot0: Variant, rot1: Variant, other: Vector2i) -> void:
+	var n := run.size()
 	if n >= MID_ZEBRA_LENGTH:
-		var zebra_at: Vector2i = run[n / 2 - 2]
+		var zebra_at: Vector2i = run[maxi(n / 2 - 2, 0)]
 		G(zebra_at.x, zebra_at.y, "weg/zebrapad", rot0)
 		G(zebra_at.x + other.x, zebra_at.y + other.y, "weg/zebrapad", rot1)
 

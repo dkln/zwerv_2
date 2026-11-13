@@ -107,6 +107,17 @@ func _ready() -> void:
 		return
 	_find_buildings()
 	_publish()
+	# the chunk meshes come and go (LevelOfDetail: a level in place, the regions of the
+	# streamed finest level): look again, the buildings fading now keep their materials
+	var detail := get_node_or_null(^"../DetailNiveau")
+	if detail and detail.has_signal("chunks_changed"):
+		detail.connect("chunks_changed", _chunks_changed)
+
+
+func _chunks_changed() -> void:
+	_find_chunks()
+	for index: int in _fade:
+		_use_fade_materials(index, true)
 
 
 ## Groups the Gebouwen cells into buildings (touching sides, seen from above) and sets
@@ -331,9 +342,10 @@ func _find_chunks() -> void:
 		var is_ground := _ground != null and layer_name.begins_with(str(_ground.name) + "_merged")
 		if not is_ground and not layer_name.begins_with(str(_buildings.name) + "_merged"):
 			continue
-		for chunk in layer.get_children():
+		# (a streamed level holds its chunks per region: RegionStream)
+		for chunk in layer.find_children("*", "MeshInstance3D", true, false):
 			# the shadow-only blocks (layer_baker.gd) are never seen, so they don't fade
-			if chunk is MeshInstance3D and chunk.mesh and chunk.cast_shadow != GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY:
+			if chunk.mesh and chunk.cast_shadow != GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY:
 				var box: AABB = chunk.global_transform * chunk.get_aabb()
 				_chunks.append([chunk, Rect2(box.position.x, box.position.z, box.size.x, box.size.z), is_ground])
 

@@ -215,6 +215,28 @@ static func shout(speaker: Node3D, kind: String, mood: String, roof_height: floa
 		return false
 	_any_ready_at = now + ANY_PAUSE
 	speaker.set_meta(READY_META, now + SPEAKER_PAUSE)
+	var line := pick_line(kind, mood)
+	_say(speaker, camera, line, roof_height, str(BABBLE_MOOD.get(mood, "neutraal")))
+	return true
+
+
+## Always shouts `line` over `speaker` (`head_height` m above its origin), babbling in
+## `babble_mood` (a line ending in "?" asks): someone of a place who comes to put the player
+## out (scripts/world/eviction.gd). Returns whether it could (in the tree, with a camera).
+static func shout_line(speaker: Node3D, line: String, head_height: float, babble_mood := "boos") -> bool:
+	if speaker == null or not speaker.is_inside_tree() or line == "":
+		return false
+	var camera := speaker.get_viewport().get_camera_3d()
+	if camera == null:
+		return false
+	speaker.set_meta(READY_META, Time.get_ticks_msec() / 1000.0 + SPEAKER_PAUSE)
+	_say(speaker, camera, line, head_height, babble_mood)
+	return true
+
+
+## `line` in the balloon over `speaker`, and its babble.
+static func _say(speaker: Node3D, camera: Camera3D, line: String, roof_height: float, mood_of_babble: String) -> void:
+	var roof := speaker.global_position + Vector3.UP * roof_height
 	# its balloon still talking takes the new line; else (none, or fading) a new one
 	var balloon: SpeechBalloon = null
 	var earlier: Variant = speaker.get_meta(BALLOON_META) if speaker.has_meta(BALLOON_META) else null
@@ -231,11 +253,9 @@ static func shout(speaker: Node3D, kind: String, mood: String, roof_height: floa
 		# gone with the vehicle (the balloon would otherwise only hide itself)
 		speaker.tree_exiting.connect(balloon.queue_free, CONNECT_ONE_SHOT)
 		speaker.set_meta(BALLOON_META, balloon)
-	var line := pick_line(kind, mood)
 	balloon.say(line, HOLD_SECONDS)
-	var babble_mood: String = "vraag" if line.strip_edges().ends_with("?") else str(BABBLE_MOOD.get(mood, "neutraal"))
-	Babble.play_at(speaker.get_tree(), roof, voice_of(speaker), babble_mood)
-	return true
+	var babble_mood: String = "vraag" if line.strip_edges().ends_with("?") else mood_of_babble
+	Babble.play_at(speaker.get_tree(), roof, voice_of(speaker), babble_mood, line)
 
 
 ## The voice of a speaker: a pedestrian's own (Pedestrian.voice), else one of Babble.VOICES

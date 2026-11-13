@@ -35,6 +35,9 @@ extends CanvasLayer
 ##   appearing word by word, with the player's portrait;
 ## - the shop screen (show_shop, scripts/ui/shop_screen.gd): talking to someone who sells
 ##   (a snack bar, the shops of Den Haag Centraal), their goods to buy;
+## - the reward screen (show_reward, scripts/ui/reward_screen.gd): what a task, a mission or
+##   someone in the street gave you, the item big and turning, with its own jingle; it
+##   waits until nothing else holds the game (a conversation, the shop, a menu);
 ## - a CRT look over the whole picture: the world bulges like a tube, its edges bending in
 ##   to black rounded corners (`crt_curvature`); the HUD bends with it, but less
 ##   (`crt_ui_curvature`), so its corners stay readable; faint scanlines (`scanlines`).
@@ -315,6 +318,7 @@ func _ready() -> void:
 	_build_death_screen()
 	_build_shop_screen()
 	_build_story_box()
+	_build_reward_screen()
 	# over the story box: money given in a conversation, seen while it is still open
 	_numbers_over_story = FloatingNumbers.new()
 	_numbers_over_story.name = "ZwevendeGetallenOverVerhaal"
@@ -477,6 +481,7 @@ func _process(delta: float) -> void:
 		_location_clock = LOCATION_INTERVAL
 		_update_location()
 		_update_quest_distance()
+	_open_waiting_reward()
 
 
 # ------------------------------------------------------------------ API
@@ -1341,6 +1346,10 @@ func _input(event: InputEvent) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if is_showing_reward():
+		if _reward_screen.handle_input(event):
+			get_viewport().set_input_as_handled()
+		return
 	if _story_box and _story_box.is_showing():
 		if _story_box.handle_input(event):
 			get_viewport().set_input_as_handled()
@@ -1436,6 +1445,61 @@ func show_story(pages: Array, done := Callable()) -> void:
 
 func is_showing_story() -> bool:
 	return _story_box != null and _story_box.is_showing()
+
+
+# ------------------------------------------------------------------ reward screen
+
+const RewardScreen = preload("res://scripts/ui/reward_screen.gd")
+## Its own short tune (tools/muziek/derive.py "deuntje_beloning"), as a task done has one.
+const REWARD_JINGLE := "res://assets/audio/muziek/deuntje_beloning.ogg"
+const REWARD_JINGLE_VOLUME_DB := -2.0
+
+var _reward_screen: Control
+var _rewards_waiting: Array[Dictionary] = []
+
+
+## Over the story box and the shop.
+func _build_reward_screen() -> void:
+	_reward_screen = RewardScreen.new()
+	_reward_screen.name = "Beloningsscherm"
+	_reward_screen.font_title = _font_title
+	_reward_screen.font_pixel = _font_pixel
+	_reward_screen.font_body = _font_body
+	_root.add_child(_reward_screen)
+
+
+## A reward got (scripts/ui/reward_screen.gd: {"heading", "title", "xp", "items": [{"item",
+## "count"}]}): its screen, once nothing else holds the game (the story box, the shop, the
+## pause menu, the game menu, a machine's screen: the game is not paused), one after another;
+## `done` is called once it is pressed away (at once when there is nothing to show).
+func show_reward(reward: Dictionary, done := Callable()) -> void:
+	if RewardScreen.pages_of(reward).is_empty():
+		if done.is_valid():
+			done.call()
+		return
+	var waiting := reward.duplicate()
+	waiting["done"] = done
+	_rewards_waiting.append(waiting)
+	_open_waiting_reward()
+
+
+func is_showing_reward() -> bool:
+	return _reward_screen != null and _reward_screen.is_showing()
+
+
+## The rewards still waiting for their screen.
+func rewards_waiting() -> Array[Dictionary]:
+	return _rewards_waiting
+
+
+func _open_waiting_reward() -> void:
+	if _rewards_waiting.is_empty() or is_showing_reward() or not is_inside_tree() or get_tree().paused:
+		return
+	if _death_layer and _death_layer.visible:
+		return
+	var reward: Dictionary = _rewards_waiting.pop_front()
+	_reward_screen.open(reward, reward.get("done", Callable()))
+	_play_jingle(REWARD_JINGLE, REWARD_JINGLE_VOLUME_DB, "Beloningsdeuntje")
 
 
 # ------------------------------------------------------------------ shop screen

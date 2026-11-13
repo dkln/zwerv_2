@@ -1,5 +1,5 @@
 class_name Pedestrian
-extends Node3D
+extends "res://scripts/world/person.gd"
 ## One pedestrian of the town (made by Pedestrians, scripts/world/pedestrians.gd): a
 ## townsperson (TownsfolkFigure, its look from `walker_seed`) walking from spot to spot over
 ## the pavements and squares, a cell (4 m) at a time: it goes straight on more often than it
@@ -62,6 +62,10 @@ const SPOT_SPREAD := 1.3
 ## Chance to go straight on where it could also turn, and to stop a moment at a spot (and
 ## how long).
 const STRAIGHT_CHANCE := 0.55
+## Arrived where it was going (or without a way there), the chance it wanders a while (as
+## many cells as WANDER_CELLS) before setting off for the next place (Pedestrians.route_to_somewhere).
+const WANDER_CHANCE := 0.25
+const WANDER_CELLS := Vector2i(4, 14)
 const PAUSE_CHANCE := 0.12
 const PAUSE_LONGEST := 3.5
 ## Someone this near ahead of it (metres) makes it stop; this long blocked, it goes another way.
@@ -96,7 +100,6 @@ const RIDE_ARRIVE_WITHIN := 0.35
 ## How much the scooter's front wheel steers for each radian a second it turns.
 const STEER_PER_TURN := 0.45
 const DriverShout = preload("res://scripts/vehicles/driver_shout.gd")
-const TALKABLE_GROUP := "aanspreekbaar"
 ## The kinds of people in the crowd that are on duty (role): police and handhaving.
 const ON_DUTY_KINDS := ["agent", "handhaver"]
 const Wheelie = preload("res://scripts/vehicles/wheelie.gd")
@@ -135,8 +138,6 @@ const SHORT_CRY_COUNT := 3
 ## How far round a zebra it looks for vehicles coming (metres: the gap plus a city speed
 ## over safe_time, with room); Vehicle.near gives only those within it.
 const ZEBRA_LOOK := 45.0
-## "" walking, "rolstoel" in a wheelchair, "scootmobiel" on a mobility scooter (MobilityAid).
-@export var mobility := ""
 ## Its look (TownsfolkFigure); empty: the one of TownsfolkFigure.look_for(walker_seed).
 var wanted_look := {}
 ## Its pace against the usual (Crowd.pace_of its kind).
@@ -145,9 +146,9 @@ var pace_factor := 1.0
 ## (data/drukte.json "mensen"; "" none in particular).
 var carried := ""
 var crowd_kind := ""
-## Someone on duty on the street ("agent", "handhaver": their crowd_kind), talked to as staff
-## (Conversations.is_official, data/gesprekken/personeel.json); "" for everyone else.
-var role := ""
+## (`role`, Person: someone on duty on the street, "agent" or "handhaver": their crowd_kind,
+## talked to as staff, Conversations.is_official, data/gesprekken/personeel.json; "" for
+## everyone else. `mobility`, Person: "" walking, a wheelchair or a mobility scooter.)
 ## On its way into Den Haag Centraal (Pedestrians._send_to_station): each step a cell nearer a
 ## door, at the door it is gone (Pedestrians.into_station).
 var heading_to_station := false
@@ -161,7 +162,6 @@ var _carried_item: Node3D
 var _carried_pose := false
 
 var town: Pedestrians
-var figure: TownsfolkFigure
 var cell := Vector3i.ZERO
 var _came_from := Vector3i.ZERO
 var _target := Vector3.ZERO
@@ -170,6 +170,7 @@ var _speed := 1.3
 var _hurry_left := 0.0           # seconds it still runs (in a hurry), 0 walking
 var _pace := 1.3
 var _phase := 0.0
+var _run_share := 0.0             # how much of the run of the player is in its walk now
 var _walking := 0.0
 var _pause := 0.0
 var _blocked := 0.0
@@ -198,6 +199,8 @@ var health := MAX_HEALTH
 var _ragdoll: RigidBody3D           # its thrown body while knocked down
 var _waiting_become: Array = []     # become's arguments while its figure is built on a thread
 var _route_points: Array[Vector3] = []   # up or down stairs (Pedestrians.stair_route): the points still to walk to
+var _way: Array[Vector3i] = []            # the cells still to go to where it is going (Pedestrians.route_to_somewhere)
+var _wander_left := 0                     # cells it wanders before it sets off for a place again
 var _waiting_look := {}             # the look being built for it then
 var _ragdoll_clock := 0.0
 var _last_cry := 0
@@ -348,6 +351,8 @@ func restart_at(new_cell: Vector3i) -> bool:
 	if spot == Vector3.INF:
 		return false
 	_route_points.clear()
+	_way.clear()
+	_wander_left = 0
 	Pedestrians.claim_zebra(self, [], false)
 	_crossing.clear()
 	_on_zebra = false
@@ -524,7 +529,9 @@ func _walk_figure(delta: float, walking: float) -> void:
 		return
 	var stride := TownsfolkFigure.STRIDE * (RUN_STRIDE if is_running() else 1.0)
 	_phase = fmod(_phase + _speed * delta / stride * PI * minf(_walking, 1.0), TAU)
-	figure.walk(_phase, _walking)
+	# running: the run of the player (TownsfolkFigure.walk `run`), blended in and out
+	_run_share = move_toward(_run_share, 1.0 if is_running() and walking > 0.0 else 0.0, delta * 4.0)
+	figure.walk(_phase, minf(_walking, 1.0), _run_share)
 	if _carried_pose and _carried_item:
 		Crowd.carried_items().call("pose", figure, carried)
 
@@ -678,6 +685,13 @@ func _choose_next() -> void:
 		_station_misses += 1
 		if _station_misses > STATION_GIVE_UP:
 			heading_to_station = false
+	# on the way to a place a few blocks off: the next cell of the way there first
+	if order.is_empty() and not heading_to_station:
+		var next_on_the_way := _next_on_the_way(ways)
+		if next_on_the_way != cell:
+			if _head_for(next_on_the_way):
+				return
+			_way.clear()   # blocked (a fence, a bike rack): another way, another place
 	var straight := cell + (cell - _came_from)
 	if straight != cell and straight in ways and _random.randf() < STRAIGHT_CHANCE:
 		order.append(straight)
@@ -695,6 +709,31 @@ func _choose_next() -> void:
 			return
 	_target = global_position
 	_pause = 0.8
+
+
+## The next cell of the way to where it is going (one of `ways`), or its own cell when it
+## is wandering now. Arrived, or strayed from the way: it wanders a while (WANDER_CHANCE) or
+## sets off for the next place (Pedestrians.route_to_somewhere).
+func _next_on_the_way(ways: Array) -> Vector3i:
+	while not _way.is_empty() and _way[0] == cell:
+		_way.pop_front()
+	if not _way.is_empty() and not _way[0] in ways:
+		_way.clear()
+	if _way.is_empty():
+		if _wander_left > 0:
+			_wander_left -= 1
+			return cell
+		if _random.randf() < WANDER_CHANCE:
+			_wander_left = _random.randi_range(WANDER_CELLS.x, WANDER_CELLS.y)
+			return cell
+		if town.has_method("route_to_somewhere"):
+			_way = town.route_to_somewhere(cell, mobility)
+	return _way[0] if not _way.is_empty() else cell
+
+
+## The cells still to go to where it is going (for the checks).
+func way_ahead() -> Array[Vector3i]:
+	return _way
 
 
 func _shuffle(cells: Array[Vector3i]) -> void:
@@ -966,14 +1005,9 @@ func hit_by_vehicle(vehicle: Vehicle, push: Vector3) -> void:
 	_knock_down(push, impact)
 
 
-## Its voice for the cries of pain (pijn_<voice>_*), from its look.
-func voice() -> String:
-	var look: Dictionary = figure.look if figure else {}
-	if look.get("hair_style", "") == "lang" or look.get("skirt", false):
-		return "vrouw"
-	if mobility != "" or look.get("hair_style", "") == "kaal":
-		return "oude_man"
-	return "man"
+## (Its voice for the cries of pain, pijn_<voice>_*, is Person.voice.)
+func actor_kind() -> String:
+	return ACTOR_STREET
 
 
 ## The thud of the hit and a cry of pain at `at`: the long one if `heavy`, else one of the

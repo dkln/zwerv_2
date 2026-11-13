@@ -32,7 +32,9 @@ extends RefCounted
 ## (answered by "doorantwoord") and/or one of its "verder" (each {"vraag", "antwoord",
 ## "stemming", "verder"}, as deep as you like); lines may be a list, one is picked at random.
 ## A node may hold a "beloning" (_reward_for): now and then they give you something that fits
-## what they just said (a sandwich, a can, food; very rarely a bank card they found).
+## what they just said (a sandwich, a can, food; very rarely a bank card they found), with
+## some experience (its "xp", else REWARD_XP); shown in the reward screen once the
+## conversation is over (GameHud.show_reward: the item big and turning, its jingle).
 ## Asked topics are not offered again; goodbye ends it. Every line has a mood: they babble
 ## in it, in their voice (Babble, the story box) and their body moves with it (Emote: angry
 ## shakes, happy hops, sad leans forward); `finish` puts them back as they were.
@@ -62,6 +64,8 @@ const GAVE_META := "gaf_kleingeld"
 const VARIANT_META := "gesprek_variant"
 ## Set on someone once they have had their chance at giving a reward ("beloning").
 const REWARD_META := "gaf_beloning"
+## The experience a reward of a conversation brings when its "beloning" says no "xp".
+const REWARD_XP := 25
 const ItemTable = preload("res://scripts/player/items.gd")
 ## The player's method that gives a new lost bank card (its own balance, PIN and riddle).
 const BANK_CARD_METHOD := "give_found_bank_card"
@@ -453,11 +457,13 @@ func _answer(option: Array) -> Array:
 	return [_with_mood({"kind": "gesprek", "speaker": speaker(), "text": _pick(data.get("dag"))}, "dag")]
 
 
-## A reward of topic node `node` ("beloning": {"item", "kans" in 100, "tekst"}): once per
-## person (REWARD_META) at that chance the item goes in the player's pockets (with its name
-## rising and the chime: PlayerController.add_item) and their line about it is returned, to
-## follow the answer it belongs to; "" when nothing is given (no reward, not this time, no
-## room). "item" "pinpas" is a lost bank card of its own (BANK_CARD_METHOD on the player).
+## A reward of topic node `node` ("beloning": {"item", "kans" in 100, "tekst", "xp"}): once
+## per person (REWARD_META) at that chance the item goes in the player's pockets with its
+## experience ("xp", else REWARD_XP), quietly (PlayerController.add_item and add_xp), and the
+## reward screen shows them once the conversation is closed (GameHud.show_reward); their line
+## about it is returned, to follow the answer it belongs to; "" when nothing is given (no
+## reward, not this time, no room). "item" "pinpas" is a lost bank card of its own
+## (BANK_CARD_METHOD on the player).
 func _reward_for(node: Dictionary) -> String:
 	var reward: Dictionary = node.get("beloning", {}) if node.get("beloning") is Dictionary else {}
 	if reward.is_empty() or person == null or person.has_meta(REWARD_META) or player == null:
@@ -468,12 +474,19 @@ func _reward_for(node: Dictionary) -> String:
 	var item_id := str(reward.get("item", ""))
 	var given := false
 	if item_id == "pinpas":
-		given = player.has_method(BANK_CARD_METHOD) and bool(player.call(BANK_CARD_METHOD))
+		given = player.has_method(BANK_CARD_METHOD) and bool(player.call(BANK_CARD_METHOD, true))
 	elif ItemTable.ITEMS.has(item_id) and player.has_method("has_room_for") and player.call("has_room_for", item_id):
-		given = bool(player.call("add_item", item_id))
+		given = bool(player.call("add_item", item_id, 1, true))
 	if not given:
 		return ""
 	person.set_meta(REWARD_META, true)
+	var xp := int(reward.get("xp", REWARD_XP))
+	if xp > 0 and player.has_method("add_xp"):
+		player.call("add_xp", float(xp), true)
+	if hud and hud.has_method("show_reward"):
+		var from := speaker()
+		hud.show_reward({"heading": "GEKREGEN", "title": "Van " + from if from != "" else "",
+			"xp": xp, "items": [{"item": item_id, "count": 1}]})
 	return _pick(reward.get("tekst"), "Hier, voor jou.")
 
 

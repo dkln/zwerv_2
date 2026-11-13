@@ -64,8 +64,10 @@ func _dress() -> void:
 			(machine.get_node("Botsvorm") as Node3D).transform = ov_transform   # the collider on the mesh
 		place.add_child(machine)
 		var use := _open_cash_machine if is_cash else _open_ov_machine
+		# (a machine with a screen of its own: Interactable.KIND_MACHINE, set below)
 		var spot: Node3D = InteriorSpot.create("Plek", Vector3(0.0, 0.0, SPOT_AHEAD + 0.25), "Pinnen" if is_cash else "OV-chipkaartautomaat",
 			use, SPOT_REACH)
+		spot.set("kind", "automaat")
 		place.add_child(spot)
 		machines.append(place)
 

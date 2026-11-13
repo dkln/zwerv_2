@@ -2,7 +2,7 @@ extends RefCounted
 ## The plan of the city hall on the Spui (scenes/binnen/stadhuis.tscn): five floors, each a
 ## size and a layout of its own, joined by one lift. One source for the builder
 ## (tools/build/build_interiors.gd, which puts it into the scene, editable by hand after) and
-## the checks (tools/check/city_hall_test.gd).
+## the checks (tests/integration/interiors/test_city_hall.gd).
 ##   0  the hall: the entrance, the reception desk with the coat of arms behind it, a waiting
 ##      corner, an information pillar, the security guard by the door;
 ##   1  Burgerzaken: four counters along the back wall, rows of waiting chairs before them,

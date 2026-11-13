@@ -35,7 +35,7 @@ extends Node
 ##   BUS_VOLUME_DB with a compressor and a limiter on it (and Master a limiter), so a loud
 ##   moment never blasts.
 ## Sounds: assets/audio/geluiden/ (tools/megadrive/geluiden.py, docs/GELUIDEN.md).
-## Test: tools/check/spatial_audio_test.gd.
+## Test: tests/integration/world/test_spatial_audio.gd.
 
 const SoundVariation = preload("res://scripts/audio/sound_variation.gd")
 const LoadingScreen = preload("res://scripts/ui/loading_screen.gd")

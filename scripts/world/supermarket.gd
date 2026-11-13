@@ -17,8 +17,8 @@ extends "res://scripts/world/interior.gd"
 ##   through and says what it comes to; pay (PlayerController.buy, so a mission "kopen"
 ##   counts) or let it be. Too little money: the dearest things go back until it fits;
 ##   nothing at all: "geen_geld" (uitzetten.json). What does not fit in your pockets goes back;
-## - out of the door with unpaid goods: the security gates go off and you are thrown out
-##   (leave_offence: "winkeldiefstal").
+## - out of the door with unpaid goods: the security gates go off and stay shut, a cashier
+##   gets up and comes for you, and you are thrown out (leave_offence: "winkeldiefstal").
 ## Shoppers walk in through the door, go along a few shelves (stopping, reaching in, their
 ## basket or trolley filling up), queue at a checkout, pay and walk out again; some only look
 ## and leave; new ones come in now and then (SHOPPER_EVERY), as many as the branch is big.
@@ -69,6 +69,8 @@ const ONLY_LOOKING := 0.25
 const WITH_CART := 0.35
 const PLAYER_GAP := 0.75
 const PLAYER_PATIENCE := 2.0
+## Metres into the shop from the door where a player warned for not paying is put back.
+const WAY_BACK_IN := 3.0
 const TURN_SPEED := 8.0
 
 var brand := "derrek"
@@ -145,6 +147,44 @@ func player_came_in(player: Node3D) -> void:
 func player_went_out() -> void:
 	_drop_carrier()
 	_announcer.stop()
+
+
+## Putting the player out (Eviction: the cashier gets up from the till) goes over the floor
+## grid of the branch, as the shoppers do.
+func floor_path(from: Vector3, to: Vector3) -> PackedVector3Array:
+	var points := PackedVector3Array()
+	for point in _path(to_local(from), to_local(to)):
+		points.append(to_global(point))
+	return points
+
+
+func evictor_outfit(_role: String) -> Dictionary:
+	return chain().get("kleding", {})
+
+
+## Warned at the gates for not paying (Interiors.leave): where the player is put back, a few
+## metres into the shop from the door, facing in (WAY_BACK_IN).
+func way_back_in() -> Transform3D:
+	var door: Transform3D = doors()[0]
+	var spot := door.origin + door.basis.z * WAY_BACK_IN
+	if _grid:
+		# on free floor (not in a trolley row or the deposit machine)
+		var cell := free_cell(_grid, cell_of(plan, to_local(spot)))
+		spot = to_global(cell_middle(plan, cell))
+	return Transform3D(door.basis, spot)
+
+
+## No one at a till (all self-scan): who puts the player out comes from the door.
+func evictor_entry() -> Node3D:
+	if _layout == null:
+		return null
+	var entry := _layout.get_node_or_null("Uitzetterdeur") as Marker3D
+	if entry == null:
+		entry = Marker3D.new()
+		entry.name = "Uitzetterdeur"
+		_layout.add_child(entry)
+	entry.transform = plan.get("door", Transform3D())
+	return entry
 
 
 ## Out of the door with goods not paid for: the gates go off ("winkeldiefstal").
@@ -910,8 +950,10 @@ func _make_deposit_machine() -> void:
 	machine.position = deposit.at
 	machine.rotation.y = float(deposit.turn)
 	_layout.add_child(machine)
-	_layout.add_child(_spot("Statiegeld", deposit.use_at, func() -> String: return "Statiegeld inleveren",
-		_use_deposit_machine))
+	var deposit_spot := _spot("Statiegeld", deposit.use_at, func() -> String: return "Statiegeld inleveren",
+		_use_deposit_machine)
+	deposit_spot.set("kind", "automaat")   # Interactable.KIND_MACHINE
+	_layout.add_child(deposit_spot)
 
 
 func _use_deposit_machine() -> void:

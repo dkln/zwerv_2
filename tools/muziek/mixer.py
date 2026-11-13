@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 
 import numpy
 
+import chip
 import instruments
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "megadrive"))
@@ -39,6 +40,7 @@ class Piece:
     fade_out: float = 0.0           # one-shot: seconds of fade at the very end
     last_bar_beats: float = None    # one-shot: the last bar only this long (then the tail)
     swing: float = 0.0              # 0 straight, 1 a full shuffle (the "and" on the last triplet)
+    vgm: str = ""                   # a VGM file (in composities/): the piece is that VGM, played by chip.py
 
     @property
     def beat_seconds(self) -> float:
@@ -130,9 +132,25 @@ def raw_mix(piece: Piece) -> numpy.ndarray:
     return sum(track.buffer * track.gain for track in _play(piece))
 
 
+def _play_vgm(piece: Piece) -> list:
+    """The VGM of the piece as the chips play it (chip.py), from its first note (bar 1), as
+    long as the piece (the keys released at the end of the log, ringing out in the tail): a
+    left and a right mixer channel."""
+    song = instruments.vgm_song(piece.vgm)
+    sample_count = int(round(piece.seconds * SAMPLE_RATE))
+    origin = min([note.start for note in song.notes] + [hit.start for hit in song.hits] + [song.total_samples])
+    played = chip.render_song(song, piece.tail + 0.5)[origin:origin + sample_count]
+    tracks = []
+    for side, pan in ((0, -1.0), (1, 1.0)):
+        track = megadrive.Track(f"vgm_{side}", sample_count, pan=pan, wrap=False)
+        track.buffer[:len(played)] = played[:, side]
+        tracks.append(track)
+    return tracks
+
+
 def render(piece: Piece) -> numpy.ndarray:
     """The piece mastered: filtered like the Model 1, at the house loudness, peaks limited."""
-    stereo = megadrive.master(_play(piece), target_rms_db=-14.0, peak_db=-1.0)
+    stereo = megadrive.master(_play_vgm(piece) if piece.vgm else _play(piece), target_rms_db=-14.0, peak_db=-1.0)
     if piece.tape_stop:
         stereo = megadrive.tape_stop(stereo, *piece.tape_stop)
     if not piece.loop:

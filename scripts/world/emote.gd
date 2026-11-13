@@ -11,6 +11,16 @@ extends Node
 const NODE_NAME := "Emotie"
 ## How fast a new mood takes over (1/s).
 const BLEND_RATE := 10.0
+## The moods there are (pose_of; any other counts as "neutraal").
+const MOODS := ["neutraal", "blij", "opgewonden", "boos", "verdrietig"]
+## How fast each mood moves (radians a second in its sine): the shake and twist of anger,
+## the hops of joy and of excitement, the breath of sadness, the nods of someone neutral.
+const ANGRY_SHAKE := 42.0
+const ANGRY_TWIST := 31.0
+const HAPPY_HOPS := 9.0
+const EXCITED_HOPS := 13.0
+const SAD_BREATH := 1.6
+const NEUTRAL_NODS := 3.0
 
 var mood := "neutraal"
 var figure: Node3D
@@ -52,24 +62,52 @@ func _process(delta: float) -> void:
 		return
 	_clock += delta
 	_weight = minf(_weight + delta * BLEND_RATE * 0.3, 1.0)
-	var lift := 0.0
-	var lean := 0.0       # radians forward
-	var sway := 0.0       # radians to the side
-	var turn := 0.0
-	match mood:
+	var pose := pose_of(mood, _clock)
+	var basis := Basis(Vector3.UP, float(pose.turn)) * Basis(Vector3.RIGHT, float(pose.lean) * _weight) \
+		* Basis(Vector3.BACK, float(pose.sway) * _weight)
+	figure.transform = Transform3D(_rest.basis * basis, _rest.origin + Vector3.UP * float(pose.lift) * _weight)
+
+
+## The body in `mood_name` at `time` seconds into it: {"lift" (metres up), "lean" (radians
+## forward), "sway" (radians to the side), "turn" (radians round)}; each mood a function of
+## its own below (MOODS), an unknown one as "neutraal".
+static func pose_of(mood_name: String, time: float) -> Dictionary:
+	var pose := {"lift": 0.0, "lean": 0.0, "sway": 0.0, "turn": 0.0}
+	match mood_name:
 		"boos":
-			sway = sin(_clock * 42.0) * deg_to_rad(5.0)
-			turn = sin(_clock * 31.0) * deg_to_rad(4.0)
-			lean = deg_to_rad(6.0)
+			pose.merge(_angry(time), true)
 		"blij":
-			lift = absf(sin(_clock * 9.0)) * 0.12
+			pose.merge(_happy(time), true)
 		"opgewonden":
-			lift = absf(sin(_clock * 13.0)) * 0.2
-			sway = sin(_clock * 13.0) * deg_to_rad(4.0)
+			pose.merge(_excited(time), true)
 		"verdrietig":
-			lean = deg_to_rad(16.0) + sin(_clock * 1.6) * deg_to_rad(2.0)
-			lift = -0.04
+			pose.merge(_sad(time), true)
 		_:
-			lean = maxf(sin(_clock * 3.0), 0.0) * deg_to_rad(6.0)
-	var basis := Basis(Vector3.UP, turn) * Basis(Vector3.RIGHT, lean * _weight) * Basis(Vector3.BACK, sway * _weight)
-	figure.transform = Transform3D(_rest.basis * basis, _rest.origin + Vector3.UP * lift * _weight)
+			pose.merge(_neutral(time), true)
+	return pose
+
+
+## "boos": shaking with anger, quick and small, leant in a little.
+static func _angry(time: float) -> Dictionary:
+	return {"sway": sin(time * ANGRY_SHAKE) * deg_to_rad(5.0), "turn": sin(time * ANGRY_TWIST) * deg_to_rad(4.0),
+		"lean": deg_to_rad(6.0)}
+
+
+## "blij": hopping up and down quickly.
+static func _happy(time: float) -> Dictionary:
+	return {"lift": absf(sin(time * HAPPY_HOPS)) * 0.12}
+
+
+## "opgewonden": hopping higher and faster, swaying with it.
+static func _excited(time: float) -> Dictionary:
+	return {"lift": absf(sin(time * EXCITED_HOPS)) * 0.2, "sway": sin(time * EXCITED_HOPS) * deg_to_rad(4.0)}
+
+
+## "verdrietig": leant forward and sagging, slowly breathing.
+static func _sad(time: float) -> Dictionary:
+	return {"lean": deg_to_rad(16.0) + sin(time * SAD_BREATH) * deg_to_rad(2.0), "lift": -0.04}
+
+
+## "neutraal": a nod now and then.
+static func _neutral(time: float) -> Dictionary:
+	return {"lean": maxf(sin(time * NEUTRAL_NODS), 0.0) * deg_to_rad(6.0)}

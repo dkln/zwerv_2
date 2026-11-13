@@ -99,6 +99,22 @@ func player_went_out() -> void:
 	_riding = false
 
 
+## Putting the player out (Eviction) waits while the lift rides; on another floor than the
+## guard, one comes up with the lift (evictor_entry: the lift of the floor you are on).
+func evicting_held() -> bool:
+	return _riding
+
+
+func evictor_outfit(role: String) -> Dictionary:
+	return _outfit(role)
+
+
+func evictor_entry() -> Node3D:
+	if _floors.is_empty():
+		return null
+	return floor_node(current_floor).get_node_or_null("Lift") as Node3D
+
+
 ## The lift, the doors, the floor display, the signs, the number machine and the boards of
 ## a floor (not its people: _make_people, the first time you are there).
 func _dress_floor(floor_node: Node3D) -> void:

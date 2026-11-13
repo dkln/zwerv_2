@@ -29,6 +29,10 @@ extends Node
 ## for a character that starts with that much money or more.
 ## Experience: every mission and every step has its own "xp", given once (PlayerController.add_xp)
 ## when the step is done and when the whole mission is; the tracker and the quest log show it.
+## Items: a step or a mission may give things too ("geeft": [{"item": "koffie", "aantal": 1}],
+## the ids of Items), into the pockets when it is done.
+## What a task or a mission gives is shown in the reward screen (GameHud.show_reward: the item
+## big and turning, its own jingle), after its pages; not as text rising over the player.
 
 const PlayerCharacter = preload("res://scripts/player/player_character.gd")
 const MISSIONS_FOLDER := "res://data/missies/"
@@ -223,18 +227,55 @@ func _complete(data: Dictionary, step: Dictionary) -> void:
 	var id := str(data.id)
 	_done[id + "/" + str(step.id)] = true
 	_targets.erase(id + "/" + str(step.id))
+	var whole_mission := current_step(data).is_empty() and not _finished.has(id)
+	# the reward first (quietly: its screen shows it), so the tracker does not give it again
+	var reward := _give_reward(data, step, whole_mission)
 	_aim(data)
 	_update_tracker()
 	var pages := _pages(step.get("klaar_paginas", []), _banner(data), data)
-	var whole_mission := current_step(data).is_empty() and not _finished.has(id)
 	if _hud.has_method("play_task_done"):
 		_hud.play_task_done(whole_mission)   # a triumph tune, a longer one for the whole mission
 	if whole_mission:
 		_finished[id] = true
 		pages.append_array(_pages(data.get("einde_paginas", []), _banner(data), data))
-		_start_missions_later.call_deferred("na:" + id)
 	if not pages.is_empty():
 		_hud.show_story(pages)
+	# the reward screen after the pages (it waits for them); the next missions after that
+	var then := (func() -> void: _start_missions_later("na:" + id)) if whole_mission else Callable()
+	if _hud.has_method("show_reward"):
+		_hud.show_reward(reward, then)
+	elif then.is_valid():
+		then.call_deferred()
+
+
+## What `step` of mission `data` gives now it is done (and the mission, `whole_mission`): its
+## XP not given yet (once: _xp_given) and its items ("geeft"), into the player quietly;
+## returned as a reward for the reward screen (GameHud.show_reward).
+func _give_reward(data: Dictionary, step: Dictionary, whole_mission: bool) -> Dictionary:
+	var id := str(data.id)
+	var xp := 0
+	var steps: Array = data.get("stappen", [])
+	var step_key := "%s/%d" % [id, steps.find(step)]
+	if not _xp_given.has(step_key):
+		_xp_given[step_key] = true
+		xp += int(step.get("xp", 0))
+	var gifts: Array = step.get("geeft", []).duplicate()
+	if whole_mission:
+		if not _xp_given.has(id):
+			_xp_given[id] = true
+			xp += int(data.get("xp", 0))
+		gifts.append_array(data.get("geeft", []))
+	var items: Array = []
+	for gift: Dictionary in gifts:
+		var item_id := str(gift.get("item", ""))
+		var count := maxi(int(gift.get("aantal", 1)), 1)
+		if item_id != "" and _player and _player.has_method("add_item") and _player.add_item(item_id, count, true):
+			items.append({"item": item_id, "count": count})
+	if xp > 0 and _player and _player.has_method("add_xp"):
+		_player.add_xp(float(xp), true)
+	var title := str(data.get("titel", "")) if whole_mission else _fill(str(step.get("tekst", "")), data, step)
+	return {"heading": "MISSIE VOLBRACHT" if whole_mission else "TAAK VOLBRACHT", "title": title,
+		"xp": xp, "items": items}
 
 
 func _start_missions_later(trigger: String) -> void:

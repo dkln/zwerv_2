@@ -40,6 +40,13 @@ const KNEE_BEND := 38.0
 const ARM_SWING := 18.0
 const WALK_BOB := 0.02
 const STRIDE := 0.62
+## Running (walk `run` > 0: someone chasing, fleeing, in a hurry): the run of the player
+## (PlayerModel._run_pose, its RUN_* numbers: the knees driven high, the heel kicked up, the
+## arms pumping, the body leant forward and bobbing between the steps), blended in between
+## these speeds (m/s, run_share); a running step is RUN_STRIDE long (stride_at).
+const RUN_FROM_SPEED := 2.4
+const RUN_FULL_SPEED := 3.4
+const RUN_STRIDE := 1.05
 ## How much longer or shorter an arm may get to put the hand on a grip (a share of its length).
 const ARM_GIVE := 0.15
 
@@ -84,6 +91,7 @@ var look := {}
 var _joints := {}         # limb -> Node3D at its joint
 var _rest := {}           # limb -> rest position of its joint (metres, in the figure)
 var _body: Node3D         # the body, turning round the middle of the hips
+var _leant_for_run := false       # the body leans for a run (walk): upright again after it
 var _walk_clock := 0.0
 var _mouth: MeshInstance3D        # add_face: the opening of the mouth
 var _eyelids: Array[MeshInstance3D] = []
@@ -153,23 +161,53 @@ func rest_joint(limb: String) -> Vector3:
 	return _rest[limb]
 
 
+## How much someone moving at `speed` (m/s) runs (0: walks, 1: runs).
+static func run_share(speed: float) -> float:
+	return smoothstep(RUN_FROM_SPEED, RUN_FULL_SPEED, speed)
+
+
+## The length of a step (m) at that much running: the phase of walk goes on by
+## metres / stride_at(run) * PI.
+static func stride_at(run: float) -> float:
+	return lerpf(STRIDE, RUN_STRIDE, clampf(run, 0.0, 1.0))
+
+
 ## Swings the limbs in a walk, `phase` in radians (TAU a pair of steps), `amount` 0..1
-## (standing .. walking).
-func walk(phase: float, amount: float) -> void:
+## (standing .. walking); `run` 0..1 blends in the run of the player (see RUN_FROM_SPEED).
+func walk(phase: float, amount: float, run := 0.0) -> void:
 	var stride := sin(phase)
+	run = clampf(run, 0.0, 1.0) * amount
+	var walk_weight := amount * (1.0 - run) if amount > 0.0 else 0.0
+	# the player's run has its left leg back while sin > 0, this walk has it forward: half a turn on
+	var run_pose := PlayerModel._run_pose(phase + PI) if run > 0.0 else {}
 	for side: String in ["left", "right"]:
 		var swing := stride if side == "left" else -stride
 		# a leg swinging forward (swing growing) bends its knee, one pushing back keeps it straight
 		var forward := cos(phase) if side == "left" else -cos(phase)
-		var hip := deg_to_rad(-swing * LEG_SWING * amount)
-		var knee := deg_to_rad(maxf(forward, 0.0) * KNEE_BEND * amount)
+		var hip_degrees := -swing * LEG_SWING * walk_weight
+		var knee_degrees := maxf(forward, 0.0) * KNEE_BEND * walk_weight
+		var arm_degrees := swing * ARM_SWING * walk_weight
+		if run > 0.0:
+			hip_degrees += float((run_pose["leg_" + side] as Vector3).x) * run
+			knee_degrees += float((run_pose["shin_" + side] as Vector3).x) * run
+			# no elbow here: the whole arm pumps, a little further for the bent forearm
+			arm_degrees += float((run_pose["arm_" + side] as Vector3).x) * 1.2 * run
 		var hip_spot: Vector3 = _rest["thigh_" + side]
-		var thigh := Basis(Vector3.RIGHT, hip)
+		var thigh := Basis(Vector3.RIGHT, deg_to_rad(hip_degrees))
 		_place("thigh_" + side, hip_spot, thigh)
 		var knee_spot := hip_spot + thigh * Vector3(0.0, -thigh_length(), 0.0)
-		_place("shin_" + side, knee_spot, thigh * Basis(Vector3.RIGHT, knee))
-		_place("arm_" + side, _rest["arm_" + side], Basis(Vector3.RIGHT, deg_to_rad(swing * ARM_SWING * amount)))
-	_body.position = Vector3(0.0, absf(cos(phase)) * WALK_BOB * amount, 0.0)
+		_place("shin_" + side, knee_spot, thigh * Basis(Vector3.RIGHT, deg_to_rad(knee_degrees)))
+		_place("arm_" + side, _rest["arm_" + side], Basis(Vector3.RIGHT, deg_to_rad(arm_degrees)))
+	if run > 0.0:
+		# leant forward round the hips, highest between the steps (both feet off the ground)
+		lean_body(deg_to_rad(PlayerModel.RUN_LEAN * run))
+		_body.position += Vector3(0.0, absf(cos(phase)) * WALK_BOB * walk_weight + absf(stride) * PlayerModel.RUN_BOB * run, 0.0)
+		_leant_for_run = true
+	else:
+		if _leant_for_run:
+			_body.transform = Transform3D.IDENTITY   # upright again after a run
+			_leant_for_run = false
+		_body.position = Vector3(0.0, absf(cos(phase)) * WALK_BOB * amount, 0.0)
 
 
 ## Leans the body (pelvis, torso and head) forward round the hips (radians).

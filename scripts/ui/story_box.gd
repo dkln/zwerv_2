@@ -123,6 +123,8 @@ var _box: Control                  # the box at the bottom (portrait and text)
 var _choice_labels: Array[Label] = []
 var _chosen := 0
 var _babble: AudioStreamPlayer
+var _babble_page := -1              # the page its babble counts the sounds of
+var _babble_count := 0              # sounds played of that page's line so far (its nth word)
 var _asked_aloud := false          # the rising babble of a question has played for this page
 
 
@@ -247,16 +249,24 @@ func _update_babble() -> void:
 		return
 	if is_instance_valid(_babble) and _babble.playing:
 		return
-	var question := String(page.get("text", "")).strip_edges().ends_with("?")
+	var line := String(page.get("text", ""))
+	var question := line.strip_edges().ends_with("?")
+	# every word its own sound (Babble.word_at: the nth sound of the line is its nth word),
+	# so the same line always sounds the same
+	if _babble_page != _page_index:
+		_babble_page = _page_index
+		_babble_count = 0
+	var word := Babble.word_at(line, _babble_count)
 	if not _typewriter.is_done():
 		var mood := "vraag" if question and _typewriter.words_left() <= 2 else String(page.get("mood", "neutraal"))
 		_asked_aloud = _asked_aloud or mood == "vraag"
-		_babble = Babble.play_near(self, String(page.voice), mood)
+		_babble = Babble.play_near(self, String(page.voice), mood, word)
 	elif question and not _asked_aloud:
 		_asked_aloud = true
-		_babble = Babble.play_near(self, String(page.voice), "vraag")
+		_babble = Babble.play_near(self, String(page.voice), "vraag", word)
 	else:
 		return
+	_babble_count += 1
 	# someone on duty speaks in a voice of their own (lower, more measured)
 	var official: Dictionary = page.get("official", {})
 	if is_instance_valid(_babble) and not official.is_empty():

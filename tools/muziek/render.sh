@@ -5,9 +5,21 @@
 #        tools/muziek/render.sh --uit <folder>           (somewhere else, to listen first)
 #        tools/muziek/render.sh --controle               (check what is in assets/audio/muziek/)
 #        tools/muziek/render.sh --test                   (the unit tests of the music tools, test_muziek.py)
+#        tools/muziek/render.sh --vgm <file> [naam]      (a VGM file to composities/<naam>.py, vgm.py;
+#                                                         with --toon only shown, with --vergelijk compared)
+CALLED_FROM="$(pwd)"
 cd "$(dirname "$0")" || exit 1
 if [ "$1" = "--test" ]; then
 	exec uv run --quiet --with soundfile --with numpy python3 test_muziek.py < /dev/null
+fi
+if [ "$1" = "--vgm" ]; then
+	shift
+	# (the file's path as given from where the script was called)
+	case "$1" in
+		/*|"") ;;
+		*) vgm_file="$CALLED_FROM/$1"; shift; set -- "$vgm_file" "$@" ;;
+	esac
+	exec uv run --quiet --with soundfile --with numpy python3 vgm.py "$@" < /dev/null
 fi
 if [ "$1" = "--controle" ]; then
 	shift

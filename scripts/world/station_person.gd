@@ -1,5 +1,5 @@
 class_name StationPerson
-extends Node3D
+extends "res://scripts/world/person.gd"
 ## Someone in Den Haag Centraal (scripts/world/station.gd): a traveller ("reiziger"), a
 ## businessman or -woman ("zakenman", in a suit with a briefcase), a tourist ("toerist", a
 ## trolley case and often a rucksack), a student ("student", a rucksack), a conductor
@@ -34,7 +34,6 @@ extends Node3D
 ## aside, slower behind someone), and when it makes no headway STUCK_SECONDS on its way the
 ## station gives it another way (station.person_stuck).
 
-const TALKABLE_GROUP := "aanspreekbaar"
 const KnockDown = preload("res://scripts/world/knock_down.gd")
 ## Hit by a train (hit_by_moving, as the player and the people on the street): from this
 ## speed (m/s) it is knocked over, its body this heavy (kg), as big as this box (m); it lies
@@ -71,10 +70,6 @@ const UNIFORMS := {
 }
 const SPEEDS := {"reiziger": 1.35, "zakenman": 1.55, "toerist": 1.1, "student": 1.45, "conducteur": 1.3, "handhaver": 1.05}
 
-var role := "reiziger"
-var mobility := ""
-var sitting := false
-var figure: TownsfolkFigure
 var carries: Array[String] = []
 var station: Node3D
 var steps: Array[Dictionary] = []
@@ -84,8 +79,6 @@ var speed := 1.35
 var follow: StationPerson = null
 var follow_offset := Vector3(0.9, 0.0, 0.0)
 
-var _phase := 0.0
-var _walk_amount := 0.0
 var _step_clock := 0.0
 var _gate_phase := ""
 var _arm := ""                 # "" / "tikken" / "fluiten": the arm up for that
@@ -162,14 +155,8 @@ static func _carries_for(person_role: String, random: RandomNumberGenerator) -> 
 	return found
 
 
-## The voice of the cries and the babble (as Pedestrian.voice).
-func voice() -> String:
-	var look: Dictionary = figure.look if figure else {}
-	if look.get("hair_style", "") == "lang" or look.get("skirt", false):
-		return "vrouw"
-	if look.get("hair_style", "") == "kaal":
-		return "oude_man"
-	return "man"
+func actor_kind() -> String:
+	return ACTOR_STATION
 
 
 func is_staff() -> bool:
@@ -561,11 +548,9 @@ func _player_in_the_way(direction: Vector3) -> bool:
 ## (PlayerController.talk_to): the conversation pauses the game, so mid-stride a leg would
 ## stay in the air.
 func stand_neutral() -> void:
-	_walk_amount = 0.0
-	_phase = 0.0
+	super()
 	if figure == null:
 		return
-	figure.walk(0.0, 0.0)
 	for kind in carries:
 		CarriedItems.pose(figure, kind)
 
@@ -573,12 +558,8 @@ func stand_neutral() -> void:
 func _animate(delta: float, moved: float) -> void:
 	if figure == null:
 		return
-	if moved > 0.0:
-		_phase += moved / TownsfolkFigure.STRIDE * PI
-		_walk_amount = move_toward(_walk_amount, 1.0, delta * 5.0)
-	else:
-		_walk_amount = move_toward(_walk_amount, 0.0, delta * 5.0)
-	figure.walk(_phase, _walk_amount)
+	# the walk, and running (a conductor or a BOA after the player) the run of the player
+	walk_cycle(moved, delta)
 	for kind in carries:
 		CarriedItems.pose(figure, kind)
 	if _arm != "":

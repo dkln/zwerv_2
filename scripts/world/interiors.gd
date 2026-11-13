@@ -40,15 +40,27 @@ extends Node3D
 ##                          lays itself out from them); its doors may move (they are read
 ##                          again after dressing);
 ##   leave_offence()        "" or an offence (uitzetten.json) for going out now: a supermarket
-##                          with unpaid goods in the trolley says "winkeldiefstal";
+##                          with unpaid goods in the trolley says "winkeldiefstal" (the way
+##                          out stays shut, and someone of the place comes for you);
+##   evictor_for, walk_evictor, evictor_stops, evictor_done, evicting_held, floor_path:
+##                          who comes to put the player out and how they walk (Eviction,
+##                          scripts/world/eviction.gd; the base Interior has them all).
+## Thrown out: an offence the place counts ("na" times, uitzetten.json) makes the player
+## unwelcome; then someone of the place shouts and comes after them (Eviction, the rules of
+## the chase shared with the conductor of the station: Pursuit), and only once they are at
+## the player are they thrown out (throw_out). Out of the door before that: away, but not
+## welcome back for a while either.
 ##   plan_root()            the node whose GridMaps make the floor plan on the minimap (the
 ##                          floor you are on in the city hall; GameHud.show_interior_plan).
 ## And it can call back: move_inside (the lift of the city hall) and show_plan.
 
 const SwipeTransition = preload("res://scripts/ui/swipe_transition.gd")
-const ThrowOutScene = preload("res://scripts/world/throw_out_scene.gd")
-## Where the scene of being carried off stands (far off the map, away from the interiors).
-const ARREST_AT := Vector3(-2400.0, 0.0, 0.0)
+## No longer welcome: someone of the place comes after the player first (offence, Eviction).
+const Eviction = preload("res://scripts/world/eviction.gd")
+## Walking in and out seen from close by, the door of the place moving (KINDS "door_kind":
+## "schuif" sliding, "klap" swinging, "draai" revolving; else DEFAULT_DOOR).
+const DoorPassage = preload("res://scripts/world/door_passage.gd")
+const DEFAULT_DOOR := "klap"
 const SoundVariation = preload("res://scripts/audio/sound_variation.gd")
 const SNACK_BAR_SCENE := "res://scenes/binnen/snackbar.tscn"
 const SNACK_BAR_FRONT := "_bg_snackbar"
@@ -57,17 +69,17 @@ const SNACK_BAR_FRONT := "_bg_snackbar"
 const SNACK_BAR_MUSIC := "handelaar_loop.ogg"
 const KINDS := {
 	"snackbar": {"scene": SNACK_BAR_SCENE, "music": SNACK_BAR_MUSIC, "front": SNACK_BAR_FRONT,
-		"at": Vector3(-600.0, 0.0, -600.0)},
+		"at": Vector3(-600.0, 0.0, -600.0), "door_kind": "klap"},
 	"centraal": {"scene": "res://scenes/binnen/centraal.tscn", "music": "", "name": "Den Haag Centraal",
 		"doors": "hallen/hal_glas_wand_deur_dak", "place": "centraal", "place_reach": 70.0,
-		"at": Vector3(-900.0, 0.0, 300.0), "zoom": 20.0, "location": "Centraal Station"},
+		"at": Vector3(-900.0, 0.0, 300.0), "zoom": 20.0, "location": "Centraal Station", "door_kind": "schuif"},
 	"derrek": {"scene": SUPERMARKET_SCENE, "music": "", "name": "DERREK", "front": "_bg_derrek_ingang",
-		"front_width": "_bg_derrek_", "at": Vector3(-600.0, 0.0, -1000.0), "zoom": 15.0},
+		"front_width": "_bg_derrek_", "at": Vector3(-600.0, 0.0, -1000.0), "zoom": 15.0, "door_kind": "schuif"},
 	"alfred_steyhn": {"scene": SUPERMARKET_SCENE, "music": "", "name": "ALFRED STEYHN", "front": "_bg_alfred_steyhn_ingang",
-		"front_width": "_bg_alfred_steyhn_", "at": Vector3(-600.0, 0.0, -1400.0), "zoom": 15.0},
+		"front_width": "_bg_alfred_steyhn_", "at": Vector3(-600.0, 0.0, -1400.0), "zoom": 15.0, "door_kind": "schuif"},
 	"stadhuis": {"scene": "res://scenes/binnen/stadhuis.tscn", "music": "", "name": "Stadhuis",
 		"doors": "modern_wit/modern_wit_bg_deur", "place": "stadhuis", "place_reach": 36.0,
-		"at": Vector3(-1500.0, 0.0, 900.0), "zoom": 16.0, "location": "Stadhuis"},
+		"at": Vector3(-1500.0, 0.0, 900.0), "zoom": 16.0, "location": "Stadhuis", "door_kind": "draai"},
 }
 const SUPERMARKET_SCENE := "res://scenes/binnen/supermarkt.tscn"
 ## The muzak of the supermarkets (tools/muziek/derive.py), soft in the background (GameHud
@@ -103,6 +115,11 @@ const BANG_COLOUR := Color("#FFE9B8")
 const BANG_FLASH_ENERGY := 6.0
 const BANG_HOLD := 0.15
 const BARRED_COLOUR := Color("#FF5A4A")
+## A warning before being put out (offence: uitzetten.json "waarschuwing"): the colour of the
+## line over the player, and how high over them it hangs (m).
+const WARNING_COLOUR := Color("#FFB547")
+const WARNING_HEIGHT := 2.4
+const DriverShout = preload("res://scripts/vehicles/driver_shout.gd")
 const Conversations = preload("res://scripts/story/conversations.gd")
 const Ambience = preload("res://scripts/audio/ambience.gd")
 ## The background sound of each kind of interior (Ambience); outside "straat".
@@ -144,13 +161,21 @@ var _throwing := false              # a throw-out under way
 var _throw_out_data := {}
 var _ambience: Ambience             # the background sound of where the player is
 var _last_swipe: Node                # the swipe of the last way out (_go_out), to wait for its end
-var _arrest: Node3D                  # the scene of being carried off (ThrowOutScene), while it plays
+var _eviction: Eviction              # someone of the place coming to put the player out (offence)
+var _passing_door := false           # walking in or out is being shown (DoorPassage)
+## For the checks: the warnings given (offence), the last one {"offence", "line", "by"}.
+var warnings_given := 0
+var last_warning := {}
 
 
 ## A door: an entrance from the pavement, or the way out of an interior.
 class Entrance:
-	extends Node3D
+	extends "res://scripts/world/interactable.gd"
 	var interiors: Node
+
+	func _init() -> void:
+		kind = KIND_DOOR
+
 	var bar := {}
 	var leading_out := false
 	var door_index := 1             # a way out: which door of its interior (1 = Deur / Deur1)
@@ -298,7 +323,7 @@ func interior_of(kind: String) -> Node3D:
 ## Goes in through `bar` (a way in): the swipe, and under it into the dressed interior, at
 ## the door that matches the way in.
 func enter(bar: Dictionary) -> void:
-	if is_inside() or _player == null or _throwing:
+	if is_inside() or _player == null or _throwing or _passing_door:
 		return
 	var kind_barred := String(bar.get("kind", "snackbar"))
 	if Time.get_ticks_msec() < int(_barred_until.get(kind_barred, 0)):
@@ -310,9 +335,15 @@ func enter(bar: Dictionary) -> void:
 		return
 	_offences = {}
 	_play_sound(DOOR_IN_SOUND)
+	# first seen from close behind: walking to the door and through it as it opens
+	var kind: String = bar.get("kind", "snackbar")
+	_passing_door = true
+	await DoorPassage.play(get_parent(), _player, bar.door, bar.outward, String(KINDS[kind].get("door_kind", DEFAULT_DOOR)), true)
+	_passing_door = false
+	if not is_inside_tree():
+		return
 	var swipe := SwipeTransition.swipe(get_tree())
 	await swipe.covered
-	var kind: String = bar.get("kind", "snackbar")
 	_set_music(_music_of(bar))
 	_ambience.set_place(String(AMBIENCE_OF.get(kind, "winkel")))
 	_set_location(String(KINDS[kind].get("location", "")))
@@ -339,14 +370,29 @@ func enter(bar: Dictionary) -> void:
 ## Goes back out through door `door_index` of the interior: the swipe, and under it onto the
 ## pavement before the matching way in (or the one you came in through), facing the street.
 func leave(door_index := 0) -> void:
-	if not is_inside() or _throwing:
+	if not is_inside() or _throwing or _passing_door:
 		return
-	# not out with what is not paid for (a supermarket): that is an offence (uitzetten.json)
+	# not out with what is not paid for (a supermarket): that is an offence (uitzetten.json),
+	# and the way out stays shut until someone of the place has come for you
 	var offence_now := String(_interior.call("leave_offence")) if _interior and _interior.has_method("leave_offence") else ""
 	if offence_now != "":
 		offence(offence_now)
+		# only warned: back into the shop (way_back_in), to pay first
+		if not is_evicting() and _interior.has_method("way_back_in"):
+			var back: Transform3D = _interior.call("way_back_in")
+			_put_player(back.origin, back.basis.z)
 		return
-	await _go_out(door_index)
+	# out of the door before who came for you was there: away, but not welcome back yet
+	if is_evicting():
+		_barred_until[String(_inside.kind)] = Time.get_ticks_msec() + int(float(_throw_outs().get("terug_na", 90)) * 1000.0)
+	var bar := await _go_out(door_index)
+	# out of the door seen from close by, onto the pavement, the door shutting behind
+	_passing_door = true
+	await DoorPassage.play(get_parent(), _player, bar.door, bar.outward,
+		String(KINDS[String(bar.kind)].get("door_kind", DEFAULT_DOOR)), false)
+	_passing_door = false
+	if is_inside_tree():
+		_put_player(bar.door + (bar.outward as Vector3) * (DoorPassage.WALK_FROM - DoorPassage.FACADE_BACK), bar.outward)
 
 
 ## The ways out of the interior of `kind` where its doors are now (a supermarket moves its
@@ -398,6 +444,7 @@ func _go_out(door_index: int) -> Dictionary:
 			if other.kind == bar.kind and int(other.get("door_index", 1)) == door_index:
 				bar = other
 	_inside = {}
+	_end_eviction()
 	if _interior and _interior.has_method("player_went_out"):
 		_interior.call("player_went_out")
 	_rest(_interior, true)
@@ -430,30 +477,93 @@ func _rule(kind: String, offence: String) -> Dictionary:
 
 
 ## Someone reports an offence of the player (anywhere: it only counts inside an interior
-## whose uitzetten.json knows it): "bedelen", "geen_geld", "zwartrijden".
-static func note_offence(tree: SceneTree, offence: String) -> void:
+## whose uitzetten.json knows it): "bedelen", "geen_geld", "boete_onbetaald", "winkeldiefstal".
+## `by`: someone of the place who is at the player already (the conductor who fined them).
+static func note_offence(tree: SceneTree, offence: String, by: Node3D = null) -> void:
 	var interiors := tree.get_first_node_in_group(GROUP) if tree else null
 	if interiors and interiors.has_method("offence"):
-		interiors.call("offence", offence)
+		interiors.call("offence", offence, by)
 
 
-## Counts `offence` in this visit; at the number the place allows ("na"), the player is
-## thrown out (throw_out).
-func offence(offence_name: String) -> void:
+## Counts `offence` in this visit. Before the number the place allows ("na") the player is
+## warned (warn: someone of the place says so, "waarschuwing"); at it they are no longer
+## welcome: someone of the place comes for them (Eviction), and only once they are at the
+## player are they thrown out (throw_out). `by`: one who is at them already.
+func offence(offence_name: String, by: Node3D = null) -> void:
 	if not is_inside() or _throwing:
 		return
 	var rule := _rule(String(_inside.kind), offence_name)
 	if rule.is_empty():
 		return
 	_offences[offence_name] = int(_offences.get(offence_name, 0)) + 1
-	if int(_offences[offence_name]) >= int(rule.get("na", 1)):
-		throw_out(offence_name)
+	var times := int(_offences[offence_name])
+	var allowed := int(rule.get("na", 1))
+	if times >= allowed:
+		_evict(offence_name, by)
+	elif not is_evicting():
+		_warn(offence_name, rule, times, allowed)
 
 
-## Thrown out of the interior for `offence_name`: once the conversation or the shop screen
-## is closed (closing the shop at once), a scene of its own (ThrowOutScene: someone of the place
-## grabs the player, lifts them and carries them to the door: uitzetten.json "uitzetter"),
-## then the swipe, and once it is through out of the door the
+## The warning for the `times`th `offence_name` (of `allowed`): the nearest of the role of
+## the place (warner_for, uitzetten.json "uitzetter" "wie") shouts the line of "waarschuwing"
+## for that time (the last line from then on), and over the player "Waarschuwing 1 van 2".
+func _warn(offence_name: String, rule: Dictionary, times: int, allowed: int) -> void:
+	var lines: Array = rule.get("waarschuwing", [])
+	if lines.is_empty():
+		return
+	var line := String(lines[mini(times - 1, lines.size() - 1)])
+	var place: Dictionary = (_throw_outs().get("plekken", {}) as Dictionary).get(String(_inside.kind), {})
+	var role := String((place.get("uitzetter", {}) as Dictionary).get("wie", ""))
+	var warner: Node3D = _interior.call("warner_for", role, _player) if _interior and _interior.has_method("warner_for") else null
+	warnings_given += 1
+	last_warning = {"offence": offence_name, "line": line, "by": warner}
+	var hud := get_node_or_null(hud_path)
+	if warner:
+		DriverShout.shout_line(warner, line, 2.1, "boos")
+	elif hud and hud.has_method("show_floating_number"):
+		hud.show_floating_number(_player.global_position + Vector3.UP * (WARNING_HEIGHT + 0.5), line, WARNING_COLOUR, 13)
+	if hud and hud.has_method("show_floating_number"):
+		# over the story box too: begging is warned while the conversation is still open
+		var count_line := "Waarschuwing %d van %d" % [times, allowed - 1]
+		hud.show_floating_number(_player.global_position + Vector3.UP * WARNING_HEIGHT, count_line, WARNING_COLOUR, 15, true)
+
+
+## Whether someone of the place is coming to put the player out now.
+func is_evicting() -> bool:
+	return _eviction != null and is_instance_valid(_eviction) and not _eviction.is_done()
+
+
+## Who is coming to put the player out (Eviction), or null.
+func eviction() -> Eviction:
+	return _eviction if _eviction != null and is_instance_valid(_eviction) else null
+
+
+## Someone of the place sets off for the player (Eviction) for `offence_name`; once they are
+## at them, out (throw_out). One at a time: the first offence stands.
+func _evict(offence_name: String, by: Node3D) -> void:
+	if _eviction != null and is_instance_valid(_eviction):
+		return
+	var kind := String(_inside.kind)
+	_eviction = Eviction.new()
+	_eviction.name = "Uitzetten"
+	add_child(_eviction)
+	_eviction.caught.connect(throw_out.bind(offence_name), CONNECT_ONE_SHOT)
+	_eviction.start(_interior, offence_name, (_throw_outs().get("plekken", {}) as Dictionary).get(kind, {}), _player,
+		get_node_or_null(hud_path), by)
+
+
+## Over with who came for the player (out of the door): they go back (Eviction.end).
+func _end_eviction() -> void:
+	if _eviction != null and is_instance_valid(_eviction):
+		_eviction.end()
+		_eviction.queue_free()
+	_eviction = null
+
+
+## Thrown out of the interior for `offence_name`, once someone of the place is at the player
+## (Eviction: offence; they have them by the collar where they stand): once the
+## conversation or the shop screen is closed (closing the shop at once), the swipe, and once
+## it is through out of the door the
 ## player flies (a KLAP and a bang at the door, a kick, a close-up in slow motion, a groan as
 ## they land), tumbling onto the
 ## pavement; once up again, the narrator tells what happened (story pages: uitzetten.json
@@ -472,13 +582,7 @@ func throw_out(offence_name: String) -> void:
 	while hud and ((hud.has_method("is_showing_story") and hud.is_showing_story())
 			or (hud.has_method("is_showing_shop") and hud.is_showing_shop())):
 		await get_tree().process_frame
-	# first the scene of being taken away: grabbed, lifted and carried to the door
-	await _carried_off(kind, hud)
 	var bar := await _go_out(0)
-	if _arrest and is_instance_valid(_arrest):
-		_arrest.finish()
-		_arrest.queue_free()
-	_arrest = null
 	# not seen standing before the door: out of sight until the throw starts
 	_player.visible = false
 	_barred_until[kind] = Time.get_ticks_msec() + int(float(_throw_outs().get("terug_na", 90)) * 1000.0)
@@ -503,20 +607,6 @@ func throw_out(offence_name: String) -> void:
 	if hud and hud.has_method("show_story"):
 		hud.show_story(_throw_out_pages(rule))
 	_throwing = false
-
-
-## The scene of being carried off (ThrowOutScene, far off the map: ARREST_AT): the swipe, and
-## under it the scene starts; returns once the player has been carried to its door.
-func _carried_off(kind: String, hud: Node) -> void:
-	var rules: Dictionary = (_throw_outs().get("plekken", {}) as Dictionary).get(kind, {})
-	var swipe := SwipeTransition.swipe(get_tree())
-	await swipe.covered
-	_arrest = ThrowOutScene.new()
-	add_child(_arrest)
-	_arrest.global_position = ARREST_AT
-	_arrest.start(kind, rules, _player, hud)
-	_player.visible = false
-	await _arrest.carried_out
 
 
 ## The bang of being flung out (throw_out): the KLAP, a burst of shards and a white flash at

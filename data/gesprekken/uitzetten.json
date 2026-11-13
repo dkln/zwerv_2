@@ -1,5 +1,5 @@
 {
-	"uitleg": "Eruit gegooid worden (scripts/world/interiors.gd, throw_out): wie in een binnenruimte te vaak iets doet wat niet mag, wordt het gebouw uit gegooid (door de deur, in een snoekduik de straat op, een beetje in een willekeurige richting) en daarna vertelt de verteller wat er gebeurde. Per plek ('plekken': de soort binnenruimte: 'snackbar', 'centraal', 'derrek', 'alfred_steyhn' of 'stadhuis') per overtreding ('overtredingen'): 'na' hoeveel keer (in één bezoek) het genoeg is, en 'tekst' (de bladzijden van de verteller, na elkaar). Overtredingen: 'bedelen' (om kleingeld vragen), 'geen_geld' (iets kopen zonder genoeg geld), 'boete_onbetaald' (betrapt op zwartrijden en de boete niet kunnen betalen), 'winkeldiefstal' (met onbetaalde spullen in je karretje of mandje de supermarkt uit lopen). Eerst een tussenscène (scripts/world/throw_out_scene.gd): 'uitzetter' van de plek ('wie': snackbarhouder, handhaver, kassamedewerker of beveiliger, in de kleding van de plek; 'kreten': wat die roept) komt naar je toe, pakt je bij je kraag, tilt je op en draagt je naar de deur. Daarna mag je er 'terug_na' seconden niet meer in ('niet_binnen' zweeft dan boven je). Zie data/LEESMIJ.md.",
+	"uitleg": "Eruit gegooid worden (scripts/world/interiors.gd, throw_out): wie in een binnenruimte te vaak iets doet wat niet mag, wordt het gebouw uit gegooid (door de deur, in een snoekduik de straat op, een beetje in een willekeurige richting) en daarna vertelt de verteller wat er gebeurde. Per plek ('plekken': de soort binnenruimte: 'snackbar', 'centraal', 'derrek', 'alfred_steyhn' of 'stadhuis') per overtreding ('overtredingen'): 'na' hoeveel keer (in één bezoek) het genoeg is, en 'tekst' (de bladzijden van de verteller, na elkaar). Overtredingen: 'bedelen' (om kleingeld vragen), 'geen_geld' (iets kopen zonder genoeg geld), 'boete_onbetaald' (betrapt op zwartrijden en de boete niet kunnen betalen), 'winkeldiefstal' (met onbetaalde spullen in je karretje of mandje de supermarkt uit lopen). Vóór 'na' word je gewaarschuwd: iemand van de plek ('wie', de dichtstbijzijnde) roept een regel van 'waarschuwing' (de eerste keer de eerste, daarna de volgende; de laatste is de laatste waarschuwing) en boven je staat 'Waarschuwing 1 van 2'. Bij 'na' ben je niet meer welkom: 'uitzetter' van de plek ('wie') roept 'roep' van de overtreding (anders een van de 'kreten') en komt op je af, net als de conducteur bij zwartrijden (scripts/world/eviction.gd, de regels van de achtervolging in scripts/world/pursuit.gd); onderweg roept die af en toe een van de 'kreten'. Pas als die bij je is, word je eruit gezet; ga je zelf eerder de deur uit, dan ben je weg, maar mag je er ook 'terug_na' seconden niet meer in. Bij 'winkeldiefstal' blijven de poortjes dicht: de eerste keer een waarschuwing (eerst afrekenen), de tweede keer komt iemand je halen. Die pakt je dan bij je kraag (nog een van de 'kreten'; 'wie': snackbarhouder, handhaver, kassamedewerker of beveiliger) en je gaat meteen de deur uit. Daarna mag je er 'terug_na' seconden niet meer in ('niet_binnen' zweeft dan boven je). Zie data/LEESMIJ.md.",
 	"terug_na": 90,
 	"niet_binnen": "Je mag hier voorlopig niet meer in",
 	"plekken": {
@@ -15,6 +15,15 @@
 			"overtredingen": {
 				"bedelen": {
 					"na": 3,
+					"waarschuwing": [
+						"Hé, laat mijn klanten even met rust, ja?",
+						"Laatste keer: nog één keer bedelen en je vliegt eruit!"
+					],
+					"roep": [
+						"Hé! Jij daar! Nu is het klaar met dat gebedel!",
+						"Ik heb het gezien, hoor! Eruit!",
+						"Mijn klanten lastigvallen? Wacht maar!"
+					],
 					"tekst": [
 						"Bij de derde klant die je om kleingeld vroeg, kwam de snackbarhouder achter de toonbank vandaan. Zonder een woord pakte hij je bij je kraag.",
 						"\"Dit is een snackbar, geen loket van de Sociale Dienst,\" bromde hij nog, en toen vloog je door de deur naar buiten. Op de stoep rook je nog even de frituur."
@@ -22,6 +31,15 @@
 				},
 				"geen_geld": {
 					"na": 3,
+					"waarschuwing": [
+						"Eerst geld, dan een snack. Zo werkt dat hier.",
+						"Nog één keer bestellen zonder centen en je staat buiten!"
+					],
+					"roep": [
+						"Weer geen geld? Nou is het genoeg!",
+						"Hé! Drie keer bestellen zonder centen? Eruit!",
+						"Blijf staan, jij!"
+					],
 					"tekst": [
 						"Drie keer bestellen zonder een cent op zak: dat was één keer te veel. De snackbarhouder legde de schep neer en kwam op je af.",
 						"Voor je het wist lag je buiten op de stoep. \"Kom maar terug met centen,\" riep hij je na, en de deur viel achter je dicht."
@@ -41,6 +59,15 @@
 			"overtredingen": {
 				"bedelen": {
 					"na": 3,
+					"waarschuwing": [
+						"Handhaving. Bedelen is in het station niet toegestaan.",
+						"Dit is uw laatste waarschuwing. Nog één keer en u gaat naar buiten."
+					],
+					"roep": [
+						"Handhaving! Bedelen is hier verboden. Blijft u staan!",
+						"Hé, u daar! U gaat met mij mee.",
+						"Ja, u bedoel ik. Blijft u even staan?"
+					],
 					"tekst": [
 						"Reiziger na reiziger had je om geld gevraagd, tot een handhaver je op de schouder tikte. \"Bedelen is hier verboden, dat weet u.\"",
 						"Hij liep met je mee naar de uitgang, en het laatste stukje ging je zonder hem. Door de lucht. Vandaag kom je het station niet meer in."
@@ -48,6 +75,15 @@
 				},
 				"geen_geld": {
 					"na": 3,
+					"waarschuwing": [
+						"Handhaving. De winkeliers klagen over u. Rustig aan, graag.",
+						"Laatste waarschuwing. Nog één keer en u verlaat het station."
+					],
+					"roep": [
+						"Handhaving! De winkeliers hebben over u geklaagd. Blijft u staan!",
+						"U daar! Even meekomen, graag.",
+						"Blijft u staan, ik wil u even spreken!"
+					],
 					"tekst": [
 						"De winkeliers van het station hadden over je geklaagd: steeds bestellen en dan niet kunnen betalen. Handhaving kwam kijken.",
 						"\"Een rondje frisse lucht,\" zei de handhaver vriendelijk. Toen zette hij je buiten, iets minder vriendelijk."
@@ -55,6 +91,10 @@
 				},
 				"boete_onbetaald": {
 					"na": 1,
+					"roep": [
+						"Geen geld voor de boete? Dan gaat u nu mee.",
+						"Dan zit het er voor vandaag op. Meekomen."
+					],
 					"tekst": [
 						"De conducteur schreef de boete uit, keek in je lege hand en zuchtte. Even later stond er een handhaver naast je.",
 						"Met z'n tweeën brachten ze je naar de uitgang, en daar hielpen ze je een handje. Een flink handje. Zo verliet je Den Haag Centraal: met je gezicht vooruit."
@@ -73,7 +113,15 @@
 			},
 			"overtredingen": {
 				"winkeldiefstal": {
-					"na": 1,
+					"na": 2,
+					"waarschuwing": [
+						"Hé! Eerst afrekenen bij de kassa, vriend!"
+					],
+					"roep": [
+						"Hé! Dat is niet betaald! Blijf staan!",
+						"Stop! Die spullen zijn niet afgerekend!",
+						"Poortjes gaan af! Jij daar, blijf staan!"
+					],
 					"tekst": [
 						"Je liep met je boodschappen langs de kassa's naar de deur, zonder te betalen. De poortjes piepten, en voor je buiten was stond een beveiliger in een rood jasje al naast je.",
 						"\"Dat is winkeldiefstal, vriend.\" De boodschappen bleven binnen. Jij niet: je vloog de deur uit, de stoep op. Bij DERREK kom je voorlopig niet meer binnen."
@@ -81,6 +129,15 @@
 				},
 				"bedelen": {
 					"na": 3,
+					"waarschuwing": [
+						"Niet bedelen in de winkel, alsjeblieft.",
+						"Laatste waarschuwing! Nog één keer en je staat buiten."
+					],
+					"roep": [
+						"Hé! Hier wordt niet gebedeld! Eruit!",
+						"Klanten lastigvallen? Niet bij DERREK!",
+						"Jij daar! Wacht maar even!"
+					],
 					"tekst": [
 						"Klant na klant had je om kleingeld gevraagd, tussen de schappen door. Iemand ging naar de servicebalie.",
 						"Even later stond de bedrijfsleider van DERREK voor je. \"Hier wordt niet gebedeld.\" En toen stond je buiten, met je gezicht op de tegels."
@@ -88,6 +145,15 @@
 				},
 				"geen_geld": {
 					"na": 3,
+					"waarschuwing": [
+						"Geen geld? Dan even uit de rij, alsjeblieft.",
+						"Nog één keer en je mag de winkel uit."
+					],
+					"roep": [
+						"Wéér zonder geld aan de kassa? Nou is het klaar!",
+						"Hé! Jij houdt de hele rij op! Eruit!",
+						"Blijf staan, jij!"
+					],
 					"tekst": [
 						"Drie keer bij de kassa staan zonder genoeg geld: de rij achter je begon te mopperen.",
 						"De bedrijfsleider van DERREK liep met je mee naar de deur. Het laatste stukje ging sneller dan je wilde."
@@ -106,7 +172,15 @@
 			},
 			"overtredingen": {
 				"winkeldiefstal": {
-					"na": 1,
+					"na": 2,
+					"waarschuwing": [
+						"Meneer, mevrouw! U moet nog afrekenen!"
+					],
+					"roep": [
+						"Hé! Dat is niet betaald! Blijf staan!",
+						"Stop! Die boodschappen zijn niet afgerekend!",
+						"Meneer, mevrouw! Blijft u staan!"
+					],
 					"tekst": [
 						"Je liep met je boodschappen langs de kassa's naar de deur, zonder te betalen. De poortjes piepten, en voor je buiten was stond een beveiliger met een lichtblauw pasje al naast je.",
 						"\"Dat is winkeldiefstal, vriend.\" De boodschappen bleven binnen. Jij niet: je vloog de deur uit, de stoep op. Bij ALFRED STEYHN kom je voorlopig niet meer binnen."
@@ -114,6 +188,15 @@
 				},
 				"bedelen": {
 					"na": 3,
+					"waarschuwing": [
+						"Wilt u de klanten niet lastigvallen?",
+						"Dit is uw laatste waarschuwing. Nog één keer en u gaat naar buiten."
+					],
+					"roep": [
+						"Hier wordt niet gebedeld! Blijft u staan!",
+						"Klanten lastigvallen? Niet bij ALFRED STEYHN!",
+						"U daar! Wacht even!"
+					],
 					"tekst": [
 						"Klant na klant had je om kleingeld gevraagd, tussen de schappen door. Iemand ging naar de servicebalie.",
 						"Even later stond de bedrijfsleider van ALFRED STEYHN voor je. \"Hier wordt niet gebedeld.\" En toen stond je buiten, met je gezicht op de tegels."
@@ -121,6 +204,15 @@
 				},
 				"geen_geld": {
 					"na": 3,
+					"waarschuwing": [
+						"Zonder geld kunt u hier niet afrekenen.",
+						"Nog één keer en u verlaat de winkel."
+					],
+					"roep": [
+						"Wéér zonder geld aan de kassa? Nou is het klaar!",
+						"U houdt de hele rij op! Naar buiten!",
+						"Blijft u staan, alstublieft!"
+					],
 					"tekst": [
 						"Drie keer bij de kassa staan zonder genoeg geld: de rij achter je begon te mopperen.",
 						"De bedrijfsleider van ALFRED STEYHN liep met je mee naar de deur. Het laatste stukje ging sneller dan je wilde."
@@ -140,6 +232,15 @@
 			"overtredingen": {
 				"bedelen": {
 					"na": 3,
+					"waarschuwing": [
+						"Beveiliging. Bedelen is in het stadhuis niet toegestaan.",
+						"Laatste waarschuwing. Nog één keer en ik zet u buiten."
+					],
+					"roep": [
+						"Beveiliging! Bedelen is hier niet toegestaan. Blijft u staan!",
+						"U daar! U gaat met mij mee.",
+						"Ik heb het gezien. Blijft u even staan?"
+					],
 					"tekst": [
 						"Bezoeker na bezoeker had je om geld gevraagd, in de wachtrij, bij de lift, zelfs bij de koffieautomaat. De beveiliger van het stadhuis had het gezien.",
 						"\"Meneer, mevrouw, wat het ook is: niet hier.\" Hij bracht je naar de draaideur en duwde. Hard. Het Spui lag ineens heel dichtbij."

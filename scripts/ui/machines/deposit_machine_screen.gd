@@ -31,7 +31,15 @@ static func show_for(for_player: Node, place := "", with_animation := true) -> C
 	screen.set("trim_colour", Color("#2E9A48"))
 	screen.set("screen_colour", Color("#9CFF7A"))
 	screen.set("place_name", place)
+	screen.set("backdrop", "supermarkt")
 	return present(screen, for_player, with_animation)
+
+
+## The deposit machine of the supermarkets (MachineModels.deposit_machine_mesh, 14 x 30 x
+## 10 voxels of 6,25 cm): its little screen, the button by it and the slot of the bon.
+func machine_parts() -> Dictionary:
+	return {"mesh": MachineModels.deposit_machine_mesh(), "screen": Rect2(-0.1875, 1.25, 0.375, 0.25), "front": 0.3125,
+		"keys": Vector3(0.28, 0.84, 0.3125), "slot": Vector3(0.28, 0.59, 0.3125)}
 
 
 func _opened() -> void:

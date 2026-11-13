@@ -19,6 +19,13 @@ A composition file (tools/muziek/composities/<naam>.py, see docs/MUZIEK.md) hold
                "handklap" (a clap with the snare on 2 and 4), "stoten" ({"secties": (...),
                "klank": sound}: short chord stabs on the off-beats, spelled from the chords)
 
+    VGM        (optional) the VGM file (in composities/) the composition was read from
+               (vgm.py): the intro is then that VGM itself, played by the chip imitation (chip.py)
+    AFGELEID_OCTAAF   (optional) {part: octaves}: the part that many octaves higher (+) or
+               lower (-) in the derived pieces only (not in the intro)
+    AFGELEIDE_KLANKEN (optional) {sound or drum kit: sound or drum kit}: in every derived piece
+               the first is replaced by the second (the voices of the VGM, "vgm:<file>:<channel>=<sound>")
+
 Parts are free names (bas, pad, brass, lead, arp, gitaar, ...); each one is played by the sound
 KLANKEN gives it. "drums" is always the drum kit.
 """
@@ -67,6 +74,21 @@ class Score:
     sections: list = field(default_factory=list)
     moments: dict = field(default_factory=dict)
     major_ending: bool = False        # BIJSTELLING majeur_slot: endings and landings in major
+    vgm: str = ""                     # VGM: the file the intro is played from
+    derived_octaves: dict = field(default_factory=dict)   # AFGELEID_OCTAAF
+    derived_sounds: dict = field(default_factory=dict)    # AFGELEIDE_KLANKEN
+
+    def for_derived(self) -> "Score":
+        """The score the derived pieces are made from: the parts of AFGELEID_OCTAAF moved."""
+        if not self.derived_octaves:
+            return self
+        moved = copy.copy(self)
+        moved.bars = [bar.copy() for bar in self.bars]
+        for part, octaves in self.derived_octaves.items():
+            for bar in moved.bars:
+                if part in bar.parts:
+                    bar.parts[part] = [note.transposed(12 * octaves) for note in bar.parts[part]]
+        return moved
 
     @property
     def bar_seconds(self) -> float:
@@ -137,6 +159,9 @@ def load(name: str = None) -> Score:
                         section["soort"] if section else ""))
     score = Score(module.TITEL, float(module.TEMPO), beats_per_bar, tuple(module.TOONSOORT),
                   dict(module.KLANKEN), bars, sections, dict(getattr(module, "MOMENTEN", {})))
+    score.vgm = getattr(module, "VGM", "")
+    score.derived_octaves = dict(getattr(module, "AFGELEID_OCTAAF", {}))
+    score.derived_sounds = dict(getattr(module, "AFGELEIDE_KLANKEN", {}))
     tune(score, getattr(module, "BIJSTELLING", {}))
     return score
 

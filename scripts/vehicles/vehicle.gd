@@ -64,7 +64,7 @@ extends Node3D
 ## and a puff of dust fly out (scripts/effects/crash_burst.gd) and the view shakes; it burns
 ## (VehicleFire.BURN_SECONDS), blinks away ever faster (death_blink.gd) and is towed back
 ## onto the nearest lane, as good as new, and drives on. drive_into() sends a vehicle the wrong way down another one's route, without
-## looking (the demo crash of tools/check/crash_test.gd).
+## looking (the demo crash of tests/integration/traffic/test_crash.gd).
 ## Weight and torque: `mass_kg` and `wheel_torque` differ per type, and a heavy vehicle has
 ## more of both. The torque over the mass gives its acceleration. In a crash the masses
 ## share the blow as momentum does (the light one takes most of the change of speed and
@@ -265,7 +265,7 @@ const VISIT_MEMORY := 1000
 const TRAFFIC_LOOKAHEAD := 40.0
 const CLAIM_SECONDS := 4.0
 ## Metres it keeps from the back of a vehicle it stops behind.
-const TRAFFIC_GAP := 0.5
+const TRAFFIC_GAP := 1.5
 ## Square of the metres within which another vehicle matters at all (the look ahead along
 ## the route, and its claim on a crossing).
 const NEAR_VEHICLES := 80.0
@@ -300,9 +300,11 @@ const ROLL_ON_PER_KG := 0.00025
 const ROLLING_FRICTION := 0.05
 const SLIDING_FRICTION := 0.7
 ## Metres ahead of its nose it looks for the body of another vehicle (behind it in a lane),
-## how much room it leaves it, and how much wider than itself the lane it looks along is.
-const BODY_LOOKAHEAD := 12.0
-const BODY_GAP := 1.0
+## how much room it leaves it standing, and how much more for every m/s it drives (seconds of
+## following distance), and how much wider than itself the lane it looks along is.
+const BODY_LOOKAHEAD := 20.0
+const BODY_GAP := 2.2
+const FOLLOW_SECONDS := 0.6
 const BODY_SIDE_ROOM := 0.2
 ## Seconds it waits for others in a ring before it squeezes past (and up to this much more,
 ## different per vehicle, so they don't all go at once), seconds that it ignores them then,
@@ -2435,7 +2437,7 @@ func _body_ahead_speed(claims_limit := INF) -> float:
 				nearest_body = other
 	if nearest_gap > BODY_LOOKAHEAD:
 		return INF   # nothing close enough to hold it: who it waits for stays as it was
-	var limit := sqrt(2.0 * braking * maxf(nearest_gap - BODY_GAP, 0.0))
+	var limit := sqrt(2.0 * braking * maxf(nearest_gap - BODY_GAP - speed * FOLLOW_SECONDS, 0.0))
 	if limit < claims_limit:
 		_blocked_by = nearest_body   # this body holds it back more than the cells do
 	return limit

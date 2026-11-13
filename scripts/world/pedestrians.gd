@@ -22,6 +22,11 @@ extends Node3D
 ## a wheelchair or on a mobility scooter, carrying what that kind carries (CarriedItems). Who
 ## is not needed waits out of the tree (`_resting`) until more are wanted. Inside an
 ## interior (Binnenruimtes) it all stands still.
+## Going somewhere (route_to_somewhere): most of the time someone on foot is on the way to a
+## place a few blocks off (a walkable cell DESTINATION_CELLS away, picked at random), along
+## the shortest way over the pavements, the zebras and the stairs (an AStar3D over _links,
+## _find_routes), so they walk on from block to block and cross the roads on purpose; there
+## they pick the next. Now and then (Pedestrian.WANDER_CHANCE) they just wander.
 ## The zebras: a pedestrian about to cross or crossing claims the zebra cells
 ## (claim_zebra); a vehicle stops before a zebra someone claims (Vehicle._someone_crossing)
 ## and, once it has waited there, drives on unless someone is on it (someone_on_zebra).
@@ -79,6 +84,12 @@ const STAIR_PROPS := ["trappen/trap_1m", "trappen/trap_3m", "trappen/trap_metaal
 @export var renew_beyond := 30.0
 @export var changes_per_second := 3
 @export var interiors_path := NodePath("../Binnenruimtes")
+## How far off (cells of 4 m, as the crow flies) a place lies that someone sets off for.
+const DESTINATION_CELLS := Vector2i(12, 45)
+## How many places are tried (most lie too far off: they are picked from the whole town),
+## and the longest way there (cells) that still counts as a walk.
+const DESTINATION_ATTEMPTS := 40
+const LONGEST_WAY := 140
 ## Den Haag Centraal: see the top.
 const STATION_KIND := "centraal"
 const STATION_REACH := 140.0
@@ -106,6 +117,8 @@ var network: RoadNetwork
 var _walkable := {}          # cell -> true: pavement and square cells
 var _walkable_cells: Array[Vector3i] = []
 var _links := {}             # cell -> Array[Vector3i] of the cells one can walk on to
+var _routes: AStar3D                 # the route finder over _links (_find_routes)
+var _route_ids := {}                 # cell -> its point in _routes
 var _ride := {}              # cell -> true: bicycle paths (only for mobility scooters)
 var _decks := {}             # Vector2i (x, z) -> the level of the footbridge deck there
 var _stair_routes := {}      # [from cell, to cell] -> PackedVector3Array: the points up or down the stairs
@@ -204,6 +217,49 @@ static func claim_zebra(who: Object, cells: Array[Vector3i], on: bool) -> void:
 
 func is_walkable(cell: Vector3i) -> bool:
 	return _walkable.has(cell)
+
+
+## Every cell someone can be on gets a point in the route finder, linked as _links says.
+func _find_routes() -> void:
+	_routes = AStar3D.new()
+	_route_ids.clear()
+	for cell: Vector3i in _links:
+		var id := _route_ids.size()
+		_route_ids[cell] = id
+		_routes.add_point(id, Vector3(cell))
+	for cell: Vector3i in _links:
+		for next: Vector3i in _links[cell]:
+			if _route_ids.has(next):
+				_routes.connect_points(int(_route_ids[cell]), int(_route_ids[next]), false)
+
+
+## The cells to walk from `from` to a place a few blocks off (a walkable cell between
+## DESTINATION_CELLS.x and .y cells away as the crow flies, where `mobility` may go),
+## without `from` itself; empty when no such place can be reached from here.
+func route_to_somewhere(from: Vector3i, mobility: String) -> Array[Vector3i]:
+	var route: Array[Vector3i] = []
+	if _routes == null or not _route_ids.has(from) or _walkable_cells.is_empty():
+		return route
+	var routes_tried := 0
+	for attempt in DESTINATION_ATTEMPTS:
+		var goal: Vector3i = _walkable_cells[_random.randi() % _walkable_cells.size()]
+		var far := maxi(absi(goal.x - from.x), absi(goal.z - from.z))
+		if far < DESTINATION_CELLS.x or far > DESTINATION_CELLS.y or not _route_ids.has(goal):
+			continue
+		routes_tried += 1
+		if routes_tried > 3:
+			break
+		for point in _routes.get_point_path(int(_route_ids[from]), int(_route_ids[goal])):
+			route.append(Vector3i(roundi(point.x), roundi(point.y), roundi(point.z)))
+		# (a way far round, over a bridge at the other end of town, is no walk: another place)
+		if route.size() > 1 and route.size() <= LONGEST_WAY:
+			route.remove_at(0)
+			if mobility != "" and route.any(func(cell: Vector3i) -> bool: return not may_use(cell, mobility)):
+				route.clear()
+				continue
+			return route
+		route.clear()
+	return route
 
 
 func links(cell: Vector3i) -> Array:
@@ -552,6 +608,7 @@ func _find_walkable() -> void:
 			if is_zebra(next) and not _links.has(next):
 				_link_zebra(next, next - cell)
 	_find_stairs(flights)
+	_find_routes()
 
 
 ## The route over the stairs from `from` to `to` (cells linked by them): the points to walk

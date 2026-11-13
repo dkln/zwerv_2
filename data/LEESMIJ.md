@@ -27,6 +27,7 @@ een nieuwe naam en een nieuwe `"id"`.
 | `start` | `"na_proloog"`, of `"na:missie_1_kroket"` (als die klaar is) |
 | `xp` | XP voor de hele missie |
 | `beloningen` | teksten in het questlog, bv. `["KROKET", "+40 HONGER"]` |
+| `geeft` | items die je krijgt als de hele missie klaar is, bv. `[{"item": "koffie", "aantal": 1}]` (ook per stap) |
 | `start_paginas` | wat er verteld wordt als de missie begint |
 | `stappen` | de stappen, na elkaar (de volgende is doorzichtig tot de vorige klaar is) |
 | `einde_paginas` | wat er verteld wordt als alles klaar is |
@@ -46,6 +47,12 @@ Een **stap**:
 
 Een stap met `"overslaan_als": {"startgeld_minstens": 2.0}` wordt overgeslagen (meteen
 klaar, zonder XP) voor een karakter dat met minstens zoveel geld begint.
+
+Een stap kan ook items geven: `"geeft": [{"item": "stroopwafel", "aantal": 2}]` (de ids van
+`scripts/player/items.gd`). Wat een stap of missie oplevert (de XP en de items) komt na de
+`klaar_paginas` in een eigen **beloningsscherm**: het item groot in beeld, langzaam draaiend
+als voxelmodel met stralen erachter, zijn naam en tekstje, met een eigen deuntje
+(`deuntje_beloning`); wegdrukken met Enter.
 
 Soorten **doel**:
 
@@ -121,7 +128,8 @@ dingen). Wie zich voordoet als dezelfde soort (`ambtenaar` en `kantoormens`, `to
 **Een kleine beloning — `beloning`.** Elke vraag in het boompje (het `onderwerp` zelf of een
 vraag onder `verder`) kan een `beloning` hebben: `{"item": "koffie", "kans": 35, "tekst": "Hier,
 neem die tweede beker maar."}`. Krijg je dat antwoord, dan geeft die persoon je met `kans` op 100
-dat item (het verschijnt boven je met een geluidje, zie `Items`), en zegt er `tekst` achteraan.
+dat item, met wat XP (`xp`, anders 25), en zegt er `tekst` achteraan. Als het gesprek klaar is,
+komt het item in het beloningsscherm (groot en draaiend, met zijn deuntje).
 Laat de beloning passen bij wat er net gezegd wordt (de man van de markt geeft een appel, de
 forens die zijn trein haalt zijn koffie). Eén kans per persoon; geen ruimte in je zakken, dan
 krijg je niets. `"item": "pinpas"` is een gevonden pinpas met een eigen saldo en pincode (houd de
@@ -188,7 +196,7 @@ als in `voorbijgangers.json` (`spreker`, `begroetingen`, `onderwerp`, `kleingeld
 | `nog_iets` | eigen zinnen na een antwoord (anders die van de voorbijgangers) |
 | `betrapt` | alleen de conducteur: wat hij zegt als je met hem praat terwijl hij je achternazit omdat je zwartreed; je krijgt dan de boete (`{boete}`: het bedrag) |
 
-Controle: `tools/godot.sh --headless --script tools/check/staff_talk_test.gd`.
+Controle: `tools/godot.sh --headless --script tests/integration/people/test_staff_talk.gd`.
 
 ## De snackbarhouder — `gesprekken/snackbarhouder.json`
 
@@ -238,7 +246,7 @@ met **dezelfde velden** als `snackbarhouder.json`. Wat een zaak weglaat komt uit
 
 Een nieuw product: zet het item in `scripts/player/items.gd` (naam, soort, tekst, effect;
 een eigen icoon in `GameMenu.ITEM_ICONS`) en een regel in het `menu` van de zaak.
-Controle: `tools/godot.sh --headless --script tools/check/shop_test.gd`.
+Controle: `tools/godot.sh --headless --script tests/integration/interiors/test_shop.gd`.
 
 ## De supermarkten — `gesprekken/supermarkten.json`
 
@@ -279,22 +287,33 @@ keten klinkt (`assets/audio/muziek/jingle_derrek.ogg`, `jingle_alfred_steyhn.ogg
 
 ## Eruit gegooid worden — `gesprekken/uitzetten.json`
 
-Wie in een binnenruimte te vaak iets doet wat niet mag, wordt eruit gegooid: de swipe, en de
-speler vliegt de deur uit en tuimelt de straat op; als hij weer staat, vertelt de verteller
-wat er gebeurde, en een tijdje (`terug_na` seconden) mag hij er niet in.
-Herbruikbaar voor elke plek (`scripts/world/interiors.gd`: `Interiors.note_offence(tree, overtreding)`).
+Wie in een binnenruimte iets doet wat niet mag, wordt eerst gewaarschuwd door iemand van de
+plek (`waarschuwing`); wie het te vaak doet (`na`), is er niet meer welkom. Alleen iemand
+van de plek kan je eruit zetten: de `uitzetter` (`wie`) roept wat er mis is (`roep`) en komt
+op je af, net als de conducteur bij zwartrijden; onderweg roept die af en toe een van de
+`kreten`. Pas als die bij je is, word je eruit gezet: de swipe, en de speler vliegt de deur
+uit en tuimelt de straat op; als hij weer staat, vertelt de verteller wat er gebeurde, en een
+tijdje (`terug_na` seconden) mag hij er niet in. Ga je zelf eerder de deur uit, dan ben je
+weg, maar mag je er die tijd ook niet in. Herbruikbaar voor elke plek
+(`scripts/world/interiors.gd`: `Interiors.note_offence(tree, overtreding)`; het achter je aan
+komen is gedeeld: `scripts/world/eviction.gd`, met de regels van de achtervolging van
+`scripts/world/pursuit.gd`, ook die van de conducteur).
 
 | veld | wat |
 |---|---|
 | `plekken` | per soort binnenruimte (`snackbar`, `centraal`, `derrek`, `alfred_steyhn`, `stadhuis`) zijn `overtredingen` |
 | `na` | hoeveel keer in één bezoek genoeg is (1: meteen) |
+| `waarschuwing` | de waarschuwingen vóór `na`: de eerste keer de eerste regel, de tweede keer de tweede (de laatste is de laatste waarschuwing); iemand van de plek roept hem en boven je staat "Waarschuwing 1 van 2" |
+| `roep` | wat de uitzetter roept als die op je af komt (één van de regels; leeg: een van de `kreten`) |
+| `uitzetter` | per plek: `wie` (de rol: wie er komt) en `kreten` (wat die onderweg en bij het pakken roept) |
 | `tekst` | de bladzijden van de verteller, na elkaar |
 | `terug_na`, `niet_binnen` | seconden dat je er niet in mag, en wat er dan boven je zweeft |
 
 Overtredingen nu: `bedelen` (om kleingeld vragen), `geen_geld` (iets kopen zonder genoeg geld),
-`boete_onbetaald` (betrapt op zwartrijden en de boete niet kunnen betalen: meteen eruit; wie
-wel kan betalen, betaalt alleen), `winkeldiefstal` (met onbetaalde spullen in je karretje of
-mandje een supermarkt uit lopen: meteen eruit). Een nieuwe: meld hem met `Interiors.note_offence`
+`boete_onbetaald` (betrapt op zwartrijden en de boete niet kunnen betalen: de conducteur
+staat al bij je, dus meteen eruit; wie wel kan betalen, betaalt alleen), `winkeldiefstal` (met
+onbetaalde spullen in je karretje of mandje een supermarkt uit lopen: de poortjes blijven
+dicht en een kassamedewerker komt je halen). Een nieuwe: meld hem met `Interiors.note_offence`
 waar hij gebeurt en zet hem per plek in dit bestand.
 
 ## Drukte op straat — `drukte.json`
@@ -349,5 +368,5 @@ ook "Automaten, blikjes en pinpassen" in `INSTRUCTIONS.md`):
 
 Een raadsel bij de cijfers (`DIGIT_RIDDLES`) moet echt dat cijfer opleveren: rij 0 is het
 cijfer 0, rij 8 het cijfer 8 ("de poten van een spin"). Controleer na een wijziging met
-`tools/godot.sh --headless --script tools/check/machines_test.gd` (die rekent elk raadsel na).
+`tools/godot.sh --headless --script tests/integration/interiors/test_machines.gd` (die rekent elk raadsel na).
 In een gesprek een pinpas geven: `speler.give_found_bank_card()`; een blikje: het item `blikje`.

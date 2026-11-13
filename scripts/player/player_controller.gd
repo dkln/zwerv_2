@@ -323,8 +323,9 @@ func is_asleep() -> bool:
 
 ## Adds euros (a coin found, a sale; negative = paying).
 ## More experience: "+50 XP" rising over the figure, the bar in the HUD; past the end of the
-## bar the next level (as often as it takes).
-func add_xp(points: float) -> void:
+## bar the next level (as often as it takes). `quiet`: nothing rising (the reward screen
+## shows it: GameHud.show_reward).
+func add_xp(points: float, quiet := false) -> void:
 	if points <= 0.0:
 		return
 	xp += points
@@ -335,7 +336,7 @@ func add_xp(points: float) -> void:
 		xp_for_level = roundf(xp_for_level * XP_GROWTH / 50.0) * 50.0
 		levelled = true
 	if _hud:
-		if _hud.has_method("show_floating_number"):
+		if not quiet and _hud.has_method("show_floating_number"):
 			_hud.show_floating_number(global_position + Vector3.UP * 2.3, "+%d XP" % roundi(points), XP_TEXT_COLOUR, 18)
 		if _hud.has_method("set_xp"):
 			_hud.set_xp(xp, xp_for_level)
@@ -380,14 +381,17 @@ func has_room_for(item_id: String) -> bool:
 
 ## Adds items; false (and nothing added) if there is no room for them: the pockets full.
 ## Getting something shows: its name rises over the player in the colour of its rarity (over
-## the story box too, for what a conversation gives), with the "item" chime.
-func add_item(item_id: String, count := 1) -> bool:
+## the story box too, for what a conversation gives), with the "item" chime; `quiet`: neither
+## (a reward of a mission or a conversation: the reward screen shows it, GameHud.show_reward).
+func add_item(item_id: String, count := 1, quiet := false) -> bool:
 	if not has_room_for(item_id):
 		if _hud and _hud.has_method("show_floating_number"):
 			_hud.show_floating_number(global_position + Vector3.UP * 2.0, "Zakken vol", Color("#FF5D73"), 14)
 		return false
 	inventory[item_id] = int(inventory.get(item_id, 0)) + count
 	inventory_changed.emit()
+	if quiet:
+		return true
 	if _hud and _hud.has_method("show_floating_number"):
 		var item_name := String(Items.item(item_id).get("name", item_id))
 		var label := "+ %s" % item_name if count == 1 else "+ %d x %s" % [count, item_name]
@@ -410,9 +414,9 @@ func pick_up_backpack() -> bool:
 
 ## A found bank card in the pockets ("pinpas"): its own account, a modest balance, a PIN and
 ## the riddle of it (scripts/player/bank_cards.gd); false if the pockets are full.
-func give_found_bank_card() -> bool:
+func give_found_bank_card(quiet := false) -> bool:
 	var bank_cards: GDScript = load("res://scripts/player/bank_cards.gd")
-	return bool(bank_cards.give_found_bank_card(self))
+	return bool(bank_cards.give_found_bank_card(self, null, quiet))
 
 
 func drop_item(item_id: String) -> void:

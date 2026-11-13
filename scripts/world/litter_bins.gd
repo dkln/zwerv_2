@@ -84,6 +84,7 @@ func _put_can(index: int) -> void:
 	if bin.spot != null:
 		return
 	var spot: Node3D = InteriorSpot.create("Blikje%d" % (index + 1), Vector3.ZERO, "Blikje pakken", _take.bind(index), SPOT_REACH)
+	spot.set("kind", "oppakken")   # Interactable.KIND_PICKUP
 	add_child(spot)
 	spot.global_position = bin.ground
 	var can := MeshInstance3D.new()

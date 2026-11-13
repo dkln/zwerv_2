@@ -1,6 +1,6 @@
 ---
 name: muziek-compositie
-description: Gebruik als de gebruiker een nieuwe compositie aanlevert (een uitgeschreven nummer van Gemini of een andere componist: tempo, toonsoort, instrumenten, akkoorden en noten per maat; in tools/muziek/composition.md of geplakt) en vraagt daar de muziek van ZWERVR van te maken; zet de compositie letterlijk om naar tools/muziek/composities/<naam>.py, rendert de intro en alle afgeleide stukken (menu, karakterkeuze, handelaar, laadscherm, spel, deuntjes, ook het deuntje voor de start van de kaart, de drie muzaklussen van de supermarkten en de jingles van de twee supermarktketens) in Mega Drive-klank en controleert ze.
+description: Gebruik als de gebruiker een nieuwe compositie aanlevert (een uitgeschreven nummer van Gemini of een andere componist: tempo, toonsoort, instrumenten, akkoorden en noten per maat; in tools/muziek/composition.md of geplakt; of een VGM-bestand, .vgm/.vgz, het registerlog van de Mega Drive-geluidschips) en vraagt daar de muziek van ZWERVR van te maken; zet de compositie letterlijk om naar tools/muziek/composities/<naam>.py (een VGM met tools/muziek/render.sh --vgm), rendert de intro en alle afgeleide stukken (menu, karakterkeuze, handelaar, laadscherm, spel, deuntjes, ook het deuntje voor de start van de kaart, de drie muzaklussen van de supermarkten en de jingles van de twee supermarktketens) in Mega Drive-klank en controleert ze.
 ---
 
 # Een nieuwe compositie wordt de muziek van ZWERVR
@@ -9,6 +9,9 @@ Lees eerst `docs/MUZIEK.md` (de regels, de notatie, de klanken, de afgeleide stu
 vorige compositiebestand in `tools/muziek/composities/` als voorbeeld van de notatie (niet van de
 inhoud: **niets** uit een vorige compositie overnemen). Werk zelfstandig door, zonder tussentijdse
 vragen.
+
+Levert de gebruiker een **VGM-bestand** (`.vgm` of `.vgz`) in plaats van een tekst, dan gaan
+stap 1 en 2 anders: zie "Een VGM-bestand" hieronder; stap 3 tot en met 8 blijven gelijk.
 
 ## Stappen
 
@@ -70,8 +73,49 @@ vragen.
    pas dan `tools/muziek/derive.py` algemeen aan (zodat het voor elke compositie werkt) en zet
    het in "Afgeleide stukken" van `docs/MUZIEK.md`.
 7. **Speltests** (één tegelijk, headless):
-   `tools/godot.sh --headless --script tools/check/intro_test.gd` en
-   `tools/godot.sh --headless --script tools/check/city_music_test.gd`.
+   `tools/godot.sh --headless --script tests/integration/ui/test_intro.gd` en
+   `tools/godot.sh --headless --script tests/integration/world/test_city_music.gd`.
+## Een VGM-bestand
+
+Een VGM is het logboek van de registers van de YM2612 (FM) en de SN76489 (PSG); de noten staan
+er niet in maar volgen uit de key-ons, frequenties en volumes. `tools/muziek/vgm.py` doet de
+omzetting (docs/MUZIEK.md, "Een VGM als compositie"); schrijf de noten niet met de hand over.
+
+1. **Bekijk het bestand**: `tools/muziek/render.sh --vgm <bestand> [naam] --toon` (`<naam>`:
+   standaard de bestandsnaam in kleine letters met underscores). Lees wat het meldt: de chips, per
+   kanaal het aantal noten en het bereik, het tempo (en of een getal in de bestandsnaam, bv.
+   `_92`, het tempo is: alleen als het op het raster van de noten past), de maatsoort, de
+   toonsoort, de secties, de akkoorden en elke "let op".
+2. **Zet het om**: `tools/muziek/render.sh --vgm <bestand> [naam]` schrijft
+   `tools/muziek/composities/<naam>.py` en bewaart het VGM ongewijzigd als
+   `tools/muziek/composities/<naam>.vgm` (staat het VGM elders in het project, haal het daar dan
+   weg). Klopt het tempo niet (de noten liggen ver van het raster, of het getal in de naam is wel
+   het tempo maar wordt niet gevonden), geef dan `--tempo <BPM>`; bestaat het bestand al, dan
+   `--overschrijf`. Lees daarna het compositiebestand na en verbeter met de hand wat de omzetter
+   alleen kan raden, met de reden als commentaar:
+   - de `soort` van de secties (en hun grenzen) als de vorm anders is dan gevonden;
+   - akkoorden die niet bij de noten van de maat passen;
+   - `KLANKEN`: de omzetter kiest per kanaal een klank bij de FM-patch (de reden staat in het
+     bestand); past er geen, maak dan een nieuwe klank (docs/MUZIEK.md, "Een nieuwe klank");
+   - `MOMENTEN` (zelfde regels als bij een tekst, stap 2 hierboven);
+   - de noten zelf **niet**: die staan er zoals de chip ze speelt. Het octaaf waarin een partij
+     klinkt, staat in `BIJSTELLING["octaaf"]` (door de omzetter gezet als de partij ver van het
+     gewone register ligt), een wens van de gebruiker ook in `BIJSTELLING`.
+3. Ga verder met stap 3 tot en met 7 hierboven (actief zetten, renderen, controleren, de vorm,
+   de speltests). Bij het **controleren** komt erbij:
+   `tools/muziek/render.sh --vgm <bestand> [naam] --vergelijk`: elke partij van het
+   compositiebestand moet "gelijk" zijn aan het VGM (aantal noten, plek, toonhoogte, lengte, de
+   drums) en de intro even lang als het VGM (plus het uitklinken); "ANDERS" na handwerk aan de
+   noten is een fout. De unit tests doen dezelfde vergelijking voor elke compositie met een
+   `.vgm` ernaast.
+4. **Meld** (stap 8) ook: wat het VGM bevatte (chips, kanalen en hun partij en klank, tempo en
+   hoe het met de bestandsnaam zat, toonsoort, lengte), wat de omzetter heeft afgeleid of
+   verschoven (akkoorden, secties, octaven) en wat je met de hand hebt verbeterd, en wat niet
+   omgezet kon worden: elke "let op" (afgekapte F-numbers, overgeslagen commando's, de speciale
+   modus van kanaal 3), kanalen zonder noten, ontbrekende drums (bv. geen kick).
+
+## Melden
+
 8. **Meld** aan de gebruiker: titel, tempo, toonsoort, lengte van de intro, de lengte van de drie
    muzaklussen en de jingles, wat er is afgeleid
    (welke gaten, met reden), nieuwe klanken, de uitkomst van de controle, en dat je het niet

@@ -18,7 +18,8 @@ extends CanvasLayer
 ##   places the followed quest sends you to (hud.quest_targets()) as amber diamonds; the
 ##   supermarkets in the colour and shape of their chain (SUPERMARKETS: DERREK a red
 ##   square, ALFRED STEYHN a light blue disc, as their emblems), also in neighbourhoods not
-##   visited yet, so you can always find the nearest; the legend has them too. Enter (or a
+##   visited yet, so you can always find the nearest; the legend has them too; and so the
+##   cash machines (Straatautomaten: CASH_MACHINE_COLOUR, PINPUNT yellow). Enter (or a
 ##   right click) sets the marker on the chosen place (GameHud.set_waypoint: a pink diamond
 ##   on the minimap and the map, a beam of light in the town, gone once you are there);
 ##   again: off.
@@ -149,6 +150,14 @@ const SUPERMARKETS := {
 	"derrek": {"colour": Color("#DE1828"), "round": false, "name": "DERREK"},
 	"alfred_steyhn": {"colour": Color("#2CA8E4"), "round": true, "name": "ALFRED STEYHN"},
 }
+## The cash machines in the streets (the markers Geldautomaat_<n> under Straatautomaten,
+## scripts/world/street_machines.gd) on the map, as places: in the yellow of PINPUNT, also in
+## neighbourhoods not visited yet (so you can always find the nearest one to get money).
+const CASH_MACHINE_NODE := "Straatautomaten"
+const CASH_MACHINE_MARKER := "Geldautomaat"
+const CASH_MACHINE_KEY := "pinautomaat_"
+const CASH_MACHINE_COLOUR := Color("#F2B705")
+const CASH_MACHINE_NAME := "Pinautomaat"
 const FOG := Color(20.0 / 255.0, 24.0 / 255.0, 58.0 / 255.0, 0.86)
 const WHOLE_CITY := "Den Haag"
 ## Map cells are 4 m (the "wijken" table counts in cells).
@@ -1644,6 +1653,7 @@ func _build_map_side() -> Control:
 				round_style.set_corner_radius_all(5)
 				marker.add_theme_stylebox_override("panel", round_style)
 		legend_grid.add_child(_legend_entry(marker, String(SUPERMARKETS[chain].name).capitalize()))
+	legend_grid.add_child(_legend_entry(_legend_square(CASH_MACHINE_COLOUR, UiStyle.INK), CASH_MACHINE_NAME))
 	legend_grid.add_child(_legend_entry(_legend_square(GameHud.WAYPOINT_COLOUR, Color.WHITE), "Jouw marker"))
 	legend_grid.add_child(_legend_entry(_legend_square(Color(FOG, 1.0), UiStyle.BORDER), "Onontdekte wijk"))
 	var arrow_holder := Control.new()
@@ -1739,6 +1749,17 @@ func _refresh_map() -> void:
 			var place_position: Vector2 = places[place_key]
 			_places.append({"key": place_key, "name": GameHud._place_name(place_key),
 					"position": place_position, "wijk": _wijk_at(place_position)})
+		var machines := world.get_node_or_null(CASH_MACHINE_NODE)
+		if machines:
+			var number := 0
+			for marker in machines.get_children():
+				if not (marker is Node3D and String(marker.name).begins_with(CASH_MACHINE_MARKER)):
+					continue
+				number += 1
+				var at := (marker as Node3D).global_position
+				var machine_position := Vector2(at.x, at.z)
+				_places.append({"key": CASH_MACHINE_KEY + str(number), "name": CASH_MACHINE_NAME,
+						"position": machine_position, "wijk": _wijk_at(machine_position)})
 	if _selected_place == "" or not _places.any(func(place: Dictionary) -> bool: return place.key == _selected_place):
 		_selected_place = _nearest_place(player_at)
 	var area_names := {}
@@ -1868,12 +1889,17 @@ func _draw_map_overlay() -> void:
 		if supermarket_chain(place.key) != "":
 			_draw_supermarket(at, supermarket_chain(place.key), false)
 			continue
+		if is_cash_machine(place.key):
+			_draw_cash_machine(at, false)
+			continue
 		_map_overlay.draw_rect(Rect2(at - Vector2(5, 5), Vector2(10, 10)), UiStyle.INK)
 		_map_overlay.draw_rect(Rect2(at - Vector2(3, 3), Vector2(6, 6)), _place_colour(place))
 	if not chosen.is_empty():
 		var at := _world_to_map(chosen.position).round()
 		if supermarket_chain(chosen.key) != "":
 			_draw_supermarket(at, supermarket_chain(chosen.key), true)
+		elif is_cash_machine(chosen.key):
+			_draw_cash_machine(at, true)
 		else:
 			_map_overlay.draw_rect(Rect2(at - Vector2(11, 11), Vector2(22, 22)), Color.WHITE)
 			_map_overlay.draw_rect(Rect2(at - Vector2(8, 8), Vector2(16, 16)), UiStyle.INK)
@@ -1894,6 +1920,23 @@ static func supermarket_chain(place_key: String) -> String:
 		words.resize(words.size() - 1)
 	var chain := "_".join(words)
 	return chain if SUPERMARKETS.has(chain) else ""
+
+
+## Whether a place of the map is a cash machine ("pinautomaat_3").
+static func is_cash_machine(place_key: String) -> bool:
+	return place_key.begins_with(CASH_MACHINE_KEY)
+
+
+## The marker of a cash machine at `at`: a small upright yellow block (the machine) with a
+## dark screen; `chosen`: larger, ringed white.
+func _draw_cash_machine(at: Vector2, chosen: bool) -> void:
+	var half := Vector2(4.0, 5.0) * (1.5 if chosen else 1.0)
+	if chosen:
+		_map_overlay.draw_rect(Rect2(at - half - Vector2.ONE * 4.0, (half + Vector2.ONE * 4.0) * 2.0), Color.WHITE)
+	_map_overlay.draw_rect(Rect2(at - half - Vector2.ONE * 2.0, (half + Vector2.ONE * 2.0) * 2.0), UiStyle.INK)
+	_map_overlay.draw_rect(Rect2(at - half, half * 2.0), CASH_MACHINE_COLOUR)
+	var screen := Vector2(half.x * 0.6, half.y * 0.35)
+	_map_overlay.draw_rect(Rect2(at - Vector2(screen.x, half.y * 0.7), screen * 2.0), UiStyle.INK)
 
 
 ## The marker of a supermarket at `at`: a square (DERREK) or a disc (ALFRED STEYHN) in the
@@ -1948,8 +1991,11 @@ func _fill_place_panel() -> void:
 	var chain := supermarket_chain(place.key)
 	if chain != "":
 		colour = SUPERMARKETS[chain].colour
+	var cash_machine := is_cash_machine(place.key)
+	if cash_machine:
+		colour = CASH_MACHINE_COLOUR
 	_place_box.style = _style(UiStyle.PANEL, colour, 3, 18, 18)
-	_place_kind.text = "◆ SUPERMARKT" if chain != "" else ("◆ PLEK" if known else "? NOG ONBEKEND")
+	_place_kind.text = "◆ SUPERMARKT" if chain != "" else ("◆ PINAUTOMAAT" if cash_machine else ("◆ PLEK" if known else "? NOG ONBEKEND"))
 	_place_kind.add_theme_color_override("font_color", colour)
 	_place_name.text = String(SUPERMARKETS[chain].name) if chain != "" else place.name
 	_place_wijk.text = "In %s" % place.wijk if place.wijk != WHOLE_CITY else "In Den Haag"

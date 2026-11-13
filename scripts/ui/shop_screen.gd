@@ -78,6 +78,8 @@ var _clock := 0.0
 var _line_mood := "neutraal"
 var _asked_aloud := false
 var _babble: AudioStreamPlayer
+var _babble_line := ""              # the line its babble counts the sounds of
+var _babble_count := 0              # sounds played of that line so far (its nth word)
 var _typewriter: Typewriter
 var _speech: RichTextLabel
 var _kind_label: Label
@@ -453,13 +455,21 @@ func _update_babble() -> void:
 		return
 	var question := _typewriter.text.strip_edges().ends_with("?")
 	var voice := String(_talk.call("voice"))
+	# every word its own sound (Babble.word_at), so the same line always sounds the same
+	if _babble_line != _typewriter.text:
+		_babble_line = _typewriter.text
+		_babble_count = 0
+	var word := Babble.word_at(_babble_line, _babble_count)
 	if not _typewriter.is_done():
 		var mood := "vraag" if question and _typewriter.words_left() <= 2 else _line_mood
 		_asked_aloud = _asked_aloud or mood == "vraag"
-		_babble = Babble.play_near(self, voice, mood)
+		_babble = Babble.play_near(self, voice, mood, word)
 	elif question and not _asked_aloud:
 		_asked_aloud = true
-		_babble = Babble.play_near(self, voice, "vraag")
+		_babble = Babble.play_near(self, voice, "vraag", word)
+	else:
+		return
+	_babble_count += 1
 
 
 static func _euros(amount: float) -> String:

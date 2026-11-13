@@ -30,6 +30,9 @@ const Layout = preload("res://scripts/world/station_layout.gd")
 const OverheadLines = preload("res://scripts/world/overhead_lines.gd")
 const Typewriter = preload("res://scripts/ui/widgets/typewriter.gd")
 const DriverShout = preload("res://scripts/vehicles/driver_shout.gd")
+## The rules of a chase (caught, given up): the same for whoever puts the player out of any
+## interior (scripts/world/eviction.gd), here a BOA (handhaver) along the same routes.
+const Pursuit = preload("res://scripts/world/pursuit.gd")
 const OvCard = preload("res://scripts/world/ov_card.gd")
 const OvMachineScreen = preload("res://scripts/ui/machines/ov_machine_screen.gd")
 const PROPS_LIBRARY := "res://assets/libraries/props.res"
@@ -92,8 +95,15 @@ const SHOP_MARK_TOP := 2.4
 ## The chase goes along the floor: on the player's platform (or in the hall with them)
 ## straight at them, else along the travellers' route (through the gates); with the player
 ## down on the rails he waits at the edge above them and shouts (never onto the rails).
-## Every CHASE_REPLAN seconds he looks again which way to go.
+## Every CHASE_REPLAN seconds he looks again which way to go. Whoever is after the player
+## (the conductor, or a BOA putting them out: evictor_for) keeps the way it is going in
+## CHASE_PLAN_META, when it looks again in CHASE_CLOCK_META and how fast in CHASE_SPEED_META.
 const CHASE_REPLAN := 0.5
+const CHASE_PLAN_META := "achtervolging_plan"
+const CHASE_CLOCK_META := "achtervolging_klok"
+const CHASE_SPEED_META := "achtervolging_vaart"
+## How far off (m) a BOA still sees what the player does and warns them (warner_for).
+const WARN_REACH := 40.0
 ## Falling off a platform by accident (StationPerson at an edge: station.stumbles): the
 ## chance at an edge, for someone walking and for a conductor in a chase; never onto a
 ## track with a train. Then he climbs back up (StationPerson "climb") and goes on.
@@ -228,10 +238,11 @@ var _subtitle: RichTextLabel
 ## hall, 1 the platforms, 0 not known yet), the conductor after them and for how long.
 var _player_side := 0
 var _chaser: StationPerson
-var _chase_seconds := 0.0
-var _chase_far_seconds := 0.0
-var _chase_plan := ""                # which way he is going now (CHASE_REPLAN)
-var _chase_replan_clock := 0.0
+var _pursuit: Pursuit                # the rules of his chase (caught, given up)
+## Which way the conductor is going now (CHASE_REPLAN; for the checks).
+var _chase_plan: String:
+	get:
+		return String(_chaser.get_meta(CHASE_PLAN_META, "")) if _chaser != null and is_instance_valid(_chaser) else ""
 ## For the checks: how many fell onto the rails and climbed back up, and who was given
 ## another way because they got stuck.
 var falls := 0
@@ -451,8 +462,11 @@ static func _icon_texture(rows: Array, colour: Color) -> ImageTexture:
 ## scripts/ui/machines/ov_machine_screen.gd: buy a card, see the balance, top up, a single
 ## ticket; OvCard keeps the card's balance).
 class TicketMachine:
-	extends Node3D
+	extends "res://scripts/world/interactable.gd"
 	var station: Node3D
+
+	func _init() -> void:
+		kind = KIND_MACHINE
 
 	func action_text() -> String:
 		return "OV-chipkaartautomaat"
@@ -486,8 +500,11 @@ func _make_machines() -> void:
 
 ## An OV post: check in or out with the card.
 class OvPost:
-	extends Node3D
+	extends "res://scripts/world/interactable.gd"
 	var station: Node3D
+
+	func _init() -> void:
+		kind = KIND_GATE
 
 	func action_text() -> String:
 		var player: Node3D = station.call("player")
@@ -1385,14 +1402,14 @@ func _start_chase(at: Vector3) -> void:
 		if is_instance_valid(departure.conductor) and departure.conductor == chaser:
 			departure.conductor = null
 	_chaser = chaser
-	_chase_seconds = 0.0
-	_chase_far_seconds = 0.0
-	_chase_plan = ""
-	_chase_replan_clock = 0.0
+	_pursuit = Pursuit.new(chaser, CATCH_REACH)
+	_pursuit.give_up_distance = GIVE_UP_DISTANCE
+	_pursuit.give_up_seconds = GIVE_UP_SECONDS
+	_pursuit.longest = CHASE_SECONDS
 	chases_started += 1
 	var to_player: Array[Dictionary] = []
 	chaser.replace_steps(to_player)
-	_plan_chase()
+	_begin_chasing(chaser, CHASE_SPEED)
 	DriverShout.shout(chaser, "conducteur", "zwartrijden", 2.1)
 
 
@@ -1402,20 +1419,43 @@ func _update_chase(delta: float) -> void:
 	if not is_instance_valid(_chaser) or _player == null or not _player.is_inside_tree():
 		_end_chase()
 		return
-	_chase_seconds += delta
-	var at := to_local(_player.global_position)
-	var gap := Vector2(at.x - _chaser.position.x, at.z - _chaser.position.z).length()
-	if gap <= CATCH_REACH and absf(at.y - _chaser.position.y) < 1.2:
-		_fine_the_player()
-		return
-	_chase_far_seconds = _chase_far_seconds + delta if gap > GIVE_UP_DISTANCE else 0.0
-	if _chase_far_seconds >= GIVE_UP_SECONDS or _chase_seconds >= CHASE_SECONDS:
-		_end_chase()
-		return
-	_chase_replan_clock -= delta
-	if _chase_replan_clock <= 0.0:
-		_chase_replan_clock = CHASE_REPLAN
-		_plan_chase()
+	match _pursuit.update(delta, _player.global_position):
+		Pursuit.CAUGHT:
+			_fine_the_player()
+			return
+		Pursuit.GAVE_UP:
+			_end_chase()
+			return
+	_steer_chase(_chaser, delta)
+
+
+## `chaser` sets off after the player at `chase_speed` (m/s): the first way at once.
+func _begin_chasing(chaser: StationPerson, chase_speed: float) -> void:
+	chaser.follow = null
+	chaser.set_meta(CHASE_PLAN_META, "")
+	chaser.set_meta(CHASE_SPEED_META, chase_speed)
+	chaser.set_meta(CHASE_CLOCK_META, CHASE_REPLAN)
+	_plan_chase_of(chaser)
+
+
+## Every CHASE_REPLAN seconds `chaser` looks again which way to go after the player.
+func _steer_chase(chaser: StationPerson, delta: float) -> void:
+	var clock := float(chaser.get_meta(CHASE_CLOCK_META, 0.0)) - delta
+	if clock <= 0.0:
+		clock = CHASE_REPLAN
+		_plan_chase_of(chaser)
+	chaser.set_meta(CHASE_CLOCK_META, clock)
+
+
+## Whether `person` is after the player (the conductor, or a BOA putting them out).
+static func _is_chasing_player(person: StationPerson) -> bool:
+	return person.has_meta(CHASE_PLAN_META)
+
+
+## `person` no longer after the player.
+static func _stop_chasing(person: StationPerson) -> void:
+	for meta_name in [CHASE_PLAN_META, CHASE_CLOCK_META, CHASE_SPEED_META]:
+		person.remove_meta(meta_name)
 
 
 ## The floor at `at` (in the space of the station): the hall and the platforms at 0, the
@@ -1476,8 +1516,8 @@ func person_fell(person: StationPerson) -> void:
 ## Back on the platform after a climb (the step "climbed" asks): on with the day.
 func person_climbed(person: StationPerson) -> void:
 	climbs += 1
-	if person == _chaser:
-		_chase_plan = ""
+	if _is_chasing_player(person):
+		person.set_meta(CHASE_PLAN_META, "")
 		return
 	_send_on(person)
 
@@ -1508,11 +1548,16 @@ func _send_on(person: StationPerson) -> void:
 ## row): a step aside and another way (another lane, or out); the third time it goes (out of
 ## the station: it is simply gone, which in a crowd no one notices).
 func person_stuck(person: StationPerson, times: int) -> void:
-	if person == _chaser:
+	if person == _chaser and times >= 3:
+		_end_chase()
+		return
+	if _is_chasing_player(person):
+		# one putting the player out does not give up: a step aside and another way
 		if times >= 3:
-			_end_chase()
-		else:
-			_chase_plan = ""
+			var aside_of_chaser := person.position + Vector3(_random.randf_range(-0.5, 0.5), 0.0, _random.randf_range(-0.5, 0.5))
+			if absf(floor_height(aside_of_chaser) - person.position.y) < 0.1 and not _inside_obstacle(Vector2(aside_of_chaser.x, aside_of_chaser.z)):
+				person.position = aside_of_chaser
+		person.set_meta(CHASE_PLAN_META, "")
 		return
 	unstuck += 1
 	if person.position.y < -0.5:
@@ -1533,54 +1578,58 @@ func person_stuck(person: StationPerson, times: int) -> void:
 	_send_on(person)
 
 
-## Which way the conductor goes after the player now (see CHASE_REPLAN).
-func _plan_chase() -> void:
-	if _chaser == null or not is_instance_valid(_chaser) or _player == null:
+## Which way `chaser` (the conductor, or a BOA putting the player out) goes after the player
+## now (see CHASE_REPLAN).
+func _plan_chase_of(chaser: StationPerson) -> void:
+	if chaser == null or not is_instance_valid(chaser) or _player == null:
 		return
-	var step := _chaser.current_step()
+	var chase_speed := float(chaser.get_meta(CHASE_SPEED_META, CHASE_SPEED))
+	var chase_plan := String(chaser.get_meta(CHASE_PLAN_META, ""))
+	var speaker_kind := chaser.role
+	var step := chaser.current_step()
 	var kind := String(step.get("type", ""))
-	if _chaser.position.y < -0.3 or kind in ["climb", "climbed"] or _chaser._falling:
+	if chaser.position.y < -0.3 or kind in ["climb", "climbed"] or chaser._falling:
 		return   # down on the rails himself: first back up
 	var at := to_local(_player.global_position)
-	var chaser_area := _area(_chaser.position)
+	var chaser_area := _area(chaser.position)
 	if at.y < -0.6 and _track_at(at) > 0:
 		# the player down on the rails: to the edge above them, and shout
 		var spot := _platform_spot_above(at, _track_at(at))
 		var plan := "spoor %d %d" % [roundi(spot.x), roundi(spot.z / 3.0)]
-		if plan == _chase_plan:
+		if plan == chase_plan:
 			return
-		var shout := not _chase_plan.begins_with("spoor")
-		_chase_plan = plan
+		var shout := not chase_plan.begins_with("spoor")
+		chaser.set_meta(CHASE_PLAN_META, plan)
 		var steps: Array[Dictionary] = []
 		if _area(spot) == chaser_area:
-			steps.append({"type": "walk", "to": spot, "speed": CHASE_SPEED})
+			steps.append({"type": "walk", "to": spot, "speed": chase_speed})
 		else:
-			steps = _route(_chaser, _chaser.position, spot)
+			steps = _route(chaser, chaser.position, spot)
 			for route_step in steps:
 				if String(route_step.type) == "walk":
-					route_step["speed"] = CHASE_SPEED
+					route_step["speed"] = chase_speed
 		steps.append({"type": "stand", "face": Vector3(at.x - spot.x, 0.0, 0.0)})
-		_chaser.replace_steps(steps)
+		chaser.replace_steps(steps)
 		if shout:
-			DriverShout.shout(_chaser, "conducteur", "spoor", 2.1)
+			DriverShout.shout(chaser, speaker_kind, "spoor", 2.1)
 		return
 	var player_area := _area(at)
 	if player_area == chaser_area:
-		if _chase_plan != "zelfde" or kind != "chase":
-			_chase_plan = "zelfde"
-			var chase: Array[Dictionary] = [{"type": "chase", "speed": CHASE_SPEED}]
-			_chaser.replace_steps(chase)
+		if chase_plan != "zelfde" or kind != "chase":
+			chaser.set_meta(CHASE_PLAN_META, "zelfde")
+			var chase: Array[Dictionary] = [{"type": "chase", "speed": chase_speed}]
+			chaser.replace_steps(chase)
 		return
 	var plan := "route %d %d" % [chaser_area, player_area]
-	if plan == _chase_plan:
+	if plan == chase_plan:
 		return
-	_chase_plan = plan
-	var route := _route(_chaser, _chaser.position, at)
+	chaser.set_meta(CHASE_PLAN_META, plan)
+	var route := _route(chaser, chaser.position, at)
 	for route_step in route:
 		if String(route_step.type) == "walk":
-			route_step["speed"] = CHASE_SPEED
-	route.append({"type": "chase", "speed": CHASE_SPEED})
-	_chaser.replace_steps(route)
+			route_step["speed"] = chase_speed
+	route.append({"type": "chase", "speed": chase_speed})
+	chaser.replace_steps(route)
 
 
 ## The player talks to `conductor` (Conversations): is he the one chasing them?
@@ -1608,10 +1657,12 @@ func _fine_the_player() -> void:
 	if paid < FINE_EUROS:
 		line += " (je had maar € %s)" % ("%.2f" % paid).replace(".", ",")
 	say(to_local(_player.global_position) + Vector3.UP * 2.2, line, FINE_COLOUR)
+	var conductor := _chaser
 	_chaser_goes_back()
-	# who cannot pay the fine is put out of the station at once (Interiors: uitzetten.json)
+	# who cannot pay the fine is put out of the station (Interiors: uitzetten.json): by the
+	# conductor, who is with them already
 	if paid < FINE_EUROS:
-		Interiors.note_offence(get_tree(), "boete_onbetaald")
+		Interiors.note_offence(get_tree(), "boete_onbetaald", conductor)
 
 
 ## The chase is over (the player got away): the conductor goes back.
@@ -1626,9 +1677,94 @@ func _chaser_goes_back() -> void:
 		var back := _route(_chaser, _chaser.position, _staff_door())
 		back.append({"type": "leave"})
 		_chaser.replace_steps(back)
+	if _chaser != null and is_instance_valid(_chaser):
+		_stop_chasing(_chaser)
 	_chaser = null
-	_chase_seconds = 0.0
-	_chase_far_seconds = 0.0
+	_pursuit = null
+
+
+# ------------------------------------------------------------------ putting the player out
+
+## Who warns the player in the station (Interiors.offence: a BOA): the nearest of `role`
+## about on the floor, not one after the player already; null when none is near.
+func warner_for(role: String, player: Node3D) -> Node3D:
+	var at := to_local(player.global_position)
+	var nearest: StationPerson = null
+	var nearest_distance := WARN_REACH
+	for walker in _walkers:
+		if not is_instance_valid(walker):
+			continue
+		var person: StationPerson = walker
+		if person.role != role or person == _chaser or person.position.y < -0.2 or _is_chasing_player(person):
+			continue
+		var distance := person.position.distance_to(at)
+		if distance < nearest_distance:
+			nearest_distance = distance
+			nearest = person
+	return nearest
+
+
+## Who comes to put the player out of the station (Eviction: uitzetten.json "wie", a BOA):
+## the nearest of that role about on the floor (not one leaving), else one from the staff
+## door. Not the conductor after a fare dodger: he has his own chase.
+func evictor_for(role: String, player: Node3D) -> Node3D:
+	var at := to_local(player.global_position)
+	var nearest: StationPerson = null
+	var nearest_distance := INF
+	for walker in _walkers:
+		if not is_instance_valid(walker):
+			continue
+		var person: StationPerson = walker
+		if person.role != role or person == _chaser or person.position.y < -0.2 or person._falling:
+			continue
+		var step := person.current_step()
+		if not step.is_empty() and String(step.type) in ["board", "leave"]:
+			continue
+		var distance := person.position.distance_to(at)
+		if distance < nearest_distance:
+			nearest_distance = distance
+			nearest = person
+	if nearest == null:
+		nearest = _spawn(role, _staff_door())
+	# off its round (and its partner, when it was following one: walk_evictor sets it off)
+	nearest.follow = null
+	var none_yet: Array[Dictionary] = []
+	nearest.replace_steps(none_yet)
+	return nearest
+
+
+## After the player along the routes of the station (as the conductor: _plan_chase_of);
+## `person` walks by itself (StationPerson), at `speed`.
+func walk_evictor(person: Node3D, _target: Vector3, speed: float, delta: float) -> float:
+	var walker := person as StationPerson
+	if walker == null:
+		return 0.0
+	if not _is_chasing_player(walker):
+		_begin_chasing(walker, speed)
+	walker.set_meta(CHASE_SPEED_META, speed)
+	_steer_chase(walker, delta)
+	return 0.0
+
+
+## `person` has the player: stands where they are.
+func evictor_stops(person: Node3D) -> void:
+	var walker := person as StationPerson
+	if walker == null:
+		return
+	_stop_chasing(walker)
+	var stand: Array[Dictionary] = [{"type": "wait", "seconds": 60.0}]
+	walker.replace_steps(stand)
+
+
+## Over: back through the staff door.
+func evictor_done(person: Node3D) -> void:
+	var walker := person as StationPerson
+	if walker == null or not walker.is_inside_tree():
+		return
+	_stop_chasing(walker)
+	var back := _route(walker, walker.position, _staff_door())
+	back.append({"type": "leave"})
+	walker.replace_steps(back)
 
 
 # ------------------------------------------------------------------ the staff
@@ -1645,12 +1781,13 @@ func _spawn_staff() -> void:
 
 ## The enforcement officers keep walking: a new round when one is done.
 func _keep_staff() -> void:
+	# (not one after the player: putting them out, evictor_for)
 	for leader in _patrol_leaders:
-		if is_instance_valid(leader) and leader.steps.is_empty():
+		if is_instance_valid(leader) and leader.steps.is_empty() and not _is_chasing_player(leader):
 			leader.steps = _hall_round(leader)
 	if _platform_patrol == null or not is_instance_valid(_platform_patrol):
 		_platform_patrol = _spawn("handhaver", _staff_door())
-	if _platform_patrol.steps.is_empty():
+	if _platform_patrol.steps.is_empty() and not _is_chasing_player(_platform_patrol):
 		_platform_patrol.steps = _platform_round(_platform_patrol)
 
 

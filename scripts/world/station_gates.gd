@@ -273,8 +273,11 @@ func build(index: int, library: MeshLibrary, owner_station: Node3D) -> void:
 ## The spot the player stands at to use a lane (PlayerController finds it in DOORS_GROUP and
 ## asks it for its action).
 class LanePoint:
-	extends Node3D
+	extends "res://scripts/world/interactable.gd"
 	var lane: Lane
+
+	func _init() -> void:
+		kind = KIND_GATE
 
 	func action_text() -> String:
 		return lane.action_text()

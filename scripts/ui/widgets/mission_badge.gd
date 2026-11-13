@@ -5,6 +5,8 @@ extends Control
 ## and light rays turning slowly behind it. Fills its parent; drawn in code.
 
 const UiStyle = preload("res://scripts/ui/ui_style.gd")
+## The rays behind it (shared with the reward screen).
+const LightRays = preload("res://scripts/ui/widgets/light_rays.gd")
 
 ## The emblem is DIAMOND_PIXELS wide and high (an odd number), each pixel EMBLEM_PIXEL px.
 const DIAMOND_PIXELS := 17
@@ -13,11 +15,6 @@ const SHADOW_PIXELS := 1
 ## How far (px) and how fast (per second) it bobs.
 const BOB_PIXELS := 4.0
 const BOB_SPEED := 2.2
-## The rays: how many, how long (share of the frame), how fast they turn (radians per second).
-const RAY_COUNT := 8
-const RAY_LENGTH := 0.75
-const RAY_SPEED := 0.35
-const RAY_COLOUR := Color(1.0, 0.71, 0.28, 0.08)
 ## Sparkles: places round the emblem (share of the size, from the middle) and how often they blink.
 const SPARKLES := [Vector2(-0.36, -0.30), Vector2(0.34, -0.22), Vector2(-0.30, 0.32), Vector2(0.38, 0.30)]
 const SPARKLE_SECONDS := 1.6
@@ -40,7 +37,7 @@ func _process(delta: float) -> void:
 
 func _draw() -> void:
 	var middle := (size * 0.5).round()
-	_draw_rays(middle)
+	LightRays.draw_rays(self, middle, size.length() * LightRays.RAY_LENGTH, _clock * LightRays.RAY_SPEED)
 	var bob := roundf(sin(_clock * BOB_SPEED) * BOB_PIXELS)
 	var top_left := (middle - Vector2.ONE * DIAMOND_PIXELS * EMBLEM_PIXEL * 0.5 + Vector2(0, bob)).round()
 	var shadow := Vector2.ONE * SHADOW_PIXELS * EMBLEM_PIXEL
@@ -53,17 +50,6 @@ func _draw() -> void:
 			if _in_diamond(column, row):
 				_pixel(top_left, column, row, UiStyle.INK if _in_mark(column, row) else _shade(column, row))
 	_draw_sparkles(middle)
-
-
-## Rays from the middle, turning slowly: thin triangles, barely there.
-func _draw_rays(middle: Vector2) -> void:
-	var reach := size.length() * RAY_LENGTH
-	for ray in RAY_COUNT:
-		var angle := _clock * RAY_SPEED + TAU * ray / RAY_COUNT
-		var spread := 0.11
-		draw_colored_polygon(PackedVector2Array([middle,
-				middle + Vector2.from_angle(angle - spread) * reach,
-				middle + Vector2.from_angle(angle + spread) * reach]), RAY_COLOUR)
 
 
 ## Four-point pixel sparkles, each on for part of its own turn.

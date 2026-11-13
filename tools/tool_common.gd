@@ -18,6 +18,23 @@ static func watchdog(tree: SceneTree, seconds := 600.0) -> void:
 		tree.quit(1))
 
 
+## Ends a check with `code` (0: all well): says so on a line of its own ("CHECK_KLAAR ok" or
+## "CHECK_KLAAR fout": tests/run_integration_tests.sh takes its exit code from it) and quits. Shutting down
+## a run with the whole town in it can hang in the engine after the last frame (waiting on
+## threads); a thread of its own then ends the process after QUIT_GRACE seconds.
+static func finish(tree: SceneTree, code: int) -> void:
+	print("CHECK_KLAAR %s" % ("ok" if code == 0 else "fout"))
+	_quit_guard = Thread.new()
+	_quit_guard.start(func() -> void:
+		OS.delay_msec(QUIT_GRACE * 1000)
+		OS.kill(OS.get_process_id()))
+	tree.quit(code)
+
+
+const QUIT_GRACE := 3
+static var _quit_guard: Thread
+
+
 ## User argument `i` (after "--") as a string, or `default` if missing.
 static func arg(i: int, default := "") -> String:
 	var a := OS.get_cmdline_user_args()

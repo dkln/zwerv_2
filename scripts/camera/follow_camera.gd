@@ -165,7 +165,9 @@ const NO_FREE_VIEW := Vector2(1000.0, 0.0)
 ## to zoom_still in `arrival_seconds`, through a layer of clouds (scripts/effects/cloud_shroud.gd)
 ## about halfway down.
 @export var arrival := true
-@export var arrival_zoom := 300.0
+## (below LevelOfDetail.coarse_from, 100: the arrival is drawn with the finest level round
+## the player, so the coarse level of the whole town need not be loaded before the start)
+@export var arrival_zoom := 95.0
 @export var arrival_seconds := 5.5
 
 var _cam: Camera3D

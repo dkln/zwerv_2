@@ -19,8 +19,11 @@ that has them; a missing one falls back to the nearest (Score.first_section).
                            intro (the start), landing on the tonic chord with a crash
     deuntje_nieuwe_missie  a new mission: the motif (first bar of the theme), ending on the tonic
     deuntje_taak_klaar     a task done: a run up the dominant, landing on the tonic
-    deuntje_gewonnen       a mission done: the last two bars of the composition (its finish)
+    deuntje_gewonnen       a mission done: the last two bars of the composition (its finish);
+                           without an ending: its last bar, landing on the tonic chord
     deuntje_level_omhoog   a level up: a run up the tonic chord to the high tonic
+    deuntje_beloning       a reward or an item got (the reward screen): the tonic chord
+                           sparkling up and back in the arp, the high tonic rung out on top
     deuntje_dood           death: the motif at half speed an octave down, falling to the low
                            tonic, a tape stop
     supermarkt_muzak_1..3  the supermarkets (soft, in the background): muzak from the theme and
@@ -146,8 +149,10 @@ def dominant_seventh(score: Score, lowest: int) -> tuple:
 # ----------------------------------------------------------------------------- the pieces
 
 def intro(score: Score) -> Piece:
+    """The composition itself; one read from a VGM (score.vgm) is that VGM, played by the
+    chip imitation (the bars are then only its length and its moments)."""
     return Piece("zwervr_intro", score.tempo, score.beats_per_bar, [bar.copy() for bar in score.bars],
-                 score.sounds, loop=False, tail=2.5)
+                 score.sounds, loop=False, tail=2.5, vgm=score.vgm)
 
 
 def menu_loop(score: Score) -> Piece:
@@ -273,6 +278,31 @@ def game_loop(score: Score) -> Piece:
                  part_gains={"piano": 0.8, "drums": 0.75})
 
 
+def landing_bar(score: Score, chords: list, beats: float) -> Bar:
+    """A landing on the tonic chord (lead, pad, bass, a note of the arp) with a kick and a
+    crash, held `beats` long: the arrival after a run-up."""
+    tonic = tonic_chord(score, 62, landing=True)
+    landing = Bar(0, chords, {
+        "lead": [Note(1.0, (tonic[0] + 12,), beats)],
+        "pad": [Note(1.0, tonic_chord(score, 50, landing=True) + (tonic[0],), beats, 0.85)],
+        "bas": [Note(1.0, (tonic[0] - 24,), beats)],
+        "arp": [Note(1.0, (tonic[2] + 12,), 1.0, 0.8)],
+    }, drums(kick="1", crash="1"))
+    # (a part the composition doubles, BIJSTELLING "verdubbel": the landing doubled too)
+    for part in list(score.sounds):
+        if part.endswith("_dubbel") and part[:-len("_dubbel")] in landing.parts:
+            landing.parts[part] = list(landing.parts[part[:-len("_dubbel")]])
+    return landing
+
+
+def has_ending(score: Score) -> bool:
+    """Whether the composition comes to an end in its last bar (a held last note or chord, or
+    a crash), instead of running on into a repeat (a VGM of a looping tune ends in mid-run)."""
+    last = score.bars[-1]
+    held = any(note.length >= 1.5 for part_notes in last.parts.values() for note in part_notes)
+    return held or any(hit.drum == "crash" for hit in last.hits)
+
+
 ## The map jingle plays when the game opens the map (scripts/ui/hud.gd MAP_JINGLE): at most this
 ## many seconds, tail included.
 MAP_JINGLE_LONGEST = 6.0
@@ -288,17 +318,7 @@ def map_start(score: Score) -> Piece:
     count = 2 if 2 * bar_seconds + 0.5 * bar_seconds + tail <= MAP_JINGLE_LONGEST else 1
     bars = [bar.copy() for bar in opening[:count]]
     landing_beats = max(1.0, min(2.0, (MAP_JINGLE_LONGEST - tail - count * bar_seconds) / (60.0 / score.tempo)))
-    tonic = tonic_chord(score, 62, landing=True)
-    landing = Bar(0, bars[-1].chords, {
-        "lead": [Note(1.0, (tonic[0] + 12,), landing_beats)],
-        "pad": [Note(1.0, tonic_chord(score, 50, landing=True) + (tonic[0],), landing_beats, 0.85)],
-        "bas": [Note(1.0, (tonic[0] - 24,), landing_beats)],
-        "arp": [Note(1.0, (tonic[2] + 12,), 1.0, 0.8)],
-    }, drums(kick="1", crash="1"))
-    # (a part the composition doubles, BIJSTELLING "verdubbel": the landing doubled too)
-    for part in list(score.sounds):
-        if part.endswith("_dubbel") and part[:-len("_dubbel")] in landing.parts:
-            landing.parts[part] = list(landing.parts[part[:-len("_dubbel")]])
+    landing = landing_bar(score, bars[-1].chords, landing_beats)
     return Piece("deuntje_kaart_start", score.tempo, score.beats_per_bar, bars + [landing],
                  score.sounds, loop=False, tail=tail, last_bar_beats=landing_beats)
 
@@ -336,9 +356,14 @@ def task_done(score: Score) -> Piece:
 
 
 def mission_done(score: Score) -> Piece:
-    """The finish of the composition: its last two bars."""
-    return Piece("deuntje_gewonnen", score.tempo, score.beats_per_bar, [bar.copy() for bar in score.bars[-2:]],
-                 score.sounds, loop=False, tail=1.5)
+    """The finish of the composition: its last two bars. A composition without an ending
+    (has_ending) gives its last bar as a run-up, landing on the tonic chord with a crash."""
+    if has_ending(score):
+        return Piece("deuntje_gewonnen", score.tempo, score.beats_per_bar, [bar.copy() for bar in score.bars[-2:]],
+                     score.sounds, loop=False, tail=1.5)
+    run_up = score.bars[-1].copy()
+    return Piece("deuntje_gewonnen", score.tempo, score.beats_per_bar, [run_up, landing_bar(score, run_up.chords, 2.0)],
+                 score.sounds, loop=False, tail=1.5, last_bar_beats=2.0)
 
 
 def level_up(score: Score) -> Piece:
@@ -356,6 +381,24 @@ def level_up(score: Score) -> Piece:
     hits = drums(snare="1 1.25 1.5 1.75 2 2.25", velocity=0.55) + drums(kick="2.5", snare="2.5", crash="2.5")
     return Piece("deuntje_level_omhoog", score.tempo, score.beats_per_bar, [Bar(0, [], parts, hits)],
                  score.sounds, loop=False, tail=1.2, last_bar_beats=4.0)
+
+
+def reward(score: Score) -> Piece:
+    """Short and bright: the tonic chord up and back in sixteenths (a sparkle), the high tonic
+    rung out over it with the pad, a soft crash; shorter than a task done."""
+    tonic = tonic_chord(score, 62, landing=True)
+    up = [tonic[0], tonic[1], tonic[2], tonic[0] + 12]
+    figure = up + [tonic[2], tonic[0] + 12]
+    high = tonic[0] + 24 if tonic[0] + 24 <= 88 else tonic[0] + 12
+    parts = {
+        "arp": [Note(1.0 + step * 0.25, (pitch,), 0.25, 0.85) for step, pitch in enumerate(figure)],
+        "lead": [Note(2.5, (high,), 1.5, 0.9)],
+        "pad": [Note(2.5, tonic_chord(score, 50, landing=True), 1.5, 0.7)],
+        "bas": [Note(2.5, (tonic[0] - 24,), 1.5, 0.8)],
+    }
+    hits = drums(hihat="1 1.5 2", velocity=0.5) + drums(kick="2.5", crash="2.5", velocity=0.6)
+    return Piece("deuntje_beloning", score.tempo, score.beats_per_bar, [Bar(0, [], parts, hits)],
+                 score.sounds, loop=False, tail=1.0, last_bar_beats=3.5)
 
 
 def death(score: Score) -> Piece:
@@ -571,10 +614,28 @@ def jingle_alfred_steyhn(score: Score) -> Piece:
 
 
 ALL = (intro, menu_loop, character_loop, merchant_loop, loading_loop, game_loop,
-       map_start, new_mission, task_done, mission_done, level_up, death,
+       map_start, new_mission, task_done, mission_done, level_up, reward, death,
        supermarket_muzak_bossa, supermarket_muzak_ballad, supermarket_muzak_swing,
        jingle_derrek, jingle_alfred_steyhn)
 
 
+def in_own_voices(piece: Piece, score: Score) -> Piece:
+    """The piece with the sounds and the drum kit of AFGELEIDE_KLANKEN in place of the usual
+    ones (a composition read from a VGM: everything in the voices of that VGM)."""
+    if not score.derived_sounds:
+        return piece
+    parts = {part for bar in piece.bars for part in bar.parts}
+    sounds = dict(piece.sounds)
+    for part in parts:
+        usual = piece.sound_of(part)
+        sounds[part] = score.derived_sounds.get(usual, usual)
+    usual_kit = piece.sounds.get("drumstel", "standaard")
+    sounds["drumstel"] = score.derived_sounds.get(usual_kit, usual_kit)
+    return replace(piece, sounds=sounds)
+
+
 def pieces(score: Score) -> list:
-    return [make(score) for make in ALL]
+    """Every piece: the intro from the score as written, the others from the score for the
+    derived pieces (AFGELEID_OCTAAF), in the composition's own voices (AFGELEIDE_KLANKEN)."""
+    derived = score.for_derived()
+    return [in_own_voices(make(score if make is intro else derived), score) for make in ALL]

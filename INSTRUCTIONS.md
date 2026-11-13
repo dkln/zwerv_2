@@ -113,7 +113,7 @@ De speler (node `Speler`, `scripts/player/player_controller.gd`)
   snelheid (`Engine.time_scale`; de physics stapt dan even vaak per echte seconde, dus de
   wegvliegende figuur blijft vloeiend; het geluid vertraagt mee tot 45 %), de Volgcamera
   zoomt in echte tijd in tot 6 m in beeld (`dramatic_close_up`), daarna komt de snelheid in
-  0,5 s terug en het doodsscherm op. Controle: `tools/check/death_slowmo_test.gd`.
+  0,5 s terug en het doodsscherm op. Controle: `tests/integration/player/test_death_slowmo.gd`.
 - Aangereden: overlapt de voetafdruk van een voertuig (`Vehicle.footprints`) die van de
   speler bij meer dan 1,2 m/s, dan verliest hij `damage_per_speed` × v +
   `damage_per_speed_squared` × v² gezondheid (50 km/h ≈ 55), vliegen er scherven en stof
@@ -124,7 +124,7 @@ De speler (node `Speler`, `scripts/player/player_controller.gd`)
   (`hurt_blink_time`); na het opstaan knippert hij en is hij even onkwetsbaar.
 - Inventaris: `inventory` (item -> aantal, `scripts/player/items.gd` met `START_ITEMS` per
   karakter); `use_item` past het effect van een item toe op de stats.
-- Test: `tools/check/player_test.gd`.
+- Test: `tests/integration/player/test_player.gd`.
 
 Verhaal, missies en kleingeld
 -----------------------------
@@ -146,7 +146,43 @@ Verhaal, missies en kleingeld
   dan naar de drie dichtstbijzijnde Jan Blammages (de snackbars met het bord `naam_snackbar_2`,
   "JAN BLAMMAGE", en een grote puntzak friet `props/terras/friet_puntzak` op de stoep) op het
   kaartje en de kaart. Elke missie en elke stap heeft eigen XP (`add_xp`, level omhoog met
-  deuntje); in het questlog kies je met Enter welke missie je volgt.
+  deuntje) en kan items geven (`geeft`); in het questlog kies je met Enter welke missie je volgt.
+- Wie is wie (`scripts/world/person.gd`, de basis van iedereen in de stad; `actor_kind()` zegt
+  welke soort): `Pedestrian` (straat: loopt naar een plek een paar blokken verder via een route
+  over stoepen, zebra's en trappen, `Pedestrians.route_to_somewhere`; steekt over, kan aangereden
+  worden), `InteriorPerson` (binnen: heeft een vaste plek; wie verkoopt is handelaar; personeel
+  waarschuwt en zet je eruit) en `StationPerson` (station: loopt routes stap voor stap, de
+  conducteur achtervolgt). Gedeeld: rol, figuur, stem, aanspreekbaar, `walk_cycle` (lopen, en op
+  snelheid de ren-animatie van de speler: `TownsfolkFigure.walk(fase, hoeveel, ren)`).
+- Waar je [E] op doet (`scripts/world/interactable.gd`, groep `deuren`): elk ding heeft een `kind`:
+  `deur` (ingang/uitgang), `plek` (karretje, schap, kassa, lift), `automaat` (pin, statiegeld, OV),
+  `poortje` (OV-poortje, paal) en `oppakken` (blikje). Mensen spreek je aan (groep `aanspreekbaar`).
+- Naar binnen en naar buiten (`scripts/world/door_passage.gd`): eerst een korte scène van dichtbij
+  met een stand-in van de speler en een eigen camera; de deur van de plek beweegt (`door_kind` in
+  `Interiors.KINDS`: `schuif` supermarkt en station, `klap` snackbar, `draai` stadhuis).
+- Snackbars zijn elk een andere kamer (`scripts/world/snack_bar_layout.gd`, uit de seed van de
+  zaak: 8-16 m breed, 8 of 12 m diep, deur, toonbank en tafels op een eigen plek); de ene scène
+  `scenes/binnen/snackbar.tscn` bouwt zich bij binnenkomst op (`Interior.dress`, `_lay_out`).
+- De fijne laag van de samengevoegde stad wordt gestreamd (`scripts/world/region_stream.gd`): de
+  bake bewaart hem per regio van 32 m met gedeelde materialen (`user://merged/<sleutel>/`), het
+  spel laadt alleen de regio's binnen 80 m van camera en speler (op een thread) en laat ze los
+  voorbij 130 m. De grove laag laadt na de start op de achtergrond; de afdaling begint daarom op
+  95 m in beeld (`FollowCamera.arrival_zoom`). Laadtijd van de stad: van ~23 s naar ~14 s.
+- Babble (`scripts/audio/babble.gd`): elk woord heeft een vast klankje (variant en toonhoogte uit
+  het woord), het zoveelste klankje van een regel is het zoveelste woord: dezelfde tekst klinkt
+  altijd hetzelfde.
+- Tests: unit-tests in `tests/unit/<categorie>/` (`tools/godot.sh --headless --script
+  tests/run_unit_tests.gd [-- naam of categorie]`), integratietests in
+  `tests/integration/<categorie>/` met `test_`-functies op een gedeelde stad
+  (`tests/run_integration_tests.sh <naam>|<categorie>|alle`; basis in `tests/integration/support/`).
+- Beloningsscherm (`scripts/ui/reward_screen.gd`, `GameHud.show_reward`): wat je krijgt voor een
+  taak of missie (na de klaar-bladzijden) of van iemand op straat (een `beloning` in een gesprek,
+  met XP, standaard 25) komt in een eigen schermpje, niet meer als zwevend tekstje: het item groot
+  in beeld, als voxelmodel langzaam draaiend (`scripts/ui/widgets/item_view.gd`, de modellen in
+  code in `scripts/world/item_models.gd`), stralen erachter zoals bij een nieuwe missie
+  (`scripts/ui/widgets/light_rays.gd`), de naam in de kleur van de zeldzaamheid, het tekstje van
+  het item en de XP; een eigen deuntje (`deuntje_beloning`). Wegdrukken met Enter (meer items:
+  één scherm per item). Het wacht tot er niets anders openstaat. Test: `tests/unit/ui/test_rewards.gd`.
 - Praten (`scripts/story/conversations.gd`): bij iemand in de buurt "[E] Praten" linksonder;
   een gesprek met keuzes in het verhaalvenster, passend bij het uiterlijk (9 typen). Elke soort
   mens (en elk personeelslid) heeft meerdere gesprekken (`varianten`, nu 4 per soort): wie je
@@ -160,8 +196,8 @@ Verhaal, missies en kleingeld
 - Kleingeld (node `Kleingeld`, `scripts/world/loose_change.gd`): 20 munten (10, 20, 50 cent,
   soms een euro) op pleinen en stoepen tot 110 m van de start, drie dichtbij. Eroverheen lopen
   raapt ze op (`add_money`, geluid "munt", het bedrag stijgt op).
-- Test: `tools/check/story_test.gd`; portemonnee en geldmissie (snel, zonder de stad):
-  `tools/check/wallet_test.gd`.
+- Test: `tests/integration/ui/test_story.gd`; portemonnee en geldmissie (snel, zonder de stad):
+  `tests/integration/player/test_wallet.gd`.
 
 Automaten, blikjes en pinpassen
 -------------------------------
@@ -219,9 +255,9 @@ Automaten, blikjes en pinpassen
   (`PlayerModel.VoxelFigure`, voxels van 6,25 cm; blikje en pas 5 cm), dus zonder tiles: geldautomaat
   0,75 x 1,75 x 0,5 m, statiegeldautomaat 0,875 x 1,875 x 0,625 m; `MachineModels.instance` geeft
   er een StaticBody3D (laag 1) met een doos van precies die maat bij.
-- Tests: `tools/check/machines_test.gd` (snel, zonder de stad: raadsels geven de pincode, passen,
+- Tests: `tests/integration/interiors/test_machines.gd` (snel, zonder de stad: raadsels geven de pincode, passen,
   geldautomaat met goede en foute pincode en inslikken, statiegeld, OV-saldo, modellen) en
-  `tools/check/street_machines_test.gd` (in de stad: automaten op de grond, `[E] Pinnen` opent het
+  `tests/integration/interiors/test_street_machines.gd` (in de stad: automaten op de grond, `[E] Pinnen` opent het
   scherm, blikje uit een prullenbak, pinpas oprapen).
 - Statbalken: verandert een stat in één keer met minstens 1,5 punt (aanrijding, honger die
   bijt, eten), dan trilt de rij van die balk kort en licht op (wit bij erbij, rood bij eraf;
@@ -229,7 +265,7 @@ Automaten, blikjes en pinpassen
 
 Op de rails rijden twee RandstadRails (`scripts/vehicles/randstadrail.gd`, twee wagons, 22,25 m) en
 twee NS-treinen (`ns_train.gd`, drie wagons, 40 m; elk blijft op zijn eigen spoor, `own_track`), beide op `rail_vehicle.gd`. Ze passen op hun perrons: een tramhalte
-is 6 cellen (24 m), een treinperron 11 cellen (44 m); `tools/check/rail_stop_test.gd` controleert dat. Op elk perron
+is 6 cellen (24 m), een treinperron 11 cellen (44 m); `tests/integration/traffic/test_rail_stop.gd` controleert dat. Op elk perron
 staan OV-chipkaartpaaltjes (`ov/ov_incheckpaal`): aan beide uiteinden van een tramhalte en een viaducthalte, op
 de ondergrondse haltes en op de treinperrons van Centraal. Wat erop mag rijden staat
 op de tile: `"only": ["tram"]` of `["trein"]` in de `traffic`-metadata, en `"rails"` zegt welke
@@ -299,15 +335,15 @@ niet het verkeer van de hele stad:
   (`Sight`). Tests: `vehicle_buckets_test.gd` (mist er nooit een), `traffic_cost_test.gd`
   (de ochtendspits binnen 16 ms per beeld, headless).
 - `whole_town` = true doet het zoals vroeger: `vehicle_count` + `services_count` over het hele
-  wegennet (`traffic_seed`), allemaal gehouden; `tools/check/traffic_test.gd` gebruikt dat
+  wegennet (`traffic_seed`), allemaal gehouden; `tests/integration/traffic/test_traffic.gd` gebruikt dat
   (met `-- 300 speler 8.5` het verkeer rond de speler in de spits, zoals in het spel).
 - Lopen tegen voertuigen: verkeer heeft geen botsvorm, alleen een voetafdruk
   (`Vehicle.footprints`); de speler loopt er niet in (`PlayerController._vehicle_in_the_way`),
   ook niet in een stilstaande auto in de file. Staat hij er al in (een auto die hem langzaam
   raakte), dan kan hij er altijd uit.
-- Controle: `tools/check/crowd_test.gd` (aantallen om 13:00, 03:00 en 08:00, rust buiten de
+- Controle: `tests/integration/people/test_crowd.gd` (aantallen om 13:00, 03:00 en 08:00, rust buiten de
   boom, een teruggezet voertuig rijdt, alles rond de speler na een sprong) en
-  `tests/unit/test_crowd.gd` (de tabel). Soorten:
+  `tests/unit/people/test_crowd.gd` (de tabel). Soorten:
 
 | Script | Model (`voertuigen/`) | Lengte | Massa | Koppel wielen |
 |---|---|---|---|---|
@@ -374,7 +410,7 @@ geschakeld waar de bovenkant van de een de voet van de volgende is) verbinden de
 aan de trap met het dek; een voetganger loopt die route punt voor punt (`stair_route`) en volgt
 de treden; de stoep onder een trap is niet beloopbaar. Trappen hebben daarvoor hun exacte
 botsvorm (`STAIR_TILES` in `library_builder.gd`), zodat ook de speler ze op kan. Controle:
-`tools/check/stairs_test.gd` (de voetbrug over de A12). Wie verder dan `reach`
+`tests/integration/player/test_stairs.gd` (de voetbrug over de A12). Wie verder dan `reach`
 (110 m) van de speler raakt, wordt iemand anders (`Pedestrian.become`: andere look, tempo,
 hulpmiddel en tas, zelfde node) op een cel tussen `return_near` (50 m) en `reach`, buiten beeld.
 Wie er `renew_after` (45 tot 110 s) rondloopt, buiten beeld is en verder dan `renew_beyond`
@@ -386,7 +422,7 @@ nieuwkomers en vernieuwden uit de deuren (het aandeel `station` van het uur in `
 in de spits het meest), en gaan mensen binnen `STATION_PULL_STEPS` (25) cellen lopen nu en
 dan naar een deur, cel voor cel dichterbij; bij de deur verdwijnen ze echt (vrijgegeven, niet
 in `_resting`). Een doorgang die ze niet blijken te kunnen nemen (hek, fietsenrek) slaat de
-route daarna over. Test: `tools/check/station_flow_test.gd`. Wie er komt is een soort mens van dat uur en van de wijk waar hij verschijnt
+route daarna over. Test: `tests/integration/interiors/test_station_flow.gd`. Wie er komt is een soort mens van dat uur en van de wijk waar hij verschijnt
 (`Crowd.person_kind`): forenzen, kantoormensen en zakenmensen (in pak, met aktetas) in de spits,
 scholieren na school, winkelend publiek, ouderen, toeristen (rolkoffer, rugzak) en wandelaars
 overdag, werklui in geel in de Binckhorst, uitgaanspubliek 's avonds en nachtbrakers 's nachts;
@@ -409,7 +445,7 @@ groep `lopers`, `Vehicle._watch_people`): ze kijken hun remweg plus 2,5 s voorui
 hun pad en waarschuwen met hun toeter: `auto_toeter`, `bus_toeter` (bus en vrachtwagen, boven
 3500 kg), `brommer_toeter`, `fiets_bel` (fiets, fatbike), `tram_bel`, `trein_hoorn`,
 `brandweer_hoorn` (`horn_sound` of `_horn()`), als iemand binnen 2,5 s op hun pad is of na 3 s
-nog in de weg staat, hooguit elke 5 s. Controle: `tools/check/people_traffic_test.gd`. Een deel
+nog in de weg staat, hooguit elke 5 s. Controle: `tests/integration/people/test_people_traffic.gd`. Een deel
 zit in een rolstoel of op een scootmobiel (zie hierboven; `Pedestrian.mobility`, `scripts/world/mobility_aid.gd`, in code
 gebouwd in voxels, de berijder een zittende stadsbewoner): ze rijden de kant op waar ze naar kijken en
 draaien hooguit `TURN_RATE` per seconde; de wielen zijn de wielmodellen van de voertuigen
@@ -418,7 +454,7 @@ draaien hooguit `TURN_RATE` per seconde; de wielen zijn de wielmodellen van de v
 punt aan, het voorwiel van de scootmobiel stuurt met de stuurkolom in (de handen gaan mee). De
 scootmobiel mag ook over de fietspaden (`Pedestrians.may_use`: cellen waar fietsen mogen en
 auto's niet) en toetert (`scootmobiel_toeter`) als iemand voor hem blijft staan. De botsvorm
-omvat stoel en berijder. Controle: `tools/check/mobility_test.gd`.
+omvat stoel en berijder. Controle: `tests/integration/people/test_mobility.gd`.
 
 Drukte (`data/drukte.json`, gelezen door `scripts/world/crowd.gd`, uitgelegd in
 `data/LEESMIJ.md`): één tabel voor wanneer en waar het druk is en met wie.
@@ -446,7 +482,7 @@ zonder te bewegen: wat een klap eraf haalt blijft even rood-oranje staan (knippe
 en loopt dan leeg naar het nieuwe niveau; een kleine daling (honger) laat het randsegment
 knipperen; een sprong omhoog (eten, xp) laat de gewonnen segmenten oplichten, langzaam
 bijvullen niet. Het getal ernaast licht kort op (rood bij omlaag). Controle:
-`tools/check/segment_bar_test.gd`. De figuren (speler, voetgangers, berijders) hebben een harde donkere
+`tests/integration/ui/test_segment_bar.gd`. De figuren (speler, voetgangers, berijders) hebben een harde donkere
 omlijning van 2,5 pixel (`scripts/player/figure_outline.gdshader`, kleur #06070F). Hun vlakken zijn
 samengevoegd (`VoxelFigure.merge_faces`, greedy meshing): voxelzijden naast elkaar in één vlak, met
 dezelfde kleur, hetzelfde materiaal en een gelijke schaduw (geen AO-verloop) worden één rechthoek
@@ -456,28 +492,28 @@ dezelfde kleur, hetzelfde materiaal en een gelijke schaduw (geen AO-verloop) wor
 samengevoegd naast elkaar, ook als wireframe). Een voorbijganger, een nieuwe voetganger of een
 nieuwe fietser/scooter krijgt zijn figuur op een eigen thread gebouwd
 (`TownsfolkFigure.prepare`, ~25 ms die anders een hapering waren) en verschijnt of verandert
-pas als die klaar is. Controle: `tests/unit/test_figure_build.gd`; haperingen meten per
+pas als die klaar is. Controle: `tests/unit/people/test_figure_build.gd`; haperingen meten per
 onderdeel: `tools/godot.sh --headless --script tools/check/stutter_profile.gd -- 30`. De speler en de voetgangers hebben een zachte
 donkere vlek op de grond recht onder zich (`scripts/effects/ground_shadow.gd`, een Decal), zodat
 ze van elke kant loskomen van de straat; de figuren zelf staan op visuele laag 2
 (`FIGURE_LAYER`), waar die vlek niet op valt. In de stad zijn de figuren eenvoudiger dan op het
 karakterscherm (`PlayerModel.simple`, `VoxelFigure.simplify`): bijna gelijke kleuren worden
 één kleur en losse spikkels (knopen, steken, vlekjes) nemen de kleur eromheen aan; de vorm en
-de ogen blijven. Controle: `tools/check/simple_figure_test.gd`. De bio op het
+de ogen blijven. Controle: `tests/integration/people/test_simple_figure.gd`. De bio op het
 karakterscherm typt zich uit met de blokcursor, zoals het verhaal (`widgets/typewriter.gd`).
 Buiten beeld kosten ze minder CPU-tijd (`scripts/world/sight.gd`): wat in beeld is (met 30 %
 marge rond het scherm) doet elke physics-stap, wat erbuiten is om de 2 stappen en wat ook nog
 verder dan 150 m van het kijkpunt (of 300 m van de camera) is om de 4, telkens met de tijd van
 alle overgeslagen stappen; dan draaien ook wielen, trappers en ledematen niet mee. Voertuigen
 (`vehicle.gd`) en voetgangers (`pedestrian.gd`) kijken elke 15 stappen opnieuw waar ze zijn, elk
-op een eigen moment. Controle: `tools/check/sight_test.gd`. Elke voetganger heeft een botsvorm zo groot als de
+op een eigen moment. Controle: `tests/integration/camera/test_sight.gd`. Elke voetganger heeft een botsvorm zo groot als de
 figuur (`Botsvorm`), net als de speler: de speler loopt er niet doorheen en wrakken botsen erop.
 Die van de speler is de doos om de figuur in rust plus ruimte voor de beweging bij stilstaan
 (ademen, armen: `POSE_ROOM_LOW`/`POSE_ROOM_HIGH`, tot 4 cm opzij en 10 cm naar voren).
 De spelerfiguur staat in de stad op 0,78 (`PlayerController.FIGURE_SCALE`, ongeveer 1,75 m, Willem
 krom 1,55 m), zodat spelers, voetgangers, berijders en voertuigen in verhouding zijn; de
 schermen (portret, karakterkeuze) tekenen hem op ware grootte. Controle:
-`tools/godot.sh --headless --script tools/check/townsfolk_test.gd` (maten, trappen, sturen,
+`tools/godot.sh --headless --script tests/integration/people/test_townsfolk.gd` (maten, trappen, sturen,
 insturen, handen en voeten, voetgangers, zebra en alle botsvormen).
 De trekker heeft grote achterwielen (`wheel_model`/`wheel_radius` van `Vehicle`) en kleinere
 voorwielen (`front_wheel_model`/`front_wheel_radius`: elk voertuig kan voorwielen van een andere maat
@@ -504,13 +540,13 @@ Allemaal zijn het een `Vehicle` (`scripts/vehicles/vehicle.gd`):
   een botsing delen de massa's de klap volgens de impuls: de lichtste krijgt de grootste
   snelheidsverandering en de meeste draaiing. Daarna rolt een wrak nog even door op zijn wielen
   met de motor aan (`ROLL_ON_*`), een bus veel langer dan een kleine auto, dus een bus duwt een
-  hatchback voor zich uit. Test: `tools/check/crash_test.gd -- heavy` of `light`.
+  hatchback voor zich uit. Test: `tests/integration/traffic/test_crash.gd -- heavy` of `light`.
 - Tweewielers (fiets, fatbike, brommer, scooter, motor; `two_wheeler.gd`) gaan bij een harde
   klap echt onderuit: het wrak kantelt op zijn zij (`TOPPLE_SPIN`, eerst een hoog zwaartepunt) en
   glijdt uit zonder motor, en de berijder vliegt eraf als een eigen tuimelend lichaam
   (`KnockDown`, de botsvorm zo groot als de figuur) met de snelheid die hij had. Na
   `FIT_WRECK_AFTER` krimpt de botsvorm van het wrak tot het voertuig zonder berijder. Een fiets
-  brandt nooit; weggesleept zit de berijder er weer op. Test: `tools/check/two_wheeler_fall_test.gd`.
+  brandt nooit; weggesleept zit de berijder er weer op. Test: `tests/integration/traffic/test_two_wheeler_fall.gd`.
 - Aanhanger (`trailer_model`, `hitch_position`): hij draait om zijn eigen punt, de bol van de
   trekhaak. Elke stap wordt zijn as recht naar de bol getrokken, zodat hij de bocht afsnijdt
   zoals een echte aanhanger, met eigen wielen en lampen. Bij een botsing blijft hij aangekoppeld
@@ -549,11 +585,11 @@ Allemaal zijn het een `Vehicle` (`scripts/vehicles/vehicle.gd`):
   `Traffic.maniac_chances`: dronken `maniac_chance` (2%) x 1,5 's nachts (21-5 u, 3%) en x 0,2
   overdag (0,4%); agressief `maniac_chance` x het kwadraat van de verkeersdrukte van dat uur
   (in de spits worden mensen boos: ~5%, 's middags ~1%, 's nachts haast nooit). Unit test:
-  `tests/unit/test_maniacs.gd`. Die rijdt `MANIAC_SPEED` (1,3x of 1,6x) de limiet, ziet ander
+  `tests/unit/traffic/test_maniacs.gd`. Die rijdt `MANIAC_SPEED` (1,3x of 1,6x) de limiet, ziet ander
   verkeer pas op `MANIAC_LOOKAHEAD` (14 m) en geeft alleen sirenes voorrang, slingert (de vooras
   stuurt heen en weer, `MANIAC_WEAVE`: twee golven over elkaar, de dronkaard wijd en traag, de
   agressieveling kort en snel), toetert om niets (`MANIAC_HORN_EVERY`) en roept af en toe iets
-  (`DriverShout`, `DRUNK_LINES` / `AGGRESSIVE_LINES`). Controle: `tools/check/maniac_test.gd`.
+  (`DriverShout`, `DRUNK_LINES` / `AGGRESSIVE_LINES`). Controle: `tests/integration/traffic/test_maniac.gd`.
 - Botsen: rijden twee auto's toch met minstens `CRASH_SPEED` (5 m/s) op elkaar in, dan worden
   het allebei een `RigidBody3D` (`Wrak`, met hun massa); een schampje in een bocht telt niet. Ze botsen met physics tegen elkaar en tegen de colliders van
   de stad (stoepranden, middenbermen, gebouwen en props in de GridMaps), maken een sprongetje,
@@ -590,7 +626,7 @@ Allemaal zijn het een `Vehicle` (`scripts/vehicles/vehicle.gd`):
 - Een sirene die inhaalt, blijft naast de auto die voor hem opzij ging tot hij erlangs is
   (`_beside_yielder`), ook als er tegenverkeer aankomt.
 - Test op door elkaar heen rijden: `tools/godot.sh --headless --script
-  tools/check/overlap_test.gd -- 300` meldt elke overlap van twee rijdende carrosserieën met de
+  tests/integration/traffic/test_overlap.gd -- 300` meldt elke overlap van twee rijdende carrosserieën met de
   situatie erbij (`TRACE=Verkeer4,Verkeer9` volgt ook voertuigen per halve seconde).
 - Bochten: alle bochtsnelheden (`corner_speed`, `tight_corner_speed` per type) keer
   `CORNER_SPEED_FACTOR` (1,6), zodat de verhoudingen tussen de typen blijven.
@@ -616,12 +652,12 @@ donkerder; het dikst bovenin, waar hij begint (hooguit ongeveer de helft van het
 steeds dunner naarmate hij zakt, weg op 60 % van de afdaling; in de wolken gaat de camera op
 ruim een derde van zijn snelheid, `ARRIVAL_CLOUD_SPEED`, en vanaf 70 % (`ARRIVAL_SETTLE_FROM`) loopt
 hij zacht uit tot stilstand bij de speler; 's nachts donker blauwgrijs); een dramatisch moment breekt de afdaling af.
-Controle: `tools/check/arrival_test.gd`. Hij gaat mee de tunnelbak in: gaat de speler onder iets door, dan zakt de camera in
+Controle: `tests/integration/camera/test_arrival.gd`. Hij gaat mee de tunnelbak in: gaat de speler onder iets door, dan zakt de camera in
 de open bak erachter en volgt als achtervolgcamera (`tunnel_*`; de tunnel heeft eigen lampen,
 node `Tunnelverlichting`). Close-ups kunnen nog (`closeups`, standaard uit). Springt het doel
 (opstaan na een aanrijding), dan glijdt het beeld er in `switch_time` s heen. Er zijn geen
 debugtoetsen meer (geen ander voertuig volgen, geen tijd versnellen, geen demo-botsing; die
-zit alleen nog in `tools/check/crash_test.gd`). De auto rijdt met een vaste
+zit alleen nog in `tests/integration/traffic/test_crash.gd`). De auto rijdt met een vaste
 stap van 60 Hz; zijn carrosserie (node `Carrosserie`) wordt elk frame tussen de laatste
 twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
 - Zichttabel (`scripts/camera/view_table.gd`): bij het baken (`tools/bake.sh`) wordt per
@@ -775,7 +811,7 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
   niet. Heeft een strook geen versie zonder streep, dan is er een `_zonder_streep`
   (busbaan, snelweg). De stadsbouwer legt ze zelf waar een tweestrookstraat de hoek omgaat
   (`_square_corners` in `city/streets.gd`). Test: `tools/godot.sh --headless --script
-  tools/check/corner_test.gd`.
+  tests/integration/traffic/test_corner.gd`.
 - Voertuig (`scripts/vehicles/vehicle.gd`, `Vehicle`): de rijlogica voor elk
   voertuig. Het plant een paar cellen vooruit (minstens de remafstand), kiest op
   kruisingen willekeurig (`straight_chance`, `route_seed`) en remt af voor bochten
@@ -796,7 +832,7 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
   `auto_wiel_groot`). Vanuit `tools/voxgen/tiles/props.py`. Overzicht:
   `tools/godot.sh --script tools/shots/shot_vehicles.gd -- <uit.png> [1|-1] [nummer]`.
 - Test van al het verkeer samen (botsingen, vaststaan, rekentijd):
-  `tools/godot.sh --headless --script tools/check/traffic_test.gd -- 300`
+  `tools/godot.sh --headless --script tests/integration/traffic/test_traffic.gd -- 300`
 - Intro (startscène `scenes/intro.tscn`, `scripts/ui/intro.gd`): op zwart een teal regel ("Niet
   zo lang geleden, kortgeleden, recent en laatst…", `OPENING_LINE`), dan met een klap sterren en
   het logo ZWERVR in grote amberkleurige omlijnde letters dat even blijft staan (`LOGO_HOLD`) en dan langzaam de diepte in krimpt, dan
@@ -816,7 +852,7 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
   (`PARAGRAPH_GAP`), en de laatste alinea rolt niet van boven weg maar komt in de verte tot
   rust (`CRAWL_REST`) terwijl het verhaal de laatste `CRAWL_FADE` s uitfadet. Bij het einde of overslaan loopt de muziek door in het menu en
   fadet daar in 2 s uit, terwijl de menumuziek infadet. Met het CRT-beeld en dezelfde storingen als het menu
-  (rollende band, VHS-tracking; `CrtDisturbance`). De hele intro duurt zo lang als de muziek: 120 s. Test: `tools/check/intro_test.gd` (met `-- volledig`:
+  (rollende band, VHS-tracking; `CrtDisturbance`). De hele intro duurt zo lang als de muziek: 120 s. Test: `tests/integration/ui/test_intro.gd` (met `-- volledig`:
   de hele intro, met de gemeten duur).
 - Karakterscherm (`scenes/karakter.tscn`, `scripts/ui/character_creation.gd`): een eigen stap
   tussen NIEUW SPEL en de stad, in dezelfde stijl (nachtlucht met sterren, geen stad erachter,
@@ -859,7 +895,7 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
   hoofdlicht met schaduw (ook op een onzichtbare vloer die alleen de schaduw toont), zacht
   vul- en tegenlicht, een lage grijze ambient en een eenvoudige lucht voor de reflecties.
   Muziek: `karakterkeuze_loop.ogg` (zacht: pad, klokjes op het motief, een zachte chiptune-melodie; 100 BPM, 38,4 s, lus), op -12 dB en
-  infadend. Test: `tools/check/character_test.gd` (`-- figures`: alleen de poppetjes).
+  infadend. Test: `tests/integration/player/test_character.gd` (`-- figures`: alleen de poppetjes).
 - Hoofdmenu (`scenes/hoofdmenu.tscn`, `scripts/ui/main_menu.gd`), naar het ontwerp
   "Titelscherm" in de HUD-stijl: titel ZWERVR, menu (VERDERGAAN en LADEN uitgegrijsd tot er
   opslag is; NIEUW SPEL toont "LADEN…" en opent het karakterscherm (hieronder), dat daarna de stad opent (op de hoofdthread: op een achtergrondthread crashte het met het LOD-systeem; daarna het laadscherm van de stad);
@@ -942,7 +978,7 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
   muziek (de handelaar, `set_indoor_music`) vloeit hij over en terug; de spel-lus zelf zacht op de
   achtergrond (`CITY_LOOP_SOFTER_DB`, 3 dB onder de handelaarsmuziek); op -10 dB en zachter zolang
   het spel stilstaat (pauzemenu, spelmenu, verhaalvak; `CITY_MUSIC_VOLUME_DB`, `CITY_MUSIC_PAUSED_DB`).
-  Test: `tools/check/city_music_test.gd`.
+  Test: `tests/integration/world/test_city_music.gd`.
   **Alle muziek komt uit één compositie** (nu "Blast Processing Overdrive" van Gemini, 136 BPM, bijgesteld naar 144 en een house-groove,
   D mineur, 32 maten): die wordt letterlijk de intro (`zwervr_intro.ogg`), en menu,
   karakterkeuze, handelaar, laadscherm, de stad, de deuntjes (nieuwe missie, taak klaar, missie gehaald,
@@ -965,7 +1001,7 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
   de politiehelikopter (`helikopter_loop.ogg`, `helikopter_voorbij.ogg`); zie `docs/GELUIDEN.md`.
   Ver uitgezoomd (vanaf 95 m in beeld, terug onder 85 m) zijn voetgangers en voertuigen blokjes
   (`scripts/world/far_boxes.gd`, node VerreBlokjes): hun eigen modellen verborgen, per soort één
-  MultiMesh met een blok in hun maat en kleur. Test: `tools/check/far_boxes_test.gd`.
+  MultiMesh met een blok in hun maat en kleur. Test: `tests/integration/world/test_far_boxes.gd`.
   Achtergrondgeluid (`scripts/audio/ambience.gd`, vanuit `interiors.gd`): zacht het geroezemoes van
   de straat, de stationshal of een winkel, uit vrije opnames (`assets/audio/omgeving/`, bronnen in
   `BRONNEN.md`, gemaakt met `tools/megadrive/omgeving.py`), overvloeiend bij elke overgang.
@@ -985,7 +1021,7 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
   gevels links en rechts zijn; daarmee stelt het de echo (vertraging per gevel, flutter tussen
   smalle gevels) en de galm (nat en groot in een straat of tunnel, droog op een plein of in
   het park) van de bus `Verkeer` in; de muziek blijft droog. Test:
-  `tools/check/spatial_audio_test.gd`.
+  `tests/integration/world/test_spatial_audio.gd`.
   Geluidseffecten (`scripts/ui/ui_sounds.gd`, `UiSounds.play(node, naam)`, in code gemaakt in
   de stijl van de FM-geluidschip van een 16-bit console: twee-operator-FM, snelle
   toonhoogtesweeps, 6-bit korrel; geen samples): `kies` (ander item kiezen: twee snelle heldere
@@ -1001,16 +1037,16 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
   springen opzij (het meest in een rafelige strook onderaan), het beeld golft, de kleuren
   schuiven uit elkaar en er komt ruis (`tracking` van de shader; `tracking_chance`,
   `tracking_seconds`).
-  Test: `tools/godot.sh --headless --script tools/check/menu_test.gd`.
-- Test van de richtingen per tile: `tools/godot.sh --headless --script tools/check/lane_choice_test.gd`
+  Test: `tools/godot.sh --headless --script tests/integration/ui/test_menu.gd`.
+- Test van de richtingen per tile: `tools/godot.sh --headless --script tests/integration/traffic/test_lane_choice.gd`
 - Stukken die in elkaar staan (muren door muren, knipperende vlakken): `tools/godot.sh --headless
-  --script tools/check/clash_test.gd -- 60` geeft per paar tiles hoe vaak hun meshboxen door
+  --script tests/integration/world/test_clash.gd -- 60` geeft per paar tiles hoe vaak hun meshboxen door
   elkaar of in één vlak liggen (stukken van één gebouw naast elkaar tellen niet), met plekken.
   Grof (boxen, geen echte vlakken): gebruik het om plekken te vinden. De bouwer ruimt het
   meeste zelf op: hoekstukken die tegen een ander gebouw staan worden recht
   (`_straighten_hidden_corners`), balkons naast een viaduct vlak (`_flatten_facades_by_viaducts`)
   en bomen die in een gevel groeien gaan weg (`_remove_trees_in_buildings`).
-- Test: `tools/godot.sh --headless --script tools/check/drive_test.gd -- 300`
+- Test: `tools/godot.sh --headless --script tests/integration/traffic/test_drive.gd -- 300`
   (optioneel startcel en richting, bv. `-- 300 70 24 1 0` voor de A12). De test meldt
   of de auto ergens naast de weg rijdt, boven of onder het wegdek zit, te hard gaat of
   te scherp draait.
@@ -1068,10 +1104,21 @@ buiten de kaart (`at`), staat stil en is onzichtbaar zolang je buiten bent.
     Verkoper_<n> (metadata `kind`, `shop_name`), Uithangbord_<n>, Automaat_<n>.
   - Eruit gegooid worden (`Interiors.throw_out`, herbruikbaar per plek, `data/gesprekken/uitzetten.json`):
     te vaak bedelen of zonder geld proberen te kopen (snackbar, station) of de boete voor
-    zwartrijden niet kunnen betalen (station, meteen): de swipe, de speler vliegt de deur uit en tuimelt de straat op, daarna vertelt de verteller
-    wat er gebeurde; een tijdje niet naar binnen. Test:
-    `tools/check/throw_out_test.gd`.
-  - Test: `tools/check/station_test.gd` (ingangen, sporen, poortjes met en zonder kaart,
+    zwartrijden niet kunnen betalen (station). Eerst waarschuwt iemand van de plek je
+    (`waarschuwing` in `uitzetten.json`, `Interiors._warn`: de dichtstbijzijnde van die rol roept
+    het, boven je "Waarschuwing 1 van 2"; winkeldiefstal: eerst "eerst afrekenen"). Alleen iemand van de plek kan je eruit zetten
+    (gedeeld voor elke binnenruimte: `scripts/world/eviction.gd`): die roept wat er mis is
+    (`roep`) en komt op je af, met dezelfde regels als de conducteur bij zwartrijden
+    (`scripts/world/pursuit.gd`: pas binnen 1 m gepakt). Wie er komt en hoe die loopt zegt de
+    binnenruimte (`evictor_for`, `walk_evictor`, `evictor_done` in `interior.gd`: de dichtstbijzijnde
+    van die rol, over de vrije vloer om toonbank en tafels heen; het station een handhaver langs
+    zijn eigen routes, de supermarkt een kassamedewerker die opstaat, het stadhuis de beveiliger,
+    of een die met de lift naar jouw etage komt). Pas als die bij je is: de swipe, de speler vliegt
+    de deur uit en tuimelt de straat op, daarna vertelt de verteller wat er gebeurde; een tijdje
+    niet naar binnen. Ga je eerder zelf de deur uit, dan ben je weg (maar ook een tijdje niet
+    welkom). De conducteur die je net beboette staat al bij je: meteen eruit. Tests:
+    `tests/unit/interiors/test_eviction.gd`, `tests/integration/interiors/test_throw_out.gd`.
+  - Test: `tests/integration/interiors/test_station.gd` (ingangen, sporen, poortjes met en zonder kaart,
     een vertrekkende trein, instappen, niemand vast, naar buiten bij deur 3).
 
 - Supermarkten, DERREK en ALFRED STEYHN (`scenes/binnen/supermarkt.tscn`,
@@ -1094,8 +1141,8 @@ buiten de kaart (`at`), staat stil en is onzichtbaar zolang je buiten bent.
     ALFRED STEYHN heeft per filiaal twee soorten schappen in de BONUS, een kwart eraf). Bij de
     kassa (of de zelfscan van ALFRED STEYHN) `[E] Afrekenen`: piep-piep (`kassa_piep`), wat het
     kost, betalen of laat maar. Te weinig geld: het duurste gaat terug tot het past; wat niet in
-    je zakken past gaat terug. Met onbetaalde spullen de deur uit: het alarm (`winkel_alarm`) en
-    je wordt eruit gegooid (`winkeldiefstal` in `uitzetten.json`).
+    je zakken past gaat terug. Met onbetaalde spullen de deur uit: het alarm (`winkel_alarm`), de
+    poortjes blijven dicht en een kassamedewerker komt je halen (`winkeldiefstal` in `uitzetten.json`).
   - Winkelende mensen komen binnenlopen, lopen langs een paar schappen (met mandje of karretje),
     sluiten aan bij een kassa, rekenen af en gaan weer weg; sommigen kijken alleen. Ze lopen over
     een rooster van de vrije vloer (`AStarGrid2D`) om de schappen heen en wachten als je in de
@@ -1113,8 +1160,8 @@ buiten de kaart (`at`), staat stil en is onzichtbaar zolang je buiten bent.
   - Statiegeldautomaat in de hoek voorbij de karretjes (`plan.deposit`, `[E] Statiegeld inleveren`;
     zie "Automaten, blikjes en pinpassen"). Hij telt mee in `Supermarket.footprints`, dus winkelende
     mensen lopen eromheen; de indelingstest controleert dat hij nergens in staat.
-  - Tests: `tools/check/supermarket_layout_test.gd` (snel, zonder de stad: 180 filialen,
-    alles bereikbaar, niets in elkaar) en `tools/check/supermarket_test.gd` (in de stad).
+  - Tests: `tests/integration/interiors/test_supermarket_layout.gd` (snel, zonder de stad: 180 filialen,
+    alles bereikbaar, niets in elkaar) en `tests/integration/interiors/test_supermarket.gd` (in de stad).
 - Het stadhuis aan het Spui (`scenes/binnen/stadhuis.tscn`, `scripts/world/city_hall.gd`,
   indeling `scripts/world/city_hall_layout.gd`, tiles `binnen/stadhuis/` in
   `tools/voxgen/tiles/interior_city_hall.py`): de deuren in de begane grond van de twee witte
@@ -1128,7 +1175,7 @@ buiten de kaart (`at`), staat stil en is onzichtbaar zolang je buiten bent.
   elke etage op dezelfde plek: `[E] Lift`, je kiest de etage, de deuren schuiven dicht, de swipe,
   en je stapt uit op de andere etage (`lift_ding`, de etage bovenin beeld). De mensen praten als
   zichzelf (`personeel.json`: receptioniste, beveiliger, ambtenaar, raadslid, burgemeester).
-  Test: `tools/check/city_hall_test.gd`.
+  Test: `tests/integration/interiors/test_city_hall.gd`.
 - Voor allebei: `InteriorSpot` (`scripts/world/interior_spot.gd`, een plek met `[E] <tekst>`) en
   `SignBoard` (`scripts/world/sign_board.gd`, een bord met tekst). Een binnenruimte kan
   `dress_way_in(ingang)`, `leave_offence()` en `plan_root()` hebben (zie `interiors.gd`).
@@ -1678,7 +1725,7 @@ Hoe het werkt (techniek)
   ook het materiaal per kleur bepaalt) en maakt een mesh (`vox_mesher.gd`) met greedy
   meshing (voxelzijden naast elkaar met dezelfde kleur, hetzelfde materiaal en dezelfde AO
   worden één vlak; bij `textured` tiles ongeacht de kleur), vertex-kleuren en ingebakken
-  ambient occlusion. Getest in `tests/unit/test_gox_import.gd` (eigen kleine .gox-bestanden:
+  ambient occlusion. Getest in `tests/unit/tools/test_gox_import.gd` (eigen kleine .gox-bestanden:
   inlezen, lagen, materialen, samenvoegen, plus echte tiles). Per materiaaltype
   een eigen surface en shader (`materials/`: opaque, metal, glass, emit,
   water, vlag).
@@ -1894,7 +1941,7 @@ Prestaties en uiterlijk
     (`crt_ui_curvature` 0,02), zodat de hoeken leesbaar blijven; de zwarte hoeken snijden de HUD
     niet af. Scanlijnen (`scanlines`, `scanline_strength` 0,1) en een iets donkerdere rand
     liggen over beide.
-  Test: `tools/godot.sh --headless --script tools/check/hud_test.gd`.
+  Test: `tools/godot.sh --headless --script tests/integration/ui/test_hud.gd`.
 - Spelmenu (`scripts/ui/game_menu.gd`, `GameMenu`, een CanvasLayer die de HUD als kind
   krijgt; ontwerpen "Inventory & character", "Questlog" en "Wereldkaart", 1280 x 720, schaalt
   mee zoals de HUD, met scanlijnen en de lichte buiging van de HUD). Helemaal in code
@@ -1917,7 +1964,8 @@ Prestaties en uiterlijk
     nog niet was (`hud.visited_areas()`) onder een mist. Rechts de gekozen plek (naam, wijk,
     afstand), waar je nu bent (wijk en straat) en een legenda; linksonder X/Y in meters.
     Supermarkten in de kleur en vorm van hun keten (DERREK rood vierkant, ALFRED STEYHN
-    lichtblauw rondje), ook in onbezochte wijken. Enter of rechtsklik zet een marker op de
+    lichtblauw rondje), ook in onbezochte wijken, en de pinautomaten (de markers
+    `Geldautomaat_<n>` onder `Straatautomaten`) als geel blokje, kiesbaar voor een marker. Enter of rechtsklik zet een marker op de
     gekozen plek (`hud.set_waypoint`): een roze ruit op het kaartje (aan de rand een pijl die de
     kant op wijst), naam en afstand eronder, een lichtbaken in de stad
     (`scripts/world/waypoint_beacon.gd`); nog eens Enter haalt hem weg, aangekomen is hij weg.
@@ -1930,10 +1978,10 @@ Prestaties en uiterlijk
     `inventory`, `use_item`, `drop_item`, `is_dead`, signalen `inventory_changed` en
     `stats_changed`); zonder speler het gekozen karakter en zijn `START_ITEMS`.
     API: `open(tab)`, `close()`, `is_open()`.
-  Test: `tools/godot.sh --headless --script tools/check/game_menu_test.gd`.
+  Test: `tools/godot.sh --headless --script tests/integration/ui/test_game_menu.gd`.
 - Lettertype: Rubik (`assets/fonts/Rubik.ttf`, OFL-licentie), ingesteld als
   projectfont.
-- Meten: `Godot --script tools/check/fps_test.gd -- 20 flyover` of
+- Meten: `Godot --script tests/integration/world/test_fps.gd -- 20 flyover` of
   `-- 10 140` (vaste zoom 140 m), of een vast beeld met vlaggen:
   `-- 10 140 72 60 s` (drukke wijk rond x 72, z 60, zonder schaduw). Sluit de Godot-editor tijdens het meten, anders
   delen ze de GPU. `tools/check/triangle_count.gd` toont het aantal driehoeken per tile en

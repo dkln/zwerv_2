@@ -21,9 +21,79 @@ een distortion-gitaar), dan worden dat FM-klanken die op de chip passen.
 4. `tools/muziek/render.sh` maakt alles in `assets/audio/muziek/` en schrijft
    `scripts/ui/intro_timing.gd`; `tools/muziek/render.sh --controle` kijkt alles na.
 
+Een compositie kan ook als **VGM-bestand** komen (het registerlog van de Mega Drive-geluidschips):
+zie "Een VGM als compositie" hieronder.
+
 Oude composities blijven staan; terug naar een eerdere is `ACTIEF` terugzetten en opnieuw
 renderen. Eerst luisteren zonder iets te vervangen: `tools/muziek/render.sh --uit <map>`, of
 `ZWERVR_COMPOSITIE=<naam> tools/muziek/render.sh --uit <map>` voor een andere compositie.
+
+## Een VGM als compositie
+
+Een **VGM** (`.vgm`, of gezipt `.vgz`) is geen tekst maar het logboek van wat een nummer naar de
+geluidschips van de Mega Drive schrijft (YM2612-FM en SN76489-PSG), met de tijd in samples van
+1/44100 s. `tools/muziek/vgm.py` leest het en schrijft er een compositiebestand van, in dezelfde
+vorm als een overgeschreven tekst:
+
+```
+tools/muziek/render.sh --vgm <bestand> [naam] --toon        # alleen laten zien wat erin zit
+tools/muziek/render.sh --vgm <bestand> [naam]               # composities/<naam>.py schrijven
+tools/muziek/render.sh --vgm <bestand> [naam] --vergelijk   # composities/<naam>.py tegen het VGM
+```
+
+(`naam`: standaard de bestandsnaam; `--overschrijf` vervangt een bestaand compositiebestand,
+`--tempo 92` en `--titel "..."` als het bestand ze niet geeft.) Het VGM zelf wordt als
+`tools/muziek/composities/<naam>.vgm` bewaard (het origineel, zoals de `.txt` van een tekst).
+
+Wat eruit gelezen wordt:
+
+- **FM-kanalen** (YM2612, `fm1`..`fm6`): elke key-on (register 0x28) is een noot, met de
+  toonhoogte uit F-number en blok (0xA0-0xA6) van dat moment, tot de key-off; verandert de
+  frequentie onder een aangehouden toets naar een andere halve toon, dan is dat een nieuwe noot.
+  De patch van het kanaal (algoritme, feedback, de operatoren) wordt onthouden.
+- **PSG-tonen** (SN76489, `psg1`..`psg3`): de periode geeft de toonhoogte, het volume aan/uit en
+  de aanslagsterkte; een toon die na het wegsterven weer harder wordt, is een nieuwe noot.
+- **Drums**: het ruiskanaal van de PSG (witte ruis: hard een snare, zacht een hi-hat als het
+  bestand beide niveaus heeft, 4 dB of meer uit elkaar; lang een open hi-hat of een crash;
+  periodieke ruis een lage tom) en de **DAC** (kanaal 6, register 0x2A/0x2B, ook de datablokken
+  en stream-commando's): elke stoot samples is een slag, benoemd naar hoe de sample eruitziet
+  (een lage dreun een kick, een toon een tom, ruis een snare).
+- **Tempo en maat**: het raster is de kleinste afstand tussen noten die vaak terugkomt, op alle
+  noten gepast; het tempo is de telverdeling daarvan (zestienden, achtsten, triolen) die tussen
+  80 en 180 BPM uitkomt. Een getal aan het eind van de bestandsnaam (`_92`) wordt als tempo
+  geprobeerd en geldt alleen als het op het raster past; het bestand zegt erbij of het klopte.
+  De maat is drie of vier tellen, wat de muziek het best laat herhalen. De eerste noot is tel 1
+  van maat 1.
+- **Partijen**: het laagste kanaal is de `bas`; kanalen die samen aanslaan worden akkoorden
+  (`pad` bij lange noten, `brass` bij korte; speelt een kanaal hetzelfde als een ander, dan valt
+  de verdubbeling weg); een kanaal dat het raster bijna vult is de `arp`; wat overblijft is de
+  `lead` (en `lead2`, ...). Elke partij krijgt een klank uit de tabel hieronder die bij de patch
+  past: veel feedback en hard gestuurde modulatoren een rauwe bas (`fm_housebas`) of lead
+  (`fm_lead_zuur`, `fm_lead_snerpend`), een trage aanzet een pad, hoge modulatorverhoudingen
+  metalige stoten of klokken, een PSG-kanaal een blokgolf. De reden staat in het bestand.
+- **Toonsoort, akkoorden, secties, momenten** staan niet in een VGM en worden afgeleid: de
+  toonsoort uit hoe lang elke toon klinkt (de melodie telt dubbel), het akkoord van elke maat
+  (of van haar helften) uit haar noten, de secties uit frasen van vier maten met dezelfde
+  baslijn en dezelfde bezetting (de eerste zonder melodie is de `intro`, de eerste met melodie
+  het `thema`, de drukste met ander materiaal het `refrein`, de dunste de `breakdown`, de
+  laatste de `finale`), en de `MOMENTEN` uit die secties.
+- **Register**: de maten staan in het octaaf van het VGM. Ligt een partij ver van waar de
+  afgeleide stukken haar verwachten (de melodie rond octaaf 5, de bas rond octaaf 2), dan zet de
+  omzetter `BIJSTELLING = {"octaaf": {...}}` erbij; weghalen geeft het octaaf van het VGM terug.
+
+Beperkingen: alleen YM2612 en SN76489 (commando's van andere chips worden overgeslagen en
+gemeld); de speciale modus van kanaal 3 (een frequentie per operator), LFO, panning en
+toonhoogtebuigingen binnen een halve toon worden niet overgenomen; een opmaat wordt niet herkend
+(de eerste noot is altijd tel 1); het luspunt wordt gemeld maar het bestand wordt één keer
+gelezen. Heeft een noot het **hoogste F-number (2047)**, dan heeft de schrijver van het VGM de
+toonhoogte waarschijnlijk afgekapt: de noot blijft zoals de chip hem speelt, telt niet mee voor de
+toonsoort en licht voor de akkoorden, en het bestand meldt het. Wat de omzetter afleidt
+(akkoorden, secties, momenten, klanken, octaven) mag je daarna met de hand verbeteren in het
+compositiebestand; opnieuw omzetten overschrijft dat (`--overschrijf`).
+
+Nu actief: "Nitro Overdrive" (`nitro_overdrive_92.vgm`): 132 BPM (de 92 in de naam is niet het
+tempo), E majeur, 32 maten; twee FM-kanalen (bas en lead) en de PSG-ruis als snare en hi-hat. De
+lead klinkt twee octaven boven het VGM (`BIJSTELLING`).
 
 ## De regels
 
@@ -183,8 +253,9 @@ Uit `tools/muziek/derive.py`; alle bestanden in `assets/audio/muziek/`:
 | `deuntje_kaart_start.ogg` | de kaart opent bij het begin van het spel (`MAP_JINGLE` in `hud.gd`, hooguit 6 s) | de eerste twee maten van de intro-sectie (het opstarten van het nummer), landend op het grondakkoord met een crash; één maat als twee te lang duren |
 | `deuntje_nieuwe_missie.ogg` | nieuwe missie | het motief (eerste maat van het thema) met groove, landend op de grondtoon |
 | `deuntje_taak_klaar.ogg` | een taak gehaald | een zestiendenloop over de dominant, landend op de grondtoon |
-| `deuntje_gewonnen.ogg` | een missie gehaald | de laatste twee maten van de compositie (haar finish) |
+| `deuntje_gewonnen.ogg` | een missie gehaald | de laatste twee maten van de compositie (haar finish); heeft de compositie geen slot (geen aangehouden slotnoot of crash in de laatste maat: een VGM van een nummer dat doorloopt), dan haar laatste maat als aanloop, landend op het grondakkoord met een crash |
 | `deuntje_level_omhoog.ogg` | level omhoog | een loop over het grondakkoord naar de hoge grondtoon, met gitaar en crash |
+| `deuntje_beloning.ogg` | een beloning of item gekregen (het beloningsscherm) | het grondakkoord als een sprankel op en neer in de arp, de hoge grondtoon erboven met pad en een zachte crash |
 | `deuntje_dood.ogg` | dood | het motief op halve snelheid een octaaf lager, vallend naar de lage grondtoon, tapestop |
 | `supermarkt_muzak_1.ogg` | in een supermarkt (lus, zacht op de achtergrond: `MUZAK_SOFTER_DB` in `hud.gd`; elk filiaal één van de drie, `SUPERMARKET_MUZAK` in `interiors.gd`) | **bossa nova** (100 BPM): de akkoorden van het thema alleen (vier maten), het thema op de fluit, het thema op de vibrafoon, het refrein op de fluit; bossabas, vibrafoon-stoten, strijkers, zachte bossa-drums |
 | `supermarkt_muzak_2.ogg` | idem | **trage ballade** (76 BPM): de akkoorden van de breakdown (strijkers, gebroken piano), het refrein op de vibrafoon, het thema op de fluit; lange bas, heel zacht ritme |
@@ -221,7 +292,11 @@ ter controle). Met `--balans` ook de balans van de partijen.
 de bijstellingen (andere klank, verdubbelen, drumstel, four on the floor laat breaks en fills
 met rust), en voor elke compositie: al haar klanken bestaan, alle stukken worden gemaakt, het
 kaartdeuntje blijft onder 6 s, de muzak loopt (40-150 s, zonder chromatische maten) en de jingles
-blijven onder 6 s, de muzak zoet powerchords, elke noot valt binnen zijn maat.
+blijven onder 6 s, de muzak zoet powerchords, elke noot valt binnen zijn maat; en de VGM-lezer op
+een klein VGM dat de test zelf maakt (FM-noten met toonhoogte, begin en lengte, PSG-tonen en
+ruis-drums, DAC-samples als drums, het tempo tegen de bestandsnaam, gzip, afgekapte F-numbers,
+partijen/akkoorden/secties, het compositiebestand dat eruit komt), en elke compositie met een
+`.vgm` ernaast komt nog overeen met dat VGM.
 
 De bestanden staan in `tools/muziek/`:
 
@@ -232,6 +307,7 @@ De bestanden staan in `tools/muziek/`:
 - `derive.py`: de afgeleide stukken;
 - `build.py`: alles maken (via `render.sh`), en `intro_timing.gd`;
 - `check.py`: de controle (via `render.sh --controle`);
+- `vgm.py`: een VGM-bestand lezen en als compositiebestand schrijven (via `render.sh --vgm`);
 - `composition.md`: de tekst van de componist die nu aan de beurt is (hier lever je aan);
-- `composities/`: de composities (`<naam>.txt` het origineel, `<naam>.py` de notatie) en
-  `actief.py`.
+- `composities/`: de composities (`<naam>.txt` of `<naam>.vgm` het origineel, `<naam>.py` de
+  notatie) en `actief.py`.

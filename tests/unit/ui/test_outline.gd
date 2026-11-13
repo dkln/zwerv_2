@@ -1,0 +1,53 @@
+extends RefCounted
+## Unit tests of Outline.apply (scripts/effects/outline.gd): the hard outline on the meshes of
+## what moves about, but not twice, not on a character (it has its own) and not on glass.
+
+const Outline = preload("res://scripts/effects/outline.gd")
+const PlayerModel = preload("res://scripts/player/player_model.gd")
+
+
+## A plain mesh gets the outline as an overlay, pushed outwards from the middle.
+func test_a_plain_mesh_gets_the_outline(test) -> void:
+	var instance := MeshInstance3D.new()
+	instance.mesh = BoxMesh.new()
+	Outline.apply(instance)
+	var overlay := instance.material_overlay as ShaderMaterial
+	test.check(overlay != null and overlay.shader == PlayerModel.OUTLINE_SHADER, "omlijning als overlay")
+	test.check(overlay != null and bool(overlay.get_shader_parameter("from_centre")), "vanuit het midden naar buiten")
+	instance.free()
+
+
+## A character (it has its own outline) and glass get none.
+func test_a_character_and_glass_are_left_alone(test) -> void:
+	var character := MeshInstance3D.new()
+	character.mesh = BoxMesh.new()
+	character.material_override = PlayerModel.material_for("skin", true)
+	var glass := MeshInstance3D.new()
+	glass.mesh = BoxMesh.new()
+	var see_through := StandardMaterial3D.new()
+	see_through.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	glass.material_override = see_through
+	Outline.apply(character)
+	Outline.apply(glass)
+	test.check(character.material_overlay == null, "een karakter heeft zijn eigen omlijning")
+	test.check(glass.material_overlay == null, "glas niet")
+	character.free()
+	glass.free()
+
+
+## The rotor (flat, cut out) and a mesh whose shader writes ALPHA get none.
+func test_the_rotor_and_flat_planes_are_left_alone(test) -> void:
+	var rotor := MeshInstance3D.new()
+	rotor.mesh = PlaneMesh.new()
+	var rotor_material := ShaderMaterial.new()
+	rotor_material.shader = load("res://addons/vox_tiles/materials/voxel_rotor.gdshader")
+	rotor.material_override = rotor_material
+	Outline.apply(rotor)
+	test.check(rotor.material_overlay == null, "de rotor (plat, uitgesneden) niet")
+	var cut_out := MeshInstance3D.new()
+	cut_out.mesh = BoxMesh.new()
+	cut_out.material_override = rotor_material
+	Outline.apply(cut_out)
+	test.check(cut_out.material_overlay == null, "een shader met ALPHA niet")
+	rotor.free()
+	cut_out.free()
