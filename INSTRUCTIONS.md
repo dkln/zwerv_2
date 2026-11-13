@@ -171,10 +171,9 @@ Verhaal, missies en kleingeld
 - Babble (`scripts/audio/babble.gd`): elk woord heeft een vast klankje (variant en toonhoogte uit
   het woord), het zoveelste klankje van een regel is het zoveelste woord: dezelfde tekst klinkt
   altijd hetzelfde.
-- Tests: unit-tests in `tests/unit/<categorie>/` (`tools/godot.sh --headless --script
-  tests/run_unit_tests.gd [-- naam of categorie]`), integratietests in
-  `tests/integration/<categorie>/` met `test_`-functies op een gedeelde stad
-  (`tests/run_integration_tests.sh <naam>|<categorie>|alle`; basis in `tests/integration/support/`).
+- Tests: zie het hoofdstuk "Tests draaien" (unit-tests in
+  `tests/unit/<categorie>/`, integratietests in `tests/integration/<categorie>/` met
+  `test_`-functies op een gedeelde stad: `tests/run_integration_tests.sh <naam>|<categorie>|alle`).
 - Beloningsscherm (`scripts/ui/reward_screen.gd`, `GameHud.show_reward`): wat je krijgt voor een
   taak of missie (na de klaar-bladzijden) of van iemand op straat (een `beloning` in een gesprek,
   met XP, standaard 25) komt in een eigen schermpje, niet meer als zwevend tekstje: het item groot
@@ -255,8 +254,10 @@ Automaten, blikjes en pinpassen
   (`PlayerModel.VoxelFigure`, voxels van 6,25 cm; blikje en pas 5 cm), dus zonder tiles: geldautomaat
   0,75 x 1,75 x 0,5 m, statiegeldautomaat 0,875 x 1,875 x 0,625 m; `MachineModels.instance` geeft
   er een StaticBody3D (laag 1) met een doos van precies die maat bij.
-- Tests: `tests/integration/interiors/test_machines.gd` (snel, zonder de stad: raadsels geven de pincode, passen,
-  geldautomaat met goede en foute pincode en inslikken, statiegeld, OV-saldo, modellen) en
+- Tests: `tests/unit/player/test_bank_cards.gd` (elk raadsel geeft de pincode),
+  `tests/unit/world/test_machine_models.gd` (de modellen en hun colliders),
+  `tests/integration/interiors/test_machines.gd` (snel, zonder de stad: passen,
+  geldautomaat met goede en foute pincode en inslikken, statiegeld, OV-saldo) en
   `tests/integration/interiors/test_street_machines.gd` (in de stad: automaten op de grond, `[E] Pinnen` opent het
   scherm, blikje uit een prullenbak, pinpas oprapen).
 - Statbalken: verandert een stat in één keer met minstens 1,5 punt (aanrijding, honger die
@@ -332,7 +333,8 @@ niet het verkeer van de hele stad:
   `NEAR_VEHICLES`) en alle controles van die stap gebruiken hem. De mensen te voet
   (`WALKERS_GROUP`) worden ook één keer per frame opgehaald. Buiten beeld botsen voertuigen
   niet (ze houden wel afstand) en rekenen ze eens per 6 stappen, ver weg eens per 10
-  (`Sight`). Tests: `vehicle_buckets_test.gd` (mist er nooit een), `traffic_cost_test.gd`
+  (`Sight`). Tests: `tests/integration/traffic/test_vehicle_buckets.gd` (mist er nooit een),
+  `tests/integration/traffic/test_traffic_cost.gd`
   (de ochtendspits binnen 16 ms per beeld, headless).
 - `whole_town` = true doet het zoals vroeger: `vehicle_count` + `services_count` over het hele
   wegennet (`traffic_seed`), allemaal gehouden; `tests/integration/traffic/test_traffic.gd` gebruikt dat
@@ -499,7 +501,7 @@ ze van elke kant loskomen van de straat; de figuren zelf staan op visuele laag 2
 (`FIGURE_LAYER`), waar die vlek niet op valt. In de stad zijn de figuren eenvoudiger dan op het
 karakterscherm (`PlayerModel.simple`, `VoxelFigure.simplify`): bijna gelijke kleuren worden
 één kleur en losse spikkels (knopen, steken, vlekjes) nemen de kleur eromheen aan; de vorm en
-de ogen blijven. Controle: `tests/integration/people/test_simple_figure.gd`. De bio op het
+de ogen blijven. Controle: `tests/unit/people/test_simple_figure.gd`. De bio op het
 karakterscherm typt zich uit met de blokcursor, zoals het verhaal (`widgets/typewriter.gd`).
 Buiten beeld kosten ze minder CPU-tijd (`scripts/world/sight.gd`): wat in beeld is (met 30 %
 marge rond het scherm) doet elke physics-stap, wat erbuiten is om de 2 stappen en wat ook nog
@@ -513,7 +515,7 @@ Die van de speler is de doos om de figuur in rust plus ruimte voor de beweging b
 De spelerfiguur staat in de stad op 0,78 (`PlayerController.FIGURE_SCALE`, ongeveer 1,75 m, Willem
 krom 1,55 m), zodat spelers, voetgangers, berijders en voertuigen in verhouding zijn; de
 schermen (portret, karakterkeuze) tekenen hem op ware grootte. Controle:
-`tools/godot.sh --headless --script tests/integration/people/test_townsfolk.gd` (maten, trappen, sturen,
+`tests/run_integration_tests.sh townsfolk` (maten, trappen, sturen,
 insturen, handen en voeten, voetgangers, zebra en alle botsvormen).
 De trekker heeft grote achterwielen (`wheel_model`/`wheel_radius` van `Vehicle`) en kleinere
 voorwielen (`front_wheel_model`/`front_wheel_radius`: elk voertuig kan voorwielen van een andere maat
@@ -540,7 +542,7 @@ Allemaal zijn het een `Vehicle` (`scripts/vehicles/vehicle.gd`):
   een botsing delen de massa's de klap volgens de impuls: de lichtste krijgt de grootste
   snelheidsverandering en de meeste draaiing. Daarna rolt een wrak nog even door op zijn wielen
   met de motor aan (`ROLL_ON_*`), een bus veel langer dan een kleine auto, dus een bus duwt een
-  hatchback voor zich uit. Test: `tests/integration/traffic/test_crash.gd -- heavy` of `light`.
+  hatchback voor zich uit. Test: `tests/run_integration_tests.sh crash` (de zware in de lichte en andersom).
 - Tweewielers (fiets, fatbike, brommer, scooter, motor; `two_wheeler.gd`) gaan bij een harde
   klap echt onderuit: het wrak kantelt op zijn zij (`TOPPLE_SPIN`, eerst een hoog zwaartepunt) en
   glijdt uit zonder motor, en de berijder vliegt eraf als een eigen tuimelend lichaam
@@ -625,8 +627,7 @@ Allemaal zijn het een `Vehicle` (`scripts/vehicles/vehicle.gd`):
   (met de tijd van beide) en slaat het wielen en lampen over.
 - Een sirene die inhaalt, blijft naast de auto die voor hem opzij ging tot hij erlangs is
   (`_beside_yielder`), ook als er tegenverkeer aankomt.
-- Test op door elkaar heen rijden: `tools/godot.sh --headless --script
-  tests/integration/traffic/test_overlap.gd -- 300` meldt elke overlap van twee rijdende carrosserieën met de
+- Test op door elkaar heen rijden: `tests/run_integration_tests.sh overlap -- 300` meldt elke overlap van twee rijdende carrosserieën met de
   situatie erbij (`TRACE=Verkeer4,Verkeer9` volgt ook voertuigen per halve seconde).
 - Bochten: alle bochtsnelheden (`corner_speed`, `tight_corner_speed` per type) keer
   `CORNER_SPEED_FACTOR` (1,6), zodat de verhoudingen tussen de typen blijven.
@@ -673,7 +674,7 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
   in de tabel (`ViewTable.PITCHES`): zit je tussen hoge gebouwen en laat geen gewone richting
   je zien, dan kijkt de camera steiler omlaag (`steep_pitch`, -62 graden) en weer terug zodra
   een gewone richting vrij is. Draaien en kantelen glijden langzaam (`turn_glide_time`, 4 s).
-  Test: `view_table_test.gd`.
+  Test: `tests/integration/camera/test_view_table.gd`.
 - Doorkijk (node `Doorkijk`, `scripts/world/building_fade.gd`): zolang de camera de speler
   volgt (en de camera het wil, zie de zichttabel), krijgt elk gebouw (aaneengesloten cellen van de laag Gebouwen) dat tussen de
   speler en de camera staat een rond kijkgat (`hole_radius`, 3,5 m): een buis van de speler
@@ -810,8 +811,7 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
   De middenstreep buigt in de binnenste cel, dus de rechte tiles ernaast hebben die streep
   niet. Heeft een strook geen versie zonder streep, dan is er een `_zonder_streep`
   (busbaan, snelweg). De stadsbouwer legt ze zelf waar een tweestrookstraat de hoek omgaat
-  (`_square_corners` in `city/streets.gd`). Test: `tools/godot.sh --headless --script
-  tests/integration/traffic/test_corner.gd`.
+  (`_square_corners` in `city/streets.gd`). Test: `tests/run_integration_tests.sh corner`.
 - Voertuig (`scripts/vehicles/vehicle.gd`, `Vehicle`): de rijlogica voor elk
   voertuig. Het plant een paar cellen vooruit (minstens de remafstand), kiest op
   kruisingen willekeurig (`straight_chance`, `route_seed`) en remt af voor bochten
@@ -832,7 +832,7 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
   `auto_wiel_groot`). Vanuit `tools/voxgen/tiles/props.py`. Overzicht:
   `tools/godot.sh --script tools/shots/shot_vehicles.gd -- <uit.png> [1|-1] [nummer]`.
 - Test van al het verkeer samen (botsingen, vaststaan, rekentijd):
-  `tools/godot.sh --headless --script tests/integration/traffic/test_traffic.gd -- 300`
+  `tests/run_integration_tests.sh test_traffic -- 300`
 - Intro (startscène `scenes/intro.tscn`, `scripts/ui/intro.gd`): op zwart een teal regel ("Niet
   zo lang geleden, kortgeleden, recent en laatst…", `OPENING_LINE`), dan met een klap sterren en
   het logo ZWERVR in grote amberkleurige omlijnde letters dat even blijft staan (`LOGO_HOLD`) en dan langzaam de diepte in krimpt, dan
@@ -895,7 +895,7 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
   hoofdlicht met schaduw (ook op een onzichtbare vloer die alleen de schaduw toont), zacht
   vul- en tegenlicht, een lage grijze ambient en een eenvoudige lucht voor de reflecties.
   Muziek: `karakterkeuze_loop.ogg` (zacht: pad, klokjes op het motief, een zachte chiptune-melodie; 100 BPM, 38,4 s, lus), op -12 dB en
-  infadend. Test: `tests/integration/player/test_character.gd` (`-- figures`: alleen de poppetjes).
+  infadend. Test: `tests/integration/player/test_character.gd` (het scherm); de poppetjes zelf: `tests/unit/player/test_character_figures.gd`.
 - Hoofdmenu (`scenes/hoofdmenu.tscn`, `scripts/ui/main_menu.gd`), naar het ontwerp
   "Titelscherm" in de HUD-stijl: titel ZWERVR, menu (VERDERGAAN en LADEN uitgegrijsd tot er
   opslag is; NIEUW SPEL toont "LADEN…" en opent het karakterscherm (hieronder), dat daarna de stad opent (op de hoofdthread: op een achtergrondthread crashte het met het LOD-systeem; daarna het laadscherm van de stad);
@@ -1037,16 +1037,15 @@ twee stappen gezet, zodat hij bij elke framerate vloeiend beweegt.
   springen opzij (het meest in een rafelige strook onderaan), het beeld golft, de kleuren
   schuiven uit elkaar en er komt ruis (`tracking` van de shader; `tracking_chance`,
   `tracking_seconds`).
-  Test: `tools/godot.sh --headless --script tests/integration/ui/test_menu.gd`.
-- Test van de richtingen per tile: `tools/godot.sh --headless --script tests/integration/traffic/test_lane_choice.gd`
-- Stukken die in elkaar staan (muren door muren, knipperende vlakken): `tools/godot.sh --headless
-  --script tests/integration/world/test_clash.gd -- 60` geeft per paar tiles hoe vaak hun meshboxen door
+  Test: `tests/run_integration_tests.sh menu`.
+- Test van de richtingen per tile: `tests/run_integration_tests.sh lane_choice`
+- Stukken die in elkaar staan (muren door muren, knipperende vlakken): `tests/run_integration_tests.sh clash -- 60` geeft per paar tiles hoe vaak hun meshboxen door
   elkaar of in één vlak liggen (stukken van één gebouw naast elkaar tellen niet), met plekken.
   Grof (boxen, geen echte vlakken): gebruik het om plekken te vinden. De bouwer ruimt het
   meeste zelf op: hoekstukken die tegen een ander gebouw staan worden recht
   (`_straighten_hidden_corners`), balkons naast een viaduct vlak (`_flatten_facades_by_viaducts`)
   en bomen die in een gevel groeien gaan weg (`_remove_trees_in_buildings`).
-- Test: `tools/godot.sh --headless --script tests/integration/traffic/test_drive.gd -- 300`
+- Test: `tests/run_integration_tests.sh drive -- 300`
   (optioneel startcel en richting, bv. `-- 300 70 24 1 0` voor de A12). De test meldt
   of de auto ergens naast de weg rijdt, boven of onder het wegdek zit, te hard gaat of
   te scherp draait.
@@ -1160,7 +1159,7 @@ buiten de kaart (`at`), staat stil en is onzichtbaar zolang je buiten bent.
   - Statiegeldautomaat in de hoek voorbij de karretjes (`plan.deposit`, `[E] Statiegeld inleveren`;
     zie "Automaten, blikjes en pinpassen"). Hij telt mee in `Supermarket.footprints`, dus winkelende
     mensen lopen eromheen; de indelingstest controleert dat hij nergens in staat.
-  - Tests: `tests/integration/interiors/test_supermarket_layout.gd` (snel, zonder de stad: 180 filialen,
+  - Tests: `tests/unit/interiors/test_supermarket_layout.gd` (snel, zonder de stad: 180 filialen,
     alles bereikbaar, niets in elkaar) en `tests/integration/interiors/test_supermarket.gd` (in de stad).
 - Het stadhuis aan het Spui (`scenes/binnen/stadhuis.tscn`, `scripts/world/city_hall.gd`,
   indeling `scripts/world/city_hall_layout.gd`, tiles `binnen/stadhuis/` in
@@ -1198,7 +1197,8 @@ Binnenruimtes maken (dezelfde opzet als de snackbar):
 4. Een regel in `KINDS` van `interiors.gd`: `scene`, `music`, `at` (een eigen plek ver buiten
    de kaart), en waar de ingangen zijn: `front` (deel van de naam van een geveltile) of
    `doors` + `place` + `place_reach` (deurtiles bij een plek op de kaart).
-5. Een check in `tools/check/` naar het voorbeeld van `interior_test.gd`/`station_test.gd`.
+5. Een suite in `tests/integration/interiors/` naar het voorbeeld van `test_interior.gd`/`test_throw_out.gd`
+   (`extends "res://tests/integration/support/town_test.gd"`, naar binnen met `enter("<soort>")`).
 
 Projectstructuur
 ----------------
@@ -1241,26 +1241,67 @@ Projectstructuur
       build/               build_city (+ city/: de bouwer in delen), build_menu_map,
                            build_libraries, build_previews, bake_maps,
                            reimport_stale.sh (verouderde tiles headless herimporteren)
-      check/               coverage, corner_test, crash_test, drive_test, fps_test,
-                           axle_test, player_test, hud_test, lane_choice_test, traffic_test,
-                           clash_test, intro_test, menu_test, mesh_audit, offscreen_audit,
-                           overlap_test, rail_stop_test, triangle_count, speech_balloon_test,
+      check/               coverage, mesh_audit, offscreen_audit, triangle_count,
                            stutter_profile (wat een frame traag maakt, per onderdeel),
-                           maniac_test (dronken en agressieve bestuurders),
-                           stairs_test (trappen en de voetbrug over de A12),
-                           street_lights_test, drown_test, building_fade_test,
-                           arrival_test, simple_figure_test,
-                           loading_after_swipe_test
+                           de profielen en audits van het laden en de cache
+                           (de tests zelf staan in tests/, zie hieronder)
       shots/               shot_tiles, shot_iso, shot_scene, shot_vehicles, shot_figure_faces
     data/                  het verhaal, de missies en de gesprekken als JSON (zelf aan te passen
                            en uit te breiden; uitleg in data/LEESMIJ.md)
-    tests/                 unit tests: kleine onderdelen los, zonder de stad (snel);
-                           tests/unit/test_*.gd, elke functie test_* een test;
-                           tools/godot.sh --headless --script tests/run_unit_tests.gd [-- <filter>];
-                           de muziektools: tools/muziek/render.sh --test (tools/muziek/test_muziek.py)
+    tests/                 de tests (zie "Tests draaien" hieronder)
+      run_unit_tests.gd    de unit-tests draaien
+      unit/<categorie>/    unit-tests: kleine onderdelen los, zonder de stad (snel)
+      run_integration_tests.sh / .gd   de integratietests draaien
+      integration/<categorie>/   integratietests: scenario's in de stad (camera, interiors,
+                           people, player, traffic, ui, world)
+      integration/support/ wat de suites delen: town_test.gd (de basis van een suite),
+                           town_world.gd (de stad starten en terugzetten), people_help.gd,
+                           story_box_help.gd, traffic_help.gd
       voxgen/              Python-generator van de tiles (zie "Tiles (opnieuw) genereren")
       megadrive/           Python-generator van alle muziek en de verkeersgeluiden in Mega Drive-stijl (FM, PSG, PCM-drums)
     docs/                  Goxel-handleiding (GOXEL.md -> handleiding_goxel.html), MUZIEK.md (de muzikale huisstijl), GELUIDEN.md (geluidseffecten en stemmen)
+
+
+Tests draaien
+-------------
+Twee soorten, allebei headless en met een tijdslimiet (nooit meer dan één Godot tegelijk):
+
+- **Unit-tests** (`tests/unit/<categorie>/test_*.gd`): kleine onderdelen los, zonder de stad,
+  in een paar seconden. Elk bestand is een `RefCounted`-script; elke functie die met `test_`
+  begint is een test en krijgt een `test` met `test.check(voorwaarde, "wat")`.
+  `tools/godot.sh --headless --script tests/run_unit_tests.gd` (alles),
+  `... -- babble` (bestanden met die naam) of `... -- audio` (een categorie).
+- **Integratietests** (`tests/integration/<categorie>/test_*.gd`): scenario's in de stad. Elke
+  suite `extends "res://tests/integration/support/town_test.gd"`; elke functie die met `test_`
+  begint is een test (een coroutine, ook met `test.check`). De runner
+  (`tests/run_integration_tests.gd`) start de stad één keer voor alle suites die dezelfde
+  wereld willen en zet haar vóór elke test terug (`TownWorld.reset`: schermen dicht, buiten op
+  de startplek, geld, spullen en gezondheid als bij de start, verhaal terug, wat een test met
+  `set_for_test` veranderde hersteld), dus elke test klopt op zichzelf.
+  `tests/run_integration_tests.sh throw_out` (één suite), `... interiors` (een categorie),
+  `... alle` (elke categorie en daarna de suites met een eigen proces, met een samenvatting),
+  `... test_traffic` (een suite die net zo heet als haar categorie), `... drive -- 300`
+  (argumenten voor de suite, in de suite `argument(0)`). De tests draaien versneld
+  (`--fixed-fps`): wachten gaat in speltijd (`seconds()`, `wait_until()`, `frames()`), niet op de klok.
+
+Een suite kiest haar wereld met `static func world_options()` (`TownWorld.DEFAULTS`): niets =
+de gewone stad (Martin, geen verkeer, zonder DetailNiveau en Rook, speler wakker, verhaal
+weggeklikt); `"traffic": true` of een aantal; `"character"`; `"without"` (nodes weglaten);
+`"settings"` (`{node: {eigenschap: waarde}}`, gezet vóór de stad de boom in gaat);
+`"still_camera"`; `"wake": false` (de stad zoals het spel haar start: afdaling, slapende
+speler, verhaal open); `"town": false` (geen stad: de suite bouwt haar eigen kleine scène met
+`add_to_root`, de reset ruimt die op); `"own_process": true` (een meting of lange simulatie:
+draait alleen als je haar bij naam vraagt of met `alle`, niet met haar categorie). Suites
+met dezelfde opties delen één stad, dus kies waar het kan de gewone stad of `{"traffic": true}`.
+
+Een nieuwe test: neem `tests/integration/interiors/test_throw_out.gd` als voorbeeld (kopje
+bovenaan, kleine hulpfuncties, per scenario één `test_`-functie met een `##`-commentaar erboven
+dat zegt wat hij controleert). Gedeelde hulpcode staat in `tests/integration/support/`
+(`town_test.gd`: `enter`/`leave_interior`/`use_door`, `stand_at`, `prompts`/`use_prompt`,
+`close_screens`, `set_for_test`, `camera_off`, `hold_view`; `people_help.gd`,
+`traffic_help.gd`, `story_box_help.gd`). Kan iets zonder de stad en zonder frames, maak er
+dan een unit-test van. `tests/integration/world/test_fps.gd` is geen suite maar een meting in
+een venster (zie "Meten").
 
 
 Snel starten
@@ -1941,7 +1982,7 @@ Prestaties en uiterlijk
     (`crt_ui_curvature` 0,02), zodat de hoeken leesbaar blijven; de zwarte hoeken snijden de HUD
     niet af. Scanlijnen (`scanlines`, `scanline_strength` 0,1) en een iets donkerdere rand
     liggen over beide.
-  Test: `tools/godot.sh --headless --script tests/integration/ui/test_hud.gd`.
+  Test: `tests/run_integration_tests.sh hud`.
 - Spelmenu (`scripts/ui/game_menu.gd`, `GameMenu`, een CanvasLayer die de HUD als kind
   krijgt; ontwerpen "Inventory & character", "Questlog" en "Wereldkaart", 1280 x 720, schaalt
   mee zoals de HUD, met scanlijnen en de lichte buiging van de HUD). Helemaal in code
@@ -1978,10 +2019,10 @@ Prestaties en uiterlijk
     `inventory`, `use_item`, `drop_item`, `is_dead`, signalen `inventory_changed` en
     `stats_changed`); zonder speler het gekozen karakter en zijn `START_ITEMS`.
     API: `open(tab)`, `close()`, `is_open()`.
-  Test: `tools/godot.sh --headless --script tests/integration/ui/test_game_menu.gd`.
+  Test: `tests/run_integration_tests.sh game_menu`.
 - Lettertype: Rubik (`assets/fonts/Rubik.ttf`, OFL-licentie), ingesteld als
   projectfont.
-- Meten: `Godot --script tests/integration/world/test_fps.gd -- 20 flyover` of
+- Meten: `tools/godot.sh --script tests/integration/world/test_fps.gd -- 20 flyover` of
   `-- 10 140` (vaste zoom 140 m), of een vast beeld met vlaggen:
   `-- 10 140 72 60 s` (drukke wijk rond x 72, z 60, zonder schaduw). Sluit de Godot-editor tijdens het meten, anders
   delen ze de GPU. `tools/check/triangle_count.gd` toont het aantal driehoeken per tile en

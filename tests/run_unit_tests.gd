@@ -8,7 +8,7 @@ extends SceneTree
 ##   tools/godot.sh --headless --script tests/run_unit_tests.gd
 ##   tools/godot.sh --headless --script tests/run_unit_tests.gd -- babble   (only files with "babble")
 ##   tools/godot.sh --headless --script tests/run_unit_tests.gd -- audio    (only that category)
-## The bigger checks with the whole city stay in tools/check/.
+## The scenarios in the whole city are the integration tests (tests/run_integration_tests.sh).
 
 const Common = preload("res://tools/tool_common.gd")
 const UNIT_FOLDER := "res://tests/unit/"

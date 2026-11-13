@@ -38,8 +38,7 @@ func _go_in(test, way_in: Dictionary) -> Node3D:
 	for frame_index in 4:
 		await tree.physics_frame
 	test.check(prompts() == [["E", "Naar binnen"]], "%s: bij de ingang [E] Naar binnen" % way_in.name)
-	use_prompt()
-	await seconds(1.3)
+	await use_door()
 	await close_screens()
 	var shop: Node3D = interiors._interior
 	test.check(interiors.is_inside() and shop != null and shop.has_method("chain"), "%s: binnen" % way_in.name)
@@ -64,8 +63,7 @@ func _go_into_first(test, kind: String) -> Node3D:
 ## Out through the door of `shop` as the player does (nothing unpaid with them).
 func _go_out(test, shop: Node3D) -> void:
 	await put_player_in(shop, (shop.plan.door as Transform3D).origin)
-	use_prompt()
-	await seconds(1.3)
+	await use_door()
 	await close_screens()
 	test.check(not interiors.is_inside(), "weer buiten")
 

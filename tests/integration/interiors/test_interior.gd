@@ -48,8 +48,10 @@ func test_going_in_at_the_door_swipes_inside(test) -> void:
 	await stand_at(bar.door)
 	test.check(prompts() == [["E", "Naar binnen"]], "bij de deur: [E] Naar binnen")
 	use_prompt()
-	await seconds(0.4)
-	test.check(tree.root.has_node("Swipe"), "met een swipe")
+	# first the walk through the door from close by (DoorPassage), then the swipe
+	var swiped := await wait_until(func() -> bool: return tree.root.has_node("Swipe"), 6.0)
+	test.check(swiped, "met een swipe")
+	await wait_until(func() -> bool: return interiors.is_inside(), 6.0)
 	await seconds(0.8)
 	var interior: Node3D = interiors._interior
 	test.check(interiors.is_inside() and interior != null, "binnen")
@@ -120,8 +122,7 @@ func test_going_out_puts_you_before_the_door(test) -> void:
 		return
 	await stand_at((interiors._exit as Node3D).global_position)
 	test.check(prompts() == [["E", "Naar buiten"]], "bij de deur binnen: [E] Naar buiten")
-	use_prompt()
-	await seconds(1.2)
+	await use_door()
 	test.check(not interiors.is_inside() and player.global_position.distance_to(bar.door) < 2.0, "weer buiten voor de deur")
 	test.check(_ambience_is("straat"), "buiten weer het geroezemoes van de straat")
 	test.check(follow.turn_round_buildings, "buiten draait de camera weer om gebouwen")

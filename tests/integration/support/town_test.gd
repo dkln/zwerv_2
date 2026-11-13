@@ -201,3 +201,13 @@ func prompts() -> Array:
 func use_prompt() -> void:
 	if player._talk_partner and player._talk_partner.has_method("go_through"):
 		player._talk_partner.go_through()
+
+
+## Through the door the player stands at, as [E] does (use_prompt), and waited for: the walk
+## through the door shown from close by (DoorPassage) and the swipe after it, until the
+## player is on the other side (inside or outside) or, for a door that stays shut, a while.
+func use_door() -> void:
+	var was_inside: bool = interiors.is_inside()
+	use_prompt()
+	await wait_until(func() -> bool: return interiors.is_inside() != was_inside and not interiors._passing_door, 10.0)
+	await frames(30)

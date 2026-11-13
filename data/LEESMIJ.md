@@ -196,7 +196,7 @@ als in `voorbijgangers.json` (`spreker`, `begroetingen`, `onderwerp`, `kleingeld
 | `nog_iets` | eigen zinnen na een antwoord (anders die van de voorbijgangers) |
 | `betrapt` | alleen de conducteur: wat hij zegt als je met hem praat terwijl hij je achternazit omdat je zwartreed; je krijgt dan de boete (`{boete}`: het bedrag) |
 
-Controle: `tools/godot.sh --headless --script tests/integration/people/test_staff_talk.gd`.
+Controle: `tests/run_integration_tests.sh staff_talk`.
 
 ## De snackbarhouder — `gesprekken/snackbarhouder.json`
 
@@ -246,7 +246,7 @@ met **dezelfde velden** als `snackbarhouder.json`. Wat een zaak weglaat komt uit
 
 Een nieuw product: zet het item in `scripts/player/items.gd` (naam, soort, tekst, effect;
 een eigen icoon in `GameMenu.ITEM_ICONS`) en een regel in het `menu` van de zaak.
-Controle: `tools/godot.sh --headless --script tests/integration/interiors/test_shop.gd`.
+Controle: `tests/run_integration_tests.sh shop`.
 
 ## De supermarkten — `gesprekken/supermarkten.json`
 
@@ -368,5 +368,5 @@ ook "Automaten, blikjes en pinpassen" in `INSTRUCTIONS.md`):
 
 Een raadsel bij de cijfers (`DIGIT_RIDDLES`) moet echt dat cijfer opleveren: rij 0 is het
 cijfer 0, rij 8 het cijfer 8 ("de poten van een spin"). Controleer na een wijziging met
-`tools/godot.sh --headless --script tests/integration/interiors/test_machines.gd` (die rekent elk raadsel na).
+`tools/godot.sh --headless --script tests/run_unit_tests.gd -- bank_cards` (die rekent elk raadsel na).
 In een gesprek een pinpas geven: `speler.give_found_bank_card()`; een blikje: het item `blikje`.

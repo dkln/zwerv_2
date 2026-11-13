@@ -68,8 +68,7 @@ func test_in_through_a_door_of_the_slabs(test) -> void:
 	print("ingang %s, het stadhuis op de kaart %s" % [(way_in.door as Vector3).snapped(Vector3.ONE * 0.1), places.get("stadhuis")])
 	await stand_at(way_in.door)
 	test.check(prompts() == [["E", "Naar binnen"]], "bij de deur: [E] Naar binnen")
-	use_prompt()
-	await seconds(1.3)
+	await use_door()
 	var hall: Node3D = interiors._interior
 	test.check(interiors.is_inside() and hall != null and hall.has_method("ride"), "binnen in het stadhuis")
 
@@ -179,6 +178,5 @@ func test_down_again_and_out_of_the_door(test) -> void:
 	await _ride_and_check(test, hall, 0)
 	await stand_at((hall.get_node("Deur") as Node3D).global_position)
 	test.check(prompts() == [["E", "Naar buiten"]], "bij de deur binnen: [E] Naar buiten")
-	use_prompt()
-	await seconds(1.3)
+	await use_door()
 	test.check(not interiors.is_inside() and player.global_position.distance_to(way_in.door) < 2.0, "weer buiten op het Spui")

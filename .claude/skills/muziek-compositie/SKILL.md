@@ -73,8 +73,8 @@ stap 1 en 2 anders: zie "Een VGM-bestand" hieronder; stap 3 tot en met 8 blijven
    pas dan `tools/muziek/derive.py` algemeen aan (zodat het voor elke compositie werkt) en zet
    het in "Afgeleide stukken" van `docs/MUZIEK.md`.
 7. **Speltests** (één tegelijk, headless):
-   `tools/godot.sh --headless --script tests/integration/ui/test_intro.gd` en
-   `tools/godot.sh --headless --script tests/integration/world/test_city_music.gd`.
+   `tests/run_integration_tests.sh intro` en
+   `tests/run_integration_tests.sh city_music`.
 ## Een VGM-bestand
 
 Een VGM is het logboek van de registers van de YM2612 (FM) en de SN76489 (PSG). Het wordt

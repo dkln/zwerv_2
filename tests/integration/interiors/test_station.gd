@@ -110,8 +110,7 @@ func test_in_at_the_middle_door(test) -> void:
 	for frame_index in 4:
 		await tree.physics_frame
 	test.check(prompts() == [["E", "Naar binnen"]], "bij de deur: [E] Naar binnen")
-	use_prompt()
-	await seconds(1.4)
+	await use_door()
 	var station: Node3D = interiors._interior
 	test.check(interiors.is_inside() and station != null and station.has_method("departures"), "binnen in het station")
 	if station == null or not station.has_method("departures"):
@@ -561,7 +560,6 @@ func test_out_through_door_three(test) -> void:
 	for frame_index in 4:
 		await tree.physics_frame
 	test.check(prompts() == [["E", "Naar buiten"]], "bij deur 3 binnen: [E] Naar buiten")
-	use_prompt()
-	await seconds(1.4)
+	await use_door()
 	var east: Dictionary = _ways_in().filter(func(way: Dictionary) -> bool: return int(way.door_index) == 3)[0]
 	test.check(not interiors.is_inside() and player.global_position.distance_to(east.door) < 2.5, "weer buiten bij de oostelijke deur (%.1f m)" % player.global_position.distance_to(east.door))
