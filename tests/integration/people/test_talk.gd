@@ -31,6 +31,14 @@ func _stand_before_someone() -> Pedestrian:
 	person._pause = 100.0
 	player.global_position = person.global_position + Vector3(1.2, 0.0, 0.0)
 	await physics_frames(10)
+	# someone else plain who walked up closer meanwhile is the one the player talks to: then
+	# that one (the town is busy)
+	var partner: Variant = player._talk_partner
+	if partner is Pedestrian and partner != person and partner.mobility == "" and partner.role == "" \
+			and partner._ragdoll == null and not partner.has_meta(Conversations.GAVE_META):
+		person._pause = 0.0
+		partner._pause = 100.0
+		return partner
 	return person
 
 

@@ -32,6 +32,25 @@ func _chairs() -> Array:
 	return walkers.people().filter(func(person: Pedestrian) -> bool: return is_instance_valid(person) and person._wheelie != null)
 
 
+## Every test without a camera (the shared town may have one: then the riders out of view
+## leave their wheelie alone), every vehicle looking again at once whether it is seen, and
+## at least one wheelchair in town (they are few: someone on foot gets one, as Pedestrians
+## does for who it owes one).
+func _set_up() -> void:
+	camera_off()
+	for vehicle in TrafficHelp.vehicles_in_town():
+		vehicle._sight_countdown = 0
+	var walkers: Pedestrians = scene.get_node("Voetgangers")
+	if _chairs().is_empty():
+		for person: Pedestrian in walkers.people():
+			if person.aid == null and person.mobility == "" and person.role == "" and person._ragdoll == null \
+					and person._waiting_become.is_empty():
+				person.become(person.walker_seed, person.wanted_look, "rolstoel", 1.0, "", person.crowd_kind)
+				break
+		await wait_until(func() -> bool: return not _chairs().is_empty(), 10.0)
+	await physics_frames(2)
+
+
 ## A wheelie started now, at its full height, kept up for seconds.
 func _force(wheelie: Wheelie) -> void:
 	wheelie._up_left = 5.0
@@ -49,6 +68,7 @@ func _end_wheelies() -> void:
 ## Forced into a wheelie, the two-wheelers lift their front while the rear wheel's contact
 ## point stays where it was on the road.
 func test_two_wheelers_go_up_on_the_rear_wheel(test) -> void:
+	await _set_up()
 	var riders := _riders()
 	test.check(riders.size() > 0, "tweewielers die een wheelie kunnen (%d)" % riders.size())
 	for rider in riders:
@@ -75,6 +95,7 @@ func test_two_wheelers_go_up_on_the_rear_wheel(test) -> void:
 ## Forced into a wheelie, the wheelchairs tip back onto their big wheels, and one in a
 ## wheelie is a daredevil that tears along.
 func test_wheelchairs_go_up_on_the_big_wheels(test) -> void:
+	await _set_up()
 	var chairs := _chairs()
 	test.check(chairs.size() > 0, "rolstoelen die een wheelie kunnen (%d)" % chairs.size())
 	for person: Pedestrian in chairs:
@@ -97,6 +118,7 @@ func test_wheelchairs_go_up_on_the_big_wheels(test) -> void:
 ## A two-wheeler in a wheelie is a daredevil: far over its usual speed, and it brakes for
 ## neither traffic nor pedestrians.
 func test_in_a_wheelie_a_daredevil(test) -> void:
+	await _set_up()
 	var riders := _riders()
 	for rider in riders:
 		_force(rider._wheelie)

@@ -15,7 +15,9 @@ extends Vehicle
 ## while it brakes or rolls to a stop), its feet on the pedals and its knees bending
 ## (TownsfolkFigure.aim_leg), its hands following the bars as they steer.
 ## The rider and the bicycle count for its size (Vehicle._measure_length: everything drawn
-## on the body), so for the others, for a crash and for its wreck's collider.
+## on the body), so for the others, for a crash and for its wreck's collider; it is measured
+## with the rider in one pose, so its sides get RIDER_SWAY more (the knees and elbows move
+## out a little while pedalling and steering).
 ## Some do a wheelie now and then (`wheelie_degrees`, Wheelie): going straight at speed the
 ## front comes up on the rear wheel for a few seconds and the rider shouts something cocky
 ## (DriverShout, mood "wheelie", `wheelie_kind` for its own lines).
@@ -34,6 +36,8 @@ const KnockDown = preload("res://scripts/world/people/knock_down.gd")
 const TOPPLE_SPIN := 5.5
 const TOPPLE_CENTRE := 0.6
 const RIDER_MASS := 75.0
+## Metres added to each side of the outer box for the rider's knees and elbows moving out.
+const RIDER_SWAY := 0.04
 const RIDER_FLIES_ON := 0.85
 const RIDER_TUMBLE := 3.0
 ## Seconds after the crash at which the wreck's box shrinks to the vehicle without its rider.
@@ -182,6 +186,13 @@ func rider_figure_look() -> Dictionary:
 	var look := TownsfolkFigure.look_for(route_seed * 7 + 3, rider_kind)
 	look.merge(rider_look, true)
 	return look
+
+
+func _measure_length() -> void:
+	super()
+	if _rider:
+		_outer_box.position.x -= RIDER_SWAY
+		_outer_box.size.x += RIDER_SWAY * 2.0
 
 
 func _add_rider() -> void:

@@ -1,7 +1,7 @@
 extends "res://tests/integration/support/town_test.gd"
 ## People on foot going somewhere (Pedestrians.route_to_somewhere, Pedestrian._next_on_the_way):
 ## a route to a place a few blocks off over the pavements and the zebras, most of the people
-## round the player on such a way, and people really crossing the roads at the zebras.
+## round the player on such a way or wandering a while, and people really crossing the roads at the zebras.
 ##   tests/run_integration_tests.sh walking_routes
 
 
@@ -38,8 +38,8 @@ func test_a_route_leads_blocks_away_and_over_zebras(test) -> void:
 	test.check(over_a_zebra * 3 >= routes, "veel routes steken een straat over via een zebra (%d van %d)" % [over_a_zebra, routes])
 
 
-## Walking a while: most people are on their way somewhere, and some of them are seen
-## crossing a road on a zebra.
+## Walking a while: nearly everyone is on a way somewhere or wandering a while on purpose,
+## a good share on a way, and some of them are seen crossing a road on a zebra.
 func test_people_walk_their_way_and_cross(test) -> void:
 	var town := _town()
 	var crossed := {}
@@ -49,16 +49,24 @@ func test_people_walk_their_way_and_cross(test) -> void:
 		for person: Pedestrian in town.people():
 			if town.is_zebra(person.cell):
 				crossed[person.get_instance_id()] = true
-	# who is not on a way, and why (to the station, wandering a while, a role, riding)
+	# who is not on a way, and why (wandering a while, a role, knocked down)
 	var reasons := {}
 	for person: Pedestrian in town.people():
-		if not person.way_ahead().is_empty():
+		# (who heads for the station is on its way too, there, without a way of cells)
+		if not person.way_ahead().is_empty() or person.heading_to_station:
 			on_a_way += 1
 			continue
-		var reason := "naar station" if person.heading_to_station else "dwaalt" if person._wander_left > 0 \
-				else "rol " + person.role if person.role != "" else "valt" if person._ragdoll else "zomaar"
+		var reason := "dwaalt" if person._wander_left > 0 \
+				else "rol " + person.role if person.role != "" else "valt" if person._ragdoll \
+				else "geen route" if town.route_to_somewhere(person.cell, person.mobility).is_empty() \
+				else "pauze" if person._pause > 0.0 else "op zebra" if person._on_zebra else "zomaar"
 		reasons[reason] = int(reasons.get(reason, 0)) + 1
 	print("  niet op weg: ", reasons)
 	var people: int = town.people().size()
-	test.check(people > 0 and on_a_way * 2 >= people, "de meesten zijn ergens naar op weg (%d van %d)" % [on_a_way, people])
+	# wandering a while is meant (Pedestrian.WANDER_CHANCE, after arriving or a blocked way):
+	# nearly everyone is either on a way or wandering, and a good share is on a way
+	var wandering := int(reasons.get("dwaalt", 0))
+	test.check(people > 0 and (on_a_way + wandering) * 4 >= people * 3,
+		"bijna iedereen loopt ergens naartoe of dwaalt bewust (%d + %d van %d)" % [on_a_way, wandering, people])
+	test.check(on_a_way * 3 >= people, "een flink deel is op weg naar een plek (%d van %d)" % [on_a_way, people])
 	test.check(crossed.size() >= 3, "mensen steken echt over bij een zebra (%d in 90 s)" % crossed.size())

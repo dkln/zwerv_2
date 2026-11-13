@@ -759,8 +759,9 @@ func _physics_process(delta: float) -> void:
 	_tick_current = global_transform
 	_bump_clock = maxf(_bump_clock - delta, 0.0)
 	# only what is seen crashes: out of sight it keeps its distance (_body_ahead_speed) and that
-	# is enough (a crash nobody sees costs the look-up of everyone round it every step)
-	if not unseen:
+	# is enough (a crash nobody sees costs the look-up of everyone round it every step); who
+	# drives recklessly or as a daredevil keeps no distance, so it looks out of sight too (few)
+	if not unseen or reckless or daredevil:
 		_check_crash()
 	if not unseen:
 		_turn_wheels(speed * delta, delta)

@@ -100,8 +100,9 @@ func test_impatient_car_drives_on_and_knocks_them_over(test) -> void:
 		pushed = pushed or car.is_pushing_through()
 		if step % 30 == 0 and car.is_pushing_through():
 			var to_victim := victim.global_position - car.global_position
-			print("    duwt: %.1f m/s, %.2f m voor de neus, %.2f opzij, hoogte %.2f" % [car.speed,
-				to_victim.dot(car.global_basis.z) - car._outer_box.end.z, to_victim.dot(car.global_basis.x), to_victim.y])
+			print("    duwt: %.1f m/s, %.2f m voor de neus, %.2f opzij, hoogte %.2f; verkeer %.1f (%s), regel %s, mensen %.1f" % [car.speed,
+				to_victim.dot(car.global_basis.z) - car._outer_box.end.z, to_victim.dot(car.global_basis.x), to_victim.y,
+				car._traffic_limit, car._blocked_by.name if car._blocked_by else "-", car._held_by_rule, car._people_limit])
 		if victim.hits > 0:
 			break
 	test.check(stood, "%s stopt eerst voor wie in de weg staat" % car.name)

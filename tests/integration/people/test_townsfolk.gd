@@ -156,6 +156,8 @@ func test_player_collider_fits_the_figure(test) -> void:
 ## As many pedestrians walk in the town as this hour and this district ask for.
 func test_all_pedestrians_are_placed(test) -> void:
 	var walkers := _walkers()
+	# (someone gone into the station or knocked down just now is replaced within a few seconds)
+	await wait_until(func() -> bool: return walkers.people().size() == walkers.wanted_count(), 10.0)
 	var people := walkers.people()
 	print("voetgangers: %d, beloopbare cellen %d, zebra-overgangen %d" % [people.size(), walkers._walkable_cells.size(),
 		walkers._links.keys().filter(func(cell: Vector3i) -> bool: return walkers.is_zebra(cell)).size()])
