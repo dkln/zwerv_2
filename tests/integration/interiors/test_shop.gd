@@ -224,7 +224,7 @@ func test_kiosk_sells_a_newspaper_across_the_counter(test) -> void:
 		if goods[good_index].item == "krant":
 			newspaper = good_index
 	test.check(newspaper >= 0, "de kiosk verkoopt kranten")
-	var vendor_face: TownsfolkFigure = shop._portrait._townsfolk if shop._portrait else null
+	var vendor_face: TownsfolkFigure = shop._portrait.townsfolk_figure() if shop._portrait else null
 	var vendor_mouths := {}
 	for sample in 16:
 		await seconds(0.04)

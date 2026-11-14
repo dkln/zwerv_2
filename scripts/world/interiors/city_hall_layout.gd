@@ -356,6 +356,56 @@ static func _council_chamber() -> Dictionary:
 const CABIN_AT := Vector3(FLOORS * FLOOR_SPACING, 0.0, 0.0)
 
 
+# ------------------------------------------------------------------ what the city hall hangs up itself
+
+## The doors of the lift: how far each leaf slides aside (metres), and where the floor display
+## hangs over them (up from the door marker, and this far out of the wall along its front).
+const DOOR_LEAF := 0.75
+const FLOOR_DISPLAY_RISE := 2.6
+const FLOOR_DISPLAY_OUT := -0.02
+## The waiting board on the left wall of Burgerzaken (in the floor's space): where its top
+## line is, and the drop from one line to the next.
+const WAITING_BOARD_AT := Vector3(-23.8, 3.2, 3.0)
+const WAITING_BOARD_LINE := 0.42
+## The big board of the number called now (Burgerzaken's floor space: on the back wall over
+## the right counters, readable from the room), and its heading this far over it.
+const NOW_BOARD_AT := Vector3(8.0, 3.2, 14.8)
+const NOW_HEADING_RISE := 0.62
+## Who is called stands this far before the counter's marker; the people behind a counter are
+## talked to from this far before them, within this reach (InteriorPerson.talk_ahead, talk_reach).
+const COUNTER_STAND_BEFORE := 0.98
+const COUNTER_TALK_AHEAD := 1.4
+const COUNTER_TALK_REACH := 1.6
+## The caretaker's cart: this far before him (metres).
+const CART_AHEAD := 0.85
+
+
+## Where a leaf of the lift doors is: `home` when shut, slid aside along the front of the
+## lift (`front_x`, the x of the leaf's basis) to its `side` (-1 left, 1 right) when open.
+static func door_leaf_at(home: Vector3, front_x: Vector3, side: float, open: bool) -> Vector3:
+	return home + front_x * side * (DOOR_LEAF if open else 0.0)
+
+
+## Whether a leaf at `at` counts as open: more than half its slide from `home`.
+static func is_leaf_open(at: Vector3, home: Vector3) -> bool:
+	return at.distance_to(home) > DOOR_LEAF * 0.5
+
+
+## Where line `line_index` of the waiting board hangs (0: its heading).
+static func waiting_board_line_at(line_index: int) -> Vector3:
+	return WAITING_BOARD_AT + Vector3(0.0, -line_index * WAITING_BOARD_LINE, 0.0)
+
+
+## Where the heading over the board of the number called now hangs.
+static func now_heading_at() -> Vector3:
+	return NOW_BOARD_AT + Vector3(0.0, NOW_HEADING_RISE, 0.0)
+
+
+## Where who is called stands at the counter whose marker is at `counter_at` (floor space).
+static func counter_stand(counter_at: Vector3) -> Vector3:
+	return Vector3(counter_at.x, 0.0, counter_at.z - COUNTER_STAND_BEFORE)
+
+
 static func _tile(plan: Dictionary, tile_name: String, at: Vector3, turn: float) -> void:
 	plan.tiles.append([tile_name, at, turn])
 

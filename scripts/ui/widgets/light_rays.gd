@@ -2,15 +2,17 @@ extends Control
 ## Light rays turning slowly behind something that is a moment of its own: the emblem of a new
 ## mission in the story box (widgets/mission_badge.gd) and the item of the reward screen
 ## (scripts/ui/reward_screen.gd). Thin triangles from the middle; fills its parent; drawn in
-## code (draw_rays, also for whoever draws them in its own _draw).
+## code (draw_rays, also for whoever draws them in its own _draw). Graphics
+## (docs/CODE_LAGEN.md): a picture on its own, nothing to decide; its shapes come from
+## light_rays_layout.gd.
+##   const LightRays = preload("res://scripts/ui/widgets/light_rays.gd")
 
-const UiStyle = preload("res://scripts/ui/ui_style.gd")
-## How many, how long (share of the size), how wide each one is (radians either side) and how
-## fast they turn (radians per second); the colour, barely there.
-const RAY_COUNT := 8
-const RAY_LENGTH := 0.75
-const RAY_SPREAD := 0.11
-const RAY_SPEED := 0.35
+const LightRaysLayout = preload("res://scripts/ui/widgets/light_rays_layout.gd")
+const RAY_COUNT := LightRaysLayout.RAY_COUNT
+const RAY_LENGTH := LightRaysLayout.RAY_LENGTH
+const RAY_SPREAD := LightRaysLayout.RAY_SPREAD
+const RAY_SPEED := LightRaysLayout.RAY_SPEED
+## The colour, barely there.
 const RAY_COLOUR := Color(1.0, 0.71, 0.28, 0.08)
 
 var colour := RAY_COLOUR
@@ -34,19 +36,12 @@ func _process(delta: float) -> void:
 
 
 func _draw() -> void:
-	draw_rays(self, (size * 0.5).round(), size.length() * length, _clock * speed, colour, count, spread)
+	draw_rays(self, LightRaysLayout.middle(size), LightRaysLayout.reach(size, length), _clock * speed, colour, count, spread)
 
 
 ## `ray_count` rays from `middle` on `canvas`, `reach` px long, turned `turn` radians.
 static func draw_rays(canvas: CanvasItem, middle: Vector2, reach: float, turn: float, ray_colour := RAY_COLOUR,
 		ray_count := RAY_COUNT, ray_spread := RAY_SPREAD) -> void:
 	for ray in ray_count:
-		canvas.draw_colored_polygon(ray_triangle(middle, reach, turn + TAU * ray / ray_count, ray_spread), ray_colour)
-
-
-## The triangle of one ray: from `middle`, `reach` px long, pointing along `angle` (radians),
-## `ray_spread` radians wide to either side.
-static func ray_triangle(middle: Vector2, reach: float, angle: float, ray_spread := RAY_SPREAD) -> PackedVector2Array:
-	return PackedVector2Array([middle,
-			middle + Vector2.from_angle(angle - ray_spread) * reach,
-			middle + Vector2.from_angle(angle + ray_spread) * reach])
+		canvas.draw_colored_polygon(LightRaysLayout.ray_triangle(middle, reach,
+				LightRaysLayout.ray_angle(turn, ray, ray_count), ray_spread), ray_colour)

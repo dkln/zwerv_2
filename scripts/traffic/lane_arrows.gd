@@ -11,6 +11,14 @@ extends Node3D
 ## - `chosen_color`: lanes, road users or speed limit chosen for this one placed tile
 ##   (Build dock, "Traffic").
 ## Placing or turning ground tiles or choosing lanes updates the arrows within a second.
+##
+## This is the behaviour (the node: it watches the ground and keeps the arrows up to date).
+## Which kind of arrow a lane gets is lane_arrows_rules.gd, where it lies
+## lane_arrows_layout.gd, the drawing lane_arrows_view.gd (its child `view`).
+
+const LaneArrowsRules = preload("res://scripts/traffic/lane_arrows_rules.gd")
+const LaneArrowsLayout = preload("res://scripts/traffic/lane_arrows_layout.gd")
+const LaneArrowsView = preload("res://scripts/traffic/lane_arrows_view.gd")
 
 ## The ground GridMap with the road tiles.
 @export var ground: NodePath = ^"../Grond"
@@ -18,24 +26,24 @@ extends Node3D
 	set(value):
 		show_arrows = value
 		visible = value
-@export var fixed_color := Color(1.0, 0.85, 0.1)
-@export var context_color := Color(0.35, 0.8, 1.0)
-@export var open_color := Color(1.0, 0.2, 0.8)
-@export var chosen_color := Color(0.3, 1.0, 0.35)
+@export var fixed_color: Color = LaneArrowsView.FIXED_COLOR
+@export var context_color: Color = LaneArrowsView.CONTEXT_COLOR
+@export var open_color: Color = LaneArrowsView.OPEN_COLOR
+@export var chosen_color: Color = LaneArrowsView.CHOSEN_COLOR
 ## Show the arrows through buildings and bridges too.
 @export var through_walls := false:
 	set(value):
 		through_walls = value
-		if _material:
-			_material.no_depth_test = value
+		if view:
+			view.show_through_walls(value)
 
 ## Height of the arrows above the road surface (metres).
-const LIFT := 0.12
+const LIFT := LaneArrowsLayout.LIFT
 ## Seconds between checks whether the ground tiles changed.
-const CHECK_INTERVAL := 1.0
+const CHECK_INTERVAL := LaneArrowsRules.CHECK_INTERVAL
 
-var _arrows: MultiMeshInstance3D
-var _material: StandardMaterial3D
+## The arrows as drawn (in the editor; not owned: never saved with the scene).
+var view: LaneArrowsView
 var _signature := 0
 var _since_check := 0.0
 
@@ -45,15 +53,9 @@ func _ready() -> void:
 		queue_free()
 		return
 	visible = show_arrows
-	_material = StandardMaterial3D.new()
-	_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	_material.vertex_color_use_as_albedo = true
-	_material.cull_mode = BaseMaterial3D.CULL_DISABLED
-	_material.no_depth_test = through_walls
-	_arrows = MultiMeshInstance3D.new()
-	_arrows.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	_arrows.material_override = _material
-	add_child(_arrows)   # not owned: never saved with the scene
+	view = LaneArrowsView.new()
+	view.show_through_walls(through_walls)
+	add_child(view)   # not owned: never saved with the scene
 	_refresh()
 
 
@@ -61,7 +63,7 @@ func _process(delta: float) -> void:
 	if not Engine.is_editor_hint() or not visible:
 		return
 	_since_check += delta
-	if _since_check < CHECK_INTERVAL:
+	if not LaneArrowsRules.check_due(_since_check):
 		return
 	_since_check = 0.0
 	var gridmap := get_node_or_null(ground) as GridMap
@@ -72,42 +74,33 @@ func _process(delta: float) -> void:
 ## Rebuilds the arrows from the ground tiles as they are now.
 func _refresh() -> void:
 	var gridmap := get_node_or_null(ground) as GridMap
-	if gridmap and _arrows:
-		_arrows.multimesh = build_arrows(gridmap)
-		_arrows.global_transform = Transform3D.IDENTITY
+	if gridmap and view:
+		_signature = _signature_of(gridmap)
+		view.show_arrows(arrow_list(gridmap))
 
 
 ## The arrows of all lanes of this ground GridMap (world positions), as a MultiMesh with
 ## a colour per arrow.
 func build_arrows(gridmap: GridMap) -> MultiMesh:
 	_signature = _signature_of(gridmap)
-	var arrows := arrow_list(gridmap)
-	var multimesh := MultiMesh.new()
-	multimesh.transform_format = MultiMesh.TRANSFORM_3D
-	multimesh.use_colors = true
-	multimesh.mesh = _arrow_mesh()
-	multimesh.instance_count = arrows.size()
-	for index in arrows.size():
-		multimesh.set_instance_transform(index, arrows[index].placement)
-		multimesh.set_instance_color(index, arrows[index].color)
-	return multimesh
+	return LaneArrowsView.multimesh_of(arrow_list(gridmap))
 
 
 ## Every arrow: {placement (world transform), color}.
 func arrow_list(gridmap: GridMap) -> Array[Dictionary]:
 	var network := RoadNetwork.new(gridmap)
+	var colors := {LaneArrowsRules.FIXED: fixed_color, LaneArrowsRules.CONTEXT: context_color,
+		LaneArrowsRules.OPEN: open_color, LaneArrowsRules.CHOSEN: chosen_color}
 	var arrows: Array[Dictionary] = []
 	for cell: Vector3i in network.cells():
 		var headings := network.lanes(cell)
+		var chosen := network.is_chosen(cell) or network.has_chosen_kinds(cell) or network.has_chosen_speed(cell)
 		for heading in headings:
-			var color := context_color if network.is_from_context(cell, heading) else fixed_color
-			if network.is_chosen(cell) or network.has_chosen_kinds(cell) or network.has_chosen_speed(cell):
-				color = chosen_color
-			elif headings.has(-heading):
-				color = open_color
-			var placement := gridmap.global_transform * _placement(network, cell, heading, headings.size() > 1) \
-					if gridmap.is_inside_tree() else _placement(network, cell, heading, headings.size() > 1)
-			arrows.append({"placement": placement, "color": color})
+			var kind := LaneArrowsRules.arrow_kind(network.is_from_context(cell, heading), chosen, headings.has(-heading))
+			var placement := _placement(network, cell, heading, headings.size() > 1)
+			if gridmap.is_inside_tree():
+				placement = gridmap.global_transform * placement
+			arrows.append({"placement": placement, "color": colors[kind]})
 	return arrows
 
 
@@ -117,29 +110,9 @@ func arrow_list(gridmap: GridMap) -> Array[Dictionary]:
 func _placement(network: RoadNetwork, cell: Vector3i, heading: Vector2i, shift: bool) -> Transform3D:
 	var spot := network.centre(cell)
 	if shift:
-		spot += Vector3(heading.x, 0.0, heading.y) * 0.7
+		spot = LaneArrowsLayout.shifted(spot, heading)
 		spot.y = network.height(cell, Vector2(spot.x, spot.z))
-	var forward := Vector3(heading.x, network.slope(cell, heading), heading.y).normalized()
-	return Transform3D(Basis.looking_at(-forward, Vector3.UP), spot + Vector3.UP * LIFT)
-
-
-## A flat arrow in the x-z plane, pointing along +z, 2.2 m long.
-func _arrow_mesh() -> ArrayMesh:
-	var shaft_half := 0.18
-	var head_half := 0.6
-	var tail := -1.1
-	var neck := 0.3
-	var tip := 1.1
-	var corners := PackedVector3Array([
-		Vector3(-shaft_half, 0, tail), Vector3(shaft_half, 0, tail), Vector3(shaft_half, 0, neck),
-		Vector3(-shaft_half, 0, tail), Vector3(shaft_half, 0, neck), Vector3(-shaft_half, 0, neck),
-		Vector3(-head_half, 0, neck), Vector3(head_half, 0, neck), Vector3(0, 0, tip)])
-	var surface := []
-	surface.resize(Mesh.ARRAY_MAX)
-	surface[Mesh.ARRAY_VERTEX] = corners
-	var mesh := ArrayMesh.new()
-	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, surface)
-	return mesh
+	return LaneArrowsLayout.placement(spot, heading, network.slope(cell, heading))
 
 
 ## A number that changes when a ground tile is placed, removed or turned, or its lanes chosen.

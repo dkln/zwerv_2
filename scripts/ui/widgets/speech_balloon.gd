@@ -2,16 +2,16 @@ extends Control
 ## A speech balloon: a short spoken line or a shout of someone, over their head, typed out
 ## like the story box (Typewriter: word by word), but without its cursor and silent: the
 ## shout itself is what you hear, the words come without blips.
-## An ink panel with a border in the speaker's colour, the text in the pixel font, a tail
-## pointing down at the speaker; the balloon (not its text) with the faux 3D of the game's
-## texts (UiStyle.faux_3d): a darker copy straight under it, in the border's colour half as
-## light, BALLOON_DEPTH px lower. It pops up, types, holds `hold` seconds
-## once it is all there, then fades; `finished` fires when it is gone.
+## It pops up, types, holds `hold` seconds once it is all there, then fades; `finished`
+## fires when it is gone.
 ## Where: the node's position is the tip of the tail (the balloon stands above it).
 ## - In the UI (the character creation screen): set `position` yourself.
 ## - In the world (shouts on the street): follow(node, camera) keeps the tip over a Node3D
 ##   (`head_height` m above its origin), hidden while that point is behind the camera; put
 ##   the balloon on a CanvasLayer (the HUD).
+## Behaviour (docs/CODE_LAGEN.md): it keeps the line under way, the hold and whom it
+## follows; its picture is speech_balloon_view.gd, its sizes speech_balloon_layout.gd.
+##   const SpeechBalloon = preload("res://scripts/ui/widgets/speech_balloon.gd")
 ##   var balloon := SpeechBalloon.new()
 ##   hud_layer.add_child(balloon)
 ##   balloon.follow(passer_by, camera)
@@ -19,34 +19,26 @@ extends Control
 
 signal finished
 
-const UiStyle = preload("res://scripts/ui/ui_style.gd")
+const SpeechBalloonLayout = preload("res://scripts/ui/widgets/speech_balloon_layout.gd")
+const SpeechBalloonView = preload("res://scripts/ui/widgets/speech_balloon_view.gd")
 const Typewriter = preload("res://scripts/ui/widgets/typewriter.gd")
 
-## The widest the text runs before it wraps (px), the font size, the padding.
-const MAX_TEXT_WIDTH := 270.0
-const TEXT_SIZE := 15
-const PADDING := Vector2(10, 6)
-## How far the darker copy under the balloon sits lower (px).
-const BALLOON_DEPTH := 3
-## The tail: how high and how wide at the panel.
-const TAIL_HEIGHT := 10.0
-const TAIL_WIDTH := 12.0
-const BORDER_WIDTH := 2
-## The space between wrapped rows (px).
-const LINE_SEPARATION := 4
+## Seconds a line stays once it is all there when nothing else is asked, the pop and the fade.
+const HOLD_SECONDS := 1.6
 const POP_SECONDS := 0.14
 const FADE_SECONDS := 0.3
+## Metres over the origin of the one it follows the tip of the tail stands.
+const HEAD_HEIGHT := 2.4
 
 ## The colour of the border and the tail (whose balloon it is).
-var accent := UiStyle.ACCENT
-var head_height := 2.4
+var accent: Color
+var head_height := HEAD_HEIGHT
+## Its picture.
+var view: SpeechBalloonView
 
-var _panel: PanelContainer
-var _tail: Control
-var _text: RichTextLabel
 var _typewriter: Typewriter
 var _hold_left := 0.0
-var _hold := 1.6
+var _hold := HOLD_SECONDS
 var _fading := false
 var _follow_node: Node3D
 var _camera: Camera3D
@@ -58,28 +50,10 @@ func _init() -> void:
 	# also while the game stands still (a conversation: someone of the place warns you while
 	# you talk): else its pop, its place over the speaker and its typing stop halfway
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	_panel = PanelContainer.new()
-	_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(_panel)
-	_text = RichTextLabel.new()
-	_text.fit_content = true
-	_text.scroll_active = false
-	_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_text.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_text.add_theme_font_override("normal_font", UiStyle.font(UiStyle.FONT_PIXEL_BOLD))
-	_text.add_theme_font_size_override("normal_font_size", TEXT_SIZE)
-	_text.add_theme_color_override("default_color", UiStyle.TEXT)
-	_text.add_theme_constant_override("line_separation", LINE_SEPARATION)
-	# the text plain (only the balloon has the faux 3D)
-	_text.add_theme_constant_override("outline_size", 0)
-	_panel.add_child(_text)
-	# the tail over the panel: its fill covers the panel's bottom border where they meet, so
-	# panel and tail are one shape with one outline
-	_tail = Control.new()
-	_tail.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_tail.draw.connect(_draw_tail)
-	add_child(_tail)
-	_typewriter = Typewriter.new(_text, self)
+	view = SpeechBalloonView.new()
+	add_child(view)
+	accent = view.accent()
+	_typewriter = Typewriter.new(view.text_label(), self)
 	# the shout itself is heard; the words come silently and without a cursor
 	_typewriter.sound = false
 	_typewriter.show_cursor = false
@@ -87,42 +61,19 @@ func _init() -> void:
 
 ## Types `line` out and keeps it `hold` seconds once it is all there; a new line replaces the
 ## one under way.
-func say(line: String, hold := 1.6) -> void:
+func say(line: String, hold := HOLD_SECONDS) -> void:
 	_hold = hold
 	_hold_left = hold
 	_fading = false
-	var style := UiStyle.box_style(UiStyle.PANEL, accent, BORDER_WIDTH)
-	style.content_margin_left = PADDING.x
-	style.content_margin_right = PADDING.x
-	style.content_margin_top = PADDING.y
-	style.content_margin_bottom = PADDING.y
-	_panel.add_theme_stylebox_override("panel", style)
-	# as wide as the whole line needs (up to MAX_TEXT_WIDTH), so it does not grow while typing
-	var font := UiStyle.font(UiStyle.FONT_PIXEL_BOLD)
-	var line_width := font.get_string_size(line + " ", HORIZONTAL_ALIGNMENT_LEFT, -1, TEXT_SIZE).x
-	_text.custom_minimum_size.x = minf(ceilf(line_width) + 2.0, MAX_TEXT_WIDTH)
-	# and as high as the whole line wrapped at that width, so a long line (a warning) does not
-	# stretch the balloon taller row by row while its words type out
-	_text.custom_minimum_size.y = text_height(line, _text.custom_minimum_size.x)
+	view.show_line(line, accent)
 	_typewriter.start(line)
-	_panel.reset_size()
+	view.settle()
 	visible = true
 	modulate.a = 1.0
-	scale = Vector2.ONE * 0.6
+	scale = Vector2.ONE * SpeechBalloonLayout.POP_FROM
 	pivot_offset = Vector2.ZERO
 	create_tween().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT).tween_property(self, "scale", Vector2.ONE, POP_SECONDS)
 	_place()
-
-
-## How high `line` stands in the balloon's text when wrapped at `width` px: its rows of the
-## font with the line separation between them.
-static func text_height(line: String, width: float) -> float:
-	var font := UiStyle.font(UiStyle.FONT_PIXEL_BOLD)
-	var row := font.get_height(TEXT_SIZE)
-	var wrapped := font.get_multiline_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, width, TEXT_SIZE, -1,
-			TextServer.BREAK_MANDATORY | TextServer.BREAK_WORD_BOUND | TextServer.BREAK_ADAPTIVE)
-	var rows := maxi(1, roundi(wrapped.y / row))
-	return ceilf(rows * row + (rows - 1) * LINE_SEPARATION)
 
 
 ## Keeps the balloon over `node` (head_height m up), seen through `camera`.
@@ -165,29 +116,4 @@ func _place() -> void:
 			modulate.a = 0.0
 			return
 		position = _camera.unproject_position(head).round()
-	var panel_size := _panel.get_combined_minimum_size()
-	_panel.size = panel_size
-	_panel.position = Vector2(-roundf(panel_size.x * 0.5), -panel_size.y - TAIL_HEIGHT + BORDER_WIDTH)
-	queue_redraw()
-	_tail.queue_redraw()
-
-
-## The faux 3D of the balloon, drawn under the panel and the tail (this node draws before its
-## children): the panel's rectangle and the tail's shape with its border, BALLOON_DEPTH px
-## lower, in the border's colour half as light.
-func _draw() -> void:
-	draw_rect(Rect2(_panel.position + Vector2(0, BALLOON_DEPTH), _panel.size), UiStyle.faux_3d_colour(accent))
-	var half := TAIL_WIDTH * 0.5 + BORDER_WIDTH
-	var depth := Vector2(0, BALLOON_DEPTH)
-	draw_colored_polygon(PackedVector2Array([Vector2(-half, -TAIL_HEIGHT) + depth, Vector2(half, -TAIL_HEIGHT) + depth,
-			Vector2(0, BORDER_WIDTH) + depth]), UiStyle.faux_3d_colour(accent))
-
-
-## The tail, over the panel, pixel-hard: the outline in the accent from the panel's bottom
-## border down to the tip, and the fill in the panel's colour from a pixel inside the panel
-## (so the bottom border is gone where the tail joins) down to just above the tip.
-func _draw_tail() -> void:
-	var half := TAIL_WIDTH * 0.5
-	var top := -TAIL_HEIGHT
-	_tail.draw_colored_polygon(PackedVector2Array([Vector2(-half - BORDER_WIDTH, top), Vector2(half + BORDER_WIDTH, top), Vector2(0, BORDER_WIDTH)]), accent)
-	_tail.draw_colored_polygon(PackedVector2Array([Vector2(-half, top - 1.0), Vector2(half, top - 1.0), Vector2(0, -BORDER_WIDTH)]), UiStyle.PANEL)
+	view.place_panel()

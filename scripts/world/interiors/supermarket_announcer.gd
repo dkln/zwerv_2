@@ -4,14 +4,14 @@ extends "res://scripts/world/interiors/announcer.gd"
 ## the chain's jingle, assets/audio/muziek/jingle_<brand>.ogg from tools/muziek/derive.py, then
 ## the announcer's voice while the words type out). What is said: an offer (a product of a
 ## shelf of this branch, with this branch's price; ALFRED STEYHN's bonus in its own words) or a
-## notice (data/gesprekken/omroep_supermarkt.json).
+## notice (data/gesprekken/omroep_supermarkt.json). This is the behaviour (docs/CODE_LAGEN.md):
+## when the next one comes; what is said: supermarket_announcer_rules.gd.
 
-const MoneyText = preload("res://scripts/common/money_text.gd")
+const SupermarketAnnouncerRules = preload("res://scripts/world/interiors/supermarket_announcer_rules.gd")
 const DATA_FILE := "res://data/gesprekken/omroep_supermarkt.json"
-const MUSIC_FOLDER := "res://assets/audio/muziek/"
-const JINGLE_PREFIX := "jingle_"
-## The aisles a notice can name ({gang}).
-const AISLES := 6
+const MUSIC_FOLDER := SupermarketAnnouncerRules.MUSIC_FOLDER
+const JINGLE_PREFIX := SupermarketAnnouncerRules.JINGLE_PREFIX
+const AISLES := SupermarketAnnouncerRules.AISLES
 
 var _market: Node                    # the supermarket (brand, plan, chain(), product())
 var _data := {}
@@ -43,7 +43,7 @@ func _ready() -> void:
 ## The player came in: the first announcement after a little while ("eerste").
 func start() -> void:
 	_inside = true
-	_clock = _seconds_between("eerste", Vector2(12.0, 30.0))
+	_clock = _seconds_between("eerste", SupermarketAnnouncerRules.FIRST_SECONDS)
 
 
 ## The player went out: quiet, the text gone, the music up again.
@@ -63,80 +63,60 @@ func _process(delta: float) -> void:
 
 ## The chain's jingle, then `text` (none: the next try a while later).
 func _announce(text: String) -> void:
-	_clock = _seconds_between("tussen", Vector2(45.0, 100.0))
+	_clock = _seconds_between("tussen", SupermarketAnnouncerRules.BETWEEN_SECONDS)
 	if text == "":
 		return
-	voice = String(_chain_lines().get("stem", "vrouw"))
+	voice = SupermarketAnnouncerRules.voice(_chain_lines())
 	intro_stream = _jingle_stream()
 	say(text)
 
 
 func _on_finished(_text: String) -> void:
-	_clock = _seconds_between("tussen", Vector2(45.0, 100.0))
+	_clock = _seconds_between("tussen", SupermarketAnnouncerRules.BETWEEN_SECONDS)
 
 
 # ------------------------------------------------------------------ what is said
 
 func _chain_lines() -> Dictionary:
-	return ((_data.get("ketens", {}) as Dictionary).get(String(_market.get("brand")), {}) as Dictionary)
+	return SupermarketAnnouncerRules.chain_lines(_data, String(_market.get("brand")))
 
 
 ## An offer or a notice, not the same as the last one.
 func _next_text() -> String:
-	for _attempt in 4:
-		var text := _offer() if _random.randf() < float(_data.get("aanbieding_kans", 0.5)) else _notice()
-		if text != "" and text != _last_text:
-			_last_text = text
-			return text
-	return _notice()
+	var text := SupermarketAnnouncerRules.fresh_text(_data, String(_market.get("brand")), _market.get("plan"), _products(),
+		_last_text, _random)
+	if text == "":
+		return _notice()
+	_last_text = text
+	return text
+
+
+## Per kind of shelf of this branch its product, at this branch's price.
+func _products() -> Dictionary:
+	var products := {}
+	for category in SupermarketAnnouncerRules.shelf_categories(_market.get("plan")):
+		products[category] = _market.call("product", category)
+	return products
 
 
 ## A product of one of this branch's shelves, at this branch's price.
 func _offer() -> String:
-	var categories: Array[String] = []
-	var plan: Dictionary = _market.get("plan")
-	for shelf: Dictionary in plan.get("shelves", []):
-		var category := String(shelf.get("category", ""))
-		if category != "" and not categories.has(category):
-			categories.append(category)
-	if categories.is_empty():
-		return ""
-	var product: Dictionary = _market.call("product", categories[_random.randi() % categories.size()])
-	if product.is_empty() or String(product.get("name", "")) == "":
-		return ""
-	var lines := _chain_lines()
-	var templates: Array = lines.get("bonus", []) if bool(product.get("bonus", false)) and not (lines.get("bonus", []) as Array).is_empty() \
-		else lines.get("aanbieding", [])
-	if templates.is_empty():
-		return ""
-	return String(templates[_random.randi() % templates.size()]).format({
-		"naam": String(product["name"]), "prijs": MoneyText.amount(float(product["price"]))})
+	return SupermarketAnnouncerRules.offer(_data, String(_market.get("brand")), _market.get("plan"), _products(), _random)
 
 
 ## A notice of every supermarket or of this chain, with a checkout of this branch and an aisle.
 func _notice() -> String:
-	var notices: Array = (_data.get("mededelingen", []) as Array) + (_chain_lines().get("mededelingen", []) as Array)
-	if notices.is_empty():
-		return ""
-	var checkouts: Array = (_market.get("plan") as Dictionary).get("checkouts", [])
-	var checkout_number := 1
-	if not checkouts.is_empty():
-		checkout_number = int((checkouts[_random.randi() % checkouts.size()] as Dictionary).get("number", 1))
-	return String(notices[_random.randi() % notices.size()]).format({
-		"kassa": str(checkout_number), "gang": str(_random.randi_range(1, AISLES))})
+	return SupermarketAnnouncerRules.notice(_data, String(_market.get("brand")), _market.get("plan"), _random)
 
 
 func _seconds_between(key: String, fallback: Vector2) -> float:
-	var span: Variant = _data.get(key, [])
-	if span is Array and (span as Array).size() == 2:
-		return _random.randf_range(float(span[0]), float(span[1]))
-	return _random.randf_range(fallback.x, fallback.y)
+	return SupermarketAnnouncerRules.seconds_between(_data, key, fallback, _random)
 
 
 # ------------------------------------------------------------------ the jingle
 
 func _jingle_stream() -> AudioStream:
-	var path := MUSIC_FOLDER + JINGLE_PREFIX + String(_market.get("brand")) + ".ogg"
+	var path := SupermarketAnnouncerRules.jingle_path(String(_market.get("brand")))
 	var stream: AudioStream = null
 	if ResourceLoader.exists(path):
 		stream = load(path)

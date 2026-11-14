@@ -16,6 +16,9 @@ extends Node3D
 ## conversation (stand_neutral) and the cycle of their steps (walk_cycle: the walk and, at
 ## speed, the run of the player, TownsfolkFigure.walk).
 ## The things the player can use with [E] are not people: see scripts/world/things/interactable.gd.
+## Behaviour (docs/CODE_LAGEN.md); the sums of the voice and of the cycle: person_rules.gd.
+
+const PersonRules = preload("res://scripts/world/people/person_rules.gd")
 
 ## Everyone the player can talk to: PlayerController looks in it ("[E] Praten").
 const TALKABLE_GROUP := "aanspreekbaar"
@@ -23,8 +26,8 @@ const ACTOR_STREET := "straat"
 const ACTOR_INTERIOR := "binnen"
 const ACTOR_STATION := "station"
 ## How fast the walk comes and goes, and the run blends in and out (per second).
-const WALK_BLEND := 5.0
-const RUN_BLEND := 4.0
+const WALK_BLEND := PersonRules.WALK_BLEND
+const RUN_BLEND := PersonRules.RUN_BLEND
 
 ## What they are there (a kind of the crowd on duty, "snackbarhouder", "conducteur", ...).
 var role := ""
@@ -53,12 +56,7 @@ const VOICE_META := "stem"
 func voice() -> String:
 	if has_meta(VOICE_META):
 		return str(get_meta(VOICE_META))
-	var look: Dictionary = figure.look if figure else {}
-	if look.get("hair_style", "") == "lang" or look.get("skirt", false):
-		return "vrouw"
-	if mobility != "" or look.get("hair_style", "") == "kaal":
-		return "oude_man"
-	return "man"
+	return PersonRules.voice_of(figure.look if figure else {}, mobility)
 
 
 ## Whether the player can talk to them ("[E] Praten").
@@ -90,11 +88,9 @@ func stand_neutral() -> void:
 func walk_cycle(moved: float, delta: float) -> void:
 	if figure == null:
 		return
-	var run_wanted := TownsfolkFigure.run_share(moved / maxf(delta, 0.0001)) if moved > 0.0 else 0.0
-	_run_share_now = move_toward(_run_share_now, run_wanted, delta * RUN_BLEND)
+	var run_wanted := TownsfolkFigure.run_share(PersonRules.speed_of(moved, delta)) if moved > 0.0 else 0.0
+	_run_share_now = PersonRules.run_share_after(_run_share_now, run_wanted, delta)
 	if moved > 0.0:
-		_step_phase += moved / TownsfolkFigure.stride_at(_run_share_now) * PI
-		_walk_share = move_toward(_walk_share, 1.0, delta * WALK_BLEND)
-	else:
-		_walk_share = move_toward(_walk_share, 0.0, delta * WALK_BLEND)
+		_step_phase = PersonRules.phase_after(_step_phase, moved, TownsfolkFigure.stride_at(_run_share_now))
+	_walk_share = PersonRules.walk_share_after(_walk_share, moved > 0.0, delta)
 	figure.walk(_step_phase, _walk_share, _run_share_now)

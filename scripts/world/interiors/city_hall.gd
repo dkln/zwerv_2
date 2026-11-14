@@ -4,6 +4,10 @@ extends "res://scripts/world/interiors/interior.gd"
 ## after): five floors, Etage0..Etage4, side by side in the scene; only the floor the player is
 ## on is shown (plan_root: its floor plan on the minimap). You come in on floor 0, the hall
 ## with the reception.
+## Behaviour (docs/CODE_LAGEN.md): the floors, the lift, the people and the queue in time. Its
+## logic: city_hall_rules.gd (floors, lift, people) and city_hall_queue_rules.gd (the queue);
+## where things stand: city_hall_layout.gd; what you see and hear: city_hall_view.gd; the
+## caretaker's round: city_hall_caretaker.gd; the lift ride: lift_ride.gd.
 ## The lift: before its doors on every floor (the marker Lift) [E] "Lift": the story box asks
 ## which floor (the floors with their names). Then the ride, a scene of its own (ride): the
 ## doors slide open, the swipe, and you see yourself standing in the lift cabin (Liftcabine:
@@ -35,97 +39,76 @@ extends "res://scripts/world/interiors/interior.gd"
 ## (and the slip).
 
 const Layout = preload("res://scripts/world/interiors/city_hall_layout.gd")
-const SwipeTransition = preload("res://scripts/ui/swipe_transition.gd")
-const UiSounds = preload("res://scripts/ui/ui_sounds.gd")
-const InteriorSpot = preload("res://scripts/world/interiors/interior_spot.gd")
-const SignBoard = preload("res://scripts/world/things/sign_board.gd")
+const CityHallRules = preload("res://scripts/world/interiors/city_hall_rules.gd")
+const CityHallQueueRules = preload("res://scripts/world/interiors/city_hall_queue_rules.gd")
+const CityHallView = preload("res://scripts/world/interiors/city_hall_view.gd")
+const CityHallCaretaker = preload("res://scripts/world/interiors/city_hall_caretaker.gd")
+const Spot = preload("res://scripts/world/interiors/interior_spot.gd")
 const Announcer = preload("res://scripts/world/interiors/announcer.gd")
-const LIBRARY := "res://assets/libraries/binnen.res"
-const LIFT_SOUND := "lift_ding"
-## The doors: how far each leaf slides aside (metres) and how long that takes (seconds).
-const DOOR_LEAF := 0.75
-const DOOR_SLIDE := 0.5
-## The city's colours on the signs, and the lit numbers.
-const SIGN_PLATE := Color("#2E7D32")
-const SIGN_INK := Color("#FFFFFF")
-const DISPLAY_INK := Color("#FF6A3A")
-## The queue of Burgerzaken (see the top): seconds a visitor stands at the counter, a counter
-## waits for a number nobody comes for, waits for you (your number), and rests before it calls
-## the next; how fast visitors walk (m/s); how far on your number is (from .. to places);
-## how many numbers the waiting board shows. The meta on the player with its number.
-const SERVE_SECONDS := Vector2(8.0, 22.0)
-const NO_SHOW_SECONDS := 5.0
-const PLAYER_WAIT := 45.0
-const CALL_PAUSE := Vector2(2.0, 6.0)
-const VISITOR_PACE := 1.3
-const TICKET_GAP := Vector2i(3, 7)
-const BOARD_LINES := 4
-const TICKET_META := "wachtnummer"
-const TICKET_ITEM := "wachtnummer"
-## The waiting board on the left wall of Burgerzaken (in the floor's space): where its top
-## line is, and the drop from one line to the next.
-const WAITING_BOARD_AT := Vector3(-23.8, 3.2, 3.0)
-const WAITING_BOARD_LINE := 0.42
-const COUNTER_FLOOR := 1
-## The big board of the number called now (Burgerzaken's floor space: on the back wall over the
-## right counters, readable from the room) and how the people behind a counter are talked to:
-## from this far before them, within this reach (InteriorPerson.talk_ahead, talk_reach).
-const NOW_BOARD_AT := Vector3(8.0, 3.2, 14.8)
-const COUNTER_TALK_AHEAD := 1.4
-const COUNTER_TALK_REACH := 1.6
-## A visitor is at its spot when within this (metres), or when its path there is used up (the
-## spot itself in a cell the floor's path finder counts as taken: a bench, a counter).
-const AT_SPOT := 0.6
-## The caretaker of the basement: his pace (m/s), how long he stops to mop at a point of his
-## round (s, from .. to), and where his cart is (before him, metres).
-const CARETAKER_PACE := 0.9
-const CARETAKER_MOP := Vector2(2.0, 6.0)
-const CART_AHEAD := 0.85
-const CART_TILE := "stadhuis/schoonmaakkar"
-## What a clerk says, crosser every time, when you come to the counter out of turn: without a
-## number, and with one that is not called yet.
-const CROSS_NO_TICKET := ["Eerst een nummertje trekken, bij de automaat bij de ingang.",
-	"Nee. Eerst een nummertje. Daar, bij de automaat.",
-	"Hoe vaak moet ik het nog zeggen? Een NUMMERTJE. Beveiliging!"]
-const CROSS_NOT_YET := ["U bent nog niet aan de beurt. Let op het bord, dan roepen we u om.",
-	"U bent écht nog niet aan de beurt. Gaat u zitten.",
-	"Nu is het klaar. Ik bel de beveiliging."]
-const NOTICE_HEADING := "— ETAGE %d —"
+## What the rest of the game reads here (the values live in the layers they belong to).
+const LIBRARY := CityHallView.LIBRARY
+const LIFT_SOUND := CityHallView.LIFT_SOUND
+const DOOR_LEAF := Layout.DOOR_LEAF
+const DOOR_SLIDE := CityHallView.DOOR_SLIDE
+const SERVE_SECONDS := CityHallQueueRules.SERVE_SECONDS
+const NO_SHOW_SECONDS := CityHallQueueRules.NO_SHOW_SECONDS
+const PLAYER_WAIT := CityHallQueueRules.PLAYER_WAIT
+const CALL_PAUSE := CityHallQueueRules.CALL_PAUSE
+const VISITOR_PACE := CityHallQueueRules.VISITOR_PACE
+const TICKET_GAP := CityHallQueueRules.TICKET_GAP
+const BOARD_LINES := CityHallQueueRules.BOARD_LINES
+const TICKET_META := CityHallQueueRules.TICKET_META
+const TICKET_ITEM := CityHallQueueRules.TICKET_ITEM
+const COUNTER_FLOOR := CityHallQueueRules.COUNTER_FLOOR
+const WAITING_BOARD_AT := Layout.WAITING_BOARD_AT
+const WAITING_BOARD_LINE := Layout.WAITING_BOARD_LINE
+const NOW_BOARD_AT := Layout.NOW_BOARD_AT
+const COUNTER_TALK_AHEAD := Layout.COUNTER_TALK_AHEAD
+const COUNTER_TALK_REACH := Layout.COUNTER_TALK_REACH
+const AT_SPOT := CityHallQueueRules.AT_SPOT
+const CARETAKER_PACE := CityHallRules.CARETAKER_PACE
+const CARETAKER_MOP := CityHallRules.CARETAKER_MOP
+const CART_AHEAD := Layout.CART_AHEAD
+const CART_TILE := CityHallView.CART_TILE
+const CROSS_NO_TICKET := CityHallQueueRules.CROSS_NO_TICKET
+const CROSS_NOT_YET := CityHallQueueRules.CROSS_NOT_YET
+const NOTICE_HEADING := CityHallRules.NOTICE_HEADING
 ## The lift of the building: reusable, a scene of its own.
 const LIFT_SCENE := "res://scenes/binnen/lift.tscn"
 
 var current_floor := 0
+## Its picture.
+var view: CityHallView
 var _floors: Array[Node3D] = []
 var _people_made := {}               # floor number -> true
-var _doors := {}                     # floor number -> [left leaf, right leaf]
 var _riding := false
 var _lift: Node3D                    # the lift (LiftRide)
 var _player: Node3D
 var _number_taken := 0
-var _next_number := 41
-## The queue (Burgerzaken): the numbers handed out, in turn ({"number", "who": a visitor, or
-## "speler", or "" for one who does not come}); the counters ({"number", "board", "stand" (where
-## a visitor stands, global), "clerk", "state", "ticket", "clock"}); the last number given out;
-## the last numbers called (for the waiting board).
+## The queue (Burgerzaken): the numbers handed out, in turn (CityHallQueueRules.ticket); the
+## counters ({"number", "board", "stand" (where a visitor stands, global), "clerk", "state",
+## "ticket", "clock", "visitor"}); the last number given out; the last numbers called (for
+## the waiting board).
 var _queue: Array[Dictionary] = []
 var _counters: Array[Dictionary] = []
-var _last_issued := 40
+var _last_issued := CityHallQueueRules.LAST_ISSUED
 var _called: Array[String] = []
-var _waiting_lines: Array[Node3D] = []
 var _talking_at := -1                # the counter whose clerk the player talks to now
 var _cut_in_line := 0                # times the player came to a counter out of turn
 var _sent_away_from: Array[int] = []  # counters whose clerk sent you on ("doorverwezen"): not there again
-var _caretaker: InteriorPerson       # the caretaker of the basement, with his cart
+var _caretaker_round: CityHallCaretaker   # the caretaker of the basement on his round
 var _announcer: Node                 # the loudspeakers of Burgerzaken (Announcer)
 var _now_board: Node3D               # the big board of the number called now, over the counters
 var _seats: Array[Transform3D] = []  # the seats of the visitors of Burgerzaken (floor space)
-var _caretaker_point := 1            # the point of his round he walks to
-var _caretaker_rest := 0.0           # seconds he still stands mopping
 var _random := RandomNumberGenerator.new()
 
 
 func _ready() -> void:
 	_random.seed = 2026
+	view = CityHallView.new()
+	add_child(view)
+	_caretaker_round = CityHallCaretaker.new(self, _random)
+	add_child(_caretaker_round)
 	var number := 0
 	while has_node("Etage%d" % number):
 		_floors.append(get_node("Etage%d" % number) as Node3D)
@@ -159,8 +142,8 @@ func dress(bar_name: String, _seed: int) -> void:
 	_riding = false
 	_show_floor(0)
 	_make_people(0)
-	for floor_number in _doors:
-		_set_doors(int(floor_number), true, false)
+	for floor_number in view.floors_with_doors():
+		view.show_doors(int(floor_number), true, false)
 
 
 func player_came_in(player: Node3D) -> void:
@@ -183,7 +166,7 @@ func evicting_held() -> bool:
 
 
 func evictor_outfit(role: String) -> Dictionary:
-	return _outfit(role)
+	return CityHallRules.outfit(role)
 
 
 func evictor_entry() -> Node3D:
@@ -198,49 +181,20 @@ func _dress_floor(floor_node: Node3D) -> void:
 	var number := _floors.find(floor_node)
 	var lift := floor_node.get_node_or_null("Lift") as Node3D
 	if lift:
-		var spot: Node3D = InteriorSpot.create("Liftknop", lift.position, "Lift", _call_lift.bind(number))
-		floor_node.add_child(spot)
+		floor_node.add_child(Spot.create("Liftknop", lift.position, "Lift", _call_lift.bind(number)))
 	var door_marker := floor_node.get_node_or_null("Liftdeur") as Node3D
 	if door_marker:
-		var library: MeshLibrary = load(LIBRARY)
-		var item := library.find_item_by_name("stadhuis/lift_deur")
-		var leaves: Array[Node3D] = []
-		for side in [-1.0, 1.0]:
-			var leaf := Node3D.new()
-			leaf.name = "Liftdeur_links" if side < 0.0 else "Liftdeur_rechts"
-			leaf.transform = door_marker.transform
-			leaf.set_meta("side", side)
-			leaf.set_meta("home", door_marker.position)
-			if item >= 0:
-				var mesh_node := MeshInstance3D.new()
-				mesh_node.mesh = library.get_item_mesh(item)
-				mesh_node.transform = library.get_item_mesh_transform(item)
-				mesh_node.position.x += side * DOOR_LEAF * 0.5
-				leaf.add_child(mesh_node)
-			floor_node.add_child(leaf)
-			leaves.append(leaf)
-		_doors[number] = leaves
-		_set_doors(number, false, false)
-		# the floor display over the doors
-		var display: Node3D = SignBoard.create(level_text(Layout.level_of(number)), Color("#101418"), DISPLAY_INK, 0.2, false, 0.9)
-		display.name = "Etagedisplay"
-		display.transform = door_marker.transform
-		display.position += Vector3(0.0, 2.6, 0.0) + door_marker.transform.basis.z * -0.02
-		floor_node.add_child(display)
+		view.build_lift_doors(floor_node, door_marker, number)
+		view.build_floor_display(floor_node, door_marker, CityHallRules.level_text(Layout.level_of(number)))
 	for child in floor_node.get_children():
 		if child is Marker3D and child.name.begins_with("Bord_"):
-			var board: Node3D = SignBoard.create(String(child.get_meta("text", "")), SIGN_PLATE, SIGN_INK)
-			board.transform = (child as Node3D).transform
-			floor_node.add_child(board)
+			view.build_sign(floor_node, child as Node3D, String(child.get_meta("text", "")))
 		elif child is Marker3D and child.name.begins_with("Loket_"):
-			var display: Node3D = SignBoard.create("B %03d" % (_next_number - 4 + int(String(child.name).trim_prefix("Loket_"))),
-				Color("#101418"), DISPLAY_INK, 0.12, false, 1.3)
-			display.name = "Nummerbord_" + String(child.name).trim_prefix("Loket_")
-			display.transform = (child as Node3D).transform
-			floor_node.add_child(display)
+			var counter_name := String(child.name).trim_prefix("Loket_")
+			view.build_counter_board(floor_node, child as Node3D, counter_name, CityHallQueueRules.counter_start_text(int(counter_name)))
 	var dispenser := floor_node.get_node_or_null("Nummerautomaat") as Node3D
 	if dispenser:
-		floor_node.add_child(InteriorSpot.create("Nummertje", dispenser.position, "Nummertje trekken", _take_number))
+		floor_node.add_child(Spot.create("Nummertje", dispenser.position, "Nummertje trekken", _take_number))
 
 
 ## The people of floor `number`, made once.
@@ -256,34 +210,22 @@ func _make_people(number: int) -> void:
 		var role := String(child.get_meta("role", "klant"))
 		var sit := bool(child.get_meta("sit", false))
 		var seat := float(child.get_meta("seat", InteriorPerson.SEAT_HEIGHT))
-		var person := InteriorPerson.create(role, 7000 + number * 100 + index, sit, seat, _outfit(role))
-		person.name = role.capitalize().replace(" ", "")
+		var person := InteriorPerson.create(role, CityHallRules.person_seed(number, index), sit, seat, CityHallRules.outfit(role))
+		person.name = CityHallRules.person_name(role)
 		person.role = role
-		if role in ["loketmedewerker", "receptioniste"]:
+		if CityHallRules.talks_across_counter(role):
 			# behind a counter: talked to across it, from before it
-			person.talk_ahead = COUNTER_TALK_AHEAD
-			person.talk_reach = COUNTER_TALK_REACH
+			person.talk_ahead = Layout.COUNTER_TALK_AHEAD
+			person.talk_reach = Layout.COUNTER_TALK_REACH
 		floor_node.add_child(person)
 		person.transform = (child as Node3D).transform
 		_people.append(person)
 		index += 1
 
 
-## What who works here wears: the receptionists in the city's green, the guard in black
-## with yellow, the mayor in dark blue; civil servants and visitors their own clothes.
+## What who works here wears (CityHallRules.outfit).
 static func _outfit(role: String) -> Dictionary:
-	match role:
-		"receptioniste":
-			return {"jas": "#2E7D32", "rand": "#F2C200", "broek": "#22242A"}
-		"beveiliger":
-			return {"jas": "#1E2024", "rand": "#F2C200", "broek": "#1E2024", "pet": "#1E2024"}
-		"burgemeester":
-			return {"jas": "#1A2440", "rand": "#C9A23A", "broek": "#1A2440"}
-		"raadslid":
-			return {"jas": "#3A3E48", "rand": "#E8E6E0", "broek": "#2A2C32"}
-		"concierge":
-			return {"jas": "#2A3E5C", "rand": "#C8CCD2", "broek": "#2A3E5C"}
-	return {}
+	return CityHallRules.outfit(role)
 
 
 ## Only floor `number` shown and live; the others and the cabin hidden and still (far apart,
@@ -296,7 +238,6 @@ func _show_floor(number: int) -> void:
 		floor_node.process_mode = Node.PROCESS_MODE_INHERIT if index == current_floor else Node.PROCESS_MODE_DISABLED
 
 
-
 # ------------------------------------------------------------------ the lift
 
 ## [E] at the lift on floor `from`: which floor? (the story box), then the ride.
@@ -305,22 +246,19 @@ func _call_lift(from: int) -> void:
 		return
 	var hud := _hud()
 	if hud == null or not hud.has_method("show_story"):
-		ride((from + 1) % maxi(_floors.size(), 1), false)
+		ride(CityHallRules.next_floor(from, _floors.size()), false)
 		return
-	var choices: Array = []
+	var levels: Array = []
 	for index in _floors.size():
-		var level := Layout.level_of(index)
-		var where := "Begane grond" if level == 0 else ("Kelder" if level < 0 else "%de etage" % level)
-		var label := where + " · " + String(Layout.NAMES[index] if index < Layout.NAMES.size() else "")
-		choices.append(label + ("  (hier)" if index == from else ""))
+		levels.append(Layout.level_of(index))
 	var chosen := [-1]
-	var page := {"kind": "verhaal", "speaker": "LIFT", "text": "Ding. De liftdeuren gaan open. Naar welke etage?", "choices": choices}
+	var page := CityHallRules.lift_page(CityHallRules.floor_choices(levels, Layout.NAMES, from))
 	page["on_choice"] = func(choice: int) -> Array:
 		chosen[0] = choice
 		return []
-	UiSounds.play(self, "kies", -6.0)
+	view.play_choice(-6.0)
 	hud.show_story([page], func() -> void:
-		if chosen[0] >= 0 and chosen[0] != current_floor:
+		if CityHallRules.is_ride_chosen(int(chosen[0]), current_floor):
 			ride(int(chosen[0])))
 
 
@@ -329,14 +267,14 @@ func _call_lift(from: int) -> void:
 ## front, the display, the motor); under its last swipe you are put out on that floor, its
 ## doors open, the floor at the top of the screen. `animate` false: at once (the checks).
 func ride(to: int, animate := true) -> void:
-	if _riding or to == current_floor or to < 0 or to >= _floors.size() or _lift == null:
+	if _lift == null or not CityHallRules.may_ride(_riding, current_floor, to, _floors.size()):
 		return
 	_riding = true
 	var from := current_floor
 	if animate:
-		_ding(floor_node(from).get_node_or_null("Lift") as Node3D)
-		_set_doors(from, true, true)
-		await get_tree().create_timer(DOOR_SLIDE + 0.1).timeout
+		view.play_ding(floor_node(from).get_node_or_null("Lift") as Node3D)
+		view.show_doors(from, true, true)
+		await get_tree().create_timer(CityHallView.DOOR_SLIDE + 0.1).timeout
 	# the lift counts in levels (the basement is -1, under the ground floor)
 	await _lift.ride(Layout.level_of(from), Layout.level_of(to), _player, _arrive.bind(to), animate)
 	_riding = false
@@ -345,21 +283,13 @@ func ride(to: int, animate := true) -> void:
 ## Out of the lift on floor `to` (under the lift's last swipe).
 func _arrive(to: int) -> void:
 	_make_people(to)
-	_set_doors(to, true, false)
+	view.show_doors(to, true, false)
 	_show_floor(to)
 	var lift := floor_node(to).get_node_or_null("Lift") as Node3D
 	_move_player(lift)
 	var hud := _hud()
 	if hud and hud.has_method("show_notice"):
-		var level := Layout.level_of(to)
-		var heading := NOTICE_HEADING % level if level > 0 else ("— BEGANE GROND —" if level == 0 else "— KELDER —")
-		hud.show_notice(heading, String(Layout.NAMES[to]))
-
-
-func _ding(where: Node3D) -> void:
-	var audio := get_node_or_null("/root/RuimtelijkGeluid")
-	if audio and audio.has_method("play_event") and where:
-		audio.play_event(where.global_position, LIFT_SOUND)
+		hud.show_notice(CityHallRules.arrival_heading(Layout.level_of(to)), String(Layout.NAMES[to]))
 
 
 ## The lift of this building (LiftRide), and whether you are riding in it now.
@@ -407,26 +337,8 @@ func plan_points() -> Array[Vector3]:
 	return points
 
 
-## The doors of the lift on floor `number` open or shut, sliding (`animate`) or at once.
-func _set_doors(number: int, open: bool, animate: bool) -> void:
-	for leaf: Node3D in _doors.get(number, []):
-		var side := float(leaf.get_meta("side", 1.0))
-		var home: Vector3 = leaf.get_meta("home", leaf.position)
-		var aside := leaf.transform.basis.x * side * (DOOR_LEAF if open else 0.0)
-		# the leaves slide along the front of the lift (its x), from the middle outwards
-		var goal := home + aside
-		if animate:
-			leaf.create_tween().tween_property(leaf, "position", goal, DOOR_SLIDE).set_trans(Tween.TRANS_SINE)
-		else:
-			leaf.position = goal
-
-
 func doors_open(number: int) -> bool:
-	var leaves: Array = _doors.get(number, [])
-	if leaves.is_empty():
-		return false
-	var leaf: Node3D = leaves[0]
-	return leaf.position.distance_to(leaf.get_meta("home", leaf.position)) > DOOR_LEAF * 0.5
+	return view.doors_open(number)
 
 
 # ------------------------------------------------------------------ Burgerzaken
@@ -438,22 +350,20 @@ func _take_number() -> void:
 		return
 	_set_up_queue()
 	_drop_ticket()   # a new number: the old one gone (from the pockets and the queue)
-	var gap := _random.randi_range(TICKET_GAP.x, TICKET_GAP.y)
-	for skipped in gap - 1:
-		_queue.append({"number": _issue(), "who": ""})
+	var places := _random.randi_range(CityHallQueueRules.TICKET_GAP.x, CityHallQueueRules.TICKET_GAP.y)
+	for skipped in CityHallQueueRules.skipped_before(places):
+		_queue.append(CityHallQueueRules.ticket(_issue(), ""))
 	_number_taken = _issue()
-	_queue.append({"number": _number_taken, "who": "speler"})
-	_player.set_meta(TICKET_META, _number_taken)
+	_queue.append(CityHallQueueRules.ticket(_number_taken, CityHallQueueRules.PLAYER))
+	_player.set_meta(CityHallQueueRules.TICKET_META, _number_taken)
 	if _player.has_method("add_item"):
-		_player.call("add_item", TICKET_ITEM, 1, true)
-	UiSounds.play(self, "kies", -4.0)
-	if _called.is_empty():
-		_think("Zo, nummertje B %03d. Er is nog niemand omgeroepen. Dat wordt even wachten." % _number_taken)
-	else:
-		_think("Zo, nummertje B %03d. Op het bord staat nu %s. Dat wordt even wachten." % [_number_taken, _called[0].get_slice(" →", 0)])
+		_player.call("add_item", CityHallQueueRules.TICKET_ITEM, 1, true)
+	view.play_choice(-4.0)
+	_think(CityHallQueueRules.ticket_thought(_number_taken, _called))
 	_update_waiting_board()
 	if hud and hud.has_method("show_floating_number"):
-		hud.show_floating_number(_player.global_position + Vector3.UP * 2.0, "B %03d" % _number_taken, Color("#FFE9B8"), 15)
+		hud.show_floating_number(_player.global_position + Vector3.UP * 2.0, CityHallQueueRules.number_text(_number_taken),
+			CityHallView.TICKET_INK, CityHallView.TICKET_SIZE)
 
 
 func number_taken() -> int:
@@ -462,7 +372,7 @@ func number_taken() -> int:
 
 ## The number the player holds (0: none).
 func player_ticket() -> int:
-	return int(_player.get_meta(TICKET_META, 0)) if _player else 0
+	return int(_player.get_meta(CityHallQueueRules.TICKET_META, 0)) if _player else 0
 
 
 func _issue() -> int:
@@ -473,29 +383,30 @@ func _issue() -> int:
 ## The queue made once, when Burgerzaken has its people: every visitor a number (in a random
 ## order), every counter its board, its clerk and where who is called stands.
 func _set_up_queue() -> void:
-	if not _counters.is_empty() or _floors.size() <= COUNTER_FLOOR:
+	if not _counters.is_empty() or _floors.size() <= CityHallQueueRules.COUNTER_FLOOR:
 		return
-	_make_people(COUNTER_FLOOR)
-	var floor_node := floor_node(COUNTER_FLOOR)
+	_make_people(CityHallQueueRules.COUNTER_FLOOR)
+	var floor_node := floor_node(CityHallQueueRules.COUNTER_FLOOR)
 	var clerks: Array[InteriorPerson] = []
+	var clerk_xs: Array = []
 	var visitors: Array[InteriorPerson] = []
 	for person in _people:
 		if person.get_parent() != floor_node:
 			continue
-		if person.role == "loketmedewerker":
+		if person.role == CityHallQueueRules.CLERK_ROLE:
 			clerks.append(person)
-		elif person.role == "klant":
+			clerk_xs.append(person.position.x)
+		elif person.role == CityHallQueueRules.VISITOR_ROLE:
 			visitors.append(person)
 	var index := 1
 	while floor_node.has_node("Loket_%d" % index):
 		var marker := floor_node.get_node("Loket_%d" % index) as Node3D
-		var clerk: InteriorPerson = null
-		for candidate in clerks:
-			if clerk == null or absf(candidate.position.x - marker.position.x) < absf(clerk.position.x - marker.position.x):
-				clerk = candidate
-		var stand := floor_node.to_global(Vector3(marker.position.x, 0.0, marker.position.z - 0.98))
-		var counter := {"number": index, "board": floor_node.get_node_or_null("Nummerbord_%d" % index), "stand": stand,
-			"clerk": clerk, "state": "vrij", "ticket": {}, "clock": _random.randf_range(1.0, 8.0), "visitor": null}
+		var clerk_index := CityHallQueueRules.nearest_clerk(clerk_xs, marker.position.x)
+		var clerk: InteriorPerson = clerks[clerk_index] if clerk_index >= 0 else null
+		var counter := {"number": index, "board": floor_node.get_node_or_null("Nummerbord_%d" % index),
+			"stand": floor_node.to_global(Layout.counter_stand(marker.position)), "clerk": clerk,
+			"state": CityHallQueueRules.FREE, "ticket": {},
+			"clock": _random.randf_range(CityHallQueueRules.FIRST_CALL.x, CityHallQueueRules.FIRST_CALL.y), "visitor": null}
 		_counters.append(counter)
 		if clerk:
 			clerk.set_meta("talk_gate", _talk_gate.bind(index))
@@ -503,71 +414,59 @@ func _set_up_queue() -> void:
 		index += 1
 	visitors.shuffle()
 	for visitor in visitors:
-		_queue.append({"number": _issue(), "who": visitor})
+		_queue.append(CityHallQueueRules.ticket(_issue(), visitor))
 		if visitor.sitting:
 			_seats.append(visitor.transform)
-	_make_waiting_board(floor_node)
-	_now_board = SignBoard.create("B ---", Color("#101418"), DISPLAY_INK, 0.3, false, 4.6)
-	_now_board.name = "NuAanDeBeurt"
-	_now_board.position = NOW_BOARD_AT
-	_now_board.rotation.y = PI   # facing the room
-	floor_node.add_child(_now_board)
-	var heading: Node3D = SignBoard.create("NU AAN DE BEURT", SIGN_PLATE, SIGN_INK, 0.13, false, 4.6)
-	heading.name = "NuAanDeBeurtKop"
-	heading.position = NOW_BOARD_AT + Vector3(0.0, 0.62, 0.0)
-	heading.rotation.y = PI
-	floor_node.add_child(heading)
-
+	view.build_waiting_board(floor_node, CityHallQueueRules.WAITING_HEADING, CityHallQueueRules.BOARD_LINES + 1)
+	_update_waiting_board()
+	_now_board = view.build_now_board(floor_node, CityHallQueueRules.NOW_HEADING, CityHallQueueRules.NOW_NOBODY)
 
 
 ## The queue moves on (on Burgerzaken only): every counter calls, waits, serves, sends back.
 func _advance_queue(delta: float) -> void:
-	if current_floor != COUNTER_FLOOR:
+	if current_floor != CityHallQueueRules.COUNTER_FLOOR:
 		return
 	_set_up_queue()
 	for counter in _counters:
 		var visitor := counter.visitor as InteriorPerson
 		match String(counter.state):
-			"vrij":
+			CityHallQueueRules.FREE:
 				counter.clock = float(counter.clock) - delta
-				if float(counter.clock) <= 0.0 and not _queue.is_empty():
-					# your number is never called at a counter whose clerk sent you on
-					if _queue[0].who is String and String(_queue[0].who) == "speler" and _sent_away_from.has(int(counter.number)):
-						continue
+				# your number is never called at a counter whose clerk sent you on
+				if float(counter.clock) <= 0.0 and CityHallQueueRules.may_call(_queue, int(counter.number), _sent_away_from):
 					_call_next(counter)
-			"lopen":
+			CityHallQueueRules.WALKING:
 				if not is_instance_valid(visitor):
 					_free_counter(counter)
 					continue
-				walk_evictor(visitor, counter.stand, VISITOR_PACE, delta)
-				var gap := Vector2(visitor.global_position.x - counter.stand.x, visitor.global_position.z - counter.stand.z)
-				if gap.length() < AT_SPOT or _path_used_up(visitor):
+				walk_evictor(visitor, counter.stand, CityHallQueueRules.VISITOR_PACE, delta)
+				if CityHallQueueRules.is_at_spot(visitor.global_position, counter.stand, _path_used_up(visitor)):
 					evictor_stops(visitor)
 					visitor.global_position = Vector3(counter.stand.x, visitor.global_position.y, counter.stand.z)
 					visitor.global_rotation.y = 0.0   # facing the counter
-					counter.state = "bediend"
-					counter.clock = _random.randf_range(SERVE_SECONDS.x, SERVE_SECONDS.y)
-			"bediend":
+					counter.state = CityHallQueueRules.SERVING
+					counter.clock = _random.randf_range(CityHallQueueRules.SERVE_SECONDS.x, CityHallQueueRules.SERVE_SECONDS.y)
+			CityHallQueueRules.SERVING:
 				counter.clock = float(counter.clock) - delta
 				if float(counter.clock) <= 0.0:
-					counter.state = "terug"
+					counter.state = CityHallQueueRules.GOING_BACK
 					_to_a_free_seat(visitor)
-			"terug":
+			CityHallQueueRules.GOING_BACK:
 				if not is_instance_valid(visitor):
 					_free_counter(counter)
 					continue
 				var home: Dictionary = visitor.get_meta(HOME_META, {})
 				var home_at: Vector3 = visitor.get_parent().to_global((home.get("transform", visitor.transform) as Transform3D).origin)
-				walk_evictor(visitor, home_at, VISITOR_PACE, delta)
-				if Vector2(visitor.global_position.x - home_at.x, visitor.global_position.z - home_at.z).length() < AT_SPOT or _path_used_up(visitor):
+				walk_evictor(visitor, home_at, CityHallQueueRules.VISITOR_PACE, delta)
+				if CityHallQueueRules.is_at_spot(visitor.global_position, home_at, _path_used_up(visitor)):
 					evictor_done(visitor)
-					_queue.append({"number": _issue(), "who": visitor})   # a new number: waits again
+					_queue.append(CityHallQueueRules.ticket(_issue(), visitor))   # a new number: waits again
 					_free_counter(counter)
-			"niemand":
+			CityHallQueueRules.NOBODY:
 				counter.clock = float(counter.clock) - delta
 				if float(counter.clock) <= 0.0:
 					_free_counter(counter)
-			"speler":
+			CityHallQueueRules.FOR_PLAYER:
 				counter.clock = float(counter.clock) - delta
 				if float(counter.clock) <= 0.0 and _talking_at != int(counter.number):
 					_player_missed(counter)
@@ -576,8 +475,9 @@ func _advance_queue(delta: float) -> void:
 
 ## Whether `person`'s path (Interior.walk_evictor) is used up: at the end of where it could go.
 func _path_used_up(person: Node3D) -> bool:
-	return person.has_meta("uitzetter_pad") and (person.get_meta("uitzetter_pad") as PackedVector3Array).is_empty() \
-		and float(person.get_meta("uitzetter_klok", 1.0)) < EVICTOR_REPLAN - 0.05
+	var has_path := person.has_meta("uitzetter_pad")
+	var path_left := (person.get_meta("uitzetter_pad") as PackedVector3Array).size() if has_path else 0
+	return CityHallQueueRules.is_path_used_up(has_path, path_left, float(person.get_meta("uitzetter_klok", 1.0)), EVICTOR_REPLAN)
 
 
 ## After its turn a visitor goes to sit on a free seat, any of them (not its own one per se):
@@ -591,10 +491,7 @@ func _to_a_free_seat(visitor: InteriorPerson) -> void:
 			taken.append(person.position)
 		if person != visitor and person.has_meta(HOME_META):
 			taken.append(((person.get_meta(HOME_META) as Dictionary).transform as Transform3D).origin)
-	var free: Array[Transform3D] = []
-	for seat in _seats:
-		if not taken.any(func(spot: Vector3) -> bool: return spot.distance_to(seat.origin) < 0.3):
-			free.append(seat)
+	var free := CityHallQueueRules.free_seats(_seats, taken)
 	if free.is_empty():
 		return
 	var home: Dictionary = visitor.get_meta(HOME_META)
@@ -608,61 +505,54 @@ func _to_a_free_seat(visitor: InteriorPerson) -> void:
 func _call_next(counter: Dictionary) -> void:
 	var ticket: Dictionary = _queue.pop_front()
 	counter.ticket = ticket
-	var text := "B %03d" % int(ticket.number)
-	if counter.board:
-		SignBoard.set_text(counter.board, text)
-	_called.push_front("%s → %d" % [text, int(counter.number)])
-	_called.resize(mini(_called.size(), BOARD_LINES))
+	view.show_board_text(counter.board, CityHallQueueRules.number_text(int(ticket.number)))
+	_called = CityHallQueueRules.remember_called(_called, CityHallQueueRules.called_line(int(ticket.number), int(counter.number)))
 	_announce(int(ticket.number), int(counter.number))
 	var who: Variant = ticket.who
-	if who is InteriorPerson and is_instance_valid(who):
+	var visitor_comes: bool = who is InteriorPerson and is_instance_valid(who)
+	counter.state = CityHallQueueRules.state_after_call(ticket, visitor_comes)
+	if visitor_comes:
 		counter.visitor = who
-		counter.state = "lopen"
-	elif who is String and String(who) == "speler":
-		counter.state = "speler"
-		counter.clock = PLAYER_WAIT
 	else:
-		counter.state = "niemand"
-		counter.clock = NO_SHOW_SECONDS
+		counter.clock = CityHallQueueRules.wait_seconds(String(counter.state))
 
 
 func _free_counter(counter: Dictionary) -> void:
-	counter.state = "vrij"
+	counter.state = CityHallQueueRules.FREE
 	counter.ticket = {}
 	counter.visitor = null
-	counter.clock = _random.randf_range(CALL_PAUSE.x, CALL_PAUSE.y)
+	counter.clock = _random.randf_range(CityHallQueueRules.CALL_PAUSE.x, CityHallQueueRules.CALL_PAUSE.y)
 
 
 ## The gong, the number at the top of the screen, the voice over the loudspeakers.
 func _announce(number: int, counter_number: int) -> void:
 	# the big board over the counters at once; the words over the loudspeakers (Announcer: the
 	# gong, the voice, the line typing out at the bottom, as at the station and in the shops)
-	if _now_board:
-		SignBoard.set_text(_now_board, "B %03d  →  LOKET %d" % [number, counter_number])
-	if current_floor != COUNTER_FLOOR or not _player:
+	view.show_now_board(CityHallQueueRules.now_text(number, counter_number))
+	if current_floor != CityHallQueueRules.COUNTER_FLOOR or not _player:
 		return
 	if _announcer == null:
 		_announcer = Announcer.new(_hud)
 		add_child(_announcer)
-	_announcer.say("Nummer B %03d, loket %d." % [number, counter_number])
+	_announcer.say(CityHallQueueRules.announcement(number, counter_number))
 
 
 ## Your number called but you did not come in time: the turn and the slip are gone.
 func _player_missed(counter: Dictionary) -> void:
 	_use_ticket()
 	_free_counter(counter)
-	_think("Mijn nummer is al geweest. Gemist. Dan maar een nieuw nummertje trekken.")
+	_think(CityHallQueueRules.MISSED_THOUGHT)
 
 
 ## The player's number out of the queue and the slip out of the pockets (going out, a new
 ## number); a counter waiting for it is free again.
 func _drop_ticket() -> void:
-	if _player == null or not _player.has_meta(TICKET_META):
+	if _player == null or not _player.has_meta(CityHallQueueRules.TICKET_META):
 		return
-	var number := int(_player.get_meta(TICKET_META))
-	_queue = _queue.filter(func(ticket: Dictionary) -> bool: return not (ticket.who is String and String(ticket.who) == "speler"))
+	var number := int(_player.get_meta(CityHallQueueRules.TICKET_META))
+	_queue = CityHallQueueRules.without_player(_queue)
 	for counter in _counters:
-		if String(counter.state) == "speler" and int((counter.ticket as Dictionary).get("number", -1)) == number:
+		if String(counter.state) == CityHallQueueRules.FOR_PLAYER and int((counter.ticket as Dictionary).get("number", -1)) == number:
 			_free_counter(counter)
 	_use_ticket()
 
@@ -671,51 +561,40 @@ func _drop_ticket() -> void:
 func _use_ticket() -> void:
 	if _player == null:
 		return
-	_player.remove_meta(TICKET_META)
-	if _player.has_method("drop_item") and int(_player.get("inventory").get(TICKET_ITEM, 0)) > 0:
-		_player.call("drop_item", TICKET_ITEM)
+	_player.remove_meta(CityHallQueueRules.TICKET_META)
+	if _player.has_method("drop_item") and int(_player.get("inventory").get(CityHallQueueRules.TICKET_ITEM, 0)) > 0:
+		_player.call("drop_item", CityHallQueueRules.TICKET_ITEM)
 
 
 ## Whether a clerk talks to the player (Conversations through PlayerController.talk_to): only
 ## at the counter where the player's number is called now; else what they say instead (pages).
 func _talk_gate(counter_number: int) -> Array:
-	var called_here := false
-	var called_elsewhere := 0
-	for counter in _counters:
-		if String(counter.state) == "speler":
-			if int(counter.number) == counter_number:
-				called_here = true
-			else:
-				called_elsewhere = int(counter.number)
-	if called_here:
+	var where := CityHallQueueRules.called_where(_counters, counter_number)
+	if bool(where.here):
 		_talking_at = counter_number
 		return []
-	if called_elsewhere > 0:
-		return [{"kind": "gesprek", "speaker": "AMBTENAAR", "text": "U moet bij loket %d zijn." % called_elsewhere}]
+	if int(where.elsewhere) > 0:
+		return [CityHallQueueRules.elsewhere_page(int(where.elsewhere))]
 	# not your turn: the clerk is cross, and doing it again and again is an offence (uitzetten.json
 	# "voordringen": the guard warns you, then puts you out)
 	_cut_in_line += 1
-	var lines: Array = CROSS_NO_TICKET if player_ticket() <= 0 else CROSS_NOT_YET
-	var line: String = lines[mini(_cut_in_line - 1, lines.size() - 1)]
+	var line := CityHallQueueRules.cross_line(_cut_in_line, player_ticket() > 0)
 	var interiors := get_parent()
 	if interiors and interiors.has_method("offence"):
-		interiors.call_deferred("offence", "voordringen")
-	return [{"kind": "gesprek", "speaker": "AMBTENAAR", "text": line, "mood": "boos"}]
+		interiors.call_deferred("offence", CityHallQueueRules.OFFENCE)
+	return [CityHallQueueRules.cross_page(line)]
 
 
 ## What a clerk's answer brings about (Conversations, a node's "gevolg"): "doorverwezen" (this is
 ## for a colleague: a new number, and that counter not again; can happen again and again, and
 ## when every counter has sent you on the oldest is forgotten).
 func _talk_consequence(gevolg: String, counter_number: int) -> void:
-	if gevolg != "doorverwezen":
+	if gevolg != CityHallQueueRules.SENT_ON:
 		return
-	if not _sent_away_from.has(counter_number):
-		_sent_away_from.append(counter_number)
 	# the story hears of it (missie 3: a goal "check" "doorverwezen")
 	if _player and _player.has_signal("checked"):
-		_player.emit_signal("checked", "doorverwezen", true)
-	if _sent_away_from.size() >= _counters.size():
-		_sent_away_from.pop_front()
+		_player.emit_signal("checked", CityHallQueueRules.SENT_ON, true)
+	_sent_away_from = CityHallQueueRules.sent_away_after(_sent_away_from, counter_number, _counters.size())
 
 
 ## The counters whose clerk sent the player on (for the checks).
@@ -729,45 +608,19 @@ func _on_talk_ended(_persona: String) -> void:
 	if _talking_at < 0:
 		return
 	for counter in _counters:
-		if int(counter.number) == _talking_at and String(counter.state) == "speler":
+		if int(counter.number) == _talking_at and String(counter.state) == CityHallQueueRules.FOR_PLAYER:
 			_use_ticket()
 			_free_counter(counter)
 	_talking_at = -1
 
 
-## The waiting board on the left wall: a heading, the last numbers called (number and counter),
-## and how many wait.
-func _make_waiting_board(floor_node: Node3D) -> void:
-	if not _waiting_lines.is_empty():
-		return
-	for line_index in BOARD_LINES + 2:
-		var heading := line_index == 0
-		var board: Node3D = SignBoard.create("AAN DE BEURT" if heading else "", SIGN_PLATE if heading else Color("#101418"),
-			SIGN_INK if heading else DISPLAY_INK, 0.11, false, 2.2)
-		board.name = "Wachtbord_%d" % line_index
-		board.position = WAITING_BOARD_AT + Vector3(0.0, -line_index * WAITING_BOARD_LINE, 0.0)
-		board.rotation.y = PI * 0.5   # facing into the room (+x)
-		floor_node.add_child(board)
-		_waiting_lines.append(board)
-	_update_waiting_board()
-
-
 func _update_waiting_board() -> void:
-	if _waiting_lines.is_empty():
-		return
-	for line_index in BOARD_LINES:
-		var text := _called[line_index] if line_index < _called.size() else ""
-		SignBoard.set_text(_waiting_lines[line_index + 1], text)
-	SignBoard.set_text(_waiting_lines[BOARD_LINES + 1], "WACHTEND: %d" % _queue.size())
+	view.show_waiting_board(CityHallQueueRules.board_texts(_called, _queue.size()))
 
 
 ## What the waiting board says now (for the checks): its lines top to bottom.
 func waiting_board_lines() -> Array[String]:
-	var lines: Array[String] = []
-	for board in _waiting_lines:
-		var label := board.get_node_or_null("Tekst") as Label3D
-		lines.append(label.text if label else "")
-	return lines
+	return view.waiting_board_lines()
 
 
 func _think(text: String) -> void:
@@ -783,54 +636,37 @@ func _process(delta: float) -> void:
 
 ## The text of a level on the displays: "K" for the basement, else its number.
 static func level_text(level: int) -> String:
-	return "K" if level < 0 else str(level)
+	return CityHallRules.level_text(level)
 
 
 # ------------------------------------------------------------------ the basement
 
-## The caretaker goes round the basement with his cart (see the top): to the next point of his
-## round, stands still there a moment to mop, on to the next; only while you are down there.
+## The caretaker goes round the basement with his cart (see the top; CityHallCaretaker): only
+## while you are down there.
 func _advance_caretaker(delta: float) -> void:
 	if current_floor != Layout.BASEMENT or _floors.size() <= Layout.BASEMENT:
 		return
-	if _caretaker == null:
-		_caretaker = _find_caretaker()
-		if _caretaker == null:
-			return
-	if _caretaker_rest > 0.0:
-		_caretaker_rest -= delta
-		if _caretaker_rest <= 0.0:
-			_caretaker_point = (_caretaker_point + 1) % Layout.CARETAKER_ROUND.size()
-		return
-	var floor_node := floor_node(Layout.BASEMENT)
-	var target := floor_node.to_global(Layout.CARETAKER_ROUND[_caretaker_point])
-	walk_evictor(_caretaker, target, CARETAKER_PACE, delta)
-	if Vector2(_caretaker.global_position.x - target.x, _caretaker.global_position.z - target.z).length() < 0.3:
-		evictor_stops(_caretaker)
-		_caretaker_rest = _random.randf_range(CARETAKER_MOP.x, CARETAKER_MOP.y)
+	if _caretaker_round.person == null:
+		_caretaker_round.take(_find_caretaker())
+	var basement := floor_node(Layout.BASEMENT)
+	var round_points: Array[Vector3] = []
+	for round_point: Vector3 in Layout.CARETAKER_ROUND:
+		round_points.append(basement.to_global(round_point))
+	_caretaker_round.advance(delta, round_points)
 
 
 ## The caretaker of the basement (made with its people), his cart before him.
 func _find_caretaker() -> InteriorPerson:
 	for person in _people:
-		if person.role == "concierge" and person.get_parent() == floor_node(Layout.BASEMENT):
-			if not person.has_node("Schoonmaakkar"):
-				var library: MeshLibrary = load(LIBRARY)
-				var item := library.find_item_by_name(CART_TILE)
-				if item >= 0:
-					var cart := MeshInstance3D.new()
-					cart.name = "Schoonmaakkar"
-					cart.mesh = library.get_item_mesh(item)
-					cart.position = Vector3(0.0, 0.0, CART_AHEAD)
-					cart.rotation.y = PI * 0.5   # its long side across his way, the push bar at him
-					person.add_child(cart)
+		if person.role == CityHallRules.CARETAKER_ROLE and person.get_parent() == floor_node(Layout.BASEMENT):
+			view.build_cart(person)
 			return person
 	return null
 
 
 ## The caretaker (for the checks): null before the basement was visited.
 func caretaker() -> InteriorPerson:
-	return _caretaker
+	return _caretaker_round.person as InteriorPerson if _caretaker_round else null
 
 
 func _hud() -> Node:

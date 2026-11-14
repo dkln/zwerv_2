@@ -1,10 +1,14 @@
 extends RefCounted
-## Unit tests of the reward screen (scripts/ui/reward_screen.gd) on its own: its pages (one
-## per item, the XP on the first, only XP alone), the screen itself (the item turning,
-## pressed away, the game paused meanwhile), the footer, the keys and the pause after it.
+## Unit tests of the reward screen (scripts/ui/reward_screen.gd, the behaviour) on its own:
+## its pages (one per item, the XP on the first, only XP alone), the screen itself (the item
+## turning, pressed away, the game paused meanwhile), the footer, the keys and the pause
+## after it. Its logic, sizes and look: test_reward_screen_rules.gd,
+## test_reward_screen_layout.gd, test_reward_screen_view.gd.
 ##   tests/run_unit_tests.sh reward_screen
 
 const RewardScreen = preload("res://scripts/ui/reward_screen.gd")
+const RewardScreenRules = preload("res://scripts/ui/screens/reward_screen_rules.gd")
+const RewardScreenView = preload("res://scripts/ui/screens/reward_screen_view.gd")
 
 ## The tree of the run (tests/run_unit_tests.gd sets it).
 var tree: SceneTree
@@ -34,7 +38,7 @@ func test_the_reward_screen_shows_the_item_and_is_pressed_away(test) -> void:
 	test.check(screen.is_showing() and tree.paused, "open, het spel staat stil")
 	test.check(screen.current_page().item == "kroket", "de kroket")
 	test.check(screen.item_view().mesh() != null, "het model van het item in beeld")
-	test.check(screen._name.text == "WARME KROKET" and screen._text.text != "", "zijn naam en zijn tekstje")
+	test.check(screen.view().name_label.text == "WARME KROKET" and screen.view().text.text != "", "zijn naam en zijn tekstje")
 	var key := InputEventKey.new()
 	key.keycode = KEY_ENTER
 	key.pressed = true
@@ -65,10 +69,18 @@ func test_pages_of_edge_cases(test) -> void:
 	test.check(only_empty.size() == 1 and only_empty[0].item == "" and int(only_empty[0].xp) == 30, "alleen lege items: de bladzijde met alleen XP")
 
 
-func test_footer_text(test) -> void:
-	test.check(RewardScreen.footer_text(0, 1) == "[ENTER] OK", "een bladzijde: OK")
-	test.check(RewardScreen.footer_text(0, 3) == "[ENTER] VERDER  1 / 3", "de eerste van drie: verder, 1 / 3")
-	test.check(RewardScreen.footer_text(2, 3) == "[ENTER] OK", "de laatste van drie: OK")
+func test_footer_text_is_the_rules(test) -> void:
+	for counts: Array in [[0, 1], [0, 3], [2, 3]]:
+		test.check(RewardScreen.footer_text(counts[0], counts[1]) == RewardScreenRules.footer_text(counts[0], counts[1]), "bladzijde %d van %d: hetzelfde als de logica" % counts)
+	test.check(RewardScreen.KEYS_AFTER == RewardScreenRules.KEYS_AFTER and RewardScreen.RARITY_LABELS == RewardScreenRules.RARITY_LABELS, "de wachttijd en de zeldzaamheden van de logica")
+
+
+func test_view_is_there_once_in_the_tree(test) -> void:
+	var screen := RewardScreen.new()
+	test.check(screen.view() == null, "nog niet in de boom: nog geen beeld")
+	tree.root.add_child(screen)
+	test.check(screen.view() != null and screen.view().get_parent() == screen and screen.item_view() == screen.view().item_view, "in de boom: het beeld erin")
+	screen.free()
 
 
 ## A reward with nothing in it does not open the screen: `done` at once, the game not paused.
@@ -96,16 +108,16 @@ func test_pages_one_after_the_other(test) -> void:
 	screen.finished.connect(func() -> void: closed[0] += 1)
 	screen.open({"heading": "MISSIE VOLBRACHT", "title": "Eerst eten", "xp": 150,
 		"items": [{"item": "kroket", "count": 1}, {"item": "appel", "count": 3}]})
-	test.check(screen._heading.text == "◆ MISSIE VOLBRACHT" and screen._title.text == "Eerst eten" and screen._title.visible, "de kop en waarvoor")
-	test.check(screen._footer.text == "[ENTER] VERDER  1 / 2", "de voet telt de bladzijden")
-	test.check(screen._chips.visible and screen._chips.get_child_count() == 1 and screen._item_view.visible and not screen._big_xp.visible,
+	test.check(screen.view().heading.text == "◆ MISSIE VOLBRACHT" and screen.view().title.text == "Eerst eten" and screen.view().title.visible, "de kop en waarvoor")
+	test.check(screen.view().footer.text == "[ENTER] VERDER  1 / 2", "de voet telt de bladzijden")
+	test.check(screen.view().chips.visible and screen.view().chips.get_child_count() == 1 and screen.view().item_view.visible and not screen.view().big_xp.visible,
 		"de eerste: het item met een chip voor de XP")
-	test.check(screen._rarity.text == "BIJZONDER" and screen._rarity.visible, "hoe zeldzaam het is")
+	test.check(screen.view().rarity.text == "BIJZONDER" and screen.view().rarity.visible, "hoe zeldzaam het is")
 	screen.next_page()
-	test.check(screen.is_showing() and screen.current_page().item == "appel" and screen._footer.text == "[ENTER] OK", "de tweede: de appel, de laatste")
-	var chips := screen._chips.get_children().filter(func(chip: Node) -> bool: return not chip.is_queued_for_deletion())
+	test.check(screen.is_showing() and screen.current_page().item == "appel" and screen.view().footer.text == "[ENTER] OK", "de tweede: de appel, de laatste")
+	var chips := screen.view().chips.get_children().filter(func(chip: Node) -> bool: return not chip.is_queued_for_deletion())
 	test.check(chips.size() == 1 and (chips[0].get_child(0) as Label).text == "3 x", "een chip voor het aantal, geen XP meer")
-	test.check(screen._name.text == "GEKNEUSDE APPEL" and screen._rarity.text == "GEWOON", "zijn naam en zeldzaamheid")
+	test.check(screen.view().name_label.text == "GEKNEUSDE APPEL" and screen.view().rarity.text == "GEWOON", "zijn naam en zeldzaamheid")
 	test.check(screen._since == 0.0, "de wachttijd voor de toetsen begint opnieuw")
 	screen.next_page()
 	test.check(not screen.is_showing() and closed[0] == 1 and tree.paused == was_paused, "na de laatste: dicht, finished, de pauze terug")
@@ -121,10 +133,10 @@ func test_only_xp_shows_it_big(test) -> void:
 	tree.root.add_child(screen)
 	var was_paused := tree.paused
 	screen.open({"heading": "TAAK VOLBRACHT", "xp": 75})
-	test.check(screen._big_xp.visible and screen._big_xp.text == "+75 XP" and not screen._item_view.visible, "de XP groot, geen item")
-	test.check(screen._name.text == "ERVARING" and not screen._rarity.visible and not screen._chips.visible and not screen._title.visible,
+	test.check(screen.view().big_xp.visible and screen.view().big_xp.text == "+75 XP" and not screen.view().item_view.visible, "de XP groot, geen item")
+	test.check(screen.view().name_label.text == "ERVARING" and not screen.view().rarity.visible and not screen.view().chips.visible and not screen.view().title.visible,
 		"ERVARING, zonder zeldzaamheid, chips of titel")
-	test.check(screen._name.get_theme_color("font_color") == RewardScreen.XP_COLOUR and screen._footer.text == "[ENTER] OK", "in de kleur van XP")
+	test.check(screen.view().name_label.get_theme_color("font_color") == RewardScreenView.XP_COLOUR and screen.view().footer.text == "[ENTER] OK", "in de kleur van XP")
 	screen.next_page()
 	tree.paused = was_paused
 	screen.free()

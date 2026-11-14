@@ -1,7 +1,9 @@
 extends RefCounted
-## Unit tests of the music of the town (scripts/audio/city_music.gd): the levels as plain
-## sums, and which loop plays when (the city's, a building's, none), stepped by hand without
-## the town. That it really sounds in the game: tests/integration/world/test_city_music.gd.
+## Unit tests of the music of the town (scripts/audio/city_music.gd, the behaviour): which
+## loop plays when (the city's, a building's, none), the jingles and the level following
+## them, stepped by hand without the town. The levels as plain sums:
+## tests/unit/audio/test_city_music_rules.gd. That it really sounds in the game:
+## tests/integration/world/test_city_music.gd.
 ##   tests/run_unit_tests.sh city_music
 
 const CityMusic = preload("res://scripts/audio/city_music.gd")
@@ -14,34 +16,6 @@ func _music() -> CityMusic:
 	var music := CityMusic.new()
 	tree.root.add_child(music)
 	return music
-
-
-func test_level_is_softer_paused_and_under_a_jingle(test) -> void:
-	test.check(CityMusic.level_target(false, false, 0) == CityMusic.VOLUME_DB, "spelend: het gewone niveau")
-	test.check(CityMusic.level_target(true, false, 0) == CityMusic.PAUSED_DB, "gepauzeerd: zachter")
-	test.check(CityMusic.level_target(true, true, 0) == CityMusic.VOLUME_DB, "gepauzeerd in de winkel: het gewone niveau")
-	test.check(CityMusic.level_target(false, true, 0) == CityMusic.VOLUME_DB, "de winkel zonder pauze: het gewone niveau")
-	test.check(is_equal_approx(CityMusic.level_target(false, false, 1), CityMusic.VOLUME_DB - CityMusic.JINGLE_DUCK_DB), "onder een deuntje: zachter")
-	test.check(CityMusic.level_target(false, false, 3) == CityMusic.level_target(false, false, 1), "meer deuntjes: niet nog zachter")
-	test.check(is_equal_approx(CityMusic.level_target(true, false, 2), CityMusic.PAUSED_DB - CityMusic.JINGLE_DUCK_DB), "gepauzeerd onder een deuntje: allebei")
-
-
-func test_own_level_of_a_loop(test) -> void:
-	test.check(CityMusic.own_level_db(CityMusic.CITY_MUSIC) == -CityMusic.CITY_LOOP_SOFTER_DB, "de spelmuziek: wat zachter")
-	test.check(CityMusic.own_level_db("handelaar_loop.ogg") == 0.0, "de muziek van een gebouw: niet")
-	test.check(CityMusic.own_level_db(CityMusic.MUZAK_PREFIX + "derrek.ogg") == -CityMusic.MUZAK_SOFTER_DB, "muzak van een supermarkt: nog zachter")
-
-
-func test_loop_volume_fades_with_equal_power(test) -> void:
-	var level := CityMusic.VOLUME_DB
-	test.check(is_equal_approx(CityMusic.loop_volume_db(level, "handelaar_loop.ogg", 1.0), level), "ingefade: het muziekniveau")
-	test.check(is_equal_approx(CityMusic.loop_volume_db(level, CityMusic.CITY_MUSIC, 1.0), level - CityMusic.CITY_LOOP_SOFTER_DB), "de spelmuziek: zachter")
-	test.check(CityMusic.loop_volume_db(level, "handelaar_loop.ogg", 0.0) < -80.0, "niet ingefade: stil")
-	# halfway two loops together are as loud as one: sin² + cos² = 1
-	var coming := db_to_linear(CityMusic.loop_volume_db(0.0, "a.ogg", 0.5))
-	var going := db_to_linear(CityMusic.loop_volume_db(0.0, "b.ogg", 0.5))
-	test.check(absf(coming * coming + going * going - 1.0) < 0.001, "halverwege: samen even luid (%.3f)" % (coming * coming + going * going))
-	test.check(CityMusic.loop_volume_db(level, "a.ogg", 2.0) == CityMusic.loop_volume_db(level, "a.ogg", 1.0), "boven 1: als 1")
 
 
 func test_ducking_counts_and_never_goes_below_zero(test) -> void:
@@ -120,4 +94,43 @@ func test_a_jingle_holds_the_music_down_while_it_plays(test) -> void:
 	if jingle:
 		jingle.finished.emit()
 		test.check(music.jingles_playing() == 0, "afgelopen: de muziek weer omhoog")
+	music.free()
+
+
+func test_the_map_jingle_first_then_the_city_music(test) -> void:
+	var music := _music()
+	music.start_with_map_jingle()
+	var jingle := music.get_node_or_null("KaartDeuntje") as AudioStreamPlayer
+	if jingle == null:
+		test.check(not ResourceLoader.exists(CityMusic.MAP_JINGLE) and music.file() == CityMusic.CITY_MUSIC, "zonder kaartdeuntje: meteen de spelmuziek")
+	else:
+		test.check(jingle.volume_db == CityMusic.MAP_JINGLE_VOLUME_DB and music.file() == "" and music.loop_count() == 0, "eerst het kaartdeuntje, nog geen spelmuziek")
+		jingle.finished.emit()
+		test.check(music.file() == CityMusic.CITY_MUSIC and music.loop_count() == 1, "na het deuntje: de spelmuziek")
+	music.free()
+
+
+func test_a_new_loop_joins_the_loudest_and_starts_silent(test) -> void:
+	var music := _music()
+	music.play_city()
+	var city := music.player_of(CityMusic.CITY_MUSIC)
+	test.check(city != null and city.name == "StadMuziek" and city.volume_db <= -80.0, "de speler van de spelmuziek begint stil")
+	test.check(music.player_of("bestaat_niet.ogg") == null and music.weight_of("bestaat_niet.ogg") == 0.0, "een lus die niet speelt: geen speler, gewicht 0")
+	music._process(CityMusic.FADE_IN)
+	test.check(is_equal_approx(city.volume_db, CityMusic.VOLUME_DB - CityMusic.CITY_LOOP_SOFTER_DB), "ingefade: het muziekniveau, de spelmuziek wat zachter (%.1f)" % city.volume_db)
+	music.set_indoor("bestaat_niet.ogg")
+	test.check(music.file() == "bestaat_niet.ogg" and music.loop_count() == 1, "een lus zonder bestand: geen speler erbij")
+	music.free()
+
+
+func test_loud_while_paused_keeps_the_level(test) -> void:
+	var music := _music()
+	var was_paused := tree.paused
+	tree.paused = true
+	music._process(1.0)
+	test.check(is_equal_approx(music.level_db(), CityMusic.PAUSED_DB), "gepauzeerd: zachter")
+	music.loud_while_paused = func() -> bool: return true
+	music._process(1.0)
+	test.check(is_equal_approx(music.level_db(), CityMusic.VOLUME_DB), "gepauzeerd in de winkel: het gewone niveau")
+	tree.paused = was_paused
 	music.free()

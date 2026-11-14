@@ -5,6 +5,8 @@ extends RefCounted
 ##   tests/run_unit_tests.sh typewriter
 
 const Typewriter = preload("res://scripts/ui/widgets/typewriter.gd")
+const TypewriterView = preload("res://scripts/ui/widgets/typewriter_view.gd")
+const TypewriterRules = preload("res://scripts/ui/widgets/typewriter_rules.gd")
 
 
 ## The text appears word by word (nearly empty at first, more after a while) and
@@ -33,15 +35,6 @@ static func _typewriter(label: RichTextLabel, owner: Node) -> Typewriter:
 	return typewriter
 
 
-func test_word_ends_of(test) -> void:
-	test.check(Typewriter.word_ends_of("Een kroket") == [3, 10], "het eind van elk woord, in tekens")
-	test.check(Typewriter.word_ends_of("") == [] and Typewriter.word_ends_of("   ") == [], "geen woorden: niets")
-	test.check(Typewriter.word_ends_of("Hoi") == [3], "één woord")
-	test.check(Typewriter.word_ends_of("  Hoi  daar ") == [5, 11], "spaties ervoor, ertussen en erna tellen niet als woord")
-	test.check(Typewriter.word_ends_of("een\ntwee\tdrie") == [3, 8, 13], "ook regeleinden en tabs scheiden woorden")
-	test.check(Typewriter.word_ends_of("Hé, zwerver!") == [3, 12], "leestekens horen bij hun woord")
-
-
 func test_shown_share_counts_characters(test) -> void:
 	var label := RichTextLabel.new()
 	var owner := Node.new()
@@ -68,11 +61,11 @@ func test_a_rest_after_a_sentence_and_a_comma(test) -> void:
 	typewriter.start("Ja. Nee, toch niet")
 	typewriter.update(0.16)
 	test.check(typewriter.words_left() == 3, "het eerste woord (met zijn punt)")
-	typewriter.update(Typewriter.WORD_SECONDS + Typewriter.SENTENCE_REST - 0.05)
+	typewriter.update(Typewriter.WORD_SECONDS + TypewriterRules.SENTENCE_REST - 0.05)
 	test.check(typewriter.words_left() == 3, "na een punt een langere rust")
 	typewriter.update(0.06)
 	test.check(typewriter.words_left() == 2, "dan het volgende woord (met zijn komma)")
-	typewriter.update(Typewriter.WORD_SECONDS + Typewriter.COMMA_REST - 0.05)
+	typewriter.update(Typewriter.WORD_SECONDS + TypewriterRules.COMMA_REST - 0.05)
 	test.check(typewriter.words_left() == 2, "na een komma een korte rust")
 	typewriter.update(0.06)
 	test.check(typewriter.words_left() == 1, "dan verder")
@@ -92,13 +85,13 @@ func test_what_the_label_is_given(test) -> void:
 	test.check(label.bbcode_enabled, "het label leest opmaak")
 	typewriter.start("Kijk [hier] nou")
 	typewriter.update(0.16)
-	test.check(label.text.begins_with("Kijk" + Typewriter.CURSOR_GAP), "wat er staat, dan de cursor een eindje erachter")
+	test.check(label.text.begins_with("Kijk" + TypewriterView.CURSOR_GAP), "wat er staat, dan de cursor een eindje erachter")
 	test.check(label.text.contains("[bgcolor=#%s]" % typewriter.cursor_colour.to_html(false)), "de cursor als blokje in zijn kleur")
 	test.check(label.text.contains("[color=#00000000] [lb]hier] nou[/color]"), "de rest staat er al doorzichtig, haken als tekst (%s)" % label.text)
 	typewriter.finish()
 	test.check(label.text.begins_with("Kijk [lb]hier] nou") and not label.text.contains("[color=#00000000] "), "af: de hele tekst, niets doorzichtigs meer erachter")
 	test.check(label.text.contains("[bgcolor="), "de cursor knippert aan het eind (eerst aan)")
-	typewriter.update(Typewriter.BLINK_SECONDS * 0.7)
+	typewriter.update(TypewriterRules.BLINK_SECONDS * 0.7)
 	test.check(not label.text.contains("[bgcolor="), "en uit")
 	typewriter.blink_when_done = false
 	typewriter.start("Hoi")

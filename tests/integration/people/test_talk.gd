@@ -185,8 +185,8 @@ func test_greeting_has_choices_voice_mood_and_a_live_portrait(test) -> void:
 	test.check(is_instance_valid(box._babble), "brabbelt tijdens het typen")
 	var emote: Node = person.get_node_or_null("Emotie")
 	test.check(emote != null and emote.mood == page.mood, "lichaam beweegt met de stemming")
-	test.check(box._portrait != null and box._portrait.townsfolk_look == person.figure.look and box._portrait._townsfolk != null, "gesprekspartner in het portret")
-	test.check(box._portrait.source_figure == person.figure and box._portrait._townsfolk.has_face() and box._portrait.speaking == not box._typewriter.is_done(), "portret van de voorbijganger leeft en praat mee")
+	test.check(box._portrait != null and box._portrait.townsfolk_look == person.figure.look and box._portrait.townsfolk_figure() != null, "gesprekspartner in het portret")
+	test.check(box._portrait.source_figure == person.figure and box._portrait.townsfolk_figure().has_face() and box._portrait.speaking == not box._typewriter.is_done(), "portret van de voorbijganger leeft en praat mee")
 	await _end_talk(person)
 
 

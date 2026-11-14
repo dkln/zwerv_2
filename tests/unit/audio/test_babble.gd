@@ -1,8 +1,13 @@
 extends RefCounted
-## Unit tests of Babble.sound_name (scripts/audio/babble.gd): the name of a babble sound for
-## a voice and a mood.
+## Unit tests of the babble (scripts/audio/babble.gd, the behaviour): the random draws of a
+## sound and a pitch, what was played last, and the players in the UI and in the world. Which
+## variant a draw gives and the names as plain sums: tests/unit/audio/test_babble_rules.gd.
+##   tests/run_unit_tests.sh babble
 
 const Babble = preload("res://scripts/audio/babble.gd")
+
+## The tree of the run (tests/run_unit_tests.gd sets it).
+var tree: SceneTree
 
 
 ## The name is brabbel_<voice>_<mood>_<n>, n one of the variants.
@@ -56,3 +61,46 @@ func test_every_word_a_random_pitch(test) -> void:
 		pitches[snappedf(pitch, 0.0001)] = true
 		test.check(absf(pitch - 1.0) <= Babble.PITCH_SPREAD + 0.0001, "binnen de spreiding (%.3f)" % pitch)
 	test.check(pitches.size() > 10, "steeds een andere toonhoogte (%d)" % pitches.size())
+
+
+## A recorder standing in for RuimtelijkGeluid: what it was asked to play.
+class FakeSpatialAudio:
+	extends Node
+	var played: Array = []
+
+	func play_signal(at: Vector3, sound_name: String, unit := 8.0) -> void:
+		played.append([at, sound_name, unit])
+
+
+## In the UI: a player on the owner, at UI_DB, at its own pitch, going on while paused.
+func test_play_near_puts_a_player_on_the_owner(test) -> void:
+	var owner := Node.new()
+	tree.root.add_child(owner)
+	var player := Babble.play_near(owner, "vrouw", "blij", "kroket")
+	test.check(player != null and player.get_parent() == owner, "de speler hangt aan wie hem vroeg")
+	test.check(player != null and player.stream != null and player.volume_db == Babble.UI_DB, "met zijn geluid, op het niveau van de UI")
+	test.check(player != null and absf(player.pitch_scale - 1.0) <= Babble.PITCH_SPREAD + 0.0001, "op een eigen toonhoogte binnen de spreiding")
+	test.check(player != null and player.process_mode == Node.PROCESS_MODE_ALWAYS, "hij klinkt door terwijl het spel stilstaat")
+	test.check(Babble.play_near(null, "vrouw", "blij") == null, "zonder eigenaar: geen speler")
+	owner.free()
+
+
+## In the world: handed to RuimtelijkGeluid as a signal at that place.
+func test_play_at_hands_the_shout_to_the_spatial_sound(test) -> void:
+	var real := tree.root.get_node_or_null("RuimtelijkGeluid")
+	if real != null:
+		real.name = "RuimtelijkGeluidEcht"
+	var fake := FakeSpatialAudio.new()
+	fake.name = "RuimtelijkGeluid"
+	tree.root.add_child(fake)
+	Babble.play_at(tree, Vector3(3.0, 0.0, 4.0), "man", "boos", "Kijk uit!")
+	test.check(fake.played.size() == 1, "één geluid gevraagd")
+	if fake.played.size() == 1:
+		test.check(fake.played[0][0] == Vector3(3.0, 0.0, 4.0), "op die plek")
+		test.check(String(fake.played[0][1]).begins_with("brabbel_man_boos_"), "in die stem en stemming (%s)" % fake.played[0][1])
+		test.check(fake.played[0][2] == 7.0, "tot 7 m op volle sterkte")
+	Babble.play_at(null, Vector3.ZERO, "man", "boos")
+	test.check(fake.played.size() == 1, "zonder boom gebeurt er niets")
+	fake.free()
+	if real != null:
+		real.name = "RuimtelijkGeluid"

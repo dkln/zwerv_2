@@ -12,37 +12,22 @@ extends Node
 ## you; never two within QUIET_AFTER seconds.
 ## While they are after you they call out what fits them ("kreten" of PITCHES, in a speech
 ## balloon: DriverShout.shout_line), every CALL_EVERY seconds when the player is near.
+## This is the node (behaviour, docs/CODE_LAGEN.md): its clocks and what it asks of Characters;
+## who, where, when and what lets you go are street_pitch_rules.gd.
+##   const StreetPitches = preload("res://scripts/story/street_pitches.gd")
 
 const DriverShout = preload("res://scripts/vehicles/driver_shout.gd")
 
-const AFTER_MISSION := "missie_2_bekend_gezicht"
-const HOURS := Vector2(9.0, 19.0)
-## Seconds between two looks, the chance at a look near a hot spot and elsewhere, the quiet
-## after one (seconds), and how long a group keeps after you before it gives up.
-const LOOK_EVERY := 12.0
-const CHANCE_AT_HOT_SPOT := 0.3
-const CHANCE_ELSEWHERE := 0.03
-const QUIET_AFTER := 150.0
-const GIVE_UP := 150.0
-## How often they call out (seconds, from .. to) and within how many metres of the player.
-const CALL_EVERY := Vector2(5.0, 10.0)
-const CALL_WITHIN := 24.0
-## The busy places (the "places" of the town) and how far round them (metres) counts as there.
-const HOT_SPOTS := {"centraal": 70.0, "frietkar_centraal": 40.0, "station_laan_van_noi": 40.0, "station_voorburg": 40.0,
-	"plein": 45.0, "buitenhof": 35.0, "grote_markt": 40.0, "grote_marktstraat": 55.0, "spui": 45.0, "spui_straat": 45.0,
-	"dirigentplein": 30.0, "noordeinde": 45.0}
-## Who comes ("wie" talks, "groep" comes along), their conversation then ("gesprek") and after
-## ("klaar"), and the hidden check that lets you go ("los").
-const PITCHES := [
-	{"wie": "telefoonverkoper", "groep": ["telefoonverkoper_kevin", "telefoonverkoper_sanne"], "gesprek": "verkopen",
-		"klaar": "klaar", "los": "verkopers_af", "stemming": "opgewonden",
-		"kreten": ["Hé! Heb jij al 5G?", "Eén vraagje maar! Niet weglopen!", "Lebaarmoeder! Nu met gratis hoesje!", "Hé, jij daar! Telefoonabonnement?"]},
-	{"wie": "werver_rotonde", "groep": ["werver_rotonde_2"], "gesprek": "werven", "klaar": "klaar", "los": "rotonde_af",
-		"stemming": "opgewonden",
-		"kreten": ["Heb jij een hart voor rotondes?", "Rotonde in Nood! Eén minuutje!", "Adopteer een rotonde!", "Hoi! Hé! Jij lijkt me een rotondemens!"]},
-	{"wie": "getuige", "groep": ["getuige_2"], "gesprek": "bekeren", "klaar": "klaar", "los": "getuigen_af", "stemming": "blij",
-		"kreten": ["Goedemiddag! Mogen wij u iets geven?", "De Wachttoren, gratis!", "Denkt u wel eens na over de toekomst?", "Een mooie dag, hè? Heeft u even?"]},
-]
+const StreetPitchRules = preload("res://scripts/story/street_pitch_rules.gd")
+const AFTER_MISSION := StreetPitchRules.AFTER_MISSION
+const HOURS := StreetPitchRules.HOURS
+const LOOK_EVERY := StreetPitchRules.LOOK_EVERY
+const QUIET_AFTER := StreetPitchRules.QUIET_AFTER
+const GIVE_UP := StreetPitchRules.GIVE_UP
+const HOT_SPOTS := StreetPitchRules.HOT_SPOTS
+const PITCHES := StreetPitchRules.PITCHES
+## How high over its feet the balloon of someone calling out stands (metres).
+const CALL_HEIGHT := 2.3
 
 var characters: Node          # Characters (the parent)
 var _clock := LOOK_EVERY
@@ -70,7 +55,7 @@ func _process(delta: float) -> void:
 		return
 	if not _active.is_empty():
 		_active_left -= delta
-		if _active_left <= 0.0 or not bool(characters.call("is_chasing", String(_active.wie))):
+		if StreetPitchRules.is_over(_active_left, bool(characters.call("is_chasing", String(_active.wie)))):
 			end_pitch()
 			return
 		_call_out(delta)
@@ -82,8 +67,7 @@ func _process(delta: float) -> void:
 	_clock = LOOK_EVERY
 	if _quiet > 0.0 or not may_start():
 		return
-	var chance := CHANCE_AT_HOT_SPOT if at_hot_spot() else CHANCE_ELSEWHERE
-	if _random.randf() < chance:
+	if _random.randf() < StreetPitchRules.chance(at_hot_spot()):
 		start_pitch(_pick())
 
 
@@ -93,15 +77,15 @@ func _call_out(delta: float) -> void:
 	_call_clock -= delta
 	if _call_clock > 0.0 or get_tree().paused:
 		return
-	_call_clock = _random.randf_range(CALL_EVERY.x, CALL_EVERY.y)
+	_call_clock = _random.randf_range(StreetPitchRules.CALL_EVERY.x, StreetPitchRules.CALL_EVERY.y)
 	var player := _player()
-	var names: Array = [String(_active.wie)] + Array(_active.groep)
+	var names := StreetPitchRules.names_of(_active)
 	var caller := characters.call("person_of", String(names[_random.randi() % names.size()])) as Node3D
-	if player == null or caller == null or caller.global_position.distance_to(player.global_position) > CALL_WITHIN:
+	if player == null or caller == null or not StreetPitchRules.within_call(caller.global_position.distance_to(player.global_position)):
 		return
 	var calls: Array = _active.get("kreten", [])
 	if not calls.is_empty():
-		DriverShout.shout_line(caller, String(calls[_random.randi() % calls.size()]), 2.3, String(_active.get("stemming", "opgewonden")))
+		DriverShout.shout_line(caller, String(calls[_random.randi() % calls.size()]), CALL_HEIGHT, String(_active.get("stemming", "opgewonden")))
 
 
 ## Whether one may come now (see the top): the mission done, daytime, the player outside, free.
@@ -115,14 +99,12 @@ func may_start() -> bool:
 	var scene := tree.current_scene
 	var day := scene.get_node_or_null("Dagcyclus") if scene else null
 	if day and "time_of_day" in day:
-		var hour := float(day.time_of_day)
-		if hour < HOURS.x or hour > HOURS.y:
+		if not StreetPitchRules.is_daytime(float(day.time_of_day)):
 			return false
 	var interiors := tree.get_first_node_in_group("binnenruimtes")
 	if interiors and interiors.has_method("is_inside") and bool(interiors.is_inside()):
 		return false
-	var chasing: Dictionary = characters.get("_chasing")
-	return chasing == null or chasing.is_empty()
+	return not characters.has_method("is_anyone_chasing") or not bool(characters.call("is_anyone_chasing"))
 
 
 ## Whether the player is round one of HOT_SPOTS.
@@ -131,18 +113,11 @@ func at_hot_spot() -> bool:
 	var scene := get_tree().current_scene
 	if player == null or scene == null:
 		return false
-	var places: Dictionary = scene.get_meta("places", {})
-	var feet := Vector2(player.global_position.x, player.global_position.z)
-	for place: String in HOT_SPOTS:
-		if places.has(place) and feet.distance_to(places[place]) <= float(HOT_SPOTS[place]):
-			return true
-	return false
+	return StreetPitchRules.at_hot_spot(Vector2(player.global_position.x, player.global_position.z), scene.get_meta("places", {}))
 
 
 func _pick() -> Dictionary:
-	var index := _random.randi() % PITCHES.size()
-	if index == _last_index:
-		index = (index + 1) % PITCHES.size()
+	var index := StreetPitchRules.pitch_index(_random.randi() % PITCHES.size(), _last_index)
 	_last_index = index
 	return PITCHES[index]
 
@@ -175,7 +150,7 @@ func end_pitch() -> void:
 
 
 func _on_checked(check_id: String, passed: bool) -> void:
-	if passed and not _active.is_empty() and check_id == String(_active.los):
+	if StreetPitchRules.lets_go(_active, check_id, passed):
 		end_pitch()
 
 

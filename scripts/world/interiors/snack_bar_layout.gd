@@ -16,6 +16,7 @@ extends RefCounted
 ## without their colour variant ("<name>_<variant>": Interior.VARIANTS; `varied` true).
 ##   var plan := SnackBarLayout.plan(1234)
 
+const RandomPick = preload("res://scripts/common/random_pick.gd")
 const CELL := 4.0
 const WIDTHS := [2, 3, 3, 4]
 const DEPTHS := [2, 2, 3]
@@ -34,8 +35,7 @@ const TABLE_SHARE := 0.7
 ## "door": Transform3D (where you come in, facing into the room), "keeper": Transform3D,
 ## "seats": [Transform3D], "name_at": Vector3, "lamps": [Vector3]}.
 static func plan(seed: int) -> Dictionary:
-	var random := RandomNumberGenerator.new()
-	random.seed = hash(["snackbar", seed])
+	var random := RandomPick.seeded(hash(["snackbar", seed]))
 	var columns: int = WIDTHS[random.randi() % WIDTHS.size()]
 	var rows: int = DEPTHS[random.randi() % DEPTHS.size()]
 	var width := columns * CELL

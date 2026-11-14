@@ -29,6 +29,7 @@ import derive  # noqa: E402
 import json_bron  # noqa: E402
 import mixer  # noqa: E402
 import score as score_module  # noqa: E402
+import standaardvorm  # noqa: E402
 import tijdlijn  # noqa: E402
 import tracker  # noqa: E402
 
@@ -57,8 +58,9 @@ def unknown_form(data) -> str:
     if isinstance(data, dict) and isinstance(data.get("bars"), list):
         return ""   # the usual form (json_bron.problems says what is missing in it)
     keys = ", ".join(str(key) for key in data) if isinstance(data, dict) else type(data).__name__
-    return ("onbekende vorm: geen van de drie vormen van docs/MUZIEK_JSON.md (de gewone met 'metadata', 'sections', "
-            "'synthParameters' en 'bars'; de platte met 'bpm' en 'bars'; de tijdlijn met 'full_track_timeline_<n>_bars')."
+    return ("onbekende vorm: niet de standaardvorm van docs/MUZIEK_JSON.md ('metadata', 'sections', 'synthParameters' "
+            "en 'bars') en ook niet de platte vorm of de tijdlijn. Zet het bestand eerst om: "
+            "tools/muziek/naar_standaardvorm.sh <bestand.json>"
             f"\n  Het bestand heeft: {keys}")
 
 
@@ -73,7 +75,12 @@ def piece_as_written(json_path: str, piece_name: str) -> tuple:
         raise ValueError(f"{json_path}: {wrong}")
     module_name = MODULE_PREFIX + tracker.default_name(json_path)
     try:
-        if tijdlijn.is_timeline(data):
+        if standaardvorm.synth_of(data) == "patches":
+            # the standard form with its own sounds: "patch:<the file's full path>:<voice>"
+            source = standaardvorm.read(json_path)
+            warnings = list(source["warnings"])
+            source_text = standaardvorm.composition_source(source, pathlib.Path(json_path).as_posix())
+        elif tijdlijn.is_timeline(data):
             # the sounds are the file's own patches: "patch:<the file's full path>:<channel>"
             source = tijdlijn.read(json_path)
             warnings = list(source["warnings"])

@@ -271,7 +271,7 @@ Verhaal, missies en kleingeld
   brabbelen in hun stem en stemming (`scripts/audio/babble.gd`, `brabbel_<stem>_<stemming>_<n>`
   uit `tools/megadrive/stemmen.py`; een vraag gaat omhoog) en hun lichaam beweegt mee
   (`scripts/world/people/emote.gd`: boos schudt, blij huppelt, verdrietig hangt voorover).
-- Kleingeld (node `Kleingeld`, `scripts/world/things/loose_change.gd`; waar het ligt en het oppakken deelt het met de pinpassen: `street_finds.gd`, de rekenregels in `find_spots.gd`): aan het begin van het spel niets;
+- Kleingeld (node `Kleingeld`, `scripts/world/things/loose_change.gd`; waar het ligt en het oppakken deelt het met de pinpassen: `street_finds.gd`, de rekenregels in `street_finds_rules.gd`): aan het begin van het spel niets;
   pas als het verhaal `kleingeld` ontgrendelt (nog geen missie doet dat) één munt (10, 20, 50 cent,
   soms een euro) in de hele stad, op pleinen en stoepen tussen 60 en 400 m van de start, geen dichtbij. Eroverheen lopen
   raapt ze op (`add_money`, geluid "munt", het bedrag stijgt op).
@@ -1390,6 +1390,7 @@ Projectstructuur
       voxgen/              Python-generator van de tiles (zie "Tiles (opnieuw) genereren")
       megadrive/           Python-generator van alle muziek en de verkeersgeluiden in Mega Drive-stijl (FM, PSG, PCM-drums)
     docs/                  Goxel-handleiding (GOXEL.md -> handleiding_goxel.html), MUZIEK.md (de muzikale huisstijl), GELUIDEN.md (geluidseffecten en stemmen)
+                           CODE_LAGEN.md (de vier lagen van de code: logica `_rules`, layout `_layout`, graphics `_view`, gedrag)
 
 
 Tests draaien

@@ -66,3 +66,11 @@ func test_the_same_seed_gives_the_same_picks(test) -> void:
 	RandomPick.shuffle(_seeded(43), other)
 	test.check(other != first, "andere seed: andere volgorde")
 	test.check(RandomPick.weighted(_seeded(7), [1.0, 1.0, 1.0, 1.0]) == RandomPick.weighted(_seeded(7), [1.0, 1.0, 1.0, 1.0]), "zelfde seed: zelfde gewogen keuze")
+
+
+func test_a_seeded_generator_draws_the_same_from_the_same_seed(test) -> void:
+	var first := RandomPick.seeded(42)
+	var second := RandomPick.seeded(42)
+	test.check(first.seed == 42, "de seed is gezet")
+	test.check(first.randi() == second.randi() and first.randf() == second.randf(), "zelfde seed: zelfde trekkingen, in dezelfde volgorde")
+	test.check(RandomPick.seeded(43).randi() != RandomPick.seeded(42).randi(), "andere seed: andere trekking")

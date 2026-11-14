@@ -29,19 +29,17 @@ extends Node
 ## `turn_step` (a quarter: four views) left or right (turn_by), C or pressing the right stick
 ## back to the usual view (turn_back); not inside. It still looks down steeper when buildings
 ## hide the player.
+## This is the behaviour (docs/CODE_LAGEN.md): the state of the view over time, the input and
+## the camera it places; the sums and the choices are in follow_camera_rules.gd.
 
+const FollowCameraRules = preload("res://scripts/camera/follow_camera_rules.gd")
 const CloudShroud = preload("res://scripts/effects/cloud_shroud.gd")
 const LoadingScreenScript = preload("res://scripts/ui/loading_screen.gd")
 const Iso = preload("res://scripts/camera/iso_camera.gd")
 const CameraTurning = preload("res://scripts/camera/camera_turning.gd")
-## Above this speed (m/s) between two frames the vehicle did not drive but jumped.
-const JUMP_SPEED := 80.0
-## The arrival: its speed in the clouds (share of the speed outside them), and the steps of
-## its sum (_arrival_descent).
-const ARRIVAL_CLOUD_SPEED := 0.35
-## From this share of the arrival on its speed runs out softly.
-const ARRIVAL_SETTLE_FROM := 0.7
-const ARRIVAL_STEPS := 128
+## The player's zoom: a press and its limits (FollowCameraRules; for the tests and the HUD).
+const ZOOM_STEP := FollowCameraRules.ZOOM_STEP
+const ZOOM_MOST := FollowCameraRules.ZOOM_MOST
 
 ## Follow at startup.
 @export var active := true
@@ -114,12 +112,6 @@ const ARRIVAL_STEPS := 128
 ## does not swing it to and fro), and the seconds a view is held after it turned.
 @export var turn_after := 1.2
 @export var turn_hold_time := 6.0
-## Street views (_street_turn): how many cells round the player tell where the street lies,
-## how clear the street side must be to turn to it (0..1), and the way the view always turns
-## round (-1: clockwise seen from above, "rechtsom"; 1 the other way).
-const STREET_REACH := 3
-const STREET_CLEAR := 0.2
-const TURN_DIRECTION := -1.0
 var _wanted_turn := NAN              # the view the street asks for, and since how long
 var _wanted_for := 0.0
 ## Seconds between two looks round.
@@ -203,8 +195,6 @@ var _buildings: GridMap
 var manual_turning := false
 var user_zoom := 1.0
 var _user_zoom_now := 1.0
-const ZOOM_STEP := 1.15
-const ZOOM_MOST := Vector2(0.5, 2.0)
 var _turn := 0.0                     # degrees the view is turned from Iso.ROTATION.y now
 var _turn_velocity := 0.0
 var _turn_goal := 0.0                # degrees it turns to
@@ -214,7 +204,7 @@ var _steep_goal := 0.0               # 0 or 1: where it glides to
 var _turn_check_clock := 0.0
 var _usual_free_for := 0.0           # seconds the usual view (no turn) has been free
 var _hidden_for := 0.0               # seconds the player has been hidden from the view turned to its goal
-var _turn_held_for := 1000.0         # seconds since the view last chose a new turn
+var _turn_held_for := FollowCameraRules.NEVER_TURNED         # seconds since the view last chose a new turn
 
 ## The followed node (for scripts/world/town/building_fade.gd and the HUD).
 var target_node: Node3D:
@@ -266,7 +256,7 @@ func start() -> void:
 func _glide_over(target_position: Vector3) -> void:
 	_glide_over_from = _view_focus - target_position
 	_glide_over_left = switch_time
-	_glide_over_zoom = minf(_glide_over_from.length() * switch_zoom_out, switch_zoom_out_most)
+	_glide_over_zoom = FollowCameraRules.glide_over_zoom(_glide_over_from, switch_zoom_out, switch_zoom_out_most)
 	_focus = target_position
 	_focus_velocity = Vector3.ZERO
 	_target_velocity = Vector3.ZERO
@@ -312,7 +302,7 @@ func set_indoors(indoors: bool, zoom_in_view := 0.0) -> void:
 	_steep_goal = 0.0
 	_steep_velocity = 0.0
 	_hidden_for = 0.0
-	_turn_held_for = 1000.0
+	_turn_held_for = FollowCameraRules.NEVER_TURNED
 
 
 ## The view on its target at once, without gliding over (after the target was put elsewhere).
@@ -344,7 +334,7 @@ func arrival_progress() -> float:
 		return 1.0
 	if _arrival_clock < 0.0:
 		return 0.0
-	return clampf(_arrival_clock / maxf(arrival_seconds, 0.1), 0.0, 1.0)
+	return FollowCameraRules.arrival_progress(_arrival_clock, arrival_seconds)
 
 
 ## The arrival: how much it is still zoomed out, waiting while the town loads, then down
@@ -359,33 +349,14 @@ func _advance_arrival(delta: float) -> float:
 			_set_clouds(0.0, arrival_zoom)   # (under the loading screen: as it will start)
 			return arrival_zoom
 		_arrival_clock = 0.0
-	_arrival_clock += minf(delta, 1.0 / 30.0)   # a hitch (the first frame after loading) skips nothing
-	var progress := clampf(_arrival_clock / maxf(arrival_seconds, 0.1), 0.0, 1.0)
-	var view_size := exp(lerpf(log(arrival_zoom), log(zoom_still), _arrival_descent(progress)))
+	_arrival_clock += minf(delta, FollowCameraRules.ARRIVAL_LONGEST_FRAME)   # a hitch skips nothing
+	var progress := FollowCameraRules.arrival_progress(_arrival_clock, arrival_seconds)
+	var view_size := FollowCameraRules.arrival_view_size(arrival_zoom, zoom_still, progress)
 	_set_clouds(progress, view_size)
 	if progress >= 1.0:
 		_end_arrival()
 		return -1.0
 	return view_size
-
-
-## How far down (0..1, in a log scale of the heights) the view is at `progress` of the
-## arrival: the sum of its speed so far, the speed slowing down towards the end and to
-## ARRIVAL_CLOUD_SPEED in the clouds (the first part, high up), so you drift down through
-## them, and from ARRIVAL_SETTLE_FROM on settling softly onto the player.
-static func _arrival_descent(progress: float) -> float:
-	var done := 0.0
-	var total := 0.0
-	for step in ARRIVAL_STEPS:
-		var at := (step + 0.5) / ARRIVAL_STEPS
-		var in_clouds := 1.0 - smoothstep(0.3, 0.6, at)
-		var speed := pow(1.0 - at, 0.3) * lerpf(1.0, ARRIVAL_CLOUD_SPEED, in_clouds)
-		# the last part settling softly onto the player, the speed running out to nothing
-		speed *= 1.0 - smoothstep(ARRIVAL_SETTLE_FROM, 1.0, at)
-		total += speed
-		if at < progress:
-			done += speed * minf(1.0, (progress - at) * ARRIVAL_STEPS + 0.5)
-	return clampf(done / total, 0.0, 1.0)
 
 
 ## The clouds at `progress` of the arrival, the view `view_size` metres: they go with the
@@ -395,9 +366,9 @@ static func _arrival_descent(progress: float) -> float:
 func _set_clouds(progress: float, view_size: float) -> void:
 	if _clouds == null:
 		return
-	_clouds.cover = 1.0 - smoothstep(0.62, 0.92, progress)
+	_clouds.cover = FollowCameraRules.cloud_cover(progress)
 	_clouds.dive = progress
-	_clouds.magnify = arrival_zoom / maxf(view_size, 0.01)
+	_clouds.magnify = FollowCameraRules.cloud_magnify(arrival_zoom, view_size)
 
 
 ## True while the camera follows its target.
@@ -410,20 +381,16 @@ func _process(delta: float) -> void:
 		# in real time, also when the game is slowed down
 		delta /= maxf(Engine.time_scale, 0.01)
 	var target_position := _target_position()
-	if delta > 0.0 and target_position.distance_to(_target_last) / delta > JUMP_SPEED:
+	if FollowCameraRules.jumped(_target_last, target_position, delta):
 		_glide_over(target_position)
 	var closeness := _advance_closeup(delta)   # 0 = iso view .. 1 = closest
-	if delta > 0.0:
-		var frame_velocity := (target_position - _target_last) / delta
-		_target_velocity = _target_velocity.lerp(frame_velocity, 1.0 - exp(-delta / maxf(velocity_smoothing, 0.01)))
+	_target_velocity = FollowCameraRules.smoothed_velocity(_target_velocity, _target_last, target_position, velocity_smoothing, delta)
 	_target_last = target_position
 	# the point ahead; close by it only makes up for the spring's lag (the target in the middle)
-	var lead := (_target_velocity * lead_time).limit_length(_zoom * max_lead) if not _dramatic else Vector3.ZERO
-	var goal := target_position + lead.lerp(Vector3.ZERO, closeness) + _target_velocity * glide_time
-	goal.y = target_position.y + _target_velocity.y * glide_time   # up and down ramps without lag
+	var lead := FollowCameraRules.lead(_target_velocity, lead_time, _zoom, max_lead) if not _dramatic else Vector3.ZERO
+	var goal := FollowCameraRules.focus_goal(target_position, _target_velocity, lead, closeness, glide_time)
 	var speed := Vector2(_target_velocity.x, _target_velocity.z).length()
-	var goal_zoom := lerpf(zoom_still, zoom_walk, clampf(speed / walk_pace, 0.0, 1.0)) if speed < walk_pace \
-		else lerpf(zoom_walk, zoom_fast, clampf((speed - walk_pace) / maxf(fast_speed - walk_pace, 0.1), 0.0, 1.0))
+	var goal_zoom := FollowCameraRules.zoom_for_speed(speed, zoom_still, zoom_walk, zoom_fast, walk_pace, fast_speed)
 	_glide_over_left = maxf(_glide_over_left - delta, 0.0)
 	if _glide_over_left > 0.0:
 		goal_zoom += _glide_over_zoom
@@ -438,11 +405,11 @@ func _process(delta: float) -> void:
 		goal = (target_position + _talk_partner.global_position) * 0.5
 	var focus_time := dramatic_glide if _dramatic else (talk_glide if talking else glide_time)
 	for axis in 3:
-		var glided := _glide(_focus[axis], goal[axis], _focus_velocity[axis], focus_time, delta)
+		var glided := FollowCameraRules.glide(_focus[axis], goal[axis], _focus_velocity[axis], focus_time, delta)
 		_focus[axis] = glided.x
 		_focus_velocity[axis] = glided.y
 	var zoom_time := zoom_in_glide_time if goal_zoom < _zoom else zoom_glide_time
-	var zoomed := _glide(_zoom, goal_zoom, _zoom_velocity, dramatic_glide if _dramatic else (talk_glide if talking else zoom_time), delta)
+	var zoomed := FollowCameraRules.glide(_zoom, goal_zoom, _zoom_velocity, dramatic_glide if _dramatic else (talk_glide if talking else zoom_time), delta)
 	_zoom = zoomed.x
 	_zoom_velocity = zoomed.y
 	var arrival_size := _advance_arrival(delta)
@@ -453,10 +420,9 @@ func _process(delta: float) -> void:
 		_focus_velocity = Vector3.ZERO
 		_glide_over_left = 0.0
 	# the player's own zoom (turned by hand), gliding there
-	_user_zoom_now = lerpf(_user_zoom_now, user_zoom if manual_turning and not _indoors else 1.0, 1.0 - exp(-delta * 8.0))
+	_user_zoom_now = FollowCameraRules.user_zoom_now(_user_zoom_now, user_zoom if manual_turning and not _indoors else 1.0, delta)
 	var view_size := lerpf(_zoom, closeup_zoom, closeness) * _user_zoom_now
-	var way_to_go := _glide_over_from * smoothstep(0.0, 1.0, _glide_over_left / maxf(switch_time, 0.01))
-	_view_focus = _focus + way_to_go
+	_view_focus = _focus + FollowCameraRules.way_to_go(_glide_over_from, _glide_over_left, switch_time)
 	_advance_turn(target_position, view_size, delta)
 	Iso.place(_cam, _view_focus, view_size, view_yaw())
 	if _steep > 0.001 and closeness <= 0.0:
@@ -466,7 +432,7 @@ func _process(delta: float) -> void:
 	if closeness > 0.0:
 		# lower and swung round the vehicle, at the same distance
 		var progress := _closeup_clock / closeup_time
-		var swing := closeup_orbit * (progress - 0.5) * _closeup_side * closeness
+		var swing := FollowCameraRules.closeup_swing(closeup_orbit, progress, _closeup_side, closeness)
 		_cam.rotation_degrees = Vector3(lerpf(Iso.ROTATION.x, closeup_pitch, closeness), view_yaw() + swing, 0.0)
 		_cam.global_position = _view_focus + _cam.global_basis.z * Iso.distance(view_size)
 	_shake_for_crash(view_size)
@@ -499,15 +465,14 @@ func _advance_turn(target_position: Vector3, view_size: float, delta: float) -> 
 		if _turn_check_clock <= 0.0:
 			_turn_check_clock = turn_check_interval
 			_choose_turn(target_position, view_size)
-	var glided := _glide(_turn, _turn_goal, _turn_velocity, manual_turn_glide_time if manual_turning else turn_glide_time, delta)
+	var glided := FollowCameraRules.glide(_turn, _turn_goal, _turn_velocity, manual_turn_glide_time if manual_turning else turn_glide_time, delta)
 	_turn = glided.x
 	_turn_velocity = glided.y
 	# turned round once more: the same view in smaller numbers
-	if absf(_turn - _turn_goal) < 0.01 and absf(_turn_goal) >= 360.0:
-		var whole := roundf(_turn_goal / 360.0) * 360.0
-		_turn -= whole
-		_turn_goal -= whole
-	var tilted := _glide(_steep, _steep_goal, _steep_velocity, turn_glide_time if _steep_goal > _steep else steep_back_glide_time, delta)
+	var whole := FollowCameraRules.whole_turns_done(_turn, _turn_goal)
+	_turn -= whole
+	_turn_goal -= whole
+	var tilted := FollowCameraRules.glide(_steep, _steep_goal, _steep_velocity, turn_glide_time if _steep_goal > _steep else steep_back_glide_time, delta)
 	_steep = clampf(tilted.x, 0.0, 1.0)
 	_steep_velocity = tilted.y
 
@@ -517,21 +482,21 @@ func _choose_turn(target_position: Vector3, view_size: float) -> void:
 	var wanted := _street_turn(target_position) if turn_to_streets else NAN
 	if is_nan(wanted):
 		_wanted_for = 0.0
-	elif is_nan(_wanted_turn) or absf(wrapf(wanted - _wanted_turn, -180.0, 180.0)) > 1.0:
+	elif FollowCameraRules.is_other_view(wanted, _wanted_turn):
 		_wanted_turn = wanted
 		_wanted_for = 0.0
 	else:
 		_wanted_for += turn_check_interval
 	if turn_to_streets and not manual_turning and not is_nan(wanted) and _turn_held_for >= turn_hold_time and _wanted_for >= turn_after:
 		# how far round, the one way (TURN_DIRECTION): never the short way back
-		var ahead := wrapf((wanted - _turn_goal) * TURN_DIRECTION, 0.0, 360.0)
-		if ahead > 1.0 and ahead < 359.0:
-			_set_view_goal(_turn_goal + ahead * TURN_DIRECTION, false)
+		var ahead := FollowCameraRules.turn_ahead(wanted, _turn_goal)
+		if FollowCameraRules.is_a_turn(ahead):
+			_set_view_goal(_turn_goal + ahead * FollowCameraRules.TURN_DIRECTION, false)
 	# buildings still before the player in this view for a while: look down steeper
 	var hidden := _hidden_points(target_position, _turn_goal, Iso.distance(view_size))
 	_hidden_for = _hidden_for + turn_check_interval if hidden > 0 else 0.0
 	# turned by hand: no looking down steeper either (the player chooses the view)
-	if not manual_turning and _steep_goal < 0.5 and _hidden_for >= (turn_after * 2.0 if turn_to_streets else top_down_after):
+	if not manual_turning and _steep_goal < 0.5 and _hidden_for >= FollowCameraRules.steep_after(turn_to_streets, turn_after, top_down_after):
 		_steep_goal = 1.0
 	elif _steep_goal > 0.5 and hidden == 0:
 		_usual_free_for += turn_check_interval
@@ -560,7 +525,7 @@ func turn_by(steps: int) -> void:
 func turn_back() -> void:
 	if not manual_turning or _indoors or _arriving:
 		return
-	_turn_goal = roundf(_turn_goal / 360.0) * 360.0
+	_turn_goal = FollowCameraRules.turn_back_goal(_turn_goal)
 	_turn_held_for = 0.0
 
 
@@ -568,35 +533,33 @@ func turn_back() -> void:
 func zoom_by(steps: int) -> void:
 	if not manual_turning:
 		return
-	user_zoom = clampf(user_zoom * pow(ZOOM_STEP, steps), ZOOM_MOST.x, ZOOM_MOST.y)
+	user_zoom = FollowCameraRules.user_zoom_after(user_zoom, steps)
 
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not manual_turning or get_tree().paused:
 		return
+	var done := false
 	if event is InputEventMouseButton and event.pressed:
-		var wheel := (event as InputEventMouseButton).button_index
-		if wheel == MOUSE_BUTTON_WHEEL_UP or wheel == MOUSE_BUTTON_WHEEL_DOWN:
-			zoom_by(-1 if wheel == MOUSE_BUTTON_WHEEL_UP else 1)
-			get_viewport().set_input_as_handled()
-			return
-	if event is InputEventKey and event.pressed and not event.echo:
-		var key := (event as InputEventKey).physical_keycode
-		if key == CameraTurning.KEY_LEFT_TURN:
-			turn_by(-1)
-			get_viewport().set_input_as_handled()
-		elif key == CameraTurning.KEY_RIGHT_TURN:
-			turn_by(1)
-			get_viewport().set_input_as_handled()
-		elif key == CameraTurning.KEY_TURN_BACK:
-			turn_back()
-			get_viewport().set_input_as_handled()
-		elif key in CameraTurning.KEYS_ZOOM_IN:
-			zoom_by(-1)
-			get_viewport().set_input_as_handled()
-		elif key in CameraTurning.KEYS_ZOOM_OUT:
-			zoom_by(1)
-			get_viewport().set_input_as_handled()
+		var steps := FollowCameraRules.wheel_zoom((event as InputEventMouseButton).button_index)
+		done = steps != 0
+		if done:
+			zoom_by(steps)
+	elif event is InputEventKey and event.pressed and not event.echo:
+		done = _do_key(FollowCameraRules.key_action((event as InputEventKey).physical_keycode))
+	if done:
+		get_viewport().set_input_as_handled()
+
+
+## Does what a key asks (FollowCameraRules.key_action); false when it asks nothing.
+func _do_key(action: Dictionary) -> bool:
+	if action.has("turn"):
+		turn_by(action.turn)
+	elif action.has("back"):
+		turn_back()
+	elif action.has("zoom"):
+		zoom_by(action.zoom)
+	return not action.is_empty()
 
 
 ## Turns to `turn` (degrees from the usual view), looking down steeply if `steep`; held for
@@ -608,71 +571,26 @@ func _set_view_goal(turn: float, steep: bool) -> void:
 	_hidden_for = 0.0
 
 
-## The view (degrees from the usual one, 0..360) the street round `target_position` asks for,
-## from the Gebouwen cells within STREET_REACH cells (at street level): built is closed, the
-## rest open. Buildings close on both sides of one axis and open along it (a narrow street):
-## straight along it (a view between the iso ones), the end that comes first going round.
-## Else the open side, weighed by nearness, if it is clear enough (STREET_CLEAR): the iso
-## view whose camera stands most on that side. NAN when neither (a square, a park, a court).
+## The view (degrees from the usual one, 0..360) the street round `target_position` asks for
+## (FollowCameraRules.street_turn), from the Gebouwen cells round it at street level. NAN when
+## none (a square, a park, a court).
 func _street_turn(target_position: Vector3) -> float:
 	if _buildings == null:
 		return NAN
 	var local := _buildings.global_transform.affine_inverse() * target_position
 	var cell := Vector2i(floori(local.x / _buildings.cell_size.x), floori(local.z / _buildings.cell_size.z))
-	var east := _built(cell, 1, 0) or _built(cell, 2, 0)
-	var west := _built(cell, -1, 0) or _built(cell, -2, 0)
-	var south := _built(cell, 0, 1) or _built(cell, 0, 2)
-	var north := _built(cell, 0, -1) or _built(cell, 0, -2)
-	var straight := Vector2.ZERO
-	if east and west and not (north or south):
-		straight = Vector2(0.0, 1.0)   # a street running north-south
-	elif north and south and not (east or west):
-		straight = Vector2(1.0, 0.0)   # a street running east-west
-	if straight != Vector2.ZERO:
-		return _first_turn_round([45.0, 135.0, 225.0, 315.0], func(from: Vector2) -> float: return absf(from.dot(straight)))
-	var side := Vector2.ZERO
-	var total := 0.0
-	for dz in range(-STREET_REACH, STREET_REACH + 1):
-		for dx in range(-STREET_REACH, STREET_REACH + 1):
-			var offset := Vector2(dx, dz)
-			var length := offset.length()
-			if length == 0.0 or length > STREET_REACH + 0.5:
-				continue
-			var weight := 1.0 / length
-			side += offset / length * weight * (-1.0 if _built(cell, dx, dz) else 1.0)
-			total += weight
-	side /= maxf(total, 0.001)
-	if side.length() < STREET_CLEAR:
-		return NAN
-	return _first_turn_round([0.0, 90.0, 180.0, 270.0], func(from: Vector2) -> float: return from.dot(side.normalized()))
-
-
-## Of `turns`, the one whose camera side (`score` of the flat way from the player to the camera)
-## is best; of equally good ones the first going round (TURN_DIRECTION) from where it is now.
-func _first_turn_round(turns: Array, score: Callable) -> float:
-	var best := NAN
-	var best_score := -INF
-	var best_ahead := INF
-	for turn: float in turns:
-		var to_camera := towards_camera(turn, Iso.ROTATION.x)
-		var value: float = score.call(Vector2(to_camera.x, to_camera.z).normalized())
-		var ahead := wrapf((turn - _turn_goal) * TURN_DIRECTION, 0.0, 360.0)
-		if value > best_score + 0.01 or (absf(value - best_score) <= 0.01 and ahead < best_ahead):
-			best = turn
-			best_score = value
-			best_ahead = ahead
-	return best
+	return FollowCameraRules.street_turn(_built.bind(cell), _turn_goal)
 
 
 ## Whether a building stands at street level `dx`, `dz` cells from `cell`.
-func _built(cell: Vector2i, dx: int, dz: int) -> bool:
+func _built(dx: int, dz: int, cell: Vector2i) -> bool:
 	return _buildings.get_cell_item(Vector3i(cell.x + dx, 0, cell.y + dz)) != GridMap.INVALID_CELL_ITEM
 
 
 ## The way from what the camera looks at to the camera (unit), the view turned `turn` degrees
 ## from the usual one and looking down at `pitch` degrees.
 static func towards_camera(turn: float, pitch: float) -> Vector3:
-	return Basis.from_euler(Vector3(deg_to_rad(pitch), deg_to_rad(Iso.ROTATION.y + turn), 0.0)).z
+	return FollowCameraRules.towards_camera(turn, pitch)
 
 
 ## Whether the view hole (Doorkijk) may open: always; the view turns to the street side by
@@ -687,36 +605,28 @@ func view_hole_wanted() -> bool:
 ## camera's side of the target count (it never hides behind a building at its back).
 func _hidden_points(target_position: Vector3, turn: float, distance: float, pitch := Iso.ROTATION.x) -> int:
 	var to_camera := towards_camera(turn, pitch)
-	var across := Vector3.UP.cross(to_camera).normalized()
-	var flat_towards := Vector2(to_camera.x, to_camera.z)
-	var to_map := _buildings.global_transform.affine_inverse()
-	var hidden := 0
-	for height in turn_test_heights:
-		for side: float in [-1.0, 0.0, 1.0]:
-			var start := target_position + Vector3.UP * height + across * side * turn_test_reach
-			for step in range(1, int(distance)):
-				var point := start + to_camera * float(step)
-				var cell := _buildings.local_to_map(to_map * point)
-				if _buildings.get_cell_item(cell) == GridMap.INVALID_CELL_ITEM:
-					continue
-				var middle := _buildings.to_global(_buildings.map_to_local(cell))
-				if Vector2(middle.x - target_position.x, middle.z - target_position.z).dot(flat_towards) > 0.0:
-					hidden += 1
-					break
-	return hidden
+	var points := FollowCameraRules.sight_points(target_position, to_camera, turn_test_heights, turn_test_reach)
+	return FollowCameraRules.hidden_points(points, to_camera, distance, _hides.bind(target_position, to_camera))
+
+
+## Whether a Gebouwen cell at `point` hides the target from the camera.
+func _hides(point: Vector3, target_position: Vector3, to_camera: Vector3) -> bool:
+	var cell := _buildings.local_to_map(_buildings.to_local(point))
+	if _buildings.get_cell_item(cell) == GridMap.INVALID_CELL_ITEM:
+		return false
+	return FollowCameraRules.on_camera_side(_buildings.to_global(_buildings.map_to_local(cell)), target_position, to_camera)
 
 
 ## Shakes the view for a crash that just happened within it (harder the harder the crash,
 ## dying down over crash_shake_time).
 func _shake_for_crash(view_size: float) -> void:
 	var age: float = Time.get_ticks_msec() / 1000.0 - Vehicle.last_crash["time"]
-	if age < 0.0 or age > crash_shake_time:
+	if not FollowCameraRules.is_shaking(age, crash_shake_time):
 		return
 	var crash_at: Vector3 = Vehicle.last_crash["at"]
 	if crash_at.distance_to(_view_focus) > view_size:
 		return
-	var fade := 1.0 - age / crash_shake_time
-	var amount: float = crash_shake * Vehicle.last_crash["strength"] * fade * fade * clampf(view_size / 40.0, 0.4, 1.5)
+	var amount := FollowCameraRules.shake_amount(crash_shake, Vehicle.last_crash["strength"], age, crash_shake_time, view_size)
 	_cam.global_position += (_cam.global_basis.x * _random.randf_range(-1.0, 1.0)
 			+ _cam.global_basis.y * _random.randf_range(-1.0, 1.0)) * amount
 
@@ -738,21 +648,9 @@ func _advance_closeup(delta: float) -> float:
 		_closeup_clock = -1.0
 		_closeup_wait = _random.randf_range(closeup_every.x, closeup_every.y)
 		return 0.0
-	return smoothstep(0.0, 0.25, progress) * (1.0 - smoothstep(0.75, 1.0, progress))
+	return FollowCameraRules.closeness(progress)
 
 
 ## Where the vehicle is drawn this frame (between physics steps, see vehicle.gd).
 func _target_position() -> Vector3:
 	return _followed.call("drawn_position") if _followed.has_method("drawn_position") else _followed.global_position
-
-
-## One frame of a critically damped spring from `value` (moving at `velocity`) towards
-## `goal`, settling in about `time` seconds: returns (new value, new velocity). Its speed
-## changes smoothly, also when the goal jumps.
-static func _glide(value: float, goal: float, velocity: float, time: float, delta: float) -> Vector2:
-	var omega := 2.0 / maxf(time, 0.01)
-	var x := omega * delta
-	var decay := 1.0 / (1.0 + x + 0.48 * x * x + 0.235 * x * x * x)
-	var change := value - goal
-	var push := (velocity + omega * change) * delta
-	return Vector2(goal + (change + push) * decay, (velocity - omega * push) * decay)

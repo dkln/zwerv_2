@@ -34,80 +34,69 @@ extends Node
 ## - While the game is paused the traffic is PAUSED_DB softer. The bus as a whole sits at
 ##   BUS_VOLUME_DB with a compressor and a limiter on it (and Master a limiter), so a loud
 ##   moment never blasts.
+## This is the behaviour layer: the ear, the players on the vehicles and the buses, over
+## time. What plays for which kind, how loud, at what pitch and when (the yelp, passing by,
+## the signals) are plain sums in the rules layer (spatial_audio_rules.gd); sound has no view
+## and no layout.
 ## Sounds: assets/audio/geluiden/ (tools/megadrive/geluiden.py, docs/GELUIDEN.md).
 ## Test: tests/integration/world/test_spatial_audio.gd.
 
 const SoundVariation = preload("res://scripts/audio/sound_variation.gd")
 const LoadingScreen = preload("res://scripts/ui/loading_screen.gd")
-const SOUND_FOLDER := "res://assets/audio/geluiden/"
 const SoundFiles = preload("res://scripts/audio/sound_files.gd")
-const BUS_NAME := "Verkeer"
-## The one-shots (horns, bells, cries, hits, splashes) have a bus of their own, with only a
-## limiter: through the compressor of the traffic bus the engines around would squash them
-## to their own level, and they would be lost under the traffic and the music.
-const EVENT_BUS_NAME := "Voorvallen"
-const LISTENER_HEIGHT := 1.7
-const MAX_EMITTERS := 14
-const HEARING_RANGE := 90.0
-## How far outside the picture (a share of its size on every side) a sound is still heard.
-const VIEW_MARGIN := 0.15
-## The gentle softening with distance (distance_db).
-const FULL_WITHIN := 8.0
-const DB_PER_METRE := 0.2
-const SOFTEST_DB := 12.0
-const POOL_INTERVAL := 0.5
-## Engine loop and cruising speed (m/s) per vehicle_kind; the loop's pitch is 1 at that speed.
-const MOTOR_SOUNDS := {"auto": "auto_motor_loop", "brommer": "brommer_motor_loop", "bus": "bus_motor_loop",
-	"tram": "tram_motor_loop", "trein": "trein_motor_loop"}
-const CRUISE_SPEED := {"auto": 13.0, "brommer": 10.0, "bus": 9.0, "tram": 8.0, "trein": 20.0}
-## The files are all equally loud (-16 LUFS, tools/megadrive/loudness.py), so these numbers are
-## the real balance between the engines.
-const MOTOR_VOLUME_DB := {"auto": -11.0, "brommer": -10.0, "bus": -10.0, "tram": -7.0, "trein": -8.0}
-## How near (m) a source is at full loudness (unit_size), per kind; bigger is heard further.
-const UNIT_SIZE := {"auto": 10.0, "brommer": 8.0, "bus": 14.0, "tram": 14.0, "trein": 22.0}
-const IDLE_PITCH := 0.7
-## Under this speed (m/s) a tram or train fades out; standing still it is silent.
-const RAIL_SILENT_BELOW := 1.5
-const MAX_PITCH := 1.45
-const DOPPLER_BOOST := 1.6
-const SPEED_OF_SOUND := 343.0
-const SIREN_VOLUME_DB := -6.0
-## The levels of the one-shots (the files are all equally loud: their loudest moment at -16 LUFS,
-## tools/megadrive/loudness.py): what happens to you or right by you (a crash, a hit, a cry, a splash)
-## loudest, the signals of the traffic (horns, bells) a little under that, what goes on in the
-## background (passing by, brakes) under those.
-const EVENT_DB := 1.0
-const SIGNAL_DB := -1.0
-const BACKGROUND_DB := -1.5
-const HARD_CRASH_SPEED := 9.0
-const HELICOPTER_SOUND := "helikopter_loop"
-const HELICOPTER_SCRIPT := "police_helicopter.gd"
-const HELICOPTER_PASS_BY := "helikopter_voorbij"
-## Passing by (see the top): how near, how fast (share of the cruising speed), how much the
-## loops duck meanwhile, how far it must get before it can pass again.
-const PASS_BY_DISTANCE := 8.0
-const HELICOPTER_PASS_BY_DISTANCE := 35.0
-const PASS_BY_MIN_SHARE := 0.6
-const HELICOPTER_PASS_BY_MIN_SPEED := 8.0
-const PASS_BY_DUCK_DB := -14.0
-const PASS_BY_REARM := 40.0
-const PASS_BY_VOLUME_DB := -1.5   # BACKGROUND_DB
-## The yelp (see the top): below and above which share of the cruising speed.
-const YELP_SOUND := "sirene_yelp_loop"
-const YELP_BELOW := 0.5
-const YELP_UNTIL := 0.75
-const FIRE_HORN := "brandweer_hoorn"
-const HORN_CHANCE := 0.6
-const HORN_PAUSE := 8.0
-const PAUSED_DB := -14.0
-## The level of the traffic bus as a whole, and how its peaks are held down: a compressor
-## evens out the loud moments (a siren racing past, a crash next to you), a limiter keeps
-## every peak under LIMITER_CEILING_DB; Master gets a limiter of its own as a last guard.
-const BUS_VOLUME_DB := -3.0
-const COMPRESSOR_THRESHOLD_DB := -16.0
-const COMPRESSOR_RATIO := 3.0
-const LIMITER_CEILING_DB := -3.0
-const MASTER_CEILING_DB := -1.0
+const SpatialAudioRules = preload("res://scripts/audio/spatial_audio_rules.gd")
+const SOUND_FOLDER := "res://assets/audio/geluiden/"
+## How high (m) above a vehicle its players hang, and a one-shot above its place.
+const PLAYER_ABOVE := Vector3.UP * 0.8
+const ONE_SHOT_ABOVE := Vector3.UP
+## The kinds, the levels and the numbers are the rules' (SpatialAudioRules); here under
+## their old names for whoever uses the sound (the vehicles, the tests).
+const BUS_NAME := SpatialAudioRules.BUS_NAME
+const EVENT_BUS_NAME := SpatialAudioRules.EVENT_BUS_NAME
+const LISTENER_HEIGHT := SpatialAudioRules.LISTENER_HEIGHT
+const MAX_EMITTERS := SpatialAudioRules.MAX_EMITTERS
+const HEARING_RANGE := SpatialAudioRules.HEARING_RANGE
+const VIEW_MARGIN := SpatialAudioRules.VIEW_MARGIN
+const FULL_WITHIN := SpatialAudioRules.FULL_WITHIN
+const DB_PER_METRE := SpatialAudioRules.DB_PER_METRE
+const SOFTEST_DB := SpatialAudioRules.SOFTEST_DB
+const POOL_INTERVAL := SpatialAudioRules.POOL_INTERVAL
+const MOTOR_SOUNDS := SpatialAudioRules.MOTOR_SOUNDS
+const CRUISE_SPEED := SpatialAudioRules.CRUISE_SPEED
+const MOTOR_VOLUME_DB := SpatialAudioRules.MOTOR_VOLUME_DB
+const UNIT_SIZE := SpatialAudioRules.UNIT_SIZE
+const IDLE_PITCH := SpatialAudioRules.IDLE_PITCH
+const RAIL_SILENT_BELOW := SpatialAudioRules.RAIL_SILENT_BELOW
+const MAX_PITCH := SpatialAudioRules.MAX_PITCH
+const DOPPLER_BOOST := SpatialAudioRules.DOPPLER_BOOST
+const SPEED_OF_SOUND := SpatialAudioRules.SPEED_OF_SOUND
+const SIREN_VOLUME_DB := SpatialAudioRules.SIREN_VOLUME_DB
+const EVENT_DB := SpatialAudioRules.EVENT_DB
+const SIGNAL_DB := SpatialAudioRules.SIGNAL_DB
+const BACKGROUND_DB := SpatialAudioRules.BACKGROUND_DB
+const HARD_CRASH_SPEED := SpatialAudioRules.HARD_CRASH_SPEED
+const HELICOPTER_SOUND := SpatialAudioRules.HELICOPTER_SOUND
+const HELICOPTER_SCRIPT := SpatialAudioRules.HELICOPTER_SCRIPT
+const HELICOPTER_PASS_BY := SpatialAudioRules.HELICOPTER_PASS_BY
+const PASS_BY_DISTANCE := SpatialAudioRules.PASS_BY_DISTANCE
+const HELICOPTER_PASS_BY_DISTANCE := SpatialAudioRules.HELICOPTER_PASS_BY_DISTANCE
+const PASS_BY_MIN_SHARE := SpatialAudioRules.PASS_BY_MIN_SHARE
+const HELICOPTER_PASS_BY_MIN_SPEED := SpatialAudioRules.HELICOPTER_PASS_BY_MIN_SPEED
+const PASS_BY_DUCK_DB := SpatialAudioRules.PASS_BY_DUCK_DB
+const PASS_BY_REARM := SpatialAudioRules.PASS_BY_REARM
+const PASS_BY_VOLUME_DB := SpatialAudioRules.PASS_BY_VOLUME_DB
+const YELP_SOUND := SpatialAudioRules.YELP_SOUND
+const YELP_BELOW := SpatialAudioRules.YELP_BELOW
+const YELP_UNTIL := SpatialAudioRules.YELP_UNTIL
+const FIRE_HORN := SpatialAudioRules.FIRE_HORN
+const HORN_CHANCE := SpatialAudioRules.HORN_CHANCE
+const HORN_PAUSE := SpatialAudioRules.HORN_PAUSE
+const PAUSED_DB := SpatialAudioRules.PAUSED_DB
+const BUS_VOLUME_DB := SpatialAudioRules.BUS_VOLUME_DB
+const COMPRESSOR_THRESHOLD_DB := SpatialAudioRules.COMPRESSOR_THRESHOLD_DB
+const COMPRESSOR_RATIO := SpatialAudioRules.COMPRESSOR_RATIO
+const LIMITER_CEILING_DB := SpatialAudioRules.LIMITER_CEILING_DB
+const MASTER_CEILING_DB := SpatialAudioRules.MASTER_CEILING_DB
 
 var _vehicles: Array[Node3D] = []       # every Vehicle (and the helicopter) in the tree
 var _emitters := {}                     # vehicle instance id -> Emitter
@@ -175,7 +164,7 @@ func _player_left(node: Node) -> void:
 
 func _is_helicopter(node: Node) -> bool:
 	var script := node.get_script() as Script
-	return script != null and script.resource_path.ends_with(HELICOPTER_SCRIPT)
+	return script != null and SpatialAudioRules.is_helicopter_script(script.resource_path)
 
 
 func _process(delta: float) -> void:
@@ -188,8 +177,8 @@ func _process(delta: float) -> void:
 		return
 	_update_ear(delta)
 	var paused := get_tree().paused
-	AudioServer.set_bus_volume_db(_bus_index, BUS_VOLUME_DB + (PAUSED_DB if paused else 0.0))
-	AudioServer.set_bus_volume_db(_event_bus_index, BUS_VOLUME_DB + (PAUSED_DB if paused else 0.0))
+	AudioServer.set_bus_volume_db(_bus_index, SpatialAudioRules.bus_volume_db(paused))
+	AudioServer.set_bus_volume_db(_event_bus_index, SpatialAudioRules.bus_volume_db(paused))
 	if not paused:
 		_clock += delta
 	_pool_clock -= delta
@@ -236,16 +225,11 @@ func _focus() -> Vector3:
 func _update_ear(delta: float) -> void:
 	_ear = _focus() + Vector3.UP * LISTENER_HEIGHT
 	if delta > 0.0:
-		_ear_velocity = _ear_velocity.lerp((_ear - _ear_previous) / delta, 1.0 - exp(-4.0 * delta))
+		_ear_velocity = _ear_velocity.lerp((_ear - _ear_previous) / delta,
+				SpatialAudioRules.follow_weight(SpatialAudioRules.EAR_FOLLOW, delta))
 	_ear_previous = _ear
 	var camera := get_viewport().get_camera_3d()
-	var forward := Vector3.FORWARD
-	if camera != null:
-		forward = -camera.global_basis.z
-	forward.y = 0.0
-	if forward.length_squared() < 0.0001:
-		forward = Vector3.FORWARD
-	forward = forward.normalized()
+	var forward := SpatialAudioRules.heading(-camera.global_basis.z if camera != null else Vector3.FORWARD)
 	_listener.global_transform = Transform3D(Basis.looking_at(forward, Vector3.UP), _ear)
 
 
@@ -254,44 +238,40 @@ func _update_ear(delta: float) -> void:
 
 func _update_pool() -> void:
 	var nearby: Array = []
+	var by_id := {}
 	for vehicle in _vehicles:
 		if not is_instance_valid(vehicle) or not vehicle.is_inside_tree():
 			continue
-		var kind := _kind_of(vehicle)
-		if kind == "":
+		if _kind_of(vehicle) == "":
 			continue
 		# only what is in view (or just outside it); the nearest first when there are too many
 		if in_view(vehicle.global_position):
-			nearby.append([vehicle.global_position.distance_to(_ear), vehicle])
-	nearby.sort_custom(func(first, second): return first[0] < second[0])
-	var wanted := {}
-	for entry in nearby.slice(0, MAX_EMITTERS):
-		wanted[(entry[1] as Node3D).get_instance_id()] = entry[1]
+			nearby.append([vehicle.global_position.distance_to(_ear), vehicle.get_instance_id()])
+			by_id[vehicle.get_instance_id()] = vehicle
+	var wanted := SpatialAudioRules.nearest_ids(nearby)
 	for id in _emitters.keys():
 		if not wanted.has(id):
 			_free_emitter(_emitters[id])
 			_emitters.erase(id)
 	for id in wanted:
 		if not _emitters.has(id):
-			_emitters[id] = _make_emitter(wanted[id])
+			_emitters[id] = _make_emitter(by_id[id])
 
 
 func _kind_of(vehicle: Node3D) -> String:
-	if _is_helicopter(vehicle):
-		return "helikopter"
-	var kind := str(vehicle.get("vehicle_kind"))
-	return kind if MOTOR_SOUNDS.has(kind) else ""
+	return SpatialAudioRules.kind_of(str(vehicle.get("vehicle_kind")), _is_helicopter(vehicle))
 
 
 func _siren_of(vehicle: Node3D) -> String:
 	var car := vehicle as Vehicle
-	if car == null or not car.emergency:
-		return ""
+	return SpatialAudioRules.siren_sound(car != null and car.emergency, _service_of(vehicle))
+
+
+## The emergency service a vehicle drives for (SpatialAudioRules.siren_sound).
+func _service_of(vehicle: Node3D) -> String:
 	if vehicle is Ambulance:
-		return "ambulance_sirene_loop"
-	if vehicle is FireEngine:
-		return "brandweer_sirene_loop"
-	return "politie_sirene_loop"
+		return "ambulance"
+	return "brandweer" if vehicle is FireEngine else "politie"
 
 
 func _make_emitter(vehicle: Node3D) -> Emitter:
@@ -299,39 +279,45 @@ func _make_emitter(vehicle: Node3D) -> Emitter:
 	emitter.vehicle = vehicle
 	emitter.pitch_factor = SoundVariation.pitch(SoundVariation.LOOP_SPREAD)
 	emitter.kind = _kind_of(vehicle)
-	var sound_name: String = HELICOPTER_SOUND if emitter.kind == "helikopter" else MOTOR_SOUNDS[emitter.kind]
-	emitter.base_db = 0.3 if emitter.kind == "helikopter" else MOTOR_VOLUME_DB[emitter.kind]
-	var unit: float = 30.0 if emitter.kind == "helikopter" else UNIT_SIZE[emitter.kind]
-	emitter.motor = _make_player(vehicle, sound_name, unit, emitter.base_db, true)
+	emitter.base_db = SpatialAudioRules.motor_base_db(emitter.kind)
+	emitter.motor = _make_player(vehicle, SpatialAudioRules.motor_sound(emitter.kind),
+			SpatialAudioRules.motor_unit(emitter.kind), emitter.base_db, true)
 	emitter.siren_name = _siren_of(vehicle)
 	if emitter.siren_name != "":
-		emitter.siren = _make_player(vehicle, emitter.siren_name, 12.0, SIREN_VOLUME_DB, false)
+		emitter.siren = _make_player(vehicle, emitter.siren_name, SpatialAudioRules.SIREN_UNIT_SIZE, SIREN_VOLUME_DB, false)
 	emitter.previous_position = vehicle.global_position
 	# already right next to the ear when it gets its sound: no pass-by for this approach
-	emitter.pass_by_armed = vehicle.global_position.distance_to(_ear) > _pass_by_distance(emitter) * 2.0
+	emitter.pass_by_armed = SpatialAudioRules.armed_at_start(emitter.kind, vehicle.global_position.distance_to(_ear))
 	var car := vehicle as Vehicle
 	if car != null:
 		emitter.was_crashed = car.crashed
 		emitter.last_speed = absf(car.speed)
-		emitter.was_standing = emitter.last_speed < 0.5
+		emitter.was_standing = SpatialAudioRules.is_standing(emitter.last_speed)
 	return emitter
 
 
+## A player of a loop on a vehicle (its engine, its siren), on the traffic bus.
 func _make_player(parent: Node3D, sound_name: String, unit: float, volume_db: float, play_now: bool) -> AudioStreamPlayer3D:
-	var player := AudioStreamPlayer3D.new()
+	var player := _new_player(_stream(sound_name, true), BUS_NAME, unit, volume_db)
 	player.name = "Geluid_" + sound_name
-	player.stream = _stream(sound_name, true)
-	player.bus = BUS_NAME
-	player.unit_size = unit
-	player.max_distance = HEARING_RANGE * (2.5 if sound_name == HELICOPTER_SOUND else 1.2)
-	player.volume_db = volume_db
-	player.attenuation_filter_db = 0.0   # no muffling with distance: only softer
-	_even_out(player)
-	player.position = Vector3.UP * 0.8
+	player.position = PLAYER_ABOVE
 	parent.add_child(player)
 	if play_now and player.stream != null:
 		# start somewhere in the loop, so a street full of the same cars does not phase
-		player.play(_random.randf() * maxf(player.stream.get_length() - 0.05, 0.0))
+		player.play(SpatialAudioRules.loop_start(_random.randf(), player.stream.get_length()))
+	return player
+
+
+## A player of `stream` on `bus`, at `volume_db`, softened by distance in its own way only
+## (_even_out), not yet in the tree.
+func _new_player(stream: AudioStream, bus: String, unit: float, volume_db: float) -> AudioStreamPlayer3D:
+	var player := AudioStreamPlayer3D.new()
+	player.stream = stream
+	player.bus = bus
+	player.unit_size = unit
+	player.volume_db = volume_db
+	player.attenuation_filter_db = 0.0   # no muffling with distance: only softer
+	_even_out(player)
 	return player
 
 
@@ -347,165 +333,133 @@ func _update_emitter(emitter: Emitter, delta: float) -> void:
 		return
 	if delta > 0.0 and not get_tree().paused:
 		var moved := (vehicle.global_position - emitter.previous_position) / delta
-		emitter.velocity = emitter.velocity.lerp(moved, 1.0 - exp(-6.0 * delta))
+		emitter.velocity = emitter.velocity.lerp(moved, SpatialAudioRules.follow_weight(SpatialAudioRules.VEHICLE_FOLLOW, delta))
 	emitter.previous_position = vehicle.global_position
 	_check_pass_by(emitter)
-	emitter.duck = lerpf(emitter.duck, 1.0 if _clock < emitter.pass_by_until else 0.0, 1.0 - exp(-8.0 * delta))
-	var duck_db := PASS_BY_DUCK_DB * emitter.duck
+	emitter.duck = lerpf(emitter.duck, 1.0 if _clock < emitter.pass_by_until else 0.0,
+			SpatialAudioRules.follow_weight(SpatialAudioRules.DUCK_FOLLOW, delta))
+	var duck_db := SpatialAudioRules.duck_db(emitter.duck)
 	var doppler := _doppler(vehicle)
 	var car := vehicle as Vehicle
 	if car == null:
-		emitter.motor.pitch_scale = clampf(doppler * emitter.pitch_factor, 0.5, 2.0)
+		emitter.motor.pitch_scale = SpatialAudioRules.helicopter_pitch(doppler, emitter.pitch_factor)
 	else:
-		var speed := absf(car.speed)
-		var cruise: float = CRUISE_SPEED[emitter.kind]
-		var crashed := car.crashed
-		var engine_pitch := lerpf(IDLE_PITCH, 1.0, clampf(speed / cruise, 0.0, 1.0))
-		if speed > cruise:
-			engine_pitch = minf(MAX_PITCH, 1.0 + (speed - cruise) / cruise * 0.5)
-		emitter.motor.pitch_scale = clampf(engine_pitch * doppler * emitter.pitch_factor, 0.3, 2.5)
-		var idle_db := lerpf(-5.0, 0.0, clampf(speed / cruise, 0.0, 1.0))
-		# a tram or a train standing still makes no sound: it fades out under RAIL_SILENT_BELOW m/s
-		if emitter.kind == "tram" or emitter.kind == "trein":
-			idle_db += linear_to_db(maxf(clampf(speed / RAIL_SILENT_BELOW, 0.0, 1.0), 0.0001))
-		emitter.motor.volume_db = emitter.base_db + idle_db + duck_db + distance_db(vehicle.global_position)
-		if crashed and not emitter.was_crashed:
-			_one_shot(vehicle.global_position, "auto_botsing_hard" if emitter.last_speed > HARD_CRASH_SPEED else "auto_botsing_licht", 10.0, EVENT_DB)
-		if crashed:
-			emitter.motor.volume_db = -80.0
-		_signals(emitter, speed)
-		emitter.was_crashed = crashed
-		emitter.last_speed = speed
-		if emitter.siren != null and is_instance_valid(emitter.siren):
-			var wants_siren := car.siren_on and not crashed
-			_update_yelp(emitter, speed, wants_siren)
-			if wants_siren and not emitter.siren.playing:
-				emitter.siren.play()
-			elif not wants_siren and emitter.siren.playing:
-				emitter.siren.stop()
-			emitter.siren.pitch_scale = clampf(doppler, 0.5, 2.0)
-			emitter.siren.volume_db = SIREN_VOLUME_DB + duck_db + distance_db(vehicle.global_position)
-	if emitter.kind == "helikopter":
-		emitter.motor.volume_db = emitter.base_db + duck_db
+		_update_car(emitter, car, duck_db, doppler)
+	if emitter.kind == SpatialAudioRules.HELICOPTER_KIND:
+		emitter.motor.volume_db = SpatialAudioRules.helicopter_volume_db(emitter.base_db, duck_db)
+
+
+## The engine, the crash, the signals and the siren of a car, a bus, a tram or a train.
+func _update_car(emitter: Emitter, car: Vehicle, duck_db: float, doppler: float) -> void:
+	var speed := absf(car.speed)
+	var cruise: float = CRUISE_SPEED[emitter.kind]
+	var crashed := car.crashed
+	var softer_db := distance_db(car.global_position)
+	emitter.motor.pitch_scale = SpatialAudioRules.motor_pitch(speed, cruise, doppler, emitter.pitch_factor)
+	if SpatialAudioRules.just_crashed(crashed, emitter.was_crashed):
+		_one_shot(car.global_position, SpatialAudioRules.crash_sound(emitter.last_speed), SpatialAudioRules.CRASH_UNIT, EVENT_DB)
+	emitter.motor.volume_db = SpatialAudioRules.motor_volume_db(emitter.kind, emitter.base_db, speed, cruise, duck_db, softer_db, crashed)
+	_signals(emitter, speed)
+	emitter.was_crashed = crashed
+	emitter.last_speed = speed
+	if emitter.siren != null and is_instance_valid(emitter.siren):
+		var wants_siren := car.siren_on and not crashed
+		_update_yelp(emitter, speed, wants_siren)
+		if wants_siren and not emitter.siren.playing:
+			emitter.siren.play()
+		elif not wants_siren and emitter.siren.playing:
+			emitter.siren.stop()
+		emitter.siren.pitch_scale = SpatialAudioRules.siren_pitch(doppler)
+		emitter.siren.volume_db = SpatialAudioRules.siren_volume_db(duck_db, softer_db)
 
 
 ## Little events: a bus stopping hisses, a tram pulling away rings, a train now and then hoots.
 func _signals(emitter: Emitter, speed: float) -> void:
-	var standing := speed < 0.5
+	var standing := SpatialAudioRules.is_standing(speed)
 	var position := emitter.vehicle.global_position
-	if emitter.kind == "bus" and standing and not emitter.was_standing and emitter.last_speed > 0.0:
-		_one_shot(position, "bus_remmen", 8.0, BACKGROUND_DB)
-	if emitter.kind == "tram" and not standing and emitter.was_standing:
-		_one_shot(position, "tram_bel", 10.0, SIGNAL_DB)
-	if emitter.kind == "trein" and not standing and emitter.was_standing and _random.randf() < 0.5:
-		_one_shot(position, "trein_hoorn", 20.0, SIGNAL_DB)
+	if SpatialAudioRules.bus_brakes(emitter.kind, standing, emitter.was_standing, emitter.last_speed):
+		_one_shot(position, SpatialAudioRules.BUS_BRAKES, SpatialAudioRules.BUS_BRAKES_UNIT, BACKGROUND_DB)
+	if SpatialAudioRules.tram_rings(emitter.kind, standing, emitter.was_standing):
+		_one_shot(position, SpatialAudioRules.TRAM_BELL, SpatialAudioRules.TRAM_BELL_UNIT, SIGNAL_DB)
+	if SpatialAudioRules.train_may_hoot(emitter.kind, standing, emitter.was_standing) \
+			and SpatialAudioRules.chance_hits(_random.randf(), SpatialAudioRules.TRAIN_HORN_CHANCE):
+		_one_shot(position, SpatialAudioRules.TRAIN_HORN, SpatialAudioRules.TRAIN_HORN_UNIT, SIGNAL_DB)
 	emitter.was_standing = standing
 
 
 ## The yelp at a crossing: below YELP_BELOW of its cruising speed the siren swaps to the fast
 ## yelp, above YELP_UNTIL back to its own; a fire engine starting to yelp may blow its horn.
 func _update_yelp(emitter: Emitter, speed: float, siren_on: bool) -> void:
-	var cruise: float = CRUISE_SPEED[emitter.kind]
-	var yelp := emitter.yelping
-	if not siren_on:
-		yelp = false
-	elif speed < cruise * YELP_BELOW:
-		yelp = true
-	elif speed > cruise * YELP_UNTIL:
-		yelp = false
+	var yelp := SpatialAudioRules.yelps(emitter.yelping, speed, CRUISE_SPEED[emitter.kind], siren_on)
 	if yelp == emitter.yelping:
 		return
 	emitter.yelping = yelp
 	var was_playing := emitter.siren.playing
-	emitter.siren.stream = _stream(YELP_SOUND if yelp else emitter.siren_name, true)
+	emitter.siren.stream = _stream(SpatialAudioRules.siren_loop(yelp, emitter.siren_name), true)
 	if was_playing:
 		emitter.siren.play()
-	if yelp and emitter.vehicle is FireEngine and _clock >= emitter.horn_ready_at:
-		emitter.horn_ready_at = _clock + HORN_PAUSE
-		if _random.randf() < HORN_CHANCE:
-			_one_shot(emitter.vehicle.global_position, FIRE_HORN, 14.0, SIGNAL_DB)
+	if SpatialAudioRules.horn_may_blow(yelp, emitter.vehicle is FireEngine, _clock, emitter.horn_ready_at):
+		emitter.horn_ready_at = SpatialAudioRules.horn_ready_after(_clock)
+		if SpatialAudioRules.chance_hits(_random.randf(), HORN_CHANCE):
+			_one_shot(emitter.vehicle.global_position, FIRE_HORN, SpatialAudioRules.FIRE_HORN_UNIT, SIGNAL_DB)
 
 
 func _pass_by_distance(emitter: Emitter) -> float:
-	return HELICOPTER_PASS_BY_DISTANCE if emitter.kind == "helikopter" else PASS_BY_DISTANCE
+	return SpatialAudioRules.pass_by_distance(emitter.kind)
 
 
 ## The pass-by clip of a vehicle (see the top): when it will pass the ear close enough and
 ## fast enough, and the nearest point is half the clip away, the clip starts on the vehicle.
 func _check_pass_by(emitter: Emitter) -> void:
 	var vehicle := emitter.vehicle
-	var offset := vehicle.global_position - _ear
-	if emitter.kind == "helikopter":
-		offset.y = 0.0   # it flies over: what counts is passing overhead
+	var offset := SpatialAudioRules.passing_part(emitter.kind, vehicle.global_position - _ear)
 	if not emitter.pass_by_armed:
-		if offset.length() > PASS_BY_REARM * (2.5 if emitter.kind == "helikopter" else 1.0):
+		if SpatialAudioRules.rearms(emitter.kind, offset.length()):
 			emitter.pass_by_armed = true
 		return
 	if get_tree().paused:
 		return
-	var relative := emitter.velocity - _ear_velocity
-	if emitter.kind == "helikopter":
-		relative.y = 0.0
-	var relative_speed := relative.length()
+	var relative := SpatialAudioRules.passing_part(emitter.kind, emitter.velocity - _ear_velocity)
 	var car := vehicle as Vehicle
-	var fast_enough := relative_speed >= HELICOPTER_PASS_BY_MIN_SPEED
+	var fast_enough := SpatialAudioRules.helicopter_fast_enough(relative.length())
 	if car != null:
-		fast_enough = absf(car.speed) >= CRUISE_SPEED[emitter.kind] * PASS_BY_MIN_SHARE and relative_speed > 1.0
+		fast_enough = SpatialAudioRules.car_fast_enough(emitter.kind, car.speed, relative.length())
 	if not fast_enough or (car != null and car.crashed):
 		return
-	var until_nearest := -offset.dot(relative) / (relative_speed * relative_speed)
-	if until_nearest <= 0.0:
+	if not SpatialAudioRules.passes(emitter.kind, offset, relative):
 		return
-	var miss := (offset + relative * until_nearest).length()
-	if miss > _pass_by_distance(emitter):
-		return
-	var sound_name := _pass_by_sound(emitter)
-	var stream := _stream(sound_name, false)
-	if stream == null or until_nearest > stream.get_length() * 0.5:
+	var until_nearest := SpatialAudioRules.seconds_until_nearest(offset, relative)
+	var stream := _stream(_pass_by_sound(emitter), false)
+	if stream == null or not SpatialAudioRules.clip_in_reach(until_nearest, stream.get_length()):
 		return
 	emitter.pass_by_armed = false
-	var player := AudioStreamPlayer3D.new()
-	player.name = "Voorbij"
-	player.stream = stream
-	player.bus = BUS_NAME
-	# the clip has its own swell and fade: the 3D part only places it (left/right), barely softens
-	player.unit_size = 30.0 if emitter.kind == "helikopter" else 20.0
-	player.max_distance = HEARING_RANGE * 2.0
-	player.volume_db = PASS_BY_VOLUME_DB
-	player.attenuation_filter_db = 0.0
-	_even_out(player)
-	player.position = Vector3.UP * 0.8
-	vehicle.add_child(player)
-	player.finished.connect(player.queue_free)
 	# start so the loudest moment (halfway) falls on the nearest point
-	var start := clampf(stream.get_length() * 0.5 - until_nearest, 0.0, stream.get_length() - 0.1)
-	player.play(start)
+	var start := SpatialAudioRules.pass_by_start(stream.get_length(), until_nearest)
+	_play_pass_by(vehicle, stream, SpatialAudioRules.pass_by_unit(emitter.kind), start)
 	emitter.pass_by_until = _clock + stream.get_length() - start
 
 
+## The pass-by clip `stream` on `vehicle`, from `start` s in; gone when it is over.
+func _play_pass_by(vehicle: Node3D, stream: AudioStream, unit: float, start: float) -> void:
+	# the clip has its own swell and fade: the 3D part only places it (left/right), barely softens
+	var player := _new_player(stream, BUS_NAME, unit, PASS_BY_VOLUME_DB)
+	player.name = "Voorbij"
+	player.position = PLAYER_ABOVE
+	vehicle.add_child(player)
+	player.finished.connect(player.queue_free)
+	player.play(start)
+
+
 func _pass_by_sound(emitter: Emitter) -> String:
-	if emitter.kind == "helikopter":
-		return HELICOPTER_PASS_BY
 	var car := emitter.vehicle as Vehicle
-	if emitter.siren_name != "" and car != null and car.siren_on:
-		return emitter.siren_name.replace("_sirene_loop", "_voorbij")
-	return emitter.kind + "_voorbij"
+	return SpatialAudioRules.pass_by_sound(emitter.kind, emitter.siren_name, car != null and car.siren_on)
 
 
 ## The pitch factor of a source moving towards (above 1) or away from (below 1) the ear.
 func _doppler(vehicle: Node3D) -> float:
-	var velocity := Vector3.ZERO
 	var car := vehicle as Vehicle
-	if car != null:
-		velocity = car.velocity
-	var to_ear := _ear - vehicle.global_position
-	var distance := to_ear.length()
-	if distance < 0.5:
-		return 1.0
-	var direction := to_ear / distance
-	var closing := (velocity.dot(direction) - _ear_velocity.dot(direction)) * DOPPLER_BOOST
-	closing = clampf(closing, -SPEED_OF_SOUND * 0.5, SPEED_OF_SOUND * 0.5)
-	return SPEED_OF_SOUND / (SPEED_OF_SOUND - closing)
+	var velocity := car.velocity if car != null else Vector3.ZERO
+	return SpatialAudioRules.doppler(velocity, _ear_velocity, _ear - vehicle.global_position)
 
 
 ## A sound from assets/audio/geluiden/ once at `at`, placed in 3D like the traffic; for others
@@ -528,16 +482,9 @@ func attach_loop(parent: Node3D, sound_name: String, unit := 10.0, volume_db := 
 	var stream := _stream(sound_name, true)
 	if stream == null or parent == null:
 		return null
-	var player := AudioStreamPlayer3D.new()
+	var player := _new_player(stream, EVENT_BUS_NAME, unit, volume_db)
 	player.name = "Geluid_" + sound_name
-	player.stream = stream
-	player.bus = EVENT_BUS_NAME
-	player.unit_size = unit
-	player.max_distance = HEARING_RANGE * 1.5
-	player.volume_db = volume_db
-	player.attenuation_filter_db = 0.0
-	_even_out(player)
-	player.max_db = maxf(volume_db, 0.0)
+	player.max_db = SpatialAudioRules.one_shot_max_db(volume_db)
 	player.pitch_scale = SoundVariation.pitch(SoundVariation.LOOP_SPREAD)
 	parent.add_child(player)
 	player.play()
@@ -549,8 +496,8 @@ func play_at(at: Vector3, sound_name: String, volume_db := 0.0, unit := 8.0) -> 
 		_one_shot(at, sound_name, unit, volume_db)
 
 
-## Distance softens a sound gently (logarithmic), and never makes it louder than its level
-## close by: so what is near and what is far differ less (HEARING_RANGE).
+## Godot's own softening with distance is off (distance_db does it, gently), and a sound is
+## never louder than its level close by.
 static func _even_out(player: AudioStreamPlayer3D) -> void:
 	player.attenuation_model = AudioStreamPlayer3D.ATTENUATION_DISABLED
 	player.max_distance = 0.0
@@ -559,7 +506,7 @@ static func _even_out(player: AudioStreamPlayer3D) -> void:
 
 ## How much softer a sound at `at` is for its distance from the ear (dB, <= 0; see the top).
 func distance_db(at: Vector3) -> float:
-	return -clampf((at.distance_to(_ear) - FULL_WITHIN) * DB_PER_METRE, 0.0, SOFTEST_DB)
+	return SpatialAudioRules.distance_db(at.distance_to(_ear))
 
 
 ## True if `at` is in the picture or just outside it (VIEW_MARGIN): what may make a sound.
@@ -567,32 +514,23 @@ func distance_db(at: Vector3) -> float:
 func in_view(at: Vector3) -> bool:
 	var camera := get_viewport().get_camera_3d()
 	if camera == null:
-		return at.distance_to(_ear) <= HEARING_RANGE
+		return SpatialAudioRules.within_hearing(at.distance_to(_ear))
 	if camera.is_position_behind(at):
 		return false
-	var picture := get_viewport().get_visible_rect()
-	return picture.grow_individual(picture.size.x * VIEW_MARGIN, picture.size.y * VIEW_MARGIN,
-			picture.size.x * VIEW_MARGIN, picture.size.y * VIEW_MARGIN).has_point(camera.unproject_position(at))
+	return SpatialAudioRules.in_picture(get_viewport().get_visible_rect(), camera.unproject_position(at))
 
 
 func _one_shot(at: Vector3, sound_name: String, unit: float, volume_db: float) -> void:
 	var stream := _stream(sound_name, false)
 	if stream == null or not in_view(at):
 		return
-	var player := AudioStreamPlayer3D.new()
-	player.stream = stream
-	player.bus = EVENT_BUS_NAME
-	player.unit_size = unit
-	player.max_distance = HEARING_RANGE * 1.5
-	player.volume_db = volume_db + distance_db(at)
-	player.attenuation_filter_db = 0.0
-	_even_out(player)
+	var player := _new_player(stream, EVENT_BUS_NAME, unit, volume_db + distance_db(at))
 	# max_db caps volume_db too: at 0 dB a horn or a cry above 0 (EVENT_DB, SIGNAL_DB) would
 	# be cut back to the level of the engines and be lost under them and the music
-	player.max_db = maxf(volume_db, 0.0)
+	player.max_db = SpatialAudioRules.one_shot_max_db(volume_db)
 	player.pitch_scale = SoundVariation.pitch()   # never twice quite the same
 	add_child(player)
-	player.global_position = at + Vector3.UP
+	player.global_position = at + ONE_SHOT_ABOVE
 	player.finished.connect(player.queue_free)
 	player.play()
 
@@ -618,14 +556,7 @@ func _stream(sound_name: String, looping: bool) -> AudioStream:
 
 
 func _ensure_bus() -> void:
-	_bus_index = AudioServer.get_bus_index(BUS_NAME)
-	if _bus_index == -1:
-		AudioServer.add_bus()
-		_bus_index = AudioServer.bus_count - 1
-		AudioServer.set_bus_name(_bus_index, BUS_NAME)
-		AudioServer.set_bus_send(_bus_index, "Master")
-	while AudioServer.get_bus_effect_count(_bus_index) > 0:
-		AudioServer.remove_bus_effect(_bus_index, 0)
+	_bus_index = _bus(BUS_NAME)
 	var compressor := AudioEffectCompressor.new()
 	compressor.threshold = COMPRESSOR_THRESHOLD_DB
 	compressor.ratio = COMPRESSOR_RATIO
@@ -633,22 +564,32 @@ func _ensure_bus() -> void:
 	compressor.release_ms = 180.0
 	compressor.gain = 0.0
 	AudioServer.add_bus_effect(_bus_index, compressor)
-	var limiter := AudioEffectHardLimiter.new()
-	limiter.ceiling_db = LIMITER_CEILING_DB
-	AudioServer.add_bus_effect(_bus_index, limiter)
-	_event_bus_index = AudioServer.get_bus_index(EVENT_BUS_NAME)
-	if _event_bus_index == -1:
-		AudioServer.add_bus()
-		_event_bus_index = AudioServer.bus_count - 1
-		AudioServer.set_bus_name(_event_bus_index, EVENT_BUS_NAME)
-		AudioServer.set_bus_send(_event_bus_index, "Master")
-	while AudioServer.get_bus_effect_count(_event_bus_index) > 0:
-		AudioServer.remove_bus_effect(_event_bus_index, 0)
-	var event_limiter := AudioEffectHardLimiter.new()
-	event_limiter.ceiling_db = LIMITER_CEILING_DB
-	AudioServer.add_bus_effect(_event_bus_index, event_limiter)
+	_add_limiter(_bus_index, LIMITER_CEILING_DB)
+	_event_bus_index = _bus(EVENT_BUS_NAME)
+	_add_limiter(_event_bus_index, LIMITER_CEILING_DB)
 	AudioServer.set_bus_volume_db(_event_bus_index, BUS_VOLUME_DB)
 	_guard_master()
+
+
+## The index of the bus `bus_name` (made when it is not there yet, sending to Master),
+## without the effects it had.
+func _bus(bus_name: String) -> int:
+	var bus_index := AudioServer.get_bus_index(bus_name)
+	if bus_index == -1:
+		AudioServer.add_bus()
+		bus_index = AudioServer.bus_count - 1
+		AudioServer.set_bus_name(bus_index, bus_name)
+		AudioServer.set_bus_send(bus_index, "Master")
+	while AudioServer.get_bus_effect_count(bus_index) > 0:
+		AudioServer.remove_bus_effect(bus_index, 0)
+	return bus_index
+
+
+## A limiter on the bus `bus_index` that keeps every peak under `ceiling_db`.
+func _add_limiter(bus_index: int, ceiling_db: float) -> void:
+	var limiter := AudioEffectHardLimiter.new()
+	limiter.ceiling_db = ceiling_db
+	AudioServer.add_bus_effect(bus_index, limiter)
 
 
 ## A limiter on Master (once), so no sound of the game ever clips.
@@ -657,9 +598,7 @@ func _guard_master() -> void:
 	for effect_index in AudioServer.get_bus_effect_count(master):
 		if AudioServer.get_bus_effect(master, effect_index) is AudioEffectHardLimiter:
 			return
-	var limiter := AudioEffectHardLimiter.new()
-	limiter.ceiling_db = MASTER_CEILING_DB
-	AudioServer.add_bus_effect(master, limiter)
+	_add_limiter(master, MASTER_CEILING_DB)
 
 
 ## For the test: the vehicles that have sound now.

@@ -8,24 +8,25 @@ extends RefCounted
 ## that voice and mood, at a random pitch within PITCH_SPREAD of 1, so a line never sounds like
 ## the same few recordings going round; a conversation plays one sound per word of its line
 ## (word_at). The word itself no longer picks the sound.
+## This is the behaviour layer: the random draws, what was played last, the players. Which
+## variant a draw gives, the names and the pitch are the rules layer (babble_rules.gd); sound
+## has no view and no layout.
 ##   Babble.play_near(self, "vrouw", "blij", "kroket")   # in the UI, the sound of that word
 ##   Babble.play_near(self, "vrouw", "blij")             # in the UI
 ##   Babble.play_at(vehicle.global_position, "man", "boos")   # in the world
 
 const FOLDER := "res://assets/audio/geluiden/"
 const SoundFiles = preload("res://scripts/audio/sound_files.gd")
-const VOICES := ["man", "oude_man", "vrouw"]
-## Voices of one person only (a character's "stem", data/gesprekken/personages.json): never handed
-## out to anyone else (DriverShout.voice_of picks from VOICES).
-const OWN_VOICES := ["rasperig"]
-const MOODS := ["neutraal", "blij", "opgewonden", "boos", "verdrietig", "vraag"]
-const VARIANTS := 32
-## How many of the last variants of a voice and mood are not played again yet.
-const RECENT := 6
-## How loud the babble is in the UI (dB) and how far the pitch of a word lies from 1 at most
-## (share, random for every word).
-const UI_DB := -7.0
-const PITCH_SPREAD := 0.1
+const BabbleRules = preload("res://scripts/audio/babble_rules.gd")
+## The voices, the moods and the numbers are the rules' (BabbleRules); here under their old
+## names for whoever lets someone babble.
+const VOICES := BabbleRules.VOICES
+const OWN_VOICES := BabbleRules.OWN_VOICES
+const MOODS := BabbleRules.MOODS
+const VARIANTS := BabbleRules.VARIANTS
+const RECENT := BabbleRules.RECENT
+const UI_DB := BabbleRules.UI_DB
+const PITCH_SPREAD := BabbleRules.PITCH_SPREAD
 
 static var _recent := {}   # "voice/mood" -> the variants played last (Array, the newest last)
 static var _random := RandomNumberGenerator.new()
@@ -34,30 +35,22 @@ static var _random := RandomNumberGenerator.new()
 ## The sound name of babble in `voice` and `mood`: a random variant, not one of the last
 ## RECENT of that voice and mood. `word` (the word it is said for) does not change which.
 static func sound_name(voice: String, mood: String, _word := "") -> String:
-	var voice_name := voice if voice in VOICES or voice in OWN_VOICES else "man"
-	var mood_name := mood if mood in MOODS else "neutraal"
-	var key := voice_name + "/" + mood_name
+	var key := BabbleRules.recent_key(voice, mood)
 	var recent: Array = _recent.get(key, [])
-	var variant := _random.randi_range(1, VARIANTS)
-	while variant in recent:
-		variant = variant % VARIANTS + 1
-	recent.append(variant)
-	if recent.size() > RECENT:
-		recent.pop_front()
-	_recent[key] = recent
-	return "brabbel_%s_%s_%d" % [voice_name, mood_name, variant]
+	var variant := BabbleRules.free_variant(_random.randi_range(1, VARIANTS), recent)
+	_recent[key] = BabbleRules.recent_after(recent, variant)
+	return BabbleRules.name_of(voice, mood, variant)
 
 
 ## The pitch a sound plays at: random within PITCH_SPREAD of 1, every word anew.
 static func played_pitch(_word := "") -> float:
-	return 1.0 + _random.randf_range(-PITCH_SPREAD, PITCH_SPREAD)
+	return BabbleRules.pitch_of(_random.randf_range(-PITCH_SPREAD, PITCH_SPREAD))
 
 
 ## The word of `text` that the sound number `index` (0: the first) of its line is: its nth
 ## word, the last ones again when the line has fewer; "" for a text without words.
 static func word_at(text: String, index: int) -> String:
-	var words := text.split(" ", false)
-	return words[mini(index, words.size() - 1)] if words.size() > 0 else ""
+	return BabbleRules.word_at(text, index)
 
 
 ## Plays babble on `owner` (not in the world; it plays while the game stands still too);
@@ -89,4 +82,4 @@ static func play_near(owner: Node, voice: String, mood: String, word := "") -> A
 static func play_at(tree: SceneTree, at: Vector3, voice: String, mood: String, text := "") -> void:
 	var sound := tree.root.get_node_or_null("RuimtelijkGeluid") if tree else null
 	if sound and sound.has_method("play_signal"):
-		sound.play_signal(at, sound_name(voice, mood, word_at(text, 0)), 7.0)
+		sound.play_signal(at, sound_name(voice, mood, word_at(text, 0)), BabbleRules.SHOUT_UNIT)

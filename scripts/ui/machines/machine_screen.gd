@@ -1,162 +1,76 @@
 extends CanvasLayer
 ## The close-up of a machine, a 3D scene of its own (as the lift ride): the swipe, and you see
-## yourself (a stand-in of your character, PlayerModel) standing at the machine, its voxel
-## model (machine_parts: MachineModels, or the tile of the OV machine) against a wall over the
-## pavement or the floor of the shop (`backdrop`), the camera over your shoulder sliding in
-## close as it opens (CAMERA_FROM, CAMERA_AT), the plain light of the portraits and the glow of
-## its screen. On that screen what the machine says (show_display: a title and lines in
-## `screen_colour` on dark glass, drawn in a little picture of its own laid on the model's
-## screen, as on a little CRT) and, on a machine with a touch screen, its buttons beside them
-## (build_controls: a keypad, choices): you click them on the screen itself (the click is
-## carried from the 3D screen into its picture, _screen_point). Parts of the machine itself
-## can be clicked too (machine_parts "hotspots": the hole of the deposit machine, its BON
-## key; hotspot_pressed). The camera comes in close on the part you use (machine_parts
-## "focus"). A key pressed lights up at its keypad (press_feedback); what comes out (the bon,
-## the money, the card: show_tray) slides out of its slot as a little thing of its own, and
-## is listed in the one small panel bottom left (INFO_*), under it what you carry (pocket_lines); the
-## keys along the bottom. In the pixel look of
-## the HUD (UiStyle: hard panels, the pixel fonts, the CRT over it). The game is paused
-## meanwhile (the scene keeps moving). Esc leaves (cancel), then the swipe back and `finished`.
+## yourself (a stand-in of your character) standing at the machine, its voxel model against
+## a wall over the pavement or the floor of the shop (`backdrop`), the camera over your
+## shoulder sliding in close as it opens, the plain light of the portraits and the glow of
+## its screen. On that screen what the machine says (show_display: a title and lines, as on
+## a little CRT) and, on a machine with a touch screen, its buttons beside them: you click
+## them on the screen itself (the click is carried from the 3D screen into its picture).
+## Parts of the machine itself can be clicked too (the view's machine_parts "hotspots": the
+## hole of the deposit machine, its BON key; hotspot_pressed). A key pressed lights up at
+## its keypad (press_feedback); what comes out (the bon, the money, the card: show_tray)
+## slides out of its slot as a little thing of its own, and is listed in the one small panel
+## bottom left, under it what you carry (pocket_lines); the keys along the bottom. The game
+## is paused meanwhile (the scene keeps moving). Esc leaves (cancel), then the swipe back and
+## `finished`.
 ## Without a mouse (a controller, the Steam Deck): a cursor over everything you can use, the
 ## buttons on its screen and its parts (hotspots): the arrows, WASD, the D-pad or the left stick
 ## move it to the nearest one that way (in the plane of the machine's front), A (ui_accept,
 ## also Enter and Space once the cursor shows) uses it, B (ui_cancel) leaves. The button under
-## it gets its hover look, a part a frame round it (_cursor_frame). The mouse hides it again.
-## The machines: DepositMachineScreen (statiegeld, the supermarkets), OvMachineScreen
-## (OV-chipkaart, Den Haag Centraal and tram stops), CashMachineScreen (the cash machines in
-## the town); their sounds are MachineSounds.
+## it gets its hover look, a part a frame round it. The mouse hides it again.
+## This is the behaviour layer: up and gone (the pause, the swipe), the keys, the mouse and
+## the cursor, the choices of a touch screen (set_options), what the machine is busy with.
+## machine_screen_rules.gd has the logic (the texts, where the cursor goes, where the mouse
+## is on the machine), machine_screen_layout.gd the sizes, machine_screen_view.gd builds the
+## scene, the screen and the panel and shows what it is handed (`view`).
+## The machines extend this script, each with a view that extends the view:
+## DepositMachineScreen (statiegeld, the supermarkets), OvMachineScreen (OV-chipkaart, Den
+## Haag Centraal and tram stops), CashMachineScreen (the cash machines in the town); their
+## sounds are MachineSounds.
 ##   CashMachineScreen.show_for(player)       # each has its own show_for
 ## `animate` false (the checks): no swipe, no waiting, the steps at once.
 
 signal finished
 
-const GraphicsSettings = preload("res://scripts/ui/graphics_settings.gd")
-const MoneyText = preload("res://scripts/common/money_text.gd")
-const UiStyle = preload("res://scripts/ui/ui_style.gd")
 const UiSounds = preload("res://scripts/ui/ui_sounds.gd")
 const SwipeTransition = preload("res://scripts/ui/swipe_transition.gd")
-const MachineSounds = preload("res://scripts/ui/machines/machine_sounds.gd")
-const PixelIcon = preload("res://scripts/ui/widgets/pixel_icon.gd")
-const PlayerModel = preload("res://scripts/player/player_model.gd")
+const PadInput = preload("res://scripts/ui/pad_input.gd")
 const PlayerCharacter = preload("res://scripts/player/player_character.gd")
-const MachineModels = preload("res://scripts/world/things/machine_models.gd")
+const MachineSounds = preload("res://scripts/ui/machines/machine_sounds.gd")
+const MachineScreenRules = preload("res://scripts/ui/machines/machine_screen_rules.gd")
+const MachineScreenLayout = preload("res://scripts/ui/machines/machine_screen_layout.gd")
+const MachineScreenView = preload("res://scripts/ui/machines/machine_screen_view.gd")
 
 const NODE_NAME := "Automaatscherm"
-## The look of the machine's screen: a little CRT (no scanlines).
-const DISPLAY_SHADER := preload("res://scripts/ui/machines/machine_display.gdshader")
-const DESIGN_SIZE := Vector2(1280, 720)
-const LAYER := 90
-## The one panel bottom left: what came out of the machine (only once something did) over what
-## you carry. Its width, its distance from the left and the bottom (over the key hints), and
-## the font sizes of its lines and headings; it grows upwards with what is in it.
-const INFO_WIDTH := 260.0
-const INFO_MARGIN := Vector2(32, 44)
-const INFO_LINE_SIZE := 13
-const INFO_HEADING_SIZE := 11
-const CONTROLS_RECT := Rect2(920, 40, 320, 620)
-const GLASS := Color("#0A1410")
-## The scene (metres, the machine's front at its origin facing +z): where you stand before it
-## and the camera, from a little back to close in over your right shoulder as it opens.
-const STAND_AT := Vector3(-0.42, 0.0, 0.62)
-const CAMERA_FROM := Vector3(0.95, 1.7, 2.6)
-const CAMERA_AT := Vector3(0.42, 1.45, 1.25)
-const LOOK_AT := Vector3(-0.05, 1.05, 0.0)
-const CAMERA_SLIDE := 0.8
-const CAMERA_FOV := 42.0
-## The close-up on the part you use (machine_parts "focus"): its share of the height of the
-## view (unless the machine gives "focus_share"), the most of the width it may take, and
-## where its middle is across the window (px: right of the panels on the left).
-const FOCUS_SHARE := 0.6
-const FOCUS_WIDTH_SHARE := 0.62
-const FOCUS_CENTRE_X := 790.0
-## How far into the slide to the close-up you (the stand-in) are no longer shown.
-const STAND_IN_GONE_AT := 0.45
-## The picture on the screen: its width (px; the height follows the screen), the width of
-## the column of buttons beside the text on a touch screen, the size of a button's text and
-## its height.
-const DISPLAY_WIDTH := 720
-const SCREEN_CONTROLS_WIDTH := 300.0
-const SCREEN_BUTTON_TEXT := 18
-const SCREEN_BUTTON_HEIGHT := 46.0
-## The wall and the ground of each backdrop: its colour and the colour of its joints.
-const BACKDROPS := {
-	"straat": {"wall": Color("#8A4A3A"), "joint": Color("#B8A898"), "ground": Color("#8C8A92"), "ground_joint": Color("#6E6C76"), "brick": true},
-	"supermarkt": {"wall": Color("#E8E4DA"), "joint": Color("#C8C2B4"), "ground": Color("#D8D2C4"), "ground_joint": Color("#B8B0A0"), "brick": false},
-	"station": {"wall": Color("#C8C4BC"), "joint": Color("#9A968E"), "ground": Color("#6A6A70"), "ground_joint": Color("#56565C"), "brick": false},
-}
-## The tiles of the town each backdrop is made of (the library, the item): the wall behind
-## the machine and the ground before it; "derrek" becomes "alfred_steyhn" in an ALFRED
-## STEYHN. Without the library (or the item): the plain boxes of BACKDROPS.
-const LIBRARY_FOLDER := "res://assets/libraries/"
-const BACKDROP_TILES := {
-	"straat": {"wall": ["gebouwen", "klassiek_rood/klassiek_rood_blok_dicht"], "ground": ["grond", "stoep/stoep_vol"]},
-	"supermarkt": {"wall": ["binnen", "supermarkt/muur_derrek"], "ground": ["binnen", "supermarkt/vloer_derrek"]},
-	"station": {"wall": ["binnen", "station/wand"], "ground": ["binnen", "station/vloer"]},
-}
-## How long the light of a key shines, and what slides out of the slot (seconds, metres).
-const PRESS_SECONDS := 0.18
-const SLIDE_SECONDS := 0.6
-const SLIDE_OUT := 0.12
-const WARNING := Color("#FF5D73")
-const GOOD := Color("#3CE06A")
+const LAYER := MachineScreenLayout.LAYER
+## The tones of what the machine says (the view has their colours).
+const WARNING := MachineScreenRules.TONE_WARNING
+const GOOD := MachineScreenRules.TONE_GOOD
+## How much softer the key sound of the cursor moving is (dB).
+const CURSOR_SOUND_SOFTER := -6.0
 
-## The machine's look (set by the machine before it is shown).
+## The name on the machine (set by the machine before it is shown).
 var brand := "AUTOMAAT"
-var body_colour := Color("#3A4250")
-var trim_colour := Color("#F2B705")
-var screen_colour := Color("#5FE0FF")
 var place_name := ""
 var player: Node
 var animate := true
-## The wall and ground behind it (BACKDROPS): the street, a supermarket, the station.
-var backdrop := "straat"
+## The wall and ground behind it (MachineScreenRules.BACKDROP_TILES): the street, a
+## supermarket, the station.
+var backdrop := MachineScreenRules.DEFAULT_BACKDROP
+## How it looks (machine_screen_view.gd, or the machine's own view that extends it: a machine
+## makes it in its _init; a plain machine gets the plain view when it comes into the tree).
+var view: MachineScreenView
+## The machine is doing something that takes a while: keys and clicks wait.
+var busy := false
 
-var font_title: Font
-var font_pixel: Font
-var font_body: Font
-## The font of the machine's screen, its buttons and the headings: Pixelify Sans, a pixel font
-## with lower case that reads well at any size (Silkscreen, all capitals on an 8 px grid, was
-## hard to read on the screen at the sizes it needs).
-var font_screen: Font
-var _root: Control
-var _stage: SubViewport                # the 3D scene
-var _camera: Camera3D
-var _machine: MeshInstance3D
-var _stand_in: Node3D
-var _press_light: OmniLight3D
-var _came_out: Array[Node3D] = []      # what slid out of the slot (show_tray)
-var _parts := {}                       # machine_parts()
-var _display_viewport: SubViewport     # the picture on its screen
-var _display_title: Label
-var _display_text: Label
-## The column of the screen's buttons (build_controls), right of its text.
-var _controls: VBoxContainer
-## The title and the text of the screen (px), set by a machine before it is built; a
-## machine with a little screen shows a few big words.
-var display_title_size := 28
-var display_text_size := 20
-## How wide the column of the screen's buttons is (px).
-var screen_controls_width := SCREEN_CONTROLS_WIDTH
-var _display_holder: Node3D
-var _display_mesh: MeshInstance3D
-var _tray: VBoxContainer
-var _tray_section: VBoxContainer          # the tray and its heading, hidden while empty
-var _info_rule: Control                   # the line between the tray and the pockets
-var _tray_title: Label
-var _pockets: VBoxContainer
-var _keys_label: Label
 var _was_paused := false
 var _closing := false
-var _busy := false
 ## The cursor (see the top): what it is on ({"button": Button} or {"hotspot": name}; empty =
-## not shown), its spot in the plane of the machine's front (metres) to find the next one from,
-## the frame round a part under it, and the button that has its hover look now.
+## not shown) and its spot in the plane of the machine's front (metres) to find the next one from.
 var _cursor := {}
 var _cursor_at := Vector2.ZERO
-var _cursor_frame: Panel
-var _cursor_lit: Button
-const PadInput = preload("res://scripts/ui/pad_input.gd")
-var _crt_layer: CanvasLayer
+## What the choices of the touch screen do now, top to bottom (set_options).
+var _option_actions: Array[Callable] = []
 
 
 ## Puts `screen` (a machine, set up) up for `player`: the swipe, then the machine. Nothing
@@ -182,16 +96,14 @@ func _init() -> void:
 
 
 func _ready() -> void:
-	var body := UiStyle.font(UiStyle.FONT_BODY)
-	font_body = UiStyle.weighted(body, 400)
-	font_pixel = UiStyle.font(UiStyle.FONT_PIXEL)
-	font_title = UiStyle.weighted(UiStyle.font(UiStyle.FONT_TITLE), 700)
-	font_screen = UiStyle.font(UiStyle.FONT_TITLE)
-	if body is FontFile:
-		var fallbacks: Array[Font] = [body]
-		for font: Font in [font_pixel]:
-			font.fallbacks = fallbacks
-	_build()
+	if view == null:
+		view = MachineScreenView.new()
+	view.animate = animate
+	add_child(view)
+	view.build(MachineScreenRules.known_backdrop(backdrop), MachineScreenRules.backdrop_tiles(backdrop, place_name),
+		MachineScreenRules.tray_heading(place_name), _stand_in())
+	view.button_used.connect(_on_button_used)
+	view.option_pressed.connect(choose_option)
 	get_viewport().size_changed.connect(_fit)
 	_fit()
 
@@ -203,8 +115,8 @@ func _begin() -> void:
 	_was_paused = get_tree().paused
 	get_tree().paused = true
 	visible = true
-	_crt_layer.visible = true
-	_slide_camera_in()
+	view.show_open(true)
+	view.play_camera_in()
 	_opened()
 	refresh_pockets()
 
@@ -219,7 +131,7 @@ func close() -> void:
 	if swipe:
 		await swipe.covered
 	visible = false
-	_crt_layer.visible = false
+	view.show_open(false)
 	Input.set_default_cursor_shape(Input.CURSOR_ARROW)
 	get_tree().paused = _was_paused
 	finished.emit()
@@ -237,35 +149,14 @@ func _opened() -> void:
 	pass
 
 
-## The model of the machine and where its parts are on it (metres, in the model's space: it
-## stands on y = 0, centred, its front facing +z): {"mesh": Mesh, "screen": Rect2 (x and y of
-## its lower left corner, its size), "front": z of its front, "screen_sunk": how far the
-## screen lies behind the front (m, 0 if left out), "keys": Vector3 (the keypad),
-## "slot": Vector3 (where things come out)}. Without one: a box with the parts where a
-## machine has them.
+## The model of the machine and where its parts are on it (the view's machine_parts, as built).
 func machine_parts() -> Dictionary:
-	var mesh := BoxMesh.new()
-	mesh.size = Vector3(0.75, 1.75, 0.5)
-	return {"mesh": mesh, "screen": Rect2(-0.25, 1.0, 0.5, 0.32), "front": 0.25,
-		"keys": Vector3(-0.15, 0.75, 0.25), "slot": Vector3(0.0, 0.45, 0.25)}
+	return view.parts() if view else {}
 
 
-## A key of the machine pressed: the light at its keypad shines a moment, the key sound.
+## A key of the machine pressed: the light at its keypad shines a moment.
 func press_feedback() -> void:
-	if _press_light == null:
-		return
-	_press_light.light_energy = 1.6
-	if animate:
-		var fade := _press_light.create_tween()
-		fade.tween_property(_press_light, "light_energy", 0.0, PRESS_SECONDS)
-	else:
-		_press_light.light_energy = 0.0
-
-
-## The buttons of the machine on its screen, beside its text (a keypad, choices). Nothing:
-## the screen only shows (the deposit machine: you use its hole and its BON key).
-func build_controls(_box: VBoxContainer) -> void:
-	pass
+	view.show_press()
 
 
 ## A part of the machine clicked (machine_parts "hotspots": its "name").
@@ -283,49 +174,30 @@ func cancel() -> void:
 	close()
 
 
-## What the panel on the right lists: [text, colour].
+## What the panel bottom left lists of your pockets: [text, tone] each.
 func pocket_lines() -> Array:
-	return [["GELD  " + MoneyText.euros(_money()), UiStyle.TEXT]]
+	return MachineScreenRules.pocket_lines(_money())
 
 
 ## The key hints along the bottom.
 func key_hints() -> String:
-	return "[ESC] WEG"
+	return MachineScreenRules.KEY_HINTS
 
 
 ## The hints along the bottom with a controller connected (the cursor: see the top).
 func pad_hints() -> String:
-	return "[D-PAD] KIES   [A] GEBRUIK   [B] WEG"
+	return MachineScreenRules.PAD_HINTS
 
 
-func show_display(title: String, lines: Array, colour := Color(0, 0, 0, 0)) -> void:
-	if _display_title == null:
-		return
-	_display_title.text = title
-	_display_text.text = "\n".join(lines)
-	var ink := screen_colour if colour.a == 0.0 else colour
-	_display_title.add_theme_color_override("font_color", ink)
-	_display_text.add_theme_color_override("font_color", ink.lerp(Color.WHITE, 0.15))
+## What the machine says on its screen: a title and lines, in `tone` (none: its own colour).
+func show_display(title: String, lines: Array, tone := MachineScreenRules.TONE_SCREEN) -> void:
+	view.show_display(title, MachineScreenRules.display_text(lines), tone)
 
 
-## What came out of the machine, in the tray on the left: a title and lines; and in the
-## scene it slides out of the slot (a slip in `colour`; nothing when the title is empty).
-func show_tray(title: String, lines: Array, colour := UiStyle.TEXT) -> void:
-	for child in _tray.get_children():
-		if child != _tray_title:
-			child.queue_free()
-	_slide_out(colour if title != "" else Color(0, 0, 0, 0))
-	_tray_title.text = title
-	for line: String in lines:
-		_tray.add_child(label(line, font_body, INFO_LINE_SIZE, colour))
-	_tray_section.visible = title != "" or not lines.is_empty()
-	_info_rule.visible = _tray_section.visible
-	if animate:
-		_tray.modulate.a = 0.0
-		_tray.position.y = -40.0
-		var slide := _tray.create_tween().set_parallel()
-		slide.tween_property(_tray, "modulate:a", 1.0, 0.35)
-		slide.tween_property(_tray, "position:y", 0.0, 0.5).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+## What came out of the machine, in the tray on the left: a title and lines in `tone`; and in
+## the scene it slides out of the slot (nothing when the title is empty).
+func show_tray(title: String, lines: Array, tone := MachineScreenRules.TONE_TEXT) -> void:
+	view.show_tray(title, lines, tone, MachineScreenRules.tray_shows(title, lines), MachineScreenRules.slip_shows(title))
 
 
 func clear_tray() -> void:
@@ -333,14 +205,8 @@ func clear_tray() -> void:
 
 
 func refresh_pockets() -> void:
-	if _pockets == null:
-		return
-	for child in _pockets.get_children():
-		child.queue_free()
-	_pockets.add_child(label("Je zakken", font_title, INFO_HEADING_SIZE + 3, UiStyle.ACCENT))
-	for line: Array in pocket_lines():
-		_pockets.add_child(label(String(line[0]), font_body, INFO_LINE_SIZE, line[1]))
-	_keys_label.text = key_hints() if Input.get_connected_joypads().is_empty() else pad_hints()
+	view.show_pockets(MachineScreenRules.POCKETS_HEADING, pocket_lines())
+	view.show_hints(MachineScreenRules.hints(not Input.get_connected_joypads().is_empty(), key_hints(), pad_hints()))
 
 
 ## Waits `seconds` (not in the checks).
@@ -353,42 +219,46 @@ func sound(sound_name: String, softer_db := 0.0) -> void:
 	MachineSounds.play(self, sound_name, softer_db)
 
 
-func label(text: String, font: Font, size: int, colour := UiStyle.TEXT) -> Label:
-	var made := Label.new()
-	made.text = text
-	made.add_theme_font_override("font", font)
-	made.add_theme_font_size_override("font_size", size)
-	made.add_theme_color_override("font_color", colour)
-	made.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	made.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	return made
+## The choices of the touch screen (the view's option buttons), top to bottom: [text, what
+## it does (a Callable)] each; the buttons without a choice are hidden.
+func set_options(choices: Array) -> void:
+	var texts: Array = []
+	_option_actions.clear()
+	for choice: Array in choices:
+		texts.append(String(choice[0]))
+		_option_actions.append(choice[1])
+	view.show_options(texts)
 
 
-## A button of the machine: a hard panel, the text in the pixel font; `action` on a click.
-func button(text: String, action: Callable, wide := 0.0, colour := Color(0, 0, 0, 0)) -> Button:
-	var made := Button.new()
-	made.text = text
-	made.focus_mode = Control.FOCUS_NONE
-	made.custom_minimum_size = Vector2(wide, 40)
-	made.add_theme_font_override("font", font_screen)
-	made.add_theme_font_size_override("font_size", 16)
-	var face := colour if colour.a > 0.0 else body_colour.darkened(0.35)
-	for state in ["normal", "pressed", "hover", "focus", "disabled"]:
-		var style := UiStyle.box_style(face.lightened(0.15) if state == "hover" else face,
-			trim_colour if state == "hover" else face.darkened(0.45), 3)
-		style.shadow_color = Color.BLACK
-		style.shadow_size = 0
-		style.shadow_offset = Vector2.ZERO if state == "pressed" else Vector2(3, 3)
-		style.content_margin_left = 10
-		style.content_margin_right = 10
-		made.add_theme_stylebox_override(state, style)
-	for colour_name in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
-		made.add_theme_color_override(colour_name, UiStyle.TEXT)
-	made.pressed.connect(func() -> void:
-		if not _busy and not _closing:
-			press_feedback()
-			action.call())
-	return made
+## Choice `index` of the touch screen used (its button, or its key): the key sound and what it does.
+func choose_option(index: int) -> void:
+	if MachineScreenRules.option_usable(index, _option_actions.size(), view.option_buttons().size()):
+		sound("toets")
+		_option_actions[index].call()
+
+
+## What the choices say now, top to bottom (for the checks).
+func option_texts() -> Array:
+	var texts: Array = []
+	for option in view.option_buttons():
+		if option.visible:
+			texts.append(option.text)
+	return texts
+
+
+## The scene (for the checks): the machine's model, the stand-in, what came out, the camera,
+## the picture of the screen.
+func stage_parts() -> Dictionary:
+	return view.stage_parts()
+
+
+## The title and the text on the machine's screen now.
+func display_title() -> String:
+	return view.display().title_text()
+
+
+func display_text() -> String:
+	return view.display().body_text()
 
 
 func _money() -> float:
@@ -399,7 +269,25 @@ func _inventory() -> Dictionary:
 	return player.get("inventory") if player and player.get("inventory") != null else {}
 
 
-# ------------------------------------------------------------------ building
+## You as you stand at the machine: your character, as big as you are, with or without coat.
+func _stand_in() -> Dictionary:
+	return {"archetype_id": PlayerCharacter.current_id(),
+		"figure_scale": float(player.get("FIGURE_SCALE")) if player and player.get("FIGURE_SCALE") != null else MachineScreenRules.STAND_IN_SCALE,
+		"coat": player.wears_coat() if player and player.has_method("wears_coat") else MachineScreenRules.STAND_IN_COAT}
+
+
+## A button of the screen clicked: the light and what it does, unless the machine is busy.
+func _on_button_used(action: Callable) -> void:
+	if not busy and not _closing:
+		press_feedback()
+		action.call()
+
+
+func _fit() -> void:
+	transform = MachineScreenLayout.fit_transform(get_viewport().get_visible_rect().size)
+
+
+# ------------------------------------------------------------------ input
 
 func _input(event: InputEvent) -> void:
 	if not visible or _closing:
@@ -415,7 +303,7 @@ func _input(event: InputEvent) -> void:
 	if event is InputEventKey:
 		get_viewport().set_input_as_handled()
 		var key_event := event as InputEventKey
-		if not key_event.pressed or key_event.echo or _busy:
+		if not key_event.pressed or key_event.echo or busy:
 			return
 		if key_event.physical_keycode == KEY_ESCAPE:
 			cancel()
@@ -427,38 +315,77 @@ func _input(event: InputEvent) -> void:
 func _cursor_input(event: InputEvent) -> bool:
 	var direction := PadInput.direction(event)
 	if direction != Vector2.ZERO:
-		if not _busy:
+		if not busy:
 			move_cursor(direction)
 		return true
 	var from_pad := PadInput.is_pad(event)
 	if PadInput.is_accept(event) and (from_pad or not _cursor.is_empty()):
-		if not _busy:
+		if not busy:
 			use_cursor()
 		return true
 	if from_pad and PadInput.is_back(event):
-		if not _busy:
+		if not busy:
 			cancel()
 		return true
 	return false
 
 
+## The mouse over the machine: on its screen the event goes into the screen's picture (its
+## buttons), on a part (hotspots) a click uses it; the hand over both.
+func _mouse(event: InputEventMouse) -> void:
+	var design := transform.affine_inverse() * event.position
+	var on_screen := _screen_point(design)
+	var hotspot := _hotspot_at(design)
+	var has_controls := view.display().has_controls()
+	Input.set_default_cursor_shape(Input.CURSOR_POINTING_HAND if MachineScreenRules.shows_hand(on_screen.x >= 0.0, has_controls, hotspot) else Input.CURSOR_ARROW)
+	if on_screen.x >= 0.0 and has_controls:
+		view.display().push_mouse(event, on_screen)
+		get_viewport().set_input_as_handled()
+	elif hotspot != "" and event is InputEventMouseButton:
+		var click := event as InputEventMouseButton
+		get_viewport().set_input_as_handled()
+		if click.pressed and click.button_index == MOUSE_BUTTON_LEFT and not busy:
+			press_feedback()
+			hotspot_pressed(hotspot)
+
+
+## Where the ray of the camera through `design` (a point of the window, in design pixels)
+## meets the plane at `z` (the scene's metres), in the space of the machine's model; null
+## when it does not.
+func _on_machine(design: Vector2, z: float) -> Variant:
+	var way := view.stage().ray_way(design)
+	if way == Vector3.ZERO:
+		return null
+	var hit: Variant = MachineScreenRules.ray_to_plane(view.stage().ray_origin(design), way, z)
+	return null if hit == null else (hit as Vector3) - view.stage().model_origin()
+
+
+## The pixel of the screen's picture under `design` (a point of the window), the bulge of
+## its glass taken into account; (-1, -1) when it is not on it.
+func _screen_point(design: Vector2) -> Vector2:
+	var local: Variant = _on_machine(design, view.stage().display_z())
+	if local == null:
+		return MachineScreenRules.OFF_PICTURE
+	return MachineScreenRules.picture_point(local, view.screen_rect(), view.stage().curvature(), Vector2(view.display().size))
+
+
+## The name of the part of the machine (machine_parts "hotspots") under `design`, or "".
+func _hotspot_at(design: Vector2) -> String:
+	if view.hotspots().is_empty():
+		return ""
+	var local: Variant = _on_machine(design, view.stage().model_origin().z + view.front())
+	if local == null:
+		return ""
+	return MachineScreenRules.hotspot_at(view.hotspots(), Vector2((local as Vector3).x, (local as Vector3).y))
+
+
+# ------------------------------------------------------------------ the cursor
+
 ## What the cursor can be on now: every button on the screen that shows and can be pressed,
 ## and every part (hotspot); each with its spot in the plane of the machine's front (metres,
 ## y up), to go from one to the next.
 func cursor_targets() -> Array[Dictionary]:
-	var targets: Array[Dictionary] = []
-	var screen: Rect2 = _parts.get("screen", Rect2(-0.25, 1.0, 0.5, 0.32))
-	var picture_size := Vector2(_display_viewport.size) if _display_viewport else Vector2.ONE
-	for found in (_controls.find_children("*", "Button", true, false) if _controls else []):
-		var button_found := found as Button
-		if not button_found.is_visible_in_tree() or button_found.disabled:
-			continue
-		var uv := button_found.get_global_rect().get_center() / picture_size
-		targets.append({"button": button_found,
-			"at": Vector2(screen.position.x + uv.x * screen.size.x, screen.position.y + screen.size.y - uv.y * screen.size.y)})
-	for hotspot: Dictionary in _parts.get("hotspots", []):
-		targets.append({"hotspot": String(hotspot.name), "at": (hotspot.rect as Rect2).get_center()})
-	return targets
+	return MachineScreenRules.cursor_targets(view.display().button_spots(), view.hotspots(), view.screen_rect())
 
 
 ## The cursor to the nearest target that way (`direction` as on the screen: Vector2.DOWN is
@@ -470,30 +397,10 @@ func move_cursor(direction: Vector2) -> void:
 	if not _cursor_is_valid(targets):
 		_show_cursor(targets[0])
 		return
-	var best := nearest_target(targets, _cursor_at, direction)
+	var best := MachineScreenRules.nearest_target(targets, _cursor_at, direction)
 	if not best.is_empty():
 		_show_cursor(best)
-		sound("toets", -6.0)
-
-
-## The target (cursor_targets: each with its spot "at" in the plane of the front, y up) nearest
-## to `from` in `direction` (as on the screen: Vector2.DOWN is down); {} when there is none
-## that way.
-static func nearest_target(targets: Array[Dictionary], from: Vector2, direction: Vector2) -> Dictionary:
-	var way := Vector2(direction.x, -direction.y)   # the plane of the front has y up
-	var best := {}
-	var best_score := INF
-	for target in targets:
-		var offset: Vector2 = (target.at as Vector2) - from
-		var along := offset.dot(way)
-		if along <= 0.001:
-			continue
-		# straight on counts more than to the side
-		var score := along + 2.0 * absf(offset.dot(Vector2(-way.y, way.x)))
-		if score < best_score:
-			best_score = score
-			best = target
-	return best
+		sound("toets", CURSOR_SOUND_SOFTER)
 
 
 ## Uses what the cursor is on: the button pressed, or the part (as a click on it).
@@ -516,66 +423,33 @@ func cursor_label() -> String:
 	return String(_cursor.get("hotspot", ""))
 
 
+## Whether the cursor is still on one of `targets`; its spot is that target's, then.
 func _cursor_is_valid(targets: Array[Dictionary]) -> bool:
-	if _cursor.is_empty():
+	var found := MachineScreenRules.matching_target(targets, _cursor)
+	if found.is_empty():
 		return false
-	for target in targets:
-		if (target.has("button") and _cursor.has("button") and target.button == _cursor.button) \
-				or (target.has("hotspot") and String(target.hotspot) == String(_cursor.get("hotspot", ""))):
-			_cursor_at = target.at
-			return true
-	return false
+	_cursor_at = found.at
+	return true
 
 
 ## Shows the cursor on `target` (empty: hidden): a button gets its hover look, a part the frame.
 func _show_cursor(target: Dictionary) -> void:
-	if is_instance_valid(_cursor_lit):
-		_cursor_lit.remove_theme_stylebox_override("normal")
-		_cursor_lit.add_theme_stylebox_override("normal", _cursor_lit.get_meta("normal_style"))
-	_cursor_lit = null
 	_cursor = target
-	if _cursor_frame:
-		_cursor_frame.visible = false
+	view.hide_cursor()
 	if target.is_empty():
 		return
 	_cursor_at = target.at
 	if target.has("button"):
-		var lit := target.button as Button
-		if not lit.has_meta("normal_style"):
-			lit.set_meta("normal_style", lit.get_theme_stylebox("normal"))
-		lit.add_theme_stylebox_override("normal", lit.get_theme_stylebox("hover"))
-		_cursor_lit = lit
+		view.show_cursor_on_button(target.button as Button)
 	else:
 		_frame_hotspot(String(target.hotspot))
 
 
-## The frame round the part `hotspot_name`, where it is in the window (its corners projected).
+## The frame round the part `hotspot_name`, where it is in the window now.
 func _frame_hotspot(hotspot_name: String) -> void:
-	if _camera == null or _display_holder == null:
-		return
-	for hotspot: Dictionary in _parts.get("hotspots", []):
-		if String(hotspot.name) != hotspot_name:
-			continue
-		var rect: Rect2 = hotspot.rect
-		var front := float(_parts.get("front", 0.25))
-		var corners: Array[Vector2] = []
-		for corner in [rect.position, rect.end, Vector2(rect.position.x, rect.end.y), Vector2(rect.end.x, rect.position.y)]:
-			corners.append(_camera.unproject_position(_display_holder.global_position + Vector3(corner.x, corner.y, front)))
-		var window_rect := Rect2(corners[0], Vector2.ZERO)
-		for corner in corners:
-			window_rect = window_rect.expand(corner)
-		if _cursor_frame == null:
-			_cursor_frame = Panel.new()
-			_cursor_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			var style := StyleBoxFlat.new()
-			style.draw_center = false
-			style.border_color = trim_colour
-			style.set_border_width_all(4)
-			_cursor_frame.add_theme_stylebox_override("panel", style)
-			_root.add_child(_cursor_frame)
-		_cursor_frame.position = window_rect.position - Vector2(6, 6)
-		_cursor_frame.size = window_rect.size + Vector2(12, 12)
-		_cursor_frame.visible = true
+	var rect: Variant = MachineScreenRules.hotspot_rect(view.hotspots(), hotspot_name)
+	if rect != null:
+		view.show_cursor_on_part(rect)
 
 
 func _process(_delta: float) -> void:
@@ -587,498 +461,6 @@ func _process(_delta: float) -> void:
 	if targets.is_empty():
 		_show_cursor({})
 	elif not _cursor_is_valid(targets):
-		var nearest: Dictionary = targets[0]
-		for target in targets:
-			if (target.at as Vector2).distance_to(_cursor_at) < (nearest.at as Vector2).distance_to(_cursor_at):
-				nearest = target
-		_show_cursor(nearest)
+		_show_cursor(MachineScreenRules.closest_target(targets, _cursor_at))
 	elif _cursor.has("hotspot"):
 		_frame_hotspot(String(_cursor.hotspot))
-
-
-## The mouse over the machine: on its screen the event goes into the screen's picture (its
-## buttons), on a part (hotspots) a click uses it; the hand over both.
-func _mouse(event: InputEventMouse) -> void:
-	var design := transform.affine_inverse() * event.position
-	var on_screen := _screen_point(design)
-	var hotspot := _hotspot_at(design)
-	Input.set_default_cursor_shape(Input.CURSOR_POINTING_HAND if (on_screen.x >= 0.0 and _controls.get_child_count() > 0) or hotspot != "" else Input.CURSOR_ARROW)
-	if on_screen.x >= 0.0 and _controls.get_child_count() > 0:
-		var carried := event.duplicate() as InputEventMouse
-		carried.position = on_screen
-		carried.global_position = on_screen
-		_display_viewport.push_input(carried, true)
-		get_viewport().set_input_as_handled()
-	elif hotspot != "" and event is InputEventMouseButton:
-		var click := event as InputEventMouseButton
-		get_viewport().set_input_as_handled()
-		if click.pressed and click.button_index == MOUSE_BUTTON_LEFT and not _busy:
-			press_feedback()
-			hotspot_pressed(hotspot)
-
-
-## Where the ray of the camera through `design` (a point of the window, in design pixels)
-## meets the plane at `z` (the scene's metres); null when it does not.
-func _ray_to_plane(design: Vector2, z: float) -> Variant:
-	if _camera == null:
-		return null
-	var origin := _camera.project_ray_origin(design)
-	var way := _camera.project_ray_normal(design)
-	if absf(way.z) < 0.0001:
-		return null
-	var along := (z - origin.z) / way.z
-	return origin + way * along if along > 0.0 else null
-
-
-## The pixel of the screen's picture under `design` (a point of the window), the bulge of
-## its glass (machine_display.gdshader) taken into account; (-1, -1) when it is not on it.
-func _screen_point(design: Vector2) -> Vector2:
-	if _display_mesh == null:
-		return Vector2(-1, -1)
-	var hit: Variant = _ray_to_plane(design, _display_mesh.global_position.z)
-	if hit == null:
-		return Vector2(-1, -1)
-	var screen: Rect2 = _parts.get("screen", Rect2(-0.25, 1.0, 0.5, 0.32))
-	var local: Vector3 = (hit as Vector3) - _display_holder.global_position
-	var uv := Vector2((local.x - screen.position.x) / screen.size.x, (screen.position.y + screen.size.y - local.y) / screen.size.y)
-	if uv.x < 0.0 or uv.y < 0.0 or uv.x > 1.0 or uv.y > 1.0:
-		return Vector2(-1, -1)
-	var curvature := float((_display_mesh.material_override as ShaderMaterial).get_shader_parameter("curvature"))
-	var picture_uv := bulged_uv(uv, curvature)
-	if picture_uv.x < 0.0 or picture_uv.y < 0.0 or picture_uv.x > 1.0 or picture_uv.y > 1.0:
-		return Vector2(-1, -1)
-	return picture_uv * Vector2(_display_viewport.size)
-
-
-## Where the point `uv` of the screen's glass (0..1) is in its picture (0..1), with the bulge
-## of the glass (`curvature`, as machine_display.gdshader bends it): the middle stays, the
-## edges move outwards (outside 0..1: off the picture).
-static func bulged_uv(uv: Vector2, curvature: float) -> Vector2:
-	var centred := uv * 2.0 - Vector2.ONE
-	var bent := centred * (Vector2.ONE + curvature * Vector2(centred.y * centred.y, centred.x * centred.x))
-	return bent * 0.5 + Vector2(0.5, 0.5)
-
-
-## The name of the part of the machine (machine_parts "hotspots") under `design`, or "".
-func _hotspot_at(design: Vector2) -> String:
-	var hotspots: Array = _parts.get("hotspots", [])
-	if hotspots.is_empty() or _display_holder == null:
-		return ""
-	var front := float(_parts.get("front", 0.25))
-	var hit: Variant = _ray_to_plane(design, _display_holder.global_position.z + front)
-	if hit == null:
-		return ""
-	var local: Vector3 = (hit as Vector3) - _display_holder.global_position
-	for hotspot: Dictionary in hotspots:
-		if (hotspot.rect as Rect2).has_point(Vector2(local.x, local.y)):
-			return String(hotspot.name)
-	return ""
-
-
-func _fit() -> void:
-	transform = fit_transform(get_viewport().get_visible_rect().size)
-
-
-## The design (DESIGN_SIZE) as big as fits in `window` (px), centred in it.
-static func fit_transform(window: Vector2) -> Transform2D:
-	var scale_factor := minf(window.x / DESIGN_SIZE.x, window.y / DESIGN_SIZE.y)
-	return Transform2D(0.0, Vector2(scale_factor, scale_factor), 0.0, (window - DESIGN_SIZE * scale_factor) * 0.5)
-
-
-func _build() -> void:
-	var backdrop_rect := ColorRect.new()
-	backdrop_rect.color = Color.BLACK
-	backdrop_rect.size = DESIGN_SIZE * 4.0
-	backdrop_rect.position = -DESIGN_SIZE * 1.5
-	backdrop_rect.mouse_filter = Control.MOUSE_FILTER_STOP
-	add_child(backdrop_rect)
-	_root = Control.new()
-	_root.name = "Automaat"
-	_root.size = DESIGN_SIZE
-	add_child(_root)
-	_build_display()
-	_build_stage()
-	# the tray and your pockets in one panel bottom left; the buttons of the machine are on its screen
-	_build_info_panel()
-	build_controls(_controls)
-	_controls.visible = _controls.get_child_count() > 0
-	_style_screen_buttons(_controls)
-	_keys_label = label("", font_screen, 15, UiStyle.TEXT)
-	_keys_label.position = Vector2(0, DESIGN_SIZE.y - 32)
-	_keys_label.size = Vector2(DESIGN_SIZE.x, 24)
-	_keys_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_keys_label.add_theme_color_override("font_shadow_color", Color.BLACK)
-	_keys_label.add_theme_constant_override("shadow_offset_x", 2)
-	_keys_label.add_theme_constant_override("shadow_offset_y", 2)
-	_root.add_child(_keys_label)
-	# the CRT over the whole window (its own layer: it bends the picture in window pixels)
-	_crt_layer = CanvasLayer.new()
-	_crt_layer.layer = LAYER + 1
-	_crt_layer.visible = false
-	add_child(_crt_layer)
-	_crt_layer.add_child(UiStyle.make_crt_overlay(0.03, 0.02, get_viewport().get_visible_rect().size))
-
-
-## The picture on the machine's screen: the title and the lines on dark glass (show_display),
-## as wide as its screen is in proportion.
-func _build_display() -> void:
-	_parts = machine_parts()
-	var screen: Rect2 = _parts.get("screen", Rect2(-0.25, 1.0, 0.5, 0.32))
-	_display_viewport = SubViewport.new()
-	_display_viewport.name = "Schermbeeld"
-	_display_viewport.size = Vector2i(DISPLAY_WIDTH, maxi(roundi(DISPLAY_WIDTH * screen.size.y / maxf(screen.size.x, 0.01)), 180))
-	_display_viewport.disable_3d = true
-	_display_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
-	_display_viewport.canvas_item_default_texture_filter = Viewport.DEFAULT_CANVAS_ITEM_TEXTURE_FILTER_LINEAR
-	_root.add_child(_display_viewport)
-	var glass := PanelContainer.new()
-	var glass_style := UiStyle.box_style(GLASS, Color("#1A1C22"), 6)
-	# margins a little wider than the bulge of the glass takes off at the edges
-	glass_style.content_margin_left = 34
-	glass_style.content_margin_right = 34
-	glass_style.content_margin_top = 26
-	glass_style.content_margin_bottom = 26
-	glass.add_theme_stylebox_override("panel", glass_style)
-	glass.size = Vector2(_display_viewport.size)
-	_display_viewport.add_child(glass)
-	var glass_column := VBoxContainer.new()
-	glass_column.add_theme_constant_override("separation", 10)
-	_display_title = label("", font_title, display_title_size, screen_colour)
-	_display_text = label("", font_screen, display_text_size, screen_colour)
-	glass_column.add_child(_display_title)
-	# the text, and on a touch screen the column of its buttons beside it
-	var body := HBoxContainer.new()
-	body.add_theme_constant_override("separation", 18)
-	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_display_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_display_text.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	body.add_child(_display_text)
-	_controls = VBoxContainer.new()
-	_controls.name = "Knoppen"
-	_controls.add_theme_constant_override("separation", 8)
-	_controls.custom_minimum_size.x = screen_controls_width
-	body.add_child(_controls)
-	glass_column.add_child(body)
-	glass.add_child(glass_column)
-
-
-## The buttons on the screen a size to be read there (button makes them for the panels).
-func _style_screen_buttons(node: Node) -> void:
-	for child in node.get_children():
-		if child is Button:
-			(child as Button).add_theme_font_size_override("font_size", SCREEN_BUTTON_TEXT)
-			(child as Button).custom_minimum_size.y = SCREEN_BUTTON_HEIGHT
-			(child as Button).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		_style_screen_buttons(child)
-
-
-## The 3D scene: its own world behind everything, the wall and the ground, the machine with
-## its screen, the light, you standing at it, the camera.
-func _build_stage() -> void:
-	var container := SubViewportContainer.new()
-	container.name = "Scene"
-	container.stretch = true
-	container.size = DESIGN_SIZE
-	container.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	container.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_root.add_child(container)
-	_stage = SubViewport.new()
-	GraphicsSettings.plain_3d(_stage)
-	_stage.own_world_3d = true
-	_stage.msaa_3d = Viewport.MSAA_DISABLED
-	_stage.render_target_update_mode = SubViewport.UPDATE_ALWAYS
-	container.add_child(_stage)
-	var environment := WorldEnvironment.new()
-	environment.environment = Environment.new()
-	environment.environment.background_mode = Environment.BG_COLOR
-	environment.environment.background_color = Color("#101220")
-	environment.environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	environment.environment.ambient_light_color = Color("#9A9AA4")
-	environment.environment.ambient_light_energy = 0.4
-	environment.environment.tonemap_mode = Environment.TONE_MAPPER_LINEAR
-	_stage.add_child(environment)
-	var key := DirectionalLight3D.new()
-	key.light_energy = 1.3
-	key.light_color = Color("#FFF2E0")
-	key.rotation_degrees = Vector3(-38.0, 28.0, 0.0)
-	key.shadow_enabled = true
-	key.shadow_bias = 0.02
-	key.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
-	key.directional_shadow_max_distance = 8.0
-	_stage.add_child(key)
-	var fill := DirectionalLight3D.new()
-	fill.light_energy = 0.3
-	fill.light_color = Color("#D8E0F0")
-	fill.rotation_degrees = Vector3(-10.0, -50.0, 0.0)
-	_stage.add_child(fill)
-	_build_backdrop()
-	# the machine, its back against the wall, its front at z = 0
-	var front := float(_parts.get("front", 0.25))
-	var holder := Node3D.new()
-	holder.name = "Automaat"
-	holder.position = Vector3(0.0, 0.0, -front)
-	_stage.add_child(holder)
-	_display_holder = holder
-	_machine = MeshInstance3D.new()
-	_machine.name = "Model"
-	_machine.mesh = _parts.get("mesh")
-	holder.add_child(_machine)
-	# its screen: the picture of the display, lit by itself, and its glow on you
-	var screen: Rect2 = _parts.get("screen", Rect2(-0.25, 1.0, 0.5, 0.32))
-	var display := MeshInstance3D.new()
-	display.name = "Scherm"
-	var quad := QuadMesh.new()
-	quad.size = screen.size
-	display.mesh = quad
-	# as on a little CRT: bulging, rounded corners, a glow (machine_display.gdshader)
-	var display_material := ShaderMaterial.new()
-	display_material.shader = DISPLAY_SHADER
-	display_material.set_shader_parameter("picture", _display_viewport.get_texture())
-	display_material.set_shader_parameter("picture_size", Vector2(_display_viewport.size))
-	display.material_override = display_material
-	display.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	# on the glass, sunk into the machine as far as its screen is (machine_parts "screen_sunk")
-	var sunk := float(_parts.get("screen_sunk", 0.0))
-	display.position = Vector3(screen.position.x + screen.size.x * 0.5, screen.position.y + screen.size.y * 0.5, front - sunk + 0.004)
-	holder.add_child(display)
-	_display_mesh = display
-	var glow := OmniLight3D.new()
-	glow.light_color = screen_colour
-	glow.light_energy = 0.5
-	glow.omni_range = 1.4
-	glow.position = display.position + Vector3(0.0, 0.0, 0.25)
-	holder.add_child(glow)
-	_press_light = OmniLight3D.new()
-	_press_light.name = "Toetslicht"
-	_press_light.light_color = trim_colour.lerp(Color.WHITE, 0.4)
-	_press_light.light_energy = 0.0
-	_press_light.omni_range = 0.35
-	_press_light.position = (_parts.get("keys", Vector3(-0.15, 0.75, front)) as Vector3) + Vector3(0.0, 0.0, 0.08)
-	holder.add_child(_press_light)
-	_make_stand_in()
-	_camera = Camera3D.new()
-	_camera.fov = CAMERA_FOV
-	_stage.add_child(_camera)
-	_camera.position = CAMERA_AT
-	_camera.look_at_from_position(CAMERA_AT, LOOK_AT, Vector3.UP)
-	_camera.make_current()
-
-
-## The wall the machine stands against and the ground before it (BACKDROPS): boxes in the
-## colour of the place, the joints of the bricks or panels and of the tiles laid over them.
-func _build_backdrop() -> void:
-	var front := float(_parts.get("front", 0.25))
-	var wall_z := -front * 2.0 - 0.02
-	if _build_tile_backdrop(wall_z):
-		return
-	var look: Dictionary = BACKDROPS.get(backdrop, BACKDROPS.straat)
-	_stage.add_child(_box_of(Vector3(8.0, 4.0, 0.2), Vector3(0.0, 2.0, wall_z - 0.1), look.wall))
-	_stage.add_child(_box_of(Vector3(8.0, 0.1, 6.0), Vector3(0.0, -0.05, wall_z + 3.0), look.ground))
-	var brick := bool(look.brick)
-	var course := 0.0625 * 2.0 if brick else 0.5
-	for row in int(4.0 / course):
-		var height := row * course
-		_stage.add_child(_box_of(Vector3(8.0, 0.012, 0.01), Vector3(0.0, height, wall_z + 0.005), look.joint))
-		var step := 0.25 if brick else 1.0
-		var offset := (step * 0.5 if row % 2 == 1 else 0.0) if brick else 0.0
-		var column := -4.0 + offset
-		while column < 4.0:
-			_stage.add_child(_box_of(Vector3(0.012, course, 0.01), Vector3(column, height + course * 0.5, wall_z + 0.005), look.joint))
-			column += step
-	for line in 13:
-		var along := -3.0 + line * 0.5
-		_stage.add_child(_box_of(Vector3(8.0, 0.004, 0.012), Vector3(0.0, 0.002, wall_z + along + 3.0), look.ground_joint))
-		_stage.add_child(_box_of(Vector3(0.012, 0.004, 6.0), Vector3(along, 0.002, wall_z + 3.0), look.ground_joint))
-
-
-## The backdrop of the town's own tiles (BACKDROP_TILES): the wall tile side by side and
-## stacked behind the machine, its face at `wall_z`, the ground tiles before it with their
-## top at y = 0. False when a tile is missing (then the boxes).
-func _build_tile_backdrop(wall_z: float) -> bool:
-	var tiles: Dictionary = BACKDROP_TILES.get(backdrop, BACKDROP_TILES.straat)
-	var wall := _library_tile(tiles.wall)
-	var ground := _library_tile(tiles.ground)
-	if wall.is_empty() or ground.is_empty():
-		return false
-	var wall_box: AABB = (wall[1] as Transform3D) * (wall[0] as Mesh).get_aabb()
-	var rows := ceili(4.5 / maxf(wall_box.size.y, 0.5))
-	for column in range(-2, 3):
-		for row in rows:
-			_lay_tile(wall, Vector3(column * wall_box.size.x - wall_box.get_center().x, row * wall_box.size.y - wall_box.position.y,
-				wall_z - wall_box.end.z))
-	var ground_box: AABB = (ground[1] as Transform3D) * (ground[0] as Mesh).get_aabb()
-	for column in range(-2, 3):
-		for row in 3:
-			_lay_tile(ground, Vector3(column * ground_box.size.x - ground_box.get_center().x, -ground_box.end.y,
-				wall_z + row * ground_box.size.z - ground_box.position.z))
-	return true
-
-
-## [mesh, its transform] of a tile (["binnen", "station/wand"]) from its library, or [].
-func _library_tile(tile: Array) -> Array:
-	var path := LIBRARY_FOLDER + String(tile[0]) + ".res"
-	if not ResourceLoader.exists(path):
-		return []
-	var library := load(path) as MeshLibrary
-	var item_name := String(tile[1])
-	if place_name.to_upper().contains("ALFRED"):
-		item_name = item_name.replace("derrek", "alfred_steyhn")
-	var item := library.find_item_by_name(item_name) if library else -1
-	if item < 0 or library.get_item_mesh(item) == null:
-		return []
-	return [library.get_item_mesh(item), library.get_item_mesh_transform(item)]
-
-
-func _lay_tile(tile: Array, at: Vector3) -> void:
-	var instance := MeshInstance3D.new()
-	instance.mesh = tile[0]
-	var placed: Transform3D = tile[1]
-	instance.transform = Transform3D(placed.basis, placed.origin + at)
-	_stage.add_child(instance)
-
-
-static func _box_of(box_size: Vector3, at: Vector3, colour: Color) -> MeshInstance3D:
-	var instance := MeshInstance3D.new()
-	var mesh := BoxMesh.new()
-	mesh.size = box_size
-	instance.mesh = mesh
-	var material := StandardMaterial3D.new()
-	material.albedo_color = colour
-	material.roughness = 0.95
-	instance.material_override = material
-	instance.position = at
-	return instance
-
-
-## You, standing at the machine, turned to it (as the lift's stand-in).
-func _make_stand_in() -> void:
-	var model := PlayerModel.new()
-	model.name = "Speler"
-	model.archetype_id = PlayerCharacter.current_id()
-	model.figure_scale = float(player.get("FIGURE_SCALE")) if player and player.get("FIGURE_SCALE") != null else 0.78
-	model.coat = player.wears_coat() if player and player.has_method("wears_coat") else true
-	model.idle = true
-	_stage.add_child(model)
-	model.position = STAND_AT
-	model.rotation.y = PI + 0.35   # facing the machine (-z), a little towards its middle
-	_stand_in = model
-
-
-## The camera from a little back, over your shoulder, in close on the part you use
-## (_close_up) as the machine comes up.
-func _slide_camera_in() -> void:
-	if _camera == null:
-		return
-	var close: Array = _close_up()
-	var close_at: Vector3 = close[0]
-	var close_look: Vector3 = close[1]
-	if not animate:
-		_camera.look_at_from_position(close_at, close_look, Vector3.UP)
-		if _stand_in:
-			_stand_in.visible = false
-		return
-	_camera.look_at_from_position(CAMERA_FROM, LOOK_AT, Vector3.UP)
-	var slide := _camera.create_tween()
-	slide.tween_method(func(share: float) -> void:
-		_camera.look_at_from_position(CAMERA_FROM.lerp(close_at, share), LOOK_AT.lerp(close_look, share), Vector3.UP)
-		# over your shoulder at first; close in, the camera is where you stand: you out of the way
-		if _stand_in:
-			_stand_in.visible = share < STAND_IN_GONE_AT,
-		0.0, 1.0, CAMERA_SLIDE * 1.4).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-
-
-## Where the camera stands and looks for the close-up: straight before the part you use
-## (machine_parts "focus", else its screen), far enough off for it to take FOCUS_SHARE of the
-## height of the view (or FOCUS_WIDTH_SHARE of its width), its middle at FOCUS_CENTRE_X.
-## [position, point looked at].
-func _close_up() -> Array:
-	var focus: Rect2 = _parts.get("focus", _parts.get("screen", Rect2(-0.25, 1.0, 0.5, 0.32)))
-	return close_up_of(focus, float(_parts.get("focus_share", FOCUS_SHARE)))
-
-
-## The close-up on `focus` (a rectangle on the machine's front, metres) that takes `share` of
-## the height of the view: [position of the camera, point looked at] (see _close_up).
-static func close_up_of(focus: Rect2, share: float) -> Array:
-	var tangent := tan(deg_to_rad(CAMERA_FOV * 0.5))
-	var aspect := DESIGN_SIZE.x / DESIGN_SIZE.y
-	var distance := maxf(focus.size.y / (share * 2.0 * tangent), focus.size.x / (FOCUS_WIDTH_SHARE * 2.0 * tangent * aspect))
-	var metres_per_pixel := 2.0 * distance * tangent / DESIGN_SIZE.y
-	var aside := (FOCUS_CENTRE_X - DESIGN_SIZE.x * 0.5) * metres_per_pixel
-	var middle := Vector3(focus.get_center().x, focus.get_center().y, 0.0)
-	var look := middle - Vector3(aside, 0.0, 0.0)
-	return [look + Vector3(0.0, 0.0, distance), look]
-
-
-## Something slides out of the slot (a slip in `colour`: the bon, the notes, the card); the
-## last one before it goes.
-func _slide_out(colour: Color) -> void:
-	for earlier in _came_out:
-		if is_instance_valid(earlier):
-			earlier.queue_free()
-	_came_out.clear()
-	if colour.a == 0.0 or _machine == null:
-		return
-	var slot: Vector3 = _parts.get("slot", Vector3(0.0, 0.45, 0.25))
-	var slip := _box_of(Vector3(0.16, 0.012, 0.1), slot + Vector3(0.0, 0.0, -0.04), colour)
-	(_machine.get_parent() as Node3D).add_child(slip)
-	_came_out.append(slip)
-	if animate:
-		var slide := slip.create_tween()
-		slide.tween_property(slip, "position:z", slot.z + SLIDE_OUT, SLIDE_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	else:
-		slip.position.z = slot.z + SLIDE_OUT
-
-
-## The scene (for the checks): the machine's model, the stand-in, what came out.
-func stage_parts() -> Dictionary:
-	return {"machine": _machine, "stand_in": _stand_in, "came_out": _came_out, "camera": _camera,
-		"display": _display_viewport}
-
-
-## The one panel bottom left (INFO_*): the tray (its heading with the place, the title and lines
-## of what came out: show_tray; hidden while empty), a line, and your pockets (refresh_pockets).
-func _build_info_panel() -> void:
-	var panel := PanelContainer.new()
-	panel.name = "Info"
-	var style := UiStyle.box_style(UiStyle.PANEL, UiStyle.BORDER, 3)
-	style.content_margin_left = 14
-	style.content_margin_right = 14
-	style.content_margin_top = 12
-	style.content_margin_bottom = 12
-	style.shadow_color = Color.BLACK
-	style.shadow_offset = Vector2(UiStyle.SHADOW_OFFSET, UiStyle.SHADOW_OFFSET)
-	panel.add_theme_stylebox_override("panel", style)
-	# anchored to the bottom left, growing upwards with what is in it
-	panel.anchor_top = 1.0
-	panel.anchor_bottom = 1.0
-	panel.offset_left = INFO_MARGIN.x
-	panel.offset_right = INFO_MARGIN.x + INFO_WIDTH
-	panel.offset_top = -INFO_MARGIN.y
-	panel.offset_bottom = -INFO_MARGIN.y
-	panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	panel.clip_contents = true
-	_root.add_child(panel)
-	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 8)
-	panel.add_child(column)
-	_tray_section = VBoxContainer.new()
-	_tray_section.add_theme_constant_override("separation", 4)
-	column.add_child(_tray_section)
-	var heading := label("Uit de automaat" + ("  ·  " + place_name if place_name != "" else ""), font_screen, INFO_HEADING_SIZE + 2, UiStyle.MUTED)
-	heading.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_tray_section.add_child(heading)
-	_tray = VBoxContainer.new()
-	_tray.add_theme_constant_override("separation", 4)
-	_tray_section.add_child(_tray)
-	_tray_title = label("", font_title, INFO_HEADING_SIZE + 4, UiStyle.ACCENT)
-	_tray.add_child(_tray_title)
-	_tray_section.visible = false
-	var rule := ColorRect.new()
-	rule.color = UiStyle.BORDER
-	rule.custom_minimum_size = Vector2(0, 2)
-	rule.visible = false
-	column.add_child(rule)
-	_info_rule = rule
-	_pockets = VBoxContainer.new()
-	_pockets.add_theme_constant_override("separation", 4)
-	column.add_child(_pockets)

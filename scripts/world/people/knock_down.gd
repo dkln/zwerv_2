@@ -4,27 +4,23 @@ extends RefCounted
 ## (PlayerController), the people on the street (Pedestrian) and the people in the station
 ## (StationPerson), hit by a vehicle, a train, or thrown out of a building. The body throws
 ## the shards of a crash each time it lands hard on something (knock_down_body.gd).
+## Behaviour (docs/CODE_LAGEN.md); how fast and which way it is thrown: knock_down_rules.gd.
 ##   var body := KnockDown.throw(get_parent(), Transform3D(Basis(Vector3.UP, rotation.y), global_position),
 ##           shape, shape_offset, mass, push, impact, random)
 ##   figure.reparent(body, true)
 
-## Friction and bounce of a body on the street.
-const FRICTION := 0.9
-const BOUNCE := 0.2
-## How high it is thrown (m/s up: this, plus this per m/s of the blow, at most MOST_UP), and
-## how fast it tumbles (rad/s per m/s of the blow, at most MOST_SPIN).
-const UP_BASE := 1.5
-const UP_PER_IMPACT := 0.22
-const MOST_UP := 7.0
-const SPIN_PER_IMPACT := 0.6
-const MOST_SPIN := 14.0
-## A dive (`dive`: thrown out of a door head first, as a pike dive): the body already flat
-## (pitched this far forward), lifted this high so it flies over the street, a little up
-## (m/s) and hardly turning in the air; hitting the street it tumbles over by itself.
-const DIVE_PITCH := deg_to_rad(80.0)
-const DIVE_LIFT := 1.2
-const DIVE_UP := 3.6
-const DIVE_SPIN := 0.8
+const KnockDownRules = preload("res://scripts/world/people/knock_down_rules.gd")
+const FRICTION := KnockDownRules.FRICTION
+const BOUNCE := KnockDownRules.BOUNCE
+const UP_BASE := KnockDownRules.UP_BASE
+const UP_PER_IMPACT := KnockDownRules.UP_PER_IMPACT
+const MOST_UP := KnockDownRules.MOST_UP
+const SPIN_PER_IMPACT := KnockDownRules.SPIN_PER_IMPACT
+const MOST_SPIN := KnockDownRules.MOST_SPIN
+const DIVE_PITCH := KnockDownRules.DIVE_PITCH
+const DIVE_LIFT := KnockDownRules.DIVE_LIFT
+const DIVE_UP := KnockDownRules.DIVE_UP
+const DIVE_SPIN := KnockDownRules.DIVE_SPIN
 
 
 ## A rigid body under `parent` at `at`, its collision `shape` at `shape_offset`, of `mass`,
@@ -50,18 +46,15 @@ static func throw(parent: Node, at: Transform3D, shape: Shape3D, shape_offset: V
 	collision.position = shape_offset
 	body.add_child(collision)
 	parent.add_child(body)
-	var flat_push := Vector3(push.x, 0.0, push.z)
-	var towards := flat_push.normalized() if flat_push.length_squared() > 0.01 else at.basis.z
+	var way := KnockDownRules.towards(push, at.basis.z)
 	if dive:
-		# flat in the air, head first the way it is thrown
-		var facing := Basis.looking_at(-towards, Vector3.UP)
-		var tipped := Basis(towards.cross(Vector3.UP).normalized(), -DIVE_PITCH) * facing
-		body.global_transform = Transform3D(tipped, at.origin + Vector3.UP * DIVE_LIFT)
-		body.linear_velocity = flat_push * push_factor + Vector3.UP * DIVE_UP
-		body.angular_velocity = Vector3.UP.cross(towards) * DIVE_SPIN + towards * random.randf_range(-1.0, 1.0)
+		body.global_transform = KnockDownRules.dive_start(way, at.origin)
+		body.linear_velocity = KnockDownRules.dive_velocity(push, push_factor)
+		body.angular_velocity = KnockDownRules.dive_spin(way,
+			random.randf_range(-KnockDownRules.MOST_DIVE_ROLL, KnockDownRules.MOST_DIVE_ROLL))
 		return body
-	body.global_transform = at.translated(Vector3.UP * 0.05)
-	body.linear_velocity = flat_push * push_factor + Vector3.UP * minf(UP_BASE + impact * UP_PER_IMPACT, MOST_UP)
-	body.angular_velocity = Vector3.UP.cross(towards) * minf(impact * SPIN_PER_IMPACT + extra_spin, MOST_SPIN) \
-		+ Vector3.UP * random.randf_range(-3.0, 3.0)
+	body.global_transform = at.translated(Vector3.UP * KnockDownRules.START_LIFT)
+	body.linear_velocity = KnockDownRules.thrown_velocity(push, push_factor, impact)
+	body.angular_velocity = KnockDownRules.thrown_spin(way, impact, extra_spin,
+		random.randf_range(-KnockDownRules.MOST_TWIST, KnockDownRules.MOST_TWIST))
 	return body

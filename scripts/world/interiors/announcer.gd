@@ -6,18 +6,20 @@ extends Node
 ## breath, then the announcer's voice (babble on the announcer's bus, StationAudio) while the
 ## words type out at the bottom of the screen, the line held a moment, the music up again.
 ## One at a time: a new one waits till the last is over (queued). `finished` after each.
+## This is the behaviour (docs/CODE_LAGEN.md): the queue, the timing, the music; its rules:
+## announcer_rules.gd; the line on the screen and the sounds: announcer_view.gd.
 ##   var announcer := Announcer.new(hud_getter)
 ##   add_child(announcer)
 ##   announcer.say("Nummer B 047, loket 3.")
 
-const Typewriter = preload("res://scripts/ui/widgets/typewriter.gd")
-const UiStyle = preload("res://scripts/ui/ui_style.gd")
+const AnnouncerRules = preload("res://scripts/world/interiors/announcer_rules.gd")
+const AnnouncerView = preload("res://scripts/world/interiors/announcer_view.gd")
 
 ## An announcement is over (the line gone): `text` was said.
 signal finished(text: String)
 
-const SUBTITLE_COLOUR := Color("#FFE9B8")
-const SUBTITLE_LAYER := 4
+const SUBTITLE_COLOUR := AnnouncerView.SUBTITLE_COLOUR
+const SUBTITLE_LAYER := AnnouncerView.SUBTITLE_LAYER
 
 ## The sound before the words: a name of SoundFiles, or a stream of its own (intro_stream, when set).
 var intro := "omroep_gong"
@@ -47,9 +49,8 @@ var _queue: Array[String] = []
 var _speaking := false
 var _run := 0                        # which announcement is under way (stop() ends it)
 var _ducked := false
-var _subtitle_layer: CanvasLayer
-var _subtitle: RichTextLabel
-var _typewriter: Typewriter
+## The line on the screen and the sounds (made in _ready: null before).
+var view: AnnouncerView
 var _random := RandomNumberGenerator.new()
 
 
@@ -61,12 +62,13 @@ func _init(hud_of := Callable()) -> void:
 
 func _ready() -> void:
 	_random.randomize()
-	_make_subtitle()
+	view = AnnouncerView.new()
+	add_child(view)
 
 
 func _process(delta: float) -> void:
-	if _speaking and _typewriter:
-		_typewriter.update(delta * type_speed)
+	if _speaking and view:
+		view.type_on(delta * type_speed)
 
 
 ## Says `text` over the loudspeakers (after the one under way, if any).
@@ -85,12 +87,12 @@ func is_speaking() -> bool:
 
 ## The text on the screen now (for the checks).
 func shown_text() -> String:
-	return _subtitle.text if _subtitle else ""
+	return view.shown_text() if view else ""
 
 
 ## Whether the line is on the screen now, still typing out (for the checks).
 func is_typing() -> bool:
-	return _subtitle_layer != null and _subtitle_layer.visible and _typewriter != null and not _typewriter.is_done()
+	return view != null and view.is_typing()
 
 
 ## Quiet at once: the queue and the text gone, the music up (going out of the building).
@@ -104,8 +106,8 @@ func stop() -> void:
 
 ## The line off the screen (the announcement goes on: the player went out).
 func hide_subtitle() -> void:
-	if _subtitle_layer:
-		_subtitle_layer.visible = false
+	if view:
+		view.hide_line()
 
 
 func _exit_tree() -> void:
@@ -128,12 +130,12 @@ func _next() -> void:
 	await _talk(text, run)
 	if run != _run:
 		return
-	_typewriter.finish()
+	view.show_whole_line()
 	await get_tree().create_timer(hold_seconds, false).timeout
 	if run != _run:
 		return
 	hide_subtitle()
-	if _queue.is_empty():
+	if AnnouncerRules.music_back_up(_queue.size()):
 		_set_ducked(false)
 	_speaking = false
 	finished.emit(text)
@@ -145,7 +147,7 @@ func _next() -> void:
 func _play_intro() -> void:
 	var sound := intro_stream if intro_stream else StationAudio.stream(intro)
 	var player := _play_on_speakers(sound, intro_db)
-	if intro_seconds >= 0.0:
+	if not AnnouncerRules.waits_for_intro_end(intro_seconds):
 		await get_tree().create_timer(intro_seconds, false).timeout
 		return
 	if player:
@@ -155,12 +157,11 @@ func _play_intro() -> void:
 
 ## The words typing out while the voice talks on, clip after clip, until the last word is there.
 func _talk(text: String, run: int) -> void:
-	_typewriter.start(text)
-	_subtitle_layer.visible = not subtitle_wanted.is_valid() or bool(subtitle_wanted.call())
+	view.show_line(text, not subtitle_wanted.is_valid() or bool(subtitle_wanted.call()))
 	var clips_left := most_clips
-	while run == _run and is_inside_tree() and clips_left > 0 and not _typewriter.is_done():
+	while run == _run and is_inside_tree() and AnnouncerRules.talks_on(clips_left, view.is_typed_out()):
 		clips_left -= 1
-		var clip := StationAudio.stream("brabbel_%s_neutraal_%d" % [voice, _random.randi_range(1, voice_clips)])
+		var clip := StationAudio.stream(AnnouncerRules.clip_name(voice, _random.randi_range(1, voice_clips)))
 		var player := _play_on_speakers(clip, voice_db)
 		if player:
 			await player.finished
@@ -171,16 +172,9 @@ func _talk(text: String, run: int) -> void:
 
 ## Plays `stream` once over the loudspeakers (the announcer's bus); null without a stream.
 func _play_on_speakers(stream: AudioStream, volume_db: float) -> AudioStreamPlayer:
-	if stream == null or not is_inside_tree():
+	if not is_inside_tree():
 		return null
-	var player := AudioStreamPlayer.new()
-	player.stream = stream
-	player.bus = StationAudio.ANNOUNCER_BUS
-	player.volume_db = volume_db
-	add_child(player)
-	player.finished.connect(player.queue_free)
-	player.play()
-	return player
+	return view.play_sound(stream, volume_db, StationAudio.ANNOUNCER_BUS)
 
 
 func _set_ducked(ducked: bool) -> void:
@@ -191,27 +185,3 @@ func _set_ducked(ducked: bool) -> void:
 	if hud and hud.has_method("duck_music"):
 		hud.duck_music(ducked)
 
-
-## The line at the bottom of the screen.
-func _make_subtitle() -> void:
-	_subtitle_layer = CanvasLayer.new()
-	_subtitle_layer.name = "Omroeptekst"
-	_subtitle_layer.layer = SUBTITLE_LAYER
-	_subtitle_layer.visible = false
-	add_child(_subtitle_layer)
-	_subtitle = RichTextLabel.new()
-	_subtitle.add_theme_font_override("normal_font", UiStyle.font(UiStyle.FONT_PIXEL_BOLD))
-	_subtitle.add_theme_font_size_override("normal_font_size", UiStyle.ANNOUNCEMENT_FONT_SIZE)
-	_subtitle.add_theme_color_override("default_color", SUBTITLE_COLOUR)
-	UiStyle.faux_3d(_subtitle, 4)
-	_subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_subtitle.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_subtitle.scroll_active = false
-	_subtitle.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_subtitle.anchor_left = 0.08
-	_subtitle.anchor_right = 0.92
-	_subtitle.anchor_top = 0.74
-	_subtitle.anchor_bottom = 0.95
-	_subtitle_layer.add_child(_subtitle)
-	_typewriter = Typewriter.new(_subtitle, self)
-	_typewriter.sound = false

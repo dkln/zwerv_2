@@ -9,8 +9,11 @@ extends Camera3D
 ## Perspective: right mouse button held = look around, WASD = move, Q/E = down/up,
 ## Shift = faster, mouse wheel = adjust speed.
 ## The movement keys are the `cam_*` input actions from the project settings.
+## This is the behaviour (docs/CODE_LAGEN.md): the keys, the mouse and the camera over time;
+## the sums are in free_camera_rules.gd.
 
 const Iso = preload("res://scripts/camera/iso_camera.gd")
+const FreeCameraRules = preload("res://scripts/camera/free_camera_rules.gd")
 
 ## Movement speed in metres per second (changed with the mouse wheel, 1 to 200).
 @export var speed := 12.0
@@ -33,8 +36,8 @@ const Iso = preload("res://scripts/camera/iso_camera.gd")
 @export var iso_turn_sensitivity := 0.3
 
 ## Least and most metres in view when zooming the iso view.
-const ISO_MIN_VIEW := 6.0
-const ISO_MAX_VIEW := 600.0
+const ISO_MIN_VIEW := FreeCameraRules.ISO_MIN_VIEW
+const ISO_MAX_VIEW := FreeCameraRules.ISO_MAX_VIEW
 
 var _yaw := 0.0
 var _pitch := 0.0
@@ -60,13 +63,12 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_RIGHT:
 			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED if event.pressed else Input.MOUSE_MODE_VISIBLE
-		elif event.button_index == MOUSE_BUTTON_WHEEL_UP and event.pressed:
-			speed = minf(speed * 1.2, 200.0)
-		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN and event.pressed:
-			speed = maxf(speed / 1.2, 1.0)
+		elif event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN] and event.pressed:
+			speed = FreeCameraRules.speed_after_wheel(speed, event.button_index == MOUSE_BUTTON_WHEEL_UP)
 	elif event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
-		_yaw -= event.relative.x * sensitivity
-		_pitch = clampf(_pitch - event.relative.y * sensitivity, -1.5, 1.5)
+		var look := FreeCameraRules.look_after(_pitch, _yaw, event.relative, sensitivity)
+		_pitch = look.x
+		_yaw = look.y
 		rotation = Vector3(_pitch, _yaw, 0.0)
 
 
@@ -76,12 +78,12 @@ func _process(delta: float) -> void:
 	if isometric:
 		_iso_process(delta)
 		return
-	var dir := Vector3.ZERO
-	dir.z += Input.get_action_strength("cam_achteruit") - Input.get_action_strength("cam_vooruit")
-	dir.x += Input.get_action_strength("cam_rechts") - Input.get_action_strength("cam_links")
+	var direction := Vector3.ZERO
+	direction.z += Input.get_action_strength("cam_achteruit") - Input.get_action_strength("cam_vooruit")
+	direction.x += Input.get_action_strength("cam_rechts") - Input.get_action_strength("cam_links")
 	var up := Input.get_action_strength("cam_omhoog") - Input.get_action_strength("cam_omlaag")
-	var s := speed * (3.0 if Input.is_key_pressed(KEY_SHIFT) else 1.0)
-	global_position += (global_transform.basis * dir) * s * delta + Vector3.UP * up * s * delta
+	var speed_now := speed * FreeCameraRules.haste(Input.is_key_pressed(KEY_SHIFT))
+	global_position += FreeCameraRules.flight(global_transform.basis, direction, up, speed_now, delta)
 
 
 # ------------------------------------------------------------------ iso view
@@ -91,8 +93,7 @@ func _process(delta: float) -> void:
 func _iso_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo and event.keycode in [KEY_Z, KEY_X]:
 		_adopt_yaw()
-		var quarter := -90.0 if event.keycode == KEY_Z else 90.0
-		_iso_target_yaw = snappedf(_iso_target_yaw - Iso.ROTATION.y, 90.0) + Iso.ROTATION.y + quarter
+		_iso_target_yaw = FreeCameraRules.quarter_turn(_iso_target_yaw, event.keycode == KEY_Z)
 		return
 	if event is InputEventMouseMotion and Input.is_mouse_button_pressed(MOUSE_BUTTON_MIDDLE):
 		_adopt_yaw()
@@ -107,9 +108,7 @@ func _iso_input(event: InputEvent) -> void:
 			_iso_place(Iso.ground_focus(self), Iso.view_size(self) * iso_zoom_step)
 	elif event is InputEventMouseMotion and Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT):
 		# the ground under the mouse follows it: a pixel is this many metres on the ground
-		var metres_per_pixel := Iso.view_size(self) / maxf(get_viewport().get_visible_rect().size.y, 1.0)
-		var ground_along := _ground_forward() / sin(deg_to_rad(-Iso.ROTATION.x))   # screen up, stretched over the tilted ground
-		var shift: Vector3 = -_ground_right() * event.relative.x * metres_per_pixel + ground_along * event.relative.y * metres_per_pixel
+		var shift := FreeCameraRules.drag_shift(_iso_yaw, event.relative, Iso.view_size(self), get_viewport().get_visible_rect().size.y)
 		_iso_place(Iso.ground_focus(self) + shift, Iso.view_size(self))
 
 
@@ -134,20 +133,18 @@ func _iso_process(delta: float) -> void:
 	if turning:
 		_iso_yaw = move_toward(_iso_yaw, _iso_target_yaw, iso_turn_speed * delta)
 	var straight := is_equal_approx(rotation_degrees.x, Iso.ROTATION.x) and is_equal_approx(rotation_degrees.z, Iso.ROTATION.z)
-	if forward == 0.0 and sideways == 0.0 and zoom == 0.0 and not turning and straight:
+	if FreeCameraRules.is_at_rest(forward, sideways, zoom, turning, straight):
 		return
-	var pan := (_ground_forward() * forward + _ground_right() * sideways).limit_length(1.0)
-	var fast := 3.0 if Input.is_key_pressed(KEY_SHIFT) else 1.0
-	focus += pan * view * iso_pan_speed * fast * delta
-	view *= pow(iso_zoom_speed, -zoom * fast * delta)
-	_iso_place(focus, view)
+	var hurry := FreeCameraRules.haste(Input.is_key_pressed(KEY_SHIFT))
+	focus += FreeCameraRules.pan(_iso_yaw, forward, sideways, view, iso_pan_speed, hurry, delta)
+	_iso_place(focus, FreeCameraRules.zoomed(view, iso_zoom_speed, zoom, hurry, delta))
 
 
 ## Puts the iso camera over `focus` with `view` metres in view (within the zoom limits),
 ## turned to the current `_iso_yaw`.
 func _iso_place(focus: Vector3, view: float) -> void:
 	focus.y = 0.0
-	Iso.place(self, focus, clampf(view, ISO_MIN_VIEW, ISO_MAX_VIEW), _iso_yaw)
+	Iso.place(self, focus, FreeCameraRules.within_limits(view), _iso_yaw)
 
 
 ## Takes over the turn of the view when another camera (the flight, following a vehicle)
@@ -156,20 +153,3 @@ func _adopt_yaw() -> void:
 	if is_equal_approx(rotation_degrees.x, Iso.ROTATION.x) and not is_equal_approx(rotation_degrees.y, _iso_yaw):
 		_iso_yaw = rotation_degrees.y
 		_iso_target_yaw = _iso_yaw
-
-
-## The basis of the iso view turned to `_iso_yaw`.
-func _iso_basis() -> Basis:
-	return Basis.from_euler(Vector3(Iso.ROTATION.x, _iso_yaw, Iso.ROTATION.z) * PI / 180.0)
-
-
-## The direction the iso camera looks in, flat over the ground.
-func _ground_forward() -> Vector3:
-	var forward := -_iso_basis().z
-	return Vector3(forward.x, 0.0, forward.z).normalized()
-
-
-## The screen's right, flat over the ground.
-func _ground_right() -> Vector3:
-	var right := _iso_basis().x
-	return Vector3(right.x, 0.0, right.z).normalized()

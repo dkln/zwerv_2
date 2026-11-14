@@ -80,9 +80,13 @@ def _detune(value: int) -> int:
 
 
 def patches(path: str) -> dict:
-    """The file's FM patches, channel -> fm.FmVoice (operators in the order the file lists them)."""
+    """The file's FM patches, channel -> fm.FmVoice (operators in the order the file lists them).
+    A file in the standard form (standaardvorm.py: "synthParameters") gives its voices' patches."""
     with open(path, encoding="utf-8") as json_file:
         data = json.load(json_file)
+    if "synthParameters" in data:
+        import standaardvorm
+        return standaardvorm.patches(data)
     voices = {}
     for channel, patch in data.get("hardware_patches", {}).items():
         operators = list((patch.get("operators") or {}).values())

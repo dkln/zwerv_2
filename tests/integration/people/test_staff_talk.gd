@@ -79,7 +79,7 @@ func _check_shown_as_official(test, role: String) -> void:
 ## moves), the mouth opens and shuts while the line types out, and is shut once it is there.
 func _check_live_portrait(test, box: Node, figure: TownsfolkFigure, label: String) -> void:
 	var portrait: Node = box._portrait
-	var face: TownsfolkFigure = portrait._townsfolk if portrait else null
+	var face: TownsfolkFigure = portrait.townsfolk_figure() if portrait else null
 	test.check(face != null and face.has_face(), "%s: het portret heeft een mondje" % label)
 	if face == null:
 		return

@@ -3,8 +3,11 @@ extends CanvasLayer
 ## The game HUD (the "HUD" node of the city scene), in the pixel style of the design
 ## "HUD — open world" (1280 x 720; everything scales with the window, the corners stay in
 ## the corners):
-## The parts of it are scripts of their own in scripts/ui/hud/ (player_frame.gd,
-## notice_banner.gd, quest_tracker.gd with quest_log.gd) and scripts/ui/screens/.
+## The parts of it are scripts of their own in scripts/ui/hud/ (player_frame, notice_banner,
+## quest_tracker, minimap, location, waypoint, clock, money_view, crt_view; each in the four
+## layers of docs/CODE_LAGEN.md: _rules, _layout, _view and the part itself; where they
+## stand: hud_layout.gd) and scripts/ui/screens/. This script makes them, hands on what the
+## game tells it, and keeps the order of the screens that hold the game (modal_rules.gd).
 ## - top left: the player frame (the chosen figure's head in 3D, PlayerCharacter and
 ##   PlayerModel, with level badge, its name) and the stats as
 ##   segmented pixel bars with an icon each (STATS: gezondheid, uithoudingsvermogen,
@@ -50,67 +53,45 @@ extends CanvasLayer
 
 const CityMusic = preload("res://scripts/audio/city_music.gd")
 const LoadingScreenScript = preload("res://scripts/ui/loading_screen.gd")
-## Neighbourhoods shown under another name than their key in the "wijken" metadata (the key
-## stays what the crowds (data/drukte.json) and the visited list go by).
-const AREA_DISPLAY_NAMES := {"Centraal Station": "Station Den Haag Centraal"}
-## The neighbourhood's name under the minimap: this size, smaller (down to the smallest) for
-## a long name, so it fits the box whole.
-const LOCATION_WIJK_FONT_SIZE := 11
-const LOCATION_WIJK_SMALLEST_FONT_SIZE := 8
-const Iso = preload("res://scripts/camera/iso_camera.gd")
 const MoneyText = preload("res://scripts/common/money_text.gd")
 const UiStyle = preload("res://scripts/ui/ui_style.gd")
-const UiSounds = preload("res://scripts/ui/ui_sounds.gd")
 const GraphicsSettings = preload("res://scripts/ui/graphics_settings.gd")
-const PixelIcon = preload("res://scripts/ui/widgets/pixel_icon.gd")
 const StatLook = preload("res://scripts/ui/hud/stat_look.gd")
+const MapLook = preload("res://scripts/ui/hud/map_look.gd")
 const PlayerFrame = preload("res://scripts/ui/hud/player_frame.gd")
 const NoticeBanner = preload("res://scripts/ui/hud/notice_banner.gd")
-const QuestLog = preload("res://scripts/ui/hud/quest_log.gd")
+const QuestRules = preload("res://scripts/ui/hud/quest_rules.gd")
+const NoticeRules = preload("res://scripts/ui/hud/notice_rules.gd")
+const HudLayout = preload("res://scripts/ui/hud/hud_layout.gd")
 const QuestTracker = preload("res://scripts/ui/hud/quest_tracker.gd")
-const PlayerArrow = preload("res://scripts/ui/widgets/player_arrow.gd")
-const QuestMarks = preload("res://scripts/ui/widgets/quest_marks.gd")
-const InteriorPlan = preload("res://scripts/ui/widgets/interior_plan.gd")
-## Inside a building the minimap shows its floor plan (show_interior_plan) with its exits in
-## this colour, at least this many metres across (a snack bar would be a speck at 160 m).
-const EXIT_MARK_COLOUR := Color("#5BE37A")
-const INTERIOR_MINIMAP_MIN_METRES := 28.0
-## Inside a building a quest place within this many metres is in it and marked on its plan
-## (the cans of mission 1 in the station); farther off it is in the town and left out.
-const INDOOR_TARGET_REACH := 150.0
+const QuestTrackerView = preload("res://scripts/ui/hud/quest_tracker_view.gd")
+const Minimap = preload("res://scripts/ui/hud/minimap.gd")
+const Location = preload("res://scripts/ui/hud/location.gd")
+const LocationRules = preload("res://scripts/ui/hud/location_rules.gd")
+const Waypoint = preload("res://scripts/ui/hud/waypoint.gd")
+const WaypointRules = preload("res://scripts/ui/hud/waypoint_rules.gd")
+const Clock = preload("res://scripts/ui/hud/clock.gd")
+const MoneyView = preload("res://scripts/ui/hud/money_view.gd")
+const ModalRules = preload("res://scripts/ui/hud/modal_rules.gd")
+const CrtRules = preload("res://scripts/ui/hud/crt_rules.gd")
+const CrtView = preload("res://scripts/ui/hud/crt_view.gd")
 const FloatingNumbers = preload("res://scripts/ui/widgets/floating_numbers.gd")
 const PlayerCharacter = preload("res://scripts/player/player_character.gd")
 
-## Size of the design; the HUD is laid out at this size and scaled to the window.
-const DESIGN_SIZE := Vector2(1280.0, 720.0)
-const MARGIN := 24.0
+## Where the parts stand: HudLayout.
+const DESIGN_SIZE := HudLayout.DESIGN_SIZE
+const MARGIN := HudLayout.MARGIN
 
 ## How the stats look (StatLook), under the names the other screens know them by.
 const STATS := StatLook.STATS
 const XP_COLOUR := StatLook.XP_COLOUR
 const PIXEL_ICONS := StatLook.PIXEL_ICONS
-const LOCKED_STEP_OPACITY := QuestTracker.LOCKED_STEP_OPACITY
-## Minimap: colour per kind of ground (MINIMAP_KINDS, by the folder of the Grond tile) and
-## of a building, and of an empty cell.
-const MINIMAP_COLOURS := {
-	"road": Color("#6B6A8E"),
-	"cycle_path": Color("#7E5A72"),
-	"water": Color("#24306A"),
-	"grass": Color("#3E6150"),
-	"pavement": Color("#4A5378"),
-	"rail": Color("#555170"),
-	"land": Color("#3A4A6E"),
-	"building": Color("#141729"),
-}
-const MINIMAP_EMPTY := Color("#0B0D1A")
+const LOCKED_STEP_OPACITY := QuestTrackerView.LOCKED_STEP_OPACITY
+## The colour of the marker you set on the map (MapLook), under the name the game menu
+## knows it by.
+const WAYPOINT_COLOUR := MapLook.WAYPOINT_COLOUR
 ## The colour of the player's thoughts over its head (show_thought), as the "gedachte" pages.
 const THOUGHT_COLOUR := Color("#47D6C2")
-## Folder of a Grond tile (the start of its library name) -> kind of ground on the minimap.
-const MINIMAP_KINDS := {
-	"weg": "road", "snelweg": "road", "bocht": "road", "parkeren": "road", "tunnel": "road", "brug": "road",
-	"fietspad": "cycle_path", "water": "water", "zwembad": "water", "natuur": "grass", "heuvel": "grass",
-	"stoep": "pavement", "plein": "pavement", "spoor": "rail", "tram": "rail", "waterkant": "pavement",
-}
 ## Placeholder quests to see the tracker (`show_example_quests`): not story content.
 const EXAMPLE_QUESTS := [
 	{"kind": "verhaal", "label": "VERHAAL", "title": "Voorbeeldopdracht", "distance": "240M",
@@ -138,9 +119,17 @@ const EXAMPLE_QUESTS := [
 @export var player_name := "Speler"
 @export var player_level := 1
 ## Metres across the minimap.
-@export var minimap_metres := 160.0
+@export var minimap_metres := 160.0:
+	set(value):
+		minimap_metres = value
+		if minimap:
+			minimap.metres = value
 ## Metres within which the nearest named place shows under the neighbourhood.
-@export var place_near := 45.0
+@export var place_near := 45.0:
+	set(value):
+		place_near = value
+		if location:
+			location.place_near = value
 ## The day the game starts on (the day counter goes up when Dagcyclus goes round midnight).
 @export var start_day := 1
 ## Shows EXAMPLE_QUESTS (to see the tracker).
@@ -163,71 +152,39 @@ var music: CityMusic
 var player_frame: PlayerFrame
 ## The notice at the top (scripts/ui/hud/notice_banner.gd): a new area, a new mission.
 var notices: NoticeBanner
-## The quest tracker on the right (scripts/ui/hud/quest_tracker.gd) and its quests (QuestLog).
+## The quest tracker on the right (scripts/ui/hud/quest_tracker.gd) and its quests (QuestRules).
 var quest_tracker: QuestTracker
 
-var _location_wijk: Label
-var _location_place: Label
-var _location_street: Label
-var _location_box: Control
-var _location_clock := 0.0
-var _focus := Vector3.ZERO       # where the player is, from the last minimap update
-var _has_focus := false
-var _current_wijk := ""
-var _indoor_wijk := ""           # inside a building: the neighbourhood it counts as (set_indoor_location)
-var _visited_wijken := {}
+## The minimap, top right (scripts/ui/hud/minimap.gd); over it where the player is
+## (location.gd), under it the clock (clock.gd) and the marker set on the map (waypoint.gd).
+var minimap: Minimap
+var location: Location
+var clock: Clock
+var marker: Waypoint
+## The money, bottom right (scripts/ui/hud/money_view.gd).
+var money_panel: MoneyView
+## The CRT look over the whole picture (scripts/ui/hud/crt_view.gd).
+var crt: CrtView
+
 var _font_title: Font        # Pixelify Sans, bold
-var _font_title_medium: Font # Pixelify Sans, semibold
 var _font_pixel: Font        # Silkscreen
 var _font_pixel_bold: Font   # Silkscreen bold
 var _font_body: Font         # JetBrains Mono
 
 var _root: Control
+var _map_column: Control        # top right: the location, the minimap, the clock and the marker
 var _floating_numbers: FloatingNumbers
 var _numbers_over_story: FloatingNumbers   # the same, drawn over the story box
 ## How long a number over the story box stays (the text is being read meanwhile).
 const NUMBER_OVER_STORY_SECONDS := 2.2
 var _ui_viewport: SubViewport   # the HUD's own picture (see _build_crt)
-var _minimap_box: Control
-var _minimap_map: TextureRect
-var _minimap_shroud: TextureRect     # over the map: what the story has not opened yet, hidden
-var _shroud_image: Image              # the same size as the map picture, opaque where shrouded
-var _shroud_texture: ImageTexture
-var _map_lowest := Vector2i.ZERO      # the cell of the map picture's first pixel
-var _minimap_arrow: PlayerArrow
-var _minimap_origin := Vector2.ZERO   # world x, z of the map image's corner
-var _minimap_cell := 4.0              # metres per map pixel
-var _day_label: Label
-var _time_label: Label
-var _time_icon: PixelIcon
-var _minimap_marks: QuestMarks
-var _minimap_exits: QuestMarks       # the ways out on the floor plan of an interior
-var _minimap_waypoint: QuestMarks    # the marker set on the map (set_waypoint)
-var _waypoint := Vector2.INF         # where it is (world x, z), INF: none
-var _waypoint_name := ""
-var _waypoint_chip: Control
-var _waypoint_label: Label
-var _beacon: Node3D                  # its beam of light in the town (WaypointBeacon)
-var _exit_points: Array[Vector3] = []
-var _town_map := {}                  # the town's map while an interior's plan is shown
-var _interior_plans := {}            # interior instance id -> its plan (InteriorPlan.build)
-var _minimap_metres_now := 0.0       # metres across now (0: minimap_metres)
 var _action_prompts: ActionPrompts
-var _money_panel: Control
-var _money_label: Label
-var _crt_overlay: ColorRect
-
-var _day := 1
-var _hour := 12.0
-var _last_cycle_hour := -1.0
-var _clock_from_api := false
 
 
 func _ready() -> void:
 	layer = 10
 	# it keeps running while the game is paused (the pause menu, the CRT picture)
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	_day = start_day
 	_crt_as_made = Vector3(crt_curvature, crt_ui_curvature, crt_corner)
 	_read_menu_settings()
 	music = CityMusic.new()
@@ -256,12 +213,12 @@ func _ready() -> void:
 	_floating_numbers.world_viewport = get_viewport()
 	_root.add_child(_floating_numbers)
 	player_frame = PlayerFrame.new()
-	player_frame.position = Vector2(MARGIN, MARGIN)
+	player_frame.position = HudLayout.player_frame_position()
 	_root.add_child(player_frame)
 	notices = NoticeBanner.new()
 	notices.jingle_wanted.connect(func(path: String) -> void: music.play_jingle(path, MISSION_JINGLE_VOLUME_DB, "MissieDeuntje"))
 	_root.add_child(notices)
-	_build_minimap()
+	_build_map_column()
 	_action_prompts = ActionPrompts.new()
 	_action_prompts.name = "Acties"
 	_root.add_child(_action_prompts)
@@ -310,7 +267,7 @@ func _ready() -> void:
 	set_quests(EXAMPLE_QUESTS if show_example_quests else [])
 	get_viewport().size_changed.connect(_fit_to_window)
 	_fit_to_window()
-	_build_minimap_image.call_deferred()
+	_build_minimap_picture.call_deferred()
 	music.start_with_map_jingle.call_deferred()
 
 
@@ -333,12 +290,10 @@ func duck_music(ducked: bool) -> void:
 
 func _process(delta: float) -> void:
 	_lay_modal_over_menu()
-	_update_clock()
-	_update_minimap()
-	_location_clock -= delta
-	if _location_clock <= 0.0:
-		_location_clock = LOCATION_INTERVAL
-		_update_location()
+	clock.follow(get_node_or_null(day_cycle_path))
+	_follow_player()
+	if location.tick(delta):
+		_look_where_the_player_is()
 		_update_quest_distance()
 	_open_waiting_reward()
 	_open_waiting_level_up()
@@ -385,7 +340,7 @@ const LEVEL_JINGLE_VOLUME_DB := -3.0
 func show_level_up(level: int, choose := Callable(), current := Callable()) -> void:
 	set_player(player_name, level)
 	if not choose.is_valid():
-		notices.queue(NoticeBanner.notice(NoticeBanner.LEVEL_HEADING, "Level %d" % level, 3.5, LEVEL_JINGLE))
+		notices.queue(NoticeRules.notice(NoticeRules.LEVEL_HEADING, NoticeRules.level_name(level), 3.5, LEVEL_JINGLE))
 		return
 	_level_ups_waiting.append({"level": level, "choose": choose, "current": current})
 	# a frame later: a reward given with the XP (the same frame) joins it (show_reward)
@@ -413,18 +368,18 @@ const MISSION_JINGLE_VOLUME_DB := -3.0
 
 ## Shows "nieuw gebied ontdekt" with the name of the area for a few seconds.
 func show_area(area_name: String, seconds := 4.0) -> void:
-	notices.queue(NoticeBanner.notice(NoticeBanner.AREA_HEADING, area_name, seconds))
+	notices.queue(NoticeRules.notice(NoticeRules.AREA_HEADING, area_name, seconds))
 
 
 ## Shows a notice of its own at the top ("heading" over "text"): the floor the lift of the
 ## city hall has brought you to.
 func show_notice(heading: String, text: String, seconds := 3.0) -> void:
-	notices.queue(NoticeBanner.notice(heading, text, seconds))
+	notices.queue(NoticeRules.notice(heading, text, seconds))
 
 
 ## Shows "nieuwe missie" with the title of the mission and plays the mission jingle.
 func show_mission(title: String, seconds := 4.5) -> void:
-	notices.queue(NoticeBanner.notice(NoticeBanner.MISSION_HEADING, title, seconds, MISSION_JINGLE))
+	notices.queue(NoticeRules.notice(NoticeRules.MISSION_HEADING, title, seconds, MISSION_JINGLE))
 
 
 ## True while a notice is up (for the tests).
@@ -432,7 +387,7 @@ func is_showing_notice() -> bool:
 	return notices.is_showing()
 
 
-## The quests in the tracker, top to bottom; empty = no tracker (what a quest is: QuestLog).
+## The quests in the tracker, top to bottom; empty = no tracker (what a quest is: QuestRules).
 ## The followed one stays followed; when it is done or gone the tracker goes on to the first
 ## open quest after it.
 func set_quests(quests: Array) -> void:
@@ -441,20 +396,20 @@ func set_quests(quests: Array) -> void:
 
 
 static func is_quest_done(quest: Dictionary) -> bool:
-	return QuestLog.is_done(quest)
+	return QuestRules.is_done(quest)
 
 
-## The quest to follow once `after_id` is done or gone (QuestLog.next_open_id).
+## The quest to follow once `after_id` is done or gone (QuestRules.next_open_id).
 func next_open_quest_id(after_id: String, previous_ids: Array = []) -> String:
-	return quest_tracker.quest_log.next_open_id(after_id, previous_ids)
+	return quest_tracker.next_open_id(after_id, previous_ids)
 
 
 static func quest_id(quest: Dictionary) -> String:
-	return QuestLog.quest_id(quest)
+	return QuestRules.quest_id(quest)
 
 
 func quest_by_id(id: String) -> Dictionary:
-	return quest_tracker.quest_log.by_id(id)
+	return quest_tracker.by_id(id)
 
 
 ## Follows this quest (its places on the minimap and the map, on top of the tracker).
@@ -464,128 +419,108 @@ func track_quest(id: String) -> void:
 
 
 func tracked_quest_id() -> String:
-	return quest_tracker.quest_log.tracked_id()
+	return quest_tracker.tracked_id()
 
 
-## The steps the tracker shows of `quest` (QuestLog.tracker_steps).
+## The steps the tracker shows of `quest` (QuestRules.tracker_steps).
 static func tracker_steps(quest: Dictionary) -> Array:
-	return QuestLog.tracker_steps(quest)
+	return QuestRules.tracker_steps(quest)
 
 
 ## Where the tracked quest sends the player now: the targets of its first step not done
 ## (none while that step is locked), as world x, z.
 func quest_targets() -> Array:
-	return quest_tracker.quest_log.targets()
+	return quest_tracker.targets()
 
 
 # ------------------------------------------------------------------ the marker of the map
 
-## The colour of the marker you set on the map (the game menu's KAART: Enter on a place),
-## on the minimap, its chip and its beam in the town; how close counts as there (metres).
-const WAYPOINT_COLOUR := Color("#FF5ACD")
-const WAYPOINT_ARRIVED := 8.0
-const WaypointBeacon = preload("res://scripts/world/town/waypoint_beacon.gd")
-
-
-## A marker on `at` (world x, z), named `place_name`: on the minimap (an arrow on its edge
-## while it is further), its name and distance under it, a beam of light on it in the town.
-## Gone once you are there (WAYPOINT_ARRIVED) or with clear_waypoint. One at a time.
+## A marker on `at` (world x, z), named `place_name` (scripts/ui/hud/waypoint.gd): on the
+## minimap (an arrow on its edge while it is further), its name and distance under it, a
+## beam of light on it in the town. Gone once you are there or with clear_waypoint. One at
+## a time.
 func set_waypoint(at: Vector2, place_name: String) -> void:
-	_waypoint = at
-	_waypoint_name = place_name
-	if _beacon == null or not is_instance_valid(_beacon):
-		_beacon = WaypointBeacon.new()
-		var town := get_parent()
-		if town:
-			town.add_child(_beacon)
-	if _beacon.is_inside_tree():
-		_beacon.place(Vector3(at.x, _ground_height(at), at.y))
-	_waypoint_chip.visible = true
-	_waypoint_label.text = place_name.to_upper()
+	marker.set_at(at, place_name)
 
 
 func clear_waypoint() -> void:
-	_waypoint = Vector2.INF
-	_waypoint_name = ""
-	if _beacon and is_instance_valid(_beacon):
-		_beacon.queue_free()
-	_beacon = null
-	_waypoint_chip.visible = false
-	_minimap_waypoint.points = []
+	marker.clear()
+	minimap.show_waypoint(marker.at())
 
 
 func has_waypoint() -> bool:
-	return _waypoint != Vector2.INF
+	return marker.is_set()
 
 
 func waypoint() -> Vector2:
-	return _waypoint
+	return marker.at()
 
 
 func waypoint_name() -> String:
-	return _waypoint_name
+	return marker.place_name()
 
 
-## The marker on the minimap and its distance; there: "Aangekomen" and it is gone. Inside a
-## building (the minimap a floor plan) it waits, its beam hidden.
-func _update_waypoint(focus: Vector3, pixels_per_metre: float) -> void:
-	if not has_waypoint():
+## The player reached the marker: "Aangekomen" rising over its head.
+func _on_waypoint_arrived(place_name: String, focus: Vector3) -> void:
+	show_floating_number(focus + Vector3.UP * 2.2, WaypointRules.arrived_text(place_name), WAYPOINT_COLOUR, 14)
+
+
+## The minimap follows the player (the followed vehicle, else the point the camera looks
+## at), the marker with it.
+func _follow_player() -> void:
+	if not _minimap_in_town().follow(quest_tracker.targets()):
 		return
-	var outdoors := _town_map.is_empty()
-	if _beacon and is_instance_valid(_beacon):
-		_beacon.visible = outdoors
-	if not outdoors:
-		_minimap_waypoint.points = []
-		return
-	var here := Vector2(focus.x, focus.z)
-	_minimap_waypoint.points = [_minimap_arrow.position + (_waypoint - here) * pixels_per_metre]
-	var distance := _waypoint.distance_to(here)
-	_waypoint_label.text = "%s · %d M" % [_waypoint_name.to_upper(), roundi(distance)]
-	if distance <= WAYPOINT_ARRIVED:
-		show_floating_number(focus + Vector3.UP * 2.2, "Aangekomen: " + _waypoint_name, WAYPOINT_COLOUR, 14)
-		clear_waypoint()
+	marker.follow(minimap.focus(), not minimap.is_indoors())
+	minimap.show_waypoint(marker.at())
 
 
-## The height of the ground at `at` (world x, z), for the foot of the beam; 0 when unknown.
-func _ground_height(at: Vector2) -> float:
-	var world := get_viewport().world_3d if get_viewport() else null
-	if world == null:
-		return 0.0
-	# from just over street level, not from the sky: a place often lies against a facade,
-	# whose roof would be hit first
-	var query := PhysicsRayQueryParameters3D.create(Vector3(at.x, 1.5, at.y), Vector3(at.x, -20.0, at.y), 1)
-	var hit := world.direct_space_state.intersect_ray(query)
-	return (hit.position as Vector3).y if not hit.is_empty() else 0.0
+## The minimap, knowing the nodes of the town it reads now (they may come and go).
+func _minimap_in_town() -> Minimap:
+	minimap.follow_camera = get_node_or_null(follow_camera_path)
+	minimap.story = get_node_or_null(story_path)
+	return minimap
+
+
+## Where the player is (world x, z), from the last look of the minimap.
+func _player_at() -> Vector2:
+	var focus := minimap.focus()
+	return Vector2(focus.x, focus.z)
+
+
+## The location over the minimap: the neighbourhood, the street and the nearest place.
+func _look_where_the_player_is() -> void:
+	if minimap.is_focus_known():
+		location.look(owner if owner else get_parent(), _player_at())
 
 
 ## How far the nearest place of the tracked quest is, in its panel ("120 M").
 func _update_quest_distance() -> void:
-	if _has_focus:
-		quest_tracker.set_distance(QuestLog.nearest_distance(quest_targets(), Vector2(_focus.x, _focus.z)))
+	if minimap.is_focus_known():
+		quest_tracker.show_distance_from(_player_at())
 
 
 ## The quests as last given to set_quests (for the game menu, scripts/ui/game_menu.gd).
 func quests() -> Array:
-	return quest_tracker.quest_log.quests()
+	return quest_tracker.quests()
 
 
 ## The neighbourhoods the player has been in (names as in the "wijken" metadata).
 func visited_areas() -> Array:
-	return _visited_wijken.keys()
+	return location.visited_areas()
 
 
 ## The minimap's picture of the whole map (one pixel per `minimap_metres_per_pixel()`
 ## metres, its corner at world x, z `minimap_origin()`), or null while it is not built yet.
 func minimap_texture() -> Texture2D:
-	return _minimap_map.texture if _minimap_map else null
+	return minimap.texture() if minimap else null
 
 
 func minimap_origin() -> Vector2:
-	return _minimap_origin
+	return minimap.origin()
 
 
 func minimap_metres_per_pixel() -> float:
-	return _minimap_cell
+	return minimap.metres_per_pixel()
 
 
 ## A number floating up from `world_position` and fading (widgets/floating_numbers.gd): the
@@ -600,16 +535,12 @@ func show_floating_number(world_position: Vector3, text: String, colour: Color, 
 ## The money in the bottom right corner, to the cent (Dutch: "1.284,50"), so a coin of
 ## 10 cents shows too.
 func set_money(euros: float) -> void:
-	_money_label.text = MoneyText.amount(euros)   # the euro sign is the icon before it
+	money_panel.show_amount(MoneyText.amount(euros))   # the euro sign is the icon before it
 
 
 ## The clock, when there is no Dagcyclus (or to override it): hour 0..24, and the day if >= 1.
 func set_time(hour: float, day := -1) -> void:
-	_clock_from_api = true
-	_hour = fposmod(hour, 24.0)
-	if day >= 1:
-		_day = day
-	_show_clock()
+	clock.set_time(hour, day)
 
 
 # ------------------------------------------------------------------ building
@@ -617,162 +548,44 @@ func set_time(hour: float, day := -1) -> void:
 func _load_fonts() -> void:
 	var fonts := UiStyle.fonts()
 	_font_title = fonts.title
-	_font_title_medium = fonts.title_medium
 	_font_pixel = fonts.pixel
 	_font_pixel_bold = fonts.pixel_bold
 	_font_body = fonts.body
 
 
-func _label(text: String, font: Font, size: int, colour := UiStyle.TEXT, shadow := 2) -> Label:
-	return UiStyle.label(text, font, size, colour, shadow)
-
-
-func _build_minimap() -> void:
-	_minimap_box = Control.new()
-	_minimap_box.name = "Kaartje"
-	_minimap_box.size = Vector2(200, MAP_TOP + 270)
-	_minimap_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_root.add_child(_minimap_box)
-	var frame := UiStyle.shadowed_panel(Vector2(200, 200), UiStyle.BORDER, 3)
-	frame.position = Vector2(0, MAP_TOP)
-	_minimap_box.add_child(frame)
-	var clip := Control.new()
-	clip.position = Vector2(3, 3)
-	clip.size = Vector2(194, 194)
-	clip.clip_contents = true
-	clip.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	frame.add_child(clip)
-	_minimap_map = TextureRect.new()
-	_minimap_map.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	_minimap_map.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	_minimap_map.stretch_mode = TextureRect.STRETCH_SCALE
-	_minimap_map.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	clip.add_child(_minimap_map)
-	_minimap_shroud = TextureRect.new()
-	_minimap_shroud.name = "Sluier"
-	_minimap_shroud.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	_minimap_shroud.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	_minimap_shroud.stretch_mode = TextureRect.STRETCH_SCALE
-	_minimap_shroud.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	clip.add_child(_minimap_shroud)
-	_minimap_marks = QuestMarks.new()
-	_minimap_marks.size = clip.size
-	clip.add_child(_minimap_marks)
-	_minimap_exits = QuestMarks.new()
-	_minimap_exits.colour = EXIT_MARK_COLOUR
-	_minimap_exits.size = clip.size
-	clip.add_child(_minimap_exits)
-	_minimap_waypoint = QuestMarks.new()
-	_minimap_waypoint.colour = WAYPOINT_COLOUR
-	_minimap_waypoint.size = clip.size
-	clip.add_child(_minimap_waypoint)
-	_minimap_arrow = PlayerArrow.new()
-	_minimap_arrow.position = clip.size * 0.5
-	clip.add_child(_minimap_arrow)
-	var north := _label("N", _font_pixel_bold, 12, UiStyle.TEXT, 1)
-	north.position = Vector2(90, 4)
-	frame.add_child(north)
-	var chips := HBoxContainer.new()
-	chips.add_theme_constant_override("separation", 8)
-	chips.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_minimap_box.add_child(chips)
-	_day_label = _label("DAG 1", _font_pixel, 11, UiStyle.TEXT, 0)
-	chips.add_child(_chip([_day_label]))
-	_time_icon = PixelIcon.new()
-	_time_icon.bitmap = ["..###..", ".#####.", "#######", "#######", "#######", ".#####.", "..###.."]
-	_time_icon.colour = UiStyle.ACCENT
-	_time_icon.pixel = 12.0 / 7.0
-	_time_icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	_time_label = _label("12:00", _font_pixel, 11, UiStyle.TEXT, 0)
-	chips.add_child(_chip([_time_icon, _time_label]))
-	# right-aligned under the map, 8 px below it
-	chips.resized.connect(func() -> void: chips.position = Vector2(200 - chips.size.x, MAP_TOP + 200 + 8))
-	# under them the marker set on the map: its name and how far it is
-	var marker_icon := PixelIcon.new()
-	marker_icon.bitmap = ["...#...", "..###..", ".#####.", "#######", ".#####.", "..###..", "...#..."]
-	marker_icon.colour = WAYPOINT_COLOUR
-	marker_icon.pixel = 12.0 / 7.0
-	marker_icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	_waypoint_label = _label("", _font_pixel, 11, UiStyle.TEXT, 0)
-	_waypoint_label.clip_text = true
-	_waypoint_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	_waypoint_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_waypoint_chip = _chip([marker_icon, _waypoint_label])
-	_waypoint_chip.custom_minimum_size = Vector2(200, 0)
-	_waypoint_chip.position = Vector2(0, MAP_TOP + 200 + 8 + 30)
-	_waypoint_chip.visible = false
-	_minimap_box.add_child(_waypoint_chip)
-	# where the player is: over the map, as wide as it, its height fixed (long names end
-	# in an ellipsis)
-	var pin := PixelIcon.new()
-	pin.bitmap = [".###.", "#####", "##.##", "#####", ".###.", "..#..", "..#.."]
-	pin.colour = UiStyle.SIDE_ACCENT
-	pin.pixel = 14.0 / 7.0
-	pin.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	var lines := VBoxContainer.new()
-	lines.add_theme_constant_override("separation", 2)
-	lines.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_location_wijk = _label("DEN HAAG", _font_pixel, 11, UiStyle.SIDE_ACCENT, 0)
-	_location_street = _label("", _font_body, 12, UiStyle.TEXT, 0)
-	_location_street.visible = false
-	_location_place = _label("", _font_body, 11, UiStyle.MUTED, 0)
-	_location_place.visible = false
-	lines.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	lines.alignment = BoxContainer.ALIGNMENT_CENTER
-	for line: Label in [_location_wijk, _location_street, _location_place]:
-		line.clip_text = true
-		line.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-		line.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		lines.add_child(line)
-	_location_box = _chip([pin, lines])
-	_location_box.custom_minimum_size = Vector2(200, LOCATION_HEIGHT)
-	_location_box.size = Vector2(200, LOCATION_HEIGHT)
-	_minimap_box.add_child(_location_box)
-
-
-func _chip(contents: Array) -> PanelContainer:
-	var chip := PanelContainer.new()
-	var style := UiStyle.box_style(UiStyle.PANEL, UiStyle.BORDER, 2)
-	style.content_margin_left = 8
-	style.content_margin_right = 8
-	style.content_margin_top = 4
-	style.content_margin_bottom = 4
-	chip.add_theme_stylebox_override("panel", style)
-	chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 6)
-	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	for item in contents:
-		row.add_child(item)
-	chip.add_child(row)
-	return chip
+## The column top right: where the player is, under it the minimap, the clock and the
+## marker set on the map (where each stands: HudLayout).
+func _build_map_column() -> void:
+	_map_column = Control.new()
+	_map_column.name = "Kaartkolom"
+	_map_column.size = HudLayout.map_column_size()
+	_map_column.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_root.add_child(_map_column)
+	minimap = Minimap.new()
+	minimap.metres = minimap_metres
+	minimap.world_viewport = get_viewport()
+	minimap.position = HudLayout.map_in_column()
+	_map_column.add_child(minimap)
+	clock = Clock.new()
+	clock.set_day(start_day)
+	clock.position = HudLayout.clock_in_column()
+	_map_column.add_child(clock)
+	marker = Waypoint.new()
+	marker.town = get_parent()
+	marker.world_viewport = get_viewport()
+	marker.position = HudLayout.waypoint_in_column()
+	marker.arrived.connect(_on_waypoint_arrived)
+	_map_column.add_child(marker)
+	location = Location.new()
+	location.place_near = place_near
+	location.new_area_entered.connect(show_area)
+	_map_column.add_child(location)
 
 
 func _build_money() -> void:
-	_money_panel = PanelContainer.new()
-	_money_panel.name = "Geld"
-	var style := UiStyle.box_style(UiStyle.TRANSLUCENT_INK, UiStyle.BORDER, 2)
-	style.content_margin_left = 12
-	style.content_margin_right = 12
-	style.content_margin_top = 8
-	style.content_margin_bottom = 8
-	_money_panel.add_theme_stylebox_override("panel", style)
-	_money_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 8)
-	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var coin := PixelIcon.new()
-	# a euro sign: a C open to the right with two bars through it
-	coin.bitmap = ["...####", "..#....", "######.", ".#.....", "######.", "..#....", "...####"]
-	coin.colour = UiStyle.ACCENT
-	coin.pixel = 16.0 / 7.0
-	coin.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	row.add_child(coin)
-	_money_label = _label("0", _font_pixel, 14, UiStyle.TEXT, 0)
-	row.add_child(_money_label)
-	_money_panel.add_child(row)
-	_money_panel.resized.connect(_place_corners)
-	_root.add_child(_money_panel)
+	money_panel = MoneyView.new()
+	money_panel.resized.connect(_place_corners)
+	_root.add_child(money_panel)
 
 
 # ------------------------------------------------------------------ pause menu
@@ -794,8 +607,8 @@ func _build_pause_menu() -> void:
 
 ## The CRT look on or off (the settings of the pause menu), at once.
 func _set_crt(on: bool) -> void:
-	crt_curvature = _crt_as_made.x if on else 0.0
-	crt_ui_curvature = _crt_as_made.y if on else 0.0
+	crt_curvature = CrtRules.curvature_when(on, _crt_as_made.x)
+	crt_ui_curvature = CrtRules.curvature_when(on, _crt_as_made.y)
 	_update_crt()
 
 
@@ -904,17 +717,30 @@ func _build_reward_screen() -> void:
 	_root.add_child(_reward_screen)
 	# closing, the game stays paused only while another of these screens is still up (never
 	# paused again from a state remembered when it opened: the town would stand still)
-	_reward_screen.keep_paused = func() -> bool:
-		return is_showing_story() or is_showing_shop() or is_showing_level_up() or pause_menu.is_open() or _is_game_menu_open()
+	_reward_screen.keep_paused = func() -> bool: return ModalRules.keeps_paused(ModalRules.REWARD, _showing())
 	if _story_box:
-		_story_box.keep_paused = func() -> bool:
-			return is_showing_reward() or is_showing_level_up() or is_showing_shop() or pause_menu.is_open() or _is_game_menu_open()
+		_story_box.keep_paused = func() -> bool: return ModalRules.keeps_paused(ModalRules.STORY, _showing())
 		# a conversation waits under the reward screen and goes on where it was after it
-		_story_box.on_hold = func() -> bool:
-			return is_showing_reward() or is_showing_level_up()
+		_story_box.on_hold = func() -> bool: return ModalRules.is_story_on_hold(_showing())
 	if _shop_screen:
-		_shop_screen.keep_paused = func() -> bool:
-			return is_showing_reward() or is_showing_level_up() or is_showing_story() or pause_menu.is_open()
+		_shop_screen.keep_paused = func() -> bool: return ModalRules.keeps_paused(ModalRules.SHOP, _showing())
+
+
+## What is showing now, as ModalRules wants it: the screens that hold the game and what
+## they wait for.
+func _showing() -> Dictionary:
+	var showing := ModalRules.nothing_showing()
+	showing[ModalRules.REWARD] = is_showing_reward()
+	showing[ModalRules.LEVEL_UP] = is_showing_level_up()
+	showing[ModalRules.STORY] = is_showing_story()
+	showing[ModalRules.SHOP] = is_showing_shop()
+	showing["conversation"] = is_showing_story() and _story_box.is_conversation()
+	showing["pause_menu"] = pause_menu.is_open()
+	showing["death"] = death_screen.is_open()
+	showing["game_menu"] = _is_game_menu_open()
+	showing["machine"] = is_inside_tree() and get_tree().root.has_node("Automaatscherm")
+	showing["loading"] = is_inside_tree() and LoadingScreenScript.showing(get_tree())
+	return showing
 
 
 ## A reward got (scripts/ui/reward_screen.gd: {"heading", "title", "xp", "items": [{"item",
@@ -924,9 +750,10 @@ func _build_reward_screen() -> void:
 func show_reward(reward: Dictionary, done := Callable()) -> void:
 	# the XP that made a level up waiting goes onto the level-up screen (one screen for both):
 	# a reward of only XP is then not shown on its own
-	if int(reward.get("xp", 0)) > 0 and not _level_ups_waiting.is_empty():
+	var joined_xp := ModalRules.xp_for_level_up(reward, _level_ups_waiting.size())
+	if joined_xp > 0:
 		var level_up: Dictionary = _level_ups_waiting.back()
-		level_up["xp"] = int(level_up.get("xp", 0)) + int(reward.xp)
+		level_up["xp"] = int(level_up.get("xp", 0)) + joined_xp
 		reward = reward.duplicate()
 		reward["xp"] = 0
 	if RewardScreen.pages_of(reward).is_empty():
@@ -953,13 +780,9 @@ func rewards_waiting() -> Array[Dictionary]:
 ## pause menu, a machine's close-up, the loading screen or the death screen (it waits for
 ## those). Over the game menu it comes too (_lay_modal_over_menu).
 func _open_waiting_reward() -> void:
-	if _rewards_waiting.is_empty() or is_showing_reward() or is_showing_level_up() or not is_inside_tree():
+	if _rewards_waiting.is_empty() or not is_inside_tree():
 		return
-	if is_showing_story() and not _story_box.is_conversation():
-		return
-	if death_screen.is_open() or pause_menu.is_open():
-		return
-	if get_tree().root.has_node("Automaatscherm") or LoadingScreenScript.showing(get_tree()):
+	if not ModalRules.can_open_reward(_rewards_waiting.size(), _showing()):
 		return
 	var reward: Dictionary = _rewards_waiting.pop_front()
 	_reward_screen.open(reward, reward.get("done", Callable()))
@@ -984,24 +807,16 @@ func _build_level_up_screen() -> void:
 	_level_up_screen.stat_looks = STATS
 	_level_up_screen.pixel_icons = PIXEL_ICONS
 	_root.add_child(_level_up_screen)
-	_level_up_screen.keep_paused = func() -> bool:
-		return is_showing_reward() or is_showing_story() or is_showing_shop() \
-				or pause_menu.is_open() or _is_game_menu_open()
+	_level_up_screen.keep_paused = func() -> bool: return ModalRules.keeps_paused(ModalRules.LEVEL_UP, _showing())
 
 
 ## The next level up, when nothing else needs the screen: as a reward (_open_waiting_reward:
 ## over a conversation, the shop and the game menu; not over story pages, the pause menu, a
 ## machine, the loading or death screen) and only once the rewards waiting have been shown.
 func _open_waiting_level_up() -> void:
-	if _level_ups_waiting.is_empty() or is_showing_level_up() or is_showing_reward() or not is_inside_tree():
+	if _level_ups_waiting.is_empty() or not is_inside_tree():
 		return
-	if not _rewards_waiting.is_empty():
-		return
-	if is_showing_story() and not _story_box.is_conversation():
-		return
-	if death_screen.is_open() or pause_menu.is_open():
-		return
-	if get_tree().root.has_node("Automaatscherm") or LoadingScreenScript.showing(get_tree()):
+	if not ModalRules.can_open_level_up(_level_ups_waiting.size(), _rewards_waiting.size(), _showing()):
 		return
 	var waiting: Dictionary = _level_ups_waiting.pop_front()
 	var raise: Dictionary = PlayerController.LEVEL_UP_RAISE
@@ -1023,7 +838,12 @@ func _is_game_menu_open() -> bool:
 ## True while the story box (a conversation, a thought, a mission) or the reward screen shows
 ## with the game menu open (a thought about opening the inventory, a reward got meanwhile).
 func _modal_over_menu() -> bool:
-	return _is_game_menu_open() and (is_showing_story() or is_showing_reward() or is_showing_level_up())
+	return ModalRules.is_modal_over_menu(_is_game_menu_open(), is_showing_story(), is_showing_reward(), is_showing_level_up())
+
+
+## The parts of the HUD hidden while a screen lies over the game menu.
+func hidden_for_modal() -> Array[CanvasItem]:
+	return _hidden_for_modal
 
 
 ## The game menu is a layer over the HUD; the story box and reward screen are part of the HUD.
@@ -1037,7 +857,7 @@ func _lay_modal_over_menu() -> void:
 	if _game_menu_layer == -1:
 		_game_menu_layer = game_menu.layer
 	var over := _modal_over_menu()
-	game_menu.layer = layer - 1 if over else _game_menu_layer
+	game_menu.layer = ModalRules.menu_layer(over, layer, _game_menu_layer)
 	if over and _hidden_for_modal.is_empty():
 		for part in _root.get_children():
 			if part is CanvasItem and part.visible and not part in [_story_box, _reward_screen, _level_up_screen, _numbers_over_story]:
@@ -1111,17 +931,10 @@ func show_death(cause := "") -> void:
 
 
 func _build_crt() -> void:
-	_crt_overlay = ColorRect.new()
-	_crt_overlay.name = "CRT"
-	_crt_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var material := ShaderMaterial.new()
-	material.shader = UiStyle.CRT_SHADER
-	_crt_overlay.material = material
-	# outside the scaled design: always the whole window, in real screen lines
-	_crt_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
-	material.set_shader_parameter("ui_texture", _ui_viewport.get_texture())
-	add_child(_crt_overlay)
-	_crt_overlay.resized.connect(_update_crt)
+	crt = CrtView.new()
+	crt.show_picture(_ui_viewport.get_texture())
+	add_child(crt)
+	crt.resized.connect(_update_crt)
 	_update_crt()
 
 
@@ -1136,16 +949,13 @@ func _read_menu_settings() -> void:
 		crt_ui_curvature = 0.0
 
 
-## Hands the CRT settings to its shader; off altogether when it would change nothing.
+## Hands the CRT settings to its shader (always drawn: it also lays the HUD's picture over
+## the world).
 func _update_crt() -> void:
-	if _crt_overlay == null:
+	if crt == null:
 		return
-	var material := _crt_overlay.material as ShaderMaterial
-	material.set_shader_parameter("curvature", crt_curvature)
-	material.set_shader_parameter("ui_curvature", minf(crt_ui_curvature, crt_curvature))
-	material.set_shader_parameter("corner", crt_corner if crt_curvature > 0.0 else 0.0)
-	material.set_shader_parameter("screen_size", _crt_overlay.size if _crt_overlay.size.x > 0.0 else Vector2(1280, 720))
-	# always drawn: it also lays the HUD's picture over the world
+	crt.show_crt(crt_curvature, CrtRules.ui_curvature(crt_ui_curvature, crt_curvature),
+			CrtRules.corner(crt_corner, crt_curvature), CrtRules.screen_size(crt.size))
 
 
 # ------------------------------------------------------------------ layout
@@ -1164,27 +974,26 @@ func _fit_to_window() -> void:
 		_ui_viewport.size_2d_override_stretch = true
 		if "oversampling_override" in _ui_viewport:
 			_ui_viewport.set("oversampling_override", float(pixels.y) / maxf(window.y, 1.0))
-	var factor := minf(window.x / DESIGN_SIZE.x, window.y / DESIGN_SIZE.y)
-	_root.scale = Vector2(factor, factor)
-	_root.size = window / factor
+	_root.scale = Vector2.ONE * HudLayout.scale_factor(window)
+	_root.size = HudLayout.design_area(window)
 	_place_corners()
 
 
 func _place_corners() -> void:
-	if _root == null or _money_panel == null:
+	if _root == null or money_panel == null:
 		return
 	var area := _root.size
-	notices.position = Vector2((area.x - NoticeBanner.WIDTH) * 0.5, 34.0)
-	_minimap_box.position = Vector2(area.x - MARGIN - 200.0, MARGIN)
-	quest_tracker.position = Vector2(area.x - MARGIN - QuestTracker.WIDTH, 290.0 + MAP_TOP)
-	_money_panel.position = area - Vector2(MARGIN, 28.0) - _money_panel.size
+	notices.position = HudLayout.notice_position(area)
+	_map_column.position = HudLayout.minimap_position(area)
+	quest_tracker.position = HudLayout.tracker_position(area)
+	money_panel.position = HudLayout.money_position(area, money_panel.size)
 	_place_action_prompts()
 
 
 func _place_action_prompts() -> void:
 	if _action_prompts and _root:
 		_action_prompts.reset_size()
-		_action_prompts.position = Vector2(MARGIN, _root.size.y - 28.0 - _action_prompts.size.y)
+		_action_prompts.position = HudLayout.actions_position(_root.size, _action_prompts.size)
 
 
 ## The context actions bottom left: [key text, action text] each; empty hides them.
@@ -1195,159 +1004,32 @@ func set_actions(actions: Array) -> void:
 	_place_action_prompts.call_deferred()
 
 
-# ------------------------------------------------------------------ clock
+# ------------------------------------------------------------------ minimap and location
 
-func _update_clock() -> void:
-	var day_cycle := get_node_or_null(day_cycle_path)
-	if day_cycle != null and not _clock_from_api and "time_of_day" in day_cycle:
-		var hour: float = day_cycle.time_of_day
-		if _last_cycle_hour >= 0.0 and hour < _last_cycle_hour - 12.0:
-			_day += 1   # it went round midnight
-		_last_cycle_hour = hour
-		_hour = hour
-	_show_clock()
-
-
-func _show_clock() -> void:
-	var minutes := int(_hour * 60.0) % (24 * 60)
-	_time_label.text = "%02d:%02d" % [minutes / 60, minutes % 60]
-	_day_label.text = "DAG %d" % _day
-	var night := _hour < 6.5 or _hour > 21.0
-	_time_icon.colour = UiStyle.MUTED if night else UiStyle.ACCENT
-
-
-# ------------------------------------------------------------------ minimap
-
-## One pixel per 4 m cell: the kind of ground of the top Grond tile at street level, and
-## dark where the Gebouwen GridMap has a building. Built once.
-## Inside `interior` (Interiors.enter): the minimap shows its floor plan, read from its
-## colliders (InteriorPlan; made once per interior, a physics step after it is live), and
-## its ways out (`exits`, world positions) as green marks, or arrows on the edge.
+## Inside `interior` (Interiors.enter): the minimap shows its floor plan and its ways out
+## (`exits`, world positions; Minimap.show_interior_plan).
 func show_interior_plan(interior: Node3D, exits: Array[Vector3]) -> void:
-	_exit_points = exits
-	await get_tree().physics_frame
-	await get_tree().physics_frame
-	if _exit_points != exits or not is_instance_valid(interior):
-		return   # out again meanwhile
-	# an interior can say which part of it is the plan (the floor you are on in the city hall,
-	# the layout of this branch of a supermarket: plan_root); a new part is a new plan
-	var plan_source: Node3D = interior.call("plan_root") if interior.has_method("plan_root") else interior
-	if plan_source == null:
-		plan_source = interior
-	var key := plan_source.get_instance_id()
-	if not _interior_plans.has(key):
-		_interior_plans[key] = InteriorPlan.build(plan_source)
-	var plan: Dictionary = _interior_plans[key]
-	if plan.is_empty() or _minimap_map == null:
-		return
-	if _town_map.is_empty():
-		_town_map = {"texture": _minimap_map.texture, "origin": _minimap_origin, "metres_per_pixel": _minimap_cell}
-	_minimap_map.texture = plan.texture
-	_minimap_origin = plan.origin
-	_minimap_cell = plan.metres_per_pixel
-	var extent: Vector2 = plan.extent
-	_minimap_metres_now = clampf(maxf(extent.x, extent.y) * 1.1, INTERIOR_MINIMAP_MIN_METRES, minimap_metres)
+	minimap.show_interior_plan(interior, exits)
 
 
 ## Back outside: the town's map on the minimap again.
 func show_town_plan() -> void:
-	_exit_points = []
-	_minimap_metres_now = 0.0
-	if _town_map.is_empty():
-		return
-	_minimap_map.texture = _town_map.texture
-	_minimap_origin = _town_map.origin
-	_minimap_cell = _town_map.metres_per_pixel
-	_town_map = {}
+	minimap.show_town_plan()
 
 
-func _build_minimap_image() -> void:
-	var ground := get_node_or_null(ground_path) as GridMap
-	if ground == null or ground.mesh_library == null:
-		return
-	var cells := ground.get_used_cells()
-	if cells.is_empty():
-		return
-	var lowest := Vector2i(1 << 30, 1 << 30)
-	var highest := -lowest
-	var top := {}   # Vector2i -> the highest cell at street level or below
-	for cell in cells:
-		if cell.y > 0:
-			continue
-		var column := Vector2i(cell.x, cell.z)
-		if not top.has(column) or cell.y > top[column].y:
-			top[column] = cell
-		lowest = Vector2i(mini(lowest.x, cell.x), mini(lowest.y, cell.z))
-		highest = Vector2i(maxi(highest.x, cell.x), maxi(highest.y, cell.z))
-	if top.is_empty():
-		return
-	var size := highest - lowest + Vector2i.ONE
-	var image := Image.create(size.x, size.y, false, Image.FORMAT_RGB8)
-	image.fill(MINIMAP_EMPTY)
-	var kind_of_item := {}
-	for column: Vector2i in top:
-		var item := ground.get_cell_item(top[column])
-		if not kind_of_item.has(item):
-			kind_of_item[item] = _minimap_kind(ground.mesh_library.get_item_name(item))
-		image.set_pixel(column.x - lowest.x, column.y - lowest.y, MINIMAP_COLOURS[kind_of_item[item]])
-	var buildings := get_node_or_null(buildings_path) as GridMap
-	if buildings != null:
-		for cell in buildings.get_used_cells():
-			var pixel := Vector2i(cell.x, cell.z) - lowest
-			if pixel.x >= 0 and pixel.y >= 0 and pixel.x < size.x and pixel.y < size.y:
-				image.set_pixelv(pixel, MINIMAP_COLOURS["building"])
-	_minimap_cell = ground.cell_size.x
-	# cell (x, z) spans x*4 .. x*4+4 (the GridMap centres its tiles in their cells)
-	_minimap_origin = Vector2(lowest) * _minimap_cell + Vector2(ground.position.x, ground.position.z)
-	_minimap_map.texture = ImageTexture.create_from_image(image)
-	_map_lowest = lowest
-	var story := get_node_or_null(story_path)
-	if story and story.has_signal("shroud_changed") and not story.shroud_changed.is_connected(_refresh_shroud):
-		story.shroud_changed.connect(_refresh_shroud)
-	_refresh_shroud()
-
-
-## The shroud of the story painted over the map: every cell it has not opened in the colour
-## of the empty map (opaque), the open ones clear; the minimap and the game menu's map use it
-## (shroud_image). Again whenever the story opens more (Story.shroud_changed).
-func _refresh_shroud() -> void:
-	var story := get_node_or_null(story_path)
-	var map_texture: Texture2D = _town_map.get("texture", _minimap_map.texture) if _minimap_map else null
-	if story == null or not "shroud" in story or map_texture == null:
-		_shroud_image = null
-		_shroud_texture = null
-		return
-	var shroud = story.shroud
-	var size := Vector2i(map_texture.get_size())
-	var image := Image.create(size.x, size.y, false, Image.FORMAT_RGBA8)
-	image.fill(Color(0, 0, 0, 0))
-	var hidden := Color(MINIMAP_EMPTY, 1.0)
-	var any := false
-	for y in size.y:
-		for x in size.x:
-			if not shroud.is_open_cell(x + _map_lowest.x, y + _map_lowest.y):
-				image.set_pixel(x, y, hidden)
-				any = true
-	_shroud_image = image if any else null
-	if _shroud_image == null:
-		_shroud_texture = null
-	elif _shroud_texture and Vector2i(_shroud_texture.get_size()) == size:
-		_shroud_texture.update(image)
-	else:
-		_shroud_texture = ImageTexture.create_from_image(image)
-	if _minimap_shroud:
-		_minimap_shroud.texture = _shroud_texture
+## The picture of the town on the minimap, from the Grond and Gebouwen GridMaps. Built once.
+func _build_minimap_picture() -> void:
+	_minimap_in_town().build(get_node_or_null(ground_path) as GridMap, get_node_or_null(buildings_path) as GridMap)
 
 
 ## The shroud over the town's map picture (pixels as minimap_texture), null when all is open.
 func shroud_image() -> Image:
-	return _shroud_image
+	return minimap.shroud_image()
 
 
 ## Whether the world point (x, z) is under the shroud (hidden on the maps).
 func is_shrouded(world: Vector2) -> bool:
-	var story := get_node_or_null(story_path)
-	return story != null and "shroud" in story and not story.shroud.is_open(world.x, world.y)
+	return _minimap_in_town().is_shrouded(world)
 
 
 ## The game menu (Tab) closed or open to the player (the story unlocks it: "ontgrendelt").
@@ -1364,179 +1046,13 @@ func show_thought(text: String) -> void:
 		show_floating_number(player.global_position + Vector3.UP * 2.3, text, THOUGHT_COLOUR, 13)
 
 
-static func _minimap_kind(item_name: String) -> String:
-	var folder := item_name.get_slice("/", 0)
-	if item_name.contains("gras") or item_name.contains("park"):
-		return "grass"
-	if folder == "natuur" and (item_name.contains("pad") or item_name.contains("grind")):
-		return "pavement"
-	return MINIMAP_KINDS.get(folder, "land")
-
-
-## Moves the map so the player (the followed vehicle, else the point the camera looks at)
-## is in the middle, and turns the arrow its way.
-func _update_minimap() -> void:
-	if _minimap_map.texture == null:
-		return
-	var heading := Vector3.FORWARD
-	var focus := Vector3.ZERO
-	var follow := get_node_or_null(follow_camera_path)
-	var followed: Node3D = null
-	if follow != null and follow.has_method("is_following") and follow.is_following():
-		followed = follow.get("target_node")
-	var camera := get_viewport().get_camera_3d()
-	if followed != null:
-		focus = followed.global_position
-		heading = followed.global_basis.z   # vehicles drive along +Z
-	elif camera != null:
-		focus = Iso.ground_focus(camera)
-		heading = -camera.global_basis.z
-	else:
-		return
-	var pixels_per_metre := (_minimap_arrow.get_parent() as Control).size.x / (_minimap_metres_now if _minimap_metres_now > 0.0 else minimap_metres)
-	var scale_per_cell := pixels_per_metre * _minimap_cell
-	var texture_size := _minimap_map.texture.get_size()
-	_minimap_map.size = texture_size * scale_per_cell
-	_focus = focus
-	_has_focus = true
-	var focus_on_map := (Vector2(focus.x, focus.z) - _minimap_origin) * pixels_per_metre
-	_minimap_map.position = _minimap_arrow.position - focus_on_map
-	if _minimap_shroud:
-		_minimap_shroud.visible = _town_map.is_empty() and _shroud_texture != null
-		_minimap_shroud.size = _minimap_map.size
-		_minimap_shroud.position = _minimap_map.position
-	var flat := Vector2(heading.x, heading.z)
-	if flat.length_squared() > 0.0001:
-		_minimap_arrow.rotation = atan2(flat.x, -flat.y)
-	var marks := []
-	# inside a building: its ways out, not the quest places in the town; only a place in the
-	# building itself (INDOOR_TARGET_REACH: the cans of mission 1 in the station, Story)
-	var indoors := not _town_map.is_empty()
-	for target: Vector2 in quest_targets():
-		var offset := target - Vector2(focus.x, focus.z)
-		if indoors and offset.length() > INDOOR_TARGET_REACH:
-			continue
-		if not indoors and is_shrouded(target):
-			continue
-		marks.append(_minimap_arrow.position + offset * pixels_per_metre)
-	_minimap_marks.points = marks
-	_update_waypoint(focus, pixels_per_metre)
-	var exits := []
-	for exit_point in _exit_points:
-		exits.append(_minimap_arrow.position + Vector2(exit_point.x - focus.x, exit_point.z - focus.z) * pixels_per_metre)
-	_minimap_exits.points = exits
-
-
-## Height of the box with where the player is, over the minimap, and where the map starts
-## under it (8 px lower).
-const LOCATION_HEIGHT := 58.0
-const MAP_TOP := LOCATION_HEIGHT + 8.0
-## Seconds between looks at where the player is.
-const LOCATION_INTERVAL := 0.5
-## Map cells are 4 m (the "wijken" table counts in cells).
-const CELL_METRES := 4.0
-
-
-## Shows the neighbourhood and the nearest named place under the minimap; a neighbourhood
-## entered for the first time (not the one it starts in) is announced as a new area.
-func _update_location() -> void:
-	if not _has_focus:
-		return
-	var world := owner if owner else get_parent()
-	if world == null:
-		return
-	var cell := Vector2(_focus.x, _focus.z) / CELL_METRES
-	var wijk := "Den Haag"
-	for area: Array in world.get_meta("wijken", []):
-		if cell.x >= area[1] and cell.y >= area[2] and cell.x < area[3] + 1 and cell.y < area[4] + 1:
-			wijk = area[0]
-			break
-	var street := _street_at(world, cell)
-	var nearest := ""
-	var nearest_distance := place_near
-	var places: Dictionary = world.get_meta("places", {})
-	for place_key: String in places:
-		if place_key.begins_with("verkeerslichten"):
-			continue   # a test spot of the builder, not a place
-		var distance := (places[place_key] as Vector2).distance_to(Vector2(_focus.x, _focus.z))
-		if distance < nearest_distance:
-			nearest_distance = distance
-			nearest = _place_name(place_key)
-	if _indoor_wijk != "":
-		# inside (far off the map): the neighbourhood of the building, no street or place
-		wijk = _indoor_wijk
-		street = ""
-		nearest = ""
-	var shown_name := area_display_name(wijk)
-	_location_wijk.text = shown_name.to_upper()
-	_fit_location_font(_location_wijk.text)
-	_location_street.text = street
-	_location_street.visible = street != ""
-	_location_place.text = nearest
-	_location_place.visible = nearest != "" and nearest.to_lower() != wijk.to_lower() \
-		and nearest.to_lower() != shown_name.to_lower() and nearest.to_lower() != street.to_lower()
-	if wijk != _current_wijk:
-		if _current_wijk != "" and not _visited_wijken.has(wijk):
-			show_area(shown_name)
-		_current_wijk = wijk
-		_visited_wijken[wijk] = true
-
-
 ## The name a neighbourhood (a key of the "wijken" metadata) is shown by.
 static func area_display_name(wijk: String) -> String:
-	return String(AREA_DISPLAY_NAMES.get(wijk, wijk))
+	return LocationRules.area_display_name(wijk)
 
 
 ## Inside a building (Interiors): the location under the minimap is `wijk` (a key of the
 ## "wijken" metadata, e.g. "Centraal Station") in place of the spot far off the map; ""
 ## when going out again.
 func set_indoor_location(wijk: String) -> void:
-	_indoor_wijk = wijk
-	_location_clock = 0.0   # at once (next frame)
-
-
-## The neighbourhood line in its usual size, or smaller when `shown` would not fit whole.
-func _fit_location_font(shown: String) -> void:
-	var font := _location_wijk.get_theme_font("font")
-	var room := _location_wijk.size.x
-	if font == null or room <= 0.0:
-		return
-	var font_size := LOCATION_WIJK_FONT_SIZE
-	while font_size > LOCATION_WIJK_SMALLEST_FONT_SIZE and font.get_string_size(shown, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x > room:
-		font_size -= 1
-	_location_wijk.add_theme_font_size_override("font_size", font_size)
-
-
-## Cells beside a street that still count as on it (the pavement).
-const STREET_MARGIN_CELLS := 1.0
-
-
-## The name of the street at this map cell (fractional), from the scene metadata
-## "straten"; on the lanes before the pavement beside them; "" if none.
-static func _street_at(world: Node, cell: Vector2) -> String:
-	var beside := ""
-	for street: Array in world.get_meta("straten", []):
-		var across := cell.x if street[1] == "x" else cell.y
-		var along := cell.y if street[1] == "x" else cell.x
-		if along < street[4] or along >= street[5] + 1:
-			continue
-		if across >= street[2] and across < street[3] + 1:
-			return street[0]
-		if beside == "" and across >= street[2] - STREET_MARGIN_CELLS and across < street[3] + 1 + STREET_MARGIN_CELLS:
-			beside = street[0]
-	return beside
-
-
-## A key of "places" as a name: "ministerie_van_financien" -> "Ministerie van Financien",
-## "a12_koningskade" -> "A12 Koningskade".
-static func _place_name(place_key: String) -> String:
-	var words := place_key.split("_", false)
-	# a second one of the same (a supermarket chain: "derrek_3") is just its name
-	if words.size() > 1 and words[-1].is_valid_int():
-		words.resize(words.size() - 1)
-	for index in words.size():
-		var word := words[index]
-		if index > 0 and word in ["van", "de", "het", "en", "der", "den", "op"]:
-			continue
-		words[index] = word.substr(0, 1).to_upper() + word.substr(1)
-	return " ".join(words)
+	location.set_indoor(wijk)

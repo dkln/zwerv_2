@@ -5,6 +5,8 @@ extends RefCounted
 ##   tests/run_unit_tests.sh speech_balloon
 
 const SpeechBalloon = preload("res://scripts/ui/widgets/speech_balloon.gd")
+const SpeechBalloonView = preload("res://scripts/ui/widgets/speech_balloon_view.gd")
+const SpeechBalloonLayout = preload("res://scripts/ui/widgets/speech_balloon_layout.gd")
 const UiStyle = preload("res://scripts/ui/ui_style.gd")
 
 ## The tree of the run (tests/run_unit_tests.gd sets it).
@@ -40,37 +42,22 @@ static func _type_out(balloon: SpeechBalloon) -> void:
 		balloon._process(0.05)
 
 
-func test_text_height_counts_the_wrapped_rows(test) -> void:
-	var font := UiStyle.font(UiStyle.FONT_PIXEL_BOLD)
-	var row := font.get_height(SpeechBalloon.TEXT_SIZE)
-	var one_row := SpeechBalloon.text_height("Hoi!", SpeechBalloon.MAX_TEXT_WIDTH)
-	test.check(is_equal_approx(one_row, ceilf(row)), "een korte regel: één rij hoog (%s)" % one_row)
-	test.check(SpeechBalloon.text_height("", SpeechBalloon.MAX_TEXT_WIDTH) == one_row, "niets: ook één rij")
-	var long_line := "Pas op waar je loopt, hier rijden trams en die stoppen niet voor jou!"
-	var wrapped := SpeechBalloon.text_height(long_line, SpeechBalloon.MAX_TEXT_WIDTH)
-	var rows := roundi((wrapped + SpeechBalloon.LINE_SEPARATION) / (row + SpeechBalloon.LINE_SEPARATION))
-	test.check(rows >= 2, "een lange regel loopt over meer rijen (%d)" % rows)
-	test.check(is_equal_approx(wrapped, ceilf(rows * row + (rows - 1) * SpeechBalloon.LINE_SEPARATION)), "rijen met de regelafstand ertussen (%s)" % wrapped)
-	test.check(SpeechBalloon.text_height(long_line, 120.0) > wrapped, "smaller: meer rijen, hoger")
-	test.check(SpeechBalloon.text_height("een\ntwee", SpeechBalloon.MAX_TEXT_WIDTH) > one_row, "een regeleinde telt ook")
-
-
 func test_say_pops_up_a_balloon_as_big_as_its_line(test) -> void:
 	var balloon := _balloon()
 	test.check(not balloon.visible and not balloon.is_talking(), "eerst niet te zien")
 	test.check(balloon.mouse_filter == Control.MOUSE_FILTER_IGNORE and balloon.process_mode == Node.PROCESS_MODE_ALWAYS, "klikken gaan erdoorheen, het loopt door in een gesprek")
 	balloon.say("Hé, zwerver!")
 	test.check(balloon.visible and balloon.is_talking(), "het praat")
-	test.check(balloon.scale.is_equal_approx(Vector2.ONE * 0.6) and balloon.modulate.a == 1.0, "het springt op vanuit klein")
+	test.check(balloon.scale.is_equal_approx(Vector2.ONE * SpeechBalloonLayout.POP_FROM) and balloon.modulate.a == 1.0, "het springt op vanuit klein")
 	var font := UiStyle.font(UiStyle.FONT_PIXEL_BOLD)
-	var line_width := font.get_string_size("Hé, zwerver! ", HORIZONTAL_ALIGNMENT_LEFT, -1, SpeechBalloon.TEXT_SIZE).x
-	var text := balloon._text
+	var line_width := font.get_string_size("Hé, zwerver! ", HORIZONTAL_ALIGNMENT_LEFT, -1, SpeechBalloonLayout.TEXT_SIZE).x
+	var text := balloon.view.text_label()
 	test.check(is_equal_approx(text.custom_minimum_size.x, ceilf(line_width) + 2.0), "zo breed als de hele regel (%s)" % text.custom_minimum_size.x)
-	test.check(is_equal_approx(text.custom_minimum_size.y, SpeechBalloon.text_height("Hé, zwerver!", text.custom_minimum_size.x)), "en zo hoog")
-	var panel := balloon._panel
+	test.check(is_equal_approx(text.custom_minimum_size.y, SpeechBalloonView.text_height("Hé, zwerver!", text.custom_minimum_size.x)), "en zo hoog")
+	var panel := balloon.view.panel()
 	test.check(is_equal_approx(panel.position.x, -roundf(panel.size.x * 0.5)), "het paneel midden boven de punt")
-	test.check(is_equal_approx(panel.position.y, -panel.size.y - SpeechBalloon.TAIL_HEIGHT + SpeechBalloon.BORDER_WIDTH), "met de staart eronder")
-	test.check(panel.size.x >= text.custom_minimum_size.x + 2.0 * SpeechBalloon.PADDING.x, "de tekst met ruimte eromheen")
+	test.check(is_equal_approx(panel.position.y, -panel.size.y - SpeechBalloonLayout.TAIL_HEIGHT + SpeechBalloonLayout.BORDER_WIDTH), "met de staart eronder")
+	test.check(panel.size.x >= text.custom_minimum_size.x + 2.0 * SpeechBalloonLayout.PADDING.x, "de tekst met ruimte eromheen")
 	test.check((panel.get_theme_stylebox("panel") as StyleBoxFlat).border_color == balloon.accent, "de rand in de kleur van wie het zegt")
 	test.check(not balloon._typewriter.sound and not balloon._typewriter.show_cursor, "stil en zonder cursor")
 	balloon.free()
@@ -80,14 +67,14 @@ func test_a_long_line_wraps_at_the_widest(test) -> void:
 	var balloon := _balloon()
 	var long_line := "Pas op waar je loopt, hier rijden trams en die stoppen niet voor jou!"
 	balloon.say(long_line)
-	test.check(balloon._text.custom_minimum_size.x == SpeechBalloon.MAX_TEXT_WIDTH, "niet breder dan MAX_TEXT_WIDTH")
-	var whole_height := SpeechBalloon.text_height(long_line, SpeechBalloon.MAX_TEXT_WIDTH)
-	test.check(balloon._text.custom_minimum_size.y == whole_height, "meteen zo hoog als de hele regel")
+	test.check(balloon.view.text_label().custom_minimum_size.x == SpeechBalloonLayout.MAX_TEXT_WIDTH, "niet breder dan MAX_TEXT_WIDTH")
+	var whole_height := SpeechBalloonView.text_height(long_line, SpeechBalloonLayout.MAX_TEXT_WIDTH)
+	test.check(balloon.view.text_label().custom_minimum_size.y == whole_height, "meteen zo hoog als de hele regel")
 	_type_out(balloon)
 # (the label itself counts the line separation under its last row as well)
-	var around_text := balloon._panel.size.y - 2.0 * SpeechBalloon.PADDING.y
-	test.check(around_text >= whole_height and around_text <= whole_height + SpeechBalloon.LINE_SEPARATION, "uitgetypt: het paneel past om de hele regel (%s om %s)" % [around_text, whole_height])
-	test.check(is_equal_approx(balloon._panel.size.x, SpeechBalloon.MAX_TEXT_WIDTH + 2.0 * SpeechBalloon.PADDING.x), "en is niet breder geworden (%s)" % balloon._panel.size.x)
+	var around_text := balloon.view.panel().size.y - 2.0 * SpeechBalloonLayout.PADDING.y
+	test.check(around_text >= whole_height and around_text <= whole_height + SpeechBalloonLayout.LINE_SEPARATION, "uitgetypt: het paneel past om de hele regel (%s om %s)" % [around_text, whole_height])
+	test.check(is_equal_approx(balloon.view.panel().size.x, SpeechBalloonLayout.MAX_TEXT_WIDTH + 2.0 * SpeechBalloonLayout.PADDING.x), "en is niet breder geworden (%s)" % balloon.view.panel().size.x)
 	balloon.free()
 
 
@@ -95,8 +82,8 @@ func test_the_accent_colours_the_border(test) -> void:
 	var balloon := _balloon()
 	balloon.accent = UiStyle.SIDE_ACCENT
 	balloon.say("Goedemiddag.")
-	test.check((balloon._panel.get_theme_stylebox("panel") as StyleBoxFlat).border_color == UiStyle.SIDE_ACCENT, "een andere spreker: een andere rand")
-	test.check((balloon._panel.get_theme_stylebox("panel") as StyleBoxFlat).bg_color == UiStyle.PANEL, "op hetzelfde paneel")
+	test.check((balloon.view.panel().get_theme_stylebox("panel") as StyleBoxFlat).border_color == UiStyle.SIDE_ACCENT, "een andere spreker: een andere rand")
+	test.check((balloon.view.panel().get_theme_stylebox("panel") as StyleBoxFlat).bg_color == UiStyle.PANEL, "op hetzelfde paneel")
 	balloon.free()
 
 

@@ -1,5 +1,7 @@
 extends Control
-## A quest step's box: filled grey when done, else an open square.
+## A quest step's box: filled grey when done, else an open square. Graphics
+## (docs/CODE_LAGEN.md): only a drawing, nothing to decide or to work out.
+##   const CheckSquare = preload("res://scripts/ui/widgets/check_square.gd")
 
 const UiStyle = preload("res://scripts/ui/ui_style.gd")
 

@@ -1,5 +1,7 @@
 extends Node3D
-## The sellers at the snack carts of the town (the node "Straatverkopers" of scenes/stad.tscn):
+## The sellers at the snack carts of the town (the node "Straatverkopers" of scenes/stad.tscn;
+## behaviour, docs/CODE_LAGEN.md: its rules street_vendors_rules.gd, the places
+## street_vendors_layout.gd, the cart street_vendors_view.gd):
 ## every snack cart of the Props layer (VENDOR_CARTS: markt/frietkar, on the Stationsplein
 ## before Den Haag Centraal) is taken out of the grid and put back on the same spot as a node
 ## of its own (mesh and collision of its tile), its hatch to the north (CART_YAW): of the two
@@ -14,17 +16,17 @@ extends Node3D
 ## cart, above its sign, where the cart never hides it.
 
 const InteriorPersonScript = preload("res://scripts/world/interiors/interior_person.gd")
-## Prop tiles that get a seller -> the name of the stall ("shop_name").
-const VENDOR_CARTS := {"markt/frietkar": "de frietkar"}
-## The way the cart's front (its hatch) faces: north (see the top).
-const CART_YAW := PI
-## Where the seller stands in the cart (metres from its pivot, the front +z): on the floor of
-## its room (0.625 m, tools/voxgen/tiles/street_carts.py chip_van), a little before the middle.
-const SELLER_IN_CART := Vector3(0.0, 0.625, 0.15)
-## Within how many metres of the front of the cart the player can order.
-const ORDER_REACH := 2.0
-## The arrow over the cart: its point between these heights above the top of the cart.
-const MARK_ABOVE := Vector2(0.4, 1.0)
+const StreetVendorsRules = preload("res://scripts/world/things/street_vendors_rules.gd")
+const StreetVendorsLayout = preload("res://scripts/world/things/street_vendors_layout.gd")
+const StreetVendorsView = preload("res://scripts/world/things/street_vendors_view.gd")
+## Prop tiles that get a seller -> the name of the stall ("shop_name") (the rules').
+const VENDOR_CARTS := StreetVendorsRules.VENDOR_CARTS
+## The way the cart faces, where the seller stands in it, from how far you order and how
+## high the arrow bobs over it (the layout's).
+const CART_YAW := StreetVendorsLayout.CART_YAW
+const SELLER_IN_CART := StreetVendorsLayout.SELLER_IN_CART
+const ORDER_REACH := StreetVendorsLayout.ORDER_REACH
+const MARK_ABOVE := StreetVendorsLayout.MARK_ABOVE
 
 @export var props_path := NodePath("../Props")
 
@@ -43,7 +45,6 @@ func _ready() -> void:
 func _place_vendors(props: GridMap) -> void:
 	var library := props.mesh_library
 	var number := 0
-	var yaw := CART_YAW
 	for tile_name: String in VENDOR_CARTS:
 		var item := library.find_item_by_name(tile_name)
 		if item < 0:
@@ -54,54 +55,45 @@ func _place_vendors(props: GridMap) -> void:
 			number += 1
 			var origin := props.to_global(props.map_to_local(cell))
 			_clear_cell(props, cell, item)
-			var cart := _cart(library, item, props.collision_layer, Transform3D(Basis(Vector3.UP, yaw), origin))
-			cart.name = "Kar%d" % number
-			cart.set_meta("tile", tile_name)
-			add_child(cart)
-			_carts.append(cart)
-			var seller: Node3D = InteriorPersonScript.create("snackbarhouder", 7100 + number * 13, false)
-			seller.name = "Verkoper%d" % number
-			seller.set_meta("shop_name", VENDOR_CARTS[tile_name])
-			add_child(seller)
-			seller.global_position = cart.global_transform * SELLER_IN_CART
-			seller.rotation.y = yaw
-			# ordered at the counter: the reach from the front of the cart
-			var to_front := box.end.z - SELLER_IN_CART.z
-			seller.set("talk_ahead", to_front)
-			seller.set("talk_reach", ORDER_REACH)
-			# the arrow over the front of the cart, above its sign (heights from the seller's feet)
-			var top := box.end.y - SELLER_IN_CART.y
-			seller.call("place_mark_ahead", to_front * 0.5, top + MARK_ABOVE.x, top + MARK_ABOVE.y)
-			_vendors.append(seller)
+			var cart := _add_cart(library, item, props.collision_layer, origin, number, tile_name)
+			_add_seller(cart, box, number, tile_name)
+
+
+## Cart `number` of the tile `tile_name` (`item` of `library`) at `origin`, as a node of its
+## own.
+func _add_cart(library: MeshLibrary, item: int, layer: int, origin: Vector3, number: int, tile_name: String) -> Node3D:
+	var cart := StreetVendorsView.cart(library, item, layer, StreetVendorsLayout.cart_place(origin))
+	cart.name = StreetVendorsRules.cart_name(number)
+	cart.set_meta("tile", tile_name)
+	add_child(cart)
+	_carts.append(cart)
+	return cart
+
+
+## Seller `number` in `cart` (the box of its tile: `box`), facing out of the hatch.
+func _add_seller(cart: Node3D, box: AABB, number: int, tile_name: String) -> Node3D:
+	var seller: Node3D = InteriorPersonScript.create(StreetVendorsRules.SELLER_ROLE, StreetVendorsRules.seller_seed(number), false)
+	seller.name = StreetVendorsRules.seller_name(number)
+	seller.set_meta("shop_name", StreetVendorsRules.shop_name(tile_name))
+	add_child(seller)
+	seller.global_position = StreetVendorsLayout.seller_place(cart.global_transform)
+	seller.rotation.y = CART_YAW
+	# ordered at the counter: the reach from the front of the cart
+	seller.set("talk_ahead", StreetVendorsLayout.to_front(box))
+	seller.set("talk_reach", ORDER_REACH)
+	# the arrow over the front of the cart, above its sign (heights from the seller's feet)
+	var heights := StreetVendorsLayout.mark_heights(box)
+	seller.call("place_mark_ahead", StreetVendorsLayout.mark_ahead(box), heights.x, heights.y)
+	_vendors.append(seller)
+	return seller
 
 
 ## The cart's cell emptied in the Props layer and its LOD copies (Props_lod).
 func _clear_cell(props: GridMap, cell: Vector3i, item: int) -> void:
 	for layer in props.get_parent().get_children():
-		if layer is GridMap and (layer == props or String(layer.name).begins_with(String(props.name) + "_lod")):
+		if layer is GridMap and StreetVendorsRules.holds_carts(String(layer.name), String(props.name)):
 			if (layer as GridMap).get_cell_item(cell) == item:
 				(layer as GridMap).set_cell_item(cell, GridMap.INVALID_CELL_ITEM)
-
-
-## The tile `item` of `library` as a node at `at`: its mesh, and its collision shapes on
-## `layer` (as the grid had them).
-func _cart(library: MeshLibrary, item: int, layer: int, at: Transform3D) -> Node3D:
-	var cart := StaticBody3D.new()
-	cart.collision_layer = layer
-	cart.collision_mask = 0
-	cart.transform = at
-	var look := MeshInstance3D.new()
-	look.name = "Model"
-	look.mesh = library.get_item_mesh(item)
-	look.transform = library.get_item_mesh_transform(item)
-	cart.add_child(look)
-	var shapes := library.get_item_shapes(item)
-	for index in range(0, shapes.size() - 1, 2):
-		var shape := CollisionShape3D.new()
-		shape.shape = shapes[index]
-		shape.transform = shapes[index + 1]
-		cart.add_child(shape)
-	return cart
 
 
 ## The sellers placed (for the checks).

@@ -1,9 +1,14 @@
 extends RefCounted
-## Unit tests of the level-up screen (scripts/ui/level_up_screen.gd): the maximum now -> after per
-## stat, choosing with the keys, no key before KEYS_AFTER, a number picks and takes at once,
-## the choice to the player, the pause back as it was.
+## Unit tests of the level-up screen (scripts/ui/level_up_screen.gd, the behaviour): the
+## maximum now -> after per stat, choosing with the keys, no key before KEYS_AFTER, a number
+## picks and takes at once, the choice to the player, the pause back as it was. Its logic,
+## sizes and look: test_level_up_screen_rules.gd, test_level_up_screen_layout.gd,
+## test_level_up_screen_view.gd.
+##   tests/run_unit_tests.sh level_up_screen
 
 const LevelUpScreen = preload("res://scripts/ui/level_up_screen.gd")
+const LevelUpScreenRules = preload("res://scripts/ui/screens/level_up_screen_rules.gd")
+const UiStyle = preload("res://scripts/ui/ui_style.gd")
 
 const RAISE := {"gezondheid": 10.0, "uithoudingsvermogen": 10.0, "honger": 20.0, "overprikkeldheid": 15.0}
 const MAXIMA := {"gezondheid": Vector2(50, 70), "uithoudingsvermogen": Vector2(60, 60),
@@ -25,9 +30,9 @@ func test_choosing_a_stat(test) -> void:
 	screen.open(3, func(stat_name: String) -> void: chosen.append(stat_name),
 			func(stat_name: String) -> Vector2: return MAXIMA[stat_name], RAISE)
 	test.check(screen.is_showing() and test.tree.paused, "open, het spel gepauzeerd")
-	test.check(screen._level_label.text == "LEVEL 3", "het nieuwe level: " + screen._level_label.text)
-	test.check(screen._row_values[0].text == "70 → 80" and screen._row_values[2].text == "140 → 160",
-			"maximum nu → straks (%s, %s)" % [screen._row_values[0].text, screen._row_values[2].text])
+	test.check(screen.view().level_label.text == "LEVEL 3", "het nieuwe level: " + screen.view().level_label.text)
+	test.check(screen.view().row_values[0].text == "70 → 80" and screen.view().row_values[2].text == "140 → 160",
+			"maximum nu → straks (%s, %s)" % [screen.view().row_values[0].text, screen.view().row_values[2].text])
 	screen.handle_input(_key(KEY_S))
 	screen.handle_input(_key(KEY_S))
 	test.check(screen.selected_stat() == "honger", "twee keer S: honger (%s)" % screen.selected_stat())
@@ -56,10 +61,18 @@ static func _opened(test, chosen: Array[String], xp_gained := 0) -> LevelUpScree
 	return screen
 
 
-func test_value_text(test) -> void:
-	test.check(LevelUpScreen.value_text(70.0, 10.0) == "70 → 80", "nu → straks")
-	test.check(LevelUpScreen.value_text(99.6, 0.0) == "100 → 100", "afgerond op hele punten, niets erbij")
-	test.check(LevelUpScreen.value_text(0.0, 15.0) == "0 → 15", "vanaf nul")
+func test_value_text_is_the_rules(test) -> void:
+	for values: Array in [[70.0, 10.0], [99.6, 0.0], [0.0, 15.0]]:
+		test.check(LevelUpScreen.value_text(values[0], values[1]) == LevelUpScreenRules.value_text(values[0], values[1]), "%s + %s: hetzelfde als de logica" % values)
+	test.check(LevelUpScreen.OPTIONS == LevelUpScreenRules.OPTIONS and LevelUpScreen.KEYS_AFTER == LevelUpScreenRules.KEYS_AFTER, "de stats en de wachttijd van de logica")
+
+
+func test_view_is_there_once_in_the_tree(test) -> void:
+	var screen := LevelUpScreen.new()
+	test.check(screen.view() == null, "nog niet in de boom: nog geen beeld")
+	test.tree.root.add_child(screen)
+	test.check(screen.view() != null and screen.view().get_parent() == screen and not screen.is_showing(), "in de boom: het beeld erin, nog dicht")
+	screen.free()
 
 
 func test_the_options_are_the_four_stats(test) -> void:
@@ -75,8 +88,8 @@ func test_take_gives_the_selected_stat_and_closes_once(test) -> void:
 	var screen := _opened(test, chosen)
 	var finished := [0]
 	screen.finished.connect(func() -> void: finished[0] += 1)
-	test.check(screen.selected_stat() == "gezondheid" and screen._rows.size() == LevelUpScreen.OPTIONS.size(), "de eerste gekozen, een rij per stat")
-	test.check(not screen._xp_label.visible, "zonder XP erbij: geen XP-regel")
+	test.check(screen.selected_stat() == "gezondheid" and screen.view().rows.size() == LevelUpScreen.OPTIONS.size(), "de eerste gekozen, een rij per stat")
+	test.check(not screen.view().xp_label.visible, "zonder XP erbij: geen XP-regel")
 	screen.handle_input(_key(KEY_DOWN))
 	screen.take()
 	test.check(chosen == ["uithoudingsvermogen"] and not screen.is_showing() and finished[0] == 1, "take: de gekozen stat, dicht, finished")
@@ -91,13 +104,13 @@ func test_the_xp_that_did_it_and_reopening(test) -> void:
 	var chosen: Array[String] = []
 	var was_paused: bool = test.tree.paused
 	var screen := _opened(test, chosen, 150)
-	test.check(screen._xp_label.visible and screen._xp_label.text == "+150 XP", "de XP waarmee het kwam")
+	test.check(screen.view().xp_label.visible and screen.view().xp_label.text == "+150 XP", "de XP waarmee het kwam")
 	screen.handle_input(_key(KEY_S))
 	screen._process(LevelUpScreen.KEYS_AFTER)
 	screen.open(5, Callable(), Callable(), {})
-	test.check(screen._level_label.text == "LEVEL 5" and screen.selected_stat() == "gezondheid" and screen._since == 0.0 and not screen._xp_label.visible,
+	test.check(screen.view().level_label.text == "LEVEL 5" and screen.selected_stat() == "gezondheid" and screen._since == 0.0 and not screen.view().xp_label.visible,
 		"opnieuw geopend: het nieuwe level, weer de eerste, de wachttijd opnieuw, geen XP")
-	test.check(screen._row_values[0].text == "0 → 0", "zonder gegevens: nul")
+	test.check(screen.view().row_values[0].text == "0 → 0", "zonder gegevens: nul")
 	screen.take()
 	test.check(chosen.is_empty() and not screen.is_showing() and test.tree.paused == was_paused, "zonder keuzefunctie sluit hij gewoon, de pauze van voor de eerste keer terug")
 	test.tree.paused = was_paused
@@ -154,11 +167,11 @@ func test_the_chosen_row_has_the_colour_of_its_stat(test) -> void:
 	screen.stat_looks = {"gezondheid": {"colour": Color("#FF5D73")}}
 	test.tree.root.add_child(screen)
 	screen.open(2, Callable(), func(stat_name: String) -> Vector2: return MAXIMA[stat_name], RAISE)
-	test.check(screen._row_values[0].get_theme_color("font_color") == Color("#FF5D73"), "de gekozen rij: zijn waarde in de kleur van de stat")
-	test.check(screen._row_values[1].get_theme_color("font_color") == LevelUpScreen.UiStyle.MUTED, "de andere gedimd")
+	test.check(screen.view().row_values[0].get_theme_color("font_color") == Color("#FF5D73"), "de gekozen rij: zijn waarde in de kleur van de stat")
+	test.check(screen.view().row_values[1].get_theme_color("font_color") == UiStyle.MUTED, "de andere gedimd")
 	screen.handle_input(_key(KEY_S))
-	test.check(screen._row_values[0].get_theme_color("font_color") == LevelUpScreen.UiStyle.MUTED
-		and screen._row_values[1].get_theme_color("font_color") == LevelUpScreen.UiStyle.ACCENT, "een stat zonder eigen kleur: de accentkleur")
+	test.check(screen.view().row_values[0].get_theme_color("font_color") == UiStyle.MUTED
+		and screen.view().row_values[1].get_theme_color("font_color") == UiStyle.ACCENT, "een stat zonder eigen kleur: de accentkleur")
 	screen.take()
 	test.check(chosen.is_empty(), "zonder keuzefunctie krijgt niemand iets")
 	test.tree.paused = was_paused

@@ -18,6 +18,14 @@ extends Node
 ## Changing a cell swaps the prop for the one with the other state; the LOD copies of the
 ## layer (Props_lod, see level_of_detail.gd) are updated as well. In the
 ## editor nothing moves: the scene keeps the states it was built with.
+##
+## This is the behaviour (the node the vehicles and the people ask: car_phase,
+## pedestrian_phase; the clock of the cycle). The cycle itself is traffic_lights_rules.gd,
+## the grouping per intersection traffic_lights_layout.gd, the props traffic_lights_view.gd.
+
+const TrafficLightsRules = preload("res://scripts/traffic/traffic_lights_rules.gd")
+const TrafficLightsLayout = preload("res://scripts/traffic/traffic_lights_layout.gd")
+const TrafficLightsView = preload("res://scripts/traffic/traffic_lights_view.gd")
 
 ## Seconds of green per stream.
 @export var green_time := 8.0
@@ -37,74 +45,48 @@ extends Node
 ## Name of the layer with the light props.
 @export var layer := "Props"
 
-const PREFIX := "verkeerslichten/"
+const PREFIX := TrafficLightsRules.PREFIX
 ## kind -> [green, amber, red] state names in the prop names
-const STATES := {
-	"auto": ["groen", "oranje", "rood"],
-	"fiets": ["groen", "oranje", "rood"],
-	"mast": ["groen", "oranje", "rood"],
-	"ov": ["rijden", "attentie", "stop"],
-	"voetganger": ["groen", "rood", "rood"],
-}
+const STATES := TrafficLightsRules.STATES
 
+var view: TrafficLightsView
 var _lights := []        # {cell, kind, ns, group, shown}
 var _groups := []        # per intersection: time offset
 var _centres := []       # per intersection: mean position of its lights (metres)
 var _walk_lights := {}   # intersection -> true if it has pedestrian lights
-var _ids := {}           # prop name -> item id
+var _all_groups: Array[int] = []    # every intersection
+var _walk_groups: Array[int] = []   # the intersections with pedestrian lights
 var _time := 0.0
 
 
 func _ready() -> void:
 	if Engine.is_editor_hint():
 		return
-	var gm := _layer()
-	if gm == null or gm.mesh_library == null:
+	view = TrafficLightsView.new(get_parent(), layer)
+	if not view.has_layer():
 		set_process(false)
 		return
-	var lib := gm.mesh_library
-	for id in lib.get_item_list():
-		var nm := lib.get_item_name(id)
-		if nm.begins_with(PREFIX):
-			_ids[nm] = id
-	var found := []
-	for c: Vector3i in gm.get_used_cells():
-		var nm := lib.get_item_name(gm.get_cell_item(c))
-		if not nm.begins_with(PREFIX):
+	var positions := []
+	for prop: Dictionary in view.light_props(PREFIX):
+		var kind := TrafficLightsRules.kind_of_prop(prop.prop)
+		if kind == "":
 			continue
-		var kind := nm.trim_prefix(PREFIX).get_slice("_", 0)
-		if not STATES.has(kind):
-			continue
-		var facing := gm.get_basis_with_orthogonal_index(gm.get_cell_item_orientation(c)) * Vector3(0, 0, 1)
-		found.append({"cell": c, "kind": kind, "ns": absf(facing.z) > absf(facing.x), "group": -1, "shown": nm,
-			"pos": gm.map_to_local(c)})
-	# group the lights per intersection (connected within `cluster` metres)
-	for i in found.size():
-		if found[i].group >= 0:
-			continue
-		var g := _groups.size()
-		_groups.append(_offset(found[i].pos))
-		var todo := [i]
-		found[i].group = g
-		while not todo.is_empty():
-			var a: Dictionary = found[todo.pop_back()]
-			for b in found:
-				if b.group < 0 and Vector2(a.pos.x - b.pos.x, a.pos.z - b.pos.z).length() <= cluster:
-					b.group = g
-					todo.append(found.find(b))
-	_lights = found
-	for light in found:
-		if light.kind == "voetganger":
-			_walk_lights[light.group] = true
-	for g in _groups.size():
-		var sum := Vector3.ZERO
-		var n := 0
-		for l in found:
-			if l.group == g:
-				sum += l.pos
-				n += 1
-		_centres.append(sum / maxi(n, 1))
-	_put_in_step()
+		_lights.append({"cell": prop.cell, "kind": kind, "ns": TrafficLightsRules.faces_north_south(prop.facing),
+			"group": -1, "shown": prop.prop, "pos": prop.pos})
+		positions.append(prop.pos)
+	var group_of := TrafficLightsLayout.groups(positions, cluster)
+	for light_index in _lights.size():
+		_lights[light_index].group = group_of[light_index]
+		if _lights[light_index].kind == TrafficLightsRules.PEDESTRIAN_KIND:
+			_walk_lights[group_of[light_index]] = true
+	for first_light in TrafficLightsLayout.first_lights(group_of):
+		_groups.append(TrafficLightsRules.time_offset(positions[first_light], _half_cycle()))
+	_centres = TrafficLightsLayout.centres(positions, group_of)
+	_groups = TrafficLightsRules.offsets_in_step(_groups, _centres, in_step_within)
+	for group in _groups.size():
+		_all_groups.append(group)
+		if _walk_lights.has(group):
+			_walk_groups.append(group)
 	if _lights.is_empty():
 		set_process(false)
 		return
@@ -118,52 +100,30 @@ func _process(delta: float) -> void:
 
 ## Sets every light to the state of its stream at the current time.
 func _update() -> void:
-	var cycle := 2.0 * (green_time + amber_time + clearance_time)
-	var changed := []
-	for l in _lights:
-		var t := fposmod(_time + _groups[l.group], cycle)
-		var half := green_time + amber_time + clearance_time
-		# the east-west stream runs the second half of the cycle
-		var own := t if l.ns else fposmod(t - half, cycle)
-		var phase := 2   # red
-		if own < green_time:
-			phase = 0
-			if l.kind == "voetganger" and own >= pedestrian_time:
-				phase = 2
-		elif own < green_time + amber_time:
-			phase = 1
-		var nm: String = PREFIX + l.kind + "_" + STATES[l.kind][phase]
-		if nm != l.shown and _ids.has(nm):
-			l.shown = nm
-			changed.append(l)
-	if changed.is_empty():
-		return
-	for gm in _layers():
-		for l in changed:
-			gm.set_cell_item(l.cell, _ids[l.shown], gm.get_cell_item_orientation(l.cell))
+	var half := _half_cycle()
+	var cells := []
+	var props := []
+	for light in _lights:
+		var own := TrafficLightsRules.stream_time(_time, _groups[light.group], light.ns, half)
+		var phase := TrafficLightsRules.light_phase(light.kind, own, green_time, amber_time, pedestrian_time)
+		var prop := TrafficLightsRules.prop_name(light.kind, phase)
+		if prop != light.shown and view.has_prop(prop):
+			light.shown = prop
+			cells.append(light.cell)
+			props.append(prop)
+	if not cells.is_empty():
+		view.show_props(cells, props)
 
 
 ## Phase of the car lights for traffic on the north-south (or east-west) road at the
 ## intersection nearest to `pos` (metres): 0 green, 1 amber, 2 red; -1 when no
 ## intersection with lights lies within `radius` metres (for cars, scripts/vehicles/car.gd).
 func car_phase(pos: Vector3, north_south: bool, radius := 14.0) -> int:
-	var best := -1
-	var best_d := radius
-	for g in _centres.size():
-		var d := Vector2(_centres[g].x - pos.x, _centres[g].z - pos.z).length()
-		if d <= best_d:
-			best_d = d
-			best = g
-	if best < 0:
-		return -1
-	var half := green_time + amber_time + clearance_time
-	var t := fposmod(_time + _groups[best], 2.0 * half)
-	var own := t if north_south else fposmod(t - half, 2.0 * half)
-	if own < green_time:
-		return 0
-	if own < green_time + amber_time:
-		return 1
-	return 2
+	var nearest := TrafficLightsLayout.nearest(_centres, _all_groups, pos, radius)
+	if nearest == TrafficLightsLayout.NONE:
+		return TrafficLightsRules.NO_LIGHTS
+	var own := TrafficLightsRules.stream_time(_time, _groups[nearest], north_south, _half_cycle())
+	return TrafficLightsRules.car_phase(own, green_time, amber_time)
 
 
 ## Whether someone on foot at `pos` (metres), crossing along z (`along_z`, beside the
@@ -171,58 +131,13 @@ func car_phase(pos: Vector3, north_south: bool, radius := 14.0) -> int:
 ## pedestrian lights within `radius` metres: 0 green (in the first `pedestrian_time` seconds
 ## of its stream's green), 1 red (wait), -1 no pedestrian lights there (scripts/world/people/pedestrian.gd).
 func pedestrian_phase(pos: Vector3, along_z: bool, radius := 16.0) -> int:
-	var best := -1
-	var best_distance := radius
-	for group in _centres.size():
-		if not _walk_lights.has(group):
-			continue
-		var distance := Vector2(_centres[group].x - pos.x, _centres[group].z - pos.z).length()
-		if distance <= best_distance:
-			best_distance = distance
-			best = group
-	if best < 0:
-		return -1
-	var half := green_time + amber_time + clearance_time
-	var time_in_cycle := fposmod(_time + _groups[best], 2.0 * half)
-	var own := time_in_cycle if along_z else fposmod(time_in_cycle - half, 2.0 * half)
-	return 0 if own < pedestrian_time else 1
+	var nearest := TrafficLightsLayout.nearest(_centres, _walk_groups, pos, radius)
+	if nearest == TrafficLightsLayout.NONE:
+		return TrafficLightsRules.NO_LIGHTS
+	var own := TrafficLightsRules.stream_time(_time, _groups[nearest], along_z, _half_cycle())
+	return TrafficLightsRules.walk_phase(own, pedestrian_time)
 
 
-## Intersections within `in_step_within` of each other (and on, chained) take the time
-## offset of the first of them.
-func _put_in_step() -> void:
-	var done := {}
-	for first in _centres.size():
-		if done.has(first):
-			continue
-		done[first] = true
-		var todo := [first]
-		while not todo.is_empty():
-			var group: int = todo.pop_back()
-			for other in _centres.size():
-				if done.has(other):
-					continue
-				var away := Vector2(_centres[group].x - _centres[other].x, _centres[group].z - _centres[other].z).length()
-				if away <= in_step_within:
-					done[other] = true
-					_groups[other] = _groups[first]
-					todo.append(other)
-
-
-## Repeatable time offset of an intersection from its position, so they don't all switch together.
-func _offset(p: Vector3) -> float:
-	var h := absi(int(p.x) * 73856093 ^ int(p.z) * 19349663) % 1000
-	return h / 1000.0 * 2.0 * (green_time + amber_time + clearance_time)
-
-
-func _layer() -> GridMap:
-	return get_parent().get_node_or_null(layer) as GridMap
-
-
-## The layer and its LOD copy (Props_lod), whichever exist.
-func _layers() -> Array[GridMap]:
-	var out: Array[GridMap] = []
-	for n in get_parent().get_children():
-		if n is GridMap and (n.name == layer or String(n.name).begins_with(layer + "_lod")):
-			out.append(n)
-	return out
+## Seconds one stream takes (green, amber, all red).
+func _half_cycle() -> float:
+	return TrafficLightsRules.half_cycle(green_time, amber_time, clearance_time)

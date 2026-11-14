@@ -6,6 +6,8 @@ extends RefCounted
 
 const PlayerPortrait = preload("res://scripts/ui/widgets/player_portrait.gd")
 const PlayerModel = preload("res://scripts/player/player_model.gd")
+const PlayerPortraitRules = preload("res://scripts/ui/widgets/player_portrait_rules.gd")
+const PlayerPortraitLayout = preload("res://scripts/ui/widgets/player_portrait_layout.gd")
 
 ## The tree of the run (tests/run_unit_tests.gd sets it).
 var tree: SceneTree
@@ -26,21 +28,10 @@ func _portrait(picture_size: Vector2) -> PlayerPortrait:
 	return portrait
 
 
-func test_mouth_opening_per_letter(test) -> void:
-	for letter: String in ["a", "o", "u", "A", "ö", "á"]:
-		test.check(PlayerPortrait.mouth_opening(letter) == PlayerPortrait.MOUTH_WIDE, "%s: wijd open" % letter)
-	for letter: String in ["e", "i", "y", "E", "ë"]:
-		test.check(PlayerPortrait.mouth_opening(letter) == PlayerPortrait.MOUTH_HALF, "%s: half open" % letter)
-	for letter: String in ["k", "Z", "m", "ç"]:
-		test.check(PlayerPortrait.mouth_opening(letter) == PlayerPortrait.MOUTH_LITTLE, "%s: een beetje open" % letter)
-	for sign: String in [" ", "!", ".", "3", "€"]:
-		test.check(PlayerPortrait.mouth_opening(sign) == 0.0, "'%s': dicht" % sign)
-
-
 func test_zoom_frames_from_the_whole_figure_to_the_face(test) -> void:
 	var portrait := _portrait(Vector2(300, 300))
-	var camera := portrait._camera
-	test.check(portrait.zoom == 0.0 and is_equal_approx(camera.size, PlayerPortrait.FULL_HEIGHT * 1.08), "eerst het hele figuur (%s m)" % camera.size)
+	var camera := portrait.view.camera()
+	test.check(portrait.zoom == 0.0 and is_equal_approx(camera.size, PlayerPortraitLayout.FULL_HEIGHT * 1.08), "eerst het hele figuur (%s m)" % camera.size)
 	test.check(camera.projection == Camera3D.PROJECTION_ORTHOGONAL, "zonder perspectief")
 	portrait.zoom = 1.0
 	var face := PlayerModel.face_height("jos")
@@ -49,7 +40,7 @@ func test_zoom_frames_from_the_whole_figure_to_the_face(test) -> void:
 	portrait.face_view = 1.2
 	test.check(is_equal_approx(camera.size, 1.2), "een wijder gezicht als dat gevraagd is")
 	portrait.zoom = 0.5
-	test.check(is_equal_approx(camera.size, (PlayerPortrait.FULL_HEIGHT * 1.08 + 1.2) * 0.5), "halverwege: er tussenin")
+	test.check(is_equal_approx(camera.size, (PlayerPortraitLayout.FULL_HEIGHT * 1.08 + 1.2) * 0.5), "halverwege: er tussenin")
 	portrait.zoom = 7.0
 	test.check(portrait.zoom == 1.0, "meer dan 1 wordt 1")
 	portrait.zoom = -2.0
@@ -59,9 +50,9 @@ func test_zoom_frames_from_the_whole_figure_to_the_face(test) -> void:
 
 func test_a_narrow_picture_shows_more_so_the_figure_fits(test) -> void:
 	var portrait := _portrait(Vector2(150, 300))
-	test.check(is_equal_approx(portrait._camera.size, PlayerPortrait.FULL_HEIGHT * 1.08 * 0.75 / 0.5), "smaller dan 3 op 4: meer meters in beeld (%s)" % portrait._camera.size)
+	test.check(is_equal_approx(portrait.view.camera().size, PlayerPortraitLayout.FULL_HEIGHT * 1.08 * 0.75 / 0.5), "smaller dan 3 op 4: meer meters in beeld (%s)" % portrait.view.camera().size)
 	portrait.size = Vector2(300, 300)
-	test.check(is_equal_approx(portrait._camera.size, PlayerPortrait.FULL_HEIGHT * 1.08), "weer vierkant: de gewone maat")
+	test.check(is_equal_approx(portrait.view.camera().size, PlayerPortraitLayout.FULL_HEIGHT * 1.08), "weer vierkant: de gewone maat")
 	portrait.free()
 
 
@@ -69,15 +60,15 @@ func test_the_face_height_follows_the_archetype(test) -> void:
 	var portrait := _portrait(Vector2(300, 300))
 	portrait.zoom = 1.0
 	portrait.archetype_id = "willem"
-	test.check(portrait._model.archetype_id == "willem", "het figuur wordt die ander")
-	test.check(is_equal_approx(portrait._camera.position.y, PlayerModel.face_height("willem") + 0.3), "de camera op zijn gezicht (%s)" % portrait._camera.position.y)
+	test.check(portrait.view.model().archetype_id == "willem", "het figuur wordt die ander")
+	test.check(is_equal_approx(portrait.view.camera().position.y, PlayerModel.face_height("willem") + 0.3), "de camera op zijn gezicht (%s)" % portrait.view.camera().position.y)
 	test.check(PlayerModel.face_height("willem") < PlayerModel.face_height("jos"), "dat lager zit dan dat van Jos")
 	portrait.free()
 
 
 func test_what_the_portrait_passes_on_to_its_figure(test) -> void:
 	var portrait := _portrait(Vector2(300, 300))
-	var model := portrait._model
+	var model := portrait.view.model()
 	portrait.spin = 40.0
 	test.check(model.spin == 40.0, "het draaien")
 	portrait.spin = 0.0
@@ -104,10 +95,10 @@ func test_gesture_starts_and_its_cue_comes_through(test) -> void:
 	var portrait := _portrait(Vector2(300, 300))
 	var listener := Listener.new()
 	portrait.gesture_cue.connect(listener.on_cue)
-	test.check(not portrait._model.is_gesturing(), "eerst geen gebaar")
+	test.check(not portrait.view.model().is_gesturing(), "eerst geen gebaar")
 	portrait.play_gesture()
-	test.check(portrait._model.is_gesturing(), "het figuur doet zijn gebaar")
-	portrait._model.gesture_cue.emit()
+	test.check(portrait.view.model().is_gesturing(), "het figuur doet zijn gebaar")
+	portrait.view.model().gesture_cue.emit()
 	test.check(listener.cues == 1, "het moment van zijn kreet komt door")
 	portrait.free()
 
@@ -117,43 +108,43 @@ func test_a_townsperson_takes_the_place_of_the_figure(test) -> void:
 	portrait.zoom = 1.0
 	var look := TownsfolkFigure.look_for(7)
 	portrait.townsfolk_look = look
-	var figure := portrait._townsfolk as TownsfolkFigure
-	test.check(figure != null and not portrait._model.visible, "de stadsbewoner in beeld, het spelersfiguur niet")
+	var figure := portrait.townsfolk_figure() as TownsfolkFigure
+	test.check(figure != null and not portrait.view.model().visible, "de stadsbewoner in beeld, het spelersfiguur niet")
 	if figure == null:
 		portrait.free()
 		return
 	test.check(figure.has_face(), "met een mond en oogleden")
-	test.check(is_equal_approx(figure.scale.x, portrait._townsfolk_scale) and portrait._townsfolk_scale > 0.5, "zo groot als een spelersfiguur hier is (%s)" % portrait._townsfolk_scale)
-	test.check(is_equal_approx(portrait._camera.position.y, portrait._townsfolk_face + 0.3), "de camera op zijn gezicht")
-	test.check(portrait._townsfolk_face > 1.0 and portrait._townsfolk_face < float(portrait._model.height()), "dat onder de kruin zit (%s m)" % portrait._townsfolk_face)
+	test.check(is_equal_approx(figure.scale.x, portrait.view.townsfolk_scale()) and portrait.view.townsfolk_scale() > 0.5, "zo groot als een spelersfiguur hier is (%s)" % portrait.view.townsfolk_scale())
+	test.check(is_equal_approx(portrait.view.camera().position.y, portrait.view.townsfolk_face() + 0.3), "de camera op zijn gezicht")
+	test.check(portrait.view.townsfolk_face() > 1.0 and portrait.view.townsfolk_face() < float(portrait.view.model().height()), "dat onder de kruin zit (%s m)" % portrait.view.townsfolk_face())
 	portrait.townsfolk_look = {}
-	test.check(portrait._townsfolk == null and portrait._model.visible, "zonder uiterlijk: weer het spelersfiguur")
-	test.check(is_equal_approx(portrait._camera.position.y, PlayerModel.face_height("jos") + 0.3), "en de camera op diens gezicht")
+	test.check(portrait.townsfolk_figure() == null and portrait.view.model().visible, "zonder uiterlijk: weer het spelersfiguur")
+	test.check(is_equal_approx(portrait.view.camera().position.y, PlayerModel.face_height("jos") + 0.3), "en de camera op diens gezicht")
 	portrait.free()
 
 
 func test_the_mouth_follows_the_letters_while_speaking(test) -> void:
 	var portrait := _portrait(Vector2(300, 300))
 	portrait.townsfolk_look = TownsfolkFigure.look_for(7)
-	var figure := portrait._townsfolk as TownsfolkFigure
+	var figure := portrait.townsfolk_figure() as TownsfolkFigure
 	portrait.speech = "a ek"
 	portrait._process(0.01)
 	test.check(figure.mouth_opening() == 0.0, "het spreekt niet: de mond dicht")
 	portrait.speaking = true
 	portrait._process(0.01)
-	test.check(is_equal_approx(figure.mouth_opening(), PlayerPortrait.MOUTH_WIDE), "op de a: wijd open (%s)" % figure.mouth_opening())
+	test.check(is_equal_approx(figure.mouth_opening(), PlayerPortraitRules.MOUTH_WIDE), "op de a: wijd open (%s)" % figure.mouth_opening())
 	# MOUTH_LETTERS a second: a letter further every 1/14 s
-	portrait._process(1.0 / PlayerPortrait.MOUTH_LETTERS)
+	portrait._process(1.0 / PlayerPortraitRules.MOUTH_LETTERS)
 	test.check(figure.mouth_opening() == 0.0, "op de spatie: dicht")
-	portrait._process(1.0 / PlayerPortrait.MOUTH_LETTERS)
-	test.check(is_equal_approx(figure.mouth_opening(), PlayerPortrait.MOUTH_HALF), "op de e: half open")
-	portrait._process(1.0 / PlayerPortrait.MOUTH_LETTERS)
-	test.check(is_equal_approx(figure.mouth_opening(), PlayerPortrait.MOUTH_LITTLE), "op de k: een beetje")
-	portrait._process(1.0 / PlayerPortrait.MOUTH_LETTERS)
-	test.check(is_equal_approx(figure.mouth_opening(), PlayerPortrait.MOUTH_WIDE), "aan het eind begint de regel opnieuw")
+	portrait._process(1.0 / PlayerPortraitRules.MOUTH_LETTERS)
+	test.check(is_equal_approx(figure.mouth_opening(), PlayerPortraitRules.MOUTH_HALF), "op de e: half open")
+	portrait._process(1.0 / PlayerPortraitRules.MOUTH_LETTERS)
+	test.check(is_equal_approx(figure.mouth_opening(), PlayerPortraitRules.MOUTH_LITTLE), "op de k: een beetje")
+	portrait._process(1.0 / PlayerPortraitRules.MOUTH_LETTERS)
+	test.check(is_equal_approx(figure.mouth_opening(), PlayerPortraitRules.MOUTH_WIDE), "aan het eind begint de regel opnieuw")
 	portrait.speech = "k"
 	portrait._process(0.01)
-	test.check(is_equal_approx(figure.mouth_opening(), PlayerPortrait.MOUTH_LITTLE), "een nieuwe regel: vanaf zijn eerste letter")
+	test.check(is_equal_approx(figure.mouth_opening(), PlayerPortraitRules.MOUTH_LITTLE), "een nieuwe regel: vanaf zijn eerste letter")
 	portrait.speaking = false
 	portrait._process(0.01)
 	test.check(figure.mouth_opening() == 0.0, "uitgesproken: weer dicht")
@@ -167,16 +158,16 @@ func test_the_mouth_follows_the_letters_while_speaking(test) -> void:
 func test_the_townsperson_blinks_now_and_then(test) -> void:
 	var portrait := _portrait(Vector2(300, 300))
 	portrait.townsfolk_look = TownsfolkFigure.look_for(7)
-	var figure := portrait._townsfolk as TownsfolkFigure
+	var figure := portrait.townsfolk_figure() as TownsfolkFigure
 	portrait._process(portrait._next_blink - 0.1)
 	test.check(not figure.is_blinking(), "eerst de ogen open")
 	portrait._process(0.1)
 	test.check(figure.is_blinking(), "op zijn tijd: de ogen dicht")
-	portrait._process(PlayerPortrait.BLINK_SECONDS * 0.5)
+	portrait._process(PlayerPortraitRules.BLINK_SECONDS * 0.5)
 	test.check(figure.is_blinking(), "even dicht")
-	portrait._process(PlayerPortrait.BLINK_SECONDS)
+	portrait._process(PlayerPortraitRules.BLINK_SECONDS)
 	test.check(not figure.is_blinking(), "en weer open")
-	test.check(portrait._next_blink >= PlayerPortrait.BLINK_EVERY.x and portrait._next_blink <= PlayerPortrait.BLINK_EVERY.y, "de volgende knipper over 2 tot 5 s (%s)" % portrait._next_blink)
+	test.check(portrait._next_blink >= PlayerPortraitRules.BLINK_EVERY.x and portrait._next_blink <= PlayerPortraitRules.BLINK_EVERY.y, "de volgende knipper over 2 tot 5 s (%s)" % portrait._next_blink)
 	portrait.visible = false
 	portrait._process(10.0)
 	test.check(not figure.is_blinking(), "verborgen: er gebeurt niets")
@@ -187,10 +178,10 @@ func test_the_close_up_follows_the_figure_in_the_world(test) -> void:
 	var portrait := _portrait(Vector2(300, 300))
 	var look := TownsfolkFigure.look_for(7)
 	portrait.townsfolk_look = look
-	var figure := portrait._townsfolk as TownsfolkFigure
-	var grow := portrait._townsfolk_scale
-	portrait._process(PlayerPortrait.BREATH_SECONDS * 0.25)
-	test.check(is_equal_approx(figure.transform.basis.get_scale().y, grow * (1.0 + PlayerPortrait.BREATH_SHARE)), "het ademt: op zijn hoogst een fractie langer")
+	var figure := portrait.townsfolk_figure() as TownsfolkFigure
+	var grow := portrait.view.townsfolk_scale()
+	portrait._process(PlayerPortraitRules.BREATH_SECONDS * 0.25)
+	test.check(is_equal_approx(figure.transform.basis.get_scale().y, grow * (1.0 + PlayerPortraitRules.BREATH_SHARE)), "het ademt: op zijn hoogst een fractie langer")
 	test.check(is_equal_approx(figure.transform.basis.get_scale().x, grow) and figure.transform.origin.is_zero_approx(), "en staat verder stil")
 	var in_the_world := TownsfolkFigure.create(look)
 	in_the_world.position = Vector3(30.0, 0.0, -12.0)

@@ -1,16 +1,15 @@
 extends RefCounted
-## Unit tests of the quest tracker of the HUD (scripts/ui/hud/quest_tracker.gd): the panel
-## of the quest that is followed. The rules behind it: test_quest_log.gd.
-##   tests/run_unit_tests.sh quest_tracker
+## Unit tests of the quest tracker of the HUD (scripts/ui/hud/quest_tracker.gd): it keeps
+## the quests and which one is followed, and shows that one. The rules behind it:
+## test_quest_rules.gd; its picture: test_quest_tracker_view.gd.
+##   tests/run_unit_tests.sh test_quest_tracker.gd
 
 const QuestTracker = preload("res://scripts/ui/hud/quest_tracker.gd")
-const CheckSquare = preload("res://scripts/ui/widgets/check_square.gd")
 
 ## The tree of the run (tests/run_unit_tests.gd sets it).
 var tree: SceneTree
 
 
-## Three quests: a main one with steps, a side one, and a main one that is done.
 static func _quests() -> Array:
 	return [
 		{"id": "kroket", "kind": "verhaal", "label": "VERHAAL", "title": "Een kroket", "steps": [
@@ -38,62 +37,74 @@ static func _shown_texts(node: Node) -> Array:
 	return texts
 
 
-func test_tracker_is_hidden_without_a_quest(test) -> void:
+func test_hidden_without_a_quest(test) -> void:
 	var tracker := _tracker()
-	test.check(not tracker.visible and tracker.get_child_count() == 0, "zonder quests: niet te zien")
+	test.check(tracker.name == "Opdrachten" and not tracker.visible and tracker.quests().is_empty(), "zonder quests: niet te zien")
+	test.check(tracker.tracked_id() == "" and tracker.tracked().is_empty() and tracker.targets().is_empty(), "niets gevolgd")
+	test.check(tracker.next_open_id("") == "", "en niets om te volgen")
 	tracker.set_quests([{"id": "a", "done": true}])
-	test.check(not tracker.visible, "alleen quests die klaar zijn: ook niet")
-	test.check(tracker.distance_text() == "", "en geen afstand")
-	tracker.set_distance(12.0)
-	test.check(tracker.distance_text() == "", "een afstand zetten zonder paneel doet niets")
+	test.check(not tracker.visible and tracker.tracked_id() == "", "alleen quests die klaar zijn: ook niet")
 	tracker.free()
 
 
-func test_tracker_shows_the_followed_main_quest(test) -> void:
+func test_the_first_open_quest_is_followed_and_shown(test) -> void:
 	var tracker := _tracker()
 	tracker.set_quests(_quests())
-	test.check(tracker.visible and tracker.get_child_count() == 1, "één paneel: de gevolgde quest")
-	var texts := _shown_texts(tracker)
-	test.check(texts.has("◆ VERHAAL") and texts.has("Een kroket"), "met zijn label en titel (%s)" % [texts])
-	test.check(texts.has("[s]Zoek blikjes[/s]") and texts.has("Lever ze in [lb]2/5]"), "de laatste afgeronde stap doorgestreept en de open stap (%s)" % [texts])
-	test.check(not texts.has("Koop een kroket"), "een stap die op slot zit staat er niet")
-	test.check(texts.has("+25 XP") and texts.has("+50 XP"), "met de XP van de stappen")
-	var steps := tracker.find_child("Stappen", true, false)
-	var boxes: Array = steps.find_children("*", "Control", true, false).filter(func(node: Node) -> bool: return node is CheckSquare)
-	test.check(boxes.size() == 2 and boxes[0].done and not boxes[1].done, "het vakje van de afgeronde stap is gevuld")
+	test.check(tracker.visible and tracker.tracked_id() == "kroket" and tracker.tracked().title == "Een kroket", "de eerste open quest")
+	test.check(tracker.quests().size() == 3 and tracker.by_id("krant").kind == "zij" and tracker.by_id("niets").is_empty(), "de quests bij hun id")
+	test.check(tracker.targets() == [Vector2(10.0, 0.0), Vector2(100.0, 0.0)], "de plekken van de gevolgde quest")
+	var texts := _shown_texts(tracker.view)
+	test.check(texts.has("◆ VERHAAL") and texts.has("Een kroket"), "zijn label en titel in beeld (%s)" % [texts])
+	test.check(texts.has("[s]Zoek blikjes[/s]") and texts.has("Lever ze in [lb]2/5]") and not texts.has("Koop een kroket"), "de laatste afgeronde en de open stap, niet die op slot")
+	test.check(texts.has("+25 XP") and texts.has("+50 XP"), "met hun XP")
 	tracker.free()
 
 
-func test_tracker_distance(test) -> void:
+func test_the_tracker_keeps_a_copy(test) -> void:
 	var tracker := _tracker()
-	tracker.set_quests(_quests())
-	test.check(tracker.distance_text() == "", "eerst geen afstand")
-	tracker.set_distance(239.6)
-	test.check(tracker.distance_text() == "240 M", "de afstand in het paneel (%s)" % tracker.distance_text())
-	tracker.set_distance(INF)
-	test.check(tracker.distance_text() == "", "geen plek meer: leeg")
+	var given := _quests()
+	tracker.set_quests(given)
+	given[0].title = "Veranderd"
+	test.check(tracker.by_id("kroket").title == "Een kroket", "wat erna verandert raakt de tracker niet")
 	tracker.free()
 
 
-func test_tracker_follows_a_side_quest(test) -> void:
+func test_track_follows_another_open_quest(test) -> void:
 	var tracker := _tracker()
 	tracker.set_quests(_quests())
 	tracker.track("krant")
-	var texts := _shown_texts(tracker)
-	test.check(tracker.get_child_count() == 1 and texts == ["! ZIJMISSIE", "Verkoop de krant"], "een zijmissie: label en titel (%s)" % [texts])
-	test.check(tracker.distance_text() == "", "een zijmissie heeft geen afstand")
+	test.check(tracker.tracked_id() == "krant" and _shown_texts(tracker.view) == ["! ZIJMISSIE", "Verkoop de krant"], "een zijmissie volgen: haar paneel (%s)" % [_shown_texts(tracker.view)])
 	tracker.track("oud")
-	test.check(_shown_texts(tracker) == texts, "een quest die klaar is volgen: het paneel blijft")
+	tracker.track("bestaat_niet")
+	test.check(tracker.tracked_id() == "krant", "een quest die klaar is of er niet is: er verandert niets")
+	tracker.set_quests(_quests())
+	test.check(tracker.tracked_id() == "krant", "dezelfde quests opnieuw: de gevolgde blijft")
+	test.check(tracker.next_open_id("krant") == "kroket", "na de laatste open quest weer de eerste")
 	tracker.free()
 
 
-func test_step_text_and_locked_steps(test) -> void:
-	test.check(QuestTracker.step_text({"text": "Praat met [Wim]"}) == "Praat met [lb]Wim]", "haken letterlijk")
-	test.check(QuestTracker.step_text({"text": "Klaar", "done": true}) == "[s]Klaar[/s]", "klaar: doorgestreept")
-	test.check(QuestTracker.step_text({}) == "", "zonder tekst: leeg")
+func test_goes_on_when_the_followed_quest_is_done_or_gone(test) -> void:
 	var tracker := _tracker()
-	# a locked step shows when it is the only one open: an optional one that is locked is not open
-	tracker.set_quests([{"id": "a", "steps": [{"text": "eerst", "done": false}, {"text": "later", "done": false, "locked": true}]}])
-	var rows := tracker.find_child("Stappen", true, false).get_children()
-	test.check(rows.size() == 1 and is_equal_approx(rows[0].modulate.a, 1.0), "de open stap is gewoon te zien")
+	tracker.set_quests(_quests())
+	var done_first := _quests()
+	done_first[0]["done"] = true
+	tracker.set_quests(done_first)
+	test.check(tracker.tracked_id() == "krant", "de gevolgde klaar: de eerste open erna")
+	tracker.set_quests([{"id": "a"}, {"id": "b"}, {"id": "c"}])
+	tracker.track("b")
+	tracker.set_quests([{"id": "a"}, {"id": "c"}])
+	test.check(tracker.tracked_id() == "c", "de gevolgde weg: die erna stond (%s)" % tracker.tracked_id())
+	tracker.set_quests([])
+	test.check(tracker.tracked_id() == "" and not tracker.visible, "geen quests meer: de tracker weg")
+	tracker.free()
+
+
+func test_distance_to_the_nearest_place(test) -> void:
+	var tracker := _tracker()
+	tracker.set_quests(_quests())
+	tracker.show_distance_from(Vector2(90.0, 0.0))
+	test.check(tracker.view.distance_text() == "10 M", "de dichtstbijzijnde plek van de gevolgde quest (%s)" % tracker.view.distance_text())
+	tracker.track("krant")
+	tracker.show_distance_from(Vector2(90.0, 0.0))
+	test.check(tracker.view.distance_text() == "", "een zijmissie zonder plekken: geen afstand")
 	tracker.free()

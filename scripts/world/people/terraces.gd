@@ -5,12 +5,15 @@ extends Node3D
 ## up, both facing the table) some sit (OCCUPIED in 100 of the chairs, the same ones every
 ## game: from the cell), townspeople you can talk to as the people in a snack bar
 ## (InteriorPerson, the group of who can be talked to).
+## Behaviour (docs/CODE_LAGEN.md); where the chairs stand: terraces_layout.gd; which are
+## taken: terraces_rules.gd.
 
-## The terrace tiles with a chair on either side of the table (props/terras/, terrace_set).
-const TERRACE_TILES := ["terras/terras_set", "terras/terras_set_parasol", "terras/terras_set_parasol_groen"]
-const CHAIR_OFFSET := 0.81
-const SEAT_HEIGHT := 0.5
-const OCCUPIED := 35
+const TerracesLayout = preload("res://scripts/world/people/terraces_layout.gd")
+const TerracesRules = preload("res://scripts/world/people/terraces_rules.gd")
+const TERRACE_TILES := TerracesLayout.TERRACE_TILES
+const CHAIR_OFFSET := TerracesLayout.CHAIR_OFFSET
+const SEAT_HEIGHT := TerracesLayout.SEAT_HEIGHT
+const OCCUPIED := TerracesRules.OCCUPIED
 
 @export var props_path := NodePath("../Props")
 
@@ -39,15 +42,12 @@ func _seat_people(props: GridMap, cell: Vector3i) -> void:
 	var turn := props.get_basis_with_orthogonal_index(props.get_cell_item_orientation(cell))
 	var random := RandomNumberGenerator.new()
 	random.seed = hash(cell)
-	# the chair before the table (+z of the tile) faces back to it (-z), the one behind faces +z
-	for side: float in [1.0, -1.0]:
-		if random.randi_range(1, 100) > OCCUPIED:
+	for side: float in TerracesLayout.SIDES:
+		if not TerracesRules.is_taken(random.randi_range(1, TerracesRules.ROLL_MOST)):
 			continue
-		var guest := InteriorPerson.create("klant", random.randi(), true, SEAT_HEIGHT)
+		var guest := InteriorPerson.create(TerracesRules.GUEST_KIND, random.randi(), true, SEAT_HEIGHT)
 		guest.name = "Terrasgast"
 		add_child(guest)
-		var chair := table + turn * Vector3(0.0, 0.0, CHAIR_OFFSET * side)
-		guest.global_position = Vector3(chair.x, props.global_position.y, chair.z)
-		var facing := turn * Vector3(0.0, 0.0, -side)
-		guest.rotation.y = atan2(facing.x, facing.z)
+		guest.global_position = TerracesLayout.chair_spot(table, turn, side, props.global_position.y)
+		guest.rotation.y = TerracesLayout.facing_of(turn, side)
 		_guests.append(guest)

@@ -3,12 +3,13 @@ extends RefCounted
 ## town: what the game tells it reaches the right part (stats, experience, notices, quests,
 ## the marker, money, the clock, the music) and its screens open and close (pause, death,
 ## story, reward). The parts themselves have their own tests (test_player_frame,
-## test_notice_banner, test_quest_log, test_quest_tracker, test_pause_menu, ...); the HUD
+## test_notice_banner, test_quest_rules, test_quest_tracker, test_minimap, test_location,
+## test_waypoint, test_clock, test_modal_rules, test_pause_menu, ...); the HUD
 ## in the town: tests/integration/ui/test_hud.gd.
 ##   tests/run_unit_tests.sh test_hud
 
 const DeathScreen = preload("res://scripts/ui/screens/death_screen.gd")
-const NoticeBanner = preload("res://scripts/ui/hud/notice_banner.gd")
+const NoticeRules = preload("res://scripts/ui/hud/notice_rules.gd")
 const CityMusic = preload("res://scripts/audio/city_music.gd")
 
 ## The tree of the run (tests/run_unit_tests.gd sets it).
@@ -53,7 +54,8 @@ func test_the_hud_starts_with_the_chosen_character(test) -> void:
 	var hud := _hud()
 	test.check(hud.player_frame != null and hud.notices != null and hud.quest_tracker != null and hud.music != null, "de onderdelen zijn er")
 	test.check(hud.pause_menu != null and hud.death_screen != null, "en de schermen")
-	test.check(hud.player_frame.shown_name() == hud.player_name and hud.player_name != "", "de naam van de gekozen zwerver (%s)" % hud.player_name)
+	test.check(hud.minimap != null and hud.location != null and hud.clock != null and hud.marker != null and hud.money_panel != null and hud.crt != null, "de minimap met de locatie, de klok en de marker, het geld en de CRT-laag")
+	test.check(hud.player_frame.view.shown_name() == hud.player_name and hud.player_name != "", "de naam van de gekozen zwerver (%s)" % hud.player_name)
 	for stat_name: String in GameHud.STATS:
 		var stat := hud.get_stat(stat_name)
 		test.check(stat.y > 0.0 and stat.x == (0.0 if stat_name == "overprikkeldheid" else stat.y), "%s: vol, overprikkeldheid leeg (%s)" % [stat_name, stat])
@@ -65,11 +67,11 @@ func test_the_hud_starts_with_the_chosen_character(test) -> void:
 func test_stats_experience_and_player_reach_the_frame(test) -> void:
 	var hud := _hud()
 	hud.set_stat("honger", 35.0, 80.0)
-	test.check(hud.get_stat("honger") == Vector2(35.0, 80.0) and hud.player_frame.stat_text("honger") == "35/80", "een stat komt in het spelerskader")
+	test.check(hud.get_stat("honger") == Vector2(35.0, 80.0) and hud.player_frame.view.stat_label("honger").text == "35/80", "een stat komt in het spelerskader")
 	hud.set_xp(150.0, 300.0)
-	test.check(hud.player_frame.xp_label().text == "150 / 300", "de XP ook")
+	test.check(hud.player_frame.view.xp_label().text == "150 / 300", "de XP ook")
 	hud.set_player("Sjaan", 3)
-	test.check(hud.player_name == "Sjaan" and hud.player_level == 3 and hud.player_frame.shown_level() == "LEVEL 3", "naam en level")
+	test.check(hud.player_name == "Sjaan" and hud.player_level == 3 and hud.player_frame.view.shown_level() == "LEVEL 3", "naam en level")
 	_close(hud)
 
 
@@ -77,23 +79,23 @@ func test_notices_at_the_top(test) -> void:
 	var hud := _hud()
 	test.check(not hud.is_showing_notice(), "eerst geen melding")
 	hud.show_area("Zeeheldenkwartier")
-	test.check(hud.is_showing_notice() and hud.notices.heading_text() == NoticeBanner.AREA_HEADING and hud.notices.name_text() == "Zeeheldenkwartier", "een nieuw gebied")
+	test.check(hud.is_showing_notice() and hud.notices.view.heading_text() == NoticeRules.AREA_HEADING and hud.notices.view.name_text() == "Zeeheldenkwartier", "een nieuw gebied")
 	hud.show_mission("Lege maag")
 	hud.show_notice("— VERDIEPING —", "Burgerzaken")
 	test.check(hud.notices.waiting() == 2, "de volgende wachten")
 	hud.notices.show_next()
-	test.check(hud.notices.heading_text() == NoticeBanner.MISSION_HEADING and hud.notices.name_text() == "Lege maag", "dan de nieuwe missie")
+	test.check(hud.notices.view.heading_text() == NoticeRules.MISSION_HEADING and hud.notices.view.name_text() == "Lege maag", "dan de nieuwe missie")
 	test.check(hud.music.has_node("MissieDeuntje") or not ResourceLoader.exists(GameHud.MISSION_JINGLE), "met het missiedeuntje")
 	hud.notices.show_next()
-	test.check(hud.notices.heading_text() == "— VERDIEPING —" and hud.notices.name_text() == "Burgerzaken", "en een eigen melding")
+	test.check(hud.notices.view.heading_text() == "— VERDIEPING —" and hud.notices.view.name_text() == "Burgerzaken", "en een eigen melding")
 	_close(hud)
 
 
 func test_level_up_without_a_choice_is_a_notice(test) -> void:
 	var hud := _hud()
 	hud.show_level_up(4)
-	test.check(hud.player_level == 4 and hud.player_frame.shown_level() == "LEVEL 4", "het nieuwe level op het plaatje")
-	test.check(hud.is_showing_notice() and hud.notices.name_text() == "Level 4", "als melding bovenin")
+	test.check(hud.player_level == 4 and hud.player_frame.view.shown_level() == "LEVEL 4", "het nieuwe level op het plaatje")
+	test.check(hud.is_showing_notice() and hud.notices.view.name_text() == "Level 4", "als melding bovenin")
 	test.check(hud.level_ups_waiting().is_empty() and not hud.is_showing_level_up(), "zonder keuze geen level-up-scherm")
 	var chosen := Counter.new()
 	hud.show_level_up(5, func(_stat_name: String) -> void: chosen.add(), func(_stat_name: String) -> Vector2: return Vector2(50.0, 100.0))
@@ -125,23 +127,23 @@ func test_the_marker_of_the_map(test) -> void:
 	test.check(not hud.has_waypoint() and hud.waypoint() == Vector2.INF and hud.waypoint_name() == "", "eerst geen marker")
 	hud.set_waypoint(Vector2(120.0, -40.0), "Het Plein")
 	test.check(hud.has_waypoint() and hud.waypoint() == Vector2(120.0, -40.0) and hud.waypoint_name() == "Het Plein", "een marker gezet")
-	test.check(hud._waypoint_chip.visible and hud._waypoint_label.text == "HET PLEIN", "met zijn naam in beeld")
+	test.check(hud.marker.visible and hud.marker.view.shown_text() == "HET PLEIN", "met zijn naam in beeld")
 	test.check(hud.get_parent().get_child_count() == 2, "en zijn baken in de stad")
 	hud.set_waypoint(Vector2(5.0, 5.0), "Station")
 	test.check(hud.waypoint() == Vector2(5.0, 5.0) and hud.get_parent().get_child_count() == 2, "een nieuwe plek: hetzelfde baken verzet")
 	hud.clear_waypoint()
-	test.check(not hud.has_waypoint() and hud.waypoint_name() == "" and not hud._waypoint_chip.visible, "en weer weg")
+	test.check(not hud.has_waypoint() and hud.waypoint_name() == "" and not hud.marker.visible, "en weer weg")
 	_close(hud)
 
 
 func test_money_and_clock(test) -> void:
 	var hud := _hud()
 	hud.set_money(1284.5)
-	test.check(hud._money_label.text == "1.284,50", "het geld zoals Nederlanders het schrijven (%s)" % hud._money_label.text)
+	test.check(hud.money_panel.amount_text() == "1.284,50", "het geld zoals Nederlanders het schrijven (%s)" % hud.money_panel.amount_text())
 	hud.set_time(8.5, 3)
-	test.check(hud._time_label.text == "08:30" and hud._day_label.text == "DAG 3", "de tijd en de dag (%s, %s)" % [hud._time_label.text, hud._day_label.text])
+	test.check(hud.clock.view.time_text() == "08:30" and hud.clock.view.day_text() == "DAG 3", "de tijd en de dag (%s, %s)" % [hud.clock.view.time_text(), hud.clock.view.day_text()])
 	hud.set_time(25.25)
-	test.check(hud._time_label.text == "01:15" and hud._day_label.text == "DAG 3", "voorbij middernacht telt door vanaf nul, de dag blijft")
+	test.check(hud.clock.view.time_text() == "01:15" and hud.clock.view.day_text() == "DAG 3", "voorbij middernacht telt door vanaf nul, de dag blijft")
 	_close(hud)
 
 
@@ -164,11 +166,11 @@ func test_death_closes_the_pause_menu_and_stops_the_music(test) -> void:
 	hud.set_paused(true)
 	hud.show_death("honger")
 	test.check(hud.death_screen.is_open() and not hud.pause_menu.is_open() and not tree.paused, "het doodscherm, het pauzemenu dicht")
-	test.check(hud.death_screen._reason.text == DeathScreen.reason("honger", "Sjaan"), "met hoe het gebeurde")
+	test.check(hud.death_screen.reason_text() == DeathScreen.reason("honger", "Sjaan"), "met hoe het gebeurde")
 	test.check(hud.music.file() == "", "de stadsmuziek gaat uit")
 	test.check(hud.music.has_node("DoodDeuntje") or not ResourceLoader.exists(GameHud.DEATH_JINGLE), "en het doodsdeuntje speelt")
 	hud.show_death("verdronken")
-	test.check(hud.death_screen._reason.text == DeathScreen.reason("honger", "Sjaan"), "een tweede keer doodgaan verandert niets")
+	test.check(hud.death_screen.reason_text() == DeathScreen.reason("honger", "Sjaan"), "een tweede keer doodgaan verandert niets")
 	_close(hud)
 
 
@@ -237,9 +239,10 @@ func test_small_things_without_a_town(test) -> void:
 	test.check(not hud.is_showing_shop(), "geen winkel open")
 	test.check(not hud.is_shrouded(Vector2(10.0, 10.0)), "zonder verhaal is niets verhuld")
 	test.check(hud.visited_areas().is_empty(), "nog nergens geweest")
+	test.check(hud.hidden_for_modal().is_empty(), "niets van de HUD verborgen voor een scherm over het spelmenu")
 	test.check(GameHud.area_display_name("Centraal Station") == "Station Den Haag Centraal" and GameHud.area_display_name("Centrum") == "Centrum", "de naam van een wijk in beeld")
 	hud.set_indoor_location("Centrum")
-	test.check(hud._indoor_wijk == "Centrum" and hud._location_clock == 0.0, "binnen: de wijk van het gebouw, meteen bijgewerkt")
+	test.check(hud.location.indoor_area() == "Centrum" and hud.location.seconds_to_look() == 0.0, "binnen: de wijk van het gebouw, meteen bijgewerkt")
 	hud.set_menu_locked(true)
 	test.check(hud.get_node("Spelmenu").locked, "het spelmenu op slot")
 	hud.set_menu_locked(false)
@@ -247,11 +250,11 @@ func test_small_things_without_a_town(test) -> void:
 	hud.set_actions([["E", "Praten"]])
 	test.check(hud._action_prompts.get_child_count() > 0, "een actie linksonder")
 	hud.show_thought("Ik heb honger.")
-	test.check(hud._floating_numbers.get_child_count() == 0, "zonder speler geen gedachte")
+	test.check(hud._floating_numbers.view.numbers().size() == 0, "zonder speler geen gedachte")
 	hud.show_floating_number(Vector3.ZERO, "+€ 0,50", Color.WHITE)
-	test.check(hud._floating_numbers.get_child_count() == 1, "een getal dat opstijgt")
+	test.check(hud._floating_numbers.view.numbers().size() == 1, "een getal dat opstijgt")
 	hud.show_floating_number(Vector3.ZERO, "+€ 5,00", Color.WHITE, 18, true)
-	test.check(hud._numbers_over_story.get_child_count() == 1, "en een over het verhaalvenster")
+	test.check(hud._numbers_over_story.view.numbers().size() == 1, "en een over het verhaalvenster")
 	_close(hud)
 
 
@@ -263,4 +266,11 @@ func test_minimap_without_a_town(test) -> void:
 	hud.show_town_plan()
 	test.check(hud.minimap_origin() == origin_before and hud.minimap_texture() == texture_before, "al buiten: de kaart blijft")
 	test.check(hud.shroud_image() == null, "zonder stad geen sluier")
+	# the plan of an interior comes two physics steps later; going out again before it does
+	var interior := Node3D.new()
+	hud.get_parent().add_child(interior)
+	var exits: Array[Vector3] = [Vector3(1.0, 0.0, 1.0)]
+	hud.show_interior_plan(interior, exits)
+	hud.show_town_plan()
+	test.check(hud.minimap_texture() == texture_before and not hud.minimap.is_indoors(), "even binnen en weer buiten: de kaart van de stad blijft")
 	_close(hud)

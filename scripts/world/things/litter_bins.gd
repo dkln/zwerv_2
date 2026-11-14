@@ -1,5 +1,7 @@
 extends Node3D
-## Cans in the waste bins of the town (the node "Prullenbakken" of scenes/stad.tscn): the
+## Cans in the waste bins of the town (the node "Prullenbakken" of scenes/stad.tscn;
+## behaviour, docs/CODE_LAGEN.md: its rules litter_bins_rules.gd, where bin and can stand
+## litter_bins_layout.gd, the can litter_bins_view.gd): the
 ## bins are props of the Props layer (straat/prullenbak_paal, straat/prullenbak_rond, put
 ## down by the city builder, tools/build/city/finishing.gd `_bins`); at the start some of
 ## them, drawn at random (`can_share`, at most `most_cans`), have an empty can sticking out of
@@ -10,12 +12,14 @@ extends Node3D
 ## (`refill_seconds`) an empty bin gets a new can.
 
 const RandomPick = preload("res://scripts/common/random_pick.gd")
-const MachineModels = preload("res://scripts/world/things/machine_models.gd")
-const QuestOutline = preload("res://scripts/effects/quest_outline.gd")
 const InteriorSpot = preload("res://scripts/world/interiors/interior_spot.gd")
-const BIN_TILES := ["straat/prullenbak_paal", "straat/prullenbak_rond"]
-const CAN_ITEM := "blikje"
-const SPOT_REACH := 1.3
+const Interactable = preload("res://scripts/world/things/interactable.gd")
+const LitterBinsRules = preload("res://scripts/world/things/litter_bins_rules.gd")
+const LitterBinsLayout = preload("res://scripts/world/things/litter_bins_layout.gd")
+const LitterBinsView = preload("res://scripts/world/things/litter_bins_view.gd")
+const BIN_TILES := LitterBinsRules.BIN_TILES
+const CAN_ITEM := LitterBinsRules.CAN_ITEM
+const SPOT_REACH := LitterBinsLayout.SPOT_REACH
 
 @export var can_share := 0.3
 @export var most_cans := 60
@@ -26,7 +30,7 @@ const SPOT_REACH := 1.3
 ## The ground layer: a bin on a platform (a tile with PLATFORM_GROUND in its name, behind the
 ## OV gates) is not freely reachable, so the story never sends you there (fill_near, can_spots).
 @export var ground_path := NodePath("../Grond")
-const PLATFORM_GROUND := "spoor/perron"   # a railway platform; a tram stop (tram/tram_halte_perron) is free
+const PLATFORM_GROUND := LitterBinsRules.PLATFORM_GROUND   # a railway platform; a tram stop (tram/tram_halte_perron) is free
 ## The buildings layer: fill_near with `in_sight` only takes bins with no building between them
 ## and the place (the first mission: on the square before Centraal, never behind it).
 @export var buildings_path := NodePath("../Gebouwen")
@@ -51,23 +55,19 @@ func _ready() -> void:
 		_mark_platforms(get_node_or_null(ground_path) as GridMap)
 	var order: Array = range(_bins.size())
 	RandomPick.shuffle(_random, order)
-	var wanted := mini(most_cans, roundi(_bins.size() * can_share))
+	var wanted := LitterBinsRules.cans_at_start(_bins.size(), can_share, most_cans)
 	for index in wanted:
 		_put_can(int(order[index]))
 
 
 func _process(delta: float) -> void:
 	_refill_clock += delta
-	if _refill_clock < refill_seconds or _bins.is_empty():
+	if not LitterBinsRules.refill_due(_refill_clock, refill_seconds) or _bins.is_empty():
 		return
 	_refill_clock = 0.0
 	if cans_left() >= most_cans:
 		return
-	var empty: Array = []
-	for index in _bins.size():
-		var at: Vector3 = _bins[index].ground
-		if _bins[index].spot == null and Vector2(at.x, at.z).distance_to(keep_empty_round) > keep_empty_radius:
-			empty.append(index)
+	var empty := LitterBinsRules.refillable(_bins, keep_empty_round, keep_empty_radius)
 	if not empty.is_empty():
 		_put_can(int(empty[_random.randi() % empty.size()]))
 
@@ -82,9 +82,8 @@ func _find_bins(props: GridMap) -> void:
 		for cell in props.get_used_cells_by_item(item):
 			var basis := props.get_cell_item_basis(cell)
 			var origin := props.map_to_local(cell)
-			var middle := Vector3(box.get_center().x, 0.0, box.get_center().z)
-			var foot := props.global_transform * (origin + basis * middle)
-			var top := props.global_transform * (origin + basis * Vector3(middle.x, box.end.y, middle.z))
+			var foot := props.global_transform * LitterBinsLayout.foot(box, basis, origin)
+			var top := props.global_transform * LitterBinsLayout.top(box, basis, origin)
 			_bins.append({"ground": foot, "top": top, "spot": null, "free": true})
 
 
@@ -95,9 +94,9 @@ func _mark_platforms(ground: GridMap) -> void:
 	for bin: Dictionary in _bins:
 		var at: Vector3 = bin.ground
 		var cell := ground.local_to_map(ground.to_local(at))
-		for level in range(-2, 8):
+		for level in range(LitterBinsRules.PLATFORM_LEVELS.x, LitterBinsRules.PLATFORM_LEVELS.y):
 			var item := ground.get_cell_item(Vector3i(cell.x, level, cell.z))
-			if item != -1 and ground.mesh_library.get_item_name(item).contains(PLATFORM_GROUND):
+			if item != -1 and LitterBinsRules.is_platform(ground.mesh_library.get_item_name(item)):
 				bin.free = false
 				break
 
@@ -107,17 +106,11 @@ func _put_can(index: int) -> void:
 	var bin: Dictionary = _bins[index]
 	if bin.spot != null:
 		return
-	var spot: Node3D = InteriorSpot.create("Blikje%d" % (index + 1), Vector3.ZERO, "Blikje pakken", _take.bind(index), SPOT_REACH)
-	spot.set("kind", "oppakken")   # Interactable.KIND_PICKUP
+	var spot: Node3D = InteriorSpot.create(LitterBinsRules.spot_name(index), Vector3.ZERO, LitterBinsRules.TAKE_TEXT, _take.bind(index), SPOT_REACH)
+	spot.set("kind", Interactable.KIND_PICKUP)
 	add_child(spot)
 	spot.global_position = bin.ground
-	var can := MeshInstance3D.new()
-	can.name = "Blikje"
-	can.mesh = MachineModels.can_mesh()
-	spot.add_child(can)
-	can.global_position = (bin.top as Vector3) - Vector3.UP * 0.08
-	can.rotation = Vector3(0.35, _random.randf() * TAU, 0.2)
-	QuestOutline.add(can, 0.02)
+	LitterBinsView.add_can(spot, bin.top, _random.randf() * TAU)
 	bin.spot = spot
 
 
@@ -137,11 +130,7 @@ func _take(index: int) -> void:
 
 ## How many bins have a can in them now (for the checks).
 func cans_left() -> int:
-	var count := 0
-	for bin: Dictionary in _bins:
-		if bin.spot != null:
-			count += 1
-	return count
+	return LitterBinsRules.cans_in(_bins)
 
 
 func bin_count() -> int:
@@ -159,12 +148,7 @@ func a_can_spot() -> Node3D:
 ## The bins with a can in them nearest to `near` (world x, z), `count` of them (world x, z;
 ## the story points to them: Story "plekken" "blikjes").
 func can_spots(near: Vector2, count := 3) -> Array:
-	var spots: Array = []
-	for bin: Dictionary in _bins:
-		if bin.spot != null and bin.free:   # not on a platform behind the gates
-			spots.append(Vector2(bin.ground.x, bin.ground.z))
-	spots.sort_custom(func(first: Vector2, second: Vector2) -> bool: return first.distance_to(near) < second.distance_to(near))
-	return spots.slice(0, count)
+	return LitterBinsRules.can_spots(_bins, near, count)
 
 
 ## Makes sure the `count` freely reachable bins nearest to `near` (world x, z) have a can
@@ -173,31 +157,19 @@ func can_spots(near: Vector2, count := 3) -> Array:
 ## returns the farthest of them from `near` in metres. `in_sight`: only bins with no building
 ## between them and `near` (in_sight_of: on the square, not behind the station on it).
 func fill_near(near: Vector2, count: int, alone_within := 0.0, in_sight := false) -> float:
-	var order: Array = range(_bins.size()).filter(func(index: int) -> bool: return _bins[index].free)
+	var seen := Callable()
 	if in_sight:
 		var buildings := get_node_or_null(buildings_path) as GridMap
-		order = order.filter(func(index: int) -> bool:
-			var at: Vector3 = _bins[index].ground
-			return in_sight_of(buildings, near, Vector2(at.x, at.z)))
-	order.sort_custom(func(first: int, second: int) -> bool:
-		var a: Vector3 = _bins[first].ground
-		var b: Vector3 = _bins[second].ground
-		return Vector2(a.x, a.z).distance_to(near) < Vector2(b.x, b.z).distance_to(near))
-	var farthest := 0.0
-	for index: int in order.slice(0, count):
+		seen = func(place: Vector2) -> bool: return in_sight_of(buildings, near, place)
+	var chosen: Array = LitterBinsRules.nearest_free(_bins, near, seen).slice(0, count)
+	for index: int in chosen:
 		if _bins[index].spot == null:
 			_put_can(index)
-		var at: Vector3 = _bins[index].ground
-		farthest = maxf(farthest, Vector2(at.x, at.z).distance_to(near))
-	var chosen: Array = order.slice(0, count)
 	if alone_within > 0.0:
-		for index in _bins.size():
-			var bin: Dictionary = _bins[index]
-			var at: Vector3 = bin.ground
-			if bin.spot != null and not chosen.has(index) and Vector2(at.x, at.z).distance_to(near) <= alone_within:
-				(bin.spot as Node3D).queue_free()
-				bin.spot = null
-	return farthest
+		for index: int in LitterBinsRules.others_with_a_can(_bins, chosen, near, alone_within):
+			(_bins[index].spot as Node3D).queue_free()
+			_bins[index].spot = null
+	return LitterBinsRules.farthest(_bins, chosen, near)
 
 
 ## Whether no building of `buildings` (its ground storey) stands on the straight line from
@@ -205,9 +177,7 @@ func fill_near(near: Vector2, count: int, alone_within := 0.0, in_sight := false
 static func in_sight_of(buildings: GridMap, from: Vector2, to: Vector2) -> bool:
 	if buildings == null:
 		return true
-	var steps := maxi(ceili(from.distance_to(to)), 1)
-	for step in range(1, steps):
-		var at := from.lerp(to, float(step) / steps)
+	for at: Vector2 in LitterBinsRules.sight_points(from, to):
 		var cell := buildings.local_to_map(buildings.to_local(Vector3(at.x, 0.5, at.y)))
 		if buildings.get_cell_item(Vector3i(cell.x, 0, cell.z)) != GridMap.INVALID_CELL_ITEM:
 			return false

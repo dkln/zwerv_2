@@ -192,8 +192,9 @@ func test_view_zoomed_out_and_location_named(test) -> void:
 	await seconds(1.5)
 	var follow: Node = scene.get_node("Volgcamera")
 	test.check(is_equal_approx(follow._zoom, 20.0) and follow._zoom > follow.indoor_zoom, "verder uitgezoomd in het station (%.1f m in beeld)" % follow._zoom)
-	hud._update_location()
-	test.check(hud._location_wijk.text == "STATION DEN HAAG CENTRAAL", "locatie bij de kaart: %s" % hud._location_wijk.text)
+	var player_at: Vector3 = hud.minimap.focus()
+	hud.location.look(scene, Vector2(player_at.x, player_at.z))
+	test.check(hud.location.view.area_text() == "STATION DEN HAAG CENTRAAL", "locatie bij de kaart: %s" % hud.location.view.area_text())
 
 
 ## Overhead lines hang over the tracks, on eight slim masts whose colliders are as slim.

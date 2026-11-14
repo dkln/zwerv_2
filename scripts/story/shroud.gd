@@ -8,9 +8,13 @@ extends RefCounted
 ##   start), "wijken" (names of the city's "wijken" metadata: [name, x0, z0, x1, z1] in cells
 ##   of 4 m) and/or "rechthoeken" ([x0, z0, x1, z1] in cells).
 ## Story owns one (Story.shroud) and says when it changed (Story.shroud_changed).
+## This keeps what is open (behaviour, docs/CODE_LAGEN.md); the shapes and whether a point
+## lies in them are shroud_rules.gd.
+##   const Shroud = preload("res://scripts/story/shroud.gd")
 
+const ShroudRules = preload("res://scripts/story/shroud_rules.gd")
 const AREAS_FILE := "res://data/gebieden.json"
-const CELL := 4.0
+const CELL := ShroudRules.CELL
 
 var start_centre := Vector2.INF   # world x, z of the start circle
 var start_radius := 0.0
@@ -32,10 +36,8 @@ var enabled := true
 ## root node, its "places" and "wijken" metadata).
 func setup(root: Node) -> void:
 	_places = root.get_meta("places", {}) if root else {}
-	for entry: Array in (root.get_meta("wijken", []) if root else []):
-		_wijken[str(entry[0])] = Rect2(float(entry[1]) * CELL, float(entry[2]) * CELL,
-			(float(entry[3]) - float(entry[1]) + 1.0) * CELL, (float(entry[4]) - float(entry[2]) + 1.0) * CELL)
-		_map_rect = _map_rect.merge(_wijken[str(entry[0])]) if _map_rect.has_area() else _wijken[str(entry[0])]
+	_wijken = ShroudRules.wijk_rects(root.get_meta("wijken", []) if root else [])
+	_map_rect = ShroudRules.map_rect(_wijken.values())
 	if _places.is_empty():
 		enabled = false   # no map (a test without the town): nothing to shroud
 		return
@@ -44,13 +46,13 @@ func setup(root: Node) -> void:
 		push_error("shroud: %s is no valid JSON" % AREAS_FILE)
 		enabled = false
 		return
-	var start: Dictionary = data.get("start", {})
-	start_centre = place(str(start.get("midden", "")))
-	start_radius = float(start.get("straal", 50.0))
+	var start := ShroudRules.start_circle(data, _places, 50.0)
+	start_centre = start.centre
+	start_radius = start.radius
 	margin = float(data.get("marge", margin))
 	_areas = data.get("gebieden", {})
 	if start_centre == Vector2.INF:
-		push_error("shroud: the start place %s is not on the map" % str(start.get("midden", "")))
+		push_error("shroud: the start place %s is not on the map" % str(start.place))
 		enabled = false
 
 
@@ -71,25 +73,17 @@ func open_area(name: String) -> bool:
 			push_error("shroud: no area \"%s\" in %s" % [name, AREAS_FILE])
 		return false
 	open_names.append(name)
-	var area: Dictionary = _areas[name]
-	for circle: Dictionary in area.get("cirkels", []):
-		var centre := place(str(circle.get("midden", "")))
-		if centre != Vector2.INF:
-			_circles.append([centre, float(circle.get("straal", 30.0))])
-	for wijk_name in area.get("wijken", []):
-		if _wijken.has(str(wijk_name)):
-			_rects.append(_wijken[str(wijk_name)])
-		else:
-			push_error("shroud: no wijk \"%s\" on the map (area %s)" % [wijk_name, name])
-	for cells: Array in area.get("rechthoeken", []):
-		_rects.append(Rect2(float(cells[0]) * CELL, float(cells[1]) * CELL,
-			(float(cells[2]) - float(cells[0]) + 1.0) * CELL, (float(cells[3]) - float(cells[1]) + 1.0) * CELL))
+	var shapes := ShroudRules.area_shapes(_areas[name], _places, _wijken)
+	_circles.append_array(shapes.circles)
+	_rects.append_array(shapes.rects)
+	for wijk_name: String in shapes.missing:
+		push_error("shroud: no wijk \"%s\" on the map (area %s)" % [wijk_name, name])
 	return true
 
 
 ## The start circle as big as `radius` (it never shrinks).
 func set_start_radius(radius: float) -> bool:
-	if radius <= start_radius + 0.01:
+	if not ShroudRules.grows(radius, start_radius):
 		return false
 	start_radius = radius
 	return true
@@ -97,30 +91,20 @@ func set_start_radius(radius: float) -> bool:
 
 ## The radius the start circle needs to take in `spot` (world x, z) with the margin.
 func radius_to(spot: Vector2) -> float:
-	return start_centre.distance_to(spot) + margin
+	return ShroudRules.radius_to(start_centre, spot, margin)
 
 
 ## Whether the world point (x, z) may be walked on and is shown on the maps.
 func is_open(x: float, z: float) -> bool:
 	if not enabled:
 		return true
-	var point := Vector2(x, z)
-	if not _map_rect.has_point(point):
-		return true
-	if start_centre.distance_squared_to(point) <= start_radius * start_radius:
-		return true
-	for circle: Array in _circles:
-		if (circle[0] as Vector2).distance_squared_to(point) <= float(circle[1]) * float(circle[1]):
-			return true
-	for rect in _rects:
-		if rect.has_point(point):
-			return true
-	return false
+	return ShroudRules.is_open(Vector2(x, z), _map_rect, start_centre, start_radius, _circles, _rects)
 
 
 ## Whether the map cell (cells of 4 m) is open: its middle is.
 func is_open_cell(cell_x: int, cell_z: int) -> bool:
-	return is_open((cell_x + 0.5) * CELL, (cell_z + 0.5) * CELL)
+	var middle := ShroudRules.cell_middle(cell_x, cell_z)
+	return is_open(middle.x, middle.y)
 
 
 ## Everything open (tests and tools that want the whole town).

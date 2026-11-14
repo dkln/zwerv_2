@@ -1,4 +1,6 @@
 extends RefCounted
+## Behaviour (docs/CODE_LAGEN.md): keeps the card and the trip on the player and does what
+## the rules answer (ov_card_rules.gd: the fares, what a reader says, the texts).
 ## The OV-chipkaart and its balance, and the single ticket (Items "ov_chipkaart",
 ## "los_kaartje"): bought at an OV-chipkaart machine (scripts/ui/machines/
 ## ov_machine_screen.gd: in the hall of Den Haag Centraal), used at the gates of the
@@ -20,17 +22,17 @@ extends RefCounted
 ##   OvCard.refusal("saldo")     # what the reader says when it says no
 ##   OvCard.leave_open_trip(player)  # out of the station still checked in (boarding fare)
 
-const MoneyText = preload("res://scripts/common/money_text.gd")
+const Rules = preload("res://scripts/world/station/ov_card_rules.gd")
 const CARD_ITEM := "ov_chipkaart"
 const TICKET_ITEM := "los_kaartje"
 const BALANCE_META := "ov_saldo"
-const CARD_PRICE := 7.5
-const START_BALANCE := 2.5
-const RIDE_FARE := 1.0
-const TICKET_PRICE := 3.5
-const TOP_UPS := [5.0, 10.0, 20.0]
+const CARD_PRICE := Rules.CARD_PRICE
+const START_BALANCE := Rules.START_BALANCE
+const RIDE_FARE := Rules.RIDE_FARE
+const TICKET_PRICE := Rules.TICKET_PRICE
+const TOP_UPS := Rules.TOP_UPS
 ## The boarding fare (instaptarief): what a trip with the card costs when you do not check out.
-const BOARDING_FARE := 4.0
+const BOARDING_FARE := Rules.BOARDING_FARE
 const CHECKED_IN_META := "ov_ingecheckt"
 const CHECKED_IN_WITH_META := "ov_ingecheckt_met"
 const MISSED_CHECK_OUT_META := "ov_niet_uitgecheckt"
@@ -64,10 +66,10 @@ static func buy_card(player: Node) -> String:
 static func top_up(player: Node, amount: float) -> String:
 	if not has_card(player):
 		return "geen_kaart"
-	if float(player.get("money")) + 0.001 < amount:
+	if not Rules.can_top_up(float(player.get("money")), amount):
 		return "geld"
 	player.call("add_money", -amount)
-	player.set_meta(BALANCE_META, snappedf(balance(player) + amount, 0.01))
+	player.set_meta(BALANCE_META, Rules.balance_after_top_up(balance(player), amount))
 	return "ok"
 
 
@@ -84,32 +86,26 @@ static func buy_ticket(player: Node) -> String:
 ## A trip not checked out with the card is charged first (missed_check_out_charge).
 static func check_in(player: Node, apply := true) -> String:
 	var owed := missed_check_out_charge(player)
-	if has_card(player) and balance(player) - owed + 0.001 >= RIDE_FARE:
-		if apply:
-			player.set_meta(BALANCE_META, snappedf(balance(player) - owed - RIDE_FARE, 0.01))
-			player.remove_meta(MISSED_CHECK_OUT_META)
-			_start_trip(player, "kaart")
-		return "kaart"
-	if has_ticket(player):
-		if apply:
-			_start_trip(player, "kaartje")
-		return "kaartje"
-	return "saldo" if has_card(player) else "geen"
+	var result := Rules.check_in_result(has_card(player), has_ticket(player), balance(player), owed)
+	if not apply or Rules.is_refused(result):
+		return result
+	if result == Rules.WITH_CARD:
+		player.set_meta(BALANCE_META, Rules.balance_after_check_in(balance(player), owed))
+		player.remove_meta(MISSED_CHECK_OUT_META)
+	_start_trip(player, result)
+	return result
 
 
 ## Checking out: with a card nothing more; with only a single ticket the gate keeps it.
 ## "kaart", "kaartje" or "geen". `apply` false: only what it would be.
 static func check_out(player: Node, apply := true) -> String:
-	if has_card(player):
-		if apply:
-			_end_trip(player)
-		return "kaart"
-	if has_ticket(player):
-		if apply:
-			player.call("drop_item", TICKET_ITEM)
-			_end_trip(player)
-		return "kaartje"
-	return "geen"
+	var result := Rules.check_out_result(has_card(player), has_ticket(player))
+	if not apply or Rules.is_refused(result):
+		return result
+	if result == Rules.WITH_TICKET:
+		player.call("drop_item", TICKET_ITEM)
+	_end_trip(player)
+	return result
 
 
 ## Holding the card to an OV post (in the station, at a tram or bus stop): checks out when
@@ -119,15 +115,12 @@ static func tap(player: Node) -> Dictionary:
 	var checked_in := is_checked_in(player)
 	var charge := 0.0 if checked_in or check_in(player, false) != "kaart" else missed_check_out_charge(player)
 	var ticket := check_out(player) if checked_in else check_in(player)
-	if ticket == "saldo" or ticket == "geen":
-		return {"ok": false, "text": refusal(ticket, player), "sound": "ov_geweigerd", "charge": 0.0}
-	return {"ok": true, "text": "Uitgecheckt" if checked_in else check_in_text(charge),
-		"sound": "ov_uitchecken" if checked_in else "ov_inchecken", "charge": charge}
+	return Rules.tap_result(checked_in, ticket, charge, missed_check_out_charge(player))
 
 
 ## What an OV post offers the player: "Uitchecken" when checked in, else "Inchecken".
 static func post_action(player: Node) -> String:
-	return "Uitchecken" if is_checked_in(player) else "Inchecken"
+	return Rules.post_action(is_checked_in(player))
 
 
 ## Whether the player is checked in (a trip not checked out yet).
@@ -139,12 +132,10 @@ static func is_checked_in(player: Node) -> bool:
 ## BOARDING_FARE (RIDE_FARE was paid checking in), for a trip left open (MISSED_CHECK_OUT_META)
 ## or one still open with the card; 0 when there is none.
 static func missed_check_out_charge(player: Node) -> float:
-	if player == null or not has_card(player):
+	if player == null:
 		return 0.0
-	var open_with_card := is_checked_in(player) and String(player.get_meta(CHECKED_IN_WITH_META, "kaart")) == "kaart"
-	if bool(player.get_meta(MISSED_CHECK_OUT_META, false)) or open_with_card:
-		return BOARDING_FARE - RIDE_FARE
-	return 0.0
+	var open_with_card := is_checked_in(player) and String(player.get_meta(CHECKED_IN_WITH_META, Rules.WITH_CARD)) == Rules.WITH_CARD
+	return Rules.missed_check_out_charge(has_card(player), bool(player.get_meta(MISSED_CHECK_OUT_META, false)), open_with_card)
 
 
 ## The player leaves the station still checked in: with the card the boarding fare is owed
@@ -165,9 +156,7 @@ static func leave_open_trip(player: Node) -> String:
 
 ## What a reader shows after a check-in that kept `charge` (missed_check_out_charge before it).
 static func check_in_text(charge: float) -> String:
-	if charge <= 0.0:
-		return "Ingecheckt"
-	return "Niet uitgecheckt: %s ingehouden" % MoneyText.euros(charge)
+	return Rules.check_in_text(charge)
 
 
 static func _start_trip(player: Node, paid_with: String) -> void:
@@ -190,6 +179,4 @@ static func _count(player: Node, item_id: String) -> int:
 ## What a reader shows when it says no (check_in / check_out gave "saldo" or "geen"); with
 ## `player` what is needed counts a trip not checked out (missed_check_out_charge).
 static func refusal(result: String, player: Node = null) -> String:
-	if result != "saldo":
-		return "Geen OV-chipkaart"
-	return "Saldo te laag (%s nodig)" % MoneyText.euros(RIDE_FARE + missed_check_out_charge(player))
+	return Rules.refusal(result, missed_check_out_charge(player))

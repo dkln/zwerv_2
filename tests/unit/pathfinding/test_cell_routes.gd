@@ -1,10 +1,9 @@
 extends RefCounted
-## Unit tests of the route finder over cells (scripts/pathfinding/cell_routes.gd) and the step
-## field (step_field.gd), on small hand-made graphs.
-##   tests/run_unit_tests.sh pathfinding
+## Unit tests of the route finder over cells (scripts/pathfinding/cell_routes.gd), on small
+## hand-made graphs (grid_links, also used by test_step_field.gd).
+##   tests/run_unit_tests.sh cell_routes
 
 const CellRoutes = preload("res://scripts/pathfinding/cell_routes.gd")
-const StepField = preload("res://scripts/pathfinding/step_field.gd")
 
 const SIDES: Array[Vector3i] = [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1)]
 
@@ -141,34 +140,3 @@ func test_route_somewhere_is_the_same_for_the_same_seed(test) -> void:
 	for attempt in 5:
 		test.check(routes.route_somewhere(Vector3i(0, 0, 0), links.keys(), first, Vector2i(3, 9), 30, 40)
 				== routes.route_somewhere(Vector3i(0, 0, 0), links.keys(), second, Vector2i(3, 9), 30, 40), "zelfde zaad, zelfde weg")
-
-
-func test_step_field_counts_steps_to_the_nearest_goal(test) -> void:
-	var links := grid_links([
-		".....",
-		".###.",
-		".....",
-	])
-	var links_of := func(cell: Vector3i) -> Array: return links.get(cell, [])
-	var field := StepField.measure([Vector3i(0, 0, 0), Vector3i(4, 0, 2)], links_of, 20)
-	test.check(StepField.steps_at(field, Vector3i(0, 0, 0)) == 0, "een doel: 0")
-	test.check(StepField.steps_at(field, Vector3i(2, 0, 0)) == 2, "2 stappen van het eerste doel")
-	test.check(StepField.steps_at(field, Vector3i(2, 0, 2)) == 2, "2 stappen van het tweede doel")
-	test.check(StepField.steps_at(field, Vector3i(2, 0, 1)) == -1, "een muur: buiten het veld")
-	var short := StepField.measure([Vector3i(0, 0, 0)], links_of, 2)
-	test.check(short.has(Vector3i(2, 0, 0)) and not short.has(Vector3i(3, 0, 0)), "niet verder dan het maximum")
-
-
-func test_step_field_goes_round_a_blocked_step(test) -> void:
-	var links := grid_links([
-		"...",
-		"...",
-	])
-	var links_of := func(cell: Vector3i) -> Array: return links.get(cell, [])
-	var goal := Vector3i(0, 0, 0)
-	# from (1,0) straight to the goal is blocked: round by the second row
-	var field := StepField.measure([goal], links_of, 20, {[Vector3i(1, 0, 0), goal]: true})
-	test.check(StepField.steps_at(field, Vector3i(1, 0, 0)) == 3, "geblokkeerde stap: omweg van 3 (%d)" % StepField.steps_at(field, Vector3i(1, 0, 0)))
-	var downhill := StepField.downhill(field, Vector3i(1, 0, 1), links_of.call(Vector3i(1, 0, 1)))
-	test.check(downhill == ([Vector3i(0, 0, 1)] as Array[Vector3i]), "omlaag: alleen de cel dichter bij het doel")
-	test.check(StepField.downhill(field, goal, links_of.call(goal)).is_empty(), "op het doel: nergens heen")

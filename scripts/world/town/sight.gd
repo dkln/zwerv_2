@@ -6,14 +6,17 @@ extends RefCounted
 ## point the camera looks at (or FARTHEST_METRES from a perspective camera) every FAR_STEPS
 ## steps. Things look again every LOOK_STEPS steps (each at its own moment, so not all at once).
 ## Nothing out of sight is drawn moving (no wheels turning, no walking limbs).
+## This script asks the camera where something is; what follows from it: sight_rules.gd.
+##   const Sight = preload("res://scripts/world/town/sight.gd")
 
 const Iso = preload("res://scripts/camera/iso_camera.gd")
-const OFF_SCREEN_MARGIN := 0.3
-const FAR_METRES := 150.0
-const FARTHEST_METRES := 300.0
-const NEAR_STEPS := 6
-const FAR_STEPS := 10
-const LOOK_STEPS := 15
+const SightRules = preload("res://scripts/world/town/sight_rules.gd")
+const OFF_SCREEN_MARGIN := SightRules.OFF_SCREEN_MARGIN
+const FAR_METRES := SightRules.FAR_METRES
+const FARTHEST_METRES := SightRules.FARTHEST_METRES
+const NEAR_STEPS := SightRules.NEAR_STEPS
+const FAR_STEPS := SightRules.FAR_STEPS
+const LOOK_STEPS := SightRules.LOOK_STEPS
 
 
 ## Physics steps between two updates of something at `spot`: 1 in sight, else NEAR_STEPS or
@@ -21,18 +24,11 @@ const LOOK_STEPS := 15
 static func steps_between(viewport: Viewport, spot: Vector3) -> int:
 	var camera := viewport.get_camera_3d() if viewport else null
 	if camera == null:
-		return 1
-	var from_camera := camera.global_position.distance_to(spot)
-	if camera.projection == Camera3D.PROJECTION_PERSPECTIVE and from_camera > FARTHEST_METRES:
+		return SightRules.EVERY_STEP
+	var perspective := camera.projection == Camera3D.PROJECTION_PERSPECTIVE
+	if SightRules.is_beyond_farthest(perspective, camera.global_position.distance_to(spot)):
 		return FAR_STEPS
-	if not camera.is_position_behind(spot):
-		var screen := viewport.get_visible_rect()
-		var grown := screen.grow_individual(screen.size.x * OFF_SCREEN_MARGIN, screen.size.y * OFF_SCREEN_MARGIN,
-				screen.size.x * OFF_SCREEN_MARGIN, screen.size.y * OFF_SCREEN_MARGIN)
-		if grown.has_point(camera.unproject_position(spot)):
-			return 1
+	if not camera.is_position_behind(spot) and SightRules.is_in_sight(viewport.get_visible_rect(), camera.unproject_position(spot)):
+		return SightRules.EVERY_STEP
 	var focus := Iso.ground_focus(camera)
-	if Vector2(spot.x - focus.x, spot.z - focus.z).length() > FAR_METRES:
-		return FAR_STEPS
-	return NEAR_STEPS
-
+	return SightRules.steps_out_of_sight(Vector2(spot.x - focus.x, spot.z - focus.z).length())

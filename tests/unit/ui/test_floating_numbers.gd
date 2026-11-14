@@ -5,6 +5,8 @@ extends RefCounted
 ##   tests/run_unit_tests.sh floating_numbers
 
 const FloatingNumbers = preload("res://scripts/ui/widgets/floating_numbers.gd")
+const FloatingNumbersLayout = preload("res://scripts/ui/widgets/floating_numbers_layout.gd")
+const FloatingNumbersRules = preload("res://scripts/ui/widgets/floating_numbers_rules.gd")
 const UiStyle = preload("res://scripts/ui/ui_style.gd")
 
 ## The tree of the run (tests/run_unit_tests.gd sets it).
@@ -25,23 +27,7 @@ func _numbers(with_camera: bool) -> FloatingNumbers:
 
 
 static func _labels(numbers: FloatingNumbers) -> Array:
-	return numbers.get_children().filter(func(child: Node) -> bool: return child is Label and not child.is_queued_for_deletion())
-
-
-func test_rise_slows_down_to_its_height(test) -> void:
-	test.check(FloatingNumbers.rise(0.0) == 0.0, "aan het begin: op de plek zelf")
-	test.check(is_equal_approx(FloatingNumbers.rise(1.0), FloatingNumbers.RISE_METRES), "aan het eind: RISE_METRES hoger")
-	test.check(is_equal_approx(FloatingNumbers.rise(0.5), FloatingNumbers.RISE_METRES * 0.75), "halverwege al driekwart: eerst snel, dan langzaam")
-	test.check(FloatingNumbers.rise(0.25) < FloatingNumbers.rise(0.5) and FloatingNumbers.rise(0.5) < FloatingNumbers.rise(0.75), "steeds hoger")
-
-
-func test_pop_and_fade(test) -> void:
-	test.check(is_equal_approx(FloatingNumbers.pop_scale(0.0), FloatingNumbers.POP_SCALE), "het verschijnt groter")
-	test.check(is_equal_approx(FloatingNumbers.pop_scale(FloatingNumbers.POP_SECONDS * 0.5), (FloatingNumbers.POP_SCALE + 1.0) * 0.5), "krimpt")
-	test.check(FloatingNumbers.pop_scale(FloatingNumbers.POP_SECONDS) == 1.0 and FloatingNumbers.pop_scale(1.0) == 1.0, "tot zijn eigen maat")
-	test.check(FloatingNumbers.opacity(0.0) == 1.0 and FloatingNumbers.opacity(FloatingNumbers.FADE_FROM) == 1.0, "tot FADE_FROM helemaal te zien")
-	test.check(is_equal_approx(FloatingNumbers.opacity((1.0 + FloatingNumbers.FADE_FROM) * 0.5), 0.5), "daarna vervaagt het")
-	test.check(is_zero_approx(FloatingNumbers.opacity(1.0)) and FloatingNumbers.opacity(1.5) == 0.0, "aan het eind weg")
+	return numbers.view.numbers()
 
 
 func test_spawn_makes_a_number_with_its_shadow(test) -> void:
@@ -58,7 +44,7 @@ func test_spawn_makes_a_number_with_its_shadow(test) -> void:
 	test.check(label.pivot_offset.is_equal_approx(label.size * 0.5), "het krimpt om zijn midden")
 	var shadow := label.get_child(0) as Label
 	test.check(shadow != null and shadow.text == label.text and shadow.show_behind_parent, "een kopie van de tekst erachter")
-	test.check(shadow.position == FloatingNumbers.SHADOW_OFFSET, "een paar pixels lager")
+	test.check(shadow.position == FloatingNumbersLayout.SHADOW_OFFSET, "een paar pixels lager")
 	test.check(shadow.get_theme_color("font_color").is_equal_approx(UiStyle.faux_3d_colour(gold)), "in de kleur half zo licht")
 	test.check(not label.visible, "zonder camera is het niet te zien")
 	numbers.spawn(Vector3.ZERO, "-12", Color.RED)
@@ -87,14 +73,14 @@ func test_a_number_stands_over_its_point_on_the_screen(test) -> void:
 	numbers.spawn(from, "+€ 1,00", Color.WHITE)
 	var label: Label = _labels(numbers)[0]
 	test.check(label.visible, "voor de camera: te zien")
-	test.check(is_equal_approx(label.scale.x, FloatingNumbers.POP_SCALE) and label.modulate.a == 1.0, "het begint groot en helder")
+	test.check(is_equal_approx(label.scale.x, FloatingNumbersRules.POP_SCALE) and label.modulate.a == 1.0, "het begint groot en helder")
 	var on_screen := camera.unproject_position(from)
 	test.check(is_equal_approx(label.position.y, roundf(on_screen.y - label.size.y * 0.5)), "op de hoogte van het punt (%s bij %s)" % [label.position.y, on_screen.y])
-	test.check(absf(label.position.x + label.size.x * 0.5 - on_screen.x) <= FloatingNumbers.SPREAD_PIXELS + 1.0, "er recht boven, hooguit een paar pixels opzij")
+	test.check(absf(label.position.x + label.size.x * 0.5 - on_screen.x) <= FloatingNumbersLayout.SPREAD_PIXELS + 1.0, "er recht boven, hooguit een paar pixels opzij")
 	var start_height := label.position.y
 	numbers._process(FloatingNumbers.LIFETIME * 0.8)
 	test.check(label.position.y < start_height, "het stijgt (%s naar %s)" % [start_height, label.position.y])
-	var risen := camera.unproject_position(from + Vector3.UP * FloatingNumbers.rise(0.8))
+	var risen := camera.unproject_position(from + Vector3.UP * FloatingNumbersRules.rise(0.8))
 	test.check(is_equal_approx(label.position.y, roundf(risen.y - label.size.y * 0.5)), "zo hoog als rise() zegt")
 	test.check(label.scale == Vector2.ONE and label.modulate.a < 1.0 and label.modulate.a > 0.0, "op zijn eigen maat, half vervaagd (%s)" % label.modulate.a)
 	numbers.free()

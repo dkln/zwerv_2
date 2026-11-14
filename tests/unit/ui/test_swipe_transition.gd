@@ -1,8 +1,9 @@
 extends RefCounted
-## Unit tests of the wipe between two pictures (scripts/ui/swipe_transition.gd): what swipe()
-## puts over everything, one wipe for two calls before it has covered, a new one after.
-## (The wipe itself runs over frames: `covered`, the hold and `finished` are for the
-## integration tests.)
+## Unit tests of the wipe between two pictures (scripts/ui/swipe_transition.gd, the
+## behaviour): what swipe() puts over everything, one wipe for two calls before it has
+## covered, a new one after. (The wipe itself runs over frames: `covered`, the hold and
+## `finished` are for the integration tests.) Its logic and look:
+## test_swipe_transition_rules.gd, test_swipe_transition_view.gd.
 ##   tests/run_unit_tests.sh swipe_transition
 
 const SwipeTransition = preload("res://scripts/ui/swipe_transition.gd")
@@ -44,9 +45,15 @@ func test_a_wipe_that_covered_makes_way_for_a_new_one(test) -> void:
 	second.free()
 
 
-func test_the_edge_goes_to_the_shader(test) -> void:
+func test_the_edge_goes_to_the_view(test) -> void:
 	var swipe := SwipeTransition.swipe(tree)
 	var material := (swipe.get_child(0) as TextureRect).material as ShaderMaterial
+	test.check(swipe.edge() == 0.0, "eerst het hele stilstaande beeld")
 	swipe._set_edge(0.4)
-	test.check(is_equal_approx(material.get_shader_parameter("edge"), 0.4), "de rand staat waar hij gezet is")
+	test.check(is_equal_approx(material.get_shader_parameter("edge"), 0.4) and is_equal_approx(swipe.edge(), 0.4), "de rand staat waar hij gezet is")
 	swipe.free()
+
+
+func test_the_numbers_are_those_of_the_layers(test) -> void:
+	test.check(SwipeTransition.MAX_HOLD_SECONDS == 5.0 and SwipeTransition.SETTLE_FRAMES == 3, "wachten zoals de logica zegt")
+	test.check(is_equal_approx(SwipeTransition.WIPE_SECONDS, 1.1), "vegen zoals het beeld zegt")

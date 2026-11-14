@@ -1,7 +1,8 @@
 extends RefCounted
-## Unit tests of the loading screen (scripts/ui/loading_screen.gd): showing(), what it puts
-## on the screen (the title, what is loading, the bar and the percentage, the CRT look with
-## the HUD's settings), set_progress and fade_out.
+## Unit tests of the loading screen (scripts/ui/loading_screen.gd, the behaviour): showing(),
+## what it asks on the screen (the title, what is loading, the CRT look with the HUD's
+## settings), set_progress, the waiting music and fade_out. Its logic, sizes and look:
+## test_loading_screen_rules.gd, test_loading_screen_layout.gd, test_loading_screen_view.gd.
 ##   tests/run_unit_tests.sh loading_screen
 
 const LoadingScreen = preload("res://scripts/ui/loading_screen.gd")
@@ -57,9 +58,9 @@ func test_it_shows_the_title_what_loads_and_an_empty_bar(test) -> void:
 	var texts := _texts(screen)
 	test.check(texts.has(LoadingScreen.TITLE), "de titel (%s)" % [texts])
 	test.check(texts.has("— STAD LADEN —"), "wat er laadt, in hoofdletters zonder puntjes")
-	test.check(screen._percentage.text == "0%" and screen._bar.fill == 0.0, "nog niets gedaan")
-	test.check(screen._bar.segments == LoadingScreen.SEGMENTS and screen._bar.full_colour == UiStyle.ACCENT, "een balk van dertig amber blokjes")
-	test.check(screen._panel.color == UiStyle.INK, "op inkt")
+	test.check(screen.view().percentage.text == "0%" and screen.view().bar.fill == 0.0, "nog niets gedaan")
+	test.check(screen.view().bar.segments == LoadingScreen.SEGMENTS and screen.view().bar.full_colour == UiStyle.ACCENT, "een balk van dertig amber blokjes")
+	test.check(screen.view().panel.color == UiStyle.INK, "op inkt")
 	_discard(screen)
 	var other := LoadingScreen.new()
 	other.text = "Wijk laden…"
@@ -71,36 +72,36 @@ func test_it_shows_the_title_what_loads_and_an_empty_bar(test) -> void:
 func test_set_progress_fills_the_bar(test) -> void:
 	var screen := LoadingScreen.new()
 	screen.set_progress(0.5)
-	test.check(screen._percentage == null, "nog niet in de boom: er gebeurt niets")
+	test.check(screen.view() == null, "nog niet in de boom: er gebeurt niets")
 	tree.root.add_child(screen)
 	screen.set_progress(0.5)
-	test.check(screen._percentage.text == "50%" and is_equal_approx(screen._bar.fill, 0.5), "halverwege")
+	test.check(screen.view().percentage.text == "50%" and is_equal_approx(screen.view().bar.fill, 0.5), "halverwege")
 	screen.set_progress(0.999)
-	test.check(screen._percentage.text == "99%", "naar beneden afgerond: pas 100% als het af is")
+	test.check(screen.view().percentage.text == "99%", "naar beneden afgerond: pas 100% als het af is")
 	screen.set_progress(1.0)
-	test.check(screen._percentage.text == "100%" and screen._bar.fill == 1.0, "af")
+	test.check(screen.view().percentage.text == "100%" and screen.view().bar.fill == 1.0, "af")
 	_discard(screen)
 
 
 func test_the_crt_look_takes_the_settings_of_the_hud(test) -> void:
 	var plain := LoadingScreen.new()
 	tree.root.add_child(plain)
-	var plain_material := plain._crt.material as ShaderMaterial
+	var plain_material := plain.view().crt.material as ShaderMaterial
 	test.check(is_equal_approx(plain_material.get_shader_parameter("curvature"), 0.05) and is_equal_approx(plain_material.get_shader_parameter("corner"), 0.035), "zonder HUD: de gewone bolling")
-	test.check(plain._crt.get_parent() == plain and plain._crt.get_index() > plain._panel.get_index(), "het CRT-beeld over het scherm heen")
+	test.check(plain.view().get_parent() == plain and plain.view().crt.get_index() > plain.view().panel.get_index(), "het CRT-beeld over het scherm heen")
 	_discard(plain)
 	var hud := HudWithSettings.new()
 	var screen := LoadingScreen.new()
 	screen.hud = hud
 	tree.root.add_child(screen)
-	var material := screen._crt.material as ShaderMaterial
+	var material := screen.view().crt.material as ShaderMaterial
 	test.check(is_equal_approx(material.get_shader_parameter("curvature"), 0.2) and is_equal_approx(material.get_shader_parameter("corner"), 0.1), "met een HUD: die van de HUD")
 	_discard(screen)
 	var other_hud := Node.new()
 	var third := LoadingScreen.new()
 	third.hud = other_hud
 	tree.root.add_child(third)
-	test.check(is_equal_approx((third._crt.material as ShaderMaterial).get_shader_parameter("curvature"), 0.05), "een HUD zonder die instelling: de gewone")
+	test.check(is_equal_approx((third.view().crt.material as ShaderMaterial).get_shader_parameter("curvature"), 0.05), "een HUD zonder die instelling: de gewone")
 	_discard(third)
 	hud.free()
 	other_hud.free()
@@ -131,12 +132,12 @@ func test_fade_out_fades_and_frees_the_screen(test) -> void:
 	tree.root.add_child(screen)
 	_step_tweens(5.0)
 	screen.fade_out()
-	var material := screen._crt.material as ShaderMaterial
+	var material := screen.view().crt.material as ShaderMaterial
 	_step_tweens(LoadingScreen.FADE_SECONDS * 0.5)
-	test.check(is_equal_approx(screen._panel.modulate.a, 0.5) and is_equal_approx(material.get_shader_parameter("opacity"), 0.5), "halverwege: half doorzichtig, ook het CRT-beeld")
+	test.check(is_equal_approx(screen.view().panel.modulate.a, 0.5) and is_equal_approx(material.get_shader_parameter("opacity"), 0.5), "halverwege: half doorzichtig, ook het CRT-beeld")
 	test.check(not screen.is_queued_for_deletion() and LoadingScreen.showing(tree), "en nog niet weg")
 	_step_tweens(LoadingScreen.FADE_SECONDS)
-	test.check(is_zero_approx(screen._panel.modulate.a), "daarna helemaal doorzichtig")
+	test.check(is_zero_approx(screen.view().panel.modulate.a), "daarna helemaal doorzichtig")
 	_step_tweens(0.1)
 	test.check(screen.is_queued_for_deletion(), "en het ruimt zichzelf op")
 	_discard(screen)

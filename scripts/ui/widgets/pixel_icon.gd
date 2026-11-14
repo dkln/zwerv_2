@@ -1,5 +1,7 @@
 extends Control
-## A pixel icon: a bitmap of rows ("#" = coloured), `pixel` screen pixels per pixel.
+## A pixel icon: a bitmap of rows ("#" = coloured), `pixel` screen pixels per pixel. Graphics
+## (docs/CODE_LAGEN.md): only a drawing, as big as its bitmap; nothing to decide.
+##   const PixelIcon = preload("res://scripts/ui/widgets/pixel_icon.gd")
 
 var bitmap: Array = []:
 	set(value):

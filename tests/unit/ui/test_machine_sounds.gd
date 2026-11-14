@@ -1,7 +1,7 @@
 extends RefCounted
 ## Unit tests of the sounds of the machines (scripts/ui/machines/machine_sounds.gd): every
-## sound made once and kept, the waves they are made of (square, sweep, noise, silence), the
-## samples as a 16-bit stream, and playing one on a node in the tree.
+## sound made once and kept, the samples as a 16-bit stream, and playing one on a node in
+## the tree. How the sounds are made: test_machine_sounds_rules.gd.
 ##   tests/run_unit_tests.sh machine_sounds
 
 const MachineSounds = preload("res://scripts/ui/machines/machine_sounds.gd")
@@ -23,29 +23,11 @@ func test_every_machine_sound_is_made_once(test) -> void:
 		test.check(MachineSounds.sound(sound_name) != null, "%s (bijgesteld in volume) bestaat" % sound_name)
 
 
-func test_the_waves_of_the_machine_sounds(test) -> void:
-	var square := MachineSounds._square(441.0, 0.1, 0.5)
-	test.check(square.size() == int(0.1 * MachineSounds.MIX_RATE), "een blokgolf: zoveel samples als hij duurt")
-	var loudest := 0.0
-	var high_samples := 0
-	for sample in square:
-		loudest = maxf(loudest, absf(sample))
-		if sample > 0.0:
-			high_samples += 1
-	test.check(loudest <= 0.5 and loudest > 0.45, "niet harder dan gevraagd (%.2f)" % loudest)
-	test.check(absf(float(high_samples) / square.size() - 0.25) < 0.02, "een kwart van de tijd hoog (%.3f)" % (float(high_samples) / square.size()))
-	test.check(absf(square[square.size() - 1]) < absf(square[0]), "het volume zakt weg")
-	var sweep := MachineSounds._sweep(200.0, 400.0, 0.2, 0.4)
-	test.check(sweep.size() == int(0.2 * MachineSounds.MIX_RATE) and sweep[0] == 0.0, "een glijdende toon: begint zacht")
-	var noise := MachineSounds._noise(0.1, 0.6, 4)
-	test.check(noise == MachineSounds._noise(0.1, 0.6, 4), "ruis is elke keer dezelfde")
-	test.check(noise[0] == noise[3] and is_equal_approx(absf(noise[0]), 0.6), "en houdt zijn niveau `hold` samples vast")
-	test.check(MachineSounds._noise(0.01, 0.5, 0).size() == int(0.01 * MachineSounds.MIX_RATE), "hold 0 telt als 1")
-	var silence := MachineSounds._silence(0.05)
-	test.check(silence.size() == int(0.05 * MachineSounds.MIX_RATE) and silence[0] == 0.0 and silence[silence.size() - 1] == 0.0, "stilte is stil")
-	var stream := MachineSounds._stream(PackedFloat32Array([0.0, 1.0, -1.0, 5.0]))
-	test.check(stream.data.size() == 8 and stream.data.decode_s16(0) == 0 and stream.data.decode_s16(2) == 26000
-		and stream.data.decode_s16(4) == -26000 and stream.data.decode_s16(6) == 26000, "samples naar 16 bits, afgekapt op vol")
+func test_stream_of_makes_a_mono_16_bit_stream(test) -> void:
+	var stream := MachineSounds.stream_of(PackedFloat32Array([0.0, 1.0, -1.0, 5.0]))
+	test.check(stream.format == AudioStreamWAV.FORMAT_16_BITS and stream.mix_rate == MachineSounds.MIX_RATE and not stream.stereo, "mono, 16 bits, op de mixfrequentie")
+	test.check(stream.data.size() == 8 and stream.data.decode_s16(2) == 26000, "elke sample twee bytes")
+	test.check(MachineSounds.stream_of(PackedFloat32Array()).data.is_empty(), "zonder samples: een leeg geluid")
 
 
 func test_play_needs_a_node_in_the_tree(test) -> void:

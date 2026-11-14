@@ -87,10 +87,8 @@ func _build_world() -> void:
 	# a map picture as the HUD builds it from the Grond GridMap
 	var image := Image.create(50, 50, false, Image.FORMAT_RGB8)
 	image.fill(Color("#3A4A6E"))
-	small_hud._minimap_map.texture = ImageTexture.create_from_image(image)
-	small_hud._minimap_origin = Vector2.ZERO
-	small_hud._minimap_cell = 4.0
-	small_hud._visited_wijken = {"Centrum": true}
+	small_hud.minimap.show_map(ImageTexture.create_from_image(image), Vector2.ZERO, 4.0)
+	small_hud.location.mark_visited("Centrum")
 	small_hud.set_quests([
 		{"kind": "verhaal", "label": "VERHAAL", "title": "Een dak boven je hoofd", "distance": "240M",
 			"description": "Willem weet een portiek waar het droog blijft.",
@@ -230,10 +228,10 @@ func test_enter_sets_and_removes_the_marker(test) -> void:
 	await _press(KEY_ENTER)
 	test.check(small_hud.has_waypoint() and small_hud.waypoint() == Vector2(150, 170) and small_hud.waypoint_name() == "DERREK", "Enter: marker op de supermarkt (%s)" % small_hud.waypoint_name())
 	test.check(menu._place_marker.text.begins_with("◆ MARKER STAAT HIER"), "het vak zegt het: " + menu._place_marker.text)
-	test.check(small_hud._beacon != null and small_hud._beacon.is_inside_tree(), "een lichtbaken in de stad")
-	test.check(small_hud._waypoint_chip.visible, "de marker onder het kaartje")
+	test.check(small_hud.marker.beacon() != null and small_hud.marker.beacon().is_inside_tree(), "een lichtbaken in de stad")
+	test.check(small_hud.marker.visible, "de marker onder het kaartje")
 	await _press(KEY_ENTER)
-	test.check(not small_hud.has_waypoint() and not small_hud._waypoint_chip.visible, "nog eens Enter: marker weg")
+	test.check(not small_hud.has_waypoint() and not small_hud.marker.visible, "nog eens Enter: marker weg")
 
 
 ## Escape closes the menu and the game goes on; Tab then opens it on the tab it was left on.
@@ -253,10 +251,11 @@ func test_marker_shows_on_the_minimap_until_arrival(test) -> void:
 	await _marker_on_the_supermarket()
 	await _press(KEY_ESCAPE)
 	test.check(small_hud.has_waypoint(), "de marker staat nog")
-	small_hud._update_waypoint(Vector3(150, 0, 100), 1.0)
-	test.check(small_hud._waypoint_label.text == "DERREK · 70 M", "onder het kaartje: " + small_hud._waypoint_label.text)
-	test.check(small_hud._minimap_waypoint.points.size() == 1, "op het kaartje")
-	small_hud._update_waypoint(Vector3(150, 0, 165), 1.0)
+	small_hud.marker.follow(Vector3(150, 0, 100), true)
+	small_hud.minimap.show_waypoint(small_hud.marker.at())
+	test.check(small_hud.marker.view.shown_text() == "DERREK · 70 M", "onder het kaartje: " + small_hud.marker.view.shown_text())
+	test.check(small_hud.minimap.view.waypoint_marks().size() == 1, "op het kaartje")
+	small_hud.marker.follow(Vector3(150, 0, 165), true)
 	test.check(not small_hud.has_waypoint(), "aangekomen: de marker is weg")
 
 
@@ -331,12 +330,12 @@ func test_story_box_lies_over_the_open_menu(test) -> void:
 	await frames(3)
 	test.check(small_hud.is_showing_story(), "het gedachtevak staat open")
 	test.check(game_menu.layer < small_hud.layer, "het menu ligt onder de HUD (%d < %d)" % [game_menu.layer, small_hud.layer])
-	test.check(not small_hud._hidden_for_modal.is_empty(), "de rest van de HUD is weg (%d delen)" % small_hud._hidden_for_modal.size())
+	test.check(not small_hud.hidden_for_modal().is_empty(), "de rest van de HUD is weg (%d delen)" % small_hud.hidden_for_modal().size())
 	await _press_until(KEY_SPACE, func() -> bool: return not small_hud.is_showing_story())
 	await frames(2)
 	test.check(not small_hud.is_showing_story(), "Spatie sluit het gedachtevak, niet het menu")
 	test.check(game_menu.is_open() and tree.paused, "het menu staat nog open en het spel blijft gepauzeerd")
-	test.check(game_menu.layer == menu_layer and small_hud._hidden_for_modal.is_empty(), "menu weer boven, HUD terug")
+	test.check(game_menu.layer == menu_layer and small_hud.hidden_for_modal().is_empty(), "menu weer boven, HUD terug")
 	game_menu.close()
 
 
@@ -352,8 +351,8 @@ func test_level_up_screen_chooses_a_stat(test) -> void:
 	await frames(3)
 	test.check(small_hud.is_showing_level_up() and tree.paused, "het level-up-scherm staat open, het spel gepauzeerd")
 	test.check(game_menu.layer < small_hud.layer, "ook over het open menu")
-	test.check(small_hud._level_up_screen._row_values[0].text == "80 → %d" % roundi(80.0 + PlayerController.LEVEL_UP_RAISE["gezondheid"]),
-			"maximum nu → straks: " + small_hud._level_up_screen._row_values[0].text)
+	test.check(small_hud._level_up_screen.view().row_values[0].text == "80 → %d" % roundi(80.0 + PlayerController.LEVEL_UP_RAISE["gezondheid"]),
+			"maximum nu → straks: " + small_hud._level_up_screen.view().row_values[0].text)
 	await _press(KEY_S)
 	test.check(small_hud._level_up_screen.selected_stat() == "uithoudingsvermogen", "S kiest de volgende")
 	await _press_until(KEY_ENTER, func() -> bool: return not small_hud.is_showing_level_up())
@@ -551,7 +550,7 @@ func test_xp_and_level_up_in_one_screen(test) -> void:
 	await frames(3)
 	test.check(not small_hud.is_showing_reward() and small_hud.rewards_waiting().is_empty(), "geen los XP-scherm")
 	test.check(small_hud.is_showing_level_up(), "het level-up-scherm")
-	var xp_label: Label = small_hud._level_up_screen._xp_label
+	var xp_label: Label = small_hud._level_up_screen.view().xp_label
 	test.check(xp_label.visible and xp_label.text == "+150 XP", "met de XP erop (%s)" % xp_label.text)
 	small_hud._level_up_screen._since = 1.0
 	small_hud._level_up_screen.take()
@@ -563,7 +562,7 @@ func test_xp_and_level_up_in_one_screen(test) -> void:
 	test.check(String(page.get("item", "")) == "brood" and int(page.get("xp", -1)) == 0, "met spullen: eerst de spullen, zonder XP (%s)" % [page])
 	small_hud._reward_screen.next_page()
 	await frames(3)
-	test.check(small_hud.is_showing_level_up() and small_hud._level_up_screen._xp_label.text == "+40 XP", "dan het level up met de XP")
+	test.check(small_hud.is_showing_level_up() and small_hud._level_up_screen.view().xp_label.text == "+40 XP", "dan het level up met de XP")
 	small_hud._level_up_screen._since = 1.0
 	small_hud._level_up_screen.take()
 	await frames(2)

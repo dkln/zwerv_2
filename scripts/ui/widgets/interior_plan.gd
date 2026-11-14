@@ -5,15 +5,15 @@ extends RefCounted
 ## knee height (furniture) and a ray down (the floor, or lower ground such as the tracks).
 ## Only the static colliders count (GridMap shapes, StaticBody3D): not the player, people or
 ## trains. The physics of the interior must be live (it is visible and not resting).
+## Graphics (docs/CODE_LAGEN.md): it paints the picture of what its probes find; what a
+## probe makes of it is interior_plan_rules.gd.
+##   const InteriorPlan = preload("res://scripts/ui/widgets/interior_plan.gd")
 ##   var plan := InteriorPlan.build(interior)   # {"texture", "origin", "metres_per_pixel", "extent"}
 
-const SAMPLE_METRES := 0.5
+const InteriorPlanRules = preload("res://scripts/ui/widgets/interior_plan_rules.gd")
+const SAMPLE_METRES := InteriorPlanRules.SAMPLE_METRES
 const TOWN_LAYER := 1
-## Heights of the probes over the floor of the interior (its origin), metres.
-const HEAD_HEIGHT := 1.7
-const KNEE_HEIGHT := 0.6
-## Ground this far below the floor counts as lower (the tracks, a pit).
-const LOWER_FROM := -0.4
+## The colour of what a probe finds (InteriorPlanRules.kind).
 const COLOURS := {
 	"empty": Color("#0B0D1A"),
 	"wall": Color("#9AA3D6"),
@@ -30,32 +30,30 @@ static func build(interior: Node3D) -> Dictionary:
 		return {}
 	var space := world.direct_space_state
 	var bounds := _bounds(interior)
-	if bounds.size.x <= 0.0 or bounds.size.y <= 0.0:
+	if not InteriorPlanRules.has_area(bounds.size):
 		return {}
 	var floor_height := interior.global_position.y
-	var width := int(ceil(bounds.size.x / SAMPLE_METRES))
-	var depth := int(ceil(bounds.size.y / SAMPLE_METRES))
-	var image := Image.create(width, depth, false, Image.FORMAT_RGB8)
-	image.fill(COLOURS["empty"])
+	var grid := InteriorPlanRules.grid_size(bounds.size)
+	var image := Image.create(grid.x, grid.y, false, Image.FORMAT_RGB8)
+	image.fill(COLOURS[InteriorPlanRules.EMPTY])
 	var head_probe := PhysicsPointQueryParameters3D.new()
 	head_probe.collision_mask = TOWN_LAYER
 	var knee_probe := PhysicsPointQueryParameters3D.new()
 	knee_probe.collision_mask = TOWN_LAYER
-	for row in depth:
-		for column in width:
-			var spot := bounds.position + (Vector2(column, row) + Vector2(0.5, 0.5)) * SAMPLE_METRES
-			head_probe.position = Vector3(spot.x, floor_height + HEAD_HEIGHT, spot.y)
-			if _hits_static(space.intersect_point(head_probe, 8)):
-				image.set_pixel(column, row, COLOURS["wall"])
-				continue
-			knee_probe.position = Vector3(spot.x, floor_height + KNEE_HEIGHT, spot.y)
-			if _hits_static(space.intersect_point(knee_probe, 8)):
-				image.set_pixel(column, row, COLOURS["furniture"])
-				continue
-			var ground := _ground_below(space, Vector3(spot.x, floor_height + KNEE_HEIGHT, spot.y), floor_height - 4.0)
-			if is_nan(ground):
-				continue
-			image.set_pixel(column, row, COLOURS["lower"] if ground < floor_height + LOWER_FROM else COLOURS["floor"])
+	for row in grid.y:
+		for column in grid.x:
+			var spot := InteriorPlanRules.spot(bounds.position, column, row)
+			var knee := Vector3(spot.x, floor_height + InteriorPlanRules.KNEE_HEIGHT, spot.y)
+			head_probe.position = Vector3(spot.x, floor_height + InteriorPlanRules.HEAD_HEIGHT, spot.y)
+			knee_probe.position = knee
+			# a wall needs no look lower down, furniture no look at the ground
+			var head_blocked := _hits_static(space.intersect_point(head_probe, 8))
+			var knee_blocked := not head_blocked and _hits_static(space.intersect_point(knee_probe, 8))
+			var ground := NAN if head_blocked or knee_blocked \
+					else _ground_below(space, knee, floor_height - InteriorPlanRules.GROUND_DEPTH)
+			var kind := InteriorPlanRules.kind(head_blocked, knee_blocked, ground, floor_height)
+			if kind != InteriorPlanRules.EMPTY:
+				image.set_pixel(column, row, COLOURS[kind])
 	return {"texture": ImageTexture.create_from_image(image), "origin": bounds.position,
 		"metres_per_pixel": SAMPLE_METRES, "extent": bounds.size}
 
@@ -69,8 +67,9 @@ static func _bounds(interior: Node3D) -> Rect2:
 		var half_cell := Vector2(grid.cell_size.x, grid.cell_size.z) * 0.5
 		for cell in grid.get_used_cells():
 			var centre := grid.to_global(grid.map_to_local(cell))
-			lowest = Vector2(minf(lowest.x, centre.x - half_cell.x), minf(lowest.y, centre.z - half_cell.y))
-			highest = Vector2(maxf(highest.x, centre.x + half_cell.x), maxf(highest.y, centre.z + half_cell.y))
+			var area := InteriorPlanRules.grown(lowest, highest, Vector2(centre.x, centre.z), half_cell)
+			lowest = area[0]
+			highest = area[1]
 	if lowest.x == INF:
 		return Rect2()
 	return Rect2(lowest, highest - lowest)

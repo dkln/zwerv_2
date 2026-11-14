@@ -1,10 +1,9 @@
 extends RefCounted
-## Unit tests of choosing a way (scripts/pathfinding/way_choice.gd) and the memory of cells
-## gone over (visit_memory.gd), shared by people and vehicles.
-##   tests/run_unit_tests.sh pathfinding
+## Unit tests of choosing a way (scripts/pathfinding/way_choice.gd), shared by people and
+## vehicles.
+##   tests/run_unit_tests.sh way_choice
 
 const WayChoice = preload("res://scripts/pathfinding/way_choice.gd")
-const VisitMemory = preload("res://scripts/pathfinding/visit_memory.gd")
 
 
 func test_weighted_follows_the_weights(test) -> void:
@@ -38,21 +37,3 @@ func test_shuffle_keeps_everything(test) -> void:
 		test.check(cells.size() == 4 and before.all(func(cell: Vector3i) -> bool: return cells.has(cell)), "niets kwijt, niets dubbel")
 		orders[str(cells)] = true
 	test.check(orders.size() > 5, "verschillende volgordes (%d)" % orders.size())
-
-
-func test_visit_memory_counts_and_fades(test) -> void:
-	var memory := VisitMemory.new(3)
-	var a := Vector3i(0, 0, 0)
-	memory.remember(a)
-	memory.remember(a)
-	memory.remember(a)
-	memory.remember(Vector3i(1, 0, 0))
-	test.check(memory.times(a) == 3 and memory.times(Vector3i(9, 0, 9)) == 0, "telt per cel")
-	test.check(is_equal_approx(memory.average([a, Vector3i(1, 0, 0)], 4), 1.0), "gemiddelde over 4 cellen: (3+1)/4")
-	test.check(memory.average([a], 0) == 0.0, "over 0 cellen: 0")
-	memory.remember(Vector3i(2, 0, 0))
-	memory.remember(Vector3i(3, 0, 0))   # a fourth cell: more than 3, all halved
-	test.check(memory.times(a) == 1, "gehalveerd (%d)" % memory.times(a))
-	test.check(memory.size() == 1, "de cellen op 0 vergeten (%d)" % memory.size())
-	memory.clear()
-	test.check(memory.size() == 0, "leeg na clear")

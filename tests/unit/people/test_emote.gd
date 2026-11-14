@@ -1,39 +1,70 @@
 extends RefCounted
-## Unit tests of the moods of someone talking (scripts/world/people/emote.gd pose_of): every mood
-## its own movement of the body.
+## Unit tests of the node that moves the body of someone talking (scripts/world/people/emote.gd):
+## it starts on a person, changes mood, moves the figure and puts it back.
+##   tests/run_unit_tests.sh test_emote
 
 const Emote = preload("res://scripts/world/people/emote.gd")
+const EmoteRules = preload("res://scripts/world/people/emote_rules.gd")
 
 
-## The most a mood lifts, leans and sways the body over two seconds.
-func _most(mood: String) -> Dictionary:
-	var most := {"lift": 0.0, "lean": 0.0, "sway": 0.0, "turn": 0.0, "lowest": 0.0}
-	for step in 400:
-		var pose := Emote.pose_of(mood, step * 0.005)
-		for part: String in ["lift", "lean", "sway", "turn"]:
-			most[part] = maxf(float(most[part]), absf(float(pose[part])))
-		most.lowest = minf(float(most.lowest), float(pose.lift))
-	return most
+func _person_with_figure() -> Node3D:
+	var person := Node3D.new()
+	var figure := Node3D.new()
+	figure.name = "Figuur"
+	figure.position = Vector3(0.0, 0.5, 0.0)
+	person.add_child(figure)
+	return person
 
 
-## Every mood moves the body its own way: anger shakes without hopping, joy hops, excitement
-## hops higher, sadness leans far forward and sags, neutral only nods.
-func test_every_mood_moves_its_own_way(test) -> void:
-	var angry := _most("boos")
-	var happy := _most("blij")
-	var excited := _most("opgewonden")
-	var sad := _most("verdrietig")
-	var neutral := _most("neutraal")
-	test.check(float(angry.sway) > 0.05 and float(angry.turn) > 0.05 and float(angry.lift) == 0.0, "boos: schudden, niet springen")
-	test.check(float(happy.lift) > 0.1 and float(happy.sway) == 0.0, "blij: op en neer")
-	test.check(float(excited.lift) > float(happy.lift) and float(excited.sway) > 0.0, "opgewonden: hoger, en wiegend")
-	test.check(float(sad.lean) > float(angry.lean) and float(sad.lowest) < 0.0, "verdrietig: voorover en ingezakt")
-	test.check(float(neutral.lean) > 0.0 and float(neutral.lift) == 0.0 and float(neutral.sway) == 0.0, "neutraal: alleen knikken")
+func test_start_puts_one_mood_on_a_person(test) -> void:
+	var person := _person_with_figure()
+	var figure := person.get_node("Figuur") as Node3D
+	Emote.start(person, figure, "blij")
+	var emote := person.get_node_or_null(Emote.NODE_NAME)
+	test.check(emote != null and emote.mood == "blij" and emote.figure == figure, "een Emotie-node met de stemming")
+	test.check(emote.process_mode == Node.PROCESS_MODE_ALWAYS, "gaat door als het spel stilstaat")
+	emote._clock = 1.0
+	Emote.start(person, figure, "blij")
+	test.check(emote._clock == 1.0 and person.get_child_count() == 2, "dezelfde stemming: er verandert niets")
+	Emote.start(person, figure, "boos")
+	test.check(emote.mood == "boos" and emote._clock == 0.0, "een andere stemming begint opnieuw")
+	Emote.start(null, figure, "boos")
+	Emote.start(person, null, "verdrietig")
+	test.check(emote.mood == "boos", "zonder persoon of figuur gebeurt er niets")
+	person.free()
 
 
-## An unknown mood counts as neutral, and every pose has all its parts.
-func test_an_unknown_mood_is_neutral(test) -> void:
-	test.check(Emote.pose_of("onbekend", 0.4) == Emote.pose_of("neutraal", 0.4), "een onbekende stemming is neutraal")
-	for mood: String in Emote.MOODS:
-		var pose := Emote.pose_of(mood, 0.3)
-		test.check(pose.has("lift") and pose.has("lean") and pose.has("sway") and pose.has("turn"), "%s: een hele houding" % mood)
+func test_the_figure_moves_with_the_mood(test) -> void:
+	var person := _person_with_figure()
+	var figure := person.get_node("Figuur") as Node3D
+	Emote.start(person, figure, "blij")
+	var emote := person.get_node(Emote.NODE_NAME)
+	var highest := 0.5
+	for step in 40:
+		emote._process(0.02)
+		highest = maxf(highest, figure.position.y)
+	test.check(highest > 0.55, "blij: het figuur springt (%.2f)" % highest)
+	test.check(emote._weight == 1.0, "de stemming is er helemaal")
+	person.free()
+
+
+func test_stop_puts_the_figure_back(test) -> void:
+	var person := _person_with_figure()
+	var figure := person.get_node("Figuur") as Node3D
+	var before := figure.transform
+	Emote.start(person, figure, "verdrietig")
+	var emote := person.get_node(Emote.NODE_NAME)
+	for step in 10:
+		emote._process(0.05)
+	test.check(not figure.transform.is_equal_approx(before), "verdrietig: het figuur staat anders")
+	Emote.stop(person)
+	test.check(figure.transform.is_equal_approx(before), "gestopt: zoals het stond")
+	test.check(emote.is_queued_for_deletion(), "de Emotie-node gaat weg")
+	Emote.stop(null)
+	Emote.stop(Node.new())
+	person.free()
+
+
+func test_the_pose_is_that_of_the_rules(test) -> void:
+	test.check(Emote.pose_of("boos", 0.3) == EmoteRules.pose_of("boos", 0.3), "pose_of geeft door wat de logica zegt")
+	test.check(Emote.MOODS == EmoteRules.MOODS, "dezelfde stemmingen")

@@ -17,6 +17,11 @@ extends Node3D
 ##   there (again after CHASE_AGAIN when that is over); stop_chasing(who): they walk off;
 ## - set_talk(who, key): which of its "gesprekken" it has now.
 ## It is no part of the crowd round the player (Pedestrians does not move it elsewhere).
+## This is the node (behaviour, docs/CODE_LAGEN.md): who is in town and what each is doing.
+## When they wait, where they stand and what they say is character_rules.gd (logic), the
+## places of their things characters_layout.gd, what you see of them beyond their figure
+## (the marker, the trolley, the smoke, the balloons) characters_view.gd (the child "Beeld").
+##   const Characters = preload("res://scripts/story/characters.gd")
 
 signal arrived(who: String)
 signal got_past(who: String)
@@ -24,50 +29,56 @@ signal got_past(who: String)
 signal chase_near(who: String)
 
 const PedestrianScript = preload("res://scripts/world/people/pedestrian.gd")
-const MachineModels = preload("res://scripts/world/things/machine_models.gd")
-const CigaretteSmokeScript = preload("res://scripts/effects/cigarette_smoke.gd")
-const PROPS_LIBRARY := "res://assets/libraries/props.res"
-const DriverShout = preload("res://scripts/vehicles/driver_shout.gd")
 const Conversations = preload("res://scripts/story/conversations.gd")
-## Metres the player may be behind the one it walks with before that one waits.
-const WAIT_DISTANCE := 9.0
-## Seconds between two calls of the one waiting ("Kom je nog?").
-const CALL_SECONDS := 9.0
-const CALLS := ["Kom je nog?", "Hé, deze kant op!", "Niet treuzelen, jong."]
-const LOOK_COLOURS := ["skin", "hair", "coat", "trim", "trousers", "shoes", "cap", "helmet"]
-## The marker over the one you walk with: an amber diamond (the colour of the quest places on
-## the map), this high over its head, this big, bobbing and turning.
-const LEAD_MARKER_COLOUR := Color("#FFB830")
-const LEAD_MARKER_ABOVE := 0.55
-const LEAD_MARKER_SIZE := 0.22
-const LEAD_MARKER_BOB := 0.08
-const LEAD_MARKER_TURN := 2.0
-## Seconds between two lines of its "onderweg" while you walk along (not while it waits), and
-## how high over its feet the balloon stands (times its "lengte").
-const TALK_EVERY := Vector2(9.0, 16.0)
-const TALK_HEIGHT := 2.3
+const CharacterRules = preload("res://scripts/story/character_rules.gd")
+const CharactersLayout = preload("res://scripts/story/characters_layout.gd")
+const CharactersView = preload("res://scripts/story/characters_view.gd")
+const StreetPitches = preload("res://scripts/story/street_pitches.gd")
+const StreetPaperSellers = preload("res://scripts/story/street_paper_sellers.gd")
+const WAIT_DISTANCE := CharacterRules.WAIT_DISTANCE
+const CALL_SECONDS := CharacterRules.CALL_SECONDS
+const CALLS := CharacterRules.CALLS
+const TALK_EVERY := CharacterRules.TALK_EVERY
+const ARRIVED_NEAR := CharacterRules.ARRIVED_NEAR
+const CHASE_DELAY := CharacterRules.CHASE_DELAY
+const CHASE_FROM := CharacterRules.CHASE_FROM
+const CHASE_SHOW := CharacterRules.CHASE_SHOW
+const CHASE_REACH := CharacterRules.CHASE_REACH
+const CHASE_GROUP_REACH := CharacterRules.CHASE_GROUP_REACH
+const CHASE_AGAIN := CharacterRules.CHASE_AGAIN
+const CHASE_RETARGET := CharacterRules.CHASE_RETARGET
+const CHASE_PACE := CharacterRules.CHASE_PACE
+const CHASE_LOST := CharacterRules.CHASE_LOST
+const STOP_FOR_PLAYER := CharacterRules.STOP_FOR_PLAYER
+const MUTTER_WITHIN := CharacterRules.MUTTER_WITHIN
+const MUTTER_EVERY := CharacterRules.MUTTER_EVERY
 
 @export var pedestrians_path := NodePath("../Voetgangers")
 @export var player_path := NodePath("../Speler")
 @export var hud_path := NodePath("../HUD")
 
+## What is seen of them beyond their figure.
+var view: CharactersView
+
 var _people := {}           # who -> Pedestrian
-var _leading := {}          # who -> {"points": Array[Vector2], "index": int, "call": float}
+var _leading := {}          # who -> CharacterRules.lead_state
 var _blocking := {}         # who -> {"past": Vector2, "reach": float, "near": bool}
-var _chasing := {}          # who -> {"group": Array[String], "wait": float, "retarget": float}
-var _wandering := {}        # who -> {"points": Array[Vector2], "index", "pause", "phase", "puff", "smoke", "trolley"} (wander)
+var _chasing := {}          # who -> CharacterRules.chase_state
+var _wandering := {}        # who -> CharacterRules.wander_state (wander)
 var _random := RandomNumberGenerator.new()
 
 
 func _ready() -> void:
 	_random.randomize()
+	view = CharactersView.new()
+	add_child(view)
 	# who comes up to you in the street once the second mission is done (street_pitches.gd)
-	var pitches: Node = load("res://scripts/story/street_pitches.gd").new()
+	var pitches: Node = StreetPitches.new()
 	pitches.name = "Straatwerving"
 	pitches.set("characters", self)
 	add_child(pitches)
 	# sellers of Straatnieuws by the supermarkets, coming and going (street_paper_sellers.gd)
-	var paper_sellers: Node = load("res://scripts/story/street_paper_sellers.gd").new()
+	var paper_sellers: Node = StreetPaperSellers.new()
 	paper_sellers.name = "Straatnieuws"
 	paper_sellers.set("characters", self)
 	add_child(paper_sellers)
@@ -80,7 +91,7 @@ func _process(delta: float) -> void:
 	var player := get_node_or_null(player_path) as Node3D
 	if player == null:
 		return
-	var feet := Vector2(player.global_position.x, player.global_position.z)
+	var feet := CharacterRules.flat(player.global_position)
 	for who: String in _leading.keys():
 		_lead_step(who, feet, delta)
 	for who: String in _blocking.keys():
@@ -104,9 +115,9 @@ func has_character(who: String) -> bool:
 ## Where `who` stands now (world x, z): the person when it is in town, else its place; INF
 ## when it has neither.
 func spot_of(who: String) -> Vector2:
-	var person := _people.get(who) as Node3D
-	if person and is_instance_valid(person):
-		return Vector2(person.global_position.x, person.global_position.z)
+	var person := person_of(who)
+	if person:
+		return CharacterRules.flat(person.global_position)
 	return _place(str(data().get(who, {}).get("plek", "")))
 
 
@@ -135,7 +146,7 @@ func appear(who: String, at := Vector2.INF) -> Node3D:
 	walker.name = "Personage_" + who
 	walker.town = pedestrians
 	walker.walker_seed = hash(who)
-	walker.wanted_look = _look(entry.get("uiterlijk", {}))
+	walker.wanted_look = CharactersView.look_of(entry.get("uiterlijk", {}))
 	walker.pace_factor = float(entry.get("tempo", 1.0))
 	walker.figure_scale = float(entry.get("lengte", 1.0))
 	walker.start_cell = pedestrians.nearest_walkable(pedestrians.cell_of(Vector3(spot.x, 0.0, spot.y)))
@@ -160,94 +171,51 @@ func set_talk(who: String, key: String) -> void:
 ## `who` walks along `points` (world x, z) with the player; at the last: arrived(who).
 ## `waits` false: it walks there in one go without waiting for the player, and arrived(who)
 ## comes once the player is within ARRIVED_NEAR of it there (you only follow it a bit).
-const ARRIVED_NEAR := 12.0
-
-
 func lead(who: String, points: Array, waits := true) -> void:
 	var person := appear(who) as Pedestrian
 	if person == null or points.is_empty():
 		arrived.emit.call_deferred(who)
 		return
 	var entry: Dictionary = data().get(who, {})
-	_leading[who] = {"points": points, "index": 0, "call": CALL_SECONDS * 0.5,
-		"talk": _random.randf_range(3.0, 6.0), "said": "", "pace": person.get("_pace"), "waits": waits,
-		"there": false}
+	var first_talk := _random.randf_range(CharacterRules.FIRST_TALK.x, CharacterRules.FIRST_TALK.y)
+	_leading[who] = CharacterRules.lead_state(points, waits, person.get("_pace"), first_talk)
 	if entry.has("tempo_meelopen"):
 		person.set("_pace", float(entry.tempo_meelopen))
-	_mark(person, true)
+	view.show_lead_marker(person, _head_height(person))
 	_send(person, points[0])
 
 
-## The marker over the head of the one you walk with (LEAD_MARKER_*), on or off.
-func _mark(person: Pedestrian, on: bool) -> void:
-	var marker := person.get_node_or_null("Meeloopmarkering") as MeshInstance3D
-	if not on:
-		if marker:
-			marker.queue_free()
-		return
-	if marker:
-		return
-	var diamond := SphereMesh.new()   # four sides, one ring: a diamond
-	diamond.radial_segments = 4
-	diamond.rings = 1
-	diamond.radius = LEAD_MARKER_SIZE * 0.6
-	diamond.height = LEAD_MARKER_SIZE * 1.6
-	var material := StandardMaterial3D.new()
-	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	material.albedo_color = LEAD_MARKER_COLOUR
-	material.no_depth_test = true   # seen through roofs and trees too
-	material.render_priority = 1
-	diamond.material = material
-	marker = MeshInstance3D.new()
-	marker.name = "Meeloopmarkering"
-	marker.mesh = diamond
-	marker.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	person.add_child(marker)
-	marker.position.y = _head_height(person) + LEAD_MARKER_ABOVE
-
-
 ## The top of `person`'s figure over its feet (its "lengte" counted).
-func _head_height(person: Pedestrian) -> float:
-	var who := str(person.get_meta(Conversations.CHARACTER_META, ""))
-	return 1.8 * float(data().get(who, {}).get("lengte", 1.0))
-
-
-func _bob_marker(person: Pedestrian) -> void:
-	var marker := person.get_node_or_null("Meeloopmarkering") as Node3D
-	if marker == null:
-		return
-	var clock := Time.get_ticks_msec() / 1000.0
-	marker.position.y = _head_height(person) + LEAD_MARKER_ABOVE + sin(clock * 3.0) * LEAD_MARKER_BOB
-	marker.rotation.y = clock * LEAD_MARKER_TURN
+func _head_height(person: Node3D) -> float:
+	return CharacterRules.head_height(data().get(str(person.get_meta(Conversations.CHARACTER_META, "")), {}))
 
 
 ## The one you walk with stops leading: its own pace again, no marker.
 func _stop_leading(who: String) -> void:
-	var lead: Dictionary = _leading.get(who, {})
+	var lead_state: Dictionary = _leading.get(who, {})
 	_leading.erase(who)
 	var person := person_of(who) as Pedestrian
 	if person == null:
 		return
-	if lead.get("pace") != null:
-		person.set("_pace", float(lead.pace))
-	_mark(person, false)
+	if lead_state.get("pace") != null:
+		person.set("_pace", float(lead_state.pace))
+	view.hide_lead_marker(person)
 
 
 ## Now and then a line of its "onderweg" while walking ahead of the player (not while it waits
 ## or the game stands still), never the same line twice in a row.
-func _talk_on_the_way(who: String, person: Pedestrian, lead: Dictionary, delta: float) -> void:
-	var lines: Array = data().get(who, {}).get("onderweg", [])
+func _talk_on_the_way(who: String, person: Pedestrian, lead_state: Dictionary, delta: float) -> void:
+	var entry: Dictionary = data().get(who, {})
+	var lines: Array = entry.get("onderweg", [])
 	if lines.is_empty() or get_tree().paused:
 		return
-	lead.talk = float(lead.talk) - delta
-	if float(lead.talk) > 0.0:
+	lead_state.talk = float(lead_state.talk) - delta
+	if float(lead_state.talk) > 0.0:
 		return
-	lead.talk = _random.randf_range(TALK_EVERY.x, TALK_EVERY.y)
-	var line := str(lines[_random.randi() % lines.size()])
-	if line == str(lead.said) and lines.size() > 1:
-		line = str(lines[(lines.find(line) + 1) % lines.size()])
-	if DriverShout.shout_line(person, line, TALK_HEIGHT * float(data().get(who, {}).get("lengte", 1.0)), "neutraal"):
-		lead.said = line
+	lead_state.talk = _random.randf_range(TALK_EVERY.x, TALK_EVERY.y)
+	var line := CharacterRules.other_line(lines, _random.randi(), str(lead_state.said))
+	if view.show_line(person, line, CharactersLayout.TALK_HEIGHT * float(entry.get("lengte", 1.0)), "neutraal"):
+		lead_state.said = line
 
 
 ## The last line `who` said on the way (_talk_on_the_way), "" none yet.
@@ -259,11 +227,8 @@ func last_said_on_the_way(who: String) -> String:
 ## way to `past`) until the player talks to it or is nearer to `past` than it: got_past(who).
 func in_the_way(who: String, reach: float, at := Vector2.INF, past := Vector2.INF) -> void:
 	var player := get_node_or_null(player_path) as Node3D
-	var spot := at
-	if spot == Vector2.INF and player and past != Vector2.INF:
-		var feet := Vector2(player.global_position.x, player.global_position.z)
-		spot = feet + (past - feet).normalized() * minf(12.0, feet.distance_to(past) * 0.5)
-	var person := appear(who, spot) as Pedestrian
+	var feet: Variant = CharacterRules.flat(player.global_position) if player else null
+	var person := appear(who, CharacterRules.blocking_spot(at, feet, past)) as Pedestrian
 	if person == null:
 		got_past.emit.call_deferred(who)
 		return
@@ -278,28 +243,27 @@ func _lead_step(who: String, feet: Vector2, delta: float) -> void:
 	if person == null:
 		_leading.erase(who)
 		return
-	var lead: Dictionary = _leading[who]
-	_bob_marker(person)
-	var points: Array = lead.points
-	var goal: Vector2 = points[lead.index]
-	var at := Vector2(person.global_position.x, person.global_position.z)
-	if lead.there:
+	var lead_state: Dictionary = _leading[who]
+	view.move_lead_marker(person, _head_height(person), Time.get_ticks_msec() / 1000.0)
+	var points: Array = lead_state.points
+	var goal: Vector2 = points[lead_state.index]
+	var at := CharacterRules.flat(person.global_position)
+	if lead_state.there:
 		# there, without waiting on the way: done once the player has come up too
-		if feet.distance_to(at) <= ARRIVED_NEAR:
+		if CharacterRules.has_come_along(feet, at):
 			_stop_leading(who)
 			arrived.emit(who)
 		return
 	# the player far behind: it waits (and calls now and then); ahead of it: on it goes
-	var behind: bool = lead.waits and feet.distance_to(at) > WAIT_DISTANCE and feet.distance_to(goal) > at.distance_to(goal)
-	if behind:
+	if CharacterRules.is_behind(lead_state.waits, feet, at, goal):
 		person.story_held = true
-		lead.call = float(lead.call) - delta
-		if float(lead.call) <= 0.0:
-			lead.call = CALL_SECONDS
-			_say(person, CALLS[_random.randi() % CALLS.size()])
+		lead_state.call = float(lead_state.call) - delta
+		if float(lead_state.call) <= 0.0:
+			lead_state.call = CALL_SECONDS
+			view.show_call(get_node_or_null(hud_path), person, CALLS[_random.randi() % CALLS.size()])
 		return
-	_talk_on_the_way(who, person, lead, delta)
-	if person.story_held and person.story_goal == Pedestrian.NO_STORY_GOAL and not _at(person, goal):
+	_talk_on_the_way(who, person, lead_state, delta)
+	if person.story_held and person.story_goal == Pedestrian.NO_STORY_GOAL and not CharacterRules.is_at(at, goal):
 		_send(person, goal)
 	elif person.story_held and person.story_goal != Pedestrian.NO_STORY_GOAL:
 		person.story_held = false
@@ -308,19 +272,20 @@ func _lead_step(who: String, feet: Vector2, delta: float) -> void:
 func _on_arrived(who: String) -> void:
 	if not _leading.has(who):
 		return
-	var lead: Dictionary = _leading[who]
-	lead.index = int(lead.index) + 1
-	if int(lead.index) >= (lead.points as Array).size():
-		if not lead.waits:
-			lead.index = (lead.points as Array).size() - 1
-			lead.there = true   # it stands there; arrived once the player is near (_lead_step)
+	var lead_state: Dictionary = _leading[who]
+	var count := (lead_state.points as Array).size()
+	lead_state.index = int(lead_state.index) + 1
+	if CharacterRules.is_route_done(int(lead_state.index), count):
+		if not lead_state.waits:
+			lead_state.index = count - 1
+			lead_state.there = true   # it stands there; arrived once the player is near (_lead_step)
 			return
 		_stop_leading(who)
 		arrived.emit(who)
 		return
 	var person := person_of(who) as Pedestrian
 	if person:
-		_send(person, lead.points[lead.index])
+		_send(person, lead_state.points[lead_state.index])
 
 
 func _send(person: Pedestrian, goal: Vector2) -> void:
@@ -330,40 +295,22 @@ func _send(person: Pedestrian, goal: Vector2) -> void:
 	person.story_held = false
 
 
-func _at(person: Pedestrian, goal: Vector2) -> bool:
-	return Vector2(person.global_position.x, person.global_position.z).distance_to(goal) < 6.0
-
-
 # ------------------------------------------------------------------ after the player
-
-## Seconds after the step begins before they come; how far off (m) they appear, behind the
-## player; how near they come (the one who talks, the others round it); seconds between two
-## conversations; how often (s) they look again where the player is.
-const CHASE_DELAY := 4.0
-const CHASE_FROM := 10.0
-## How near (m) they are when they count as there (chase_near: the step shows in the task list).
-const CHASE_SHOW := 6.0
-const CHASE_REACH := 2.2
-const CHASE_GROUP_REACH := 3.4
-const CHASE_AGAIN := 6.0
-const CHASE_RETARGET := 0.5
-## How fast (m/s) they come after you: about as fast as you walk, so you cannot simply walk
-## away; and how far behind (m) they may lose you before they turn up behind you again (round
-## a corner, out of a building).
-const CHASE_PACE := 3.2
-const CHASE_LOST := 40.0
-
 
 ## `who` (and `group`) come up to the player and keep after it; at it, `who` talks (see the top).
 ## `first_pages`: shown (GameHud.show_story) once, when it reaches the player the first time,
 ## before its conversation (the narrator warning you).
 func chase(who: String, group: Array = [], first_pages: Array = []) -> void:
-	_chasing[who] = {"group": group.duplicate(), "wait": CHASE_DELAY, "retarget": 0.0, "came": false,
-		"first_pages": first_pages.duplicate()}
+	_chasing[who] = CharacterRules.chase_state(group, first_pages)
 
 
 func is_chasing(who: String) -> bool:
 	return _chasing.has(who)
+
+
+## Whether anyone of the story is after the player now.
+func is_anyone_chasing() -> bool:
+	return not _chasing.is_empty()
 
 
 ## Whether who chases the player has been near it (CHASE_SHOW) yet.
@@ -375,12 +322,12 @@ func is_chase_near(who: String) -> bool:
 func stop_chasing(who: String) -> void:
 	var chase_state: Dictionary = _chasing.get(who, {})
 	_chasing.erase(who)
-	for name: String in [who] + Array(chase_state.get("group", [])):
+	for name: String in CharacterRules.chase_names(who, chase_state):
 		var person := person_of(name) as Pedestrian
 		if person:
 			person.story_held = false
 			person.story_goal = Pedestrian.NO_STORY_GOAL
-			person.set("_pace", 1.3)   # an ordinary walk again
+			person.set("_pace", CharacterRules.WALK_PACE)   # an ordinary walk again
 
 
 func _chase_step(who: String, player: Node3D, feet: Vector2, delta: float) -> void:
@@ -402,58 +349,65 @@ func _chase_step(who: String, player: Node3D, feet: Vector2, delta: float) -> vo
 	if leader == null:
 		_chasing.erase(who)
 		return
-	var leader_at := Vector2(leader.global_position.x, leader.global_position.z)
-	if not chase_state.get("near", false) and leader_at.distance_to(feet) <= CHASE_SHOW:
+	var gap := CharacterRules.flat(leader.global_position).distance_to(feet)
+	if not chase_state.get("near", false) and CharacterRules.chase_shows(gap):
 		chase_state["near"] = true
 		chase_near.emit(who)
-	if leader_at.distance_to(feet) > CHASE_LOST:
+	if CharacterRules.chase_lost(gap):
 		# lost you: they turn up behind you again
 		_come_after(who, chase_state, player)
 		chase_state.retarget = 0.0
 		return
-	if leader_at.distance_to(feet) <= CHASE_REACH:
-		leader.story_held = true
-		leader.story_goal = Pedestrian.NO_STORY_GOAL
-		if float(chase_state.wait) <= 0.0 and player.has_method("talk_to"):
-			chase_state.wait = CHASE_AGAIN
-			var first_pages: Array = chase_state.first_pages
-			if not first_pages.is_empty() and hud and hud.has_method("show_story"):
-				chase_state.first_pages = []
-				hud.show_story(first_pages, func() -> void:
-					if is_instance_valid(leader) and _chasing.has(who):
-						player.talk_to.call_deferred(leader))
-			else:
-				player.talk_to(leader)
+	if CharacterRules.chase_reached(gap):
+		_talk_to_the_player(who, leader, chase_state, player, hud)
 		return
 	if float(chase_state.retarget) > 0.0:
 		return
 	chase_state.retarget = CHASE_RETARGET
 	_send(leader, feet)
+	_send_followers(chase_state.group, feet)
+
+
+## The one who chases has reached the player: it stands, and starts its conversation (again
+## after CHASE_AGAIN), the first time after the pages that warn you.
+func _talk_to_the_player(who: String, leader: Pedestrian, chase_state: Dictionary, player: Node3D, hud: Node) -> void:
+	leader.story_held = true
+	leader.story_goal = Pedestrian.NO_STORY_GOAL
+	if float(chase_state.wait) > 0.0 or not player.has_method("talk_to"):
+		return
+	chase_state.wait = CHASE_AGAIN
+	var first_pages: Array = chase_state.first_pages
+	if not first_pages.is_empty() and hud and hud.has_method("show_story"):
+		chase_state.first_pages = []
+		hud.show_story(first_pages, func() -> void:
+			if is_instance_valid(leader) and _chasing.has(who):
+				player.talk_to.call_deferred(leader))
+	else:
+		player.talk_to(leader)
+
+
+## The others of a chase: round the player, each on its own side; standing once they are there.
+func _send_followers(group: Array, feet: Vector2) -> void:
 	var round_index := 0
-	for name: String in chase_state.group:
+	for name: String in group:
 		var follower := person_of(name) as Pedestrian
 		if follower == null:
 			continue
 		round_index += 1
-		var follower_at := Vector2(follower.global_position.x, follower.global_position.z)
-		if follower_at.distance_to(feet) <= CHASE_GROUP_REACH:
+		if CharacterRules.follower_reached(CharacterRules.flat(follower.global_position).distance_to(feet)):
 			follower.story_held = true
 			follower.story_goal = Pedestrian.NO_STORY_GOAL
 		else:
-			# round the player, each on its own side
-			_send(follower, feet + Vector2.from_angle(TAU * round_index / 3.0) * 1.5)
+			_send(follower, CharacterRules.follower_spot(feet, round_index))
 
 
 ## They appear CHASE_FROM behind the player (away from where it looks), side by side.
 func _come_after(who: String, chase_state: Dictionary, player: Node3D) -> void:
-	var back := Vector2(player.global_basis.z.x, player.global_basis.z.z).normalized()
-	if back == Vector2.ZERO:
-		back = Vector2.DOWN
-	var from := Vector2(player.global_position.x, player.global_position.z) + back * CHASE_FROM
-	var side := back.orthogonal()
-	var names: Array = [who] + Array(chase_state.group)
+	var names := CharacterRules.chase_names(who, chase_state)
+	var spots := CharacterRules.chase_spots(CharacterRules.flat(player.global_position),
+		CharacterRules.flat(player.global_basis.z), names.size())
 	for index in names.size():
-		var spot := from + side * (index - (names.size() - 1) * 0.5) * 1.4
+		var spot: Vector2 = spots[index]
 		var already := person_of(str(names[index])) as Pedestrian
 		var person := appear(str(names[index]), spot) as Pedestrian
 		if person == null:
@@ -476,11 +430,11 @@ func _block_step(who: String, feet: Vector2) -> void:
 	var past: Vector2 = block.past
 	if past == Vector2.INF:
 		return
-	var at := Vector2(person.global_position.x, person.global_position.z)
+	var at := CharacterRules.flat(person.global_position)
 	# by it and then on the far side (walked round it): past it
-	if feet.distance_to(at) < float(block.reach):
+	if CharacterRules.is_by(feet, at, float(block.reach)):
 		block["near"] = true
-	if block.get("near", false) and feet.distance_to(past) + 2.0 < at.distance_to(past) and feet.distance_to(at) > 3.0:
+	if CharacterRules.is_past(block.get("near", false), feet, at, past):
 		_let_go(who)
 
 
@@ -517,26 +471,14 @@ func wander(who: String) -> Node3D:
 	var home := _place(str(entry.get("plek", "")))
 	if roam.is_empty() or home == Vector2.INF:
 		return appear(who)
-	var points: Array[Vector2] = []
-	for point: Array in roam.get("punten", []):
-		points.append(home + Vector2(float(point[0]), float(point[1])))
-	if points.is_empty():
-		points.append(home)
-	var person := appear(who, points[0]) as Pedestrian
+	var state := CharacterRules.wander_state(CharacterRules.round_points(home, roam.get("punten", [])), roam, [4.0, 8.0])
+	var person := _put_on_round(who, state)
 	if person == null:
 		return null
-	person.story_held = true   # it does not walk the pavements as the crowd: we move it
-	person.global_position = Vector3(points[0].x, person.global_position.y, points[0].y)
-	var state := {"points": points, "index": 0, "pause": 1.0, "phase": 0.0, "puff": 2.0,
-		"speed": float(roam.get("tempo", 0.6)), "rest": roam.get("rookpauze", [4.0, 8.0]),
-		"smoke": null, "trolley": null}
 	if bool(roam.get("karretje", false)):
-		state.trolley = _trolley_full_of_cans(person)
+		state.trolley = view.show_trolley(person)
 	if bool(roam.get("rookt", false)):
-		var smoke: Node3D = CigaretteSmokeScript.new()
-		smoke.name = "Rook"
-		state.smoke = smoke
-		_put_smoke_at_mouth.call_deferred(person, smoke)
+		state.smoke = view.show_smoke(person)
 	_wandering[who] = state
 	return person
 
@@ -552,20 +494,24 @@ func is_wandering(who: String) -> bool:
 func wander_round(who: String, home: Vector2, points: Array) -> Node3D:
 	if _wandering.has(who):
 		return person_of(who)
-	var entry: Dictionary = data().get(who, {})
-	var roam: Dictionary = entry.get("zwerft", {})
-	var round_points: Array[Vector2] = []
-	for point: Vector2 in points:
-		round_points.append(home + point)
-	if round_points.is_empty():
-		round_points.append(home)
-	var person := appear(who, round_points[0]) as Pedestrian
+	var roam: Dictionary = data().get(who, {}).get("zwerft", {})
+	var state := CharacterRules.wander_state(CharacterRules.round_points(home, points), roam, [3.0, 7.0])
+	var person := _put_on_round(who, state)
+	if person == null:
+		return null
+	_wandering[who] = state
+	return person
+
+
+## `who` in town at the first point of the round of `state`, held by the story (it does not
+## walk the pavements as the crowd: we move it); null when it cannot appear.
+func _put_on_round(who: String, state: Dictionary) -> Pedestrian:
+	var first: Vector2 = state.points[0]
+	var person := appear(who, first) as Pedestrian
 	if person == null:
 		return null
 	person.story_held = true
-	person.global_position = Vector3(round_points[0].x, person.global_position.y, round_points[0].y)
-	_wandering[who] = {"points": round_points, "index": 0, "pause": 1.0, "phase": 0.0, "puff": 2.0,
-		"speed": float(roam.get("tempo", 0.6)), "rest": roam.get("rookpauze", [3.0, 7.0]), "smoke": null, "trolley": null}
+	person.global_position = Vector3(first.x, person.global_position.y, first.y)
 	return person
 
 
@@ -580,70 +526,55 @@ func dismiss(who: String) -> void:
 		person.queue_free()
 
 
-## Metres from the player at which the one wandering stops and turns to them.
-const STOP_FOR_PLAYER := 3.5
-## The arm of the one smoking goes to the mouth for this long (s), every SMOKE_EVERY s.
-const DRAG_SECONDS := 1.4
-const SMOKE_EVERY := Vector2(3.0, 6.0)
-## Where the trolley stands before the one pushing it, and its handle (in the person's space).
-const TROLLEY_AHEAD := 0.8
-const HANDLE := Vector3(0.0, 0.9, 0.36)
-
-
 func _wander_step(who: String, feet: Vector2, delta: float) -> void:
 	var person := person_of(who) as Pedestrian
 	var state: Dictionary = _wandering[who]
 	if person == null:
 		_wandering.erase(who)
 		return
-	var at := Vector2(person.global_position.x, person.global_position.z)
+	var at := CharacterRules.flat(person.global_position)
 	var walking := 0.0
-	if at.distance_to(feet) < STOP_FOR_PLAYER:
+	if CharacterRules.stops_for(at.distance_to(feet)):
 		# someone to talk to: stand and look at them
-		var to_player := feet - at
-		person.rotation.y = lerp_angle(person.rotation.y, atan2(to_player.x, to_player.y), 1.0 - exp(-delta * 6.0))
+		_turn(person, feet - at, CharacterRules.TURN_TO_PLAYER, delta)
 	elif float(state.pause) > 0.0:
 		state.pause = float(state.pause) - delta
 	else:
 		var points: Array = state.points
-		var goal: Vector2 = points[int(state.index)]
-		var to_goal := goal - at
-		if to_goal.length() < 0.3:
+		var to_goal: Vector2 = points[int(state.index)] - at
+		if CharacterRules.round_point_reached(to_goal):
 			state.index = (int(state.index) + 1) % points.size()
 			var rest: Array = state.rest
 			state.pause = _random.randf_range(float(rest[0]), float(rest[1]))
 		else:
-			var step := minf(float(state.speed) * delta, to_goal.length())
 			var direction := to_goal.normalized()
-			person.global_position += Vector3(direction.x, 0.0, direction.y) * step
-			person.rotation.y = lerp_angle(person.rotation.y, atan2(direction.x, direction.y), 1.0 - exp(-delta * 4.0))
+			person.global_position += Vector3(direction.x, 0.0, direction.y) * CharacterRules.step_length(float(state.speed), delta, to_goal)
+			_turn(person, direction, CharacterRules.TURN_TO_WAY, delta)
 			walking = 1.0
 	_pose_wanderer(person, state, walking, delta)
 	_mutter(who, person, state, at.distance_to(feet), delta)
 
 
-## Metres from the player within which the one wandering mutters to itself, the seconds
-## between two lines, and how high over its feet the balloon stands.
-const MUTTER_WITHIN := 30.0
-const MUTTER_EVERY := Vector2(8.0, 25.0)
-const MUTTER_HEIGHT := 2.3
+## `person` turns a little more to look along `way` (x, z).
+func _turn(person: Node3D, way: Vector2, rate: float, delta: float) -> void:
+	person.rotation.y = lerp_angle(person.rotation.y, CharacterRules.facing(way), CharacterRules.turn_share(delta, rate))
 
 
 ## Now and then a line of its "mompelt" (personages.json) in a speech balloon over its head
-## (DriverShout.shout_line, its own babble): only with the player near and not talking (the
-## game going on), never the same line twice in a row.
+## (its own babble): only with the player near and not talking (the game going on), never
+## the same line twice in a row.
 func _mutter(who: String, person: Node3D, state: Dictionary, player_distance: float, delta: float) -> void:
 	var lines: Array = data().get(who, {}).get("mompelt", [])
-	if lines.is_empty() or get_tree().paused or player_distance > MUTTER_WITHIN:
+	if lines.is_empty() or get_tree().paused or not CharacterRules.mutters(player_distance):
 		return
-	state.mutter = float(state.get("mutter", _random.randf_range(2.0, 6.0))) - delta
+	if not state.has("mutter"):
+		state.mutter = _random.randf_range(CharacterRules.FIRST_MUTTER.x, CharacterRules.FIRST_MUTTER.y)
+	state.mutter = float(state.mutter) - delta
 	if float(state.mutter) > 0.0:
 		return
 	state.mutter = _random.randf_range(MUTTER_EVERY.x, MUTTER_EVERY.y)
-	var line := str(lines[_random.randi() % lines.size()])
-	if line == str(state.get("said", "")) and lines.size() > 1:
-		line = str(lines[(lines.find(line) + 1) % lines.size()])
-	if DriverShout.shout_line(person, line, MUTTER_HEIGHT, "neutraal"):
+	var line := CharacterRules.other_line(lines, _random.randi(), str(state.get("said", "")))
+	if view.show_line(person, line, CharactersLayout.MUTTER_HEIGHT, "neutraal"):
 		state.said = line
 
 
@@ -655,87 +586,27 @@ func last_muttered(who: String) -> String:
 ## The walk (slow, pushing), both hands on the trolley's handle; standing, now and then the right
 ## hand to the mouth for a drag, and a cloud blown out after it (CigaretteSmoke.exhale).
 func _pose_wanderer(person: Pedestrian, state: Dictionary, walking: float, delta: float) -> void:
-	var figure := person.figure
-	if figure == null:
-		return
-	state.phase = fmod(float(state.phase) + float(state.speed) * delta / TownsfolkFigure.STRIDE * PI * walking, TAU)
-	figure.walk(float(state.phase), walking)
-	var dragging := false
-	if walking == 0.0 and state.smoke != null:
-		state.puff = float(state.puff) - delta
-		if float(state.puff) <= 0.0:
-			state.puff = _random.randf_range(SMOKE_EVERY.x, SMOKE_EVERY.y) + DRAG_SECONDS
-			state.drag_left = DRAG_SECONDS
-		if float(state.get("drag_left", 0.0)) > 0.0:
-			state.drag_left = float(state.drag_left) - delta
-			dragging = true
-			if float(state.drag_left) <= 0.0:
-				(state.smoke as Node).call("exhale")
-	var handle := person.to_global(Vector3(0.0, HANDLE.y, HANDLE.z))
-	var right := Vector3(0.17, 0.0, 0.0)
-	if state.trolley != null:
-		figure.aim_arm("left", figure.to_local(handle) - right)
-		if not dragging:
-			figure.aim_arm("right", figure.to_local(handle) + right)
-	if dragging:
-		figure.aim_arm("right", TownsfolkFigure.cell_point(Vector3(7.0, 27.0, -3.0)))
-
-
-## The roll-up's smoke at the mouth of `person`'s figure (once the figure is built).
-func _put_smoke_at_mouth(person: Pedestrian, smoke: Node3D) -> void:
-	if not is_instance_valid(person) or not is_instance_valid(smoke):
-		return
 	if person.figure == null:
-		get_tree().create_timer(0.3).timeout.connect(_put_smoke_at_mouth.bind(person, smoke))
 		return
-	person.figure.add_child(smoke)
-	smoke.position = TownsfolkFigure.cell_point(Vector3(7.0, 28.5, -4.5))
+	state.phase = CharacterRules.walk_phase(float(state.phase), float(state.speed), delta, TownsfolkFigure.STRIDE, walking)
+	view.show_walk(person, float(state.phase), walking)
+	var dragging := walking == 0.0 and state.smoke != null and _takes_a_drag(state, delta)
+	view.show_hands(person, state.trolley != null, dragging)
 
 
-## A shopping trolley (the props' winkel/winkelwagen) before `person`, full of cans
-## (MachineModels.can_mesh) and a few bulging bin bags.
-func _trolley_full_of_cans(person: Node3D) -> Node3D:
-	var trolley := Node3D.new()
-	trolley.name = "Winkelkarretje"
-	trolley.position = Vector3(0.0, 0.0, TROLLEY_AHEAD)
-	person.add_child(trolley)
-	var library := load(PROPS_LIBRARY) as MeshLibrary
-	var item := library.find_item_by_name("winkel/winkelwagen") if library else -1
-	var basket := AABB(Vector3(-0.3, 0.45, -0.4), Vector3(0.6, 0.45, 0.8))
-	if item >= 0:
-		var model := MeshInstance3D.new()
-		model.name = "Model"
-		model.mesh = library.get_item_mesh(item)
-		model.transform = library.get_item_mesh_transform(item)
-		trolley.add_child(model)
-		var box := model.transform * model.mesh.get_aabb()
-		basket = AABB(Vector3(box.position.x + 0.08, box.position.y + box.size.y * 0.5, box.position.z + 0.12),
-				Vector3(box.size.x - 0.16, box.size.y * 0.45, box.size.z - 0.24))
-	var random := RandomNumberGenerator.new()
-	random.seed = 4711
-	# the bags first, low in the basket; the cans heaped up over and round them
-	for bag_index in 2:
-		var bag := MeshInstance3D.new()
-		bag.name = "Vuilniszak%d" % (bag_index + 1)
-		var bag_mesh := BoxMesh.new()
-		bag_mesh.size = Vector3(0.26, 0.24, 0.3)
-		var bag_material := StandardMaterial3D.new()
-		bag_material.albedo_color = Color("#2A2C30") if bag_index == 0 else Color("#3A5A8A")
-		bag_material.roughness = 0.4
-		bag_mesh.material = bag_material
-		bag.mesh = bag_mesh
-		bag.position = basket.position + Vector3(basket.size.x * (0.3 + 0.4 * bag_index), basket.size.y * 0.5, basket.size.z * (0.35 + 0.3 * bag_index))
-		bag.rotation.y = random.randf_range(-0.4, 0.4)
-		trolley.add_child(bag)
-	for can_index in 12:
-		var can := MeshInstance3D.new()
-		can.name = "Blikje%d" % (can_index + 1)
-		can.mesh = MachineModels.can_mesh()
-		can.position = basket.position + Vector3(random.randf() * basket.size.x, basket.size.y * random.randf_range(0.5, 1.0), 0.15 + random.randf() * (basket.size.z - 0.15))
-		can.scale = Vector3.ONE * 0.8
-		can.rotation = Vector3(random.randf_range(-1.4, 1.4), random.randf() * TAU, random.randf_range(-1.4, 1.4))
-		trolley.add_child(can)
-	return trolley
+## The one smoking, standing: every SMOKE_EVERY seconds a drag of DRAG_SECONDS, a cloud blown
+## out when it ends. True while the hand is at the mouth.
+func _takes_a_drag(state: Dictionary, delta: float) -> bool:
+	state.puff = float(state.puff) - delta
+	if float(state.puff) <= 0.0:
+		state.puff = _random.randf_range(CharacterRules.SMOKE_EVERY.x, CharacterRules.SMOKE_EVERY.y) + CharacterRules.DRAG_SECONDS
+		state.drag_left = CharacterRules.DRAG_SECONDS
+	if float(state.get("drag_left", 0.0)) <= 0.0:
+		return false
+	state.drag_left = float(state.drag_left) - delta
+	if float(state.drag_left) <= 0.0:
+		view.show_puff(state.smoke)
+	return true
 
 
 ## The trolley of `who` (wander, "karretje"), or null.
@@ -756,20 +627,6 @@ func _place(key: String) -> Vector2:
 	var root: Node = owner if owner else get_parent()
 	var places: Dictionary = root.get_meta("places", {}) if root else {}
 	return places.get(key, Vector2.INF)
-
-
-## A look of personages.json ("uiterlijk": colours as #RRGGBB) as TownsfolkFigure has it.
-static func _look(entry: Dictionary) -> Dictionary:
-	var look := {}
-	for key: String in entry:
-		look[key] = Color(str(entry[key])) if key in LOOK_COLOURS else entry[key]
-	return look
-
-
-func _say(person: Node3D, text: String) -> void:
-	var hud := get_node_or_null(hud_path)
-	if hud and hud.has_method("show_floating_number"):
-		hud.show_floating_number(person.global_position + Vector3.UP * 2.3, text, Color.WHITE, 13)
 
 
 ## The state to put back after a test (TownWorld.reset): everyone away.

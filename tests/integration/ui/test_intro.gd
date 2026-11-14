@@ -10,6 +10,7 @@ extends "res://tests/integration/support/town_test.gd"
 ## A run of its own: it changes the current scene and checks what the process has loaded.
 ##   tests/run_integration_tests.sh intro [-- volledig]
 
+const DrifterRules = preload("res://scripts/ui/intro/drifter_rules.gd")
 const MENU_SCENE := "res://scenes/hoofdmenu.tscn"
 ## Seconds of the clock one test may take (the whole intro lasts as long as its music).
 const TEST_SECONDS := 250.0
@@ -87,15 +88,16 @@ func test_intro_offers_to_skip(test) -> void:
 ## Every character and tractor that drifts through space can be made, the characters centred.
 func test_every_drifter_can_be_made(test) -> void:
 	var intro := await _start_intro()
-	for drifter_name: String in intro.PlayerCharacter.ORDER + intro.TRACTOR_MODELS:
-		var is_character: bool = intro.PlayerCharacter.ARCHETYPES.has(drifter_name)
-		var drifter: Node3D = intro._make_character(drifter_name) if is_character else intro._make_tractor(drifter_name)
+	var drifter_view: Node = intro.drifter().view()
+	for drifter_name: String in DrifterRules.PlayerCharacter.ORDER + DrifterRules.TRACTOR_MODELS:
+		var is_character: bool = DrifterRules.is_character(drifter_name)
+		var drifter: Node3D = drifter_view.make_character(drifter_name) if is_character else drifter_view.make_tractor(drifter_name)
 		test.check(drifter != null, "zwever %s gemaakt" % drifter_name)
 		if drifter == null:
 			continue
 		add_to_root(drifter)
 		if is_character:
-			intro._centre_character(drifter)
+			drifter_view.centre_character(drifter)
 			test.check((drifter.get_child(0) as Node3D).position.y < 0.0, "personage %s in het midden" % drifter_name)
 		drifter.queue_free()
 

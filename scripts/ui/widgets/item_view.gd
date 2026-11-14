@@ -5,18 +5,15 @@ extends SubViewportContainer
 ## of the portraits (widgets/player_portrait.gd: a warm key from the front left and above, a
 ## soft fill, a white rim from behind, a low grey ambient). The camera frames the whole
 ## model whatever its size. Pixels stay hard (nearest filter), as the rest of the pixel UI.
-## It turns while the game is paused (the reward screen pauses it).
+## It turns while the game is paused (the reward screen pauses it). Graphics
+## (docs/CODE_LAGEN.md): a picture on its own, nothing to decide; how it is framed and moves
+## comes from item_view_layout.gd.
+##   const ItemView = preload("res://scripts/ui/widgets/item_view.gd")
 ##   var view := ItemView.new()
 ##   view.show_item("kroket")
 
-## How fast it turns (radians a second), how far it leans towards you (degrees), how much
-## room there is round it (share of its size), and its bob (metres per metre of model, per second).
 const GraphicsSettings = preload("res://scripts/ui/graphics_settings.gd")
-const TURN_SPEED := 0.9
-const TILT_DEGREES := 18.0
-const ROOM := 1.35
-const BOB_SHARE := 0.04
-const BOB_SPEED := 2.0
+const ItemViewLayout = preload("res://scripts/ui/widgets/item_view_layout.gd")
 const ItemModels = preload("res://scripts/world/things/item_models.gd")
 
 var _viewport: SubViewport
@@ -79,10 +76,10 @@ func show_item(item_id: String) -> void:
 	var mesh: Mesh = ItemModels.mesh_for(item_id)
 	_model.mesh = mesh
 	_clock = 0.0
-	var box := mesh.get_aabb() if mesh else AABB(Vector3.ZERO, Vector3.ONE * 0.1)
+	var box := mesh.get_aabb() if mesh else ItemViewLayout.NO_MODEL_BOX
 	# turning round its middle
-	_model.position = -box.get_center()
-	_model_size = maxf(box.size.length(), 0.01)
+	_model.position = ItemViewLayout.model_position(box)
+	_model_size = ItemViewLayout.model_size(box)
 	_frame()
 
 
@@ -95,8 +92,8 @@ func _process(delta: float) -> void:
 	if not is_visible_in_tree():
 		return
 	_clock += delta
-	_pivot.rotation = Vector3(deg_to_rad(TILT_DEGREES), _clock * TURN_SPEED, 0.0)
-	_pivot.position.y = sin(_clock * BOB_SPEED) * _model_size * BOB_SHARE
+	_pivot.rotation = ItemViewLayout.turn(_clock)
+	_pivot.position.y = ItemViewLayout.bob(_clock, _model_size)
 
 
 ## The camera looking at the middle from the front, the whole model (its diagonal, so every
@@ -104,9 +101,8 @@ func _process(delta: float) -> void:
 func _frame() -> void:
 	if _camera == null:
 		return
-	var aspect := size.x / maxf(size.y, 1.0)
-	_camera.size = _model_size * ROOM / minf(aspect, 1.0)
-	_camera.position = Vector3(0.0, 0.0, _model_size * 4.0)
-	_camera.near = 0.01
-	_camera.far = _model_size * 10.0
+	_camera.size = ItemViewLayout.camera_size(_model_size, size)
+	_camera.position = ItemViewLayout.camera_position(_model_size)
+	_camera.near = ItemViewLayout.CAMERA_NEAR
+	_camera.far = _model_size * ItemViewLayout.CAMERA_FAR
 	_camera.look_at_from_position(_camera.position, Vector3.ZERO, Vector3.UP)

@@ -131,7 +131,7 @@ func _ready() -> void:
 	_build_detail()
 	_build_begin()
 	_build_footer()
-	var settings := MainMenu._read_settings()
+	var settings := MainMenu.read_settings()
 	_crt = UiStyle.make_crt_overlay(0.05 if settings.crt else 0.0, 0.035 if settings.crt else 0.0,
 			get_viewport().get_visible_rect().size)
 	add_child(_crt)

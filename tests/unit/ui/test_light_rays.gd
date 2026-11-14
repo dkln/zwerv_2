@@ -30,15 +30,3 @@ func test_light_rays_turn_only_while_seen(test) -> void:
 	rays._process(1.0)
 	test.check(is_equal_approx(rays._clock, 0.75), "verborgen: weer stil")
 	rays.free()
-
-
-func test_ray_triangle(test) -> void:
-	var middle := Vector2(50, 40)
-	var ray := LightRays.ray_triangle(middle, 100.0, 0.0, 0.1)
-	test.check(ray.size() == 3 and ray[0] == middle, "een driehoek vanuit het midden")
-	test.check(is_equal_approx(ray[1].distance_to(middle), 100.0) and is_equal_approx(ray[2].distance_to(middle), 100.0), "`reach` px lang")
-	test.check(is_equal_approx((ray[1] - middle).angle(), -0.1) and is_equal_approx((ray[2] - middle).angle(), 0.1), "`spread` naar elke kant van de hoek")
-	var turned := LightRays.ray_triangle(middle, 100.0, PI * 0.5)
-	var along := ((turned[1] + turned[2]) * 0.5 - middle).normalized()
-	test.check(along.is_equal_approx(Vector2.DOWN), "gedraaid: de straal wijst langs de hoek (%s)" % along)
-	test.check(is_equal_approx(absf((turned[1] - middle).angle_to(turned[2] - middle)), 2.0 * LightRays.RAY_SPREAD), "zonder breedte: de gewone")

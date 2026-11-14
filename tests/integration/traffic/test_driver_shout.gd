@@ -96,7 +96,7 @@ func test_the_balloon_shows_its_line_and_goes(test) -> void:
 		return
 	var balloon: Control = layer.get_child(0)
 	await seconds(1.0)
-	var text: String = balloon._text.get_parsed_text()
+	var text: String = balloon.view.text_label().get_parsed_text()
 	test.check(text.strip_edges() != "" and balloon.visible, "met tekst in beeld")
 	print("ballon: ", text)
 	await seconds(DriverShout.HOLD_SECONDS + 1.5)

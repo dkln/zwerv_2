@@ -50,38 +50,37 @@ extends RefCounted
 ##
 ## Headings are Vector2i on the map: x = east, y = south.
 
-enum Kind { STREET, MAIN_ROAD, TUNNEL, MOTORWAY }
+## This script holds the network of one ground GridMap (its tables, read from the tiles) and
+## answers the vehicles. The deciding is road_network_rules.gd (what a tile gives, two-way
+## lanes, kinds of road, who is allowed), the road surface road_network_layout.gd (heights,
+## ramps); what is here under the old names stays for everyone who uses the network.
 
-## Speed limit for cars per kind of road (km/h): 50 in town, 80 in a tunnel, 100 on the
-## motorway. A placed tile can have its own (LANE_CHOICES).
-const SPEED_LIMIT_KMH := {
-	Kind.STREET: 50.0,
-	Kind.MAIN_ROAD: 50.0,
-	Kind.TUNNEL: 80.0,
-	Kind.MOTORWAY: 100.0,
-}
+const RoadNetworkRules = preload("res://scripts/traffic/road_network_rules.gd")
+const RoadNetworkLayout = preload("res://scripts/traffic/road_network_layout.gd")
+
+const Kind = RoadNetworkRules.Kind
+## Speed limit for cars per kind of road (km/h); a placed tile can have its own (LANE_CHOICES).
+const SPEED_LIMIT_KMH := RoadNetworkRules.SPEED_LIMIT_KMH
 ## Names of the kinds in the tile metadata ("road").
-const KIND_NAMES := {"straat": Kind.STREET, "hoofdweg": Kind.MAIN_ROAD, "tunnel": Kind.TUNNEL, "snelweg": Kind.MOTORWAY}
+const KIND_NAMES := RoadNetworkRules.KIND_NAMES
 ## Lane headings of the metadata ("lanes"), on the unturned tile.
-const LOCAL_HEADINGS := {"N": Vector3(0, 0, -1), "S": Vector3(0, 0, 1), "E": Vector3(1, 0, 0), "W": Vector3(-1, 0, 0)}
+const LOCAL_HEADINGS := RoadNetworkRules.LOCAL_HEADINGS
 ## Meta of the ground GridMap with the lanes chosen per placed tile (see above).
 const LANE_CHOICES := &"lane_choices"
 ## Meta of the ground GridMap with the cells a vehicle can move over from (see above).
 const MOVE_OVERS := &"move_overs"
-## The kinds of road users a tile can allow (Vehicle.vehicle_kind): "auto" (with its buses,
-## the motorbike and the microcar), "brommer" (mopeds, scooters), "fiets" (cyclists, the
-## fatbike) and "voetganger" (no walkers drive the network yet).
-const ROAD_USER_KINDS: Array[String] = ["auto", "brommer", "fiets", "voetganger"]
+## The kinds of road users a tile can allow (Vehicle.vehicle_kind).
+const ROAD_USER_KINDS: Array[String] = RoadNetworkRules.ROAD_USER_KINDS
 
-const CELL := 4.0
+const CELL := RoadNetworkLayout.CELL
 ## Top of the road surface above the bottom of its layer (metres; 2 voxels of 0.125 m).
-const ROAD_SURFACE := 0.25
-const ZEBRA_TILE := "weg/zebrapad"
+const ROAD_SURFACE := RoadNetworkLayout.ROAD_SURFACE
+const ZEBRA_TILE := RoadNetworkRules.ZEBRA_TILE
 ## No road cell (returned by find and step).
-const NONE := Vector3i(0, -1000, 0)
-const AXES: Array[Vector2i] = [Vector2i(1, 0), Vector2i(0, 1)]
+const NONE := RoadNetworkRules.NONE
+const AXES: Array[Vector2i] = RoadNetworkRules.AXES
 ## Rounds of deciding two-way lanes from the road around them.
-const MAX_ROUNDS := 8
+const MAX_ROUNDS := RoadNetworkRules.MAX_ROUNDS
 
 static var _networks := {}   # scene root instance id -> RoadNetwork
 
@@ -114,8 +113,11 @@ func _init(ground: GridMap) -> void:
 	if _ground == null or _ground.mesh_library == null:
 		return
 	_read_tiles()
-	_decide_two_way_lanes()
-	_decide_kinds()
+	RoadNetworkRules.decide_two_way_lanes(_lanes, _from_context, _rises)
+	# cells without a kind or speed limit of their own (markings, crossings) take that of the
+	# nearest cell along their lanes that has one
+	RoadNetworkRules.pass_on_along_lanes(_kinds, _lanes, _rises)
+	RoadNetworkRules.pass_on_along_lanes(_speeds, _lanes, _rises)
 	var move_overs: Dictionary = _ground.get_meta(MOVE_OVERS, {})
 	for from_cell: Vector3i in move_overs:
 		if _lanes.has(from_cell) and _lanes.has(move_overs[from_cell]):
@@ -146,10 +148,7 @@ func lanes(cell: Vector3i) -> Array[Vector2i]:
 
 ## True if this heading of the cell comes from the road around it, not from its tile.
 func is_from_context(cell: Vector3i, heading: Vector2i) -> bool:
-	for axis: Vector2i in _from_context.get(cell, []):
-		if heading == axis or heading == -axis:
-			return true
-	return false
+	return RoadNetworkRules.is_along(_from_context.get(cell, []), heading)
 
 
 ## True if the lanes of this cell were chosen for this placed tile (Build dock).
@@ -174,18 +173,18 @@ func ground_cells() -> Array:
 
 ## The heading on the map of a side of the tile in this cell ("N" = forward, its back).
 func heading_of_side(cell: Vector3i, side: String) -> Vector2i:
-	return _flat(_turn_of(cell) * LOCAL_HEADINGS[side])
+	return RoadNetworkRules.heading_of_side(_turn_of(cell), side)
 
 
 func is_crossing(cell: Vector3i) -> bool:
-	return _on_axis(cell, Vector2i(1, 0)).size() > 0 and _on_axis(cell, Vector2i(0, 1)).size() > 0
+	return RoadNetworkRules.is_crossing(_lanes.get(cell, []))
 
 
 func is_zebra(cell: Vector3i) -> bool:
 	return tile_name(cell) == ZEBRA_TILE
 
 
-func kind(cell: Vector3i) -> Kind:
+func kind(cell: Vector3i) -> RoadNetworkRules.Kind:
 	return _kinds.get(cell, Kind.STREET)
 
 
@@ -196,7 +195,7 @@ func speed_limit_kmh(cell: Vector3i) -> float:
 
 ## Speed limit on this cell (m/s).
 func speed_limit(cell: Vector3i) -> float:
-	return speed_limit_kmh(cell) / 3.6
+	return RoadNetworkRules.metres_per_second(speed_limit_kmh(cell))
 
 
 ## True if the speed limit of this cell was chosen for this placed tile (Build dock).
@@ -206,23 +205,14 @@ func has_chosen_speed(cell: Vector3i) -> bool:
 
 ## True if a road user of this kind ("auto", "bus", "fiets", ...) may come on the cell.
 func allows(cell: Vector3i, vehicle_kind: String) -> bool:
-	var allowed := allowed_kinds(cell)
-	return vehicle_kind in allowed or (vehicle_kind == "bus" and "auto" in allowed)
+	return RoadNetworkRules.allows(allowed_kinds(cell), vehicle_kind)
 
 
 ## Road cell at map cell (x, z) on this level or, onto or off a ramp, up to
 ## `max_level_change` levels up or down (one per cell a ramp spans); NONE if there is
 ## none. `from_cell`: the cell it is reached from (for the ramp check), or NONE.
 func find(x: int, z: int, level: int, from_cell := NONE, max_level_change := 1) -> Vector3i:
-	var same := Vector3i(x, level, z)
-	if _lanes.has(same):
-		return same
-	for level_change in range(1, max_level_change + 1):
-		for direction in [1, -1]:
-			var other := Vector3i(x, level + direction * level_change, z)
-			if _lanes.has(other) and (_rises.has(other) or _rises.has(from_cell)):
-				return other
-	return NONE
+	return RoadNetworkRules.find(_lanes, _rises, x, z, level, from_cell, max_level_change)
 
 
 ## The road cell a vehicle on `cell` can move over into (MOVE_OVERS), or NONE.
@@ -238,12 +228,7 @@ func step(cell: Vector3i, heading: Vector2i) -> Vector3i:
 ## True if the rails of `cell` lead a vehicle that arrives in heading `arriving` out in heading
 ## `leaving`; true on a tile without rails.
 func rail_connects(cell: Vector3i, arriving: Vector2i, leaving: Vector2i) -> bool:
-	if not _rails.has(cell):
-		return true
-	for rail: Array in _rails[cell]:
-		if (rail[0] == -arriving and rail[1] == leaving) or (rail[1] == -arriving and rail[0] == leaving):
-			return true
-	return false
+	return not _rails.has(cell) or RoadNetworkRules.rail_connects(_rails[cell], arriving, leaving)
 
 
 ## Every cell with rails.
@@ -258,12 +243,7 @@ func rails(cell: Vector3i) -> Array:
 
 ## The headings in which the rails of `cell` leave it, both ways along them.
 func rail_headings(cell: Vector3i) -> Array[Vector2i]:
-	var headings: Array[Vector2i] = []
-	for rail: Array in _rails.get(cell, []):
-		for heading: Vector2i in rail:
-			if not heading in headings:
-				headings.append(heading)
-	return headings
+	return RoadNetworkRules.rail_headings(_rails.get(cell, []))
 
 
 ## True if rail vehicles of this kind stop beside the tile in `cell` (metadata "platform").
@@ -278,41 +258,23 @@ func is_platform_for(cell: Vector3i, vehicle_kind: String) -> bool:
 ## Road cell with a lane in `heading` for this kind of vehicle nearest to map cell `near`,
 ## street level first.
 func nearest(near: Vector2i, heading: Vector2i, vehicle_kind := "auto") -> Vector3i:
-	var best := NONE
-	var best_distance := INF
-	for cell: Vector3i in _lanes:
-		if not lanes(cell).has(heading) or not allows(cell, vehicle_kind):
-			continue
-		var distance := Vector2(cell.x - near.x, cell.z - near.y).length() + absf(cell.y) * 100.0
-		if distance < best_distance:
-			best_distance = distance
-			best = cell
-	return best
+	return RoadNetworkRules.nearest(_lanes, _only, near, heading, vehicle_kind)
 
 
 ## Centre of a cell on the map (metres), at the height of its road surface.
 func centre(cell: Vector3i) -> Vector3:
-	var middle := Vector2(cell.x + 0.5, cell.z + 0.5) * CELL
-	return Vector3(middle.x, height(cell, middle), middle.y)
+	return RoadNetworkLayout.centre(cell, _rises.get(cell, RoadNetworkLayout.FLAT))
 
 
 ## Height of the road surface of `cell` at map position `spot` (metres, x and z): flat
 ## at its layer, or rising across a ramp. Cells that are no road count as flat.
 func height(cell: Vector3i, spot: Vector2) -> float:
-	var surface := cell.y + ROAD_SURFACE
-	if _rises.has(cell):
-		var rise: Vector2 = Vector2(_rises[cell][0])
-		var middle := Vector2(cell.x + 0.5, cell.z + 0.5) * CELL
-		var along := clampf((spot - middle).dot(rise) / CELL + 0.5, 0.0, 1.0)
-		surface += along * float(_rises[cell][1])
-	return surface
+	return RoadNetworkLayout.height(cell, spot, _rises.get(cell, RoadNetworkLayout.FLAT))
 
 
 ## Slope of the road in `heading` on this cell (metres up per metre).
 func slope(cell: Vector3i, heading: Vector2i) -> float:
-	if not _rises.has(cell):
-		return 0.0
-	return float(_rises[cell][1]) / CELL * float(Vector2(_rises[cell][0]).dot(Vector2(heading)))
+	return RoadNetworkLayout.slope(_rises.get(cell, RoadNetworkLayout.FLAT), heading)
 
 
 ## Name of the ground tile in a cell ("" if empty).
@@ -339,200 +301,34 @@ func _read_tiles() -> void:
 	var choices: Dictionary = _ground.get_meta(LANE_CHOICES, {})
 	for cell: Vector3i in _ground.get_used_cells():
 		var item := _ground.get_cell_item(cell)
-		var data: Dictionary = traffic_of_item.get(item, {})
-		var turn := _turn_of(cell)
-		var choice := _choice_for_tile(choices.get(cell, {}), library.get_item_name(item))
-		var chosen: Array = choice.get("lanes", [])
-		var sides: Array = chosen if not chosen.is_empty() else data.get("lanes", [])
-		_only[cell] = data.get("only", ROAD_USER_KINDS if traffic_of_item.has(item) else [])
-		if choice.has("kinds"):
-			_only[cell] = choice.kinds
-			_chosen_kinds[cell] = true
-		if choice.has("speed"):
-			_speeds[cell] = float(choice.speed)
-			_chosen_speeds[cell] = true
-		if data.has("rails"):
-			var rails := []
-			for rail: String in data.rails:
-				rails.append([_flat(turn * LOCAL_HEADINGS[rail[0]]), _flat(turn * LOCAL_HEADINGS[rail[1]])])
-			_rails[cell] = rails
-		var headings: Array[Vector2i] = []
-		for local_name in sides:
-			if LOCAL_HEADINGS.has(local_name):
-				headings.append(_flat(turn * LOCAL_HEADINGS[local_name]))
-		if headings.is_empty():
-			continue
-		_lanes[cell] = headings
-		if not chosen.is_empty():
-			_chosen[cell] = true
-		else:
-			for axis in AXES:
-				if _on_axis(cell, axis).size() == 2:
-					_from_context.get_or_add(cell, []).append(axis)
-		if KIND_NAMES.has(data.get("road", "")):
-			_kinds[cell] = KIND_NAMES[data.road]
-			if not _speeds.has(cell):
-				_speeds[cell] = SPEED_LIMIT_KMH[_kinds[cell]]
-		if data.has("speed") and not choice.has("speed"):
-			_speeds[cell] = float(data.speed)
-		if data.has("rise"):
-			_rises[cell] = [_flat(turn * LOCAL_HEADINGS["N"]), float(data.rise)]
+		var choice := RoadNetworkRules.choice_for_tile(choices.get(cell, {}), library.get_item_name(item))
+		_take_reading(cell, RoadNetworkRules.read_tile(traffic_of_item.get(item, {}), choice, _turn_of(cell), traffic_of_item.has(item)))
 
 
-## This entry of LANE_CHOICES, or an empty one if it is for another tile.
-static func _choice_for_tile(choice: Dictionary, item_name: String) -> Dictionary:
-	return choice if choice.get("tile", "") == item_name else {}
+## Puts what a tile gives its cell (RoadNetworkRules.read_tile) in the tables.
+func _take_reading(cell: Vector3i, reading: Dictionary) -> void:
+	_only[cell] = reading.only
+	if reading.chosen_kinds:
+		_chosen_kinds[cell] = true
+	if reading.chosen_speed:
+		_chosen_speeds[cell] = true
+	if reading.has("speed"):
+		_speeds[cell] = reading.speed
+	if reading.has("rails"):
+		_rails[cell] = reading.rails
+	if reading.headings.is_empty():
+		return
+	_lanes[cell] = reading.headings
+	if reading.chosen:
+		_chosen[cell] = true
+	if reading.has("open_axes"):
+		_from_context[cell] = reading.open_axes
+	if reading.has("kind"):
+		_kinds[cell] = reading.kind
+	if reading.has("rise"):
+		_rises[cell] = reading.rise
 
 
 ## The rotation of the tile in a cell.
 func _turn_of(cell: Vector3i) -> Basis:
 	return _ground.get_basis_with_orthogonal_index(_ground.get_cell_item_orientation(cell))
-
-
-static func _flat(direction: Vector3) -> Vector2i:
-	return Vector2i(roundi(direction.x), roundi(direction.z))
-
-
-## The headings of a cell along one axis (none, one, or both ways).
-func _on_axis(cell: Vector3i, axis: Vector2i) -> Array[Vector2i]:
-	var headings: Array[Vector2i] = []
-	for heading: Vector2i in _lanes.get(cell, []):
-		if heading == axis or heading == -axis:
-			headings.append(heading)
-	return headings
-
-
-# ------------------------------------------------------------------ two-way lanes
-
-## Gives the cells that are two-way on an axis one direction on it, from the road
-## around them, in rounds (a decided lane helps decide its neighbours).
-func _decide_two_way_lanes() -> void:
-	for round_number in MAX_ROUNDS:
-		var decided := {}   # [cell, axis] -> heading
-		for cell: Vector3i in _from_context:
-			for axis: Vector2i in _from_context[cell]:
-				if _on_axis(cell, axis).size() < 2:
-					continue
-				var heading := _direction_along(cell, axis)
-				if heading == Vector2i.ZERO:
-					heading = _direction_from_beside(cell, axis)
-				if heading != Vector2i.ZERO:
-					decided[[cell, axis]] = heading
-		if decided.is_empty():
-			break
-		for key in decided:
-			var cell: Vector3i = key[0]
-			var heading: Vector2i = decided[key]
-			var headings: Array = _lanes[cell]
-			headings.erase(-heading)
-	# what is still open and has no lane with a direction anywhere along it (plain asphalt
-	# in a street, crosswise; a stub between two kerbs) leads nowhere: no lane on that axis
-	var dead_ends := []
-	for cell: Vector3i in _from_context:
-		for axis: Vector2i in _from_context[cell]:
-			if _on_axis(cell, axis).size() == 2 and _direction_along(cell, axis) == Vector2i.ZERO:
-				dead_ends.append([cell, axis])
-	for dead_end in dead_ends:
-		var headings: Array = _lanes[dead_end[0]]
-		headings.erase(dead_end[1])
-		headings.erase(-dead_end[1])
-		if headings.is_empty():
-			_lanes.erase(dead_end[0])
-
-
-## True if the next cell either way along `axis` has a lane on that axis.
-func _has_road_along(cell: Vector3i, axis: Vector2i) -> bool:
-	for direction in [axis, -axis]:
-		var next_cell := step(cell, direction)
-		if next_cell != NONE and _on_axis(next_cell, axis).size() > 0:
-			return true
-	return false
-
-
-## The direction of the nearest one-way lane along the same line (both ways, through
-## two-way cells), or ZERO. The nearer one wins; the one ahead on a tie.
-func _direction_along(cell: Vector3i, axis: Vector2i) -> Vector2i:
-	var best := Vector2i.ZERO
-	var best_distance := 1 << 30
-	for direction in [axis, -axis]:
-		var current := cell
-		var distance := 0
-		while distance < best_distance:
-			var next_cell := step(current, direction)
-			if next_cell == NONE:
-				break
-			distance += 1
-			var headings := _on_axis(next_cell, axis)
-			if headings.size() == 1:
-				best = headings[0]
-				best_distance = distance
-				break
-			if headings.is_empty():
-				break
-			current = next_cell
-	return best
-
-
-## The direction from the lanes alongside (left and right on the same level): the one
-## they agree on when they are one-way, else driving on the right at the edge of the
-## road (the lane with the road only on its left); ZERO if that doesn't decide it, or
-## if no road runs along the axis through the cell.
-func _direction_from_beside(cell: Vector3i, axis: Vector2i) -> Vector2i:
-	if not _has_road_along(cell, axis):
-		return Vector2i.ZERO   # no road runs this way through the cell
-	var left := Vector2i(axis.y, -axis.x)     # to the left when driving along +axis
-	var found := {}
-	var road_left := false
-	var road_right := false
-	for side in [left, -left]:
-		var beside := Vector3i(cell.x + side.x, cell.y, cell.z + side.y)
-		var headings := _on_axis(beside, axis)
-		if headings.is_empty():
-			continue
-		if side == left:
-			road_left = true
-		else:
-			road_right = true
-		if headings.size() == 1:
-			found[headings[0]] = true
-	if found.size() == 1:
-		return found.keys()[0]
-	if found.is_empty() and road_left != road_right:
-		# driving on the right: the road to its left is the opposite lane
-		return axis if road_left else -axis
-	return Vector2i.ZERO
-
-
-# ------------------------------------------------------------------ kinds of road
-
-## Cells without a kind or speed limit of their own (markings, crossings) take that of the
-## nearest cell along their lanes that has one.
-func _decide_kinds() -> void:
-	_pass_on_along_lanes(_kinds)
-	_pass_on_along_lanes(_speeds)
-
-
-## Fills in `values` (road cell -> value) for the cells without one, from the nearest cell
-## along their lanes that has one.
-func _pass_on_along_lanes(values: Dictionary) -> void:
-	var decided := {}
-	for cell: Vector3i in _lanes:
-		if values.has(cell):
-			continue
-		var best_distance := 1 << 30
-		for heading: Vector2i in _lanes[cell]:
-			for direction in [heading, -heading]:
-				var current := cell
-				var distance := 0
-				while distance < best_distance and distance < 64:
-					var next_cell := step(current, direction)
-					if next_cell == NONE:
-						break
-					distance += 1
-					if values.has(next_cell):
-						decided[cell] = values[next_cell]
-						best_distance = distance
-						break
-					current = next_cell
-	for cell in decided:
-		values[cell] = decided[cell]

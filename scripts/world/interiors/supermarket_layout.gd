@@ -96,8 +96,7 @@ const CART_COLOURS := {"derrek": "rood", "alfred_steyhn": "blauw"}
 ##  "people": [Transform3D] (shoppers standing at a shelf), "staff": [Transform3D],
 ##  "aisles": "lengte" or "breedte", "self_scans": int, "freezers": bool}.
 static func plan(brand: String, seed: int, front_cells: int) -> Dictionary:
-	var random := RandomNumberGenerator.new()
-	random.seed = hash([brand, seed])
+	var random := RandomPick.seeded(hash([brand, seed]))
 	var cells := clampi(front_cells + random.randi_range(EXTRA_CELLS.x, EXTRA_CELLS.y), FEWEST_CELLS, MOST_CELLS)
 	var width := cells * CELL
 	var depth: float = DEPTHS[random.randi() % DEPTHS.size()]
@@ -364,3 +363,40 @@ static func _tile(result: Dictionary, tile_name: String, at: Vector3, turn: floa
 ## its inner surface, not half in it).
 static func _wall_tile(result: Dictionary, tile_name: String, at: Vector3, turn: float) -> void:
 	result.wall_tiles.append([tile_name, at, turn])
+
+
+# ------------------------------------------------------------------ a trolley or a basket
+
+## How the player pushes a trolley (its handle this far before the feet) and carries a
+## basket (in the right hand: beside the body, at hip height).
+const CART_AHEAD := 0.75
+const BASKET_AT := Vector3(-0.3, 0.42, 0.08)
+## Where a shopper has theirs: the trolley before them, the basket on the arm.
+const SHOPPER_CART_AT := Vector3(0.0, 0.0, 0.8)
+const SHOPPER_BASKET_AT := Vector3(-0.32, 0.5, 0.05)
+## The packs in a trolley and in a basket: the side of a pack (m).
+const CART_PACK := 0.16
+const BASKET_PACK := 0.1
+
+
+## Where the trolley (`in_cart`) or the basket hangs on the player.
+static func carried_at(in_cart: bool) -> Vector3:
+	return Vector3(0.0, 0.0, CART_AHEAD) if in_cart else BASKET_AT
+
+
+## The side of a pack (m) in a trolley or a basket.
+static func pack_size(in_cart: bool) -> float:
+	return CART_PACK if in_cart else BASKET_PACK
+
+
+## Where pack `index` lies in the trolley (`in_cart`) or the basket: in rows of 3 (2 in a
+## basket), 4 rows (3) to a layer, layer on layer.
+static func pack_at(index: int, in_cart: bool) -> Vector3:
+	var per_row := 3 if in_cart else 2
+	var rows := 4 if in_cart else 3
+	var column := index % per_row
+	var row := (index / per_row) % rows
+	var layer := index / (per_row * rows)
+	if in_cart:
+		return Vector3(-0.2 + column * 0.2, 0.5 + layer * 0.17, -0.2 + row * 0.18)
+	return Vector3(-0.08 + column * 0.13, 0.14 + layer * 0.1, -0.06 + row * 0.08)

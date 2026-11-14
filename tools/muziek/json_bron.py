@@ -290,6 +290,10 @@ def main() -> int:
     import tijdlijn
     if tijdlijn.is_timeline(whole):
         return tijdlijn.main(sys.argv[1:])
+    # the standard form with its own sounds (standaardvorm.py: metadata.synth "patches") is read there
+    import standaardvorm
+    if standaardvorm.synth_of(whole) == "patches":
+        return standaardvorm.main(sys.argv[1:])
     try:
         source = read(arguments.json)
     except (ValueError, OSError) as error:

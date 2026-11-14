@@ -92,8 +92,8 @@ func test_prologue_opens_and_leads_to_the_first_mission(test) -> void:
 	var quests: Array = hud.quests()
 	test.check(quests.size() == 1 and String(quests[0].title) == "Lege maag", "missie 1 in de tracker")
 	test.check(quests.size() == 1 and bool(quests[0].steps[1].locked), "de volgende stappen op slot")
-	test.check(hud.is_showing_notice() and hud.notices.heading_text().contains("NIEUWE MISSIE") and hud.notices.name_text().contains("Lege maag"),
-		"de nieuwe missie bovenin in beeld (%s: %s)" % [hud.notices.heading_text(), hud.notices.name_text()])
+	test.check(hud.is_showing_notice() and hud.notices.view.heading_text().contains("NIEUWE MISSIE") and hud.notices.view.name_text().contains("Lege maag"),
+		"de nieuwe missie bovenin in beeld (%s: %s)" % [hud.notices.view.heading_text(), hud.notices.view.name_text()])
 	test.check(hud.music.has_node("MissieDeuntje") or not ResourceLoader.exists(hud.MISSION_JINGLE), "met het missiedeuntje")
 	var game_menu: Node = hud.get_node("Spelmenu")
 	game_menu.open("inventaris")

@@ -102,7 +102,7 @@ func _ready() -> void:
 	_build_menu()
 	_build_footer()
 	GraphicsSettings.apply(get_tree())
-	var settings := _read_settings()
+	var settings := read_settings()
 	_crt = UiStyle.make_crt_overlay(0.05 if settings.crt else 0.0, 0.035 if settings.crt else 0.0,
 			get_viewport().get_visible_rect().size)
 	add_child(_crt)
@@ -392,7 +392,7 @@ func _build_menu() -> void:
 # ------------------------------------------------------------------ panels
 
 func _open_settings() -> void:
-	var settings := _read_settings()
+	var settings := read_settings()
 	var column := _open_panel("INSTELLINGEN")
 	_add_panel_item(column, func() -> String: return "ANTI-ALIASING: %s" % GraphicsSettings.anti_aliasing(),
 		func() -> void: GraphicsSettings.next_anti_aliasing(get_tree()))
@@ -403,7 +403,7 @@ func _open_settings() -> void:
 		var label := func() -> String: return "%s: %s" % [entry[0], "AAN" if settings[setting] else "UIT"]
 		_add_panel_item(column, label, func() -> void:
 			settings[setting] = not settings[setting]
-			_write_settings(settings)
+			write_settings(settings)
 			_apply_crt(settings))
 	_add_panel_item(column, CameraTurning.label, func() -> void: CameraTurning.set_manual(not CameraTurning.is_manual()))
 	_add_panel_item(column, func() -> String: return "TERUG", _close_panel)
@@ -584,13 +584,13 @@ func _choose_in_panel(index: int) -> void:
 
 # ------------------------------------------------------------------ settings
 
-static func _read_settings() -> Dictionary:
+static func read_settings() -> Dictionary:
 	var config := ConfigFile.new()
 	config.load(SETTINGS_PATH)
 	return {"crt": config.get_value("beeld", "crt", true)}
 
 
-static func _write_settings(settings: Dictionary) -> void:
+static func write_settings(settings: Dictionary) -> void:
 	var config := ConfigFile.new()
 	config.load(SETTINGS_PATH)
 	config.set_value("beeld", "crt", settings.crt)

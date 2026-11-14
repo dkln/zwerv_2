@@ -5,6 +5,7 @@ extends RefCounted
 ## controller, a quarter turn each, so four views; C or pressing the right stick back to the
 ## usual one: FollowCamera.turn_by, turn_back). Set in the settings of the main
 ## menu and in the pause menu (GameHud); the follow camera reads it (set_manual_turning).
+## Logic with the setting's own file (docs/CODE_LAGEN.md): no nodes, only static functions.
 ##   const CameraTurning = preload("res://scripts/camera/camera_turning.gd")
 ##   if CameraTurning.is_manual(): ...
 
@@ -36,4 +37,9 @@ static func set_manual(manual: bool) -> void:
 
 ## How the setting reads in a menu.
 static func label() -> String:
-	return "CAMERA: " + ("ZELF DRAAIEN" if is_manual() else "AUTOMATISCH")
+	return label_for(is_manual())
+
+
+## How the setting reads in a menu when it is `manual` (or not).
+static func label_for(manual: bool) -> String:
+	return "CAMERA: " + ("ZELF DRAAIEN" if manual else "AUTOMATISCH")

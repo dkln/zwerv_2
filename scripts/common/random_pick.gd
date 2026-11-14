@@ -31,3 +31,11 @@ static func shuffle(random: RandomNumberGenerator, items: Array) -> void:
 		var kept: Variant = items[index]
 		items[index] = items[other]
 		items[other] = kept
+
+
+## A generator that starts at `seed`: the same seed gives the same draws, in the same order
+## (for the pure functions that lay out a room or a shop from a seed).
+static func seeded(seed: int) -> RandomNumberGenerator:
+	var random := RandomNumberGenerator.new()
+	random.seed = seed
+	return random

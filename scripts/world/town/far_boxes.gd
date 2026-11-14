@@ -1,21 +1,26 @@
 extends Node3D
-## Far out the people on foot and the vehicles are only blocks (the "VerreBlokjes" node): from
-## FAR_FROM metres in view (the iso camera's view size) a figure is a few pixels and its
-## details are lost anyway, so their own models are hidden and each is drawn as a box of its
-## size in its colour (the coat of someone on foot, the paint of a vehicle): one MultiMesh for
-## all people, one for all vehicles, a single draw each. Back under NEAR_AGAIN their own
-## models return (the gap between the two so it does not flip to and fro while zooming).
+## Far out the people on foot and the vehicles are only blocks (the "VerreBlokjes" node;
+## behaviour, docs/CODE_LAGEN.md): from FAR_FROM metres in view (the iso camera's view size)
+## a figure is a few pixels and its details are lost anyway, so their own models are hidden
+## and each is drawn as a box of its size in its colour (the coat of someone on foot, the
+## paint of a vehicle): one MultiMesh for all people, one for all vehicles
+## (far_boxes_view.gd). Back under NEAR_AGAIN their own models return (far_boxes_rules.gd).
 ## There are only ever the people and vehicles round the player (Pedestrians, Traffic), so the
-## boxes follow just those, moved every frame.
+## boxes follow just those, moved every frame (their places: far_boxes_layout.gd).
 
 const Iso = preload("res://scripts/camera/iso_camera.gd")
-const FAR_FROM := 95.0
-const NEAR_AGAIN := 85.0
+const FarBoxesRules = preload("res://scripts/world/town/far_boxes_rules.gd")
+const FarBoxesLayout = preload("res://scripts/world/town/far_boxes_layout.gd")
+const FarBoxesView = preload("res://scripts/world/town/far_boxes_view.gd")
+const FAR_FROM := FarBoxesRules.FAR_FROM
+const NEAR_AGAIN := FarBoxesRules.NEAR_AGAIN
 ## The block of someone on foot (m): wide, tall, deep.
-const PERSON_BOX := Vector3(0.5, 1.75, 0.35)
-const UNKNOWN_COLOUR := Color("#8A8680")
+const PERSON_BOX := FarBoxesLayout.PERSON_BOX
+const UNKNOWN_COLOUR := FarBoxesView.UNKNOWN_COLOUR
 
 var far := false
+## Its picture: the blocks (null in the editor).
+var view: FarBoxesView
 var _people: MultiMeshInstance3D
 var _vehicles: MultiMeshInstance3D
 
@@ -23,47 +28,25 @@ var _vehicles: MultiMeshInstance3D
 func _ready() -> void:
 	if Engine.is_editor_hint():
 		return
-	_people = _boxes("Voetgangers")
-	_vehicles = _boxes("Voertuigen")
-
-
-func _boxes(boxes_name: String) -> MultiMeshInstance3D:
-	var cube := BoxMesh.new()
-	cube.size = Vector3.ONE
-	var material := StandardMaterial3D.new()
-	material.vertex_color_use_as_albedo = true
-	material.roughness = 1.0
-	cube.material = material
-	var multimesh := MultiMesh.new()
-	multimesh.transform_format = MultiMesh.TRANSFORM_3D
-	multimesh.use_colors = true
-	multimesh.mesh = cube
-	var instance := MultiMeshInstance3D.new()
-	instance.name = boxes_name
-	instance.multimesh = multimesh
-	instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	instance.visible = false
-	add_child(instance)
-	return instance
+	view = FarBoxesView.new()
+	view.build(self)
+	_people = view.people
+	_vehicles = view.vehicles
 
 
 func _process(_delta: float) -> void:
 	var camera := get_viewport().get_camera_3d() if get_viewport() else null
-	if camera == null or _people == null:
+	if camera == null or view == null:
 		return
-	var view := Iso.view_size(camera)
-	far = view > (NEAR_AGAIN if far else FAR_FROM)
-	_people.visible = far
-	_vehicles.visible = far
+	far = FarBoxesRules.is_far(Iso.view_size(camera), far)
+	view.show_far(far)
 	_show_people()
 	_show_vehicles()
 
 
 ## Room for `count` blocks (the buffer only grows, in steps), `count` of them drawn.
-static func _room_for(multimesh: MultiMesh, count: int) -> void:
-	if multimesh.instance_count < count:
-		multimesh.instance_count = count + 32
-	multimesh.visible_instance_count = count
+func _room_for(boxes: MultiMeshInstance3D, count: int) -> void:
+	view.show_count(boxes, FarBoxesRules.room_for(boxes.multimesh.instance_count, count), count)
 
 
 ## Everyone on foot: their own figure near, a block far (`far`).
@@ -81,15 +64,12 @@ func _show_people() -> void:
 			shown.append(person)
 	if not far:
 		return
-	var multimesh := _people.multimesh
-	_room_for(multimesh, shown.size())
+	_room_for(_people, shown.size())
 	for index in shown.size():
 		var person: Node3D = shown[index]
 		var look: Dictionary = person.figure.look if person.get("figure") else {}
-		var at := Transform3D(Basis(Vector3.UP, person.global_rotation.y).scaled(PERSON_BOX),
-				person.global_position + Vector3.UP * PERSON_BOX.y * 0.5)
-		multimesh.set_instance_transform(index, at)
-		multimesh.set_instance_color(index, look.get("coat", UNKNOWN_COLOUR))
+		view.show_block(_people, index, FarBoxesLayout.person_block(person.global_position, person.global_rotation.y),
+				look.get("coat", UNKNOWN_COLOUR))
 
 
 ## Every vehicle: its own model near, a block of its size in its paint far (`far`).
@@ -108,11 +88,7 @@ func _show_vehicles() -> void:
 			shown.append(vehicle)
 	if not far:
 		return
-	var multimesh := _vehicles.multimesh
-	_room_for(multimesh, shown.size())
+	_room_for(_vehicles, shown.size())
 	for index in shown.size():
 		var vehicle: Vehicle = shown[index]
-		var box: AABB = vehicle.get("_outer_box")
-		var at := vehicle.global_transform * Transform3D(Basis.from_scale(box.size), box.get_center())
-		multimesh.set_instance_transform(index, at)
-		multimesh.set_instance_color(index, vehicle._paint())
+		view.show_block(_vehicles, index, FarBoxesLayout.vehicle_block(vehicle.global_transform, vehicle.get("_outer_box")), vehicle._paint())

@@ -6,32 +6,29 @@ extends Node
 ## follow a quarter sine and cosine, so the sum stays as loud and there is no dip halfway),
 ## and going back to a loop that is still fading out fades that one in again. Softer while
 ## the game is paused (pause menu, game menu, story box: PAUSED_DB) and under a jingle
-## (play_jingle, duck: JINGLE_DUCK_DB). The levels themselves are plain sums (level_target,
-## own_level_db, loop_volume_db), without the players.
+## (play_jingle, duck: JINGLE_DUCK_DB).
+## This is the behaviour layer: the players, the fades over time, the jingles. The levels
+## and the steps of the fades are plain sums in the rules layer (city_music_rules.gd); sound
+## has no view and no layout.
 ##   const CityMusic = preload("res://scripts/audio/city_music.gd")
 
 const LoadingScreenScript = preload("res://scripts/ui/loading_screen.gd")
+const CityMusicRules = preload("res://scripts/audio/city_music_rules.gd")
 ## The tune that opens the map when the game starts (max 6 s), and how loud.
 const MAP_JINGLE := "res://assets/audio/muziek/deuntje_kaart_start.ogg"
 const MAP_JINGLE_VOLUME_DB := -5.0
 const MUSIC_FOLDER := "res://assets/audio/muziek/"
-const CITY_MUSIC := "spel_loop.ogg"
-## Inside a building: how fast its music takes over; how much softer the music is under a jingle.
-const INDOOR_MUSIC_FADE := 1.2
-const JINGLE_DUCK_DB := 6.0
-const VOLUME_DB := -11.0
-const PAUSED_DB := -13.0
-## The city's own loop (CITY_MUSIC) plays this much softer still: it runs quietly in the
-## background, under the sounds of the town; music of a building (the merchant's) does not.
-const CITY_LOOP_SOFTER_DB := 3.0
-## The muzak of a supermarket (Interiors SUPERMARKET_MUZAK, files starting with this) plays
-## softer still: background music in a shop, about as loud as the shop's own sound.
-const MUZAK_PREFIX := "supermarkt_muzak_"
-const MUZAK_SOFTER_DB := 6.0
-const FADE_IN := 3.0
-## How fast (dB per second) the level follows pausing and going on.
-const LEVEL_SPEED := 30.0
-const SILENT_DB := -80.0
+## The levels and the fades are the rules' (CityMusicRules); here under their old names for
+## whoever uses the music (the HUD, the interiors, the tests).
+const CITY_MUSIC := CityMusicRules.CITY_MUSIC
+const INDOOR_MUSIC_FADE := CityMusicRules.INDOOR_MUSIC_FADE
+const JINGLE_DUCK_DB := CityMusicRules.JINGLE_DUCK_DB
+const VOLUME_DB := CityMusicRules.VOLUME_DB
+const PAUSED_DB := CityMusicRules.PAUSED_DB
+const CITY_LOOP_SOFTER_DB := CityMusicRules.CITY_LOOP_SOFTER_DB
+const MUZAK_PREFIX := CityMusicRules.MUZAK_PREFIX
+const MUZAK_SOFTER_DB := CityMusicRules.MUZAK_SOFTER_DB
+const FADE_IN := CityMusicRules.FADE_IN
 ## The DetailNiveau of the city scene (beside the HUD): the jingle waits until it has merged the map.
 const DETAIL_PATH := NodePath("../../DetailNiveau")
 
@@ -55,43 +52,20 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	var loud := loud_while_paused.is_valid() and bool(loud_while_paused.call())
-	_level_db = move_toward(_level_db, level_target(get_tree().paused, loud, _jingles_playing), LEVEL_SPEED * delta)
+	_level_db = CityMusicRules.next_level_db(_level_db, CityMusicRules.level_target(get_tree().paused, loud, _jingles_playing), delta)
 	# slow motion slows every sound down (AudioServer.playback_speed_scale), but not the music
-	var music_pitch := 1.0 / maxf(AudioServer.playback_speed_scale, 0.01)
+	var music_pitch := CityMusicRules.music_pitch(AudioServer.playback_speed_scale)
 	for file: String in _players.keys():
 		var player: AudioStreamPlayer = _players[file]
 		player.pitch_scale = music_pitch
-		var weight: float = move_toward(_weights[file], 1.0 if file == _file else 0.0, delta / _fade)
+		var weight := CityMusicRules.next_weight(_weights[file], file == _file, delta, _fade)
 		_weights[file] = weight
-		if weight <= 0.0 and file != _file:
+		if CityMusicRules.is_faded_out(weight, file == _file):
 			player.queue_free()
 			_players.erase(file)
 			_weights.erase(file)
 			continue
-		player.volume_db = loop_volume_db(_level_db, file, weight)
-
-
-# ------------------------------------------------------------------ the levels
-
-## The level (dB) the music goes to: softer while the game is paused (unless `loud_paused`:
-## the shop) and softer still while a jingle plays over it, so the jingle is heard.
-static func level_target(paused: bool, loud_paused: bool, jingles_playing: int) -> float:
-	var level := PAUSED_DB if paused and not loud_paused else VOLUME_DB
-	return level - (JINGLE_DUCK_DB if jingles_playing > 0 else 0.0)
-
-
-## How much softer (dB, negative) the loop `file` plays than the level of the music: the
-## city's own loop a little, the muzak of a supermarket more, a building's music not.
-static func own_level_db(file: String) -> float:
-	if file.begins_with(MUZAK_PREFIX):
-		return -MUZAK_SOFTER_DB
-	return -CITY_LOOP_SOFTER_DB if file == CITY_MUSIC else 0.0
-
-
-## The volume (dB) of the loop `file`, `weight` (0..1) along its fade at the music level
-## `level_db`: equal power, the amplitude along a quarter sine.
-static func loop_volume_db(level_db: float, file: String, weight: float) -> float:
-	return level_db + own_level_db(file) + linear_to_db(maxf(sin(clampf(weight, 0.0, 1.0) * PI * 0.5), 0.0001))
+		player.volume_db = CityMusicRules.loop_volume_db(_level_db, file, weight)
 
 
 # ------------------------------------------------------------------ what plays
@@ -153,7 +127,7 @@ func stop(seconds: float) -> void:
 ## Holds the music down as under a jingle (JINGLE_DUCK_DB) while something else must be heard
 ## (an announcement in a supermarket: Announcer); every true needs a false after it.
 func duck(ducked: bool) -> void:
-	_jingles_playing = maxi(_jingles_playing + (1 if ducked else -1), 0)
+	_jingles_playing = CityMusicRules.jingles_after(_jingles_playing, ducked)
 
 
 ## Plays a jingle once over the music, which is held down meanwhile (nothing without the
@@ -213,7 +187,7 @@ func loop_count() -> int:
 ## Makes `file` the loop that fades in over `fade` s (the others fade out); "" fades all out.
 func _fade_to(new_file: String, fade: float) -> void:
 	_file = new_file
-	_fade = maxf(fade, 0.05)
+	_fade = CityMusicRules.fade_seconds(fade)
 	if new_file == "" or _players.has(new_file):
 		return
 	var stream := _load_stream(MUSIC_FOLDER + new_file, true)
@@ -223,24 +197,21 @@ func _fade_to(new_file: String, fade: float) -> void:
 	var player := AudioStreamPlayer.new()
 	player.name = "StadMuziek"
 	player.stream = stream
-	player.volume_db = SILENT_DB
+	player.volume_db = CityMusicRules.SILENT_DB
 	add_child(player)
 	# the same point in the bar as the loudest loop now (they all share one length)
-	player.play(fmod(_loudest_position(), maxf(stream.get_length(), 0.01)))
+	player.play(CityMusicRules.start_position(_loudest_position(), stream.get_length()))
 	_players[new_file] = player
 	_weights[new_file] = 0.0
 
 
 ## Where in its loop the loudest loop is now (seconds; 0 when none plays).
 func _loudest_position() -> float:
-	var position := 0.0
-	var loudest := -1.0
-	for other_file: String in _players:
-		var other: AudioStreamPlayer = _players[other_file]
-		if other.playing and _weights[other_file] > loudest:
-			loudest = _weights[other_file]
-			position = other.get_playback_position() + AudioServer.get_time_since_last_mix()
-	return position
+	var playing: Array = _players.keys().filter(func(loop_file: String) -> bool: return (_players[loop_file] as AudioStreamPlayer).playing)
+	var loudest := _players.get(CityMusicRules.loudest_loop(_weights, playing)) as AudioStreamPlayer
+	if loudest == null:
+		return 0.0
+	return loudest.get_playback_position() + AudioServer.get_time_since_last_mix()
 
 
 ## The music at `path` (imported, or the loose file when not imported yet), looping or
