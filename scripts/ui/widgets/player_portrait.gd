@@ -275,7 +275,13 @@ func _mouth_for(delta: float) -> float:
 		_speech_clock = 0.0
 		return 0.0
 	_speech_clock += delta
-	var letter := speech[int(_speech_clock * MOUTH_LETTERS) % speech.length()].to_lower()
+	return mouth_opening(speech[int(_speech_clock * MOUTH_LETTERS) % speech.length()])
+
+
+## How open the mouth is on `letter` (0 shut .. 1 wide): wide on a, o, u, half on e, i, y, a
+## little on any other letter, shut on a space, a digit or a sign.
+static func mouth_opening(letter: String) -> float:
+	letter = letter.to_lower()
 	if WIDE_VOWELS.contains(letter):
 		return MOUTH_WIDE
 	if SMALL_VOWELS.contains(letter):

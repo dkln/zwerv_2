@@ -230,8 +230,7 @@ func _show_detail(index: int) -> void:
 
 	var difficulty := int(archetype.get("difficulty", 1))
 	for block_index in _difficulty_blocks.size():
-		_difficulty_blocks[block_index].color = DIFFICULTY_COLOURS[mini(difficulty - 1, DIFFICULTY_COLOURS.size() - 1)] \
-				if block_index < difficulty else DIFFICULTY_EMPTY
+		_difficulty_blocks[block_index].color = difficulty_block_colour(block_index, difficulty)
 	_difficulty_name.text = PlayerCharacter.DIFFICULTY_NAMES[clampi(difficulty, 1, PlayerCharacter.DIFFICULTY_CEILING)]
 	_difficulty_name.add_theme_color_override("font_color", DIFFICULTY_COLOURS[clampi(difficulty, 1, 5) - 1])
 	_detail_name.text = archetype.name
@@ -244,10 +243,42 @@ func _show_detail(index: int) -> void:
 		var value := float(archetype.stats[stat_name])
 		(_detail_bars[stat_name] as SegmentBar).fill = value / PlayerCharacter.STAT_CEILING
 		var number: Label = _detail_numbers[stat_name]
-		number.text = "%d%s" % [roundi(value), "+" if value > 100.0 else ("-" if value < 100.0 else "")]
+		number.text = stat_number_text(value)
 		number.add_theme_color_override("font_color", UiStyle.TEXT if value >= 100.0 else UiStyle.MUTED)
 	_detail.modulate.a = 0.4
 	create_tween().tween_property(_detail, "modulate:a", 1.0, 0.25)
+
+
+## The colour of block `block_index` (0 the first) of the difficulty meter at `difficulty`
+## (1 .. 5): the blocks up to it in the colour of that difficulty, the rest empty.
+static func difficulty_block_colour(block_index: int, difficulty: int) -> Color:
+	return DIFFICULTY_COLOURS[mini(difficulty - 1, DIFFICULTY_COLOURS.size() - 1)] \
+			if block_index < difficulty else DIFFICULTY_EMPTY
+
+
+## The number beside a stat's bar: its value, with a plus above the ordinary 100 and a minus
+## under it.
+static func stat_number_text(value: float) -> String:
+	return "%d%s" % [roundi(value), "+" if value > 100.0 else ("-" if value < 100.0 else "")]
+
+
+## Whether a list of `count` entries scrolls: sharing the height they would get lower than
+## ENTRY_LOWEST.
+static func list_scrolls(count: int) -> bool:
+	return int(HEIGHT - ENTRY_GAP * (count - 1)) / count < ENTRY_LOWEST
+
+
+## The heights (whole px) of `count` entries that share the height of the detail panel
+## exactly (ENTRY_GAP between them): the first ones a pixel higher until it adds up; all
+## ENTRY_LOWEST when the list scrolls.
+static func entry_heights(count: int) -> Array[float]:
+	var room := int(HEIGHT - ENTRY_GAP * (count - 1))
+	var shared := room / count
+	var left_over := room - shared * count
+	var heights: Array[float] = []
+	for index in count:
+		heights.append(ENTRY_LOWEST if list_scrolls(count) else float(shared + (1 if index < left_over else 0)))
+	return heights
 
 
 ## Begins as the chosen archetype: the choice is stored and the town opens.
@@ -312,10 +343,8 @@ func _build_list() -> void:
 	_design.add_child(_scroll)
 	var count := PlayerCharacter.ORDER.size()
 	# whole pixels: the first entries a pixel higher until the heights add up exactly
-	var room := int(HEIGHT - ENTRY_GAP * (count - 1))
-	var shared := room / count
-	var left_over := room - shared * count
-	var scrolls := shared < ENTRY_LOWEST
+	var heights := entry_heights(count)
+	var scrolls := list_scrolls(count)
 	var entry_width := LIST_WIDTH - (20.0 if scrolls else 0.0)
 	# all fit (as now with six): no scrolling at all
 	_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO if scrolls else ScrollContainer.SCROLL_MODE_DISABLED
@@ -325,8 +354,7 @@ func _build_list() -> void:
 	column.mouse_filter = Control.MOUSE_FILTER_PASS
 	_scroll.add_child(column)
 	for index in count:
-		var entry_height := ENTRY_LOWEST if scrolls else float(shared + (1 if index < left_over else 0))
-		column.add_child(_list_entry(index, Vector2(entry_width, entry_height)))
+		column.add_child(_list_entry(index, Vector2(entry_width, heights[index])))
 
 
 ## An entry of the list, `entry_size`: the face as a thumbnail, the name, what they are

@@ -395,6 +395,24 @@ static func _row_style(on: bool) -> StyleBoxFlat:
 	return style
 
 
+## The line of what a good does (Items "effect": "+25 HONGER   -2 GEZONDHEID", a stat filled
+## up as "HONGER VOL"); a good that does nothing shows its rarity.
+static func effect_text(item: Dictionary) -> String:
+	var effects: Array[String] = []
+	for stat: String in (item.get("effect", {}) as Dictionary):
+		var amount := int(item.effect[stat])
+		if amount >= Items.FULL:
+			effects.append("%s VOL" % STAT_WORDS.get(stat, stat.to_upper()))
+			continue
+		effects.append("%s%d %s" % ["+" if amount > 0 else "", amount, STAT_WORDS.get(stat, stat.to_upper())])
+	return "   ".join(effects) if not effects.is_empty() else str(item.get("rarity", "")).to_upper()
+
+
+## Whether `money` pays `price` (a hair of rounding allowed).
+static func can_afford(money: float, price: float) -> bool:
+	return money + 0.001 >= price
+
+
 ## What the chosen good is (its text and what it does), or what the row does.
 func _refresh_detail() -> void:
 	var row: Dictionary = _rows[_chosen]
@@ -402,14 +420,7 @@ func _refresh_detail() -> void:
 		"kopen":
 			var item := Items.item(String(row.item))
 			_detail_text.text = str(item.get("text", ""))
-			var effects: Array[String] = []
-			for stat: String in (item.get("effect", {}) as Dictionary):
-				var amount := int(item.effect[stat])
-				if amount >= Items.FULL:
-					effects.append("%s VOL" % STAT_WORDS.get(stat, stat.to_upper()))
-					continue
-				effects.append("%s%d %s" % ["+" if amount > 0 else "", amount, STAT_WORDS.get(stat, stat.to_upper())])
-			_detail_effect.text = "   ".join(effects) if not effects.is_empty() else str(item.get("rarity", "")).to_upper()
+			_detail_effect.text = effect_text(item)
 		"tip":
 			_detail_text.text = "Even een praatje maken. Kost niks."
 			_detail_effect.text = ""
@@ -427,7 +438,7 @@ func _refresh_money() -> void:
 		_pockets_label.text = "%d / %d VAKJES" % [used, int(_player.call("inventory_slots"))]
 	for row in _rows:
 		if String(row.kind) == "kopen":
-			var affordable := money + 0.001 >= float(row.price)
+			var affordable := can_afford(money, float(row.price))
 			(row.price_label as Label).add_theme_color_override("font_color", UiStyle.TEXT if affordable else WARNING.darkened(0.15))
 
 

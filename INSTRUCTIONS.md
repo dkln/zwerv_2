@@ -260,7 +260,7 @@ Verhaal, missies en kleingeld
   code in `scripts/world/things/item_models.gd`), stralen erachter zoals bij een nieuwe missie
   (`scripts/ui/widgets/light_rays.gd`), de naam in de kleur van de zeldzaamheid, het tekstje van
   het item en de XP; een eigen deuntje (`deuntje_beloning`). Wegdrukken met Enter (meer items:
-  één scherm per item). Het wacht tot er niets anders openstaat. Test: `tests/unit/ui/test_rewards.gd`.
+  één scherm per item). Het wacht tot er niets anders openstaat. Test: `tests/unit/ui/test_reward_screen.gd`.
 - Praten (`scripts/story/conversations.gd`): bij iemand in de buurt "[E] Praten" linksonder;
   een gesprek met keuzes in het verhaalvenster, passend bij het uiterlijk (9 typen). Elke soort
   mens (en elk personeelslid) heeft meerdere gesprekken (`varianten`, nu 4 per soort): wie je

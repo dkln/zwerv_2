@@ -61,7 +61,7 @@ func test_player_stats_going_down_blink_their_bars(test) -> void:
 		var stat_before: Vector2 = player._stats[stat_name]
 		player._stats[stat_name] = Vector2(stat_before.y * 0.9, stat_before.y)
 		player._push_stats()
-		var stat_bar: SegmentBar = hud._stat_bars[stat_name]
+		var stat_bar: SegmentBar = hud.player_frame.stat_bar(stat_name)
 		test.check(stat_bar.is_showing_change() and stat_bar._going_down, "%s gaat omlaag: het balkje knippert" % stat_name)
 		player._stats[stat_name] = stat_before
 	player._push_stats()
@@ -71,5 +71,5 @@ func test_player_stats_going_down_blink_their_bars(test) -> void:
 func test_xp_going_down_blinks_its_bar(test) -> void:
 	hud.set_xp(50.0, 100.0)
 	hud.set_xp(40.0, 100.0)
-	test.check(hud._xp_bar.is_showing_change(), "xp omlaag: het balkje knippert")
+	test.check(hud.player_frame.xp_bar().is_showing_change(), "xp omlaag: het balkje knippert")
 	hud.set_xp(player.xp, player.xp_for_level)

@@ -41,7 +41,12 @@ func _draw() -> void:
 static func draw_rays(canvas: CanvasItem, middle: Vector2, reach: float, turn: float, ray_colour := RAY_COLOUR,
 		ray_count := RAY_COUNT, ray_spread := RAY_SPREAD) -> void:
 	for ray in ray_count:
-		var angle := turn + TAU * ray / ray_count
-		canvas.draw_colored_polygon(PackedVector2Array([middle,
-				middle + Vector2.from_angle(angle - ray_spread) * reach,
-				middle + Vector2.from_angle(angle + ray_spread) * reach]), ray_colour)
+		canvas.draw_colored_polygon(ray_triangle(middle, reach, turn + TAU * ray / ray_count, ray_spread), ray_colour)
+
+
+## The triangle of one ray: from `middle`, `reach` px long, pointing along `angle` (radians),
+## `ray_spread` radians wide to either side.
+static func ray_triangle(middle: Vector2, reach: float, angle: float, ray_spread := RAY_SPREAD) -> PackedVector2Array:
+	return PackedVector2Array([middle,
+			middle + Vector2.from_angle(angle - ray_spread) * reach,
+			middle + Vector2.from_angle(angle + ray_spread) * reach])

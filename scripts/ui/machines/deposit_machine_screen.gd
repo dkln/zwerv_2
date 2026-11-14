@@ -258,16 +258,22 @@ func print_bon() -> void:
 	sound("printer")
 	await pause_for(0.7)
 	state = "bon"
+	show_tray("STATIEGELDBON", bon_lines(inserted, total), Color("#F2F2EC"))
+	show_display("BEDANKT", [MoneyText.euros(total)])
+	_busy = false
+
+
+## The lines of the bon: what went in (`inserted_counts`: item id -> count, cans first) with
+## its worth, a line, and the total.
+static func bon_lines(inserted_counts: Dictionary, total_worth: float) -> Array:
 	var lines: Array = []
 	for item_id: String in DepositReturn.ORDER:
-		var count := int(inserted.get(item_id, 0))
+		var count := int(inserted_counts.get(item_id, 0))
 		if count > 0:
 			lines.append("%d × %s   %s" % [count, String(NAMES[item_id]), MoneyText.euros(count * float(DepositReturn.DEPOSIT[item_id]))])
 	lines.append("----------------")
-	lines.append("TOTAAL   " + MoneyText.euros(total))
-	show_tray("STATIEGELDBON", lines, Color("#F2F2EC"))
-	show_display("BEDANKT", [MoneyText.euros(total)])
-	_busy = false
+	lines.append("TOTAAL   " + MoneyText.euros(total_worth))
+	return lines
 
 
 ## The bon taken: its worth in your wallet (cashed at once), then away.

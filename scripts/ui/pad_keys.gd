@@ -79,9 +79,15 @@ static func move_vector() -> Vector2:
 		var stick := Vector2(Input.get_joy_axis(device, JOY_AXIS_LEFT_X), Input.get_joy_axis(device, JOY_AXIS_LEFT_Y))
 		if stick.length() > strongest.length():
 			strongest = stick
-	if strongest.length() < STICK_DEAD_ZONE:
+	return stick_move(strongest)
+
+
+## What a left stick at `stick` (both axes -1..1) asks: ZERO inside STICK_DEAD_ZONE, else its
+## direction, at most 1 long (the corners of a stick reach further).
+static func stick_move(stick: Vector2) -> Vector2:
+	if stick.length() < STICK_DEAD_ZONE:
 		return Vector2.ZERO
-	return strongest.limit_length(1.0)
+	return stick.limit_length(1.0)
 
 
 func _input(event: InputEvent) -> void:

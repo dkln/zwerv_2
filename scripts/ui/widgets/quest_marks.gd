@@ -34,19 +34,32 @@ func _process(_delta: float) -> void:
 func _draw() -> void:
 	var pulse := 0.5 + 0.5 * sin(Time.get_ticks_msec() / 1000.0 * 4.0)
 	var middle := size * 0.5
-	var inner := Rect2(Vector2.ONE * EDGE_INSET, size - Vector2.ONE * EDGE_INSET * 2.0)
 	for point: Vector2 in points:
-		if inner.has_point(point):
+		if is_on_map(point, size):
 			draw_mark(self, point.round(), MARK_SIZE, pulse, colour)
 			continue
 		# off the minimap: on its edge, pointing from the middle towards it
 		var way := (point - middle)
 		if way.length_squared() < 0.0001:
 			continue
-		var reach := minf(absf(inner.size.x * 0.5 / way.x) if way.x != 0.0 else INF,
-				absf(inner.size.y * 0.5 / way.y) if way.y != 0.0 else INF)
-		var at := (middle + way * reach).round()
-		_draw_arrow(at, way.normalized(), pulse)
+		_draw_arrow(edge_place(point, size), way.normalized(), pulse)
+
+
+## Whether `point` lies on a minimap of `map_size` px (EDGE_INSET px inside its edge): there
+## it gets its diamond, else an arrow on the edge.
+static func is_on_map(point: Vector2, map_size: Vector2) -> bool:
+	return Rect2(Vector2.ONE * EDGE_INSET, map_size - Vector2.ONE * EDGE_INSET * 2.0).has_point(point)
+
+
+## Where the arrow for a `point` off a minimap of `map_size` px sits: on the edge (EDGE_INSET
+## px inside it), on the line from the middle to the point. Not for a point in the middle itself.
+static func edge_place(point: Vector2, map_size: Vector2) -> Vector2:
+	var middle := map_size * 0.5
+	var inner_size := map_size - Vector2.ONE * EDGE_INSET * 2.0
+	var way := point - middle
+	var reach := minf(absf(inner_size.x * 0.5 / way.x) if way.x != 0.0 else INF,
+			absf(inner_size.y * 0.5 / way.y) if way.y != 0.0 else INF)
+	return (middle + way * reach).round()
 
 
 ## The diamond of a quest place at `at` on `canvas`, `half` px from its middle to a corner;

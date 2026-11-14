@@ -43,12 +43,12 @@ func _draw() -> void:
 	var shadow := Vector2.ONE * SHADOW_PIXELS * EMBLEM_PIXEL
 	for row in DIAMOND_PIXELS:
 		for column in DIAMOND_PIXELS:
-			if _in_diamond(column, row):
+			if in_diamond(column, row):
 				_pixel(top_left + shadow, column, row, UiStyle.INK)
 	for row in DIAMOND_PIXELS:
 		for column in DIAMOND_PIXELS:
-			if _in_diamond(column, row):
-				_pixel(top_left, column, row, UiStyle.INK if _in_mark(column, row) else _shade(column, row))
+			if in_diamond(column, row):
+				_pixel(top_left, column, row, UiStyle.INK if in_mark(column, row) else shade(column, row, colour))
 	_draw_sparkles(middle)
 
 
@@ -56,11 +56,10 @@ func _draw() -> void:
 func _draw_sparkles(middle: Vector2) -> void:
 	var arm := 3.0
 	for index in SPARKLES.size():
-		var turn := fposmod(_clock / SPARKLE_SECONDS - float(index) / SPARKLES.size(), 1.0)
-		if turn > 0.45:
+		var grown := sparkle_arms(_clock, index)
+		if grown == 0:
 			continue
 		var at := (middle + (SPARKLES[index] as Vector2) * size).round()
-		var grown := 1.0 if turn < 0.15 or turn > 0.3 else 2.0
 		draw_rect(Rect2(at - Vector2.ONE * arm * 0.5, Vector2.ONE * arm), colour)
 		for direction: Vector2 in [Vector2.UP, Vector2.DOWN, Vector2.LEFT, Vector2.RIGHT]:
 			for step in grown:
@@ -71,23 +70,35 @@ func _pixel(top_left: Vector2, column: int, row: int, pixel_colour: Color) -> vo
 	draw_rect(Rect2(top_left + Vector2(column, row) * EMBLEM_PIXEL, Vector2.ONE * EMBLEM_PIXEL), pixel_colour)
 
 
-static func _in_diamond(column: int, row: int) -> bool:
+## How long the arms of sparkle `index` are `clock` seconds in (pixels of the sparkle): 0
+## while it is off, 1 as it comes and goes, 2 in between. Each sparkle is on for the first
+## 45 % of its own turn of SPARKLE_SECONDS, the turns one after the other.
+static func sparkle_arms(clock: float, index: int) -> int:
+	var turn := fposmod(clock / SPARKLE_SECONDS - float(index) / SPARKLES.size(), 1.0)
+	if turn > 0.45:
+		return 0
+	return 1 if turn < 0.15 or turn > 0.3 else 2
+
+
+## Whether pixel (column, row) of the emblem lies in the diamond.
+static func in_diamond(column: int, row: int) -> bool:
 	var half := DIAMOND_PIXELS / 2
 	return absi(column - half) + absi(row - half) <= half
 
 
 ## The exclamation mark: a bar three pixels wide and a dot under it.
-static func _in_mark(column: int, row: int) -> bool:
+static func in_mark(column: int, row: int) -> bool:
 	var half := DIAMOND_PIXELS / 2
 	if absi(column - half) > 1:
 		return false
 	return (row >= 3 and row <= 9) or (row >= 11 and row <= 12)
 
 
-## Lighter along the upper left edge, darker along the lower right: a bevelled look.
-func _shade(column: int, row: int) -> Color:
+## The colour of pixel (column, row) of a diamond in `base_colour`: lighter along the upper left
+## edge, darker along the lower right: a bevelled look.
+static func shade(column: int, row: int, base_colour: Color) -> Color:
 	var half := DIAMOND_PIXELS / 2
 	var from_edge := half - (absi(column - half) + absi(row - half))
 	if from_edge == 0:
-		return colour.lightened(0.35) if column + row <= DIAMOND_PIXELS - 1 else colour.darkened(0.3)
-	return colour
+		return base_colour.lightened(0.35) if column + row <= DIAMOND_PIXELS - 1 else base_colour.darkened(0.3)
+	return base_colour

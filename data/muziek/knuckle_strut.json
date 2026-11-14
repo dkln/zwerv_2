@@ -1,0 +1,6089 @@
+{
+  "title": "Neon Knuckle Strut (Stage 1: Midnight Expressway)",
+  "style": "Sega Mega Drive FM Synthwave / 90s Detroit Club Chiptune",
+  "inspiration": [
+    "Yuzo Koshiro",
+    "Streets of Rage 2 (Bare Knuckle II)",
+    "90s Club House & Synthwave"
+  ],
+  "tempo_bpm": 120,
+  "time_signature": "4/4",
+  "key_signature": "G Mixolydian / Dorian Hybrid (Funky, Cool, Non-Melancholic, Non-Heroic)",
+  "sound_chip_configuration": {
+    "fm_chip": "Yamaha YM2612 (6 Channels, 4-Operator FM)",
+    "psg_chip": "Texas Instruments SN76489 (3 Square Wave Channels + 1 Noise Channel)"
+  },
+  "channels": [
+    {
+      "channel_id": "FM1",
+      "name": "YM2612 Slap FM Bass",
+      "algorithm": 2,
+      "feedback": 6,
+      "operators": {
+        "OP1_Modulator": {
+          "MULT": 1,
+          "TL": 22,
+          "AR": 31,
+          "D1R": 14,
+          "D2R": 8,
+          "RR": 12
+        },
+        "OP2_Modulator": {
+          "MULT": 3,
+          "TL": 34,
+          "AR": 31,
+          "D1R": 18,
+          "D2R": 10,
+          "RR": 12
+        },
+        "OP3_Modulator": {
+          "MULT": 1,
+          "TL": 18,
+          "AR": 31,
+          "D1R": 12,
+          "D2R": 6,
+          "RR": 10
+        },
+        "OP4_Carrier": {
+          "MULT": 1,
+          "TL": 0,
+          "AR": 31,
+          "D1R": 8,
+          "D2R": 4,
+          "RR": 9
+        }
+      },
+      "description": "Punchy, woody 4-op FM slap bass with crisp metallic attack (classic Koshiro bass)."
+    },
+    {
+      "channel_id": "FM2_FM3",
+      "name": "YM2612 House Piano / Brass Chords",
+      "algorithm": 5,
+      "feedback": 4,
+      "description": "Syncopated 9th, 13th, and sus4 club chord stabs with stereo panning."
+    },
+    {
+      "channel_id": "FM4",
+      "name": "YM2612 Synthwave Sync Lead",
+      "algorithm": 4,
+      "feedback": 7,
+      "description": "Bright, edgy FM lead with slight pitch-bend swagger and portamento."
+    },
+    {
+      "channel_id": "FM5",
+      "name": "YM2612 Warm FM Pad / Counter-Line",
+      "algorithm": 5,
+      "feedback": 2,
+      "description": "Smooth chorused FM synthwave pad filling the mid-high frequencies."
+    },
+    {
+      "channel_id": "FM6_DAC",
+      "name": "YM2612 8-Bit PCM Drums (Kick, Snare, Rim, Clap)",
+      "algorithm": "DAC_PCM_MODE",
+      "sample_rate_hz": 16000,
+      "description": "Crunchy 8-bit sampled TR-909 kick & gated snare via Channel 6 DAC."
+    },
+    {
+      "channel_id": "PSG1_PSG2",
+      "name": "SN76489 16th-Note Pulse Arpeggiator",
+      "duty_cycle": "50% Square",
+      "description": "Driving synthwave octave/fifth arpeggio locked to the 16th-note grid."
+    },
+    {
+      "channel_id": "PSG4_NOISE",
+      "name": "SN76489 White Noise Hi-Hats & Shaker",
+      "mode": "White Noise Periodic",
+      "description": "Crisp 16th-note closed hats and off-beat open hi-hat sizzle."
+    }
+  ],
+  "sections": [
+    {
+      "section_id": "A_INTRO",
+      "name": "Intro - Neon Ignition",
+      "bars": "1-4",
+      "chord_progression": [
+        "G7sus4",
+        "Fmaj9/G",
+        "EbMaj9",
+        "F6/9"
+      ],
+      "chords_notes": {
+        "G7sus4": [
+          "G3",
+          "C4",
+          "D4",
+          "F4"
+        ],
+        "Fmaj9/G": [
+          "G3",
+          "A3",
+          "C4",
+          "E4",
+          "G4"
+        ],
+        "EbMaj9": [
+          "Eb3",
+          "G3",
+          "Bb3",
+          "D4",
+          "F4"
+        ],
+        "F6/9": [
+          "F3",
+          "A3",
+          "C4",
+          "D4",
+          "G4"
+        ]
+      },
+      "bassline_pattern": [
+        {
+          "beat": 1.0,
+          "note": "G1",
+          "duration": 0.5,
+          "articulation": "slap"
+        },
+        {
+          "beat": 1.75,
+          "note": "G2",
+          "duration": 0.25,
+          "articulation": "pop"
+        },
+        {
+          "beat": 2.5,
+          "note": "F1",
+          "duration": 0.5,
+          "articulation": "slap"
+        },
+        {
+          "beat": 3.0,
+          "note": "G1",
+          "duration": 0.5,
+          "articulation": "slap"
+        },
+        {
+          "beat": 3.75,
+          "note": "C2",
+          "duration": 0.25,
+          "articulation": "pop"
+        },
+        {
+          "beat": 4.0,
+          "note": "D2",
+          "duration": 0.5,
+          "articulation": "hammer-on"
+        }
+      ],
+      "lead_melody": "Tacet (Arpeggiator & FM Chord Stabs build tension)"
+    },
+    {
+      "section_id": "B_MAIN_GROOVE",
+      "name": "Section A - Streets of Chrome (Main Groove)",
+      "bars": "5-12",
+      "chord_progression": [
+        "Gm9",
+        "C13",
+        "Fmaj9",
+        "D7#9",
+        "Gm9",
+        "C13",
+        "EbMaj9",
+        "F13"
+      ],
+      "chords_notes": {
+        "Gm9": [
+          "G3",
+          "Bb3",
+          "D4",
+          "F4",
+          "A4"
+        ],
+        "C13": [
+          "C3",
+          "E3",
+          "Bb3",
+          "D4",
+          "A4"
+        ],
+        "Fmaj9": [
+          "F3",
+          "A3",
+          "C4",
+          "E4",
+          "G4"
+        ],
+        "D7#9": [
+          "D3",
+          "F#3",
+          "C4",
+          "F4"
+        ],
+        "EbMaj9": [
+          "Eb3",
+          "G3",
+          "Bb3",
+          "D4",
+          "F4"
+        ],
+        "F13": [
+          "F3",
+          "A3",
+          "Eb4",
+          "G4",
+          "D5"
+        ]
+      },
+      "bassline_notes_per_bar": {
+        "Bar_5_Gm9": [
+          "G1 (1.0)",
+          "G2 (1.75)",
+          "D2 (2.0)",
+          "F2 (2.5)",
+          "G1 (3.0)",
+          "Bb1 (3.5)",
+          "B1 (4.0)",
+          "C2 (4.5)"
+        ],
+        "Bar_6_C13": [
+          "C2 (1.0)",
+          "C3 (1.75)",
+          "G2 (2.0)",
+          "Bb2 (2.5)",
+          "C2 (3.0)",
+          "E2 (3.5)",
+          "G2 (4.0)",
+          "E2 (4.5)"
+        ],
+        "Bar_7_Fmaj9": [
+          "F1 (1.0)",
+          "F2 (1.75)",
+          "C2 (2.0)",
+          "E2 (2.5)",
+          "F1 (3.0)",
+          "A1 (3.5)",
+          "C2 (4.0)",
+          "Eb2 (4.5)"
+        ],
+        "Bar_8_D7sharp9": [
+          "D2 (1.0)",
+          "D3 (1.75)",
+          "A2 (2.0)",
+          "C3 (2.5)",
+          "D2 (3.0)",
+          "F2 (3.5)",
+          "F#2 (4.0)",
+          "A2 (4.5)"
+        ]
+      },
+      "lead_melody_notes": [
+        {
+          "bar": 5,
+          "events": [
+            {
+              "beat": 1.0,
+              "note": "D5",
+              "duration": 0.75
+            },
+            {
+              "beat": 1.75,
+              "note": "F5",
+              "duration": 0.75
+            },
+            {
+              "beat": 2.5,
+              "note": "G5",
+              "duration": 0.5
+            },
+            {
+              "beat": 3.0,
+              "note": "A5",
+              "duration": 0.5
+            },
+            {
+              "beat": 3.5,
+              "note": "G5",
+              "duration": 0.5
+            },
+            {
+              "beat": 4.0,
+              "note": "F5",
+              "duration": 0.5
+            },
+            {
+              "beat": 4.5,
+              "note": "D5",
+              "duration": 0.5
+            }
+          ]
+        },
+        {
+          "bar": 6,
+          "events": [
+            {
+              "beat": 1.0,
+              "note": "E5",
+              "duration": 1.5
+            },
+            {
+              "beat": 2.5,
+              "note": "D5",
+              "duration": 0.5
+            },
+            {
+              "beat": 3.0,
+              "note": "C5",
+              "duration": 0.5
+            },
+            {
+              "beat": 3.5,
+              "note": "Bb4",
+              "duration": 0.5
+            },
+            {
+              "beat": 4.0,
+              "note": "A4",
+              "duration": 1.0
+            }
+          ]
+        },
+        {
+          "bar": 7,
+          "events": [
+            {
+              "beat": 1.0,
+              "note": "C5",
+              "duration": 0.75
+            },
+            {
+              "beat": 1.75,
+              "note": "E5",
+              "duration": 0.75
+            },
+            {
+              "beat": 2.5,
+              "note": "G5",
+              "duration": 1.0
+            },
+            {
+              "beat": 3.5,
+              "note": "A5",
+              "duration": 0.5
+            },
+            {
+              "beat": 4.0,
+              "note": "G5",
+              "duration": 0.5
+            },
+            {
+              "beat": 4.5,
+              "note": "E5",
+              "duration": 0.5
+            }
+          ]
+        },
+        {
+          "bar": 8,
+          "events": [
+            {
+              "beat": 1.0,
+              "note": "F#5",
+              "duration": 0.75
+            },
+            {
+              "beat": 1.75,
+              "note": "A5",
+              "duration": 0.75
+            },
+            {
+              "beat": 2.5,
+              "note": "C6",
+              "duration": 1.0
+            },
+            {
+              "beat": 3.5,
+              "note": "Bb5",
+              "duration": 0.5
+            },
+            {
+              "beat": 4.0,
+              "note": "A5",
+              "duration": 1.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "section_id": "C_SYNTHWAVE_BRIDGE",
+      "name": "Section B - Turbo Overdrive (Synthwave Horizon)",
+      "bars": "13-16",
+      "chord_progression": [
+        "EbMaj9",
+        "F6/9",
+        "Gm9",
+        "Bb13",
+        "EbMaj9",
+        "F6/9",
+        "G7sus4",
+        "G7"
+      ],
+      "chords_notes": {
+        "EbMaj9": [
+          "Eb3",
+          "G3",
+          "Bb3",
+          "D4",
+          "F4"
+        ],
+        "F6/9": [
+          "F3",
+          "A3",
+          "C4",
+          "D4",
+          "G4"
+        ],
+        "Gm9": [
+          "G3",
+          "Bb3",
+          "D4",
+          "F4",
+          "A4"
+        ],
+        "Bb13": [
+          "Bb2",
+          "D3",
+          "Ab3",
+          "C4",
+          "G4"
+        ],
+        "G7sus4": [
+          "G3",
+          "C4",
+          "D4",
+          "F4"
+        ],
+        "G7": [
+          "G3",
+          "B3",
+          "D4",
+          "F4"
+        ]
+      },
+      "lead_melody_notes": [
+        {
+          "bar": 13,
+          "events": [
+            {
+              "beat": 1.0,
+              "note": "Bb5",
+              "duration": 1.5
+            },
+            {
+              "beat": 2.5,
+              "note": "G5",
+              "duration": 0.5
+            },
+            {
+              "beat": 3.0,
+              "note": "F5",
+              "duration": 0.5
+            },
+            {
+              "beat": 3.5,
+              "note": "D5",
+              "duration": 0.5
+            },
+            {
+              "beat": 4.0,
+              "note": "F5",
+              "duration": 1.0
+            }
+          ]
+        },
+        {
+          "bar": 14,
+          "events": [
+            {
+              "beat": 1.0,
+              "note": "G5",
+              "duration": 0.75
+            },
+            {
+              "beat": 1.75,
+              "note": "A5",
+              "duration": 0.75
+            },
+            {
+              "beat": 2.5,
+              "note": "C6",
+              "duration": 1.0
+            },
+            {
+              "beat": 3.5,
+              "note": "D6",
+              "duration": 1.5
+            }
+          ]
+        },
+        {
+          "bar": 15,
+          "events": [
+            {
+              "beat": 1.0,
+              "note": "Bb5",
+              "duration": 0.75
+            },
+            {
+              "beat": 1.75,
+              "note": "A5",
+              "duration": 0.75
+            },
+            {
+              "beat": 2.5,
+              "note": "G5",
+              "duration": 0.5
+            },
+            {
+              "beat": 3.0,
+              "note": "F5",
+              "duration": 0.5
+            },
+            {
+              "beat": 3.5,
+              "note": "D5",
+              "duration": 0.5
+            },
+            {
+              "beat": 4.0,
+              "note": "C5",
+              "duration": 1.0
+            }
+          ]
+        },
+        {
+          "bar": 16,
+          "events": [
+            {
+              "beat": 1.0,
+              "note": "G5",
+              "duration": 1.0
+            },
+            {
+              "beat": 2.0,
+              "note": "F5",
+              "duration": 1.0
+            },
+            {
+              "beat": 3.0,
+              "note": "D5",
+              "duration": 1.0
+            },
+            {
+              "beat": 4.0,
+              "note": "B4",
+              "duration": 1.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "section_id": "D_CLIMAX_OUTRO",
+      "name": "Section C - Boss Rush Drop & Loop Point",
+      "bars": "17-20",
+      "chord_progression": [
+        "Gm9",
+        "C13",
+        "EbMaj9",
+        "F13",
+        "G7sus4"
+      ],
+      "description": "Full throttle drums with double-time DAC snare fills, high-octave FM lead, and loop back to Bar 5."
+    }
+  ],
+  "drum_pattern_grid_16th": {
+    "legend": "x = hit, X = accented hit, o = open hat, . = rest",
+    "DAC_Kick": "X . . x . . X . X . . . X . . .",
+    "DAC_Snare": ". . . . X . . x . . . . X . . x",
+    "PSG_HiHat": "x x o x x x o x x x o x x x o x",
+    "FM_Chord_Stab": "X . . X . . X . . . X . X . . ."
+  },
+  "sequenced_events": [
+    {
+      "bar": 1,
+      "beat": 1.0,
+      "channel": "FM2_FM3_Chords",
+      "chord": "G7sus4",
+      "notes": [
+        "G3",
+        "C4",
+        "D4",
+        "F4"
+      ],
+      "frequencies_hz": [
+        196.0,
+        261.63,
+        293.66,
+        349.23
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 1,
+      "beat": 1.75,
+      "channel": "FM2_FM3_Chords",
+      "chord": "G7sus4",
+      "notes": [
+        "G3",
+        "C4",
+        "D4",
+        "F4"
+      ],
+      "frequencies_hz": [
+        196.0,
+        261.63,
+        293.66,
+        349.23
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 1,
+      "beat": 2.5,
+      "channel": "FM2_FM3_Chords",
+      "chord": "G7sus4",
+      "notes": [
+        "G3",
+        "C4",
+        "D4",
+        "F4"
+      ],
+      "frequencies_hz": [
+        196.0,
+        261.63,
+        293.66,
+        349.23
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 1,
+      "beat": 3.5,
+      "channel": "FM2_FM3_Chords",
+      "chord": "G7sus4",
+      "notes": [
+        "G3",
+        "C4",
+        "D4",
+        "F4"
+      ],
+      "frequencies_hz": [
+        196.0,
+        261.63,
+        293.66,
+        349.23
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 1,
+      "beat": 4.0,
+      "channel": "FM2_FM3_Chords",
+      "chord": "G7sus4",
+      "notes": [
+        "G3",
+        "C4",
+        "D4",
+        "F4"
+      ],
+      "frequencies_hz": [
+        196.0,
+        261.63,
+        293.66,
+        349.23
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 1,
+      "beat": 1.0,
+      "channel": "FM1_Slap_Bass",
+      "note": "G1",
+      "frequency_hz": 49.0,
+      "duration_beats": 0.45
+    },
+    {
+      "bar": 1,
+      "beat": 1.5,
+      "channel": "FM1_Slap_Bass",
+      "note": "G1",
+      "frequency_hz": 49.0,
+      "duration_beats": 0.2
+    },
+    {
+      "bar": 1,
+      "beat": 1.75,
+      "channel": "FM1_Slap_Bass",
+      "note": "G2",
+      "frequency_hz": 98.0,
+      "duration_beats": 0.25
+    },
+    {
+      "bar": 1,
+      "beat": 2.0,
+      "channel": "FM1_Slap_Bass",
+      "note": "D2",
+      "frequency_hz": 73.42,
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 1,
+      "beat": 2.5,
+      "channel": "FM1_Slap_Bass",
+      "note": "G1",
+      "frequency_hz": 49.0,
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 1,
+      "beat": 3.0,
+      "channel": "FM1_Slap_Bass",
+      "note": "G1",
+      "frequency_hz": 49.0,
+      "duration_beats": 0.45
+    },
+    {
+      "bar": 1,
+      "beat": 3.5,
+      "channel": "FM1_Slap_Bass",
+      "note": "G2",
+      "frequency_hz": 98.0,
+      "duration_beats": 0.25
+    },
+    {
+      "bar": 1,
+      "beat": 3.75,
+      "channel": "FM1_Slap_Bass",
+      "note": "D2",
+      "frequency_hz": 73.42,
+      "duration_beats": 0.25
+    },
+    {
+      "bar": 1,
+      "beat": 4.0,
+      "channel": "FM1_Slap_Bass",
+      "note": "C2",
+      "frequency_hz": 65.41,
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 1,
+      "beat": 4.5,
+      "channel": "FM1_Slap_Bass",
+      "note": "G2",
+      "frequency_hz": 98.0,
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 1,
+      "beat": 1.0,
+      "channel": "PSG1_Arp",
+      "note": "G4",
+      "frequency_hz": 392.0,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 1,
+      "beat": 1.25,
+      "channel": "PSG1_Arp",
+      "note": "C5",
+      "frequency_hz": 523.25,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 1,
+      "beat": 1.5,
+      "channel": "PSG1_Arp",
+      "note": "D5",
+      "frequency_hz": 587.33,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 1,
+      "beat": 1.75,
+      "channel": "PSG1_Arp",
+      "note": "G5",
+      "frequency_hz": 783.99,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 1,
+      "beat": 2.0,
+      "channel": "PSG1_Arp",
+      "note": "G4",
+      "frequency_hz": 392.0,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 1,
+      "beat": 2.25,
+      "channel": "PSG1_Arp",
+      "note": "C5",
+      "frequency_hz": 523.25,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 1,
+      "beat": 2.5,
+      "channel": "PSG1_Arp",
+      "note": "D5",
+      "frequency_hz": 587.33,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 1,
+      "beat": 2.75,
+      "channel": "PSG1_Arp",
+      "note": "G5",
+      "frequency_hz": 783.99,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 1,
+      "beat": 3.0,
+      "channel": "PSG1_Arp",
+      "note": "G4",
+      "frequency_hz": 392.0,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 1,
+      "beat": 3.25,
+      "channel": "PSG1_Arp",
+      "note": "C5",
+      "frequency_hz": 523.25,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 1,
+      "beat": 3.5,
+      "channel": "PSG1_Arp",
+      "note": "D5",
+      "frequency_hz": 587.33,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 1,
+      "beat": 3.75,
+      "channel": "PSG1_Arp",
+      "note": "G5",
+      "frequency_hz": 783.99,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 1,
+      "beat": 4.0,
+      "channel": "PSG1_Arp",
+      "note": "G4",
+      "frequency_hz": 392.0,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 1,
+      "beat": 4.25,
+      "channel": "PSG1_Arp",
+      "note": "C5",
+      "frequency_hz": 523.25,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 1,
+      "beat": 4.5,
+      "channel": "PSG1_Arp",
+      "note": "D5",
+      "frequency_hz": 587.33,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 1,
+      "beat": 4.75,
+      "channel": "PSG1_Arp",
+      "note": "G5",
+      "frequency_hz": 783.99,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 2,
+      "beat": 1.0,
+      "channel": "FM2_FM3_Chords",
+      "chord": "Fmaj9",
+      "notes": [
+        "F3",
+        "A3",
+        "C4",
+        "E4"
+      ],
+      "frequencies_hz": [
+        174.61,
+        220.0,
+        261.63,
+        329.63
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 2,
+      "beat": 1.75,
+      "channel": "FM2_FM3_Chords",
+      "chord": "Fmaj9",
+      "notes": [
+        "F3",
+        "A3",
+        "C4",
+        "E4"
+      ],
+      "frequencies_hz": [
+        174.61,
+        220.0,
+        261.63,
+        329.63
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 2,
+      "beat": 2.5,
+      "channel": "FM2_FM3_Chords",
+      "chord": "Fmaj9",
+      "notes": [
+        "F3",
+        "A3",
+        "C4",
+        "E4"
+      ],
+      "frequencies_hz": [
+        174.61,
+        220.0,
+        261.63,
+        329.63
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 2,
+      "beat": 3.5,
+      "channel": "FM2_FM3_Chords",
+      "chord": "Fmaj9",
+      "notes": [
+        "F3",
+        "A3",
+        "C4",
+        "E4"
+      ],
+      "frequencies_hz": [
+        174.61,
+        220.0,
+        261.63,
+        329.63
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 2,
+      "beat": 4.0,
+      "channel": "FM2_FM3_Chords",
+      "chord": "Fmaj9",
+      "notes": [
+        "F3",
+        "A3",
+        "C4",
+        "E4"
+      ],
+      "frequencies_hz": [
+        174.61,
+        220.0,
+        261.63,
+        329.63
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 2,
+      "beat": 1.0,
+      "channel": "FM1_Slap_Bass",
+      "note": "G1",
+      "frequency_hz": 49.0,
+      "duration_beats": 0.45
+    },
+    {
+      "bar": 2,
+      "beat": 1.5,
+      "channel": "FM1_Slap_Bass",
+      "note": "G1",
+      "frequency_hz": 49.0,
+      "duration_beats": 0.2
+    },
+    {
+      "bar": 2,
+      "beat": 1.75,
+      "channel": "FM1_Slap_Bass",
+      "note": "G2",
+      "frequency_hz": 98.0,
+      "duration_beats": 0.25
+    },
+    {
+      "bar": 2,
+      "beat": 2.0,
+      "channel": "FM1_Slap_Bass",
+      "note": "C2",
+      "frequency_hz": 65.41,
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 2,
+      "beat": 2.5,
+      "channel": "FM1_Slap_Bass",
+      "note": "G1",
+      "frequency_hz": 49.0,
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 2,
+      "beat": 3.0,
+      "channel": "FM1_Slap_Bass",
+      "note": "G1",
+      "frequency_hz": 49.0,
+      "duration_beats": 0.45
+    },
+    {
+      "bar": 2,
+      "beat": 3.5,
+      "channel": "FM1_Slap_Bass",
+      "note": "G2",
+      "frequency_hz": 98.0,
+      "duration_beats": 0.25
+    },
+    {
+      "bar": 2,
+      "beat": 3.75,
+      "channel": "FM1_Slap_Bass",
+      "note": "C2",
+      "frequency_hz": 65.41,
+      "duration_beats": 0.25
+    },
+    {
+      "bar": 2,
+      "beat": 4.0,
+      "channel": "FM1_Slap_Bass",
+      "note": "A2",
+      "frequency_hz": 110.0,
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 2,
+      "beat": 4.5,
+      "channel": "FM1_Slap_Bass",
+      "note": "G2",
+      "frequency_hz": 98.0,
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 2,
+      "beat": 1.0,
+      "channel": "PSG1_Arp",
+      "note": "F4",
+      "frequency_hz": 349.23,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 2,
+      "beat": 1.25,
+      "channel": "PSG1_Arp",
+      "note": "A4",
+      "frequency_hz": 440.0,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 2,
+      "beat": 1.5,
+      "channel": "PSG1_Arp",
+      "note": "C5",
+      "frequency_hz": 523.25,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 2,
+      "beat": 1.75,
+      "channel": "PSG1_Arp",
+      "note": "F5",
+      "frequency_hz": 698.46,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 2,
+      "beat": 2.0,
+      "channel": "PSG1_Arp",
+      "note": "F4",
+      "frequency_hz": 349.23,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 2,
+      "beat": 2.25,
+      "channel": "PSG1_Arp",
+      "note": "A4",
+      "frequency_hz": 440.0,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 2,
+      "beat": 2.5,
+      "channel": "PSG1_Arp",
+      "note": "C5",
+      "frequency_hz": 523.25,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 2,
+      "beat": 2.75,
+      "channel": "PSG1_Arp",
+      "note": "F5",
+      "frequency_hz": 698.46,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 2,
+      "beat": 3.0,
+      "channel": "PSG1_Arp",
+      "note": "F4",
+      "frequency_hz": 349.23,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 2,
+      "beat": 3.25,
+      "channel": "PSG1_Arp",
+      "note": "A4",
+      "frequency_hz": 440.0,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 2,
+      "beat": 3.5,
+      "channel": "PSG1_Arp",
+      "note": "C5",
+      "frequency_hz": 523.25,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 2,
+      "beat": 3.75,
+      "channel": "PSG1_Arp",
+      "note": "F5",
+      "frequency_hz": 698.46,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 2,
+      "beat": 4.0,
+      "channel": "PSG1_Arp",
+      "note": "F4",
+      "frequency_hz": 349.23,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 2,
+      "beat": 4.25,
+      "channel": "PSG1_Arp",
+      "note": "A4",
+      "frequency_hz": 440.0,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 2,
+      "beat": 4.5,
+      "channel": "PSG1_Arp",
+      "note": "C5",
+      "frequency_hz": 523.25,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 2,
+      "beat": 4.75,
+      "channel": "PSG1_Arp",
+      "note": "F5",
+      "frequency_hz": 698.46,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 3,
+      "beat": 1.0,
+      "channel": "FM2_FM3_Chords",
+      "chord": "EbMaj9",
+      "notes": [
+        "Eb3",
+        "G3",
+        "Bb3",
+        "D4"
+      ],
+      "frequencies_hz": [
+        155.56,
+        196.0,
+        233.08,
+        293.66
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 3,
+      "beat": 1.75,
+      "channel": "FM2_FM3_Chords",
+      "chord": "EbMaj9",
+      "notes": [
+        "Eb3",
+        "G3",
+        "Bb3",
+        "D4"
+      ],
+      "frequencies_hz": [
+        155.56,
+        196.0,
+        233.08,
+        293.66
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 3,
+      "beat": 2.5,
+      "channel": "FM2_FM3_Chords",
+      "chord": "EbMaj9",
+      "notes": [
+        "Eb3",
+        "G3",
+        "Bb3",
+        "D4"
+      ],
+      "frequencies_hz": [
+        155.56,
+        196.0,
+        233.08,
+        293.66
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 3,
+      "beat": 3.5,
+      "channel": "FM2_FM3_Chords",
+      "chord": "EbMaj9",
+      "notes": [
+        "Eb3",
+        "G3",
+        "Bb3",
+        "D4"
+      ],
+      "frequencies_hz": [
+        155.56,
+        196.0,
+        233.08,
+        293.66
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 3,
+      "beat": 4.0,
+      "channel": "FM2_FM3_Chords",
+      "chord": "EbMaj9",
+      "notes": [
+        "Eb3",
+        "G3",
+        "Bb3",
+        "D4"
+      ],
+      "frequencies_hz": [
+        155.56,
+        196.0,
+        233.08,
+        293.66
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 3,
+      "beat": 1.0,
+      "channel": "FM1_Slap_Bass",
+      "note": "Eb1",
+      "frequency_hz": 38.89,
+      "duration_beats": 0.45
+    },
+    {
+      "bar": 3,
+      "beat": 1.5,
+      "channel": "FM1_Slap_Bass",
+      "note": "Eb1",
+      "frequency_hz": 38.89,
+      "duration_beats": 0.2
+    },
+    {
+      "bar": 3,
+      "beat": 1.75,
+      "channel": "FM1_Slap_Bass",
+      "note": "Eb2",
+      "frequency_hz": 77.78,
+      "duration_beats": 0.25
+    },
+    {
+      "bar": 3,
+      "beat": 2.0,
+      "channel": "FM1_Slap_Bass",
+      "note": "Bb2",
+      "frequency_hz": 116.54,
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 3,
+      "beat": 2.5,
+      "channel": "FM1_Slap_Bass",
+      "note": "Eb1",
+      "frequency_hz": 38.89,
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 3,
+      "beat": 3.0,
+      "channel": "FM1_Slap_Bass",
+      "note": "Eb1",
+      "frequency_hz": 38.89,
+      "duration_beats": 0.45
+    },
+    {
+      "bar": 3,
+      "beat": 3.5,
+      "channel": "FM1_Slap_Bass",
+      "note": "Eb2",
+      "frequency_hz": 77.78,
+      "duration_beats": 0.25
+    },
+    {
+      "bar": 3,
+      "beat": 3.75,
+      "channel": "FM1_Slap_Bass",
+      "note": "Bb2",
+      "frequency_hz": 116.54,
+      "duration_beats": 0.25
+    },
+    {
+      "bar": 3,
+      "beat": 4.0,
+      "channel": "FM1_Slap_Bass",
+      "note": "G2",
+      "frequency_hz": 98.0,
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 3,
+      "beat": 4.5,
+      "channel": "FM1_Slap_Bass",
+      "note": "Eb2",
+      "frequency_hz": 77.78,
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 3,
+      "beat": 1.0,
+      "channel": "PSG1_Arp",
+      "note": "Eb4",
+      "frequency_hz": 311.13,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 3,
+      "beat": 1.25,
+      "channel": "PSG1_Arp",
+      "note": "G4",
+      "frequency_hz": 392.0,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 3,
+      "beat": 1.5,
+      "channel": "PSG1_Arp",
+      "note": "Bb4",
+      "frequency_hz": 466.16,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 3,
+      "beat": 1.75,
+      "channel": "PSG1_Arp",
+      "note": "Eb5",
+      "frequency_hz": 622.25,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 3,
+      "beat": 2.0,
+      "channel": "PSG1_Arp",
+      "note": "Eb4",
+      "frequency_hz": 311.13,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 3,
+      "beat": 2.25,
+      "channel": "PSG1_Arp",
+      "note": "G4",
+      "frequency_hz": 392.0,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 3,
+      "beat": 2.5,
+      "channel": "PSG1_Arp",
+      "note": "Bb4",
+      "frequency_hz": 466.16,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 3,
+      "beat": 2.75,
+      "channel": "PSG1_Arp",
+      "note": "Eb5",
+      "frequency_hz": 622.25,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 3,
+      "beat": 3.0,
+      "channel": "PSG1_Arp",
+      "note": "Eb4",
+      "frequency_hz": 311.13,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 3,
+      "beat": 3.25,
+      "channel": "PSG1_Arp",
+      "note": "G4",
+      "frequency_hz": 392.0,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 3,
+      "beat": 3.5,
+      "channel": "PSG1_Arp",
+      "note": "Bb4",
+      "frequency_hz": 466.16,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 3,
+      "beat": 3.75,
+      "channel": "PSG1_Arp",
+      "note": "Eb5",
+      "frequency_hz": 622.25,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 3,
+      "beat": 4.0,
+      "channel": "PSG1_Arp",
+      "note": "Eb4",
+      "frequency_hz": 311.13,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 3,
+      "beat": 4.25,
+      "channel": "PSG1_Arp",
+      "note": "G4",
+      "frequency_hz": 392.0,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 3,
+      "beat": 4.5,
+      "channel": "PSG1_Arp",
+      "note": "Bb4",
+      "frequency_hz": 466.16,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 3,
+      "beat": 4.75,
+      "channel": "PSG1_Arp",
+      "note": "Eb5",
+      "frequency_hz": 622.25,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 4,
+      "beat": 1.0,
+      "channel": "FM2_FM3_Chords",
+      "chord": "F6/9",
+      "notes": [
+        "F3",
+        "A3",
+        "C4",
+        "D4"
+      ],
+      "frequencies_hz": [
+        174.61,
+        220.0,
+        261.63,
+        293.66
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 4,
+      "beat": 1.75,
+      "channel": "FM2_FM3_Chords",
+      "chord": "F6/9",
+      "notes": [
+        "F3",
+        "A3",
+        "C4",
+        "D4"
+      ],
+      "frequencies_hz": [
+        174.61,
+        220.0,
+        261.63,
+        293.66
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 4,
+      "beat": 2.5,
+      "channel": "FM2_FM3_Chords",
+      "chord": "F6/9",
+      "notes": [
+        "F3",
+        "A3",
+        "C4",
+        "D4"
+      ],
+      "frequencies_hz": [
+        174.61,
+        220.0,
+        261.63,
+        293.66
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 4,
+      "beat": 3.5,
+      "channel": "FM2_FM3_Chords",
+      "chord": "F6/9",
+      "notes": [
+        "F3",
+        "A3",
+        "C4",
+        "D4"
+      ],
+      "frequencies_hz": [
+        174.61,
+        220.0,
+        261.63,
+        293.66
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 4,
+      "beat": 4.0,
+      "channel": "FM2_FM3_Chords",
+      "chord": "F6/9",
+      "notes": [
+        "F3",
+        "A3",
+        "C4",
+        "D4"
+      ],
+      "frequencies_hz": [
+        174.61,
+        220.0,
+        261.63,
+        293.66
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 4,
+      "beat": 1.0,
+      "channel": "FM1_Slap_Bass",
+      "note": "F1",
+      "frequency_hz": 43.65,
+      "duration_beats": 0.45
+    },
+    {
+      "bar": 4,
+      "beat": 1.5,
+      "channel": "FM1_Slap_Bass",
+      "note": "F1",
+      "frequency_hz": 43.65,
+      "duration_beats": 0.2
+    },
+    {
+      "bar": 4,
+      "beat": 1.75,
+      "channel": "FM1_Slap_Bass",
+      "note": "F2",
+      "frequency_hz": 87.31,
+      "duration_beats": 0.25
+    },
+    {
+      "bar": 4,
+      "beat": 2.0,
+      "channel": "FM1_Slap_Bass",
+      "note": "C2",
+      "frequency_hz": 65.41,
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 4,
+      "beat": 2.5,
+      "channel": "FM1_Slap_Bass",
+      "note": "F1",
+      "frequency_hz": 43.65,
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 4,
+      "beat": 3.0,
+      "channel": "FM1_Slap_Bass",
+      "note": "F1",
+      "frequency_hz": 43.65,
+      "duration_beats": 0.45
+    },
+    {
+      "bar": 4,
+      "beat": 3.5,
+      "channel": "FM1_Slap_Bass",
+      "note": "F2",
+      "frequency_hz": 87.31,
+      "duration_beats": 0.25
+    },
+    {
+      "bar": 4,
+      "beat": 3.75,
+      "channel": "FM1_Slap_Bass",
+      "note": "C2",
+      "frequency_hz": 65.41,
+      "duration_beats": 0.25
+    },
+    {
+      "bar": 4,
+      "beat": 4.0,
+      "channel": "FM1_Slap_Bass",
+      "note": "A2",
+      "frequency_hz": 110.0,
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 4,
+      "beat": 4.5,
+      "channel": "FM1_Slap_Bass",
+      "note": "F2",
+      "frequency_hz": 87.31,
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 4,
+      "beat": 1.0,
+      "channel": "PSG1_Arp",
+      "note": "F4",
+      "frequency_hz": 349.23,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 4,
+      "beat": 1.25,
+      "channel": "PSG1_Arp",
+      "note": "A4",
+      "frequency_hz": 440.0,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 4,
+      "beat": 1.5,
+      "channel": "PSG1_Arp",
+      "note": "C5",
+      "frequency_hz": 523.25,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 4,
+      "beat": 1.75,
+      "channel": "PSG1_Arp",
+      "note": "F5",
+      "frequency_hz": 698.46,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 4,
+      "beat": 2.0,
+      "channel": "PSG1_Arp",
+      "note": "F4",
+      "frequency_hz": 349.23,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 4,
+      "beat": 2.25,
+      "channel": "PSG1_Arp",
+      "note": "A4",
+      "frequency_hz": 440.0,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 4,
+      "beat": 2.5,
+      "channel": "PSG1_Arp",
+      "note": "C5",
+      "frequency_hz": 523.25,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 4,
+      "beat": 2.75,
+      "channel": "PSG1_Arp",
+      "note": "F5",
+      "frequency_hz": 698.46,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 4,
+      "beat": 3.0,
+      "channel": "PSG1_Arp",
+      "note": "F4",
+      "frequency_hz": 349.23,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 4,
+      "beat": 3.25,
+      "channel": "PSG1_Arp",
+      "note": "A4",
+      "frequency_hz": 440.0,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 4,
+      "beat": 3.5,
+      "channel": "PSG1_Arp",
+      "note": "C5",
+      "frequency_hz": 523.25,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 4,
+      "beat": 3.75,
+      "channel": "PSG1_Arp",
+      "note": "F5",
+      "frequency_hz": 698.46,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 4,
+      "beat": 4.0,
+      "channel": "PSG1_Arp",
+      "note": "F4",
+      "frequency_hz": 349.23,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 4,
+      "beat": 4.25,
+      "channel": "PSG1_Arp",
+      "note": "A4",
+      "frequency_hz": 440.0,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 4,
+      "beat": 4.5,
+      "channel": "PSG1_Arp",
+      "note": "C5",
+      "frequency_hz": 523.25,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 4,
+      "beat": 4.75,
+      "channel": "PSG1_Arp",
+      "note": "F5",
+      "frequency_hz": 698.46,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 5,
+      "beat": 1.0,
+      "channel": "FM2_FM3_Chords",
+      "chord": "Gm9",
+      "notes": [
+        "G3",
+        "Bb3",
+        "D4",
+        "F4",
+        "A4"
+      ],
+      "frequencies_hz": [
+        196.0,
+        233.08,
+        293.66,
+        349.23,
+        440.0
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 5,
+      "beat": 1.75,
+      "channel": "FM2_FM3_Chords",
+      "chord": "Gm9",
+      "notes": [
+        "G3",
+        "Bb3",
+        "D4",
+        "F4",
+        "A4"
+      ],
+      "frequencies_hz": [
+        196.0,
+        233.08,
+        293.66,
+        349.23,
+        440.0
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 5,
+      "beat": 2.5,
+      "channel": "FM2_FM3_Chords",
+      "chord": "Gm9",
+      "notes": [
+        "G3",
+        "Bb3",
+        "D4",
+        "F4",
+        "A4"
+      ],
+      "frequencies_hz": [
+        196.0,
+        233.08,
+        293.66,
+        349.23,
+        440.0
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 5,
+      "beat": 3.5,
+      "channel": "FM2_FM3_Chords",
+      "chord": "Gm9",
+      "notes": [
+        "G3",
+        "Bb3",
+        "D4",
+        "F4",
+        "A4"
+      ],
+      "frequencies_hz": [
+        196.0,
+        233.08,
+        293.66,
+        349.23,
+        440.0
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 5,
+      "beat": 4.0,
+      "channel": "FM2_FM3_Chords",
+      "chord": "Gm9",
+      "notes": [
+        "G3",
+        "Bb3",
+        "D4",
+        "F4",
+        "A4"
+      ],
+      "frequencies_hz": [
+        196.0,
+        233.08,
+        293.66,
+        349.23,
+        440.0
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 5,
+      "beat": 1.0,
+      "channel": "FM1_Slap_Bass",
+      "note": "G1",
+      "frequency_hz": 49.0,
+      "duration_beats": 0.45
+    },
+    {
+      "bar": 5,
+      "beat": 1.5,
+      "channel": "FM1_Slap_Bass",
+      "note": "G1",
+      "frequency_hz": 49.0,
+      "duration_beats": 0.2
+    },
+    {
+      "bar": 5,
+      "beat": 1.75,
+      "channel": "FM1_Slap_Bass",
+      "note": "G2",
+      "frequency_hz": 98.0,
+      "duration_beats": 0.25
+    },
+    {
+      "bar": 5,
+      "beat": 2.0,
+      "channel": "FM1_Slap_Bass",
+      "note": "D2",
+      "frequency_hz": 73.42,
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 5,
+      "beat": 2.5,
+      "channel": "FM1_Slap_Bass",
+      "note": "G1",
+      "frequency_hz": 49.0,
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 5,
+      "beat": 3.0,
+      "channel": "FM1_Slap_Bass",
+      "note": "G1",
+      "frequency_hz": 49.0,
+      "duration_beats": 0.45
+    },
+    {
+      "bar": 5,
+      "beat": 3.5,
+      "channel": "FM1_Slap_Bass",
+      "note": "G2",
+      "frequency_hz": 98.0,
+      "duration_beats": 0.25
+    },
+    {
+      "bar": 5,
+      "beat": 3.75,
+      "channel": "FM1_Slap_Bass",
+      "note": "D2",
+      "frequency_hz": 73.42,
+      "duration_beats": 0.25
+    },
+    {
+      "bar": 5,
+      "beat": 4.0,
+      "channel": "FM1_Slap_Bass",
+      "note": "Bb2",
+      "frequency_hz": 116.54,
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 5,
+      "beat": 4.5,
+      "channel": "FM1_Slap_Bass",
+      "note": "G2",
+      "frequency_hz": 98.0,
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 5,
+      "beat": 1.0,
+      "channel": "PSG1_Arp",
+      "note": "G4",
+      "frequency_hz": 392.0,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 5,
+      "beat": 1.25,
+      "channel": "PSG1_Arp",
+      "note": "Bb4",
+      "frequency_hz": 466.16,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 5,
+      "beat": 1.5,
+      "channel": "PSG1_Arp",
+      "note": "D5",
+      "frequency_hz": 587.33,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 5,
+      "beat": 1.75,
+      "channel": "PSG1_Arp",
+      "note": "G5",
+      "frequency_hz": 783.99,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 5,
+      "beat": 2.0,
+      "channel": "PSG1_Arp",
+      "note": "G4",
+      "frequency_hz": 392.0,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 5,
+      "beat": 2.25,
+      "channel": "PSG1_Arp",
+      "note": "Bb4",
+      "frequency_hz": 466.16,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 5,
+      "beat": 2.5,
+      "channel": "PSG1_Arp",
+      "note": "D5",
+      "frequency_hz": 587.33,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 5,
+      "beat": 2.75,
+      "channel": "PSG1_Arp",
+      "note": "G5",
+      "frequency_hz": 783.99,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 5,
+      "beat": 3.0,
+      "channel": "PSG1_Arp",
+      "note": "G4",
+      "frequency_hz": 392.0,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 5,
+      "beat": 3.25,
+      "channel": "PSG1_Arp",
+      "note": "Bb4",
+      "frequency_hz": 466.16,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 5,
+      "beat": 3.5,
+      "channel": "PSG1_Arp",
+      "note": "D5",
+      "frequency_hz": 587.33,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 5,
+      "beat": 3.75,
+      "channel": "PSG1_Arp",
+      "note": "G5",
+      "frequency_hz": 783.99,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 5,
+      "beat": 4.0,
+      "channel": "PSG1_Arp",
+      "note": "G4",
+      "frequency_hz": 392.0,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 5,
+      "beat": 4.25,
+      "channel": "PSG1_Arp",
+      "note": "Bb4",
+      "frequency_hz": 466.16,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 5,
+      "beat": 4.5,
+      "channel": "PSG1_Arp",
+      "note": "D5",
+      "frequency_hz": 587.33,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 5,
+      "beat": 4.75,
+      "channel": "PSG1_Arp",
+      "note": "G5",
+      "frequency_hz": 783.99,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 6,
+      "beat": 1.0,
+      "channel": "FM2_FM3_Chords",
+      "chord": "C13",
+      "notes": [
+        "C3",
+        "E3",
+        "Bb3",
+        "D4",
+        "A4"
+      ],
+      "frequencies_hz": [
+        130.81,
+        164.81,
+        233.08,
+        293.66,
+        440.0
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 6,
+      "beat": 1.75,
+      "channel": "FM2_FM3_Chords",
+      "chord": "C13",
+      "notes": [
+        "C3",
+        "E3",
+        "Bb3",
+        "D4",
+        "A4"
+      ],
+      "frequencies_hz": [
+        130.81,
+        164.81,
+        233.08,
+        293.66,
+        440.0
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 6,
+      "beat": 2.5,
+      "channel": "FM2_FM3_Chords",
+      "chord": "C13",
+      "notes": [
+        "C3",
+        "E3",
+        "Bb3",
+        "D4",
+        "A4"
+      ],
+      "frequencies_hz": [
+        130.81,
+        164.81,
+        233.08,
+        293.66,
+        440.0
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 6,
+      "beat": 3.5,
+      "channel": "FM2_FM3_Chords",
+      "chord": "C13",
+      "notes": [
+        "C3",
+        "E3",
+        "Bb3",
+        "D4",
+        "A4"
+      ],
+      "frequencies_hz": [
+        130.81,
+        164.81,
+        233.08,
+        293.66,
+        440.0
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 6,
+      "beat": 4.0,
+      "channel": "FM2_FM3_Chords",
+      "chord": "C13",
+      "notes": [
+        "C3",
+        "E3",
+        "Bb3",
+        "D4",
+        "A4"
+      ],
+      "frequencies_hz": [
+        130.81,
+        164.81,
+        233.08,
+        293.66,
+        440.0
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 6,
+      "beat": 1.0,
+      "channel": "FM1_Slap_Bass",
+      "note": "C2",
+      "frequency_hz": 65.41,
+      "duration_beats": 0.45
+    },
+    {
+      "bar": 6,
+      "beat": 1.5,
+      "channel": "FM1_Slap_Bass",
+      "note": "C2",
+      "frequency_hz": 65.41,
+      "duration_beats": 0.2
+    },
+    {
+      "bar": 6,
+      "beat": 1.75,
+      "channel": "FM1_Slap_Bass",
+      "note": "C3",
+      "frequency_hz": 130.81,
+      "duration_beats": 0.25
+    },
+    {
+      "bar": 6,
+      "beat": 2.0,
+      "channel": "FM1_Slap_Bass",
+      "note": "Bb2",
+      "frequency_hz": 116.54,
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 6,
+      "beat": 2.5,
+      "channel": "FM1_Slap_Bass",
+      "note": "C2",
+      "frequency_hz": 65.41,
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 6,
+      "beat": 3.0,
+      "channel": "FM1_Slap_Bass",
+      "note": "C2",
+      "frequency_hz": 65.41,
+      "duration_beats": 0.45
+    },
+    {
+      "bar": 6,
+      "beat": 3.5,
+      "channel": "FM1_Slap_Bass",
+      "note": "C3",
+      "frequency_hz": 130.81,
+      "duration_beats": 0.25
+    },
+    {
+      "bar": 6,
+      "beat": 3.75,
+      "channel": "FM1_Slap_Bass",
+      "note": "Bb2",
+      "frequency_hz": 116.54,
+      "duration_beats": 0.25
+    },
+    {
+      "bar": 6,
+      "beat": 4.0,
+      "channel": "FM1_Slap_Bass",
+      "note": "E2",
+      "frequency_hz": 82.41,
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 6,
+      "beat": 4.5,
+      "channel": "FM1_Slap_Bass",
+      "note": "C3",
+      "frequency_hz": 130.81,
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 6,
+      "beat": 1.0,
+      "channel": "PSG1_Arp",
+      "note": "C4",
+      "frequency_hz": 261.63,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 6,
+      "beat": 1.25,
+      "channel": "PSG1_Arp",
+      "note": "E4",
+      "frequency_hz": 329.63,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 6,
+      "beat": 1.5,
+      "channel": "PSG1_Arp",
+      "note": "Bb4",
+      "frequency_hz": 466.16,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 6,
+      "beat": 1.75,
+      "channel": "PSG1_Arp",
+      "note": "C5",
+      "frequency_hz": 523.25,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 6,
+      "beat": 2.0,
+      "channel": "PSG1_Arp",
+      "note": "C4",
+      "frequency_hz": 261.63,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 6,
+      "beat": 2.25,
+      "channel": "PSG1_Arp",
+      "note": "E4",
+      "frequency_hz": 329.63,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 6,
+      "beat": 2.5,
+      "channel": "PSG1_Arp",
+      "note": "Bb4",
+      "frequency_hz": 466.16,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 6,
+      "beat": 2.75,
+      "channel": "PSG1_Arp",
+      "note": "C5",
+      "frequency_hz": 523.25,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 6,
+      "beat": 3.0,
+      "channel": "PSG1_Arp",
+      "note": "C4",
+      "frequency_hz": 261.63,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 6,
+      "beat": 3.25,
+      "channel": "PSG1_Arp",
+      "note": "E4",
+      "frequency_hz": 329.63,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 6,
+      "beat": 3.5,
+      "channel": "PSG1_Arp",
+      "note": "Bb4",
+      "frequency_hz": 466.16,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 6,
+      "beat": 3.75,
+      "channel": "PSG1_Arp",
+      "note": "C5",
+      "frequency_hz": 523.25,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 6,
+      "beat": 4.0,
+      "channel": "PSG1_Arp",
+      "note": "C4",
+      "frequency_hz": 261.63,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 6,
+      "beat": 4.25,
+      "channel": "PSG1_Arp",
+      "note": "E4",
+      "frequency_hz": 329.63,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 6,
+      "beat": 4.5,
+      "channel": "PSG1_Arp",
+      "note": "Bb4",
+      "frequency_hz": 466.16,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 6,
+      "beat": 4.75,
+      "channel": "PSG1_Arp",
+      "note": "C5",
+      "frequency_hz": 523.25,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 7,
+      "beat": 1.0,
+      "channel": "FM2_FM3_Chords",
+      "chord": "Fmaj9",
+      "notes": [
+        "F3",
+        "A3",
+        "C4",
+        "E4",
+        "G4"
+      ],
+      "frequencies_hz": [
+        174.61,
+        220.0,
+        261.63,
+        329.63,
+        392.0
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 7,
+      "beat": 1.75,
+      "channel": "FM2_FM3_Chords",
+      "chord": "Fmaj9",
+      "notes": [
+        "F3",
+        "A3",
+        "C4",
+        "E4",
+        "G4"
+      ],
+      "frequencies_hz": [
+        174.61,
+        220.0,
+        261.63,
+        329.63,
+        392.0
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 7,
+      "beat": 2.5,
+      "channel": "FM2_FM3_Chords",
+      "chord": "Fmaj9",
+      "notes": [
+        "F3",
+        "A3",
+        "C4",
+        "E4",
+        "G4"
+      ],
+      "frequencies_hz": [
+        174.61,
+        220.0,
+        261.63,
+        329.63,
+        392.0
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 7,
+      "beat": 3.5,
+      "channel": "FM2_FM3_Chords",
+      "chord": "Fmaj9",
+      "notes": [
+        "F3",
+        "A3",
+        "C4",
+        "E4",
+        "G4"
+      ],
+      "frequencies_hz": [
+        174.61,
+        220.0,
+        261.63,
+        329.63,
+        392.0
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 7,
+      "beat": 4.0,
+      "channel": "FM2_FM3_Chords",
+      "chord": "Fmaj9",
+      "notes": [
+        "F3",
+        "A3",
+        "C4",
+        "E4",
+        "G4"
+      ],
+      "frequencies_hz": [
+        174.61,
+        220.0,
+        261.63,
+        329.63,
+        392.0
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 7,
+      "beat": 1.0,
+      "channel": "FM1_Slap_Bass",
+      "note": "F1",
+      "frequency_hz": 43.65,
+      "duration_beats": 0.45
+    },
+    {
+      "bar": 7,
+      "beat": 1.5,
+      "channel": "FM1_Slap_Bass",
+      "note": "F1",
+      "frequency_hz": 43.65,
+      "duration_beats": 0.2
+    },
+    {
+      "bar": 7,
+      "beat": 1.75,
+      "channel": "FM1_Slap_Bass",
+      "note": "F2",
+      "frequency_hz": 87.31,
+      "duration_beats": 0.25
+    },
+    {
+      "bar": 7,
+      "beat": 2.0,
+      "channel": "FM1_Slap_Bass",
+      "note": "C2",
+      "frequency_hz": 65.41,
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 7,
+      "beat": 2.5,
+      "channel": "FM1_Slap_Bass",
+      "note": "F1",
+      "frequency_hz": 43.65,
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 7,
+      "beat": 3.0,
+      "channel": "FM1_Slap_Bass",
+      "note": "F1",
+      "frequency_hz": 43.65,
+      "duration_beats": 0.45
+    },
+    {
+      "bar": 7,
+      "beat": 3.5,
+      "channel": "FM1_Slap_Bass",
+      "note": "F2",
+      "frequency_hz": 87.31,
+      "duration_beats": 0.25
+    },
+    {
+      "bar": 7,
+      "beat": 3.75,
+      "channel": "FM1_Slap_Bass",
+      "note": "C2",
+      "frequency_hz": 65.41,
+      "duration_beats": 0.25
+    },
+    {
+      "bar": 7,
+      "beat": 4.0,
+      "channel": "FM1_Slap_Bass",
+      "note": "A2",
+      "frequency_hz": 110.0,
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 7,
+      "beat": 4.5,
+      "channel": "FM1_Slap_Bass",
+      "note": "F2",
+      "frequency_hz": 87.31,
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 7,
+      "beat": 1.0,
+      "channel": "PSG1_Arp",
+      "note": "F4",
+      "frequency_hz": 349.23,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 7,
+      "beat": 1.25,
+      "channel": "PSG1_Arp",
+      "note": "A4",
+      "frequency_hz": 440.0,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 7,
+      "beat": 1.5,
+      "channel": "PSG1_Arp",
+      "note": "C5",
+      "frequency_hz": 523.25,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 7,
+      "beat": 1.75,
+      "channel": "PSG1_Arp",
+      "note": "F5",
+      "frequency_hz": 698.46,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 7,
+      "beat": 2.0,
+      "channel": "PSG1_Arp",
+      "note": "F4",
+      "frequency_hz": 349.23,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 7,
+      "beat": 2.25,
+      "channel": "PSG1_Arp",
+      "note": "A4",
+      "frequency_hz": 440.0,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 7,
+      "beat": 2.5,
+      "channel": "PSG1_Arp",
+      "note": "C5",
+      "frequency_hz": 523.25,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 7,
+      "beat": 2.75,
+      "channel": "PSG1_Arp",
+      "note": "F5",
+      "frequency_hz": 698.46,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 7,
+      "beat": 3.0,
+      "channel": "PSG1_Arp",
+      "note": "F4",
+      "frequency_hz": 349.23,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 7,
+      "beat": 3.25,
+      "channel": "PSG1_Arp",
+      "note": "A4",
+      "frequency_hz": 440.0,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 7,
+      "beat": 3.5,
+      "channel": "PSG1_Arp",
+      "note": "C5",
+      "frequency_hz": 523.25,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 7,
+      "beat": 3.75,
+      "channel": "PSG1_Arp",
+      "note": "F5",
+      "frequency_hz": 698.46,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 7,
+      "beat": 4.0,
+      "channel": "PSG1_Arp",
+      "note": "F4",
+      "frequency_hz": 349.23,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 7,
+      "beat": 4.25,
+      "channel": "PSG1_Arp",
+      "note": "A4",
+      "frequency_hz": 440.0,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 7,
+      "beat": 4.5,
+      "channel": "PSG1_Arp",
+      "note": "C5",
+      "frequency_hz": 523.25,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 7,
+      "beat": 4.75,
+      "channel": "PSG1_Arp",
+      "note": "F5",
+      "frequency_hz": 698.46,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 8,
+      "beat": 1.0,
+      "channel": "FM2_FM3_Chords",
+      "chord": "D7#9",
+      "notes": [
+        "D3",
+        "F#3",
+        "C4",
+        "F4"
+      ],
+      "frequencies_hz": [
+        146.83,
+        185.0,
+        261.63,
+        349.23
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 8,
+      "beat": 1.75,
+      "channel": "FM2_FM3_Chords",
+      "chord": "D7#9",
+      "notes": [
+        "D3",
+        "F#3",
+        "C4",
+        "F4"
+      ],
+      "frequencies_hz": [
+        146.83,
+        185.0,
+        261.63,
+        349.23
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 8,
+      "beat": 2.5,
+      "channel": "FM2_FM3_Chords",
+      "chord": "D7#9",
+      "notes": [
+        "D3",
+        "F#3",
+        "C4",
+        "F4"
+      ],
+      "frequencies_hz": [
+        146.83,
+        185.0,
+        261.63,
+        349.23
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 8,
+      "beat": 3.5,
+      "channel": "FM2_FM3_Chords",
+      "chord": "D7#9",
+      "notes": [
+        "D3",
+        "F#3",
+        "C4",
+        "F4"
+      ],
+      "frequencies_hz": [
+        146.83,
+        185.0,
+        261.63,
+        349.23
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 8,
+      "beat": 4.0,
+      "channel": "FM2_FM3_Chords",
+      "chord": "D7#9",
+      "notes": [
+        "D3",
+        "F#3",
+        "C4",
+        "F4"
+      ],
+      "frequencies_hz": [
+        146.83,
+        185.0,
+        261.63,
+        349.23
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 8,
+      "beat": 1.0,
+      "channel": "FM1_Slap_Bass",
+      "note": "D2",
+      "frequency_hz": 73.42,
+      "duration_beats": 0.45
+    },
+    {
+      "bar": 8,
+      "beat": 1.5,
+      "channel": "FM1_Slap_Bass",
+      "note": "D2",
+      "frequency_hz": 73.42,
+      "duration_beats": 0.2
+    },
+    {
+      "bar": 8,
+      "beat": 1.75,
+      "channel": "FM1_Slap_Bass",
+      "note": "D3",
+      "frequency_hz": 146.83,
+      "duration_beats": 0.25
+    },
+    {
+      "bar": 8,
+      "beat": 2.0,
+      "channel": "FM1_Slap_Bass",
+      "note": "C2",
+      "frequency_hz": 65.41,
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 8,
+      "beat": 2.5,
+      "channel": "FM1_Slap_Bass",
+      "note": "D2",
+      "frequency_hz": 73.42,
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 8,
+      "beat": 3.0,
+      "channel": "FM1_Slap_Bass",
+      "note": "D2",
+      "frequency_hz": 73.42,
+      "duration_beats": 0.45
+    },
+    {
+      "bar": 8,
+      "beat": 3.5,
+      "channel": "FM1_Slap_Bass",
+      "note": "D3",
+      "frequency_hz": 146.83,
+      "duration_beats": 0.25
+    },
+    {
+      "bar": 8,
+      "beat": 3.75,
+      "channel": "FM1_Slap_Bass",
+      "note": "C2",
+      "frequency_hz": 65.41,
+      "duration_beats": 0.25
+    },
+    {
+      "bar": 8,
+      "beat": 4.0,
+      "channel": "FM1_Slap_Bass",
+      "note": "F#2",
+      "frequency_hz": 92.5,
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 8,
+      "beat": 4.5,
+      "channel": "FM1_Slap_Bass",
+      "note": "D3",
+      "frequency_hz": 146.83,
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 8,
+      "beat": 1.0,
+      "channel": "PSG1_Arp",
+      "note": "D4",
+      "frequency_hz": 293.66,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 8,
+      "beat": 1.25,
+      "channel": "PSG1_Arp",
+      "note": "F#4",
+      "frequency_hz": 369.99,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 8,
+      "beat": 1.5,
+      "channel": "PSG1_Arp",
+      "note": "C5",
+      "frequency_hz": 523.25,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 8,
+      "beat": 1.75,
+      "channel": "PSG1_Arp",
+      "note": "D5",
+      "frequency_hz": 587.33,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 8,
+      "beat": 2.0,
+      "channel": "PSG1_Arp",
+      "note": "D4",
+      "frequency_hz": 293.66,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 8,
+      "beat": 2.25,
+      "channel": "PSG1_Arp",
+      "note": "F#4",
+      "frequency_hz": 369.99,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 8,
+      "beat": 2.5,
+      "channel": "PSG1_Arp",
+      "note": "C5",
+      "frequency_hz": 523.25,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 8,
+      "beat": 2.75,
+      "channel": "PSG1_Arp",
+      "note": "D5",
+      "frequency_hz": 587.33,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 8,
+      "beat": 3.0,
+      "channel": "PSG1_Arp",
+      "note": "D4",
+      "frequency_hz": 293.66,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 8,
+      "beat": 3.25,
+      "channel": "PSG1_Arp",
+      "note": "F#4",
+      "frequency_hz": 369.99,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 8,
+      "beat": 3.5,
+      "channel": "PSG1_Arp",
+      "note": "C5",
+      "frequency_hz": 523.25,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 8,
+      "beat": 3.75,
+      "channel": "PSG1_Arp",
+      "note": "D5",
+      "frequency_hz": 587.33,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 8,
+      "beat": 4.0,
+      "channel": "PSG1_Arp",
+      "note": "D4",
+      "frequency_hz": 293.66,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 8,
+      "beat": 4.25,
+      "channel": "PSG1_Arp",
+      "note": "F#4",
+      "frequency_hz": 369.99,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 8,
+      "beat": 4.5,
+      "channel": "PSG1_Arp",
+      "note": "C5",
+      "frequency_hz": 523.25,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 8,
+      "beat": 4.75,
+      "channel": "PSG1_Arp",
+      "note": "D5",
+      "frequency_hz": 587.33,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 9,
+      "beat": 1.0,
+      "channel": "FM2_FM3_Chords",
+      "chord": "Gm9",
+      "notes": [
+        "G3",
+        "Bb3",
+        "D4",
+        "F4",
+        "A4"
+      ],
+      "frequencies_hz": [
+        196.0,
+        233.08,
+        293.66,
+        349.23,
+        440.0
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 9,
+      "beat": 1.75,
+      "channel": "FM2_FM3_Chords",
+      "chord": "Gm9",
+      "notes": [
+        "G3",
+        "Bb3",
+        "D4",
+        "F4",
+        "A4"
+      ],
+      "frequencies_hz": [
+        196.0,
+        233.08,
+        293.66,
+        349.23,
+        440.0
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 9,
+      "beat": 2.5,
+      "channel": "FM2_FM3_Chords",
+      "chord": "Gm9",
+      "notes": [
+        "G3",
+        "Bb3",
+        "D4",
+        "F4",
+        "A4"
+      ],
+      "frequencies_hz": [
+        196.0,
+        233.08,
+        293.66,
+        349.23,
+        440.0
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 9,
+      "beat": 3.5,
+      "channel": "FM2_FM3_Chords",
+      "chord": "Gm9",
+      "notes": [
+        "G3",
+        "Bb3",
+        "D4",
+        "F4",
+        "A4"
+      ],
+      "frequencies_hz": [
+        196.0,
+        233.08,
+        293.66,
+        349.23,
+        440.0
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 9,
+      "beat": 4.0,
+      "channel": "FM2_FM3_Chords",
+      "chord": "Gm9",
+      "notes": [
+        "G3",
+        "Bb3",
+        "D4",
+        "F4",
+        "A4"
+      ],
+      "frequencies_hz": [
+        196.0,
+        233.08,
+        293.66,
+        349.23,
+        440.0
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 9,
+      "beat": 1.0,
+      "channel": "FM1_Slap_Bass",
+      "note": "G1",
+      "frequency_hz": 49.0,
+      "duration_beats": 0.45
+    },
+    {
+      "bar": 9,
+      "beat": 1.5,
+      "channel": "FM1_Slap_Bass",
+      "note": "G1",
+      "frequency_hz": 49.0,
+      "duration_beats": 0.2
+    },
+    {
+      "bar": 9,
+      "beat": 1.75,
+      "channel": "FM1_Slap_Bass",
+      "note": "G2",
+      "frequency_hz": 98.0,
+      "duration_beats": 0.25
+    },
+    {
+      "bar": 9,
+      "beat": 2.0,
+      "channel": "FM1_Slap_Bass",
+      "note": "D2",
+      "frequency_hz": 73.42,
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 9,
+      "beat": 2.5,
+      "channel": "FM1_Slap_Bass",
+      "note": "G1",
+      "frequency_hz": 49.0,
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 9,
+      "beat": 3.0,
+      "channel": "FM1_Slap_Bass",
+      "note": "G1",
+      "frequency_hz": 49.0,
+      "duration_beats": 0.45
+    },
+    {
+      "bar": 9,
+      "beat": 3.5,
+      "channel": "FM1_Slap_Bass",
+      "note": "G2",
+      "frequency_hz": 98.0,
+      "duration_beats": 0.25
+    },
+    {
+      "bar": 9,
+      "beat": 3.75,
+      "channel": "FM1_Slap_Bass",
+      "note": "D2",
+      "frequency_hz": 73.42,
+      "duration_beats": 0.25
+    },
+    {
+      "bar": 9,
+      "beat": 4.0,
+      "channel": "FM1_Slap_Bass",
+      "note": "Bb2",
+      "frequency_hz": 116.54,
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 9,
+      "beat": 4.5,
+      "channel": "FM1_Slap_Bass",
+      "note": "G2",
+      "frequency_hz": 98.0,
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 9,
+      "beat": 1.0,
+      "channel": "PSG1_Arp",
+      "note": "G4",
+      "frequency_hz": 392.0,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 9,
+      "beat": 1.25,
+      "channel": "PSG1_Arp",
+      "note": "Bb4",
+      "frequency_hz": 466.16,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 9,
+      "beat": 1.5,
+      "channel": "PSG1_Arp",
+      "note": "D5",
+      "frequency_hz": 587.33,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 9,
+      "beat": 1.75,
+      "channel": "PSG1_Arp",
+      "note": "G5",
+      "frequency_hz": 783.99,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 9,
+      "beat": 2.0,
+      "channel": "PSG1_Arp",
+      "note": "G4",
+      "frequency_hz": 392.0,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 9,
+      "beat": 2.25,
+      "channel": "PSG1_Arp",
+      "note": "Bb4",
+      "frequency_hz": 466.16,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 9,
+      "beat": 2.5,
+      "channel": "PSG1_Arp",
+      "note": "D5",
+      "frequency_hz": 587.33,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 9,
+      "beat": 2.75,
+      "channel": "PSG1_Arp",
+      "note": "G5",
+      "frequency_hz": 783.99,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 9,
+      "beat": 3.0,
+      "channel": "PSG1_Arp",
+      "note": "G4",
+      "frequency_hz": 392.0,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 9,
+      "beat": 3.25,
+      "channel": "PSG1_Arp",
+      "note": "Bb4",
+      "frequency_hz": 466.16,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 9,
+      "beat": 3.5,
+      "channel": "PSG1_Arp",
+      "note": "D5",
+      "frequency_hz": 587.33,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 9,
+      "beat": 3.75,
+      "channel": "PSG1_Arp",
+      "note": "G5",
+      "frequency_hz": 783.99,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 9,
+      "beat": 4.0,
+      "channel": "PSG1_Arp",
+      "note": "G4",
+      "frequency_hz": 392.0,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 9,
+      "beat": 4.25,
+      "channel": "PSG1_Arp",
+      "note": "Bb4",
+      "frequency_hz": 466.16,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 9,
+      "beat": 4.5,
+      "channel": "PSG1_Arp",
+      "note": "D5",
+      "frequency_hz": 587.33,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 9,
+      "beat": 4.75,
+      "channel": "PSG1_Arp",
+      "note": "G5",
+      "frequency_hz": 783.99,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 10,
+      "beat": 1.0,
+      "channel": "FM2_FM3_Chords",
+      "chord": "C13",
+      "notes": [
+        "C3",
+        "E3",
+        "Bb3",
+        "D4",
+        "A4"
+      ],
+      "frequencies_hz": [
+        130.81,
+        164.81,
+        233.08,
+        293.66,
+        440.0
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 10,
+      "beat": 1.75,
+      "channel": "FM2_FM3_Chords",
+      "chord": "C13",
+      "notes": [
+        "C3",
+        "E3",
+        "Bb3",
+        "D4",
+        "A4"
+      ],
+      "frequencies_hz": [
+        130.81,
+        164.81,
+        233.08,
+        293.66,
+        440.0
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 10,
+      "beat": 2.5,
+      "channel": "FM2_FM3_Chords",
+      "chord": "C13",
+      "notes": [
+        "C3",
+        "E3",
+        "Bb3",
+        "D4",
+        "A4"
+      ],
+      "frequencies_hz": [
+        130.81,
+        164.81,
+        233.08,
+        293.66,
+        440.0
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 10,
+      "beat": 3.5,
+      "channel": "FM2_FM3_Chords",
+      "chord": "C13",
+      "notes": [
+        "C3",
+        "E3",
+        "Bb3",
+        "D4",
+        "A4"
+      ],
+      "frequencies_hz": [
+        130.81,
+        164.81,
+        233.08,
+        293.66,
+        440.0
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 10,
+      "beat": 4.0,
+      "channel": "FM2_FM3_Chords",
+      "chord": "C13",
+      "notes": [
+        "C3",
+        "E3",
+        "Bb3",
+        "D4",
+        "A4"
+      ],
+      "frequencies_hz": [
+        130.81,
+        164.81,
+        233.08,
+        293.66,
+        440.0
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 10,
+      "beat": 1.0,
+      "channel": "FM1_Slap_Bass",
+      "note": "C2",
+      "frequency_hz": 65.41,
+      "duration_beats": 0.45
+    },
+    {
+      "bar": 10,
+      "beat": 1.5,
+      "channel": "FM1_Slap_Bass",
+      "note": "C2",
+      "frequency_hz": 65.41,
+      "duration_beats": 0.2
+    },
+    {
+      "bar": 10,
+      "beat": 1.75,
+      "channel": "FM1_Slap_Bass",
+      "note": "C3",
+      "frequency_hz": 130.81,
+      "duration_beats": 0.25
+    },
+    {
+      "bar": 10,
+      "beat": 2.0,
+      "channel": "FM1_Slap_Bass",
+      "note": "Bb2",
+      "frequency_hz": 116.54,
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 10,
+      "beat": 2.5,
+      "channel": "FM1_Slap_Bass",
+      "note": "C2",
+      "frequency_hz": 65.41,
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 10,
+      "beat": 3.0,
+      "channel": "FM1_Slap_Bass",
+      "note": "C2",
+      "frequency_hz": 65.41,
+      "duration_beats": 0.45
+    },
+    {
+      "bar": 10,
+      "beat": 3.5,
+      "channel": "FM1_Slap_Bass",
+      "note": "C3",
+      "frequency_hz": 130.81,
+      "duration_beats": 0.25
+    },
+    {
+      "bar": 10,
+      "beat": 3.75,
+      "channel": "FM1_Slap_Bass",
+      "note": "Bb2",
+      "frequency_hz": 116.54,
+      "duration_beats": 0.25
+    },
+    {
+      "bar": 10,
+      "beat": 4.0,
+      "channel": "FM1_Slap_Bass",
+      "note": "E2",
+      "frequency_hz": 82.41,
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 10,
+      "beat": 4.5,
+      "channel": "FM1_Slap_Bass",
+      "note": "C3",
+      "frequency_hz": 130.81,
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 10,
+      "beat": 1.0,
+      "channel": "PSG1_Arp",
+      "note": "C4",
+      "frequency_hz": 261.63,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 10,
+      "beat": 1.25,
+      "channel": "PSG1_Arp",
+      "note": "E4",
+      "frequency_hz": 329.63,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 10,
+      "beat": 1.5,
+      "channel": "PSG1_Arp",
+      "note": "Bb4",
+      "frequency_hz": 466.16,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 10,
+      "beat": 1.75,
+      "channel": "PSG1_Arp",
+      "note": "C5",
+      "frequency_hz": 523.25,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 10,
+      "beat": 2.0,
+      "channel": "PSG1_Arp",
+      "note": "C4",
+      "frequency_hz": 261.63,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 10,
+      "beat": 2.25,
+      "channel": "PSG1_Arp",
+      "note": "E4",
+      "frequency_hz": 329.63,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 10,
+      "beat": 2.5,
+      "channel": "PSG1_Arp",
+      "note": "Bb4",
+      "frequency_hz": 466.16,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 10,
+      "beat": 2.75,
+      "channel": "PSG1_Arp",
+      "note": "C5",
+      "frequency_hz": 523.25,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 10,
+      "beat": 3.0,
+      "channel": "PSG1_Arp",
+      "note": "C4",
+      "frequency_hz": 261.63,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 10,
+      "beat": 3.25,
+      "channel": "PSG1_Arp",
+      "note": "E4",
+      "frequency_hz": 329.63,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 10,
+      "beat": 3.5,
+      "channel": "PSG1_Arp",
+      "note": "Bb4",
+      "frequency_hz": 466.16,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 10,
+      "beat": 3.75,
+      "channel": "PSG1_Arp",
+      "note": "C5",
+      "frequency_hz": 523.25,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 10,
+      "beat": 4.0,
+      "channel": "PSG1_Arp",
+      "note": "C4",
+      "frequency_hz": 261.63,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 10,
+      "beat": 4.25,
+      "channel": "PSG1_Arp",
+      "note": "E4",
+      "frequency_hz": 329.63,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 10,
+      "beat": 4.5,
+      "channel": "PSG1_Arp",
+      "note": "Bb4",
+      "frequency_hz": 466.16,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 10,
+      "beat": 4.75,
+      "channel": "PSG1_Arp",
+      "note": "C5",
+      "frequency_hz": 523.25,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 11,
+      "beat": 1.0,
+      "channel": "FM2_FM3_Chords",
+      "chord": "EbMaj9",
+      "notes": [
+        "Eb3",
+        "G3",
+        "Bb3",
+        "D4",
+        "F4"
+      ],
+      "frequencies_hz": [
+        155.56,
+        196.0,
+        233.08,
+        293.66,
+        349.23
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 11,
+      "beat": 1.75,
+      "channel": "FM2_FM3_Chords",
+      "chord": "EbMaj9",
+      "notes": [
+        "Eb3",
+        "G3",
+        "Bb3",
+        "D4",
+        "F4"
+      ],
+      "frequencies_hz": [
+        155.56,
+        196.0,
+        233.08,
+        293.66,
+        349.23
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 11,
+      "beat": 2.5,
+      "channel": "FM2_FM3_Chords",
+      "chord": "EbMaj9",
+      "notes": [
+        "Eb3",
+        "G3",
+        "Bb3",
+        "D4",
+        "F4"
+      ],
+      "frequencies_hz": [
+        155.56,
+        196.0,
+        233.08,
+        293.66,
+        349.23
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 11,
+      "beat": 3.5,
+      "channel": "FM2_FM3_Chords",
+      "chord": "EbMaj9",
+      "notes": [
+        "Eb3",
+        "G3",
+        "Bb3",
+        "D4",
+        "F4"
+      ],
+      "frequencies_hz": [
+        155.56,
+        196.0,
+        233.08,
+        293.66,
+        349.23
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 11,
+      "beat": 4.0,
+      "channel": "FM2_FM3_Chords",
+      "chord": "EbMaj9",
+      "notes": [
+        "Eb3",
+        "G3",
+        "Bb3",
+        "D4",
+        "F4"
+      ],
+      "frequencies_hz": [
+        155.56,
+        196.0,
+        233.08,
+        293.66,
+        349.23
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 11,
+      "beat": 1.0,
+      "channel": "FM1_Slap_Bass",
+      "note": "Eb2",
+      "frequency_hz": 77.78,
+      "duration_beats": 0.45
+    },
+    {
+      "bar": 11,
+      "beat": 1.5,
+      "channel": "FM1_Slap_Bass",
+      "note": "Eb2",
+      "frequency_hz": 77.78,
+      "duration_beats": 0.2
+    },
+    {
+      "bar": 11,
+      "beat": 1.75,
+      "channel": "FM1_Slap_Bass",
+      "note": "Eb3",
+      "frequency_hz": 155.56,
+      "duration_beats": 0.25
+    },
+    {
+      "bar": 11,
+      "beat": 2.0,
+      "channel": "FM1_Slap_Bass",
+      "note": "Bb2",
+      "frequency_hz": 116.54,
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 11,
+      "beat": 2.5,
+      "channel": "FM1_Slap_Bass",
+      "note": "Eb2",
+      "frequency_hz": 77.78,
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 11,
+      "beat": 3.0,
+      "channel": "FM1_Slap_Bass",
+      "note": "Eb2",
+      "frequency_hz": 77.78,
+      "duration_beats": 0.45
+    },
+    {
+      "bar": 11,
+      "beat": 3.5,
+      "channel": "FM1_Slap_Bass",
+      "note": "Eb3",
+      "frequency_hz": 155.56,
+      "duration_beats": 0.25
+    },
+    {
+      "bar": 11,
+      "beat": 3.75,
+      "channel": "FM1_Slap_Bass",
+      "note": "Bb2",
+      "frequency_hz": 116.54,
+      "duration_beats": 0.25
+    },
+    {
+      "bar": 11,
+      "beat": 4.0,
+      "channel": "FM1_Slap_Bass",
+      "note": "G2",
+      "frequency_hz": 98.0,
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 11,
+      "beat": 4.5,
+      "channel": "FM1_Slap_Bass",
+      "note": "Eb3",
+      "frequency_hz": 155.56,
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 11,
+      "beat": 1.0,
+      "channel": "PSG1_Arp",
+      "note": "Eb4",
+      "frequency_hz": 311.13,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 11,
+      "beat": 1.25,
+      "channel": "PSG1_Arp",
+      "note": "G4",
+      "frequency_hz": 392.0,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 11,
+      "beat": 1.5,
+      "channel": "PSG1_Arp",
+      "note": "Bb4",
+      "frequency_hz": 466.16,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 11,
+      "beat": 1.75,
+      "channel": "PSG1_Arp",
+      "note": "Eb5",
+      "frequency_hz": 622.25,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 11,
+      "beat": 2.0,
+      "channel": "PSG1_Arp",
+      "note": "Eb4",
+      "frequency_hz": 311.13,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 11,
+      "beat": 2.25,
+      "channel": "PSG1_Arp",
+      "note": "G4",
+      "frequency_hz": 392.0,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 11,
+      "beat": 2.5,
+      "channel": "PSG1_Arp",
+      "note": "Bb4",
+      "frequency_hz": 466.16,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 11,
+      "beat": 2.75,
+      "channel": "PSG1_Arp",
+      "note": "Eb5",
+      "frequency_hz": 622.25,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 11,
+      "beat": 3.0,
+      "channel": "PSG1_Arp",
+      "note": "Eb4",
+      "frequency_hz": 311.13,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 11,
+      "beat": 3.25,
+      "channel": "PSG1_Arp",
+      "note": "G4",
+      "frequency_hz": 392.0,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 11,
+      "beat": 3.5,
+      "channel": "PSG1_Arp",
+      "note": "Bb4",
+      "frequency_hz": 466.16,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 11,
+      "beat": 3.75,
+      "channel": "PSG1_Arp",
+      "note": "Eb5",
+      "frequency_hz": 622.25,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 11,
+      "beat": 4.0,
+      "channel": "PSG1_Arp",
+      "note": "Eb4",
+      "frequency_hz": 311.13,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 11,
+      "beat": 4.25,
+      "channel": "PSG1_Arp",
+      "note": "G4",
+      "frequency_hz": 392.0,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 11,
+      "beat": 4.5,
+      "channel": "PSG1_Arp",
+      "note": "Bb4",
+      "frequency_hz": 466.16,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 11,
+      "beat": 4.75,
+      "channel": "PSG1_Arp",
+      "note": "Eb5",
+      "frequency_hz": 622.25,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 12,
+      "beat": 1.0,
+      "channel": "FM2_FM3_Chords",
+      "chord": "F13",
+      "notes": [
+        "F3",
+        "A3",
+        "Eb4",
+        "G4"
+      ],
+      "frequencies_hz": [
+        174.61,
+        220.0,
+        311.13,
+        392.0
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 12,
+      "beat": 1.75,
+      "channel": "FM2_FM3_Chords",
+      "chord": "F13",
+      "notes": [
+        "F3",
+        "A3",
+        "Eb4",
+        "G4"
+      ],
+      "frequencies_hz": [
+        174.61,
+        220.0,
+        311.13,
+        392.0
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 12,
+      "beat": 2.5,
+      "channel": "FM2_FM3_Chords",
+      "chord": "F13",
+      "notes": [
+        "F3",
+        "A3",
+        "Eb4",
+        "G4"
+      ],
+      "frequencies_hz": [
+        174.61,
+        220.0,
+        311.13,
+        392.0
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 12,
+      "beat": 3.5,
+      "channel": "FM2_FM3_Chords",
+      "chord": "F13",
+      "notes": [
+        "F3",
+        "A3",
+        "Eb4",
+        "G4"
+      ],
+      "frequencies_hz": [
+        174.61,
+        220.0,
+        311.13,
+        392.0
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 12,
+      "beat": 4.0,
+      "channel": "FM2_FM3_Chords",
+      "chord": "F13",
+      "notes": [
+        "F3",
+        "A3",
+        "Eb4",
+        "G4"
+      ],
+      "frequencies_hz": [
+        174.61,
+        220.0,
+        311.13,
+        392.0
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 12,
+      "beat": 1.0,
+      "channel": "FM1_Slap_Bass",
+      "note": "F2",
+      "frequency_hz": 87.31,
+      "duration_beats": 0.45
+    },
+    {
+      "bar": 12,
+      "beat": 1.5,
+      "channel": "FM1_Slap_Bass",
+      "note": "F2",
+      "frequency_hz": 87.31,
+      "duration_beats": 0.2
+    },
+    {
+      "bar": 12,
+      "beat": 1.75,
+      "channel": "FM1_Slap_Bass",
+      "note": "F3",
+      "frequency_hz": 174.61,
+      "duration_beats": 0.25
+    },
+    {
+      "bar": 12,
+      "beat": 2.0,
+      "channel": "FM1_Slap_Bass",
+      "note": "Eb2",
+      "frequency_hz": 77.78,
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 12,
+      "beat": 2.5,
+      "channel": "FM1_Slap_Bass",
+      "note": "F2",
+      "frequency_hz": 87.31,
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 12,
+      "beat": 3.0,
+      "channel": "FM1_Slap_Bass",
+      "note": "F2",
+      "frequency_hz": 87.31,
+      "duration_beats": 0.45
+    },
+    {
+      "bar": 12,
+      "beat": 3.5,
+      "channel": "FM1_Slap_Bass",
+      "note": "F3",
+      "frequency_hz": 174.61,
+      "duration_beats": 0.25
+    },
+    {
+      "bar": 12,
+      "beat": 3.75,
+      "channel": "FM1_Slap_Bass",
+      "note": "Eb2",
+      "frequency_hz": 77.78,
+      "duration_beats": 0.25
+    },
+    {
+      "bar": 12,
+      "beat": 4.0,
+      "channel": "FM1_Slap_Bass",
+      "note": "A2",
+      "frequency_hz": 110.0,
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 12,
+      "beat": 4.5,
+      "channel": "FM1_Slap_Bass",
+      "note": "F3",
+      "frequency_hz": 174.61,
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 12,
+      "beat": 1.0,
+      "channel": "PSG1_Arp",
+      "note": "F4",
+      "frequency_hz": 349.23,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 12,
+      "beat": 1.25,
+      "channel": "PSG1_Arp",
+      "note": "A4",
+      "frequency_hz": 440.0,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 12,
+      "beat": 1.5,
+      "channel": "PSG1_Arp",
+      "note": "Eb5",
+      "frequency_hz": 622.25,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 12,
+      "beat": 1.75,
+      "channel": "PSG1_Arp",
+      "note": "F5",
+      "frequency_hz": 698.46,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 12,
+      "beat": 2.0,
+      "channel": "PSG1_Arp",
+      "note": "F4",
+      "frequency_hz": 349.23,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 12,
+      "beat": 2.25,
+      "channel": "PSG1_Arp",
+      "note": "A4",
+      "frequency_hz": 440.0,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 12,
+      "beat": 2.5,
+      "channel": "PSG1_Arp",
+      "note": "Eb5",
+      "frequency_hz": 622.25,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 12,
+      "beat": 2.75,
+      "channel": "PSG1_Arp",
+      "note": "F5",
+      "frequency_hz": 698.46,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 12,
+      "beat": 3.0,
+      "channel": "PSG1_Arp",
+      "note": "F4",
+      "frequency_hz": 349.23,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 12,
+      "beat": 3.25,
+      "channel": "PSG1_Arp",
+      "note": "A4",
+      "frequency_hz": 440.0,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 12,
+      "beat": 3.5,
+      "channel": "PSG1_Arp",
+      "note": "Eb5",
+      "frequency_hz": 622.25,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 12,
+      "beat": 3.75,
+      "channel": "PSG1_Arp",
+      "note": "F5",
+      "frequency_hz": 698.46,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 12,
+      "beat": 4.0,
+      "channel": "PSG1_Arp",
+      "note": "F4",
+      "frequency_hz": 349.23,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 12,
+      "beat": 4.25,
+      "channel": "PSG1_Arp",
+      "note": "A4",
+      "frequency_hz": 440.0,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 12,
+      "beat": 4.5,
+      "channel": "PSG1_Arp",
+      "note": "Eb5",
+      "frequency_hz": 622.25,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 12,
+      "beat": 4.75,
+      "channel": "PSG1_Arp",
+      "note": "F5",
+      "frequency_hz": 698.46,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 13,
+      "beat": 1.0,
+      "channel": "FM2_FM3_Chords",
+      "chord": "EbMaj9",
+      "notes": [
+        "Eb3",
+        "G3",
+        "Bb3",
+        "D4",
+        "F4"
+      ],
+      "frequencies_hz": [
+        155.56,
+        196.0,
+        233.08,
+        293.66,
+        349.23
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 13,
+      "beat": 1.75,
+      "channel": "FM2_FM3_Chords",
+      "chord": "EbMaj9",
+      "notes": [
+        "Eb3",
+        "G3",
+        "Bb3",
+        "D4",
+        "F4"
+      ],
+      "frequencies_hz": [
+        155.56,
+        196.0,
+        233.08,
+        293.66,
+        349.23
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 13,
+      "beat": 2.5,
+      "channel": "FM2_FM3_Chords",
+      "chord": "EbMaj9",
+      "notes": [
+        "Eb3",
+        "G3",
+        "Bb3",
+        "D4",
+        "F4"
+      ],
+      "frequencies_hz": [
+        155.56,
+        196.0,
+        233.08,
+        293.66,
+        349.23
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 13,
+      "beat": 3.5,
+      "channel": "FM2_FM3_Chords",
+      "chord": "EbMaj9",
+      "notes": [
+        "Eb3",
+        "G3",
+        "Bb3",
+        "D4",
+        "F4"
+      ],
+      "frequencies_hz": [
+        155.56,
+        196.0,
+        233.08,
+        293.66,
+        349.23
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 13,
+      "beat": 4.0,
+      "channel": "FM2_FM3_Chords",
+      "chord": "EbMaj9",
+      "notes": [
+        "Eb3",
+        "G3",
+        "Bb3",
+        "D4",
+        "F4"
+      ],
+      "frequencies_hz": [
+        155.56,
+        196.0,
+        233.08,
+        293.66,
+        349.23
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 13,
+      "beat": 1.0,
+      "channel": "FM1_Slap_Bass",
+      "note": "Eb1",
+      "frequency_hz": 38.89,
+      "duration_beats": 0.45
+    },
+    {
+      "bar": 13,
+      "beat": 1.5,
+      "channel": "FM1_Slap_Bass",
+      "note": "Eb1",
+      "frequency_hz": 38.89,
+      "duration_beats": 0.2
+    },
+    {
+      "bar": 13,
+      "beat": 1.75,
+      "channel": "FM1_Slap_Bass",
+      "note": "Eb2",
+      "frequency_hz": 77.78,
+      "duration_beats": 0.25
+    },
+    {
+      "bar": 13,
+      "beat": 2.0,
+      "channel": "FM1_Slap_Bass",
+      "note": "Bb2",
+      "frequency_hz": 116.54,
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 13,
+      "beat": 2.5,
+      "channel": "FM1_Slap_Bass",
+      "note": "Eb1",
+      "frequency_hz": 38.89,
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 13,
+      "beat": 3.0,
+      "channel": "FM1_Slap_Bass",
+      "note": "Eb1",
+      "frequency_hz": 38.89,
+      "duration_beats": 0.45
+    },
+    {
+      "bar": 13,
+      "beat": 3.5,
+      "channel": "FM1_Slap_Bass",
+      "note": "Eb2",
+      "frequency_hz": 77.78,
+      "duration_beats": 0.25
+    },
+    {
+      "bar": 13,
+      "beat": 3.75,
+      "channel": "FM1_Slap_Bass",
+      "note": "Bb2",
+      "frequency_hz": 116.54,
+      "duration_beats": 0.25
+    },
+    {
+      "bar": 13,
+      "beat": 4.0,
+      "channel": "FM1_Slap_Bass",
+      "note": "G2",
+      "frequency_hz": 98.0,
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 13,
+      "beat": 4.5,
+      "channel": "FM1_Slap_Bass",
+      "note": "Eb2",
+      "frequency_hz": 77.78,
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 13,
+      "beat": 1.0,
+      "channel": "PSG1_Arp",
+      "note": "Eb4",
+      "frequency_hz": 311.13,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 13,
+      "beat": 1.25,
+      "channel": "PSG1_Arp",
+      "note": "G4",
+      "frequency_hz": 392.0,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 13,
+      "beat": 1.5,
+      "channel": "PSG1_Arp",
+      "note": "Bb4",
+      "frequency_hz": 466.16,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 13,
+      "beat": 1.75,
+      "channel": "PSG1_Arp",
+      "note": "Eb5",
+      "frequency_hz": 622.25,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 13,
+      "beat": 2.0,
+      "channel": "PSG1_Arp",
+      "note": "Eb4",
+      "frequency_hz": 311.13,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 13,
+      "beat": 2.25,
+      "channel": "PSG1_Arp",
+      "note": "G4",
+      "frequency_hz": 392.0,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 13,
+      "beat": 2.5,
+      "channel": "PSG1_Arp",
+      "note": "Bb4",
+      "frequency_hz": 466.16,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 13,
+      "beat": 2.75,
+      "channel": "PSG1_Arp",
+      "note": "Eb5",
+      "frequency_hz": 622.25,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 13,
+      "beat": 3.0,
+      "channel": "PSG1_Arp",
+      "note": "Eb4",
+      "frequency_hz": 311.13,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 13,
+      "beat": 3.25,
+      "channel": "PSG1_Arp",
+      "note": "G4",
+      "frequency_hz": 392.0,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 13,
+      "beat": 3.5,
+      "channel": "PSG1_Arp",
+      "note": "Bb4",
+      "frequency_hz": 466.16,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 13,
+      "beat": 3.75,
+      "channel": "PSG1_Arp",
+      "note": "Eb5",
+      "frequency_hz": 622.25,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 13,
+      "beat": 4.0,
+      "channel": "PSG1_Arp",
+      "note": "Eb4",
+      "frequency_hz": 311.13,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 13,
+      "beat": 4.25,
+      "channel": "PSG1_Arp",
+      "note": "G4",
+      "frequency_hz": 392.0,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 13,
+      "beat": 4.5,
+      "channel": "PSG1_Arp",
+      "note": "Bb4",
+      "frequency_hz": 466.16,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 13,
+      "beat": 4.75,
+      "channel": "PSG1_Arp",
+      "note": "Eb5",
+      "frequency_hz": 622.25,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 14,
+      "beat": 1.0,
+      "channel": "FM2_FM3_Chords",
+      "chord": "F6/9",
+      "notes": [
+        "F3",
+        "A3",
+        "C4",
+        "D4",
+        "G4"
+      ],
+      "frequencies_hz": [
+        174.61,
+        220.0,
+        261.63,
+        293.66,
+        392.0
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 14,
+      "beat": 1.75,
+      "channel": "FM2_FM3_Chords",
+      "chord": "F6/9",
+      "notes": [
+        "F3",
+        "A3",
+        "C4",
+        "D4",
+        "G4"
+      ],
+      "frequencies_hz": [
+        174.61,
+        220.0,
+        261.63,
+        293.66,
+        392.0
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 14,
+      "beat": 2.5,
+      "channel": "FM2_FM3_Chords",
+      "chord": "F6/9",
+      "notes": [
+        "F3",
+        "A3",
+        "C4",
+        "D4",
+        "G4"
+      ],
+      "frequencies_hz": [
+        174.61,
+        220.0,
+        261.63,
+        293.66,
+        392.0
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 14,
+      "beat": 3.5,
+      "channel": "FM2_FM3_Chords",
+      "chord": "F6/9",
+      "notes": [
+        "F3",
+        "A3",
+        "C4",
+        "D4",
+        "G4"
+      ],
+      "frequencies_hz": [
+        174.61,
+        220.0,
+        261.63,
+        293.66,
+        392.0
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 14,
+      "beat": 4.0,
+      "channel": "FM2_FM3_Chords",
+      "chord": "F6/9",
+      "notes": [
+        "F3",
+        "A3",
+        "C4",
+        "D4",
+        "G4"
+      ],
+      "frequencies_hz": [
+        174.61,
+        220.0,
+        261.63,
+        293.66,
+        392.0
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 14,
+      "beat": 1.0,
+      "channel": "FM1_Slap_Bass",
+      "note": "F1",
+      "frequency_hz": 43.65,
+      "duration_beats": 0.45
+    },
+    {
+      "bar": 14,
+      "beat": 1.5,
+      "channel": "FM1_Slap_Bass",
+      "note": "F1",
+      "frequency_hz": 43.65,
+      "duration_beats": 0.2
+    },
+    {
+      "bar": 14,
+      "beat": 1.75,
+      "channel": "FM1_Slap_Bass",
+      "note": "F2",
+      "frequency_hz": 87.31,
+      "duration_beats": 0.25
+    },
+    {
+      "bar": 14,
+      "beat": 2.0,
+      "channel": "FM1_Slap_Bass",
+      "note": "C2",
+      "frequency_hz": 65.41,
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 14,
+      "beat": 2.5,
+      "channel": "FM1_Slap_Bass",
+      "note": "F1",
+      "frequency_hz": 43.65,
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 14,
+      "beat": 3.0,
+      "channel": "FM1_Slap_Bass",
+      "note": "F1",
+      "frequency_hz": 43.65,
+      "duration_beats": 0.45
+    },
+    {
+      "bar": 14,
+      "beat": 3.5,
+      "channel": "FM1_Slap_Bass",
+      "note": "F2",
+      "frequency_hz": 87.31,
+      "duration_beats": 0.25
+    },
+    {
+      "bar": 14,
+      "beat": 3.75,
+      "channel": "FM1_Slap_Bass",
+      "note": "C2",
+      "frequency_hz": 65.41,
+      "duration_beats": 0.25
+    },
+    {
+      "bar": 14,
+      "beat": 4.0,
+      "channel": "FM1_Slap_Bass",
+      "note": "A2",
+      "frequency_hz": 110.0,
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 14,
+      "beat": 4.5,
+      "channel": "FM1_Slap_Bass",
+      "note": "F2",
+      "frequency_hz": 87.31,
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 14,
+      "beat": 1.0,
+      "channel": "PSG1_Arp",
+      "note": "F4",
+      "frequency_hz": 349.23,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 14,
+      "beat": 1.25,
+      "channel": "PSG1_Arp",
+      "note": "A4",
+      "frequency_hz": 440.0,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 14,
+      "beat": 1.5,
+      "channel": "PSG1_Arp",
+      "note": "C5",
+      "frequency_hz": 523.25,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 14,
+      "beat": 1.75,
+      "channel": "PSG1_Arp",
+      "note": "F5",
+      "frequency_hz": 698.46,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 14,
+      "beat": 2.0,
+      "channel": "PSG1_Arp",
+      "note": "F4",
+      "frequency_hz": 349.23,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 14,
+      "beat": 2.25,
+      "channel": "PSG1_Arp",
+      "note": "A4",
+      "frequency_hz": 440.0,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 14,
+      "beat": 2.5,
+      "channel": "PSG1_Arp",
+      "note": "C5",
+      "frequency_hz": 523.25,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 14,
+      "beat": 2.75,
+      "channel": "PSG1_Arp",
+      "note": "F5",
+      "frequency_hz": 698.46,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 14,
+      "beat": 3.0,
+      "channel": "PSG1_Arp",
+      "note": "F4",
+      "frequency_hz": 349.23,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 14,
+      "beat": 3.25,
+      "channel": "PSG1_Arp",
+      "note": "A4",
+      "frequency_hz": 440.0,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 14,
+      "beat": 3.5,
+      "channel": "PSG1_Arp",
+      "note": "C5",
+      "frequency_hz": 523.25,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 14,
+      "beat": 3.75,
+      "channel": "PSG1_Arp",
+      "note": "F5",
+      "frequency_hz": 698.46,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 14,
+      "beat": 4.0,
+      "channel": "PSG1_Arp",
+      "note": "F4",
+      "frequency_hz": 349.23,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 14,
+      "beat": 4.25,
+      "channel": "PSG1_Arp",
+      "note": "A4",
+      "frequency_hz": 440.0,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 14,
+      "beat": 4.5,
+      "channel": "PSG1_Arp",
+      "note": "C5",
+      "frequency_hz": 523.25,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 14,
+      "beat": 4.75,
+      "channel": "PSG1_Arp",
+      "note": "F5",
+      "frequency_hz": 698.46,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 15,
+      "beat": 1.0,
+      "channel": "FM2_FM3_Chords",
+      "chord": "Gm9",
+      "notes": [
+        "G3",
+        "Bb3",
+        "D4",
+        "F4",
+        "A4"
+      ],
+      "frequencies_hz": [
+        196.0,
+        233.08,
+        293.66,
+        349.23,
+        440.0
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 15,
+      "beat": 1.75,
+      "channel": "FM2_FM3_Chords",
+      "chord": "Gm9",
+      "notes": [
+        "G3",
+        "Bb3",
+        "D4",
+        "F4",
+        "A4"
+      ],
+      "frequencies_hz": [
+        196.0,
+        233.08,
+        293.66,
+        349.23,
+        440.0
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 15,
+      "beat": 2.5,
+      "channel": "FM2_FM3_Chords",
+      "chord": "Gm9",
+      "notes": [
+        "G3",
+        "Bb3",
+        "D4",
+        "F4",
+        "A4"
+      ],
+      "frequencies_hz": [
+        196.0,
+        233.08,
+        293.66,
+        349.23,
+        440.0
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 15,
+      "beat": 3.5,
+      "channel": "FM2_FM3_Chords",
+      "chord": "Gm9",
+      "notes": [
+        "G3",
+        "Bb3",
+        "D4",
+        "F4",
+        "A4"
+      ],
+      "frequencies_hz": [
+        196.0,
+        233.08,
+        293.66,
+        349.23,
+        440.0
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 15,
+      "beat": 4.0,
+      "channel": "FM2_FM3_Chords",
+      "chord": "Gm9",
+      "notes": [
+        "G3",
+        "Bb3",
+        "D4",
+        "F4",
+        "A4"
+      ],
+      "frequencies_hz": [
+        196.0,
+        233.08,
+        293.66,
+        349.23,
+        440.0
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 15,
+      "beat": 1.0,
+      "channel": "FM1_Slap_Bass",
+      "note": "G1",
+      "frequency_hz": 49.0,
+      "duration_beats": 0.45
+    },
+    {
+      "bar": 15,
+      "beat": 1.5,
+      "channel": "FM1_Slap_Bass",
+      "note": "G1",
+      "frequency_hz": 49.0,
+      "duration_beats": 0.2
+    },
+    {
+      "bar": 15,
+      "beat": 1.75,
+      "channel": "FM1_Slap_Bass",
+      "note": "G2",
+      "frequency_hz": 98.0,
+      "duration_beats": 0.25
+    },
+    {
+      "bar": 15,
+      "beat": 2.0,
+      "channel": "FM1_Slap_Bass",
+      "note": "D2",
+      "frequency_hz": 73.42,
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 15,
+      "beat": 2.5,
+      "channel": "FM1_Slap_Bass",
+      "note": "G1",
+      "frequency_hz": 49.0,
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 15,
+      "beat": 3.0,
+      "channel": "FM1_Slap_Bass",
+      "note": "G1",
+      "frequency_hz": 49.0,
+      "duration_beats": 0.45
+    },
+    {
+      "bar": 15,
+      "beat": 3.5,
+      "channel": "FM1_Slap_Bass",
+      "note": "G2",
+      "frequency_hz": 98.0,
+      "duration_beats": 0.25
+    },
+    {
+      "bar": 15,
+      "beat": 3.75,
+      "channel": "FM1_Slap_Bass",
+      "note": "D2",
+      "frequency_hz": 73.42,
+      "duration_beats": 0.25
+    },
+    {
+      "bar": 15,
+      "beat": 4.0,
+      "channel": "FM1_Slap_Bass",
+      "note": "Bb2",
+      "frequency_hz": 116.54,
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 15,
+      "beat": 4.5,
+      "channel": "FM1_Slap_Bass",
+      "note": "G2",
+      "frequency_hz": 98.0,
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 15,
+      "beat": 1.0,
+      "channel": "PSG1_Arp",
+      "note": "G4",
+      "frequency_hz": 392.0,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 15,
+      "beat": 1.25,
+      "channel": "PSG1_Arp",
+      "note": "Bb4",
+      "frequency_hz": 466.16,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 15,
+      "beat": 1.5,
+      "channel": "PSG1_Arp",
+      "note": "D5",
+      "frequency_hz": 587.33,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 15,
+      "beat": 1.75,
+      "channel": "PSG1_Arp",
+      "note": "G5",
+      "frequency_hz": 783.99,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 15,
+      "beat": 2.0,
+      "channel": "PSG1_Arp",
+      "note": "G4",
+      "frequency_hz": 392.0,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 15,
+      "beat": 2.25,
+      "channel": "PSG1_Arp",
+      "note": "Bb4",
+      "frequency_hz": 466.16,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 15,
+      "beat": 2.5,
+      "channel": "PSG1_Arp",
+      "note": "D5",
+      "frequency_hz": 587.33,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 15,
+      "beat": 2.75,
+      "channel": "PSG1_Arp",
+      "note": "G5",
+      "frequency_hz": 783.99,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 15,
+      "beat": 3.0,
+      "channel": "PSG1_Arp",
+      "note": "G4",
+      "frequency_hz": 392.0,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 15,
+      "beat": 3.25,
+      "channel": "PSG1_Arp",
+      "note": "Bb4",
+      "frequency_hz": 466.16,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 15,
+      "beat": 3.5,
+      "channel": "PSG1_Arp",
+      "note": "D5",
+      "frequency_hz": 587.33,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 15,
+      "beat": 3.75,
+      "channel": "PSG1_Arp",
+      "note": "G5",
+      "frequency_hz": 783.99,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 15,
+      "beat": 4.0,
+      "channel": "PSG1_Arp",
+      "note": "G4",
+      "frequency_hz": 392.0,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 15,
+      "beat": 4.25,
+      "channel": "PSG1_Arp",
+      "note": "Bb4",
+      "frequency_hz": 466.16,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 15,
+      "beat": 4.5,
+      "channel": "PSG1_Arp",
+      "note": "D5",
+      "frequency_hz": 587.33,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 15,
+      "beat": 4.75,
+      "channel": "PSG1_Arp",
+      "note": "G5",
+      "frequency_hz": 783.99,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 16,
+      "beat": 1.0,
+      "channel": "FM2_FM3_Chords",
+      "chord": "G7",
+      "notes": [
+        "G3",
+        "B3",
+        "D4",
+        "F4",
+        "G4"
+      ],
+      "frequencies_hz": [
+        196.0,
+        246.94,
+        293.66,
+        349.23,
+        392.0
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 16,
+      "beat": 1.75,
+      "channel": "FM2_FM3_Chords",
+      "chord": "G7",
+      "notes": [
+        "G3",
+        "B3",
+        "D4",
+        "F4",
+        "G4"
+      ],
+      "frequencies_hz": [
+        196.0,
+        246.94,
+        293.66,
+        349.23,
+        392.0
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 16,
+      "beat": 2.5,
+      "channel": "FM2_FM3_Chords",
+      "chord": "G7",
+      "notes": [
+        "G3",
+        "B3",
+        "D4",
+        "F4",
+        "G4"
+      ],
+      "frequencies_hz": [
+        196.0,
+        246.94,
+        293.66,
+        349.23,
+        392.0
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 16,
+      "beat": 3.5,
+      "channel": "FM2_FM3_Chords",
+      "chord": "G7",
+      "notes": [
+        "G3",
+        "B3",
+        "D4",
+        "F4",
+        "G4"
+      ],
+      "frequencies_hz": [
+        196.0,
+        246.94,
+        293.66,
+        349.23,
+        392.0
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 16,
+      "beat": 4.0,
+      "channel": "FM2_FM3_Chords",
+      "chord": "G7",
+      "notes": [
+        "G3",
+        "B3",
+        "D4",
+        "F4",
+        "G4"
+      ],
+      "frequencies_hz": [
+        196.0,
+        246.94,
+        293.66,
+        349.23,
+        392.0
+      ],
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 16,
+      "beat": 1.0,
+      "channel": "FM1_Slap_Bass",
+      "note": "G1",
+      "frequency_hz": 49.0,
+      "duration_beats": 0.45
+    },
+    {
+      "bar": 16,
+      "beat": 1.5,
+      "channel": "FM1_Slap_Bass",
+      "note": "G1",
+      "frequency_hz": 49.0,
+      "duration_beats": 0.2
+    },
+    {
+      "bar": 16,
+      "beat": 1.75,
+      "channel": "FM1_Slap_Bass",
+      "note": "G2",
+      "frequency_hz": 98.0,
+      "duration_beats": 0.25
+    },
+    {
+      "bar": 16,
+      "beat": 2.0,
+      "channel": "FM1_Slap_Bass",
+      "note": "D2",
+      "frequency_hz": 73.42,
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 16,
+      "beat": 2.5,
+      "channel": "FM1_Slap_Bass",
+      "note": "G1",
+      "frequency_hz": 49.0,
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 16,
+      "beat": 3.0,
+      "channel": "FM1_Slap_Bass",
+      "note": "G1",
+      "frequency_hz": 49.0,
+      "duration_beats": 0.45
+    },
+    {
+      "bar": 16,
+      "beat": 3.5,
+      "channel": "FM1_Slap_Bass",
+      "note": "G2",
+      "frequency_hz": 98.0,
+      "duration_beats": 0.25
+    },
+    {
+      "bar": 16,
+      "beat": 3.75,
+      "channel": "FM1_Slap_Bass",
+      "note": "D2",
+      "frequency_hz": 73.42,
+      "duration_beats": 0.25
+    },
+    {
+      "bar": 16,
+      "beat": 4.0,
+      "channel": "FM1_Slap_Bass",
+      "note": "B2",
+      "frequency_hz": 123.47,
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 16,
+      "beat": 4.5,
+      "channel": "FM1_Slap_Bass",
+      "note": "G2",
+      "frequency_hz": 98.0,
+      "duration_beats": 0.4
+    },
+    {
+      "bar": 16,
+      "beat": 1.0,
+      "channel": "PSG1_Arp",
+      "note": "G4",
+      "frequency_hz": 392.0,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 16,
+      "beat": 1.25,
+      "channel": "PSG1_Arp",
+      "note": "B4",
+      "frequency_hz": 493.88,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 16,
+      "beat": 1.5,
+      "channel": "PSG1_Arp",
+      "note": "D5",
+      "frequency_hz": 587.33,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 16,
+      "beat": 1.75,
+      "channel": "PSG1_Arp",
+      "note": "G5",
+      "frequency_hz": 783.99,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 16,
+      "beat": 2.0,
+      "channel": "PSG1_Arp",
+      "note": "G4",
+      "frequency_hz": 392.0,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 16,
+      "beat": 2.25,
+      "channel": "PSG1_Arp",
+      "note": "B4",
+      "frequency_hz": 493.88,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 16,
+      "beat": 2.5,
+      "channel": "PSG1_Arp",
+      "note": "D5",
+      "frequency_hz": 587.33,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 16,
+      "beat": 2.75,
+      "channel": "PSG1_Arp",
+      "note": "G5",
+      "frequency_hz": 783.99,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 16,
+      "beat": 3.0,
+      "channel": "PSG1_Arp",
+      "note": "G4",
+      "frequency_hz": 392.0,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 16,
+      "beat": 3.25,
+      "channel": "PSG1_Arp",
+      "note": "B4",
+      "frequency_hz": 493.88,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 16,
+      "beat": 3.5,
+      "channel": "PSG1_Arp",
+      "note": "D5",
+      "frequency_hz": 587.33,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 16,
+      "beat": 3.75,
+      "channel": "PSG1_Arp",
+      "note": "G5",
+      "frequency_hz": 783.99,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 16,
+      "beat": 4.0,
+      "channel": "PSG1_Arp",
+      "note": "G4",
+      "frequency_hz": 392.0,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 16,
+      "beat": 4.25,
+      "channel": "PSG1_Arp",
+      "note": "B4",
+      "frequency_hz": 493.88,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 16,
+      "beat": 4.5,
+      "channel": "PSG1_Arp",
+      "note": "D5",
+      "frequency_hz": 587.33,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 16,
+      "beat": 4.75,
+      "channel": "PSG1_Arp",
+      "note": "G5",
+      "frequency_hz": 783.99,
+      "duration_beats": 0.22
+    },
+    {
+      "bar": 5,
+      "beat": 1.0,
+      "channel": "FM4_Lead_Synth",
+      "note": "D5",
+      "frequency_hz": 587.33,
+      "duration_beats": 0.75
+    },
+    {
+      "bar": 5,
+      "beat": 1.75,
+      "channel": "FM4_Lead_Synth",
+      "note": "F5",
+      "frequency_hz": 698.46,
+      "duration_beats": 0.75
+    },
+    {
+      "bar": 5,
+      "beat": 2.5,
+      "channel": "FM4_Lead_Synth",
+      "note": "G5",
+      "frequency_hz": 783.99,
+      "duration_beats": 0.5
+    },
+    {
+      "bar": 5,
+      "beat": 3.0,
+      "channel": "FM4_Lead_Synth",
+      "note": "A5",
+      "frequency_hz": 880.0,
+      "duration_beats": 0.5
+    },
+    {
+      "bar": 5,
+      "beat": 3.5,
+      "channel": "FM4_Lead_Synth",
+      "note": "G5",
+      "frequency_hz": 783.99,
+      "duration_beats": 0.5
+    },
+    {
+      "bar": 5,
+      "beat": 4.0,
+      "channel": "FM4_Lead_Synth",
+      "note": "F5",
+      "frequency_hz": 698.46,
+      "duration_beats": 0.5
+    },
+    {
+      "bar": 5,
+      "beat": 4.5,
+      "channel": "FM4_Lead_Synth",
+      "note": "D5",
+      "frequency_hz": 587.33,
+      "duration_beats": 0.5
+    },
+    {
+      "bar": 6,
+      "beat": 1.0,
+      "channel": "FM4_Lead_Synth",
+      "note": "E5",
+      "frequency_hz": 659.26,
+      "duration_beats": 1.5
+    },
+    {
+      "bar": 6,
+      "beat": 2.5,
+      "channel": "FM4_Lead_Synth",
+      "note": "D5",
+      "frequency_hz": 587.33,
+      "duration_beats": 0.5
+    },
+    {
+      "bar": 6,
+      "beat": 3.0,
+      "channel": "FM4_Lead_Synth",
+      "note": "C5",
+      "frequency_hz": 523.25,
+      "duration_beats": 0.5
+    },
+    {
+      "bar": 6,
+      "beat": 3.5,
+      "channel": "FM4_Lead_Synth",
+      "note": "Bb4",
+      "frequency_hz": 466.16,
+      "duration_beats": 0.5
+    },
+    {
+      "bar": 6,
+      "beat": 4.0,
+      "channel": "FM4_Lead_Synth",
+      "note": "A4",
+      "frequency_hz": 440.0,
+      "duration_beats": 1.0
+    },
+    {
+      "bar": 7,
+      "beat": 1.0,
+      "channel": "FM4_Lead_Synth",
+      "note": "C5",
+      "frequency_hz": 523.25,
+      "duration_beats": 0.75
+    },
+    {
+      "bar": 7,
+      "beat": 1.75,
+      "channel": "FM4_Lead_Synth",
+      "note": "E5",
+      "frequency_hz": 659.26,
+      "duration_beats": 0.75
+    },
+    {
+      "bar": 7,
+      "beat": 2.5,
+      "channel": "FM4_Lead_Synth",
+      "note": "G5",
+      "frequency_hz": 783.99,
+      "duration_beats": 1.0
+    },
+    {
+      "bar": 7,
+      "beat": 3.5,
+      "channel": "FM4_Lead_Synth",
+      "note": "A5",
+      "frequency_hz": 880.0,
+      "duration_beats": 0.5
+    },
+    {
+      "bar": 7,
+      "beat": 4.0,
+      "channel": "FM4_Lead_Synth",
+      "note": "G5",
+      "frequency_hz": 783.99,
+      "duration_beats": 0.5
+    },
+    {
+      "bar": 7,
+      "beat": 4.5,
+      "channel": "FM4_Lead_Synth",
+      "note": "E5",
+      "frequency_hz": 659.26,
+      "duration_beats": 0.5
+    },
+    {
+      "bar": 8,
+      "beat": 1.0,
+      "channel": "FM4_Lead_Synth",
+      "note": "F#5",
+      "frequency_hz": 739.99,
+      "duration_beats": 0.75
+    },
+    {
+      "bar": 8,
+      "beat": 1.75,
+      "channel": "FM4_Lead_Synth",
+      "note": "A5",
+      "frequency_hz": 880.0,
+      "duration_beats": 0.75
+    },
+    {
+      "bar": 8,
+      "beat": 2.5,
+      "channel": "FM4_Lead_Synth",
+      "note": "C6",
+      "frequency_hz": 1046.5,
+      "duration_beats": 1.0
+    },
+    {
+      "bar": 8,
+      "beat": 3.5,
+      "channel": "FM4_Lead_Synth",
+      "note": "Bb5",
+      "frequency_hz": 932.33,
+      "duration_beats": 0.5
+    },
+    {
+      "bar": 8,
+      "beat": 4.0,
+      "channel": "FM4_Lead_Synth",
+      "note": "A5",
+      "frequency_hz": 880.0,
+      "duration_beats": 1.0
+    },
+    {
+      "bar": 9,
+      "beat": 1.0,
+      "channel": "FM4_Lead_Synth",
+      "note": "D5",
+      "frequency_hz": 587.33,
+      "duration_beats": 0.75
+    },
+    {
+      "bar": 9,
+      "beat": 1.75,
+      "channel": "FM4_Lead_Synth",
+      "note": "F5",
+      "frequency_hz": 698.46,
+      "duration_beats": 0.75
+    },
+    {
+      "bar": 9,
+      "beat": 2.5,
+      "channel": "FM4_Lead_Synth",
+      "note": "G5",
+      "frequency_hz": 783.99,
+      "duration_beats": 0.5
+    },
+    {
+      "bar": 9,
+      "beat": 3.0,
+      "channel": "FM4_Lead_Synth",
+      "note": "Bb5",
+      "frequency_hz": 932.33,
+      "duration_beats": 0.5
+    },
+    {
+      "bar": 9,
+      "beat": 3.5,
+      "channel": "FM4_Lead_Synth",
+      "note": "A5",
+      "frequency_hz": 880.0,
+      "duration_beats": 0.5
+    },
+    {
+      "bar": 9,
+      "beat": 4.0,
+      "channel": "FM4_Lead_Synth",
+      "note": "G5",
+      "frequency_hz": 783.99,
+      "duration_beats": 0.5
+    },
+    {
+      "bar": 9,
+      "beat": 4.5,
+      "channel": "FM4_Lead_Synth",
+      "note": "F5",
+      "frequency_hz": 698.46,
+      "duration_beats": 0.5
+    },
+    {
+      "bar": 10,
+      "beat": 1.0,
+      "channel": "FM4_Lead_Synth",
+      "note": "E5",
+      "frequency_hz": 659.26,
+      "duration_beats": 1.0
+    },
+    {
+      "bar": 10,
+      "beat": 2.0,
+      "channel": "FM4_Lead_Synth",
+      "note": "G5",
+      "frequency_hz": 783.99,
+      "duration_beats": 0.5
+    },
+    {
+      "bar": 10,
+      "beat": 2.5,
+      "channel": "FM4_Lead_Synth",
+      "note": "A5",
+      "frequency_hz": 880.0,
+      "duration_beats": 1.0
+    },
+    {
+      "bar": 10,
+      "beat": 3.5,
+      "channel": "FM4_Lead_Synth",
+      "note": "G5",
+      "frequency_hz": 783.99,
+      "duration_beats": 0.5
+    },
+    {
+      "bar": 10,
+      "beat": 4.0,
+      "channel": "FM4_Lead_Synth",
+      "note": "E5",
+      "frequency_hz": 659.26,
+      "duration_beats": 1.0
+    },
+    {
+      "bar": 11,
+      "beat": 1.0,
+      "channel": "FM4_Lead_Synth",
+      "note": "F5",
+      "frequency_hz": 698.46,
+      "duration_beats": 0.75
+    },
+    {
+      "bar": 11,
+      "beat": 1.75,
+      "channel": "FM4_Lead_Synth",
+      "note": "D5",
+      "frequency_hz": 587.33,
+      "duration_beats": 0.75
+    },
+    {
+      "bar": 11,
+      "beat": 2.5,
+      "channel": "FM4_Lead_Synth",
+      "note": "Bb4",
+      "frequency_hz": 466.16,
+      "duration_beats": 0.5
+    },
+    {
+      "bar": 11,
+      "beat": 3.0,
+      "channel": "FM4_Lead_Synth",
+      "note": "D5",
+      "frequency_hz": 587.33,
+      "duration_beats": 0.5
+    },
+    {
+      "bar": 11,
+      "beat": 3.5,
+      "channel": "FM4_Lead_Synth",
+      "note": "F5",
+      "frequency_hz": 698.46,
+      "duration_beats": 0.5
+    },
+    {
+      "bar": 11,
+      "beat": 4.0,
+      "channel": "FM4_Lead_Synth",
+      "note": "G5",
+      "frequency_hz": 783.99,
+      "duration_beats": 1.0
+    },
+    {
+      "bar": 12,
+      "beat": 1.0,
+      "channel": "FM4_Lead_Synth",
+      "note": "A5",
+      "frequency_hz": 880.0,
+      "duration_beats": 0.75
+    },
+    {
+      "bar": 12,
+      "beat": 1.75,
+      "channel": "FM4_Lead_Synth",
+      "note": "G5",
+      "frequency_hz": 783.99,
+      "duration_beats": 0.75
+    },
+    {
+      "bar": 12,
+      "beat": 2.5,
+      "channel": "FM4_Lead_Synth",
+      "note": "F5",
+      "frequency_hz": 698.46,
+      "duration_beats": 0.5
+    },
+    {
+      "bar": 12,
+      "beat": 3.0,
+      "channel": "FM4_Lead_Synth",
+      "note": "Eb5",
+      "frequency_hz": 622.25,
+      "duration_beats": 0.5
+    },
+    {
+      "bar": 12,
+      "beat": 3.5,
+      "channel": "FM4_Lead_Synth",
+      "note": "D5",
+      "frequency_hz": 587.33,
+      "duration_beats": 0.5
+    },
+    {
+      "bar": 12,
+      "beat": 4.0,
+      "channel": "FM4_Lead_Synth",
+      "note": "C5",
+      "frequency_hz": 523.25,
+      "duration_beats": 1.0
+    },
+    {
+      "bar": 13,
+      "beat": 1.0,
+      "channel": "FM4_Lead_Synth",
+      "note": "Bb5",
+      "frequency_hz": 932.33,
+      "duration_beats": 1.5
+    },
+    {
+      "bar": 13,
+      "beat": 2.5,
+      "channel": "FM4_Lead_Synth",
+      "note": "G5",
+      "frequency_hz": 783.99,
+      "duration_beats": 0.5
+    },
+    {
+      "bar": 13,
+      "beat": 3.0,
+      "channel": "FM4_Lead_Synth",
+      "note": "F5",
+      "frequency_hz": 698.46,
+      "duration_beats": 0.5
+    },
+    {
+      "bar": 13,
+      "beat": 3.5,
+      "channel": "FM4_Lead_Synth",
+      "note": "D5",
+      "frequency_hz": 587.33,
+      "duration_beats": 0.5
+    },
+    {
+      "bar": 13,
+      "beat": 4.0,
+      "channel": "FM4_Lead_Synth",
+      "note": "F5",
+      "frequency_hz": 698.46,
+      "duration_beats": 1.0
+    },
+    {
+      "bar": 14,
+      "beat": 1.0,
+      "channel": "FM4_Lead_Synth",
+      "note": "G5",
+      "frequency_hz": 783.99,
+      "duration_beats": 0.75
+    },
+    {
+      "bar": 14,
+      "beat": 1.75,
+      "channel": "FM4_Lead_Synth",
+      "note": "A5",
+      "frequency_hz": 880.0,
+      "duration_beats": 0.75
+    },
+    {
+      "bar": 14,
+      "beat": 2.5,
+      "channel": "FM4_Lead_Synth",
+      "note": "C6",
+      "frequency_hz": 1046.5,
+      "duration_beats": 1.0
+    },
+    {
+      "bar": 14,
+      "beat": 3.5,
+      "channel": "FM4_Lead_Synth",
+      "note": "D6",
+      "frequency_hz": 1174.66,
+      "duration_beats": 1.5
+    },
+    {
+      "bar": 15,
+      "beat": 1.0,
+      "channel": "FM4_Lead_Synth",
+      "note": "Bb5",
+      "frequency_hz": 932.33,
+      "duration_beats": 0.75
+    },
+    {
+      "bar": 15,
+      "beat": 1.75,
+      "channel": "FM4_Lead_Synth",
+      "note": "A5",
+      "frequency_hz": 880.0,
+      "duration_beats": 0.75
+    },
+    {
+      "bar": 15,
+      "beat": 2.5,
+      "channel": "FM4_Lead_Synth",
+      "note": "G5",
+      "frequency_hz": 783.99,
+      "duration_beats": 0.5
+    },
+    {
+      "bar": 15,
+      "beat": 3.0,
+      "channel": "FM4_Lead_Synth",
+      "note": "F5",
+      "frequency_hz": 698.46,
+      "duration_beats": 0.5
+    },
+    {
+      "bar": 15,
+      "beat": 3.5,
+      "channel": "FM4_Lead_Synth",
+      "note": "D5",
+      "frequency_hz": 587.33,
+      "duration_beats": 0.5
+    },
+    {
+      "bar": 15,
+      "beat": 4.0,
+      "channel": "FM4_Lead_Synth",
+      "note": "C5",
+      "frequency_hz": 523.25,
+      "duration_beats": 1.0
+    },
+    {
+      "bar": 16,
+      "beat": 1.0,
+      "channel": "FM4_Lead_Synth",
+      "note": "G5",
+      "frequency_hz": 783.99,
+      "duration_beats": 1.0
+    },
+    {
+      "bar": 16,
+      "beat": 2.0,
+      "channel": "FM4_Lead_Synth",
+      "note": "F5",
+      "frequency_hz": 698.46,
+      "duration_beats": 1.0
+    },
+    {
+      "bar": 16,
+      "beat": 3.0,
+      "channel": "FM4_Lead_Synth",
+      "note": "D5",
+      "frequency_hz": 587.33,
+      "duration_beats": 1.0
+    },
+    {
+      "bar": 16,
+      "beat": 4.0,
+      "channel": "FM4_Lead_Synth",
+      "note": "B4",
+      "frequency_hz": 493.88,
+      "duration_beats": 1.0
+    }
+  ]
+}

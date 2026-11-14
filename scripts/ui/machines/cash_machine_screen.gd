@@ -191,15 +191,21 @@ func insert_card(chosen: Dictionary) -> void:
 
 func _show_pin(note := "", note_colour := Color(0, 0, 0, 0)) -> void:
 	state = "pin"
-	var stars := ""
-	for index in 4:
-		stars += ("* " if index < entered.length() else "_ ")
-	var lines: Array = ["", "      " + stars.strip_edges(), ""]
+	var lines: Array = ["", "      " + pin_mask(entered.length()), ""]
 	if note != "":
 		lines.append(note)
 	lines.append("Nog %d poging%s." % [BankCards.tries_left(card), "" if BankCards.tries_left(card) == 1 else "en"])
 	show_display("TOETS UW PINCODE", lines, note_colour)
 	_set_options([])
+
+
+## The four places of the PIN on the display: a star for each of the `typed` digits, a dash
+## for the rest ("* * _ _").
+static func pin_mask(typed: int) -> String:
+	var stars := ""
+	for index in 4:
+		stars += ("* " if index < typed else "_ ")
+	return stars.strip_edges()
 
 
 ## A key of the keypad: a digit, CORR (one back) or OK (the PIN tried).

@@ -3,6 +3,8 @@ extends CanvasLayer
 ## The game HUD (the "HUD" node of the city scene), in the pixel style of the design
 ## "HUD — open world" (1280 x 720; everything scales with the window, the corners stay in
 ## the corners):
+## The parts of it are scripts of their own in scripts/ui/hud/ (player_frame.gd,
+## notice_banner.gd, quest_tracker.gd with quest_log.gd) and scripts/ui/screens/.
 ## - top left: the player frame (the chosen figure's head in 3D, PlayerCharacter and
 ##   PlayerModel, with level badge, its name) and the stats as
 ##   segmented pixel bars with an icon each (STATS: gezondheid, uithoudingsvermogen,
@@ -61,8 +63,11 @@ const UiStyle = preload("res://scripts/ui/ui_style.gd")
 const UiSounds = preload("res://scripts/ui/ui_sounds.gd")
 const GraphicsSettings = preload("res://scripts/ui/graphics_settings.gd")
 const PixelIcon = preload("res://scripts/ui/widgets/pixel_icon.gd")
-const SegmentBar = preload("res://scripts/ui/widgets/segment_bar.gd")
-const CheckSquare = preload("res://scripts/ui/widgets/check_square.gd")
+const StatLook = preload("res://scripts/ui/hud/stat_look.gd")
+const PlayerFrame = preload("res://scripts/ui/hud/player_frame.gd")
+const NoticeBanner = preload("res://scripts/ui/hud/notice_banner.gd")
+const QuestLog = preload("res://scripts/ui/hud/quest_log.gd")
+const QuestTracker = preload("res://scripts/ui/hud/quest_tracker.gd")
 const PlayerArrow = preload("res://scripts/ui/widgets/player_arrow.gd")
 const QuestMarks = preload("res://scripts/ui/widgets/quest_marks.gd")
 const InteriorPlan = preload("res://scripts/ui/widgets/interior_plan.gd")
@@ -73,7 +78,6 @@ const INTERIOR_MINIMAP_MIN_METRES := 28.0
 ## Inside a building a quest place within this many metres is in it and marked on its plan
 ## (the cans of mission 1 in the station); farther off it is in the town and left out.
 const INDOOR_TARGET_REACH := 150.0
-const PlayerPortrait = preload("res://scripts/ui/widgets/player_portrait.gd")
 const FloatingNumbers = preload("res://scripts/ui/widgets/floating_numbers.gd")
 const PlayerCharacter = preload("res://scripts/player/player_character.gd")
 
@@ -81,30 +85,11 @@ const PlayerCharacter = preload("res://scripts/player/player_character.gd")
 const DESIGN_SIZE := Vector2(1280.0, 720.0)
 const MARGIN := 24.0
 
-## The stats in the order they are shown: label (for the value text), colour of a full and of
-## an empty segment, number of segments, segment height and the icon (PIXEL_ICONS).
-const STATS := {
-	"gezondheid": {"colour": Color("#FF5D73"), "empty": Color("#3A2340"), "segments": 20, "height": 12, "icon": "heart"},
-	"uithoudingsvermogen": {"colour": Color("#8BE36B"), "empty": Color("#22352A"), "segments": 20, "height": 8, "icon": "bolt"},
-	"honger": {"colour": Color("#FFB547"), "empty": Color("#3D2E14"), "segments": 20, "height": 8, "icon": "chomp"},
-	"overprikkeldheid": {"colour": Color("#C08BFF"), "empty": Color("#2E2340"), "segments": 20, "height": 8, "icon": "burst"},
-}
-## The experience bar: a segment bar as the stats (their segments, the height of the
-## slimmer ones), its colours (teal: the purple of the design is taken by overprikkeldheid).
-const XP_COLOUR := Color("#47D6C2")
-## How see-through a quest step is that cannot be done yet (the one before it first).
-const LOCKED_STEP_OPACITY := 0.35
-const XP_EMPTY_COLOUR := Color("#173733")
-const XP_SEGMENTS := 20
-const XP_SEGMENT_HEIGHT := 8
-## Icons of 7 x 7 pixels ("#" = coloured), drawn at 2 x 2 screen pixels per pixel.
-const PIXEL_ICONS := {
-	"heart": [".##.##.", "#######", "#######", ".#####.", "..###..", "...#...", "......."],
-	"bolt": ["....##.", "...##..", "..##...", ".######", "...##..", "..##...", ".##...."],
-	"chomp": ["..###..", ".#####.", "####...", "###....", "####...", ".#####.", "..###.."],
-	"burst": ["#..#..#", ".#.#.#.", "..###..", "#######", "..###..", ".#.#.#.", "#..#..#"],
-	"person": ["..###..", ".#####.", ".#####.", "..###..", ".......", ".#####.", "#######"],
-}
+## How the stats look (StatLook), under the names the other screens know them by.
+const STATS := StatLook.STATS
+const XP_COLOUR := StatLook.XP_COLOUR
+const PIXEL_ICONS := StatLook.PIXEL_ICONS
+const LOCKED_STEP_OPACITY := QuestTracker.LOCKED_STEP_OPACITY
 ## Minimap: colour per kind of ground (MINIMAP_KINDS, by the folder of the Grond tile) and
 ## of a building, and of an empty cell.
 const MINIMAP_COLOURS := {
@@ -174,6 +159,12 @@ signal menu_opened(tab: String)
 
 ## The music of the town and the jingles over it (scripts/audio/city_music.gd, the node "Muziek").
 var music: CityMusic
+## The player frame, top left (scripts/ui/hud/player_frame.gd): portrait, name, stats, experience.
+var player_frame: PlayerFrame
+## The notice at the top (scripts/ui/hud/notice_banner.gd): a new area, a new mission.
+var notices: NoticeBanner
+## The quest tracker on the right (scripts/ui/hud/quest_tracker.gd) and its quests (QuestLog).
+var quest_tracker: QuestTracker
 
 var _location_wijk: Label
 var _location_place: Label
@@ -185,9 +176,6 @@ var _has_focus := false
 var _current_wijk := ""
 var _indoor_wijk := ""           # inside a building: the neighbourhood it counts as (set_indoor_location)
 var _visited_wijken := {}
-var _quests: Array = []
-var _stat_rows := {}      # stat name -> its row (icon, bar, value)
-var _stat_shakes := {}    # stat name -> the running shake tween
 var _font_title: Font        # Pixelify Sans, bold
 var _font_title_medium: Font # Pixelify Sans, semibold
 var _font_pixel: Font        # Silkscreen
@@ -200,20 +188,6 @@ var _numbers_over_story: FloatingNumbers   # the same, drawn over the story box
 ## How long a number over the story box stays (the text is being read meanwhile).
 const NUMBER_OVER_STORY_SECONDS := 2.2
 var _ui_viewport: SubViewport   # the HUD's own picture (see _build_crt)
-var _player_frame: Control
-var _portrait: PlayerPortrait
-var _level_badge: Label
-var _xp_bar: SegmentBar
-var _xp_text: Label
-var _name_label: Label
-var _stat_bars := {}         # stat name -> SegmentBar
-var _stat_texts := {}        # stat name -> Label
-var _stat_values := {}       # stat name -> Vector2(value, maximum)
-var _area_banner: Control
-var _area_heading: Label
-var _area_name: Label
-var _area_tween: Tween
-var _notices: Array[Dictionary] = []   # waiting: {"heading", "name", "seconds", "jingle"}
 var _minimap_box: Control
 var _minimap_map: TextureRect
 var _minimap_shroud: TextureRect     # over the map: what the story has not opened yet, hidden
@@ -226,9 +200,6 @@ var _minimap_cell := 4.0              # metres per map pixel
 var _day_label: Label
 var _time_label: Label
 var _time_icon: PixelIcon
-var _quest_list: VBoxContainer
-var _tracked_quest_id := ""
-var _tracked_distance: Label         # the distance in the tracked quest's panel
 var _minimap_marks: QuestMarks
 var _minimap_exits: QuestMarks       # the ways out on the floor plan of an interior
 var _minimap_waypoint: QuestMarks    # the marker set on the map (set_waypoint)
@@ -284,13 +255,18 @@ func _ready() -> void:
 	_floating_numbers.font = _font_pixel_bold
 	_floating_numbers.world_viewport = get_viewport()
 	_root.add_child(_floating_numbers)
-	_build_player_frame()
-	_build_area_banner()
+	player_frame = PlayerFrame.new()
+	player_frame.position = Vector2(MARGIN, MARGIN)
+	_root.add_child(player_frame)
+	notices = NoticeBanner.new()
+	notices.jingle_wanted.connect(func(path: String) -> void: music.play_jingle(path, MISSION_JINGLE_VOLUME_DB, "MissieDeuntje"))
+	_root.add_child(notices)
 	_build_minimap()
 	_action_prompts = ActionPrompts.new()
 	_action_prompts.name = "Acties"
 	_root.add_child(_action_prompts)
-	_build_quest_tracker()
+	quest_tracker = QuestTracker.new()
+	_root.add_child(quest_tracker)
 	_build_money()
 	_build_pause_menu()
 	_build_death_screen()
@@ -371,56 +347,20 @@ func _process(delta: float) -> void:
 # ------------------------------------------------------------------ API
 
 ## Sets a stat (STATS: "gezondheid", "uithoudingsvermogen", "honger", "overprikkeldheid"):
-## the bar fills to value / maximum; maximum < 0 keeps the last one.
+## the bar fills to value / maximum; maximum < 0 keeps the last one (PlayerFrame.set_stat).
 func set_stat(stat_name: String, value: float, maximum := -1.0) -> void:
-	if not _stat_bars.has(stat_name):
-		push_warning("hud: unknown stat '%s'" % stat_name)
-		return
-	var previous: Vector2 = _stat_values.get(stat_name, Vector2(0.0, 100.0))
-	var top := maximum if maximum > 0.0 else previous.y
-	var clamped := clampf(value, 0.0, top)
-	_stat_values[stat_name] = Vector2(clamped, top)
-	if _stat_values_set.has(stat_name) and absf(clamped - previous.x) >= STAT_SHAKE_FROM:
-		_shake_stat(stat_name, clamped > previous.x)
-	_stat_values_set[stat_name] = true
-	(_stat_bars[stat_name] as SegmentBar).fill = clamped / top
-	(_stat_texts[stat_name] as Label).text = "%d/%d" % [roundi(clamped), roundi(top)]
-
-
-## A change of a stat of at least this many points in one go lights its value up (a hit,
-## eating, hunger biting); the slow running down and filling up of the meters does not.
-const STAT_SHAKE_FROM := 1.5
-const STAT_FLASH_SECONDS := 0.6
-var _stat_values_set := {}
-
-
-## Lights the value of a stat up for a moment: brighter when it went up, reddish when it
-## went down (the bar itself shows what changed, scripts/ui/widgets/segment_bar.gd).
-func _shake_stat(stat_name: String, gained: bool) -> void:
-	var text: Label = _stat_texts.get(stat_name)
-	if text == null:
-		return
-	var running: Tween = _stat_shakes.get(stat_name)
-	if running and running.is_valid():
-		running.kill()
-	text.modulate = Color(1.7, 1.7, 1.7) if gained else Color(1.6, 0.45, 0.4)
-	var flash := create_tween()
-	flash.tween_property(text, "modulate", Color.WHITE, STAT_FLASH_SECONDS)
-	_stat_shakes[stat_name] = flash
+	player_frame.set_stat(stat_name, value, maximum)
 
 
 ## The value and maximum of a stat (Vector2).
 func get_stat(stat_name: String) -> Vector2:
-	return _stat_values.get(stat_name, Vector2.ZERO)
+	return player_frame.get_stat(stat_name)
 
 
 ## The experience: points so far within this level and the points the level takes; the
 ## bar fills to their share.
 func set_xp(points: float, points_for_level: float) -> void:
-	var top := maxf(points_for_level, 1.0)
-	var clamped := clampf(points, 0.0, top)
-	_xp_bar.fill = clamped / top
-	_xp_text.text = "%s / %s" % [MoneyText.thousands(roundi(clamped)), MoneyText.thousands(roundi(top))]
+	player_frame.set_xp(points, points_for_level)
 
 
 ## A step of a mission done (Story): a short triumph; the whole mission: the longer one.
@@ -445,7 +385,7 @@ const LEVEL_JINGLE_VOLUME_DB := -3.0
 func show_level_up(level: int, choose := Callable(), current := Callable()) -> void:
 	set_player(player_name, level)
 	if not choose.is_valid():
-		_queue_notice({"heading": "— LEVEL OMHOOG —", "name": "Level %d" % level, "seconds": 3.5, "jingle": LEVEL_JINGLE})
+		notices.queue(NoticeBanner.notice(NoticeBanner.LEVEL_HEADING, "Level %d" % level, 3.5, LEVEL_JINGLE))
 		return
 	_level_ups_waiting.append({"level": level, "choose": choose, "current": current})
 	# a frame later: a reward given with the XP (the same frame) joins it (show_reward)
@@ -464,189 +404,78 @@ func level_ups_waiting() -> Array[Dictionary]:
 func set_player(new_name: String, level: int) -> void:
 	player_name = new_name
 	player_level = level
-	_name_label.text = new_name
-	_level_badge.text = "LEVEL %d" % level
+	player_frame.set_player(new_name, level)
 
 
-const AREA_HEADING := "— NIEUW GEBIED ONTDEKT —"
-const MISSION_HEADING := "— NIEUWE MISSIE —"
 const MISSION_JINGLE := "res://assets/audio/muziek/deuntje_nieuwe_missie.ogg"
 const MISSION_JINGLE_VOLUME_DB := -3.0
-## Width of the notice (a mission title is longer than an area name).
-const NOTICE_WIDTH := 720.0
 
 
 ## Shows "nieuw gebied ontdekt" with the name of the area for a few seconds.
 func show_area(area_name: String, seconds := 4.0) -> void:
-	_queue_notice({"heading": AREA_HEADING, "name": area_name, "seconds": seconds, "jingle": ""})
+	notices.queue(NoticeBanner.notice(NoticeBanner.AREA_HEADING, area_name, seconds))
 
 
 ## Shows a notice of its own at the top ("heading" over "text"): the floor the lift of the
 ## city hall has brought you to.
 func show_notice(heading: String, text: String, seconds := 3.0) -> void:
-	_queue_notice({"heading": heading, "name": text, "seconds": seconds, "jingle": ""})
+	notices.queue(NoticeBanner.notice(heading, text, seconds))
 
 
 ## Shows "nieuwe missie" with the title of the mission and plays the mission jingle.
 func show_mission(title: String, seconds := 4.5) -> void:
-	_queue_notice({"heading": MISSION_HEADING, "name": title, "seconds": seconds, "jingle": MISSION_JINGLE})
+	notices.queue(NoticeBanner.notice(NoticeBanner.MISSION_HEADING, title, seconds, MISSION_JINGLE))
 
 
 ## True while a notice is up (for the tests).
 func is_showing_notice() -> bool:
-	return _area_banner.visible
+	return notices.is_showing()
 
 
-func _queue_notice(notice: Dictionary) -> void:
-	# the same area twice in a row is one notice
-	if _area_banner.visible and _area_name.text == notice["name"]:
-		return
-	_notices.append(notice)
-	if not _area_banner.visible:
-		_next_notice()
-
-
-func _next_notice() -> void:
-	if _notices.is_empty():
-		_area_banner.visible = false
-		return
-	var notice: Dictionary = _notices.pop_front()
-	_area_heading.text = notice["heading"]
-	_area_name.text = notice["name"]
-	if notice["jingle"] != "":
-		music.play_jingle(notice["jingle"], MISSION_JINGLE_VOLUME_DB, "MissieDeuntje")
-	if _area_tween:
-		_area_tween.kill()
-	_area_banner.visible = true
-	_area_banner.modulate.a = 0.0
-	_area_tween = create_tween()
-	_area_tween.tween_property(_area_banner, "modulate:a", 1.0, 0.6)
-	_area_tween.tween_interval(notice["seconds"])
-	_area_tween.tween_property(_area_banner, "modulate:a", 0.0, 0.9)
-	_area_tween.tween_callback(_next_notice)
-
-
-## The quests in the tracker, top to bottom; empty = no tracker. Each a Dictionary:
-## "kind": "verhaal" (a main quest: "label", "title", "distance", "steps" = [{"text",
-## "done"}]) or "zij" (a side quest: "label" and "title" on one line); "id" names it (else
-## its title). A step may have "targets" (Array of world x, z: where to go for it, shown on
-## the minimap and the map while it is the step under way of the tracked quest) and
-## "locked" (it can only be done after the steps before it: shown muted, no targets yet).
-## "done": the whole quest is finished; it can no longer be followed: the tracker then goes
-## on to the first open quest after it (next_open_quest_id).
+## The quests in the tracker, top to bottom; empty = no tracker (what a quest is: QuestLog).
+## The followed one stays followed; when it is done or gone the tracker goes on to the first
+## open quest after it.
 func set_quests(quests: Array) -> void:
-	var previous_ids: Array = _quests.map(func(quest: Dictionary) -> String: return quest_id(quest))
-	_quests = quests.duplicate(true)
-	var tracked := quest_by_id(_tracked_quest_id)
-	if tracked.is_empty() or tracked.get("done", false):
-		_tracked_quest_id = next_open_quest_id(_tracked_quest_id, previous_ids)
-	_rebuild_quest_tracker()
-
-
-static func is_quest_done(quest: Dictionary) -> bool:
-	return quest.get("done", false)
-
-
-## The quest to follow once `after_id` is done (or gone): the first open (not done) one after
-## it in the list (`previous_ids`: the order before, as a quest that is gone is no longer in
-## the list), else the first open one at all; "" when none is open.
-func next_open_quest_id(after_id: String, previous_ids: Array = []) -> String:
-	var start := 0
-	var at := -1
-	for index in _quests.size():
-		if quest_id(_quests[index]) == after_id:
-			at = index
-	if at == -1 and previous_ids.has(after_id):
-		# gone from the list: start where it stood
-		for later_id: String in previous_ids.slice(previous_ids.find(after_id) + 1):
-			var later := quest_by_id(later_id)
-			if not later.is_empty() and not is_quest_done(later):
-				return later_id
-	if at != -1:
-		start = at + 1
-	for offset in _quests.size():
-		var quest: Dictionary = _quests[(start + offset) % _quests.size()]
-		if not is_quest_done(quest):
-			return quest_id(quest)
-	return ""
-
-
-func _rebuild_quest_tracker() -> void:
-	for child in _quest_list.get_children():
-		child.queue_free()
-	_tracked_distance = null
-	# only the quest you follow is in view (the others are in the quest log of the game menu)
-	var tracked := quest_by_id(_tracked_quest_id)
-	if not tracked.is_empty():
-		_quest_list.add_child(_main_quest_panel(tracked) if tracked.get("kind", "verhaal") == "verhaal" else _side_quest_panel(tracked))
-	_quest_list.visible = not tracked.is_empty()
+	quest_tracker.set_quests(quests)
 	_update_quest_distance()
 
 
+static func is_quest_done(quest: Dictionary) -> bool:
+	return QuestLog.is_done(quest)
+
+
+## The quest to follow once `after_id` is done or gone (QuestLog.next_open_id).
+func next_open_quest_id(after_id: String, previous_ids: Array = []) -> String:
+	return quest_tracker.quest_log.next_open_id(after_id, previous_ids)
+
+
 static func quest_id(quest: Dictionary) -> String:
-	return str(quest.get("id", quest.get("title", "")))
+	return QuestLog.quest_id(quest)
 
 
 func quest_by_id(id: String) -> Dictionary:
-	for quest: Dictionary in _quests:
-		if quest_id(quest) == id:
-			return quest
-	return {}
+	return quest_tracker.quest_log.by_id(id)
 
 
 ## Follows this quest (its places on the minimap and the map, on top of the tracker).
 func track_quest(id: String) -> void:
-	var quest := quest_by_id(id)
-	if quest.is_empty() or is_quest_done(quest) or id == _tracked_quest_id:
-		return
-	_tracked_quest_id = id
-	_rebuild_quest_tracker()
+	quest_tracker.track(id)
+	_update_quest_distance()
 
 
 func tracked_quest_id() -> String:
-	return _tracked_quest_id
+	return quest_tracker.quest_log.tracked_id()
 
 
-## The steps the tracker shows of `quest`: not all of them (the quest log in the game menu has
-## those), only the last one done and the one open now (the first not done and not locked, an
-## optional one only when nothing else is open), in their order.
+## The steps the tracker shows of `quest` (QuestLog.tracker_steps).
 static func tracker_steps(quest: Dictionary) -> Array:
-	var all_steps: Array = quest.get("steps", [])
-	var last_done := {}
-	var open_now := {}
-	var optional_open := {}
-	for step: Dictionary in all_steps:
-		var done: bool = step.get("done", false)
-		if done:
-			last_done = step
-		elif not step.get("locked", false):
-			if step.get("optional", false):
-				if optional_open.is_empty():
-					optional_open = step
-			elif open_now.is_empty():
-				open_now = step
-	if open_now.is_empty():
-		open_now = optional_open
-	var shown: Array = []
-	for step: Dictionary in all_steps:
-		if step == last_done or step == open_now:
-			shown.append(step)
-	return shown
+	return QuestLog.tracker_steps(quest)
 
 
 ## Where the tracked quest sends the player now: the targets of its first step not done
 ## (none while that step is locked), as world x, z.
 func quest_targets() -> Array:
-	var quest := quest_by_id(_tracked_quest_id)
-	for step: Dictionary in quest.get("steps", []):
-		if step.get("done", false):
-			continue
-		if step.get("optional", false):
-			continue   # an optional step never holds up the one under way
-		if step.get("locked", false):
-			return []
-		return step.get("targets", [])
-	return []
+	return quest_tracker.quest_log.targets()
 
 
 # ------------------------------------------------------------------ the marker of the map
@@ -731,17 +560,13 @@ func _ground_height(at: Vector2) -> float:
 
 ## How far the nearest place of the tracked quest is, in its panel ("120 M").
 func _update_quest_distance() -> void:
-	if _tracked_distance == null or not is_instance_valid(_tracked_distance) or not _has_focus:
-		return
-	var nearest := INF
-	for target: Vector2 in quest_targets():
-		nearest = minf(nearest, target.distance_to(Vector2(_focus.x, _focus.z)))
-	_tracked_distance.text = "%d M" % roundi(nearest) if nearest < INF else ""
+	if _has_focus:
+		quest_tracker.set_distance(QuestLog.nearest_distance(quest_targets(), Vector2(_focus.x, _focus.z)))
 
 
 ## The quests as last given to set_quests (for the game menu, scripts/ui/game_menu.gd).
 func quests() -> Array:
-	return _quests
+	return quest_tracker.quest_log.quests()
 
 
 ## The neighbourhoods the player has been in (names as in the "wijken" metadata).
@@ -802,170 +627,13 @@ func _label(text: String, font: Font, size: int, colour := UiStyle.TEXT, shadow 
 	return UiStyle.label(text, font, size, colour, shadow)
 
 
-## A panel of `size` with a border and a hard shadow SHADOW_OFFSET down and to the right.
-func _shadowed_panel(size: Vector2, border: Color, border_width: int, shadow := UiStyle.SHADOW_OFFSET) -> Control:
-	var holder := Control.new()
-	holder.size = size
-	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var shadow_rect := ColorRect.new()
-	shadow_rect.color = UiStyle.INK
-	shadow_rect.position = Vector2(shadow, shadow)
-	shadow_rect.size = size
-	shadow_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	holder.add_child(shadow_rect)
-	var panel := Panel.new()
-	panel.size = size
-	panel.add_theme_stylebox_override("panel", UiStyle.box_style(UiStyle.PANEL, border, border_width))
-	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	holder.add_child(panel)
-	return holder
-
-
-func _build_player_frame() -> void:
-	_player_frame = Control.new()
-	_player_frame.name = "Speler"
-	_player_frame.position = Vector2(MARGIN, MARGIN)
-	_player_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_root.add_child(_player_frame)
-	var portrait := _shadowed_panel(Vector2(76, 76), UiStyle.ACCENT, 3)
-	_player_frame.add_child(portrait)
-	# the head and shoulders of the chosen figure (PlayerModel), in 3D, on ink
-	var portrait_back := ColorRect.new()
-	portrait_back.color = UiStyle.INK
-	portrait_back.position = Vector2(3, 3)
-	portrait_back.size = Vector2(70, 70)
-	portrait_back.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	portrait.add_child(portrait_back)
-	_portrait = PlayerPortrait.new()
-	_portrait.name = "Portret"
-	_portrait.archetype_id = PlayerCharacter.current_id()
-	_portrait.zoom = 1.0
-	_portrait.face_view = 1.15
-	_portrait.position = Vector2(3, 3)
-	_portrait.size = Vector2(70, 70)
-	portrait.add_child(_portrait)
-	var badge_shadow := ColorRect.new()
-	badge_shadow.color = UiStyle.INK
-	badge_shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	portrait.add_child(badge_shadow)
-	var badge := PanelContainer.new()
-	var badge_style := UiStyle.box_style(UiStyle.ACCENT, UiStyle.ACCENT, 0)
-	badge_style.content_margin_left = 6
-	badge_style.content_margin_right = 6
-	badge_style.content_margin_top = 3
-	badge_style.content_margin_bottom = 3
-	badge.add_theme_stylebox_override("panel", badge_style)
-	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_level_badge = _label("LEVEL 1", _font_pixel_bold, 12, UiStyle.INK, 0)
-	badge.add_child(_level_badge)
-	portrait.add_child(badge)
-	# right and bottom edge 10 px outside the portrait, with a 3 px shadow
-	badge.resized.connect(func() -> void:
-		badge.position = Vector2(76 + 10, 76 + 10) - badge.size
-		badge_shadow.position = badge.position + Vector2(3, 3)
-		badge_shadow.size = badge.size)
-	var column := VBoxContainer.new()
-	column.position = Vector2(76 + 14, 2)
-	column.add_theme_constant_override("separation", 7)
-	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_player_frame.add_child(column)
-	_name_label = _label("", _font_title, 22)
-	column.add_child(_name_label)
-	for stat_name in STATS:
-		var stat: Dictionary = STATS[stat_name]
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 8)
-		row.alignment = BoxContainer.ALIGNMENT_BEGIN
-		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		var icon := PixelIcon.new()
-		icon.bitmap = PIXEL_ICONS[stat.icon]
-		icon.colour = stat.colour
-		icon.pixel = 2.0
-		icon.tooltip_text = stat_name
-		row.add_child(_in_icon_column(icon))
-		var bar := SegmentBar.new()
-		bar.segments = stat.segments
-		bar.segment_height = stat.height
-		bar.full_colour = stat.colour
-		bar.empty_colour = stat.empty
-		bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		row.add_child(bar)
-		var value_text := _label("", _font_pixel, 12)
-		value_text.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		row.add_child(value_text)
-		column.add_child(row)
-		_stat_bars[stat_name] = bar
-		_stat_texts[stat_name] = value_text
-		_stat_rows[stat_name] = row
-	# experience: a row as the stats, "XP" where they have their icon and a segment bar as
-	# theirs, and the points under the bar, starting where it starts
-	var experience := VBoxContainer.new()
-	experience.add_theme_constant_override("separation", 5)
-	experience.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var xp_row := HBoxContainer.new()
-	xp_row.add_theme_constant_override("separation", 8)
-	xp_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	xp_row.add_child(_in_icon_column(_label("XP", _font_pixel_bold, 11, XP_COLOUR, 0)))
-	# a segment bar as the stats', as wide and as high as the slimmer of them
-	_xp_bar = SegmentBar.new()
-	_xp_bar.segments = XP_SEGMENTS
-	_xp_bar.segment_height = XP_SEGMENT_HEIGHT
-	_xp_bar.full_colour = XP_COLOUR
-	_xp_bar.empty_colour = XP_EMPTY_COLOUR
-	_xp_bar.fill = 0.0
-	_xp_bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	xp_row.add_child(_xp_bar)
-	experience.add_child(xp_row)
-	var points_row := HBoxContainer.new()
-	points_row.add_theme_constant_override("separation", 8)
-	points_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var under_icon := Control.new()
-	under_icon.custom_minimum_size = Vector2(ICON_COLUMN_WIDTH, 0)
-	under_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	points_row.add_child(under_icon)
-	_xp_text = _label("0 / 0", _font_pixel, 11)
-	points_row.add_child(_xp_text)
-	experience.add_child(points_row)
-	column.add_child(experience)
-
-
-## The column of the stat icons (and "XP"): this wide, the thing in it in the middle, so
-## the bars after it all start at the same place.
-const ICON_COLUMN_WIDTH := 18.0
-
-
-func _in_icon_column(item: Control) -> CenterContainer:
-	var holder := CenterContainer.new()
-	holder.custom_minimum_size = Vector2(ICON_COLUMN_WIDTH, 0)
-	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	holder.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	holder.add_child(item)
-	return holder
-
-
-func _build_area_banner() -> void:
-	_area_banner = VBoxContainer.new()
-	_area_banner.name = "NieuwGebied"
-	_area_banner.add_theme_constant_override("separation", 4)
-	_area_banner.size = Vector2(NOTICE_WIDTH, 0)
-	_area_banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_area_heading = _label(AREA_HEADING, UiStyle.spaced(_font_pixel, 3), 12, UiStyle.ACCENT)
-	_area_heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_area_banner.add_child(_area_heading)
-	_area_name = _label("", _font_title, 34, UiStyle.TEXT, 3)
-	_area_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_area_banner.add_child(_area_name)
-	_area_banner.visible = false
-	_root.add_child(_area_banner)
-
-
 func _build_minimap() -> void:
 	_minimap_box = Control.new()
 	_minimap_box.name = "Kaartje"
 	_minimap_box.size = Vector2(200, MAP_TOP + 270)
 	_minimap_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(_minimap_box)
-	var frame := _shadowed_panel(Vector2(200, 200), UiStyle.BORDER, 3)
+	var frame := UiStyle.shadowed_panel(Vector2(200, 200), UiStyle.BORDER, 3)
 	frame.position = Vector2(0, MAP_TOP)
 	_minimap_box.add_child(frame)
 	var clip := Control.new()
@@ -1078,97 +746,6 @@ func _chip(contents: Array) -> PanelContainer:
 		row.add_child(item)
 	chip.add_child(row)
 	return chip
-
-
-func _build_quest_tracker() -> void:
-	_quest_list = VBoxContainer.new()
-	_quest_list.name = "Opdrachten"
-	_quest_list.add_theme_constant_override("separation", 10)
-	_quest_list.custom_minimum_size = Vector2(300, 0)
-	_quest_list.size = Vector2(300, 0)
-	_quest_list.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_root.add_child(_quest_list)
-
-
-func _quest_panel(accent: Color, background_alpha: float, vertical_margin: int, separation: int) -> Array:
-	var panel := PanelContainer.new()
-	var style := UiStyle.box_style(Color(UiStyle.INK, background_alpha), accent, 4, true)
-	style.content_margin_left = 14
-	style.content_margin_right = 14
-	style.content_margin_top = vertical_margin
-	style.content_margin_bottom = vertical_margin
-	panel.add_theme_stylebox_override("panel", style)
-	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", separation)
-	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	panel.add_child(column)
-	return [panel, column]
-
-
-func _main_quest_panel(quest: Dictionary) -> Control:
-	var parts := _quest_panel(UiStyle.ACCENT, 0.82, 12, 8)
-	var column: VBoxContainer = parts[1]
-	var header := HBoxContainer.new()
-	header.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var label := _label("◆ " + str(quest.get("label", "VERHAAL")), UiStyle.spaced(_font_pixel, 2), 11, UiStyle.ACCENT, 0)
-	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	header.add_child(label)
-	var distance := _label(str(quest.get("distance", "")), _font_pixel, 11, UiStyle.MUTED, 0)
-	header.add_child(distance)
-	if quest_id(quest) == _tracked_quest_id:
-		_tracked_distance = distance
-	column.add_child(header)
-	var title := _label(str(quest.get("title", "")), _font_title_medium, 19, UiStyle.TEXT, 0)
-	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	column.add_child(title)
-	var steps := VBoxContainer.new()
-	steps.add_theme_constant_override("separation", 6)
-	steps.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	for step: Dictionary in tracker_steps(quest):
-		var done: bool = step.get("done", false)
-		var locked: bool = step.get("locked", false) and not done
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 8)
-		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		var box := CheckSquare.new()
-		box.done = done
-		box.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		row.add_child(box)
-		var text := RichTextLabel.new()
-		text.bbcode_enabled = true
-		text.fit_content = true
-		text.scroll_active = false
-		text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		text.add_theme_font_override("normal_font", _font_body)
-		text.add_theme_font_size_override("normal_font_size", 13)
-		text.add_theme_color_override("default_color", UiStyle.MUTED if done else UiStyle.TEXT)
-		text.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		var escaped := str(step.get("text", "")).replace("[", "[lb]")
-		text.text = "[s]%s[/s]" % escaped if done else escaped
-		row.add_child(text)
-		if int(step.get("xp", 0)) > 0:
-			var points := _label("+%d XP" % int(step.xp), _font_pixel, 10, UiStyle.MUTED if done else XP_COLOUR, 0)
-			points.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-			row.add_child(points)
-		# a step that cannot be done yet: see-through
-		if locked:
-			row.modulate.a = LOCKED_STEP_OPACITY
-		steps.add_child(row)
-	column.add_child(steps)
-	return parts[0]
-
-
-func _side_quest_panel(quest: Dictionary) -> Control:
-	var parts := _quest_panel(UiStyle.SIDE_ACCENT, 0.7, 10, 4)
-	var column: VBoxContainer = parts[1]
-	var label := _label("! " + str(quest.get("label", "ZIJMISSIE")), UiStyle.spaced(_font_pixel, 2), 11, UiStyle.SIDE_ACCENT, 0)
-	column.add_child(label)
-	var title := _label(str(quest.get("title", "")), _font_body, 13, UiStyle.TEXT, 0)
-	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	column.add_child(title)
-	return parts[0]
 
 
 func _build_money() -> void:
@@ -1597,9 +1174,9 @@ func _place_corners() -> void:
 	if _root == null or _money_panel == null:
 		return
 	var area := _root.size
-	_area_banner.position = Vector2((area.x - NOTICE_WIDTH) * 0.5, 34.0)
+	notices.position = Vector2((area.x - NoticeBanner.WIDTH) * 0.5, 34.0)
 	_minimap_box.position = Vector2(area.x - MARGIN - 200.0, MARGIN)
-	_quest_list.position = Vector2(area.x - MARGIN - 300.0, 290.0 + MAP_TOP)
+	quest_tracker.position = Vector2(area.x - MARGIN - QuestTracker.WIDTH, 290.0 + MAP_TOP)
 	_money_panel.position = area - Vector2(MARGIN, 28.0) - _money_panel.size
 	_place_action_prompts()
 

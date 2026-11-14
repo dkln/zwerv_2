@@ -234,18 +234,33 @@ func _process(delta: float) -> void:
 		# the line where the words appear now (a line under the share typed) at the bottom
 		var typed_to := _text.position.y + _text.size.y * _typewriter.shown_share() + TEXT_SIZE * 0.8
 		var wanted := clampf(typed_to - _scroll.size.y, 0.0, history_room)
-		var now := float(_scroll.scroll_vertical)
-		var next := int(roundf(lerpf(now, wanted, 1.0 - exp(-FOLLOW_RATE * delta))))
-		# whole pixels: at a high frame rate the eased step rounds back to where it was and the
-		# last few pixels of a long reply would stay out of view; at least a pixel a frame
-		if next == int(now) and absf(wanted - now) >= 1.0:
-			next += int(signf(wanted - now))
-		_scroll.scroll_vertical = next
+		_scroll.scroll_vertical = next_scroll(float(_scroll.scroll_vertical), wanted, delta)
 	# more choices to scroll to: a blinking arrow on the right
 	var room := _choices_box.size.y - _choices_scroll.size.y if choosing else 0.0
 	var blink := fmod(_blink_clock, 0.8) < 0.5
 	_more_below.visible = room > 1.0 and _choices_scroll.scroll_vertical < room - 1.0 and blink
 	_more_above.visible = room > 1.0 and _choices_scroll.scroll_vertical > 1.0 and blink
+
+
+## Where the scroll of the conversation goes this frame: from `now` towards `wanted` (px),
+## eased (FOLLOW_RATE) over `delta` seconds.
+static func next_scroll(now: float, wanted: float, delta: float) -> int:
+	var next := int(roundf(lerpf(now, wanted, 1.0 - exp(-FOLLOW_RATE * delta))))
+	# whole pixels: at a high frame rate the eased step rounds back to where it was and the
+	# last few pixels of a long reply would stay out of view; at least a pixel a frame
+	if next == int(now) and absf(wanted - now) >= 1.0:
+		next += int(signf(wanted - now))
+	return next
+
+
+## The name tag of a page of `kind` that names no speaker: the narrator, a new mission, or you.
+static func default_speaker(kind: String, name_of_player: String) -> String:
+	return "VERTELLER" if kind == "verhaal" else ("NIEUWE MISSIE" if kind == "missie" else name_of_player)
+
+
+## The text of a page as it is typed out: a thought in quotes.
+static func shown_text(kind: String, text: String) -> String:
+	return "“" + text + "”" if kind == "gedachte" else text
 
 
 ## True while the line of someone who babbles (a page with "voice") types out: their mouth moves.
@@ -351,9 +366,7 @@ func _show_page() -> void:
 	var accent := UiStyle.SIDE_ACCENT if kind == "gedachte" else UiStyle.ACCENT
 	if not official.is_empty():
 		accent = official.get("colour", accent)
-	var text := String(page.get("text", ""))
-	if kind == "gedachte":
-		text = "“" + text + "”"
+	var text := shown_text(kind, String(page.get("text", "")))
 	_text.add_theme_color_override("default_color", THOUGHT_COLOUR if kind == "gedachte" else UiStyle.TEXT)
 	_typewriter.cursor_colour = accent
 	_show_speaker(kind == "verhaal", kind == "gesprek", page.get("portrait_look", {}))
@@ -367,8 +380,7 @@ func _show_page() -> void:
 	_mission_badge.visible = kind == "missie"
 	if _portrait:
 		_portrait.visible = kind != "missie"
-	var default_speaker := "VERTELLER" if kind == "verhaal" else ("NIEUWE MISSIE" if kind == "missie" else player_name)
-	_name_label.text = String(page.get("speaker", default_speaker))
+	_name_label.text = String(page.get("speaker", default_speaker(kind, player_name)))
 	var tag_style := StyleBoxFlat.new()
 	tag_style.bg_color = official.get("plate", accent)
 	if not official.is_empty():

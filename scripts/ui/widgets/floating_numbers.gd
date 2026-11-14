@@ -85,7 +85,7 @@ func _place(number: Dictionary) -> void:
 	var label: Label = number.label
 	var camera := (world_viewport if world_viewport else get_viewport()).get_camera_3d()
 	var share: float = number.age / lifetime
-	var at: Vector3 = number.from + Vector3.UP * RISE_METRES * (1.0 - pow(1.0 - share, 2.0))
+	var at: Vector3 = number.from + Vector3.UP * rise(share)
 	if camera == null or camera.is_position_behind(at):
 		label.visible = false
 		return
@@ -94,6 +94,21 @@ func _place(number: Dictionary) -> void:
 	var on_screen := camera.unproject_position(at) / maxf(root_scale, 0.001)
 	label.visible = true
 	label.position = (on_screen - label.size * 0.5 + Vector2(number.shift, 0.0)).round()
-	var pop := clampf(number.age / POP_SECONDS, 0.0, 1.0)
-	label.scale = Vector2.ONE * lerpf(POP_SCALE, 1.0, pop)
-	label.modulate.a = 1.0 - clampf((share - FADE_FROM) / (1.0 - FADE_FROM), 0.0, 1.0)
+	label.scale = Vector2.ONE * pop_scale(number.age)
+	label.modulate.a = opacity(share)
+
+
+## How many metres a number has risen at `share` (0..1) of its life: fast at first, slowing
+## down to RISE_METRES.
+static func rise(share: float) -> float:
+	return RISE_METRES * (1.0 - pow(1.0 - share, 2.0))
+
+
+## How big a number is `age` seconds old: POP_SCALE as it appears, its own size after POP_SECONDS.
+static func pop_scale(age: float) -> float:
+	return lerpf(POP_SCALE, 1.0, clampf(age / POP_SECONDS, 0.0, 1.0))
+
+
+## How opaque a number is at `share` (0..1) of its life: whole until FADE_FROM, gone at the end.
+static func opacity(share: float) -> float:
+	return 1.0 - clampf((share - FADE_FROM) / (1.0 - FADE_FROM), 0.0, 1.0)

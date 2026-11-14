@@ -26,6 +26,8 @@ import notation  # noqa: E402
 import score as score_module  # noqa: E402
 import fm  # noqa: E402
 import json_bron  # noqa: E402
+import json_naar_ogg  # noqa: E402
+import mixer  # noqa: E402
 import tracker  # noqa: E402
 from notation import Hit, Note, cycle, drum_run, drums, notes, run  # noqa: E402
 from score import Bar, Score  # noqa: E402
@@ -515,6 +517,80 @@ def test_the_voices_and_the_drums_of_the_tracker():
     assert set(notation.DRUM_NAMES) <= set(kit), set(notation.DRUM_NAMES) - set(kit)
     kick = numpy.abs(numpy.fft.rfft(kit["kick"].samples, 16384))
     assert int(kick.argmax()) * 44100.0 / 16384 < 120.0, "the kick is low"
+
+
+# ----------------------------------------------------------------------------- one JSON to one OGG
+
+def _quiet(function, *arguments):
+    """The function's result, and what it printed (stdout and stderr together)."""
+    printed = io.StringIO()
+    with contextlib.redirect_stdout(printed), contextlib.redirect_stderr(printed):
+        result = function(*arguments)
+    return result, printed.getvalue()
+
+
+def test_a_json_composition_as_written_is_one_piece_played_once():
+    path = _json_file(_json_source())
+    piece, warnings = json_naar_ogg.piece_as_written(path, "proef")
+    assert piece.name == "proef" and not piece.loop and piece.tempo == 120.0 and len(piece.bars) == 2
+    assert piece.tracker == os.path.abspath(path), "played from the file where it is"
+    assert tracker.tracker_in_compositions(piece.tracker).bpm == 120.0
+    assert any("FM2_PolyBrass" in warning for warning in warnings), "a volume the file does not give is reported"
+    stereo = mixer.render(piece)
+    assert len(stereo) == int(round((4.0 + piece.tail) * mixer.SAMPLE_RATE)) and float(numpy.abs(stereo).max()) > 0.05
+    flat_piece, _warnings = json_naar_ogg.piece_as_written(_json_file(_flat_source()), "plat")
+    assert flat_piece.tracker and not flat_piece.loop, "the flat form the same way"
+
+
+def test_a_timeline_as_written_plays_its_own_patches_from_where_the_file_is():
+    data = _timeline_source()
+    # every FM channel that plays has its patch (the small timeline gives only FM1 one)
+    for channel in ("FM2_HouseStabs", "FM3_LeadSynth", "FM4_SubPad", "FM5_FMPerc"):
+        data["hardware_patches"][channel] = data["hardware_patches"]["FM1_SlapBass"]
+    path = _json_file(data)
+    piece, warnings = json_naar_ogg.piece_as_written(path, "proef")
+    assert not piece.tracker and not piece.loop and len(piece.bars) == 2 and piece.tempo == 126.0
+    assert piece.sounds["bas"].startswith("patch:") and piece.sounds["bas"].endswith("proef.json:FM1_SlapBass")
+    assert instruments.SOUNDS[piece.sounds["bas"]].chip_voice.algorithm == 4, "the patch of the file itself"
+    assert any("VOX_GO" in warning for warning in warnings)
+    assert float(numpy.abs(mixer.render(piece)).max()) > 0.05, "it sounds"
+
+
+def test_json_to_ogg_writes_only_the_file_asked_for():
+    path = _json_file(_json_source())
+    folder = os.path.dirname(path)
+    compositions_before = sorted(os.listdir(score_module.COMPOSITIONS_FOLDER))
+    result, printed = _quiet(json_naar_ogg.main, [path, os.path.join(folder, "uit.ogg")])
+    assert result == 0 and "uit.ogg" in printed and "6.50 s" in printed, printed
+    assert sorted(os.listdir(folder)) == ["proef.json", "uit.ogg"] and os.path.getsize(os.path.join(folder, "uit.ogg")) > 5000
+    assert sorted(os.listdir(score_module.COMPOSITIONS_FOLDER)) == compositions_before, "composities/ untouched"
+    assert not [name for name in sys.modules if name.startswith(json_naar_ogg.MODULE_PREFIX)]
+
+
+def test_json_to_ogg_refuses_what_it_cannot_make():
+    path = _json_file(_json_source())
+    folder = os.path.dirname(path)
+
+    def refused(json_path: str, ogg_path: str) -> str:
+        result, printed = _quiet(json_naar_ogg.main, [json_path, ogg_path])
+        assert result == 1, printed
+        return printed
+
+    assert "bestaat niet" in refused(os.path.join(folder, "weg.json"), os.path.join(folder, "uit.ogg"))
+    assert "moet op .ogg eindigen" in refused(path, os.path.join(folder, "uit.wav"))
+    assert "map voor de uitvoer bestaat niet" in refused(path, os.path.join(folder, "nergens", "uit.ogg"))
+    assert "muziek van het spel" in refused(path, os.path.join(json_naar_ogg.MUSIC_FOLDER, "zwervr_intro.ogg"))
+    broken = os.path.join(folder, "kapot.json")
+    with open(broken, "w", encoding="utf-8") as json_file:
+        json_file.write('{"metadata": ')
+    assert "geen geldig JSON" in refused(broken, os.path.join(folder, "uit.ogg"))
+    assert "onbekende vorm" in refused(_json_file({"title": "Proef", "tempo_bpm": 120, "patterns": {}}),
+                                       os.path.join(folder, "uit.ogg"))
+    incomplete = _json_source()
+    del incomplete["bars"][0]["channels"]["FM3_lead"]
+    assert "FM3_lead" in refused(_json_file(incomplete), os.path.join(folder, "uit.ogg"))
+    assert "'pad'" in refused(_json_file(_timeline_source()), os.path.join(folder, "uit.ogg")), "a channel without its patch"
+    assert sorted(os.listdir(folder)) == ["kapot.json", "proef.json"], "nothing written on a refusal"
 
 
 def main() -> int:

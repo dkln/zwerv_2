@@ -41,10 +41,10 @@ func test_minimap_is_built(test) -> void:
 ## The XP bar starts where the stat bars start and is as wide and high, its points under it.
 func test_xp_bar_in_line_with_the_meters(test) -> void:
 	await frames(5)
-	var stat_bar: Control = hud._stat_bars["uithoudingsvermogen"]
-	var xp_bar: Control = hud._xp_bar
+	var stat_bar: Control = hud.player_frame.stat_bar("uithoudingsvermogen")
+	var xp_bar: Control = hud.player_frame.xp_bar()
 	print("XP-balk op x %.0f, %s (metertje %.0f, %s)" % [xp_bar.global_position.x, xp_bar.size, stat_bar.global_position.x, stat_bar.size])
 	test.check(absf(xp_bar.global_position.x - stat_bar.global_position.x) <= 0.5 and absf(xp_bar.size.x - stat_bar.size.x) <= 0.5
 			and absf(xp_bar.size.y - stat_bar.size.y) <= 0.5,
 		"XP-balk in lijn: %s %s, metertje %s %s" % [xp_bar.global_position.x, xp_bar.size.x, stat_bar.global_position.x, stat_bar.size.x])
-	test.check(absf((hud._xp_text as Control).global_position.x - xp_bar.global_position.x) <= 0.5, "XP-punten onder de balk")
+	test.check(absf((hud.player_frame.xp_label() as Control).global_position.x - xp_bar.global_position.x) <= 0.5, "XP-punten onder de balk")

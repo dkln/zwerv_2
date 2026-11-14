@@ -112,6 +112,25 @@ static func label(text: String, label_font: Font, size: int, colour := TEXT, sha
 	return made
 
 
+## A panel of `size` with a border and a hard shadow `shadow` px down and to the right.
+static func shadowed_panel(size: Vector2, border: Color, border_width: int, shadow := SHADOW_OFFSET) -> Control:
+	var holder := Control.new()
+	holder.size = size
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var shadow_rect := ColorRect.new()
+	shadow_rect.color = INK
+	shadow_rect.position = Vector2(shadow, shadow)
+	shadow_rect.size = size
+	shadow_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.add_child(shadow_rect)
+	var panel := Panel.new()
+	panel.size = size
+	panel.add_theme_stylebox_override("panel", box_style(PANEL, border, border_width))
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.add_child(panel)
+	return holder
+
+
 ## Extra space between letters (pixels), as letter-spacing in the design.
 static func spaced(base_font: Font, spacing: int) -> Font:
 	var variation := FontVariation.new()

@@ -102,22 +102,28 @@ func _resize() -> void:
 func _draw() -> void:
 	draw_rect(Rect2(Vector2.ZERO, size), UiStyle.BORDER)
 	draw_rect(Rect2(Vector2.ONE * BORDER_WIDTH, size - Vector2.ONE * 2.0 * BORDER_WIDTH), UiStyle.INK)
+	var start := Vector2.ONE * (BORDER_WIDTH + PADDING)
+	for segment_index in segments:
+		var at := start + Vector2(segment_index * (SEGMENT_WIDTH + GAP), 0.0)
+		draw_rect(Rect2(at, Vector2(SEGMENT_WIDTH, segment_height)), segment_colour(segment_index))
+
+
+## The colour segment `segment_index` (0 = the first) has now: full or empty, or what shows a
+## change under way (see the top).
+func segment_colour(segment_index: int) -> Color:
 	var full := roundi(fill * segments)
 	var lost_to := roundi(_lost_from * segments)
 	var gained_from := roundi(_gained_from * segments)
-	var start := Vector2.ONE * (BORDER_WIDTH + PADDING)
 	var changing := _change_clock > 0.0
 	var blink_on := fmod(_clock * CHANGE_BLINK, 1.0) < 0.5
 	var glow := clampf(_change_clock / CHANGE_HOLD, 0.0, 1.0)
-	for segment_index in segments:
-		var at := start + Vector2(segment_index * (SEGMENT_WIDTH + GAP), 0.0)
-		var colour := full_colour if segment_index < full else empty_colour
-		if segment_index >= full and segment_index < lost_to:
-			# the lost part, blinking while it waits, steady while it drains
-			colour = LOSS_COLOUR if (blink_on or _loss_wait <= 0.0) else LOSS_COLOUR.darkened(0.45)
-		elif changing and _going_down and segment_index == full and lost_to <= full:
-			# a loss smaller than a segment (a meter running down): its edge blinks
-			colour = LOSS_COLOUR if blink_on else empty_colour
-		elif changing and not _going_down and segment_index < full and segment_index >= gained_from:
-			colour = full_colour.lerp(GAIN_GLOW, 0.75 * glow)
-		draw_rect(Rect2(at, Vector2(SEGMENT_WIDTH, segment_height)), colour)
+	var colour := full_colour if segment_index < full else empty_colour
+	if segment_index >= full and segment_index < lost_to:
+		# the lost part, blinking while it waits, steady while it drains
+		colour = LOSS_COLOUR if (blink_on or _loss_wait <= 0.0) else LOSS_COLOUR.darkened(0.45)
+	elif changing and _going_down and segment_index == full and lost_to <= full:
+		# a loss smaller than a segment (a meter running down): its edge blinks
+		colour = LOSS_COLOUR if blink_on else empty_colour
+	elif changing and not _going_down and segment_index < full and segment_index >= gained_from:
+		colour = full_colour.lerp(GAIN_GLOW, 0.75 * glow)
+	return colour

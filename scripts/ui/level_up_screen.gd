@@ -170,8 +170,13 @@ func _refresh() -> void:
 		_rows[index].add_theme_stylebox_override("panel", _row_style(colour, chosen))
 		var now: Vector2 = _current.call(stat_name) if _current.is_valid() else Vector2.ZERO
 		var raised := float(_raise.get(stat_name, 0.0))
-		_row_values[index].text = "%d → %d" % [roundi(now.y), roundi(now.y + raised)]
+		_row_values[index].text = value_text(now.y, raised)
 		_row_values[index].add_theme_color_override("font_color", colour if chosen else UiStyle.MUTED)
+
+
+## A stat's maximum now and after the level up, in whole points ("70 → 80").
+static func value_text(maximum: float, raised: float) -> String:
+	return "%d → %d" % [roundi(maximum), roundi(maximum + raised)]
 
 
 # ------------------------------------------------------------------ building

@@ -245,10 +245,16 @@ func _unhandled_input(event: InputEvent) -> void:
 # ------------------------------------------------------------------ the menu
 
 func _next_choosable(from: int, step: int) -> int:
+	return next_choosable(from, step, ITEMS)
+
+
+## The next item of `items` (as ITEMS: [label, choosable, action]) that can be chosen, going
+## `step` (1 down, -1 up) from `from` and round at the ends; `from` itself when none can.
+static func next_choosable(from: int, step: int, items: Array) -> int:
 	var index := from
-	for _attempt in ITEMS.size():
-		index = posmod(index + step, ITEMS.size())
-		if ITEMS[index][1]:
+	for _attempt in items.size():
+		index = posmod(index + step, items.size())
+		if items[index][1]:
 			return index
 	return from
 

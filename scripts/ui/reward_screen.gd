@@ -186,7 +186,13 @@ func _show_page() -> void:
 		_chips.add_child(_chip("+%d XP" % int(page.xp), XP_COLOUR))
 	_rarity.visible = _rarity.text != ""
 	_chips.visible = _chips.get_child_count() > 0
-	_footer.text = "[ENTER] OK" if _page_index == _pages.size() - 1 else "[ENTER] VERDER  %d / %d" % [_page_index + 1, _pages.size()]
+	_footer.text = footer_text(_page_index, _pages.size())
+
+
+## The line at the bottom of page `page_index` of `page_count`: OK on the last, else on to
+## the next with where you are ("[ENTER] VERDER  1 / 3").
+static func footer_text(page_index: int, page_count: int) -> String:
+	return "[ENTER] OK" if page_index == page_count - 1 else "[ENTER] VERDER  %d / %d" % [page_index + 1, page_count]
 
 
 # ------------------------------------------------------------------ building

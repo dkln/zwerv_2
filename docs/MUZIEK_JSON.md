@@ -136,3 +136,22 @@ de PSG-klanken, de DAC-samples en ruis-hats het Mega Drive-drumstel (`KICK_SNARE
 tegelijk). Wat het bestand niet zegt: de pad (FM4) houdt aan tot zijn volgende akkoord, de echo (PSG2)
 tot zijn volgende noot ("sustain"). Niet nagespeeld en gemeld: samples zonder klank (een stem), en
 effecten (vibrato, slides).
+
+## Eén compositie beluisteren
+
+Een JSON-bestand horen zonder iets aan het spel te veranderen: `tools/muziek/json_naar_ogg.sh`
+(Windows: `json_naar_ogg.ps1`) maakt er één OGG van, op de plek die je opgeeft.
+
+```sh
+tools/muziek/json_naar_ogg.sh <compositie.json> <uitvoer.ogg>
+tools/muziek/json_naar_ogg.sh data/muziek/street_viper_92.json ~/Desktop/street_viper_92.ogg
+```
+
+De compositie klinkt letterlijk zoals geschreven, één keer gespeeld met 2,5 s uitklinken, door
+dezelfde synth en mastering als de intro van het spel (de gewone en de platte vorm door de
+nagebouwde synth van de tracker, de tijdlijn in haar eigen patches; -16 LUFS). Er wordt niets
+afgeleid en niets van het spel geraakt: geen `composities/<naam>.py`, niet `composities/actief.py`,
+niets in `assets/audio/muziek/` (uitvoer daarheen wordt geweigerd). Wat het bestand vraagt maar niet
+nagespeeld wordt, staat als `LET OP:` in de uitvoer; een bestand in een andere vorm dan de drie
+hierboven wordt geweigerd met de velden die het wel heeft. De uitvoer noemt het bestand en de duur
+in seconden.

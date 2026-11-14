@@ -94,7 +94,7 @@ func test_begin_opens_the_town_with_the_one_chosen(test) -> void:
 		var town_hud := tree.current_scene.get_node("HUD")
 		print("HUD: ", town_hud.player_name, ", leven ", town_hud.get_stat("gezondheid"), ", stamina ",
 				town_hud.get_stat("uithoudingsvermogen"), ", honger ", town_hud.get_stat("honger"), ", portret ",
-				town_hud._portrait.archetype_id)
+				town_hud.player_frame.portrait.archetype_id)
 		test.check(town_hud.player_name == "Ufo Piloot" and town_hud.get_stat("gezondheid") == Vector2(150, 150)
-				and town_hud._portrait.archetype_id == "ufo_piloot", "HUD heeft de keuze")
+				and town_hud.player_frame.portrait.archetype_id == "ufo_piloot", "HUD heeft de keuze")
 	PlayerCharacter.choose("martin")

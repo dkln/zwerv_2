@@ -230,13 +230,17 @@ func _input(event: InputEvent) -> void:
 		return
 	# only the space bar (or Enter: A on a controller, pad_keys.gd) skips (other keys, such as
 	# the volume keys, do nothing)
-	var pressed: bool = event is InputEventKey and event.pressed and not event.echo \
-			and (event as InputEventKey).keycode in [KEY_SPACE, KEY_ENTER, KEY_KP_ENTER]
-	if pressed:
+	if is_skip_key(event):
 		get_viewport().set_input_as_handled()
 		if not _leaving:
 			UiSounds.play(self, "doe")
 		_to_menu()
+
+
+## Whether `event` breaks the intro off: the space bar or Enter pressed (not held, no other key).
+static func is_skip_key(event: InputEvent) -> bool:
+	return event is InputEventKey and event.pressed and not event.echo \
+			and (event as InputEventKey).keycode in [KEY_SPACE, KEY_ENTER, KEY_KP_ENTER]
 
 
 static func _fast_held() -> bool:
@@ -256,9 +260,7 @@ func _music_time() -> float:
 ## Sets everything as it is at moment `time` of the intro (CUES); at END_AT the main menu.
 func _play(time: float) -> void:
 	# the opening line
-	var line_in := clampf((time - LINE_IN_AT) / LINE_FADE, 0.0, 1.0)
-	var line_out := clampf((time - LINE_OUT_AT) / LINE_FADE, 0.0, 1.0)
-	_line.modulate.a = line_in * (1.0 - line_out)
+	_line.modulate.a = line_alpha(time)
 	# the stars and the logo all at once on the first big entry; it stands, then goes away
 	# as a thing does that flies off ever faster: its distance grows with the square of the
 	# time, its size is one over the distance, so it shrinks slowly at first
@@ -268,28 +270,21 @@ func _play(time: float) -> void:
 	_stars.modulate.a = fading_in
 	_logo_holder.visible = time >= LOGO_FADE_IN_AT and since_logo < LOGO_HOLD + LOGO_SECONDS
 	if _logo_holder.visible:
-		var going := clampf((since_logo - LOGO_HOLD) / LOGO_SECONDS, 0.0, 1.0)
-		var distance := 1.0 + (LOGO_START_SCALE / LOGO_END_SCALE - 1.0) * going * going
-		# before it goes: from huge, nearly past the edges, slowly down to its normal size
-		# (easing out) by the time it starts to go
-		var settling := clampf((time - LOGO_FADE_IN_AT) / (LOGO_AT + LOGO_HOLD - LOGO_FADE_IN_AT), 0.0, 1.0)
-		var size := lerpf(LOGO_HUGE_SCALE, LOGO_START_SCALE, 1.0 - pow(1.0 - settling, 2.0))
-		_logo_holder.scale = Vector2.ONE * size / distance
+		_logo_holder.scale = Vector2.ONE * logo_scale(time)
 		# fading out the whole way as it goes
-		_logo_holder.modulate.a = fading_in * (1.0 - going)
+		_logo_holder.modulate.a = fading_in * (1.0 - logo_going(time))
 	# the story, its paragraphs coming in on their cues
 	# (ahead of the music while Enter is held)
 	var crawl_time := time + _crawl_ahead
 	_crawl_screen.visible = time >= CRAWL_AT and crawl_time < END_AT
 	if _crawl_screen.visible:
 		_crawl_text.position.y = _crawl_position(crawl_time)
-		_crawl_screen.modulate.a = clampf((END_AT - crawl_time) / maxf(END_AT - REST_AT, 0.1), 0.0, 1.0)
+		_crawl_screen.modulate.a = crawl_alpha(crawl_time)
 	# a star twinkles where the logo vanishes in the distance
 	var twinkling := (time - SPARKLE_AT) / SPARKLE_SECONDS
 	_sparkle.visible = twinkling >= 0.0 and twinkling < 1.0
 	if _sparkle.visible:
-		var flare := twinkling / SPARKLE_FLARE if twinkling < SPARKLE_FLARE \
-				else 1.0 - (twinkling - SPARKLE_FLARE) / (1.0 - SPARKLE_FLARE)
+		var flare := sparkle_flare(twinkling)
 		_sparkle.scale = Vector2.ONE * (0.2 + 0.8 * sqrt(flare))
 		_sparkle.rotation = twinkling * PI * 0.25
 		_sparkle.modulate.a = flare
@@ -306,6 +301,65 @@ func _play(time: float) -> void:
 		_to_menu()
 
 
+## How much the opening line shows at `time` (0 .. 1): fading in from LINE_IN_AT, out from
+## LINE_OUT_AT (each over LINE_FADE).
+static func line_alpha(time: float) -> float:
+	var line_in := clampf((time - LINE_IN_AT) / LINE_FADE, 0.0, 1.0)
+	var line_out := clampf((time - LINE_OUT_AT) / LINE_FADE, 0.0, 1.0)
+	return line_in * (1.0 - line_out)
+
+
+## How far the logo is on its way off at `time` (0: standing, 1: gone), over LOGO_SECONDS
+## after it stood LOGO_HOLD from LOGO_AT.
+static func logo_going(time: float) -> float:
+	return clampf((time - LOGO_AT - LOGO_HOLD) / LOGO_SECONDS, 0.0, 1.0)
+
+
+## The scale of the logo at `time`: from huge (LOGO_HUGE_SCALE), easing out, down to its
+## normal size (LOGO_START_SCALE) by the time it starts to go, then away as a thing that
+## flies off ever faster (its distance grows with the square of the time, its size is one
+## over the distance) down to LOGO_END_SCALE.
+static func logo_scale(time: float) -> float:
+	var going := logo_going(time)
+	var distance := 1.0 + (LOGO_START_SCALE / LOGO_END_SCALE - 1.0) * going * going
+	# before it goes: from huge, nearly past the edges, slowly down to its normal size
+	# (easing out) by the time it starts to go
+	var settling := clampf((time - LOGO_FADE_IN_AT) / (LOGO_AT + LOGO_HOLD - LOGO_FADE_IN_AT), 0.0, 1.0)
+	var size := lerpf(LOGO_HUGE_SCALE, LOGO_START_SCALE, 1.0 - pow(1.0 - settling, 2.0))
+	return size / distance
+
+
+## How much the story shows at `crawl_time` (0 .. 1): whole until REST_AT, fading out to END_AT.
+static func crawl_alpha(crawl_time: float) -> float:
+	return clampf((END_AT - crawl_time) / maxf(END_AT - REST_AT, 0.1), 0.0, 1.0)
+
+
+## How bright the twinkle is at `twinkling` (0 .. 1 of its time): flaring up over the first
+## SPARKLE_FLARE of it, then dying out.
+static func sparkle_flare(twinkling: float) -> float:
+	return twinkling / SPARKLE_FLARE if twinkling < SPARKLE_FLARE \
+			else 1.0 - (twinkling - SPARKLE_FLARE) / (1.0 - SPARKLE_FLARE)
+
+
+## The value at `time` on the way along `stops` ([time, value] each, in order of time): even
+## between two stops, the first value before the first, the last after the last.
+static func value_between(stops: Array, time: float) -> float:
+	for stop_index in range(1, stops.size()):
+		var earlier: Array = stops[stop_index - 1]
+		var later: Array = stops[stop_index]
+		if time <= later[0]:
+			return lerpf(earlier[1], later[1], clampf((time - earlier[0]) / (later[0] - earlier[0]), 0.0, 1.0))
+	return stops[-1][1]
+
+
+## The next one to drift (`random` decides): a character with CHARACTER_CHANCE, else a
+## tractor; never `last`, the one before.
+static func pick_drifter(random: RandomNumberGenerator, last: String) -> String:
+	var choices: Array = PlayerCharacter.ORDER if random.randf() < CHARACTER_CHANCE else TRACTOR_MODELS
+	var others := choices.filter(func(choice: String) -> bool: return choice != last)
+	return others[random.randi() % others.size()]
+
+
 ## Where the story stands at `time`: rolled evenly between the cues, each cue a paragraph
 ## of STORY coming in at the bottom of the picture (its top there), from the whole text
 ## under the picture at CRAWL_AT to the last paragraph at rest far off (CRAWL_REST) at REST_AT,
@@ -320,12 +374,7 @@ func _crawl_position(time: float) -> float:
 			var paragraph_top: float = (paragraphs[paragraph_index] as Control).position.y
 			stops.append([CRAWL_CUES[paragraph_index], CRAWL_PICTURE.y - paragraph_top])
 	stops.append([REST_AT, CRAWL_PICTURE.y * CRAWL_REST - _crawl_text.size.y])
-	for stop_index in range(1, stops.size()):
-		var earlier: Array = stops[stop_index - 1]
-		var later: Array = stops[stop_index]
-		if time <= later[0]:
-			return lerpf(earlier[1], later[1], clampf((time - earlier[0]) / (later[0] - earlier[0]), 0.0, 1.0))
-	return stops[-1][1]
+	return value_between(stops, time)
 
 
 ## To the main menu (loaded in the background meanwhile). Broken off before the menu's 3D
@@ -657,9 +706,7 @@ static func _make_tractor(model_name: String) -> Node3D:
 
 ## The next one to drift: a character with CHARACTER_CHANCE, else a tractor; not the last one.
 func _pick_drifter() -> String:
-	var choices: Array = PlayerCharacter.ORDER if _drifter_random.randf() < CHARACTER_CHANCE else TRACTOR_MODELS
-	var others := choices.filter(func(choice: String) -> bool: return choice != _last_drifter)
-	return others[_drifter_random.randi() % others.size()]
+	return pick_drifter(_drifter_random, _last_drifter)
 
 
 ## One of the characters (`archetype_id`) as the game draws them (PlayerModel), bigger

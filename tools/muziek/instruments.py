@@ -291,8 +291,10 @@ def json_patches(file_name: str) -> dict:
 def _patch_sound(name: str) -> Sound:
     """"patch:<file>:<channel>" the FM patch that the JSON composition <file> gives that channel
     (json_patches), played by the chip imitation (chip.py) at the NTSC clock;
-    "patch:<file>:<channel>=<sound>" with the place in the mix of that sound (as a tracker voice)."""
-    _prefix, file_name, rest = name.split(":", 2)
+    "patch:<file>:<channel>=<sound>" with the place in the mix of that sound (as a tracker voice).
+    <file> is a name in composities/ or a full path (json_naar_ogg.py: a file anywhere), so the
+    channel is what follows the last colon."""
+    file_name, _colon, rest = name[len("patch:"):].rpartition(":")
     channel, _equals, reference_name = rest.partition("=")
     patches = json_patches(file_name)
     if channel not in patches:

@@ -1,0 +1,1051 @@
+{
+  "title": "Concrete Tempo (Streets of Neon)",
+  "composer_style": "Yuzo Koshiro / Streets of Rage 2 (1992) meets Synthwave",
+  "bpm": 124,
+  "time_signature": "4/4",
+  "key": "E Dorian / E Mixolydian (Modal Crossover)",
+  "tonality_character": "Cool, urban, driving 90s club-chiptune. Uses Dorian (major 6th, C#) and Mixolydian (major 3rd G# in stabs/passing chords) with suspended 4ths and 7th/9th house chords to avoid overly sad minor or cheesy heroic major.",
+  "hardware_spec": {
+    "fm_chip": "Yamaha YM2612 (6 FM Channels, 4 Operators per channel, DAC on Ch 6)",
+    "psg_chip": "Texas Instruments SN76489 (3 Square Wave Channels + 1 White/Periodic Noise Channel)"
+  },
+  "patches": [
+    {
+      "channel": "FM1",
+      "name": "Koshiro Slap/House FM Bass",
+      "algorithm": 2,
+      "feedback": 6,
+      "operators": {
+        "OP1": {
+          "MUL": 1,
+          "TL": 18,
+          "AR": 31,
+          "D1R": 14,
+          "D1L": 4,
+          "D2R": 0,
+          "RR": 9,
+          "DT": 3
+        },
+        "OP2": {
+          "MUL": 2,
+          "TL": 24,
+          "AR": 31,
+          "D1R": 18,
+          "D1L": 8,
+          "D2R": 5,
+          "RR": 10,
+          "DT": -2
+        },
+        "OP3": {
+          "MUL": 1,
+          "TL": 12,
+          "AR": 31,
+          "D1R": 12,
+          "D1L": 3,
+          "D2R": 2,
+          "RR": 8,
+          "DT": 0
+        },
+        "OP4_carrier": {
+          "MUL": 1,
+          "TL": 0,
+          "AR": 31,
+          "D1R": 6,
+          "D1L": 2,
+          "D2R": 0,
+          "RR": 9,
+          "DT": 0
+        }
+      },
+      "role": "Syncopated 16th-note octave-jumping FM bassline with metallic attack"
+    },
+    {
+      "channel": "FM2",
+      "name": "90s Rave M1-Style FM Organ/Chord Stab",
+      "algorithm": 5,
+      "feedback": 4,
+      "operators": {
+        "OP1": {
+          "MUL": 2,
+          "TL": 22,
+          "AR": 31,
+          "D1R": 15,
+          "D1L": 5,
+          "D2R": 4,
+          "RR": 8,
+          "DT": 1
+        },
+        "OP2_carrier": {
+          "MUL": 1,
+          "TL": 4,
+          "AR": 31,
+          "D1R": 11,
+          "D1L": 4,
+          "D2R": 2,
+          "RR": 7,
+          "DT": 2
+        },
+        "OP3_carrier": {
+          "MUL": 3,
+          "TL": 14,
+          "AR": 31,
+          "D1R": 13,
+          "D1L": 6,
+          "D2R": 3,
+          "RR": 7,
+          "DT": -2
+        },
+        "OP4_carrier": {
+          "MUL": 1,
+          "TL": 0,
+          "AR": 31,
+          "D1R": 10,
+          "D1L": 3,
+          "D2R": 2,
+          "RR": 7,
+          "DT": 0
+        }
+      },
+      "role": "Percussive house/synthwave seventh and sus4 chord stabs"
+    },
+    {
+      "channel": "FM3",
+      "name": "Mega Drive Brass/Saw Lead",
+      "algorithm": 4,
+      "feedback": 7,
+      "operators": {
+        "OP1": {
+          "MUL": 1,
+          "TL": 16,
+          "AR": 28,
+          "D1R": 8,
+          "D1L": 2,
+          "D2R": 0,
+          "RR": 8,
+          "DT": 3
+        },
+        "OP2_carrier": {
+          "MUL": 1,
+          "TL": 2,
+          "AR": 29,
+          "D1R": 4,
+          "D1L": 1,
+          "D2R": 0,
+          "RR": 8,
+          "DT": -3
+        },
+        "OP3": {
+          "MUL": 2,
+          "TL": 20,
+          "AR": 31,
+          "D1R": 10,
+          "D1L": 3,
+          "D2R": 0,
+          "RR": 8,
+          "DT": 1
+        },
+        "OP4_carrier": {
+          "MUL": 1,
+          "TL": 0,
+          "AR": 29,
+          "D1R": 4,
+          "D1L": 1,
+          "D2R": 0,
+          "RR": 8,
+          "DT": 2
+        }
+      },
+      "role": "Gritty, biting synthwave lead melody with pitch bends and portamento"
+    },
+    {
+      "channel": "FM4",
+      "name": "FM Stereo Poly Counter-Stab / Detuned Pad",
+      "algorithm": 5,
+      "feedback": 5,
+      "role": "Harmonic layer and counter-melody brass hits"
+    },
+    {
+      "channel": "FM5",
+      "name": "FM Percussive Tom & Metallic Clav",
+      "algorithm": 0,
+      "feedback": 7,
+      "role": "Syncopated acid/percussive synth fills and pitch-envelope FM toms"
+    },
+    {
+      "channel": "FM6_DAC",
+      "name": "8-bit PCM Sample Channel (22kHz Crunchy DAC)",
+      "samples": [
+        "909_Kick_Crunch",
+        "Gated_Snare_Punch",
+        "Street_Clap",
+        "Vocal_Hit_Yeah"
+      ],
+      "role": "Hard-hitting 4-on-the-floor and breakbeat drum samples"
+    },
+    {
+      "channel": "PSG1_Square",
+      "name": "Fast 16th Chiptune Arpeggiator",
+      "duty_cycle": "50% Square",
+      "role": "Relentless shimmering 16th-note arpeggios anchoring the synthwave momentum"
+    },
+    {
+      "channel": "PSG2_Square",
+      "name": "Detuned Lead Doubler & Echo",
+      "duty_cycle": "50% Square (+7 cents detune)",
+      "role": "Doubles FM3 lead one octave higher or plays 3-step tracker delay echoes"
+    },
+    {
+      "channel": "PSG4_Noise",
+      "name": "SN76489 Crisp Hi-Hats & Open Cymbal",
+      "mode": "White Noise (Periodic Shift Register)",
+      "role": "16th-note closed hi-hat groove with off-beat open hi-hat accents"
+    }
+  ],
+  "sections": [
+    {
+      "id": "intro",
+      "name": "Intro - Neon Ignition",
+      "bars": "1-8",
+      "style": "Driving 4-on-the-floor kick with rising PSG arpeggios and syncopated Dorian/Mixolydian house stabs.",
+      "chord_progression": [
+        {
+          "bar": 1,
+          "chord": "Em7",
+          "notes": [
+            "E3",
+            "G3",
+            "B3",
+            "D4"
+          ],
+          "mode_note": "Tonic minor 7th"
+        },
+        {
+          "bar": 2,
+          "chord": "A7sus4 -> A7",
+          "notes": [
+            "G3",
+            "A3",
+            "D4",
+            "E4",
+            "C#4"
+          ],
+          "mode_note": "Dorian IV7 (C# gives bright, cool urban lift)"
+        },
+        {
+          "bar": 3,
+          "chord": "Dmaj7/E",
+          "notes": [
+            "E3",
+            "F#3",
+            "A3",
+            "C#4"
+          ],
+          "mode_note": "Slash chord tension"
+        },
+        {
+          "bar": 4,
+          "chord": "Bm7 -> Cmaj7#11",
+          "notes": [
+            "B3",
+            "D4",
+            "F#4",
+            "A4",
+            "C4",
+            "E4",
+            "G4",
+            "B4"
+          ],
+          "mode_note": "Synthwave turnaround"
+        }
+      ],
+      "bassline_pattern_16ths": [
+        "E1",
+        "E2",
+        ".",
+        "E1",
+        "G1",
+        "E2",
+        "A1",
+        "B1",
+        "E1",
+        "E2",
+        "D2",
+        "E2",
+        "G1",
+        "A1",
+        "B1",
+        "D2",
+        "A1",
+        "A2",
+        ".",
+        "A1",
+        "C#2",
+        "A2",
+        "D2",
+        "E2",
+        "A1",
+        "A2",
+        "G2",
+        "E2",
+        "C#2",
+        "D2",
+        "E2",
+        "C#2",
+        "D1",
+        "D2",
+        ".",
+        "D1",
+        "F#1",
+        "D2",
+        "A1",
+        "D2",
+        "E1",
+        "E2",
+        "D2",
+        "A1",
+        "F#1",
+        "A1",
+        "C#2",
+        "D2",
+        "B1",
+        "B2",
+        "A1",
+        "B1",
+        "D2",
+        "B1",
+        "F#2",
+        "D2",
+        "C2",
+        "C3",
+        "B2",
+        "G2",
+        "E2",
+        "G2",
+        "F#2",
+        "B1"
+      ],
+      "psg_arpeggio_pattern_16ths": [
+        "E4",
+        "G4",
+        "B4",
+        "D5",
+        "E5",
+        "D5",
+        "B4",
+        "G4",
+        "E4",
+        "G4",
+        "B4",
+        "D5",
+        "F#5",
+        "E5",
+        "D5",
+        "B4",
+        "A4",
+        "C#5",
+        "E5",
+        "G5",
+        "A5",
+        "G5",
+        "E5",
+        "C#5",
+        "A4",
+        "C#5",
+        "E5",
+        "G5",
+        "F#5",
+        "E5",
+        "C#5",
+        "A4",
+        "D4",
+        "F#4",
+        "A4",
+        "C#5",
+        "D5",
+        "C#5",
+        "A4",
+        "F#4",
+        "E4",
+        "F#4",
+        "A4",
+        "C#5",
+        "E5",
+        "C#5",
+        "A4",
+        "F#4",
+        "B4",
+        "D5",
+        "F#5",
+        "A5",
+        "B5",
+        "A5",
+        "F#5",
+        "D5",
+        "C5",
+        "E5",
+        "G5",
+        "B5",
+        "F#5",
+        "E5",
+        "D5",
+        "B4"
+      ],
+      "drum_pattern_16ths": {
+        "kick": "X...X...X...X...",
+        "snare": "....X.......X..X",
+        "hihat": "x.x.x.O.x.x.x.O."
+      }
+    },
+    {
+      "id": "section_a",
+      "name": "A-Sectie - Main Street Groove (Go Straight Vibe)",
+      "bars": "9-24",
+      "style": "Full FM slap bass + biting FM3 lead melody. Mixes minor pentatonic grit with major 6th (C#) and major 2nd (F#) for a swaggering, confident street-brawler attitude.",
+      "chord_progression": [
+        {
+          "bar": 9,
+          "chord": "Em9",
+          "notes": [
+            "E3",
+            "G3",
+            "B3",
+            "D4",
+            "F#4"
+          ]
+        },
+        {
+          "bar": 10,
+          "chord": "A13",
+          "notes": [
+            "G3",
+            "B3",
+            "C#4",
+            "F#4"
+          ]
+        },
+        {
+          "bar": 11,
+          "chord": "F#m7 -> Bm7",
+          "notes": [
+            "F#3",
+            "A3",
+            "C#4",
+            "E4",
+            "B3",
+            "D4",
+            "F#4",
+            "A4"
+          ]
+        },
+        {
+          "bar": 12,
+          "chord": "Gmaj7 -> A6",
+          "notes": [
+            "G3",
+            "B3",
+            "D4",
+            "F#4",
+            "A3",
+            "C#4",
+            "E4",
+            "F#4"
+          ]
+        }
+      ],
+      "lead_melody_notes": [
+        {
+          "bar": 9,
+          "events": [
+            {
+              "step": 1,
+              "note": "E4",
+              "duration_16ths": 3,
+              "articulation": "accent"
+            },
+            {
+              "step": 4,
+              "note": "G4",
+              "duration_16ths": 3,
+              "articulation": "staccato"
+            },
+            {
+              "step": 7,
+              "note": "B4",
+              "duration_16ths": 2,
+              "articulation": "slide_to_C#5"
+            },
+            {
+              "step": 9,
+              "note": "C#5",
+              "duration_16ths": 4,
+              "articulation": "vibrato"
+            },
+            {
+              "step": 13,
+              "note": "B4",
+              "duration_16ths": 2,
+              "articulation": "normal"
+            },
+            {
+              "step": 15,
+              "note": "A4",
+              "duration_16ths": 2,
+              "articulation": "normal"
+            }
+          ]
+        },
+        {
+          "bar": 10,
+          "events": [
+            {
+              "step": 1,
+              "note": "F#4",
+              "duration_16ths": 4,
+              "articulation": "accent"
+            },
+            {
+              "step": 5,
+              "note": "E4",
+              "duration_16ths": 2,
+              "articulation": "staccato"
+            },
+            {
+              "step": 7,
+              "note": "A4",
+              "duration_16ths": 3,
+              "articulation": "accent"
+            },
+            {
+              "step": 10,
+              "note": "G#4",
+              "duration_16ths": 1,
+              "articulation": "blues_grace_note"
+            },
+            {
+              "step": 11,
+              "note": "A4",
+              "duration_16ths": 2,
+              "articulation": "normal"
+            },
+            {
+              "step": 13,
+              "note": "C#5",
+              "duration_16ths": 4,
+              "articulation": "vibrato"
+            }
+          ]
+        },
+        {
+          "bar": 11,
+          "events": [
+            {
+              "step": 1,
+              "note": "E5",
+              "duration_16ths": 3,
+              "articulation": "accent"
+            },
+            {
+              "step": 4,
+              "note": "D5",
+              "duration_16ths": 3,
+              "articulation": "normal"
+            },
+            {
+              "step": 7,
+              "note": "B4",
+              "duration_16ths": 2,
+              "articulation": "staccato"
+            },
+            {
+              "step": 9,
+              "note": "A4",
+              "duration_16ths": 4,
+              "articulation": "vibrato"
+            },
+            {
+              "step": 13,
+              "note": "F#4",
+              "duration_16ths": 4,
+              "articulation": "normal"
+            }
+          ]
+        },
+        {
+          "bar": 12,
+          "events": [
+            {
+              "step": 1,
+              "note": "G4",
+              "duration_16ths": 3,
+              "articulation": "accent"
+            },
+            {
+              "step": 4,
+              "note": "F#4",
+              "duration_16ths": 3,
+              "articulation": "normal"
+            },
+            {
+              "step": 7,
+              "note": "E4",
+              "duration_16ths": 2,
+              "articulation": "staccato"
+            },
+            {
+              "step": 9,
+              "note": "A4",
+              "duration_16ths": 3,
+              "articulation": "accent"
+            },
+            {
+              "step": 12,
+              "note": "B4",
+              "duration_16ths": 5,
+              "articulation": "vibrato_bend"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "section_b",
+      "name": "B-Sectie - Maximum Knockout (Chorus / Peak)",
+      "bars": "25-40",
+      "style": "High-energy synthwave + 16-bit euro-house hook. Moves to the bright IV and VII chords (A major -> G major -> F#m7 -> E5) for an uplifting, relentless adrenaline rush without cliché heroic fanfare.",
+      "chord_progression": [
+        {
+          "bar": 25,
+          "chord": "Aadd9",
+          "notes": [
+            "A3",
+            "B3",
+            "C#4",
+            "E4"
+          ]
+        },
+        {
+          "bar": 26,
+          "chord": "G6/9",
+          "notes": [
+            "G3",
+            "A3",
+            "B3",
+            "D4",
+            "E4"
+          ]
+        },
+        {
+          "bar": 27,
+          "chord": "F#m11",
+          "notes": [
+            "F#3",
+            "A3",
+            "B3",
+            "C#4",
+            "E4"
+          ]
+        },
+        {
+          "bar": 28,
+          "chord": "E7sus4 -> E7#9",
+          "notes": [
+            "E3",
+            "A3",
+            "B3",
+            "D4",
+            "G#3",
+            "G4"
+          ]
+        }
+      ],
+      "lead_melody_notes": [
+        {
+          "bar": 25,
+          "events": [
+            {
+              "step": 1,
+              "note": "C#5",
+              "duration_16ths": 3,
+              "articulation": "accent"
+            },
+            {
+              "step": 4,
+              "note": "E5",
+              "duration_16ths": 3,
+              "articulation": "accent"
+            },
+            {
+              "step": 7,
+              "note": "F#5",
+              "duration_16ths": 2,
+              "articulation": "slide"
+            },
+            {
+              "step": 9,
+              "note": "E5",
+              "duration_16ths": 4,
+              "articulation": "vibrato"
+            },
+            {
+              "step": 13,
+              "note": "C#5",
+              "duration_16ths": 4,
+              "articulation": "staccato"
+            }
+          ]
+        },
+        {
+          "bar": 26,
+          "events": [
+            {
+              "step": 1,
+              "note": "D5",
+              "duration_16ths": 3,
+              "articulation": "accent"
+            },
+            {
+              "step": 4,
+              "note": "E5",
+              "duration_16ths": 3,
+              "articulation": "accent"
+            },
+            {
+              "step": 7,
+              "note": "G5",
+              "duration_16ths": 2,
+              "articulation": "accent"
+            },
+            {
+              "step": 9,
+              "note": "F#5",
+              "duration_16ths": 4,
+              "articulation": "vibrato"
+            },
+            {
+              "step": 13,
+              "note": "D5",
+              "duration_16ths": 4,
+              "articulation": "normal"
+            }
+          ]
+        },
+        {
+          "bar": 27,
+          "events": [
+            {
+              "step": 1,
+              "note": "C#5",
+              "duration_16ths": 3,
+              "articulation": "accent"
+            },
+            {
+              "step": 4,
+              "note": "A4",
+              "duration_16ths": 3,
+              "articulation": "normal"
+            },
+            {
+              "step": 7,
+              "note": "B4",
+              "duration_16ths": 2,
+              "articulation": "normal"
+            },
+            {
+              "step": 9,
+              "note": "C#5",
+              "duration_16ths": 4,
+              "articulation": "vibrato"
+            },
+            {
+              "step": 13,
+              "note": "E5",
+              "duration_16ths": 4,
+              "articulation": "accent"
+            }
+          ]
+        },
+        {
+          "bar": 28,
+          "events": [
+            {
+              "step": 1,
+              "note": "E5",
+              "duration_16ths": 2,
+              "articulation": "staccato"
+            },
+            {
+              "step": 3,
+              "note": "D5",
+              "duration_16ths": 2,
+              "articulation": "staccato"
+            },
+            {
+              "step": 5,
+              "note": "B4",
+              "duration_16ths": 2,
+              "articulation": "staccato"
+            },
+            {
+              "step": 7,
+              "note": "G4",
+              "duration_16ths": 2,
+              "articulation": "bend_to_G#4"
+            },
+            {
+              "step": 9,
+              "note": "G#4",
+              "duration_16ths": 4,
+              "articulation": "accent"
+            },
+            {
+              "step": 13,
+              "note": "E4",
+              "duration_16ths": 4,
+              "articulation": "vibrato"
+            }
+          ]
+        }
+      ],
+      "bassline_pattern_16ths": [
+        "A1",
+        "A2",
+        "A1",
+        "A2",
+        "C#2",
+        "E2",
+        "F#2",
+        "E2",
+        "A1",
+        "A2",
+        "A1",
+        "A2",
+        "E1",
+        "E2",
+        "F#1",
+        "G#1",
+        "G1",
+        "G2",
+        "G1",
+        "G2",
+        "B1",
+        "D2",
+        "E2",
+        "D2",
+        "G1",
+        "G2",
+        "G1",
+        "G2",
+        "D1",
+        "D2",
+        "E1",
+        "F1",
+        "F#1",
+        "F#2",
+        "F#1",
+        "F#2",
+        "A1",
+        "C#2",
+        "E2",
+        "C#2",
+        "F#1",
+        "F#2",
+        "E1",
+        "E2",
+        "C#1",
+        "C#2",
+        "E1",
+        "F#1",
+        "E1",
+        "E2",
+        "E1",
+        "E2",
+        "A1",
+        "B1",
+        "D2",
+        "E2",
+        "E1",
+        "G#1",
+        "B1",
+        "D2",
+        "G2",
+        "E2",
+        "D2",
+        "B1"
+      ]
+    },
+    {
+      "id": "section_c",
+      "name": "C-Sectie - YM2612 Acid & PSG Breakdown",
+      "bars": "41-48",
+      "style": "Detroit Techno / Acid FM modulation solo over syncopated breakbeat drums and rapid 32nd-note chiptune pitch-arp.",
+      "chord_progression": [
+        {
+          "bar": 41,
+          "chord": "E7sus4",
+          "notes": [
+            "E3",
+            "A3",
+            "B3",
+            "D4"
+          ]
+        },
+        {
+          "bar": 42,
+          "chord": "Em7/D",
+          "notes": [
+            "D3",
+            "G3",
+            "B3",
+            "E4"
+          ]
+        },
+        {
+          "bar": 43,
+          "chord": "C#m7b5",
+          "notes": [
+            "C#3",
+            "E3",
+            "G3",
+            "B3"
+          ]
+        },
+        {
+          "bar": 44,
+          "chord": "Cmaj7 -> B7#9",
+          "notes": [
+            "C3",
+            "E3",
+            "G3",
+            "B3",
+            "B2",
+            "D#3",
+            "A3",
+            "D4"
+          ]
+        }
+      ],
+      "fm_acid_line_16ths": [
+        "E2",
+        "E3",
+        "D3",
+        "E2",
+        "G2",
+        "A2",
+        "A#2",
+        "B2",
+        "E2",
+        "D3",
+        "B2",
+        "A2",
+        "G2",
+        "A2",
+        "B2",
+        "D3",
+        "D2",
+        "D3",
+        "B2",
+        "D2",
+        "G2",
+        "B2",
+        "D3",
+        "E3",
+        "D2",
+        "D3",
+        "B2",
+        "G2",
+        "A2",
+        "B2",
+        "D3",
+        "B2",
+        "C#2",
+        "C#3",
+        "B2",
+        "G2",
+        "E2",
+        "G2",
+        "B2",
+        "C#3",
+        "E3",
+        "C#3",
+        "B2",
+        "G2",
+        "E2",
+        "G2",
+        "A2",
+        "B2",
+        "C2",
+        "G2",
+        "C3",
+        "E3",
+        "G3",
+        "E3",
+        "C3",
+        "G2",
+        "B1",
+        "F#2",
+        "A2",
+        "D#3",
+        "F#3",
+        "D#3",
+        "B2",
+        "F#2"
+      ]
+    },
+    {
+      "id": "outro",
+      "name": "Outro - Stage Clear / Loop Point",
+      "bars": "49-56",
+      "style": "Reprise of Main Groove with high-octave synthwave lead harmony, ending on a punchy E9sus4 -> E5 stinger or looping back to Bar 9.",
+      "chord_progression": [
+        {
+          "bar": 49,
+          "chord": "Em9",
+          "notes": [
+            "E3",
+            "G3",
+            "B3",
+            "D4",
+            "F#4"
+          ]
+        },
+        {
+          "bar": 50,
+          "chord": "A13",
+          "notes": [
+            "G3",
+            "B3",
+            "C#4",
+            "F#4"
+          ]
+        },
+        {
+          "bar": 51,
+          "chord": "Cmaj9 -> D6/9",
+          "notes": [
+            "C3",
+            "E3",
+            "G3",
+            "B3",
+            "D4",
+            "D3",
+            "F#3",
+            "A3",
+            "B3",
+            "E4"
+          ]
+        },
+        {
+          "bar": 52,
+          "chord": "E5 (Stinger)",
+          "notes": [
+            "E2",
+            "B2",
+            "E3",
+            "B3",
+            "E4"
+          ]
+        }
+      ]
+    }
+  ]
+}

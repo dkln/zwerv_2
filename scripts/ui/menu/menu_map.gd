@@ -413,8 +413,13 @@ func _check_crashes() -> void:
 ## True if the two (vehicles or wrecks) touch: closer along the road than half their
 ## lengths together, and on one lane.
 func _touch(first: Node3D, second: Node3D) -> bool:
-	var gap := first.global_position - second.global_position
 	var lengths := float(first.get_meta("lengte", 4.0)) + float(second.get_meta("lengte", 4.0))
+	return touching(first.global_position - second.global_position, lengths)
+
+
+## True if two things `gap` apart (the road runs along x) with `lengths` (m, both together)
+## touch: on one lane, and closer along the road than half their lengths together.
+static func touching(gap: Vector3, lengths: float) -> bool:
 	return absf(gap.z) < 2.2 and absf(gap.x) < lengths * 0.5
 
 
@@ -789,7 +794,7 @@ func _place_moon() -> void:
 	var sunrise: float = _day_cycle.get("SUNRISE") if _day_cycle.get("SUNRISE") != null else 5.5
 	var sunset: float = _day_cycle.get("SUNSET") if _day_cycle.get("SUNSET") != null else 22.0
 	# the sun: from its rise to its set
-	var day_share := (hour - sunrise) / (sunset - sunrise)
+	var day_share := day_share_at(hour, sunrise, sunset)
 	_sun_disc.visible = day_share > 0.0 and day_share < 1.0
 	if _sun_disc.visible:
 		_put_on_arc(_sun_disc, day_share)
@@ -799,11 +804,33 @@ func _place_moon() -> void:
 		((_sun_disc.get_node("Schijf") as MeshInstance3D).mesh.surface_get_material(0) as StandardMaterial3D).albedo_color = colour
 		((_sun_disc.get_node("Gloed") as MeshInstance3D).mesh.surface_get_material(0) as StandardMaterial3D).albedo_color = Color(colour, 0.5)
 	# the moon: through the night, from the sunset to the next sunrise
-	var night_hours := 24.0 - (sunset - sunrise)
-	var night_share := fposmod(hour - sunset, 24.0) / night_hours
+	var night_share := night_share_at(hour, sunrise, sunset)
 	_moon.visible = night_share > 0.0 and night_share < 1.0
 	if _moon.visible:
 		_put_on_arc(_moon, night_share)
+
+
+## How far the sun is on its way at `hour`: 0 at `sunrise`, 1 at `sunset` (outside 0 .. 1: down).
+static func day_share_at(hour: float, sunrise: float, sunset: float) -> float:
+	return (hour - sunrise) / (sunset - sunrise)
+
+
+## How far the moon is on its way at `hour`: 0 at `sunset`, 1 at the next `sunrise` (over
+## midnight; above 1: the sun is up).
+static func night_share_at(hour: float, sunrise: float, sunset: float) -> float:
+	var night_hours := 24.0 - (sunset - sunrise)
+	return fposmod(hour - sunset, 24.0) / night_hours
+
+
+## The way from the camera to a disc at `share` of its arc (0 its rise, on the left, 0.5 its
+## highest, 1 its set): the camera's `forward` (flat), turned `arc_left` .. `arc_right`
+## degrees across and up to `arc_highest` degrees high. Normalised.
+static func arc_direction(forward: Vector3, share: float, arc_left: float, arc_right: float, arc_highest: float) -> Vector3:
+	var across := lerpf(arc_left, arc_right, share)
+	var height := arc_highest * sin(share * PI) - 1.0
+	var direction := forward.rotated(Vector3.UP, deg_to_rad(-across))
+	direction = direction.rotated(direction.cross(Vector3.UP).normalized(), deg_to_rad(height))
+	return direction.normalized()
 
 
 ## Puts a disc on the arc over the view: `share` 0 at its rise (left, on the horizon), 0.5
@@ -812,11 +839,8 @@ func _put_on_arc(disc: Node3D, share: float) -> void:
 	var forward := -_camera_start.basis.z
 	forward.y = 0.0
 	forward = forward.normalized()
-	var across := lerpf(sky_arc_left, sky_arc_right, share)
-	var height := sky_arc_highest * sin(share * PI) - 1.0
-	var direction := forward.rotated(Vector3.UP, deg_to_rad(-across))
-	direction = direction.rotated(direction.cross(Vector3.UP).normalized(), deg_to_rad(height))
-	disc.global_position = _map_camera.global_position + direction.normalized() * SKY_DISTANCE
+	var direction := arc_direction(forward, share, sky_arc_left, sky_arc_right, sky_arc_highest)
+	disc.global_position = _map_camera.global_position + direction * SKY_DISTANCE
 
 
 ## A round soft glow (white in the middle fading out), made once.

@@ -470,11 +470,21 @@ func move_cursor(direction: Vector2) -> void:
 	if not _cursor_is_valid(targets):
 		_show_cursor(targets[0])
 		return
+	var best := nearest_target(targets, _cursor_at, direction)
+	if not best.is_empty():
+		_show_cursor(best)
+		sound("toets", -6.0)
+
+
+## The target (cursor_targets: each with its spot "at" in the plane of the front, y up) nearest
+## to `from` in `direction` (as on the screen: Vector2.DOWN is down); {} when there is none
+## that way.
+static func nearest_target(targets: Array[Dictionary], from: Vector2, direction: Vector2) -> Dictionary:
 	var way := Vector2(direction.x, -direction.y)   # the plane of the front has y up
 	var best := {}
 	var best_score := INF
 	for target in targets:
-		var offset: Vector2 = (target.at as Vector2) - _cursor_at
+		var offset: Vector2 = (target.at as Vector2) - from
 		var along := offset.dot(way)
 		if along <= 0.001:
 			continue
@@ -483,9 +493,7 @@ func move_cursor(direction: Vector2) -> void:
 		if score < best_score:
 			best_score = score
 			best = target
-	if not best.is_empty():
-		_show_cursor(best)
-		sound("toets", -6.0)
+	return best
 
 
 ## Uses what the cursor is on: the button pressed, or the part (as a click on it).
@@ -635,13 +643,20 @@ func _screen_point(design: Vector2) -> Vector2:
 	var uv := Vector2((local.x - screen.position.x) / screen.size.x, (screen.position.y + screen.size.y - local.y) / screen.size.y)
 	if uv.x < 0.0 or uv.y < 0.0 or uv.x > 1.0 or uv.y > 1.0:
 		return Vector2(-1, -1)
-	var centred := uv * 2.0 - Vector2.ONE
 	var curvature := float((_display_mesh.material_override as ShaderMaterial).get_shader_parameter("curvature"))
-	var bent := centred * (Vector2.ONE + curvature * Vector2(centred.y * centred.y, centred.x * centred.x))
-	var picture_uv := bent * 0.5 + Vector2(0.5, 0.5)
+	var picture_uv := bulged_uv(uv, curvature)
 	if picture_uv.x < 0.0 or picture_uv.y < 0.0 or picture_uv.x > 1.0 or picture_uv.y > 1.0:
 		return Vector2(-1, -1)
 	return picture_uv * Vector2(_display_viewport.size)
+
+
+## Where the point `uv` of the screen's glass (0..1) is in its picture (0..1), with the bulge
+## of the glass (`curvature`, as machine_display.gdshader bends it): the middle stays, the
+## edges move outwards (outside 0..1: off the picture).
+static func bulged_uv(uv: Vector2, curvature: float) -> Vector2:
+	var centred := uv * 2.0 - Vector2.ONE
+	var bent := centred * (Vector2.ONE + curvature * Vector2(centred.y * centred.y, centred.x * centred.x))
+	return bent * 0.5 + Vector2(0.5, 0.5)
 
 
 ## The name of the part of the machine (machine_parts "hotspots") under `design`, or "".
@@ -661,9 +676,13 @@ func _hotspot_at(design: Vector2) -> String:
 
 
 func _fit() -> void:
-	var window := get_viewport().get_visible_rect().size
+	transform = fit_transform(get_viewport().get_visible_rect().size)
+
+
+## The design (DESIGN_SIZE) as big as fits in `window` (px), centred in it.
+static func fit_transform(window: Vector2) -> Transform2D:
 	var scale_factor := minf(window.x / DESIGN_SIZE.x, window.y / DESIGN_SIZE.y)
-	transform = Transform2D(0.0, Vector2(scale_factor, scale_factor), 0.0, (window - DESIGN_SIZE * scale_factor) * 0.5)
+	return Transform2D(0.0, Vector2(scale_factor, scale_factor), 0.0, (window - DESIGN_SIZE * scale_factor) * 0.5)
 
 
 func _build() -> void:
@@ -974,7 +993,12 @@ func _slide_camera_in() -> void:
 ## [position, point looked at].
 func _close_up() -> Array:
 	var focus: Rect2 = _parts.get("focus", _parts.get("screen", Rect2(-0.25, 1.0, 0.5, 0.32)))
-	var share := float(_parts.get("focus_share", FOCUS_SHARE))
+	return close_up_of(focus, float(_parts.get("focus_share", FOCUS_SHARE)))
+
+
+## The close-up on `focus` (a rectangle on the machine's front, metres) that takes `share` of
+## the height of the view: [position of the camera, point looked at] (see _close_up).
+static func close_up_of(focus: Rect2, share: float) -> Array:
 	var tangent := tan(deg_to_rad(CAMERA_FOV * 0.5))
 	var aspect := DESIGN_SIZE.x / DESIGN_SIZE.y
 	var distance := maxf(focus.size.y / (share * 2.0 * tangent), focus.size.x / (FOCUS_WIDTH_SHARE * 2.0 * tangent * aspect))

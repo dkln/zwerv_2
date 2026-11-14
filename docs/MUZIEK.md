@@ -288,7 +288,8 @@ met rust), en voor elke compositie: al haar klanken bestaan, alle stukken worden
 kaartdeuntje blijft onder 6 s, de muzak loopt (40-150 s, zonder chromatische maten) en de jingles
 blijven onder 6 s, de muzak zoet powerchords, elke noot valt binnen zijn maat; de lezers van het JSON van de
 componist (de gewone vorm, de platte vorm, de tijdlijn met haar eigen patches); de basisplekken
-(het menu en de vechtscène letterlijk); en de nabootsing van de chips (de frequentie van F-number
+(het menu en de vechtscène letterlijk); één JSON naar één OGG (`json_naar_ogg.py`: wat het maakt, wat het
+weigert, dat `composities/` onaangeroerd blijft); en de nabootsing van de chips (de frequentie van F-number
 en blok tot op een halve cent, de envelope, FM en feedback, de PSG-blokgolven, -volumes en -ruis).
 
 De bestanden staan in `tools/muziek/`:
@@ -302,6 +303,9 @@ De bestanden staan in `tools/muziek/`:
 - `check.py`: de controle (via `render.sh --controle`);
 - `json_bron.py`, `tijdlijn.py`, `tracker.py`: het JSON (of de tracker-pagina) van de componist
   lezen en als compositiebestand schrijven (via `render.sh --json`);
+- `json_naar_ogg.py`: één compositie in JSON letterlijk naar één OGG, om te beluisteren, zonder iets
+  van het spel te veranderen (via `json_naar_ogg.sh <compositie.json> <uitvoer.ogg>`,
+  `docs/MUZIEK_JSON.md`);
 - `fm.py`: wat de tools delen over de YM2612 (de patch `FmVoice`, de klok) en de klanksoorten;
 - `chip.py`: de nabootsing van de YM2612 en de SN76489 uit hun registers (de `patch:`-klanken);
 - `composition.md`: de tekst van de componist die nu aan de beurt is (hier lever je aan);
