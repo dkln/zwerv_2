@@ -1382,7 +1382,7 @@ func _slow_motion_death(cause: String) -> void:
 
 
 ## The speed of the game (Engine.time_scale), the physics stepping with it and the sound (the
-## music not: the HUD keeps its loops at their own speed, GameHud._update_city_music).
+## music not: the HUD keeps its loops at their own speed, CityMusic._process).
 func _set_game_speed(speed: float) -> void:
 	Engine.time_scale = speed
 	Engine.physics_ticks_per_second = roundi(_normal_physics_ticks / speed)

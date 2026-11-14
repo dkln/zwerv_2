@@ -138,7 +138,7 @@ func open(talk: RefCounted, player: Node, hud: Node, done := Callable()) -> void
 	create_tween().tween_property(self, "modulate:a", 1.0, 0.2)
 	UiSounds.play(self, "doe", -4.0)
 	# the merchant's music (a snack bar plays it already)
-	_music_before = String(hud.get("_indoor_music")) if hud and hud.get("_indoor_music") != null else ""
+	_music_before = String(hud.indoor_music()) if hud and hud.has_method("indoor_music") else ""
 	if hud and hud.has_method("set_indoor_music") and _music_before != SHOP_MUSIC:
 		hud.set_indoor_music(SHOP_MUSIC)
 	_kind_label.text = String(talk.call("shop_kind_label"))
@@ -202,13 +202,13 @@ func _add_row(row: Dictionary, title: String, price_text: String, item_id: Strin
 		_set_icon(icon, item_id)
 		icon_box.add_child(icon)
 	else:
-		icon_box.add_child(_make_label("?" if row.kind == "tip" else "◀", font_body, 18, UiStyle.SIDE_ACCENT if row.kind == "tip" else UiStyle.MUTED))
-	var name_label := _make_label(title, font_body, TEXT_SIZE, UiStyle.MUTED)
+		icon_box.add_child(UiStyle.label("?" if row.kind == "tip" else "◀", font_body, 18, UiStyle.SIDE_ACCENT if row.kind == "tip" else UiStyle.MUTED))
+	var name_label := UiStyle.label(title, font_body, TEXT_SIZE, UiStyle.MUTED)
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	name_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	line.add_child(name_label)
-	var price_label := _make_label(price_text, font_pixel, 15, UiStyle.TEXT)
+	var price_label := UiStyle.label(price_text, font_pixel, 15, UiStyle.TEXT)
 	price_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	price_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	line.add_child(price_label)
@@ -508,7 +508,7 @@ func _build() -> void:
 	_build_seller(panel)
 	_build_goods(panel)
 	_build_speech(panel)
-	var keys := _make_label("[↑↓] KIEZEN   [ENTER] KOPEN   [1-9] METEEN   [ESC] WEGGAAN", font_pixel, 11, UiStyle.MUTED)
+	var keys := UiStyle.label("[↑↓] KIEZEN   [ENTER] KOPEN   [1-9] METEEN   [ESC] WEGGAAN", font_pixel, 11, UiStyle.MUTED)
 	keys.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	keys.anchor_left = 0.0
 	keys.anchor_right = 1.0
@@ -556,7 +556,7 @@ func _build_header(panel: Control) -> void:
 	diamond.rotation_degrees = 45.0
 	diamond_box.add_child(diamond)
 	row.add_child(diamond_box)
-	_kind_label = _make_label("", font_pixel, 13, UiStyle.ACCENT)
+	_kind_label = UiStyle.label("", font_pixel, 13, UiStyle.ACCENT)
 	_kind_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(_kind_label)
 	# the shop's logo (Conversations.shop_logo): a badge in its colour with its pixel icon
@@ -567,7 +567,7 @@ func _build_header(panel: Control) -> void:
 	_logo_icon.pixel = LOGO_PIXEL
 	_logo_badge.add_child(_logo_icon)
 	row.add_child(_logo_badge)
-	_name_label = _make_label("", font_title, 30, UiStyle.TEXT)
+	_name_label = UiStyle.label("", font_title, 30, UiStyle.TEXT)
 	UiStyle.faux_3d(_name_label, 3)
 	_name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_name_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -587,10 +587,10 @@ func _build_header(panel: Control) -> void:
 	money_row.add_theme_constant_override("separation", 10)
 	money_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	money_box.add_child(money_row)
-	money_row.add_child(_make_label("JE GELD", font_pixel, 11, UiStyle.MUTED))
-	_money_euro = _make_label("€", font_body, 18, UiStyle.ACCENT)
+	money_row.add_child(UiStyle.label("JE GELD", font_pixel, 11, UiStyle.MUTED))
+	_money_euro = UiStyle.label("€", font_body, 18, UiStyle.ACCENT)
 	money_row.add_child(_money_euro)
-	_money_label = _make_label("0,00", font_pixel, 16, UiStyle.TEXT)
+	_money_label = UiStyle.label("0,00", font_pixel, 16, UiStyle.TEXT)
 	money_row.add_child(_money_label)
 	var line := ColorRect.new()
 	line.color = UiStyle.BORDER
@@ -624,12 +624,12 @@ func _build_seller(panel: Control) -> void:
 	tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	tag.position = Vector2(PADDING + 12, top + PORTRAIT_HEIGHT - 16)
 	panel.add_child(tag)
-	_speaker_label = _make_label("", font_title, 16, UiStyle.INK)
+	_speaker_label = UiStyle.label("", font_title, 16, UiStyle.INK)
 	tag.add_child(_speaker_label)
-	var pockets_title := _make_label("IN JE ZAKKEN", font_pixel, 11, UiStyle.MUTED)
+	var pockets_title := UiStyle.label("IN JE ZAKKEN", font_pixel, 11, UiStyle.MUTED)
 	pockets_title.position = Vector2(PADDING, top + PORTRAIT_HEIGHT + 24)
 	panel.add_child(pockets_title)
-	_pockets_label = _make_label("", font_pixel, 14, UiStyle.TEXT)
+	_pockets_label = UiStyle.label("", font_pixel, 14, UiStyle.TEXT)
 	_pockets_label.position = Vector2(PADDING, top + PORTRAIT_HEIGHT + 42)
 	panel.add_child(_pockets_label)
 
@@ -639,10 +639,10 @@ func _build_goods(panel: Control) -> void:
 	var left := PADDING + LEFT_WIDTH + PADDING
 	var width := PANEL_SIZE.x - left - PADDING
 	var top := HEADER_HEIGHT + 14.0
-	var heading := _make_label("ASSORTIMENT", font_pixel, 12, UiStyle.ACCENT)
+	var heading := UiStyle.label("ASSORTIMENT", font_pixel, 12, UiStyle.ACCENT)
 	heading.position = Vector2(left, top)
 	panel.add_child(heading)
-	var price_heading := _make_label("PRIJS", font_pixel, 12, UiStyle.ACCENT)
+	var price_heading := UiStyle.label("PRIJS", font_pixel, 12, UiStyle.ACCENT)
 	price_heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	price_heading.position = Vector2(left, top)
 	price_heading.size = Vector2(width - 14, 16)
@@ -654,7 +654,7 @@ func _build_goods(panel: Control) -> void:
 	_rows_scroll.size = Vector2(width, LIST_HEIGHT)
 	panel.add_child(_rows_scroll)
 	for below in [true, false]:
-		var arrow := _make_label("▼" if below else "▲", font_body, 14, UiStyle.ACCENT)
+		var arrow := UiStyle.label("▼" if below else "▲", font_body, 14, UiStyle.ACCENT)
 		arrow.position = Vector2(left + width + 4, top + 24 + (LIST_HEIGHT - 18 if below else 0.0))
 		arrow.visible = false
 		panel.add_child(arrow)
@@ -672,12 +672,12 @@ func _build_goods(panel: Control) -> void:
 	detail.size = Vector2(width, 62)
 	detail.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_child(detail)
-	_detail_text = _make_label("", font_body, 14, UiStyle.MUTED)
+	_detail_text = UiStyle.label("", font_body, 14, UiStyle.MUTED)
 	_detail_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_detail_text.position = Vector2(16, 6)
 	_detail_text.size = Vector2(width - 28, 34)
 	detail.add_child(_detail_text)
-	_detail_effect = _make_label("", font_pixel, 11, UiStyle.SIDE_ACCENT)
+	_detail_effect = UiStyle.label("", font_pixel, 11, UiStyle.SIDE_ACCENT)
 	_detail_effect.position = Vector2(16, 42)
 	detail.add_child(_detail_effect)
 
@@ -720,18 +720,7 @@ func _build_speech(panel: Control) -> void:
 	_notice.visible = false
 	_notice.position = speech_panel.position + Vector2(speech_panel.size.x - 200, -16)
 	panel.add_child(_notice)
-	_notice_label = _make_label("", font_pixel, 13, UiStyle.INK)
+	_notice_label = UiStyle.label("", font_pixel, 13, UiStyle.INK)
 	_notice_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_notice_label.custom_minimum_size = Vector2(160, 0)
 	_notice.add_child(_notice_label)
-
-
-func _make_label(text: String, font: Font, font_size: int, colour: Color) -> Label:
-	var label := Label.new()
-	label.text = text
-	if font:
-		label.add_theme_font_override("font", font)
-	label.add_theme_font_size_override("font_size", font_size)
-	label.add_theme_color_override("font_color", colour)
-	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	return label

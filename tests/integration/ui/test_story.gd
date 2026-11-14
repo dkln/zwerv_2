@@ -94,7 +94,7 @@ func test_prologue_opens_and_leads_to_the_first_mission(test) -> void:
 	test.check(quests.size() == 1 and bool(quests[0].steps[1].locked), "de volgende stappen op slot")
 	test.check(hud.is_showing_notice() and hud._area_heading.text.contains("NIEUWE MISSIE") and hud._area_name.text.contains("Lege maag"),
 		"de nieuwe missie bovenin in beeld (%s: %s)" % [hud._area_heading.text, hud._area_name.text])
-	test.check(hud.has_node("MissieDeuntje") or not ResourceLoader.exists(hud.MISSION_JINGLE), "met het missiedeuntje")
+	test.check(hud.music.has_node("MissieDeuntje") or not ResourceLoader.exists(hud.MISSION_JINGLE), "met het missiedeuntje")
 	var game_menu: Node = hud.get_node("Spelmenu")
 	game_menu.open("inventaris")
 	test.check(not game_menu.is_open(), "het spelmenu (Tab) gaat nog niet open")

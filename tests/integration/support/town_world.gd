@@ -269,11 +269,11 @@ static func back_on_feet(tree: SceneTree, scene: Node3D) -> void:
 	var was_down: bool = player._dead or player._drowning or player._ragdoll != null
 	if player._dead or player._drowning:
 		for frame_index in 1200:
-			if player._dead and (hud == null or hud._death_layer.visible):
+			if player._dead and (hud == null or hud.death_screen.visible):
 				break
 			await tree.process_frame
 		if hud:
-			hud._death_layer.visible = false
+			hud.death_screen.visible = false
 		player._dead = false
 		player._drowning = false
 		if Engine.time_scale != 1.0:

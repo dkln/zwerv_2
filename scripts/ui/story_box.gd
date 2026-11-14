@@ -424,7 +424,7 @@ func _show_page() -> void:
 	for choice_index in choices.size():
 		var block := PanelContainer.new()
 		block.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		var label := _make_label(String(choices[choice_index]), font_body, CHOICE_SIZE, UiStyle.MUTED)
+		var label := UiStyle.label(String(choices[choice_index]), font_body, CHOICE_SIZE, UiStyle.MUTED)
 		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		block.add_child(label)
 		_choices_box.add_child(block)
@@ -518,10 +518,10 @@ func _build() -> void:
 	_banner_diamond.rotation_degrees = 45.0
 	diamond_box.add_child(_banner_diamond)
 	banner_row.add_child(diamond_box)
-	_banner_kind = _make_label("", font_pixel, 12, UiStyle.ACCENT)
+	_banner_kind = UiStyle.label("", font_pixel, 12, UiStyle.ACCENT)
 	_banner_kind.add_theme_constant_override("outline_size", 0)
 	banner_row.add_child(_banner_kind)
-	_banner_title = _make_label("", font_body, 13, UiStyle.TEXT)
+	_banner_title = UiStyle.label("", font_body, 13, UiStyle.TEXT)
 	banner_row.add_child(_banner_title)
 	# the keys, top right
 	var keys_panel := PanelContainer.new()
@@ -534,7 +534,7 @@ func _build() -> void:
 	keys_panel.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	keys_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	keys_panel.position = Vector2(-24, 24)
-	keys_panel.add_child(_make_label("[SPATIE] VERDER", font_pixel, 11, UiStyle.TEXT))
+	keys_panel.add_child(UiStyle.label("[SPATIE] VERDER", font_pixel, 11, UiStyle.TEXT))
 	add_child(keys_panel)
 	# the box: the portrait on the left, the text on the right
 	var box := Control.new()
@@ -563,7 +563,7 @@ func _build() -> void:
 	_emblem.position = Vector2(10, 10)
 	_emblem.visible = false
 	_emblem.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_emblem_label = _make_label("", font_pixel, 13, UiStyle.INK)
+	_emblem_label = UiStyle.label("", font_pixel, 13, UiStyle.INK)
 	_emblem.add_child(_emblem_label)
 	_portrait_frame.add_child(_emblem)
 	_text_panel = Panel.new()
@@ -620,11 +620,11 @@ func _build() -> void:
 	_typewriter.blink_when_done = false
 	_name_tag = PanelContainer.new()
 	_name_tag.position = Vector2(20, -20)
-	_name_label = _make_label("", font_title, 18, UiStyle.INK)
+	_name_label = UiStyle.label("", font_title, 18, UiStyle.INK)
 	_name_label.add_theme_constant_override("outline_size", 0)
 	_name_tag.add_child(_name_label)
 	_text_panel.add_child(_name_tag)
-	_more = _make_label("▼", font_body, 16, UiStyle.ACCENT)
+	_more = UiStyle.label("▼", font_body, 16, UiStyle.ACCENT)
 	_more.anchor_left = 1.0
 	_more.anchor_right = 1.0
 	_more.anchor_top = 1.0
@@ -635,7 +635,7 @@ func _build() -> void:
 	_more.offset_bottom = -14
 	_text_panel.add_child(_more)
 	for below in [true, false]:
-		var arrow := _make_label("▼" if below else "▲", font_body, 16, UiStyle.ACCENT)
+		var arrow := UiStyle.label("▼" if below else "▲", font_body, 16, UiStyle.ACCENT)
 		arrow.anchor_left = 1.0
 		arrow.anchor_right = 1.0
 		arrow.anchor_top = 1.0 if below else 0.0
@@ -670,14 +670,3 @@ func _build() -> void:
 	_choices_scroll.visible = false
 	_text_panel.add_child(_choices_scroll)
 	_choices_scroll.add_child(_choices_box)
-
-
-func _make_label(text: String, font: Font, font_size: int, colour: Color) -> Label:
-	var label := Label.new()
-	label.text = text
-	if font:
-		label.add_theme_font_override("font", font)
-	label.add_theme_font_size_override("font_size", font_size)
-	label.add_theme_color_override("font_color", colour)
-	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	return label

@@ -77,7 +77,7 @@ func test_talking_to_the_keeper_opens_the_shop_screen(test) -> void:
 	var shop: Control = hud._shop_screen
 	test.check(hud.is_showing_shop() and not hud.is_showing_story(), "praten met de snackbarhouder opent het winkelscherm")
 	test.check(tree.paused, "het spel staat stil in de winkel")
-	test.check(String(hud._indoor_music) == ShopScreen.SHOP_MUSIC, "de muziek van de handelaar (%s)" % hud._indoor_music)
+	test.check(String(hud.indoor_music()) == ShopScreen.SHOP_MUSIC, "de muziek van de handelaar (%s)" % hud.indoor_music())
 	var goods := _goods()
 	print("snackbar: %s / %s: %s" % [shop._kind_label.text, shop._name_label.text, goods.map(func(row: Dictionary) -> String: return "%s € %.2f" % [row.item, row.price])])
 	test.check(shop._name_label.text == String(counter.bar.name).to_upper(), "de naam van de snackbar bovenin (%s)" % shop._name_label.text)
@@ -160,7 +160,7 @@ func test_leaving_closes_the_shop(test) -> void:
 	skip_story()
 	await frames(1)
 	test.check(not hud.is_showing_shop() and not tree.paused, "weggaan sluit de winkel, het spel gaat door")
-	test.check(String(hud._indoor_music) == ShopScreen.SHOP_MUSIC, "in de snackbar blijft de handelaarsmuziek")
+	test.check(String(hud.indoor_music()) == ShopScreen.SHOP_MUSIC, "in de snackbar blijft de handelaarsmuziek")
 
 
 ## Every seller in Den Haag Centraal is a merchant, with goods for its kind of shop in
@@ -194,7 +194,7 @@ func test_kiosk_sells_a_newspaper_across_the_counter(test) -> void:
 	if station == null:
 		return
 	var shop: Control = hud._shop_screen
-	var music_in_station := String(hud._indoor_music)
+	var music_in_station := String(hud.indoor_music())
 	var sellers: Array = station.people()
 	var kiosk_number := 0
 	for seller_number in range(1, sellers.size() + 1):
@@ -215,7 +215,7 @@ func test_kiosk_sells_a_newspaper_across_the_counter(test) -> void:
 	player.talk_to(kiosk_seller)
 	await frames(1)
 	test.check(hud.is_showing_shop(), "praten met de kioskhouder opent het winkelscherm")
-	test.check(String(hud._indoor_music) == ShopScreen.SHOP_MUSIC, "in het station de muziek van de handelaar zolang de winkel open is")
+	test.check(String(hud.indoor_music()) == ShopScreen.SHOP_MUSIC, "in het station de muziek van de handelaar zolang de winkel open is")
 	var goods := _goods()
 	print("kiosk: %s / %s / %s: %s" % [shop._kind_label.text, shop._name_label.text, shop._speaker_label.text, goods.map(func(row: Dictionary) -> String: return "%s € %.2f" % [row.item, row.price])])
 	test.check(shop._kind_label.text == "KIOSK" and shop._name_label.text == String(kiosk_seller.get_meta("shop_name")).to_upper(), "de kiosk en zijn naam bovenin")
@@ -247,7 +247,7 @@ func test_kiosk_sells_a_newspaper_across_the_counter(test) -> void:
 		return not hud.is_showing_shop(), 8.0)
 	print("  afscheid: %s (verhaal %s)" % [shop.spoken_text(), hud.is_showing_story()])
 	test.check(not hud.is_showing_shop(), "weg bij de kiosk")
-	test.check(String(hud._indoor_music) == music_in_station, "daarna de muziek van het station weer (%s)" % hud._indoor_music)
+	test.check(String(hud.indoor_music()) == music_in_station, "daarna de muziek van het station weer (%s)" % hud.indoor_music())
 
 
 ## Smikkels, a snack bar in the station: its own (dearer) kroket, its name in the greeting,

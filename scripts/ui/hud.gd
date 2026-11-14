@@ -28,9 +28,10 @@ extends CanvasLayer
 ##   neighbourhood for the first time shows it as a new area (show_area);
 ## - bottom right: the money in euros (set_money);
 ## - bottom left: the context actions (ActionPrompts, set_actions: "[E] Praten" near someone);
-## - the pause menu (Escape: the game stands still; VERDER SPELEN, HOOFDMENU, AFSLUITEN);
+## - the pause menu (Escape: the game stands still; scripts/ui/screens/pause_menu.gd);
 ## - the game menu as a child (Spelmenu, scripts/ui/game_menu.gd: inventory, quests, map);
-## - the death screen (show_death, when the player dies);
+## - the death screen (show_death, when the player dies; scripts/ui/screens/death_screen.gd);
+## - the music of the town and the jingles over it (`music`, scripts/audio/city_music.gd);
 ## - the story box (show_story, scripts/ui/story_box.gd): story, thoughts and missions
 ##   appearing word by word, with the player's portrait;
 ## - the shop screen (show_shop, scripts/ui/shop_screen.gd): talking to someone who sells
@@ -45,35 +46,8 @@ extends CanvasLayer
 ## Fonts: Silkscreen, Pixelify Sans and JetBrains Mono (assets/fonts, OFL); Rubik when
 ## one is missing.
 
-## The tune that opens the map when the game starts (max 6 s), and how loud.
+const CityMusic = preload("res://scripts/audio/city_music.gd")
 const LoadingScreenScript = preload("res://scripts/ui/loading_screen.gd")
-const SwipeTransition = preload("res://scripts/ui/swipe_transition.gd")
-const MAP_JINGLE := "res://assets/audio/muziek/deuntje_kaart_start.ogg"
-const MAP_JINGLE_VOLUME_DB := -5.0
-## The music while roaming the city: one loop everywhere (CITY_MUSIC, tools/muziek/: made from
-## the composition, docs/MUZIEK.md). It starts when the jingle ends, fading in. Going into a
-## building with music of its own (set_indoor_music: the merchant's) crossfades to that and
-## back (equal power: the amplitudes follow a quarter sine and cosine, so the sum stays as loud
-## and there is no dip halfway), and going back to a loop that is still fading out fades that
-## one in again. Softer while the game is paused (pause menu, game menu, story box):
-## CITY_MUSIC_PAUSED_DB.
-const MUSIC_FOLDER := "res://assets/audio/muziek/"
-const CITY_MUSIC := "spel_loop.ogg"
-## Inside a building: how fast its music takes over; how much softer the music is under a jingle.
-const INDOOR_MUSIC_FADE := 1.2
-const JINGLE_DUCK_DB := 6.0
-const CITY_MUSIC_VOLUME_DB := -11.0
-const CITY_MUSIC_PAUSED_DB := -13.0
-## The city's own loop (CITY_MUSIC) plays this much softer still: it runs quietly in the
-## background, under the sounds of the town; music of a building (the merchant's) does not.
-const CITY_LOOP_SOFTER_DB := 3.0
-## The muzak of a supermarket (Interiors SUPERMARKET_MUZAK, files starting with this) plays
-## softer still: background music in a shop, about as loud as the shop's own sound.
-const MUZAK_PREFIX := "supermarkt_muzak_"
-const MUZAK_SOFTER_DB := 6.0
-const CITY_MUSIC_FADE_IN := 3.0
-## How fast (dB per second) the level follows pausing and going on.
-const CITY_MUSIC_LEVEL_SPEED := 30.0
 ## Neighbourhoods shown under another name than their key in the "wijken" metadata (the key
 ## stays what the crowds (data/drukte.json) and the visited list go by).
 const AREA_DISPLAY_NAMES := {"Centraal Station": "Station Den Haag Centraal"}
@@ -81,8 +55,6 @@ const AREA_DISPLAY_NAMES := {"Centraal Station": "Station Den Haag Centraal"}
 ## a long name, so it fits the box whole.
 const LOCATION_WIJK_FONT_SIZE := 11
 const LOCATION_WIJK_SMALLEST_FONT_SIZE := 8
-## The DetailNiveau of the city scene: the jingle waits until it has merged the map.
-const DETAIL_PATH := NodePath("../DetailNiveau")
 const Iso = preload("res://scripts/camera/iso_camera.gd")
 const MoneyText = preload("res://scripts/common/money_text.gd")
 const UiStyle = preload("res://scripts/ui/ui_style.gd")
@@ -200,20 +172,14 @@ const EXAMPLE_QUESTS := [
 ## The game menu opened, or went to another tab while open (the story waits for it: "menu_open").
 signal menu_opened(tab: String)
 
+## The music of the town and the jingles over it (scripts/audio/city_music.gd, the node "Muziek").
+var music: CityMusic
+
 var _location_wijk: Label
 var _location_place: Label
 var _location_street: Label
 var _location_box: Control
 var _location_clock := 0.0
-var _city_music: AudioStreamPlayer     # the loop that is (fading) in
-var _city_music_file := ""              # its file; "" fades them all out (death)
-var _city_music_on := false   # the jingle is over: the city music plays
-var _city_players := {}                 # file -> AudioStreamPlayer, also the ones fading out
-var _city_weights := {}                 # file -> 0..1, where in its fade it is
-var _city_fade := CITY_MUSIC_FADE_IN    # seconds of the running fade
-var _city_level_db := CITY_MUSIC_VOLUME_DB
-var _indoor_music := ""          # the loop of the building the player is in (set_indoor_music)
-var _jingles_playing := 0
 var _focus := Vector3.ZERO       # where the player is, from the last minimap update
 var _has_focus := false
 var _current_wijk := ""
@@ -293,6 +259,10 @@ func _ready() -> void:
 	_day = start_day
 	_crt_as_made = Vector3(crt_curvature, crt_ui_curvature, crt_corner)
 	_read_menu_settings()
+	music = CityMusic.new()
+	music.name = "Muziek"
+	music.loud_while_paused = is_showing_shop   # its music is the point of the shop
+	add_child(music)
 	GraphicsSettings.apply(get_tree())   # also when the town is started on its own
 	_load_fonts()
 	# the HUD is drawn into a picture of its own, which the CRT overlay lays over the world
@@ -365,137 +335,28 @@ func _ready() -> void:
 	get_viewport().size_changed.connect(_fit_to_window)
 	_fit_to_window()
 	_build_minimap_image.call_deferred()
-	_play_map_jingle_when_ready.call_deferred()
+	music.start_with_map_jingle.call_deferred()
 
 
-## The short tune that opens the map (MAP_JINGLE): once, as soon as
-## the map is there; while the DetailNiveau is still merging (the loading screen) it waits for that.
-func _play_map_jingle_when_ready() -> void:
-	var level_of_detail := get_node_or_null(DETAIL_PATH)
-	if level_of_detail and level_of_detail.has_method("is_merging") and level_of_detail.is_merging():
-		await level_of_detail.merge_finished
-	# and until the loading screen is gone: meanwhile only its waiting music plays
-	while LoadingScreenScript.showing(get_tree()):
-		await get_tree().process_frame
-	var stream: AudioStream = null
-	if ResourceLoader.exists(MAP_JINGLE):
-		stream = load(MAP_JINGLE)
-	elif FileAccess.file_exists(MAP_JINGLE):
-		stream = AudioStreamOggVorbis.load_from_file(MAP_JINGLE)
-	if stream == null:
-		push_warning("hud: no map jingle at %s" % MAP_JINGLE)
-		_play_city_music()
-		return
-	if stream is AudioStreamOggVorbis:
-		(stream as AudioStreamOggVorbis).loop = false
-	var player := AudioStreamPlayer.new()
-	player.name = "KaartDeuntje"
-	player.stream = stream
-	player.volume_db = MAP_JINGLE_VOLUME_DB
-	add_child(player)
-	player.play()
-	player.finished.connect(player.queue_free)
-	player.finished.connect(_play_city_music)
-
-
-## Starts the city music (after the jingle).
-func _play_city_music() -> void:
-	if _city_music_on:
-		return
-	_city_music_on = true
-	_fade_city_music_to(CITY_MUSIC, CITY_MUSIC_FADE_IN)
-
-
-## Inside a building (Interiors): its own loop (`file`, in MUSIC_FOLDER; the merchant's for a
-## snack bar) in place of the city's, fading over INDOOR_MUSIC_FADE s; "" back to the city's.
+## Inside a building (Interiors): its own loop in place of the city's (CityMusic.set_indoor);
+## "" back to the city's.
 func set_indoor_music(file: String) -> void:
-	_indoor_music = file
-	if file != "":
-		_fade_city_music_to(file, INDOOR_MUSIC_FADE)
-	elif _city_music_on:
-		_fade_city_music_to(CITY_MUSIC, INDOOR_MUSIC_FADE)
+	music.set_indoor(file)
 
 
-## Holds the music down as under a jingle (JINGLE_DUCK_DB) while something else must be heard
-## (an announcement in a supermarket: SupermarketAnnouncer); every true needs a false after it.
+## The loop of the building the player is in ("" outside).
+func indoor_music() -> String:
+	return music.indoor_file()
+
+
+## Holds the music down while something else must be heard (CityMusic.duck); every true
+## needs a false after it.
 func duck_music(ducked: bool) -> void:
-	_jingles_playing = maxi(_jingles_playing + (1 if ducked else -1), 0)
-
-
-## Makes `file` the loop that fades in over `fade` s (the others fade out); "" fades all out.
-func _fade_city_music_to(file: String, fade: float) -> void:
-	_city_music_file = file
-	_city_fade = maxf(fade, 0.05)
-	if file == "":
-		_city_music = null
-		return
-	if not _city_players.has(file):
-		var stream := _load_loop(file)
-		if stream == null:
-			push_warning("hud: no city music %s" % file)
-			return
-		var player := AudioStreamPlayer.new()
-		player.name = "StadMuziek"
-		player.stream = stream
-		player.volume_db = -80.0
-		add_child(player)
-		# the same point in the bar as the loudest loop now (they all share one length)
-		var playback_at := 0.0
-		var loudest := -1.0
-		for other_file: String in _city_players:
-			var other: AudioStreamPlayer = _city_players[other_file]
-			if other.playing and _city_weights[other_file] > loudest:
-				loudest = _city_weights[other_file]
-				playback_at = other.get_playback_position() + AudioServer.get_time_since_last_mix()
-		player.play(fmod(playback_at, maxf(stream.get_length(), 0.01)))
-		_city_players[file] = player
-		_city_weights[file] = 0.0
-	_city_music = _city_players[file]
-
-
-## Each frame: every loop moves along its fade (equal power) at the level of the moment
-## (softer while paused).
-func _update_city_music(delta: float) -> void:
-	# the shop screen pauses the game but its music is the point of it: full volume then
-	var level_target := CITY_MUSIC_PAUSED_DB if get_tree().paused and not is_showing_shop() else CITY_MUSIC_VOLUME_DB
-	# softer while a jingle plays over it, so the jingle is heard
-	if _jingles_playing > 0:
-		level_target -= JINGLE_DUCK_DB
-	_city_level_db = move_toward(_city_level_db, level_target, CITY_MUSIC_LEVEL_SPEED * delta)
-	# slow motion slows every sound down (AudioServer.playback_speed_scale), but not the music
-	var music_pitch := 1.0 / maxf(AudioServer.playback_speed_scale, 0.01)
-	for file: String in _city_players.keys():
-		var player: AudioStreamPlayer = _city_players[file]
-		player.pitch_scale = music_pitch
-		var weight: float = move_toward(_city_weights[file], 1.0 if file == _city_music_file else 0.0, delta / _city_fade)
-		_city_weights[file] = weight
-		if weight <= 0.0 and file != _city_music_file:
-			player.queue_free()
-			_city_players.erase(file)
-			_city_weights.erase(file)
-			continue
-		var amplitude := sin(weight * PI * 0.5)
-		var own_level := -CITY_LOOP_SOFTER_DB if file == CITY_MUSIC else 0.0
-		if file.begins_with(MUZAK_PREFIX):
-			own_level = -MUZAK_SOFTER_DB
-		player.volume_db = _city_level_db + own_level + linear_to_db(maxf(amplitude, 0.0001))
-
-
-static func _load_loop(file: String) -> AudioStream:
-	var path := MUSIC_FOLDER + file
-	var stream: AudioStream = null
-	if ResourceLoader.exists(path):
-		stream = load(path)
-	elif FileAccess.file_exists(path):
-		stream = AudioStreamOggVorbis.load_from_file(path)
-	if stream is AudioStreamOggVorbis:
-		(stream as AudioStreamOggVorbis).loop = true
-	return stream
+	music.duck(ducked)
 
 
 func _process(delta: float) -> void:
 	_lay_modal_over_menu()
-	_update_city_music(delta)
 	_update_clock()
 	_update_minimap()
 	_location_clock -= delta
@@ -570,7 +431,7 @@ const TASK_JINGLE_VOLUME_DB := -4.0
 
 ## A task of a mission done: its triumph tune (the whole mission done: the longer one).
 func play_task_done(mission_done := false) -> void:
-	_play_jingle(MISSION_DONE_JINGLE if mission_done else TASK_JINGLE, TASK_JINGLE_VOLUME_DB, "TaakDeuntje")
+	music.play_jingle(MISSION_DONE_JINGLE if mission_done else TASK_JINGLE, TASK_JINGLE_VOLUME_DB, "TaakDeuntje")
 
 
 const LEVEL_JINGLE := "res://assets/audio/muziek/deuntje_level_omhoog.ogg"
@@ -653,7 +514,7 @@ func _next_notice() -> void:
 	_area_heading.text = notice["heading"]
 	_area_name.text = notice["name"]
 	if notice["jingle"] != "":
-		_play_jingle(notice["jingle"], MISSION_JINGLE_VOLUME_DB, "MissieDeuntje")
+		music.play_jingle(notice["jingle"], MISSION_JINGLE_VOLUME_DB, "MissieDeuntje")
 	if _area_tween:
 		_area_tween.kill()
 	_area_banner.visible = true
@@ -663,29 +524,6 @@ func _next_notice() -> void:
 	_area_tween.tween_interval(notice["seconds"])
 	_area_tween.tween_property(_area_banner, "modulate:a", 0.0, 0.9)
 	_area_tween.tween_callback(_next_notice)
-
-
-## Plays a jingle once over the music (nothing without the file).
-func _play_jingle(path: String, volume_db: float, player_name: String) -> void:
-	var stream: AudioStream = load(path) if ResourceLoader.exists(path) else null
-	if stream == null and FileAccess.file_exists(path):
-		stream = AudioStreamOggVorbis.load_from_file(path)   # not imported yet
-	if stream == null:
-		push_warning("hud: no jingle at %s" % path)
-		return
-	if stream is AudioStreamOggVorbis:
-		(stream as AudioStreamOggVorbis).loop = false
-	var jingle := AudioStreamPlayer.new()
-	jingle.name = player_name
-	jingle.stream = stream
-	jingle.volume_db = volume_db
-	jingle.process_mode = Node.PROCESS_MODE_ALWAYS   # also while the story box holds the game
-	add_child(jingle)
-	jingle.play()
-	_jingles_playing += 1
-	jingle.finished.connect(func() -> void:
-		_jingles_playing = maxi(_jingles_playing - 1, 0)
-		jingle.queue_free())
 
 
 ## The quests in the tracker, top to bottom; empty = no tracker. Each a Dictionary:
@@ -952,34 +790,16 @@ func set_time(hour: float, day := -1) -> void:
 # ------------------------------------------------------------------ building
 
 func _load_fonts() -> void:
-	var fallback: Font = load(UiStyle.FONT_FALLBACK)
-	var body := UiStyle.font(UiStyle.FONT_BODY)
-	_font_body = UiStyle.weighted(body, 400)
-	var pixel := UiStyle.font(UiStyle.FONT_PIXEL)
-	var pixel_bold := UiStyle.font(UiStyle.FONT_PIXEL_BOLD)
-	var title := UiStyle.font(UiStyle.FONT_TITLE)
-	# glyphs the pixel fonts lack (◆, €) come from JetBrains Mono
-	if body != fallback:
-		var fallback_fonts: Array[Font] = [body]
-		for font: Font in [pixel, pixel_bold, title]:
-			if font != fallback:
-				font.fallbacks = fallback_fonts
-	_font_pixel = pixel
-	_font_pixel_bold = pixel_bold
-	_font_title = UiStyle.weighted(title, 700)
-	_font_title_medium = UiStyle.weighted(title, 600)
+	var fonts := UiStyle.fonts()
+	_font_title = fonts.title
+	_font_title_medium = fonts.title_medium
+	_font_pixel = fonts.pixel
+	_font_pixel_bold = fonts.pixel_bold
+	_font_body = fonts.body
 
 
 func _label(text: String, font: Font, size: int, colour := UiStyle.TEXT, shadow := 2) -> Label:
-	var label := Label.new()
-	label.text = text
-	label.add_theme_font_override("font", font)
-	label.add_theme_font_size_override("font_size", size)
-	label.add_theme_color_override("font_color", colour)
-	if shadow > 0:
-		UiStyle.faux_3d(label, shadow)
-	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	return label
+	return UiStyle.label(text, font, size, colour, shadow)
 
 
 ## A panel of `size` with a border and a hard shadow SHADOW_OFFSET down and to the right.
@@ -1380,124 +1200,26 @@ func _build_money() -> void:
 
 # ------------------------------------------------------------------ pause menu
 
-## The pause menu (Escape): the game stands still (the tree paused) and a panel in the
-## middle offers these; up/down, Enter, Escape (back to the game) or the mouse. INSTELLINGEN
-## shows the settings in the same panel (as in the main menu: anti-aliasing, render scale, the
-## CRT look, how the camera turns), changed at once; TERUG or Escape back.
-const PAUSE_ITEMS := [["VERDER SPELEN", "resume"], ["INSTELLINGEN", "settings"], ["HOOFDMENU", "menu"], ["AFSLUITEN", "quit"]]
-const CameraTurning = preload("res://scripts/camera/camera_turning.gd")
-const MAIN_MENU_SCENE := "res://scenes/hoofdmenu.tscn"
-const PAUSE_WIDTH := 300.0
+const PauseMenu = preload("res://scripts/ui/screens/pause_menu.gd")
 
-var _pause_layer: Control
-var _pause_buttons: Array[Button] = []
-var _pause_selected := 0
-var _pause_column: VBoxContainer
-## What the pause panel shows now: per item {"label": Callable -> String, "do": Callable};
-## the pause menu itself or the settings (_show_pause_page).
-var _pause_entries: Array[Dictionary] = []
-var _pause_in_settings := false
+## The pause menu (Escape; scripts/ui/screens/pause_menu.gd): the game stands still (the
+## tree paused) and its panel offers going on, the settings, the main menu and quitting.
+var pause_menu: PauseMenu
 var _crt_as_made := Vector3.ZERO   # crt_curvature, crt_ui_curvature, crt_corner before the settings
 
 
 func _build_pause_menu() -> void:
-	_pause_layer = Control.new()
-	_pause_layer.name = "Pauze"
-	_pause_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_pause_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_pause_layer.visible = false
-	_root.add_child(_pause_layer)
-	var dim := ColorRect.new()
-	dim.color = Color(UiStyle.INK, 0.55)
-	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
-	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_pause_layer.add_child(dim)
-	var box := PanelContainer.new()
-	var style := UiStyle.box_style(Color(UiStyle.INK, 0.94), UiStyle.BORDER, 3)
-	style.content_margin_left = 18
-	style.content_margin_right = 18
-	style.content_margin_top = 16
-	style.content_margin_bottom = 18
-	box.add_theme_stylebox_override("panel", style)
-	box.set_anchors_preset(Control.PRESET_CENTER)
-	box.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	box.grow_vertical = Control.GROW_DIRECTION_BOTH
-	_pause_layer.add_child(box)
-	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 6)
-	box.add_child(column)
-	var title := _label("— PAUZE —", _font_pixel, 12, UiStyle.ACCENT, 2)
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	column.add_child(title)
-	_pause_column = VBoxContainer.new()
-	_pause_column.add_theme_constant_override("separation", 6)
-	column.add_child(_pause_column)
-	var keys := _label("[↑↓] KIEZEN   [ENTER] KIES   [ESC] TERUG", _font_pixel, 10, UiStyle.MUTED, 0)
-	keys.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	column.add_child(keys)
-	_show_pause_page(false)
+	pause_menu = PauseMenu.new()
+	pause_menu.resume_wanted.connect(set_paused.bind(false))
+	pause_menu.crt_changed.connect(_set_crt)
+	_root.add_child(pause_menu)
 
 
-## The pause menu itself, or (`settings`) the settings in its place.
-func _show_pause_page(settings: bool) -> void:
-	_pause_in_settings = settings
-	_pause_entries.clear()
-	if settings:
-		_pause_entries.append({"label": func() -> String: return "ANTI-ALIASING: %s" % GraphicsSettings.anti_aliasing(),
-			"do": func() -> void: GraphicsSettings.next_anti_aliasing(get_tree())})
-		_pause_entries.append({"label": func() -> String: return "RENDERSCHAAL: %s" % GraphicsSettings.render_scale_text(),
-			"do": func() -> void: GraphicsSettings.next_render_scale(get_tree())})
-		_pause_entries.append({"label": func() -> String: return "CRT-BEELD: %s" % ("AAN" if _crt_on() else "UIT"),
-			"do": _toggle_crt})
-		_pause_entries.append({"label": CameraTurning.label, "do": _toggle_camera_turning})
-		_pause_entries.append({"label": func() -> String: return "TERUG", "do": func() -> void: _show_pause_page(false)})
-	else:
-		for item: Array in PAUSE_ITEMS:
-			var label_text: String = item[0]
-			var action: String = item[1]
-			_pause_entries.append({"label": func() -> String: return label_text, "do": _pause_action.bind(action)})
-	for button in _pause_buttons:
-		button.queue_free()
-	_pause_buttons.clear()
-	for index in _pause_entries.size():
-		var button := Button.new()
-		button.custom_minimum_size = Vector2(PAUSE_WIDTH + (100.0 if settings else 0.0), 44)
-		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		button.focus_mode = Control.FOCUS_NONE
-		button.add_theme_font_override("font", _font_title_medium)
-		button.add_theme_font_size_override("font_size", 22)
-		button.mouse_entered.connect(func() -> void: _select_pause_item(index))
-		button.pressed.connect(func() -> void: _choose_pause_item(index))
-		_pause_column.add_child(button)
-		_pause_buttons.append(button)
-	_pause_selected = -1
-	_select_pause_item(0)
-
-
-func _crt_on() -> bool:
-	var config := ConfigFile.new()
-	config.load(MainMenu.SETTINGS_PATH)
-	return bool(config.get_value("beeld", "crt", true))
-
-
-## The CRT look on or off (the setting of the main menu too), at once.
-func _toggle_crt() -> void:
-	var on := not _crt_on()
-	var config := ConfigFile.new()
-	config.load(MainMenu.SETTINGS_PATH)
-	config.set_value("beeld", "crt", on)
-	config.save(MainMenu.SETTINGS_PATH)
+## The CRT look on or off (the settings of the pause menu), at once.
+func _set_crt(on: bool) -> void:
 	crt_curvature = _crt_as_made.x if on else 0.0
 	crt_ui_curvature = _crt_as_made.y if on else 0.0
 	_update_crt()
-
-
-## The camera turning by itself or by hand (CameraTurning), at once for the follow camera.
-func _toggle_camera_turning() -> void:
-	CameraTurning.set_manual(not CameraTurning.is_manual())
-	var follow := get_tree().current_scene.get_node_or_null("Volgcamera") if get_tree().current_scene else null
-	if follow and follow.has_method("set_manual_turning"):
-		follow.set_manual_turning(CameraTurning.is_manual())
 
 
 func _input(event: InputEvent) -> void:
@@ -1517,7 +1239,7 @@ func _input(event: InputEvent) -> void:
 		return
 	# the HUD's picture takes no input of its own; while the pause menu is open the mouse
 	# is handed to it (the picture has the size of the window)
-	if ((_pause_layer and _pause_layer.visible) or is_showing_shop()) and event is InputEventMouse:
+	if (pause_menu.is_open() or is_showing_shop()) and event is InputEventMouse:
 		_ui_viewport.push_input(event)
 
 
@@ -1534,23 +1256,14 @@ func _unhandled_input(event: InputEvent) -> void:
 		if _shop_screen.handle_input(event):
 			get_viewport().set_input_as_handled()
 		return
-	if _death_layer and _death_layer.visible:
-		_death_input(event)
+	if death_screen.is_open():
+		death_screen.handle_input(event)
 		return
-	if event.is_action_pressed("ui_cancel"):
-		if _pause_layer.visible and _pause_in_settings:
-			UiSounds.play(self, "terug")
-			_show_pause_page(false)   # the settings: back to the pause menu
-		else:
-			set_paused(not _pause_layer.visible)
-	elif not _pause_layer.visible:
-		return
-	elif event.is_action_pressed("ui_down"):
-		_select_pause_item(posmod(_pause_selected + 1, _pause_entries.size()))
-	elif event.is_action_pressed("ui_up"):
-		_select_pause_item(posmod(_pause_selected - 1, _pause_entries.size()))
-	elif event.is_action_pressed("ui_accept"):
-		_choose_pause_item(_pause_selected)
+	if pause_menu.is_open():
+		if not pause_menu.handle_input(event):
+			return
+	elif event.is_action_pressed("ui_cancel"):
+		set_paused(true)
 	else:
 		return
 	# HOOFDMENU has taken it out of the tree already
@@ -1560,55 +1273,9 @@ func _unhandled_input(event: InputEvent) -> void:
 
 ## Pauses the game with the pause menu open, or goes on.
 func set_paused(on: bool) -> void:
-	if on != _pause_layer.visible:
-		UiSounds.play(self, "doe" if on else "terug")
-	_pause_layer.visible = on
+	pause_menu.set_open(on)
 	_ui_viewport.gui_disable_input = not on
-	get_tree().paused = on   # the city music follows by itself (_update_city_music)
-	if on:
-		_show_pause_page(false)
-
-
-func _select_pause_item(index: int) -> void:
-	if index != _pause_selected and _pause_layer.visible:
-		UiSounds.play(self, "kies")
-	_pause_selected = index
-	for button_index in _pause_buttons.size():
-		var on := button_index == index
-		var button := _pause_buttons[button_index]
-		var style := UiStyle.menu_item_style(on)
-		for state in ["normal", "hover", "pressed", "focus"]:
-			button.add_theme_stylebox_override(state, style)
-		for colour_name in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
-			button.add_theme_color_override(colour_name, UiStyle.INK if on else UiStyle.TEXT)
-		button.text = ("→  " if on else "    ") + String((_pause_entries[button_index].label as Callable).call())
-
-
-func _choose_pause_item(index: int) -> void:
-	if index < 0 or index >= _pause_entries.size():
-		return
-	var page_before := _pause_in_settings
-	await (_pause_entries[index].do as Callable).call()
-	# a setting changed: its label again (a page that changed is drawn anew already)
-	if is_inside_tree() and _pause_in_settings == page_before and _pause_layer.visible:
-		_select_pause_item(_pause_selected)
-
-
-func _pause_action(action: String) -> void:
-	if action != "resume":   # going on sounds as closing the menu (set_paused)
-		UiSounds.play(self, "doe")
-	match action:
-		"resume":
-			set_paused(false)
-		"settings":
-			_show_pause_page(true)
-		"menu":
-			# the swipe (the one transition of the game) over it, then the menu
-			await SwipeTransition.swipe(get_tree()).covered
-			get_tree().paused = false
-			get_tree().change_scene_to_file(MAIN_MENU_SCENE)
-		"quit":
-			get_tree().quit()
+	get_tree().paused = on   # the city music follows by itself (CityMusic)
 
 
 # ------------------------------------------------------------------ story box
@@ -1661,16 +1328,16 @@ func _build_reward_screen() -> void:
 	# closing, the game stays paused only while another of these screens is still up (never
 	# paused again from a state remembered when it opened: the town would stand still)
 	_reward_screen.keep_paused = func() -> bool:
-		return is_showing_story() or is_showing_shop() or is_showing_level_up() or (_pause_layer != null and _pause_layer.visible) or _is_game_menu_open()
+		return is_showing_story() or is_showing_shop() or is_showing_level_up() or pause_menu.is_open() or _is_game_menu_open()
 	if _story_box:
 		_story_box.keep_paused = func() -> bool:
-			return is_showing_reward() or is_showing_level_up() or is_showing_shop() or (_pause_layer != null and _pause_layer.visible) or _is_game_menu_open()
+			return is_showing_reward() or is_showing_level_up() or is_showing_shop() or pause_menu.is_open() or _is_game_menu_open()
 		# a conversation waits under the reward screen and goes on where it was after it
 		_story_box.on_hold = func() -> bool:
 			return is_showing_reward() or is_showing_level_up()
 	if _shop_screen:
 		_shop_screen.keep_paused = func() -> bool:
-			return is_showing_reward() or is_showing_level_up() or is_showing_story() or (_pause_layer != null and _pause_layer.visible)
+			return is_showing_reward() or is_showing_level_up() or is_showing_story() or pause_menu.is_open()
 
 
 ## A reward got (scripts/ui/reward_screen.gd: {"heading", "title", "xp", "items": [{"item",
@@ -1713,13 +1380,13 @@ func _open_waiting_reward() -> void:
 		return
 	if is_showing_story() and not _story_box.is_conversation():
 		return
-	if (_death_layer and _death_layer.visible) or (_pause_layer and _pause_layer.visible):
+	if death_screen.is_open() or pause_menu.is_open():
 		return
 	if get_tree().root.has_node("Automaatscherm") or LoadingScreenScript.showing(get_tree()):
 		return
 	var reward: Dictionary = _rewards_waiting.pop_front()
 	_reward_screen.open(reward, reward.get("done", Callable()))
-	_play_jingle(REWARD_JINGLE, REWARD_JINGLE_VOLUME_DB, "Beloningsdeuntje")
+	music.play_jingle(REWARD_JINGLE, REWARD_JINGLE_VOLUME_DB, "Beloningsdeuntje")
 
 
 # ------------------------------------------------------------------ level-up screen
@@ -1742,7 +1409,7 @@ func _build_level_up_screen() -> void:
 	_root.add_child(_level_up_screen)
 	_level_up_screen.keep_paused = func() -> bool:
 		return is_showing_reward() or is_showing_story() or is_showing_shop() \
-				or (_pause_layer != null and _pause_layer.visible) or _is_game_menu_open()
+				or pause_menu.is_open() or _is_game_menu_open()
 
 
 ## The next level up, when nothing else needs the screen: as a reward (_open_waiting_reward:
@@ -1755,14 +1422,14 @@ func _open_waiting_level_up() -> void:
 		return
 	if is_showing_story() and not _story_box.is_conversation():
 		return
-	if (_death_layer and _death_layer.visible) or (_pause_layer and _pause_layer.visible):
+	if death_screen.is_open() or pause_menu.is_open():
 		return
 	if get_tree().root.has_node("Automaatscherm") or LoadingScreenScript.showing(get_tree()):
 		return
 	var waiting: Dictionary = _level_ups_waiting.pop_front()
 	var raise: Dictionary = PlayerController.LEVEL_UP_RAISE
 	_level_up_screen.open(int(waiting.level), waiting.choose, waiting.get("current", Callable()), raise, int(waiting.get("xp", 0)))
-	_play_jingle(LEVEL_JINGLE, LEVEL_JINGLE_VOLUME_DB, "LevelDeuntje")
+	music.play_jingle(LEVEL_JINGLE, LEVEL_JINGLE_VOLUME_DB, "LevelDeuntje")
 
 
 # ------------------------------------------------------------------ over the game menu
@@ -1829,7 +1496,7 @@ func _build_shop_screen() -> void:
 func show_shop(talk: RefCounted, player: Node, done := Callable()) -> void:
 	_ui_viewport.gui_disable_input = false
 	_shop_screen.open(talk, player, self, func() -> void:
-		_ui_viewport.gui_disable_input = not _pause_layer.visible
+		_ui_viewport.gui_disable_input = not pause_menu.is_open()
 		if done.is_valid():
 			done.call())
 
@@ -1840,92 +1507,30 @@ func is_showing_shop() -> bool:
 
 # ------------------------------------------------------------------ death screen
 
-## When the player dies (show_death, from player_controller.gd): the town goes on behind a
-## dark red veil, "JE BENT DOOD" big in the middle with how it happened, the city music
-## fades out and the death tune plays once. Enter starts again with the same zwerver
-## (the scene reloaded), Escape goes to the main menu.
+const DeathScreen = preload("res://scripts/ui/screens/death_screen.gd")
 const DEATH_JINGLE := "res://assets/audio/muziek/deuntje_dood.ogg"
 const DEATH_JINGLE_VOLUME_DB := -5.0
-const DEATH_CAUSES := {
-	"honger": "%s is van de honger omgekomen.",
-	"aangereden": "%s is aangereden en niet meer opgestaan.",
-	"verdronken": "%s is in het water gevallen en verdronken.",
-	"eruit_gegooid": "%s is een gebouw uit gesmeten en niet meer opgestaan.",
-}
-## Seconds before the keys work (so a key held while dying does not skip it).
-const DEATH_KEYS_AFTER := 1.2
 
-var _death_layer: Control
-var _death_reason: Label
-var _death_keys: Label
-var _death_since := 0.0
+## The death screen (scripts/ui/screens/death_screen.gd), up when the player has died.
+var death_screen: DeathScreen
 
 
 func _build_death_screen() -> void:
-	_death_layer = Control.new()
-	_death_layer.name = "Dood"
-	_death_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_death_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_death_layer.visible = false
-	_root.add_child(_death_layer)
-	var veil := ColorRect.new()
-	veil.color = Color(0.25, 0.02, 0.06, 0.55)
-	veil.set_anchors_preset(Control.PRESET_FULL_RECT)
-	veil.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_death_layer.add_child(veil)
-	var column := VBoxContainer.new()
-	column.set_anchors_preset(Control.PRESET_CENTER)
-	column.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	column.grow_vertical = Control.GROW_DIRECTION_BOTH
-	column.alignment = BoxContainer.ALIGNMENT_CENTER
-	column.add_theme_constant_override("separation", 14)
-	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_death_layer.add_child(column)
-	var title := _label("JE BENT DOOD", _font_title, 72, Color("#FF5D73"), 0)
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	UiStyle.faux_3d(title, 7)
-	column.add_child(title)
-	_death_reason = _label("", _font_body, 18, UiStyle.TEXT, 0)
-	_death_reason.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	UiStyle.faux_3d(_death_reason, 3)
-	column.add_child(_death_reason)
-	_death_keys = _label("[ENTER] OPNIEUW   [ESC] HOOFDMENU", _font_pixel, 12, UiStyle.MUTED, 2)
-	_death_keys.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	column.add_child(_death_keys)
+	death_screen = DeathScreen.new()
+	_root.add_child(death_screen)
 
 
-## Shows the death screen; `cause` is a key of DEATH_CAUSES (else a general line).
+## The player died (player_controller.gd): the death screen with how it happened (`cause`: a
+## key of DeathScreen.CAUSES, else a general line), the city music fades out and the death
+## tune plays once.
 func show_death(cause := "") -> void:
-	if _death_layer.visible:
+	if death_screen.is_open():
 		return
-	if _pause_layer.visible:
+	if pause_menu.is_open():
 		set_paused(false)
-	_death_reason.text = String(DEATH_CAUSES.get(cause, "%s heeft het niet gered.")) % player_name
-	_death_layer.visible = true
-	_death_layer.modulate.a = 0.0
-	_death_keys.modulate.a = 0.0
-	_death_since = Time.get_ticks_msec() / 1000.0
-	var fade := create_tween()
-	fade.tween_property(_death_layer, "modulate:a", 1.0, 0.6)
-	fade.tween_property(_death_keys, "modulate:a", 1.0, 0.4).set_delay(DEATH_KEYS_AFTER - 0.6)
-	_city_music_on = false
-	_fade_city_music_to("", 0.8)
-	_play_jingle(DEATH_JINGLE, DEATH_JINGLE_VOLUME_DB, "DoodDeuntje")
-
-
-func _death_input(event: InputEvent) -> void:
-	if Time.get_ticks_msec() / 1000.0 - _death_since < DEATH_KEYS_AFTER:
-		return
-	if event.is_action_pressed("ui_accept"):
-		get_viewport().set_input_as_handled()
-		UiSounds.play(self, "doe")
-		await SwipeTransition.swipe(get_tree()).covered
-		get_tree().reload_current_scene()
-	elif event.is_action_pressed("ui_cancel"):
-		get_viewport().set_input_as_handled()
-		UiSounds.play(self, "doe")
-		await SwipeTransition.swipe(get_tree()).covered
-		get_tree().change_scene_to_file(MAIN_MENU_SCENE)
+	death_screen.open(cause, player_name)
+	music.stop(0.8)
+	music.play_jingle(DEATH_JINGLE, DEATH_JINGLE_VOLUME_DB, "DoodDeuntje")
 
 
 func _build_crt() -> void:

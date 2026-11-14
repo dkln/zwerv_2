@@ -156,7 +156,7 @@ func test_starving_ends_in_the_death_screen(test) -> void:
 	test.check(player.is_dead(), "dood bij 0 gezondheid")
 	test.check(scene.get_node("Volgcamera").is_dramatic(), "verhongerd: dramatisch ingezoomd")
 	for attempt in 50:
-		if hud._death_layer.visible:
+		if hud.death_screen.is_open():
 			break
 		await unscaled_seconds(0.1)
-	test.check(hud._death_layer.visible, "doodsscherm te zien")
+	test.check(hud.death_screen.is_open(), "doodsscherm te zien")

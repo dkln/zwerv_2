@@ -59,5 +59,5 @@ func test_new_game_goes_to_the_town_and_back_to_the_menu(test) -> void:
 	var town_hud := tree.current_scene.get_node("HUD") as GameHud
 	town_hud.set_paused(true)
 	test.check(tree.paused, "gepauzeerd in de stad")
-	town_hud._choose_pause_item(town_hud.PAUSE_ITEMS.map(func(item: Array) -> String: return item[1]).find("menu"))
+	town_hud.pause_menu.choose(town_hud.pause_menu.item_index("menu"))
 	test.check(await _wait_for_scene("Hoofdmenu", 200), "terug in het hoofdmenu (gepauzeerd: %s)" % tree.paused)

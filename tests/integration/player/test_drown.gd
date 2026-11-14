@@ -71,4 +71,4 @@ func test_in_the_water_the_player_drowns(test) -> void:
 	player.died.disconnect(note_cause)
 	print("doodsoorzaak: ", causes)
 	test.check(causes == ["verdronken"], "verdronken")
-	test.check(hud.DEATH_CAUSES.has("verdronken"), "doodstekst voor verdrinken")
+	test.check(hud.death_screen.CAUSES.has("verdronken"), "doodstekst voor verdrinken")

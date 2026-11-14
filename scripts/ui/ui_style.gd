@@ -79,6 +79,39 @@ static func weighted(base_font: Font, weight: int) -> Font:
 	return variation
 
 
+## The fonts every screen is set in: {"title": Pixelify Sans bold, "title_medium": the same
+## semibold, "pixel": Silkscreen, "pixel_bold": Silkscreen bold, "body": JetBrains Mono}.
+## Glyphs the pixel fonts lack (→, ◆, €, ·) come from JetBrains Mono.
+static func fonts() -> Dictionary:
+	var fallback: Font = load(FONT_FALLBACK)
+	var body := font(FONT_BODY)
+	var pixel := font(FONT_PIXEL)
+	var pixel_bold := font(FONT_PIXEL_BOLD)
+	var title := font(FONT_TITLE)
+	if body != fallback:
+		var fallback_fonts: Array[Font] = [body]
+		for pixel_font: Font in [pixel, pixel_bold, title]:
+			if pixel_font != fallback:
+				pixel_font.fallbacks = fallback_fonts
+	return {"title": weighted(title, 700), "title_medium": weighted(title, 600), "pixel": pixel,
+		"pixel_bold": pixel_bold, "body": weighted(body, 400)}
+
+
+## A line of text as the screens write it: this font (none: the default), size and colour,
+## deaf to the mouse; `shadow` > 0 gives it a hard shadow of that many pixels (faux_3d).
+static func label(text: String, label_font: Font, size: int, colour := TEXT, shadow := 0) -> Label:
+	var made := Label.new()
+	made.text = text
+	if label_font:
+		made.add_theme_font_override("font", label_font)
+	made.add_theme_font_size_override("font_size", size)
+	made.add_theme_color_override("font_color", colour)
+	if shadow > 0:
+		faux_3d(made, shadow)
+	made.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return made
+
+
 ## Extra space between letters (pixels), as letter-spacing in the design.
 static func spaced(base_font: Font, spacing: int) -> Font:
 	var variation := FontVariation.new()

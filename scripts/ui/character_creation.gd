@@ -669,16 +669,17 @@ func _fade_out_music() -> void:
 
 # ------------------------------------------------------------------ helpers
 
+func _load_fonts() -> void:
+	var fonts := UiStyle.fonts()
+	_font_title = fonts.title
+	_font_title_medium = fonts.title_medium
+	_font_pixel = fonts.pixel
+	_font_pixel_bold = fonts.pixel_bold
+	_font_body = fonts.body
+
+
 func _label(text: String, font: Font, size: int, colour := UiStyle.TEXT, shadow := 2) -> Label:
-	var label := Label.new()
-	label.text = text
-	label.add_theme_font_override("font", font)
-	label.add_theme_font_size_override("font_size", size)
-	label.add_theme_color_override("font_color", colour)
-	if shadow > 0:
-		UiStyle.faux_3d(label, shadow)
-	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	return label
+	return UiStyle.label(text, font, size, colour, shadow)
 
 
 func _small(text: String, colour: Color, size := 11, spacing := 0) -> Label:
@@ -693,23 +694,6 @@ func _fit_to_window() -> void:
 	_design.position = (window - DESIGN_SIZE * factor) * 0.5
 	if _crt:
 		(_crt.material as ShaderMaterial).set_shader_parameter("screen_size", window)
-
-
-func _load_fonts() -> void:
-	var fallback: Font = load(UiStyle.FONT_FALLBACK)
-	var title := UiStyle.font(UiStyle.FONT_TITLE)
-	_font_title = UiStyle.weighted(title, 700)
-	_font_title_medium = UiStyle.weighted(title, 600)
-	_font_pixel = UiStyle.font(UiStyle.FONT_PIXEL)
-	_font_pixel_bold = UiStyle.font(UiStyle.FONT_PIXEL_BOLD)
-	var body := UiStyle.font(UiStyle.FONT_BODY)
-	_font_body = UiStyle.weighted(body, 400)
-	# the →, · and arrows the pixel fonts may lack come from JetBrains Mono
-	if body != fallback:
-		var fallbacks: Array[Font] = [body]
-		for font: Font in [title, _font_pixel, _font_pixel_bold]:
-			if font != fallback:
-				font.fallbacks = fallbacks
 
 
 ## The night behind the screen: still stars in two colours (the menu's), some twinkling,

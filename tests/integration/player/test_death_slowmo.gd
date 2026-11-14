@@ -19,7 +19,7 @@ func test_run_over_the_game_slows_down_and_the_camera_closes_in(test) -> void:
 	test.check(absf(Engine.time_scale - PlayerControllerScript.DEATH_SLOW_MOTION) < 0.01, "slow motion (%.2f)" % Engine.time_scale)
 	test.check(Engine.physics_ticks_per_second > ticks_before * 5, "physics stapt even vaak in echte tijd (%d per spelseconde)" % Engine.physics_ticks_per_second)
 	test.check(camera.is_dramatic(), "de camera zoomt in")
-	test.check(not hud._death_layer.visible, "nog geen doodsscherm tijdens de slow motion")
+	test.check(not hud.death_screen.is_open(), "nog geen doodsscherm tijdens de slow motion")
 
 
 ## Through the slow motion the figure never blinks (it is seen dying whole) and the view
@@ -48,4 +48,4 @@ func test_after_the_slow_motion_normal_speed_and_the_death_screen(test) -> void:
 	await unscaled_seconds(PlayerControllerScript.DEATH_SLOW_SECONDS + PlayerControllerScript.DEATH_SPEED_UP + 0.1)
 	await frames(1)
 	test.check(Engine.time_scale == 1.0 and Engine.physics_ticks_per_second == ticks_before, "daarna weer op normale snelheid")
-	test.check(hud._death_layer.visible, "dan het doodsscherm")
+	test.check(hud.death_screen.is_open(), "dan het doodsscherm")

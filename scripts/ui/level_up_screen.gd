@@ -203,7 +203,7 @@ func _build() -> void:
 	column.add_theme_constant_override("separation", 10)
 	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_child(column)
-	var heading := _make_label("◆ LEVEL OMHOOG", font_pixel, 16, UiStyle.ACCENT)
+	var heading := UiStyle.label("◆ LEVEL OMHOOG", font_pixel, 16, UiStyle.ACCENT)
 	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(heading)
 	# the new level big, the rays turning behind it
@@ -217,7 +217,7 @@ func _build() -> void:
 	rays.length = 0.8
 	rays.colour = Color(UiStyle.ACCENT, 0.12)
 	stage.add_child(rays)
-	_level_label = _make_label("", font_title, 56, UiStyle.ACCENT)
+	_level_label = UiStyle.label("", font_title, 56, UiStyle.ACCENT)
 	_level_label.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_level_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_level_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -225,16 +225,16 @@ func _build() -> void:
 	_level_label.add_theme_constant_override("shadow_offset_x", 4)
 	_level_label.add_theme_constant_override("shadow_offset_y", 4)
 	stage.add_child(_level_label)
-	_xp_label = _make_label("", font_pixel, 16, XP_COLOUR)
+	_xp_label = UiStyle.label("", font_pixel, 16, XP_COLOUR)
 	_xp_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_xp_label.visible = false
 	column.add_child(_xp_label)
-	var ask := _make_label("Waar word je sterker in?", font_body, 16, UiStyle.TEXT)
+	var ask := UiStyle.label("Waar word je sterker in?", font_body, 16, UiStyle.TEXT)
 	ask.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(ask)
 	for index in OPTIONS.size():
 		column.add_child(_build_row(index))
-	var footer := _make_label("[W/S] KIES   [1-4]   [ENTER] NEEM", font_pixel, 13, UiStyle.MUTED)
+	var footer := UiStyle.label("[W/S] KIES   [1-4]   [ENTER] NEEM", font_pixel, 13, UiStyle.MUTED)
 	footer.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(footer)
 
@@ -252,7 +252,7 @@ func _build_row(index: int) -> PanelContainer:
 	line.add_theme_constant_override("separation", 14)
 	line.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(line)
-	line.add_child(_make_label(str(index + 1), font_pixel, 14, UiStyle.MUTED))
+	line.add_child(UiStyle.label(str(index + 1), font_pixel, 14, UiStyle.MUTED))
 	var icon := PixelIcon.new()
 	icon.pixel = 3.0
 	icon.colour = colour
@@ -264,9 +264,9 @@ func _build_row(index: int) -> PanelContainer:
 	words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	words.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	line.add_child(words)
-	words.add_child(_make_label(String(option.name), font_pixel, 14, colour))
-	words.add_child(_make_label(String(option.text), font_body, 14, UiStyle.TEXT))
-	var values := _make_label("", font_pixel, 14, UiStyle.MUTED)
+	words.add_child(UiStyle.label(String(option.name), font_pixel, 14, colour))
+	words.add_child(UiStyle.label(String(option.text), font_body, 14, UiStyle.TEXT))
+	var values := UiStyle.label("", font_pixel, 14, UiStyle.MUTED)
 	values.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	line.add_child(values)
 	_rows.append(row)
@@ -281,14 +281,3 @@ func _row_style(colour: Color, chosen: bool) -> StyleBoxFlat:
 	style.content_margin_top = 8
 	style.content_margin_bottom = 8
 	return style
-
-
-func _make_label(text: String, font: Font, font_size: int, colour: Color) -> Label:
-	var label := Label.new()
-	label.text = text
-	if font:
-		label.add_theme_font_override("font", font)
-	label.add_theme_font_size_override("font_size", font_size)
-	label.add_theme_color_override("font_color", colour)
-	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	return label

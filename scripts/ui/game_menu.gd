@@ -698,39 +698,19 @@ func _item_total() -> int:
 # ------------------------------------------------------------------ building
 
 func _load_fonts() -> void:
-	var fallback: Font = load(UiStyle.FONT_FALLBACK)
+	var fonts := UiStyle.fonts()
+	_font_title = fonts.title
+	_font_title_medium = fonts.title_medium
+	_font_pixel = fonts.pixel
+	_font_pixel_bold = fonts.pixel_bold
+	_font_body = fonts.body
 	var body := UiStyle.font(UiStyle.FONT_BODY)
-	var pixel := UiStyle.font(UiStyle.FONT_PIXEL)
-	var pixel_bold := UiStyle.font(UiStyle.FONT_PIXEL_BOLD)
-	var title := UiStyle.font(UiStyle.FONT_TITLE)
-	# glyphs the pixel fonts lack (◆, €, ·) come from JetBrains Mono
-	if body != fallback:
-		var fallback_fonts: Array[Font] = [body]
-		for font: Font in [pixel, pixel_bold, title]:
-			if font != fallback:
-				font.fallbacks = fallback_fonts
-	_font_body = UiStyle.weighted(body, 400)
 	_font_body_bold = UiStyle.weighted(body, 600)
 	var slanted := UiStyle.weighted(body, 400) as FontVariation
 	# FreeType's xy: the top of a glyph leans to the right (a faux italic)
 	slanted.variation_transform = Transform2D(Vector2(1.0, 0.2), Vector2(0.0, 1.0), Vector2.ZERO)
 	_font_italic = slanted
-	_font_pixel = pixel
-	_font_pixel_bold = pixel_bold
-	_font_title = UiStyle.weighted(title, 700)
-	_font_title_spaced = UiStyle.weighted(title, 700)
-	(_font_title_spaced as FontVariation).spacing_glyph = 1
-	_font_title_medium = UiStyle.weighted(title, 600)
-
-
-func _label(text: String, font: Font, size: int, colour := UiStyle.TEXT) -> Label:
-	var label := Label.new()
-	label.text = text
-	label.add_theme_font_override("font", font)
-	label.add_theme_font_size_override("font_size", size)
-	label.add_theme_color_override("font_color", colour)
-	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	return label
+	_font_title_spaced = UiStyle.spaced(_font_title, 1)
 
 
 ## A flat style: background, a border of `border_width` all round, content margins.
@@ -791,7 +771,7 @@ func _page(page_name: String, keys: String) -> Array:
 	var content := _hbox(24)
 	content.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	column.add_child(content)
-	column.add_child(_label(keys, _font_pixel, 10, UiStyle.MUTED))
+	column.add_child(UiStyle.label(keys, _font_pixel, 10, UiStyle.MUTED))
 	return [margins, content]
 
 
@@ -808,26 +788,26 @@ func _build_tab_bar() -> Control:
 	bar.custom_minimum_size = Vector2(0, TAB_BAR_HEIGHT + 3)
 	var row := _hbox(4)
 	bar.add_child(row)
-	var left_key := _label("[Q]", _font_pixel, 11, UiStyle.MUTED)
+	var left_key := UiStyle.label("[Q]", _font_pixel, 11, UiStyle.MUTED)
 	left_key.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	left_key.custom_minimum_size = Vector2(32, 0)
 	row.add_child(left_key)
 	for tab_name: String in TABS:
 		var tab := _box(_style(Color(0, 0, 0, 0), UiStyle.ACCENT, 0, TAB_PADDING_X), 0.0, true)
-		var tab_label := _label(TAB_TITLES[tab_name], _font_title_medium, 18)
+		var tab_label := UiStyle.label(TAB_TITLES[tab_name], _font_title_medium, 18)
 		tab_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		tab.add_child(tab_label)
 		tab.pressed.connect(func() -> void: _show_tab(tab_name))
 		row.add_child(tab)
 		_tab_boxes[tab_name] = tab
 		_tab_labels[tab_name] = tab_label
-	var right_key := _label("[E]", _font_pixel, 11, UiStyle.MUTED)
+	var right_key := UiStyle.label("[E]", _font_pixel, 11, UiStyle.MUTED)
 	right_key.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	right_key.custom_minimum_size = Vector2(32, 0)
 	right_key.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	row.add_child(right_key)
 	row.add_child(_spacer(false))
-	_header_info = _label("", UiStyle.spaced(_font_pixel, 2), 11, UiStyle.MUTED)
+	_header_info = UiStyle.label("", UiStyle.spaced(_font_pixel, 2), 11, UiStyle.MUTED)
 	_header_info.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	row.add_child(_header_info)
 	var gap := Control.new()
@@ -841,14 +821,14 @@ func _build_tab_bar() -> Control:
 	coin.pixel = 14.0 / 7.0
 	coin.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(coin)
-	_money_label = _label("0", _font_pixel, 13)
+	_money_label = UiStyle.label("0", _font_pixel, 13)
 	_money_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	row.add_child(_money_label)
 	var gap_after := gap.duplicate() as Control
 	row.add_child(gap_after)
 	var close_box := _box(_style(UiStyle.INK, UiStyle.BORDER, 2, 10, 6), 0.0, true)
 	close_box.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	close_box.add_child(_label("[ESC] SLUITEN", _font_pixel, 10, UiStyle.MUTED))
+	close_box.add_child(UiStyle.label("[ESC] SLUITEN", _font_pixel, 10, UiStyle.MUTED))
 	close_box.pressed.connect(close)
 	row.add_child(close_box)
 	return bar
@@ -872,9 +852,9 @@ func _build_character_column() -> Control:
 	column.add_child(card)
 	var card_column := _vbox(6)
 	card.add_child(card_column)
-	_character_name = _label("", _font_title, 24)
+	_character_name = UiStyle.label("", _font_title, 24)
 	card_column.add_child(_character_name)
-	_character_line = _label("", _font_pixel, 11, UiStyle.ACCENT)
+	_character_line = UiStyle.label("", _font_pixel, 11, UiStyle.ACCENT)
 	_character_line.clip_text = true
 	_character_line.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	card_column.add_child(_character_line)
@@ -894,7 +874,7 @@ func _build_character_column() -> Control:
 	column.add_child(stats)
 	var stats_column := _vbox(9)
 	stats.add_child(stats_column)
-	stats_column.add_child(_label("TOESTAND", UiStyle.spaced(_font_pixel, 2), 11, UiStyle.MUTED))
+	stats_column.add_child(UiStyle.label("TOESTAND", UiStyle.spaced(_font_pixel, 2), 11, UiStyle.MUTED))
 	for stat_name: String in GameHud.STATS:
 		var stat: Dictionary = GameHud.STATS[stat_name]
 		var stat_column := _vbox(4)
@@ -905,10 +885,10 @@ func _build_character_column() -> Control:
 		icon.pixel = 2.0
 		icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		heading.add_child(icon)
-		var stat_label := _label(STAT_LABELS.get(stat_name, stat_name.to_upper()), _font_pixel, 12)
+		var stat_label := UiStyle.label(STAT_LABELS.get(stat_name, stat_name.to_upper()), _font_pixel, 12)
 		stat_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		heading.add_child(stat_label)
-		var value_text := _label("", _font_pixel, 12, SOFT_TEXT)
+		var value_text := UiStyle.label("", _font_pixel, 12, SOFT_TEXT)
 		heading.add_child(value_text)
 		stat_column.add_child(heading)
 		var bar := SegmentBar.new()
@@ -930,7 +910,7 @@ func _build_item_grid() -> Control:
 	for category: Array in CATEGORIES:
 		var button := _box(_style(UiStyle.INK, UiStyle.BORDER, 2, 12, 4), 0.0, true)
 		button.custom_minimum_size = Vector2(0, 36)
-		var button_label := _label(category[0], _font_pixel, 11, UiStyle.MUTED)
+		var button_label := UiStyle.label(category[0], _font_pixel, 11, UiStyle.MUTED)
 		button_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		button.add_child(button_label)
 		var kind: String = category[1]
@@ -954,7 +934,7 @@ func _build_item_grid() -> Control:
 		icon.pixel = 3.0
 		centre.add_child(icon)
 		slot.add_child(centre)
-		var count := _label("", _font_pixel, 10)
+		var count := UiStyle.label("", _font_pixel, 10)
 		count.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		count.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
 		count.add_theme_constant_override("line_spacing", 0)
@@ -967,7 +947,7 @@ func _build_item_grid() -> Control:
 		_slots.append(slot)
 		_slot_icons.append(icon)
 		_slot_counts.append(count)
-	_slots_used_label = _label("", _font_pixel, 10, UiStyle.MUTED)
+	_slots_used_label = UiStyle.label("", _font_pixel, 10, UiStyle.MUTED)
 	column.add_child(_slots_used_label)
 	return column
 
@@ -993,12 +973,12 @@ func _build_item_detail() -> Control:
 	names.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	names.alignment = BoxContainer.ALIGNMENT_CENTER
 	heading.add_child(names)
-	_detail_rarity = _label("", UiStyle.spaced(_font_pixel, 2), 11)
+	_detail_rarity = UiStyle.label("", UiStyle.spaced(_font_pixel, 2), 11)
 	names.add_child(_detail_rarity)
-	_detail_name = _label("", _font_title, 22)
+	_detail_name = UiStyle.label("", _font_title, 22)
 	_detail_name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	names.add_child(_detail_name)
-	_detail_kind = _label("", _font_body, 12, UiStyle.MUTED)
+	_detail_kind = UiStyle.label("", _font_body, 12, UiStyle.MUTED)
 	names.add_child(_detail_kind)
 	# the effects between two lines
 	var lines_style := StyleBoxFlat.new()
@@ -1013,11 +993,11 @@ func _build_item_detail() -> Control:
 	_detail_lines = _vbox(6)
 	_detail_lines_box.add_child(_detail_lines)
 	column.add_child(_detail_lines_box)
-	_detail_text = _label("", _font_italic, 13, SOFT_TEXT)
+	_detail_text = UiStyle.label("", _font_italic, 13, SOFT_TEXT)
 	_detail_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_detail_text.add_theme_constant_override("line_spacing", 5)
 	column.add_child(_detail_text)
-	_detail_empty = _label("Je zakken zijn leeg.", _font_italic, 13, UiStyle.MUTED)
+	_detail_empty = UiStyle.label("Je zakken zijn leeg.", _font_italic, 13, UiStyle.MUTED)
 	_detail_empty.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	column.add_child(_detail_empty)
 	column.add_child(_spacer())
@@ -1026,7 +1006,7 @@ func _build_item_detail() -> Control:
 	_action_box = _box(_style(UiStyle.ACCENT, UiStyle.ACCENT, 0, 14), 3.0, true)
 	_action_box.custom_minimum_size = Vector2(0, 44)
 	_action_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_action_label = _label("", _font_pixel_bold, 12, UiStyle.INK)
+	_action_label = UiStyle.label("", _font_pixel_bold, 12, UiStyle.INK)
 	_action_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_action_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_action_box.add_child(_action_label)
@@ -1034,7 +1014,7 @@ func _build_item_detail() -> Control:
 	_detail_buttons.add_child(_action_box)
 	_drop_box = _box(_style(UiStyle.PANEL, UiStyle.BORDER, 2, 14), 0.0, true)
 	_drop_box.custom_minimum_size = Vector2(0, 44)
-	_drop_label = _label("WEGGOOIEN", _font_pixel, 12)
+	_drop_label = UiStyle.label("WEGGOOIEN", _font_pixel, 12)
 	_drop_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_drop_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_drop_box.add_child(_drop_label)
@@ -1175,10 +1155,10 @@ func _refresh_item_detail() -> void:
 
 func _detail_line(key: String, value: String, colour: Color) -> Control:
 	var row := _hbox(8)
-	var key_label := _label(key, _font_pixel, 12, SOFT_TEXT)
+	var key_label := UiStyle.label(key, _font_pixel, 12, SOFT_TEXT)
 	key_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(key_label)
-	row.add_child(_label(value, _font_body_bold, 13, colour))
+	row.add_child(UiStyle.label(value, _font_body_bold, 13, colour))
 	return row
 
 
@@ -1335,7 +1315,7 @@ func _build_quest_page() -> Control:
 		var button := _box(_style(UiStyle.INK, UiStyle.BORDER, 2, 8, 4), 0.0, true)
 		button.custom_minimum_size = Vector2(0, 40)
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		var button_label := _label(kind_entry[1], _font_pixel, 11, UiStyle.MUTED)
+		var button_label := UiStyle.label(kind_entry[1], _font_pixel, 11, UiStyle.MUTED)
 		button_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		button_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		button.add_child(button_label)
@@ -1361,10 +1341,10 @@ func _build_quest_page() -> Control:
 	_quest_empty.size_flags_horizontal = Control.SIZE_SHRINK_CENTER | Control.SIZE_EXPAND
 	_quest_empty.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	var empty_column := _vbox(10)
-	var empty_heading := _label("— GEEN OPDRACHTEN —", UiStyle.spaced(_font_pixel, 3), 12, UiStyle.ACCENT)
+	var empty_heading := UiStyle.label("— GEEN OPDRACHTEN —", UiStyle.spaced(_font_pixel, 3), 12, UiStyle.ACCENT)
 	empty_heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	empty_column.add_child(empty_heading)
-	var empty_text := _label("Nog geen opdrachten. Zwerf wat rond.", _font_italic, 14, SOFT_TEXT)
+	var empty_text := UiStyle.label("Nog geen opdrachten. Zwerf wat rond.", _font_italic, 14, SOFT_TEXT)
 	empty_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	empty_column.add_child(empty_text)
 	_quest_empty.add_child(empty_column)
@@ -1423,7 +1403,7 @@ func _refresh_quests() -> void:
 	var quests := _quests_of_kind(_quest_kind)
 	_selected_quest = clampi(_selected_quest, 0, maxi(quests.size() - 1, 0))
 	if quests.is_empty():
-		var nothing := _label("Geen zijmissies op dit moment." if _quest_kind == "zij" else "Geen verhaalopdracht op dit moment.", _font_italic, 13, UiStyle.MUTED)
+		var nothing := UiStyle.label("Geen zijmissies op dit moment." if _quest_kind == "zij" else "Geen verhaalopdracht op dit moment.", _font_italic, 13, UiStyle.MUTED)
 		_quest_rows.add_child(nothing)
 	for quest_index in quests.size():
 		_quest_rows.add_child(_quest_row(quests[quest_index], quest_index))
@@ -1444,15 +1424,15 @@ func _quest_row(quest: Dictionary, quest_index: int) -> Control:
 	texts.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	texts.alignment = BoxContainer.ALIGNMENT_CENTER
 	line.add_child(texts)
-	texts.add_child(_label(_quest_tag(quest), UiStyle.spaced(_font_pixel, 2), 10, colour))
+	texts.add_child(UiStyle.label(_quest_tag(quest), UiStyle.spaced(_font_pixel, 2), 10, colour))
 	var steps: Array = quest.get("steps", [])
 	var done := not steps.is_empty() and _steps_done(steps) == steps.size()
-	var title := _label(str(quest.get("title", "")), _font_title_medium, 17, UiStyle.MUTED if done else UiStyle.TEXT)
+	var title := UiStyle.label(str(quest.get("title", "")), _font_title_medium, 17, UiStyle.MUTED if done else UiStyle.TEXT)
 	title.clip_text = true
 	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	texts.add_child(title)
 	var followed := GameHud.quest_id(quest) == _tracked_id()
-	var status := _label(("◆ VOLGT  " if followed else "") + _quest_status(quest), _font_pixel, 10, UiStyle.ACCENT if followed else UiStyle.MUTED)
+	var status := UiStyle.label(("◆ VOLGT  " if followed else "") + _quest_status(quest), _font_pixel, 10, UiStyle.ACCENT if followed else UiStyle.MUTED)
 	status.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	line.add_child(status)
 	row.pressed.connect(func() -> void:
@@ -1493,36 +1473,36 @@ func _fill_quest_detail(quest: Dictionary) -> void:
 	var colour := _quest_colour(_quest_kind)
 	_quest_detail.style = _style(UiStyle.PANEL, colour, 3, 28, 24)
 	if quest.is_empty():
-		_quest_detail_column.add_child(_label("Kies een opdracht.", _font_italic, 14, UiStyle.MUTED))
+		_quest_detail_column.add_child(UiStyle.label("Kies een opdracht.", _font_italic, 14, UiStyle.MUTED))
 		return
 	var heading := _hbox(16)
 	_quest_detail_column.add_child(heading)
 	var names := _vbox(6)
 	names.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	heading.add_child(names)
-	names.add_child(_label(_quest_tag(quest), UiStyle.spaced(_font_pixel, 3), 11, colour))
-	var title := _label(str(quest.get("title", "")), _font_title_spaced, 32)
+	names.add_child(UiStyle.label(_quest_tag(quest), UiStyle.spaced(_font_pixel, 3), 11, colour))
+	var title := UiStyle.label(str(quest.get("title", "")), _font_title_spaced, 32)
 	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	names.add_child(title)
 	var giver := str(quest.get("giver", ""))
 	if giver != "":
-		names.add_child(_label("Van %s" % giver, _font_body, 12, UiStyle.MUTED))
+		names.add_child(UiStyle.label("Van %s" % giver, _font_body, 12, UiStyle.MUTED))
 	var distance := str(quest.get("distance", ""))
 	if distance != "":
 		var chip := _box(_style(Color(0, 0, 0, 0), UiStyle.BORDER, 2, 8, 4))
 		chip.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-		chip.add_child(_label(distance, _font_pixel, 11))
+		chip.add_child(UiStyle.label(distance, _font_pixel, 11))
 		heading.add_child(chip)
 	var description := str(quest.get("description", ""))
 	if description != "":
-		var text := _label(description, _font_body, 14, SOFT_TEXT)
+		var text := UiStyle.label(description, _font_body, 14, SOFT_TEXT)
 		text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		text.add_theme_constant_override("line_spacing", 6)
 		_quest_detail_column.add_child(text)
 	var steps: Array = quest.get("steps", [])
 	if not steps.is_empty():
 		var goals := _vbox(8)
-		goals.add_child(_label("DOELEN", UiStyle.spaced(_font_pixel, 2), 11, UiStyle.MUTED))
+		goals.add_child(UiStyle.label("DOELEN", UiStyle.spaced(_font_pixel, 2), 11, UiStyle.MUTED))
 		for step: Dictionary in steps:
 			var done: bool = step.get("done", false)
 			var locked: bool = step.get("locked", false) and not done
@@ -1534,14 +1514,14 @@ func _fill_quest_detail(quest: Dictionary) -> void:
 			check.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			check.add_theme_stylebox_override("panel", UiStyle.box_style(step_colour if done else Color(0, 0, 0, 0), step_colour, 2))
 			row.add_child(check)
-			var step_text := _label(str(step.get("text", "")) + ("  (eerst de stap hiervoor)" if locked else ""), _font_body, 14, step_colour)
+			var step_text := UiStyle.label(str(step.get("text", "")) + ("  (eerst de stap hiervoor)" if locked else ""), _font_body, 14, step_colour)
 			step_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			step_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			row.add_child(step_text)
 			if step.has("progress"):
-				row.add_child(_label(str(step.progress), _font_pixel, 11, step_colour))
+				row.add_child(UiStyle.label(str(step.progress), _font_pixel, 11, step_colour))
 			if int(step.get("xp", 0)) > 0:
-				row.add_child(_label("+%d XP" % int(step.xp), _font_pixel, 11, step_colour if done else XP_TEXT_COLOUR))
+				row.add_child(UiStyle.label("+%d XP" % int(step.xp), _font_pixel, 11, step_colour if done else XP_TEXT_COLOUR))
 			# a step that cannot be done yet: see-through
 			if locked:
 				row.modulate.a = GameHud.LOCKED_STEP_OPACITY
@@ -1552,7 +1532,7 @@ func _fill_quest_detail(quest: Dictionary) -> void:
 	var follow := _box(_style(RAISED if followed else UiStyle.INK, colour if followed else UiStyle.BORDER, 2, 12, 6), 0.0, not followed and not finished)
 	follow.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	var follow_text := "◆ JE VOLGT DEZE OPDRACHT" if followed else ("AFGEROND" if finished else "[ENTER] VOLGEN")
-	follow.add_child(_label(follow_text, _font_pixel, 11, colour if followed else (UiStyle.MUTED if finished else UiStyle.TEXT)))
+	follow.add_child(UiStyle.label(follow_text, _font_pixel, 11, colour if followed else (UiStyle.MUTED if finished else UiStyle.TEXT)))
 	if not followed and not finished:
 		follow.pressed.connect(_track_selected_quest)
 	_quest_detail_column.add_child(follow)
@@ -1568,7 +1548,7 @@ func _fill_quest_detail(quest: Dictionary) -> void:
 		var footer := _box(footer_style)
 		var footer_column := _vbox(8)
 		footer.add_child(footer_column)
-		footer_column.add_child(_label("BELONINGEN", UiStyle.spaced(_font_pixel, 2), 11, UiStyle.MUTED))
+		footer_column.add_child(UiStyle.label("BELONINGEN", UiStyle.spaced(_font_pixel, 2), 11, UiStyle.MUTED))
 		var chips := HFlowContainer.new()
 		chips.add_theme_constant_override("h_separation", 8)
 		chips.add_theme_constant_override("v_separation", 8)
@@ -1582,7 +1562,7 @@ func _fill_quest_detail(quest: Dictionary) -> void:
 			square.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 			square.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			chip_row.add_child(square)
-			chip_row.add_child(_label(str(reward).to_upper(), _font_pixel, 11))
+			chip_row.add_child(UiStyle.label(str(reward).to_upper(), _font_pixel, 11))
 			chip.add_child(chip_row)
 			chips.add_child(chip)
 		footer_column.add_child(chips)
@@ -1623,17 +1603,17 @@ func _build_map_page() -> Control:
 	_map_arrow = PlayerArrow.new()
 	_map_arrow.scale = Vector2(0.8, 0.8)
 	_map_clip.add_child(_map_arrow)
-	_map_waiting = _label("DE KAART WORDT NOG GETEKEND…", _font_pixel, 12, UiStyle.MUTED)
+	_map_waiting = UiStyle.label("DE KAART WORDT NOG GETEKEND…", _font_pixel, 12, UiStyle.MUTED)
 	_map_waiting.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_map_waiting.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_map_clip.add_child(_map_waiting)
 	_map_coordinates_box = _box(_style(UiStyle.TRANSLUCENT_INK, UiStyle.TRANSLUCENT_INK, 0, 8, 4))
-	_map_coordinates = _label("", _font_pixel, 11)
+	_map_coordinates = UiStyle.label("", _font_pixel, 11)
 	_map_coordinates_box.add_child(_map_coordinates)
 	_map_clip.add_child(_map_coordinates_box)
 	_map_north = _box(_style(UiStyle.TRANSLUCENT_INK, UiStyle.BORDER, 2))
 	_map_north.custom_minimum_size = Vector2(36, 36)
-	var north := _label("N", _font_pixel_bold, 14)
+	var north := UiStyle.label("N", _font_pixel_bold, 14)
 	north.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	north.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_map_north.add_child(north)
@@ -1650,42 +1630,42 @@ func _build_map_side() -> Control:
 	column.add_child(_place_box)
 	var place_column := _vbox(10)
 	_place_box.add_child(place_column)
-	_place_kind = _label("", UiStyle.spaced(_font_pixel, 2), 11, PLACE_COLOUR)
+	_place_kind = UiStyle.label("", UiStyle.spaced(_font_pixel, 2), 11, PLACE_COLOUR)
 	place_column.add_child(_place_kind)
-	_place_name = _label("", _font_title, 22)
+	_place_name = UiStyle.label("", _font_title, 22)
 	_place_name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	place_column.add_child(_place_name)
-	_place_wijk = _label("", _font_body, 13, SOFT_TEXT)
+	_place_wijk = UiStyle.label("", _font_body, 13, SOFT_TEXT)
 	_place_wijk.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	place_column.add_child(_place_wijk)
 	var chips := _hbox(8)
 	place_column.add_child(chips)
 	for chip_index in 2:
 		var chip := _box(_style(Color(0, 0, 0, 0), UiStyle.BORDER, 1, 6, 3))
-		var chip_label := _label("", _font_pixel, 11, UiStyle.MUTED)
+		var chip_label := UiStyle.label("", _font_pixel, 11, UiStyle.MUTED)
 		chip.add_child(chip_label)
 		chips.add_child(chip)
 		if chip_index == 0:
 			_place_distance = chip_label
 		else:
 			_place_state = chip_label
-	_place_marker = _label("", _font_pixel, 11, UiStyle.TEXT)
+	_place_marker = UiStyle.label("", _font_pixel, 11, UiStyle.TEXT)
 	place_column.add_child(_place_marker)
 	var here := _box(_style(UiStyle.PANEL, UiStyle.BORDER, 2, 16, 14))
 	column.add_child(here)
 	var here_column := _vbox(6)
 	here.add_child(here_column)
-	here_column.add_child(_label("JE BENT HIER", UiStyle.spaced(_font_pixel, 2), 11, UiStyle.MUTED))
-	_here_wijk = _label("", _font_pixel, 12, UiStyle.SIDE_ACCENT)
+	here_column.add_child(UiStyle.label("JE BENT HIER", UiStyle.spaced(_font_pixel, 2), 11, UiStyle.MUTED))
+	_here_wijk = UiStyle.label("", _font_pixel, 12, UiStyle.SIDE_ACCENT)
 	here_column.add_child(_here_wijk)
-	_here_street = _label("", _font_body, 13)
+	_here_street = UiStyle.label("", _font_body, 13)
 	_here_street.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	here_column.add_child(_here_street)
 	var legend := _box(_style(UiStyle.PANEL, UiStyle.BORDER, 2, 16, 14))
 	column.add_child(legend)
 	var legend_column := _vbox(10)
 	legend.add_child(legend_column)
-	legend_column.add_child(_label("LEGENDA", UiStyle.spaced(_font_pixel, 2), 11, UiStyle.MUTED))
+	legend_column.add_child(UiStyle.label("LEGENDA", UiStyle.spaced(_font_pixel, 2), 11, UiStyle.MUTED))
 	var legend_grid := GridContainer.new()
 	legend_grid.columns = 2
 	legend_grid.add_theme_constant_override("h_separation", 12)
@@ -1731,7 +1711,7 @@ func _legend_entry(marker: Control, text: String) -> Control:
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	marker.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(marker)
-	row.add_child(_label(text, _font_body, 12))
+	row.add_child(UiStyle.label(text, _font_body, 12))
 	return row
 
 

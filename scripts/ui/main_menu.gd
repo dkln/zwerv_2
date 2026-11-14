@@ -648,16 +648,8 @@ func _fit_to_window() -> void:
 
 
 func _load_fonts() -> void:
-	var fallback: Font = load(UiStyle.FONT_FALLBACK)
-	var title := UiStyle.font(UiStyle.FONT_TITLE)
-	_font_title = UiStyle.weighted(title, 700)
-	_font_title_medium = UiStyle.weighted(title, 600)
-	_font_pixel = UiStyle.font(UiStyle.FONT_PIXEL)
-	var body := UiStyle.font(UiStyle.FONT_BODY)
-	_font_body = UiStyle.weighted(body, 400)
-	# the → and arrows the pixel fonts may lack come from JetBrains Mono
-	if body != fallback:
-		var fallbacks: Array[Font] = [body]
-		for font: Font in [title, _font_pixel]:
-			if font != fallback:
-				font.fallbacks = fallbacks
+	var fonts := UiStyle.fonts()
+	_font_title = fonts.title
+	_font_title_medium = fonts.title_medium
+	_font_pixel = fonts.pixel
+	_font_body = fonts.body

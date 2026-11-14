@@ -218,10 +218,10 @@ func _build() -> void:
 	column.add_theme_constant_override("separation", 10)
 	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_panel.add_child(column)
-	_heading = _make_label("", font_pixel, 16, UiStyle.ACCENT)
+	_heading = UiStyle.label("", font_pixel, 16, UiStyle.ACCENT)
 	_heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(_heading)
-	_title = _make_label("", font_title, 22, UiStyle.TEXT)
+	_title = UiStyle.label("", font_title, 22, UiStyle.TEXT)
 	_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	column.add_child(_title)
@@ -242,7 +242,7 @@ func _build() -> void:
 	_item_view.name = "Itembeeld"
 	_item_view.set_anchors_preset(Control.PRESET_FULL_RECT)
 	stage.add_child(_item_view)
-	_big_xp = _make_label("", font_title, 64, XP_COLOUR)
+	_big_xp = UiStyle.label("", font_title, 64, XP_COLOUR)
 	_big_xp.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_big_xp.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_big_xp.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -250,13 +250,13 @@ func _build() -> void:
 	_big_xp.add_theme_constant_override("shadow_offset_x", 4)
 	_big_xp.add_theme_constant_override("shadow_offset_y", 4)
 	stage.add_child(_big_xp)
-	_name = _make_label("", font_title, 30, UiStyle.TEXT)
+	_name = UiStyle.label("", font_title, 30, UiStyle.TEXT)
 	_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(_name)
-	_rarity = _make_label("", font_pixel, 12, UiStyle.MUTED)
+	_rarity = UiStyle.label("", font_pixel, 12, UiStyle.MUTED)
 	_rarity.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(_rarity)
-	_text = _make_label("", font_body, 16, UiStyle.TEXT)
+	_text = UiStyle.label("", font_body, 16, UiStyle.TEXT)
 	_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_text.custom_minimum_size = Vector2(PANEL_SIZE.x - PADDING * 2.0, 0.0)
@@ -270,7 +270,7 @@ func _build() -> void:
 	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	column.add_child(spacer)
-	_footer = _make_label("[ENTER] OK", font_pixel, 13, UiStyle.MUTED)
+	_footer = UiStyle.label("[ENTER] OK", font_pixel, 13, UiStyle.MUTED)
 	_footer.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(_footer)
 
@@ -284,16 +284,5 @@ func _chip(text: String, colour: Color) -> PanelContainer:
 	style.content_margin_bottom = 4
 	chip.add_theme_stylebox_override("panel", style)
 	chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	chip.add_child(_make_label(text, font_pixel, 14, colour))
+	chip.add_child(UiStyle.label(text, font_pixel, 14, colour))
 	return chip
-
-
-func _make_label(text: String, font: Font, font_size: int, colour: Color) -> Label:
-	var label := Label.new()
-	label.text = text
-	if font:
-		label.add_theme_font_override("font", font)
-	label.add_theme_font_size_override("font_size", font_size)
-	label.add_theme_color_override("font_color", colour)
-	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	return label
