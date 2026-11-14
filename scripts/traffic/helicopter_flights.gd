@@ -6,11 +6,15 @@ extends Node3D
 ## the game, then one every EVERY (from .. to) seconds. About LOW_SHARE of the flights are
 ## low passes: it comes in high and dips to LOW_HEIGHT over that spot, then climbs away;
 ## a ray down keeps it at least ROOF_CLEARANCE above whatever roof is under it.
+## Not while the player is inside a building (Interiors.player_inside): the interiors lie far
+## off the map, and it would fly over their roofless rooms; a flight under way then ends at
+## once, and the next comes a while after going out.
 ## Its search light goes on at night
 ## (the Dagcyclus, day_cycle_path).
 ## Placed by tools/build/build_city.gd (_helicopter_flights).
 
 const PoliceHelicopter = preload("res://scripts/vehicles/police_helicopter.gd")
+const Interiors = preload("res://scripts/world/interiors/interiors.gd")
 
 const FIRST_AFTER := 25.0
 const EVERY := Vector2(70.0, 140.0)
@@ -51,6 +55,12 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	_clock += delta
+	if Interiors.player_inside(get_tree()):
+		if not _flight.is_empty():
+			_helicopter.visible = false
+			_flight = {}
+		_next_at = maxf(_next_at, _clock + _random.randf_range(EVERY.x, EVERY.y) * 0.5)
+		return
 	if _flight.is_empty():
 		if _clock >= _next_at:
 			_start_flight()

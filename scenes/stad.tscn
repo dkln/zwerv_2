@@ -14,7 +14,6 @@
 [ext_resource type="Script" path="res://scripts/world/town/ground_map.gd" id="12_iod24"]
 [ext_resource type="Script" path="res://scripts/world/town/overhead_lines.gd" id="13_ra6i0"]
 [ext_resource type="Script" path="res://scripts/world/things/loose_change.gd" id="14_kleingeld"]
-[ext_resource type="Script" path="res://scripts/world/things/backpacks.gd" id="14_rugzakken"]
 [ext_resource type="Script" path="res://scripts/player/player_controller.gd" id="14_speler"]
 [ext_resource type="Script" path="res://scripts/story/story.gd" id="14_verhaal"]
 [ext_resource type="Script" path="res://scripts/effects/vignette.gd" id="15_ew4d3"]
@@ -1193,9 +1192,6 @@ script = ExtResource("14_speler")
 
 [node name="Kleingeld" type="Node3D" parent="." unique_id=1405971322]
 script = ExtResource("14_kleingeld")
-
-[node name="Rugzakken" type="Node3D" parent="." unique_id=479842842]
-script = ExtResource("14_rugzakken")
 
 [node name="Voetgangers" type="Node3D" parent="." unique_id=186196455]
 script = ExtResource("23_voetgangers")

@@ -68,8 +68,10 @@ const ARCHETYPES := {
 		"addiction": "sigaretten",
 		"difficulty": 1,
 		"level": 1,
-		"perk": "Begint met € 25 op het schoteltje.",
-		"start_money": 25,
+		"perk": "Heeft nog een eigen pinpas, met € 25 op de rekening.",
+		"start_money": 0,
+		# her own card (BankCards.give_own_card): the account she kept from the department store
+		"bankpas": {"saldo": 25.0, "pin": "1966", "houder": "S. VERHOEVEN"},
 		"story": "Sjaan zat dertig jaar met haar schoteltje bij de wc's van het warenhuis aan de Grote Marktstraat, tot er een poortje met een pinautomaat kwam. Nu slaapt ze in een portiek in Chinatown, maar haar emmer en haar zeem heeft ze nog. Ze weet waar elke wc van de stad is, en waar de schoonmakers koffie drinken. Even poetsen voor een paar centen? Dat doet ze nog altijd.",
 		"stats": {"gezondheid": 90, "uithoudingsvermogen": 110, "honger": 90},
 	},

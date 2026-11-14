@@ -5,6 +5,10 @@ extends CanvasLayer
 ## going into or out of a building (Interiors) and between the main menu and the character
 ## creation. `covered` fires once the still is up (change what you like then: it is not seen),
 ## `finished` when the edge is through. It runs while the tree is paused too.
+## What is behind it may need longer than SETTLE_FRAMES to be ready (the town round the door
+## you come out of, still loading: Interiors._go_out): set `hold_until` (a Callable -> bool)
+## when `covered` fires, and the edge waits under the still until it is true (at most
+## MAX_HOLD_SECONDS of the clock), then SETTLE_FRAMES more, so the new picture is drawn whole.
 ##   const SwipeTransition = preload("res://scripts/ui/swipe_transition.gd")
 ##   var swipe := SwipeTransition.swipe(get_tree())
 ##   await swipe.covered
@@ -18,6 +22,9 @@ const NODE_NAME := "Swipe"
 ## seconds the edge takes across (slowly, as in the films).
 const SETTLE_FRAMES := 3
 const WIPE_SECONDS := 1.1
+## The longest the edge waits for `hold_until` (seconds of the clock: what it waits for, such as
+## regions loading on a thread, takes clock time, not game time).
+const MAX_HOLD_SECONDS := 5.0
 const LAYER := 128
 
 const SHADER := """shader_type canvas_item;
@@ -34,6 +41,10 @@ void fragment() {
 
 ## True once `covered` has fired.
 var has_covered := false
+## Set when `covered` fires: the edge waits until this is true (see the top).
+var hold_until := Callable()
+## The longest it waits for hold_until (seconds of the clock).
+var max_hold_seconds := MAX_HOLD_SECONDS
 var _still: TextureRect
 var _material: ShaderMaterial
 
@@ -88,6 +99,12 @@ func _run() -> void:
 	covered.emit()
 	for frame_index in SETTLE_FRAMES:
 		await get_tree().process_frame
+	if hold_until.is_valid():
+		var give_up_at := Time.get_ticks_msec() + int(max_hold_seconds * 1000.0)
+		while not bool(hold_until.call()) and Time.get_ticks_msec() < give_up_at:
+			await get_tree().process_frame
+		for frame_index in SETTLE_FRAMES:
+			await get_tree().process_frame
 	var tween := create_tween().set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
 	tween.tween_method(_set_edge, 0.0, 1.0, WIPE_SECONDS).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	await tween.finished

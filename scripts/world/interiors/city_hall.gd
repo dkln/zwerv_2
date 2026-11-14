@@ -15,9 +15,20 @@ extends "res://scripts/world/interiors/interior.gd"
 ## The people (the markers Persoon_<n>: metadata "role", "sit", "seat") are made the first
 ## time you come onto their floor: the receptionists, the guard, the civil servants, the
 ## council and the mayor talk as themselves (data/gesprekken/personeel.json), visitors as the
-## people in the street. Signs (Bord_<n>, metadata "text") in the city's green. At
-## Burgerzaken you take a number at the machine ([E] "Nummertje trekken") and the boards over
-## the counters (Loket_<n>) call the next numbers now and then.
+## people in the street. Signs (Bord_<n>, metadata "text") in the city's green.
+## Burgerzaken works with numbers (the queue, _advance_queue): every visitor waiting there has
+## one; a free counter calls the next (the gong, the number at the top of the screen and a voice
+## over the loudspeakers, its board over the counter, the waiting board on the left wall: the
+## last numbers called and how many wait); who has it gets up, walks to that counter, stands
+## there a while (SERVE_SECONDS) and goes back to a bench, with a new number; only then that
+## counter calls the next. You take a number at the machine ([E] "Nummertje trekken"): a few
+## places on (random: TICKET_GAP; who has the ones between does not come: NO_SHOW_SECONDS),
+## the slip in your pockets (Items "wachtnummer", the number on it: TICKET_META) and a thought
+## saying it. The clerks at the counters only talk to you when your number is called at theirs
+## (talk_gate): before that they send you to the machine or tell you to wait, crosser every
+## time, and it is an offence ("voordringen", data/gesprekken/uitzetten.json: the guard warns
+## you, the third time puts you out); not there within PLAYER_WAIT seconds, the turn is gone
+## (and the slip).
 
 const Layout = preload("res://scripts/world/interiors/city_hall_layout.gd")
 const SwipeTransition = preload("res://scripts/ui/swipe_transition.gd")
@@ -33,8 +44,32 @@ const DOOR_SLIDE := 0.5
 const SIGN_PLATE := Color("#2E7D32")
 const SIGN_INK := Color("#FFFFFF")
 const DISPLAY_INK := Color("#FF6A3A")
-## How often a counter calls the next number (seconds).
-const CALL_EVERY := Vector2(14.0, 30.0)
+## The queue of Burgerzaken (see the top): seconds a visitor stands at the counter, a counter
+## waits for a number nobody comes for, waits for you (your number), and rests before it calls
+## the next; how fast visitors walk (m/s); how far on your number is (from .. to places);
+## how many numbers the waiting board shows. The meta on the player with its number.
+const SERVE_SECONDS := Vector2(8.0, 22.0)
+const NO_SHOW_SECONDS := 5.0
+const PLAYER_WAIT := 45.0
+const CALL_PAUSE := Vector2(2.0, 6.0)
+const VISITOR_PACE := 1.3
+const TICKET_GAP := Vector2i(3, 7)
+const BOARD_LINES := 4
+const TICKET_META := "wachtnummer"
+const TICKET_ITEM := "wachtnummer"
+## The waiting board on the left wall of Burgerzaken (in the floor's space): where its top
+## line is, and the drop from one line to the next.
+const WAITING_BOARD_AT := Vector3(-23.8, 3.2, 3.0)
+const WAITING_BOARD_LINE := 0.42
+const COUNTER_FLOOR := 1
+## What a clerk says, crosser every time, when you come to the counter out of turn: without a
+## number, and with one that is not called yet.
+const CROSS_NO_TICKET := ["Eerst een nummertje trekken, bij de automaat bij de ingang.",
+	"Nee. Eerst een nummertje. Daar, bij de automaat.",
+	"Hoe vaak moet ik het nog zeggen? Een NUMMERTJE. Beveiliging!"]
+const CROSS_NOT_YET := ["U bent nog niet aan de beurt. Let op het bord, dan roepen we u om.",
+	"U bent écht nog niet aan de beurt. Gaat u zitten.",
+	"Nu is het klaar. Ik bel de beveiliging."]
 const NOTICE_HEADING := "— ETAGE %d —"
 ## The lift of the building: reusable, a scene of its own.
 const LIFT_SCENE := "res://scenes/binnen/lift.tscn"
@@ -48,7 +83,18 @@ var _lift: Node3D                    # the lift (LiftRide)
 var _player: Node3D
 var _number_taken := 0
 var _next_number := 41
-var _call_clock := 10.0
+## The queue (Burgerzaken): the numbers handed out, in turn ({"number", "who": a visitor, or
+## "speler", or "" for one who does not come}); the counters ({"number", "board", "stand" (where
+## a visitor stands, global), "clerk", "state", "ticket", "clock"}); the last number given out;
+## the last numbers called (for the waiting board).
+var _queue: Array[Dictionary] = []
+var _counters: Array[Dictionary] = []
+var _last_issued := 40
+var _called: Array[String] = []
+var _waiting_lines: Array[Node3D] = []
+var _talking_at := -1                # the counter whose clerk the player talks to now
+var _cut_in_line := 0                # times the player came to a counter out of turn
+var _sent_away_from: Array[int] = []  # counters whose clerk sent you on ("doorverwezen"): not there again
 var _random := RandomNumberGenerator.new()
 
 
@@ -93,10 +139,13 @@ func dress(bar_name: String, _seed: int) -> void:
 
 func player_came_in(player: Node3D) -> void:
 	_player = player
+	if player.has_signal("talk_ended") and not player.is_connected("talk_ended", _on_talk_ended):
+		player.connect("talk_ended", _on_talk_ended)
 
 
 func player_went_out() -> void:
 	_riding = false
+	_drop_ticket()   # the slip does not go out of the door with you
 
 
 ## Putting the player out (Eviction) waits while the lift rides; on another floor than the
@@ -343,40 +392,307 @@ func doors_open(number: int) -> bool:
 
 # ------------------------------------------------------------------ Burgerzaken
 
-## A number from the machine: it floats up, and the boards will call it in a while.
+## A number from the machine (see the top): a few places on, the slip in the pockets, a thought.
 func _take_number() -> void:
-	_number_taken = _next_number + 3 + _random.randi() % 4
 	var hud := _hud()
-	if hud and hud.has_method("show_floating_number") and _player:
-		hud.show_floating_number(_player.global_position + Vector3.UP * 2.0, "Uw nummer: B %03d" % _number_taken, Color("#FFE9B8"), 15)
+	if _player == null:
+		return
+	_set_up_queue()
+	_drop_ticket()   # a new number: the old one gone (from the pockets and the queue)
+	var gap := _random.randi_range(TICKET_GAP.x, TICKET_GAP.y)
+	for skipped in gap - 1:
+		_queue.append({"number": _issue(), "who": ""})
+	_number_taken = _issue()
+	_queue.append({"number": _number_taken, "who": "speler"})
+	_player.set_meta(TICKET_META, _number_taken)
+	if _player.has_method("add_item"):
+		_player.call("add_item", TICKET_ITEM, 1, true)
 	UiSounds.play(self, "kies", -4.0)
+	if _called.is_empty():
+		_think("Zo, nummertje B %03d. Er is nog niemand omgeroepen. Dat wordt even wachten." % _number_taken)
+	else:
+		_think("Zo, nummertje B %03d. Op het bord staat nu %s. Dat wordt even wachten." % [_number_taken, _called[0].get_slice(" →", 0)])
+	_update_waiting_board()
+	if hud and hud.has_method("show_floating_number"):
+		hud.show_floating_number(_player.global_position + Vector3.UP * 2.0, "B %03d" % _number_taken, Color("#FFE9B8"), 15)
 
 
 func number_taken() -> int:
 	return _number_taken
 
 
-func _process(delta: float) -> void:
-	if current_floor != 1:
+## The number the player holds (0: none).
+func player_ticket() -> int:
+	return int(_player.get_meta(TICKET_META, 0)) if _player else 0
+
+
+func _issue() -> int:
+	_last_issued += 1
+	return _last_issued
+
+
+## The queue made once, when Burgerzaken has its people: every visitor a number (in a random
+## order), every counter its board, its clerk and where who is called stands.
+func _set_up_queue() -> void:
+	if not _counters.is_empty() or _floors.size() <= COUNTER_FLOOR:
 		return
-	_call_clock -= delta
-	if _call_clock > 0.0:
+	_make_people(COUNTER_FLOOR)
+	var floor_node := floor_node(COUNTER_FLOOR)
+	var clerks: Array[InteriorPerson] = []
+	var visitors: Array[InteriorPerson] = []
+	for person in _people:
+		if person.get_parent() != floor_node:
+			continue
+		if person.role == "loketmedewerker":
+			clerks.append(person)
+		elif person.role == "klant":
+			visitors.append(person)
+	var index := 1
+	while floor_node.has_node("Loket_%d" % index):
+		var marker := floor_node.get_node("Loket_%d" % index) as Node3D
+		var clerk: InteriorPerson = null
+		for candidate in clerks:
+			if clerk == null or absf(candidate.position.x - marker.position.x) < absf(clerk.position.x - marker.position.x):
+				clerk = candidate
+		var stand := floor_node.to_global(Vector3(marker.position.x, 0.0, marker.position.z - 0.98))
+		var counter := {"number": index, "board": floor_node.get_node_or_null("Nummerbord_%d" % index), "stand": stand,
+			"clerk": clerk, "state": "vrij", "ticket": {}, "clock": _random.randf_range(1.0, 8.0), "visitor": null}
+		_counters.append(counter)
+		if clerk:
+			clerk.set_meta("talk_gate", _talk_gate.bind(index))
+			clerk.set_meta("talk_consequence", _talk_consequence.bind(index))
+		index += 1
+	visitors.shuffle()
+	for visitor in visitors:
+		_queue.append({"number": _issue(), "who": visitor})
+	_make_waiting_board(floor_node)
+
+
+## The queue moves on (on Burgerzaken only): every counter calls, waits, serves, sends back.
+func _advance_queue(delta: float) -> void:
+	if current_floor != COUNTER_FLOOR:
 		return
-	_call_clock = _random.randf_range(CALL_EVERY.x, CALL_EVERY.y)
-	var boards := floor_node(1).get_children().filter(func(node: Node) -> bool: return node.name.begins_with("Nummerbord_"))
-	if boards.is_empty():
-		return
-	var board: Node3D = boards[_random.randi() % boards.size()]
-	SignBoard.set_text(board, "B %03d" % _next_number)
-	if _number_taken == _next_number:
-		var hud := _hud()
-		if hud and hud.has_method("show_floating_number") and _player:
-			hud.show_floating_number(_player.global_position + Vector3.UP * 2.2,
-				"B %03d: naar loket %s" % [_next_number, String(board.name).trim_prefix("Nummerbord_")], Color("#7CFC9A"), 15)
-	_next_number += 1
+	_set_up_queue()
+	for counter in _counters:
+		var visitor := counter.visitor as InteriorPerson
+		match String(counter.state):
+			"vrij":
+				counter.clock = float(counter.clock) - delta
+				if float(counter.clock) <= 0.0 and not _queue.is_empty():
+					# your number is never called at a counter whose clerk sent you on
+					if _queue[0].who is String and String(_queue[0].who) == "speler" and _sent_away_from.has(int(counter.number)):
+						continue
+					_call_next(counter)
+			"lopen":
+				if not is_instance_valid(visitor):
+					_free_counter(counter)
+					continue
+				walk_evictor(visitor, counter.stand, VISITOR_PACE, delta)
+				var gap := Vector2(visitor.global_position.x - counter.stand.x, visitor.global_position.z - counter.stand.z)
+				if gap.length() < 0.25:
+					evictor_stops(visitor)
+					visitor.global_rotation.y = 0.0   # facing the counter
+					counter.state = "bediend"
+					counter.clock = _random.randf_range(SERVE_SECONDS.x, SERVE_SECONDS.y)
+			"bediend":
+				counter.clock = float(counter.clock) - delta
+				if float(counter.clock) <= 0.0:
+					counter.state = "terug"
+			"terug":
+				if not is_instance_valid(visitor):
+					_free_counter(counter)
+					continue
+				var home: Dictionary = visitor.get_meta(HOME_META, {})
+				var home_at: Vector3 = visitor.get_parent().to_global((home.get("transform", visitor.transform) as Transform3D).origin)
+				walk_evictor(visitor, home_at, VISITOR_PACE, delta)
+				if Vector2(visitor.global_position.x - home_at.x, visitor.global_position.z - home_at.z).length() < 0.3:
+					evictor_done(visitor)
+					_queue.append({"number": _issue(), "who": visitor})   # a new number: waits again
+					_free_counter(counter)
+			"niemand":
+				counter.clock = float(counter.clock) - delta
+				if float(counter.clock) <= 0.0:
+					_free_counter(counter)
+			"speler":
+				counter.clock = float(counter.clock) - delta
+				if float(counter.clock) <= 0.0 and _talking_at != int(counter.number):
+					_player_missed(counter)
+	_update_waiting_board()
+
+
+## Calls the first number of the queue at `counter`: its board, the waiting board, the gong
+## and the voice; who has it comes (a visitor walks there, the player is waited for).
+func _call_next(counter: Dictionary) -> void:
+	var ticket: Dictionary = _queue.pop_front()
+	counter.ticket = ticket
+	var text := "B %03d" % int(ticket.number)
+	if counter.board:
+		SignBoard.set_text(counter.board, text)
+	_called.push_front("%s → %d" % [text, int(counter.number)])
+	_called.resize(mini(_called.size(), BOARD_LINES))
+	_announce(int(ticket.number), int(counter.number))
+	var who: Variant = ticket.who
+	if who is InteriorPerson and is_instance_valid(who):
+		counter.visitor = who
+		counter.state = "lopen"
+	elif who is String and String(who) == "speler":
+		counter.state = "speler"
+		counter.clock = PLAYER_WAIT
+	else:
+		counter.state = "niemand"
+		counter.clock = NO_SHOW_SECONDS
+
+
+func _free_counter(counter: Dictionary) -> void:
+	counter.state = "vrij"
+	counter.ticket = {}
+	counter.visitor = null
+	counter.clock = _random.randf_range(CALL_PAUSE.x, CALL_PAUSE.y)
+
+
+## The gong, the number at the top of the screen, the voice over the loudspeakers.
+func _announce(number: int, counter_number: int) -> void:
 	var audio := get_node_or_null("/root/RuimtelijkGeluid")
-	if audio and audio.has_method("play_event"):
-		audio.play_event(board.global_position, "ov_inchecken")
+	var hud := _hud()
+	if audio and audio.has_method("play_event") and _player:
+		audio.play_event(_player.global_position + Vector3.UP * 3.0, "omroep_gong")
+	if hud and hud.has_method("show_notice"):
+		hud.show_notice("— BURGERZAKEN —", "Nummer B %03d, loket %d" % [number, counter_number], 3.5)
+	var babble: GDScript = load("res://scripts/audio/babble.gd")
+	for word_index in 3:
+		get_tree().create_timer(0.9 + word_index * 0.32).timeout.connect(func() -> void:
+			if is_inside_tree() and current_floor == COUNTER_FLOOR:
+				babble.call("play_near", self, "vrouw", "neutraal"))
+
+
+## Your number called but you did not come in time: the turn and the slip are gone.
+func _player_missed(counter: Dictionary) -> void:
+	_use_ticket()
+	_free_counter(counter)
+	_think("Mijn nummer is al geweest. Gemist. Dan maar een nieuw nummertje trekken.")
+
+
+## The player's number out of the queue and the slip out of the pockets (going out, a new
+## number); a counter waiting for it is free again.
+func _drop_ticket() -> void:
+	if _player == null or not _player.has_meta(TICKET_META):
+		return
+	var number := int(_player.get_meta(TICKET_META))
+	_queue = _queue.filter(func(ticket: Dictionary) -> bool: return not (ticket.who is String and String(ticket.who) == "speler"))
+	for counter in _counters:
+		if String(counter.state) == "speler" and int((counter.ticket as Dictionary).get("number", -1)) == number:
+			_free_counter(counter)
+	_use_ticket()
+
+
+## The slip used (or the turn missed): out of the pockets.
+func _use_ticket() -> void:
+	if _player == null:
+		return
+	_player.remove_meta(TICKET_META)
+	if _player.has_method("drop_item") and int(_player.get("inventory").get(TICKET_ITEM, 0)) > 0:
+		_player.call("drop_item", TICKET_ITEM)
+
+
+## Whether a clerk talks to the player (Conversations through PlayerController.talk_to): only
+## at the counter where the player's number is called now; else what they say instead (pages).
+func _talk_gate(counter_number: int) -> Array:
+	var called_here := false
+	var called_elsewhere := 0
+	for counter in _counters:
+		if String(counter.state) == "speler":
+			if int(counter.number) == counter_number:
+				called_here = true
+			else:
+				called_elsewhere = int(counter.number)
+	if called_here:
+		_talking_at = counter_number
+		return []
+	if called_elsewhere > 0:
+		return [{"kind": "gesprek", "speaker": "AMBTENAAR", "text": "U moet bij loket %d zijn." % called_elsewhere}]
+	# not your turn: the clerk is cross, and doing it again and again is an offence (uitzetten.json
+	# "voordringen": the guard warns you, then puts you out)
+	_cut_in_line += 1
+	var lines: Array = CROSS_NO_TICKET if player_ticket() <= 0 else CROSS_NOT_YET
+	var line: String = lines[mini(_cut_in_line - 1, lines.size() - 1)]
+	var interiors := get_parent()
+	if interiors and interiors.has_method("offence"):
+		interiors.call_deferred("offence", "voordringen")
+	return [{"kind": "gesprek", "speaker": "AMBTENAAR", "text": line, "mood": "boos"}]
+
+
+## What a clerk's answer brings about (Conversations, a node's "gevolg"): "doorverwezen" (this is
+## for a colleague: a new number, and that counter not again; can happen again and again, and
+## when every counter has sent you on the oldest is forgotten).
+func _talk_consequence(gevolg: String, counter_number: int) -> void:
+	if gevolg != "doorverwezen":
+		return
+	if not _sent_away_from.has(counter_number):
+		_sent_away_from.append(counter_number)
+	if _sent_away_from.size() >= _counters.size():
+		_sent_away_from.pop_front()
+
+
+## The counters whose clerk sent the player on (for the checks).
+func sent_away_from() -> Array[int]:
+	return _sent_away_from
+
+
+## The player's conversation with a clerk is over (PlayerController.talk_ended): helped, the
+## slip used, the counter free for the next.
+func _on_talk_ended(_persona: String) -> void:
+	if _talking_at < 0:
+		return
+	for counter in _counters:
+		if int(counter.number) == _talking_at and String(counter.state) == "speler":
+			_use_ticket()
+			_free_counter(counter)
+	_talking_at = -1
+
+
+## The waiting board on the left wall: a heading, the last numbers called (number and counter),
+## and how many wait.
+func _make_waiting_board(floor_node: Node3D) -> void:
+	if not _waiting_lines.is_empty():
+		return
+	for line_index in BOARD_LINES + 2:
+		var heading := line_index == 0
+		var board: Node3D = SignBoard.create("AAN DE BEURT" if heading else "", SIGN_PLATE if heading else Color("#101418"),
+			SIGN_INK if heading else DISPLAY_INK, 0.11, false, 2.2)
+		board.name = "Wachtbord_%d" % line_index
+		board.position = WAITING_BOARD_AT + Vector3(0.0, -line_index * WAITING_BOARD_LINE, 0.0)
+		board.rotation.y = PI * 0.5   # facing into the room (+x)
+		floor_node.add_child(board)
+		_waiting_lines.append(board)
+	_update_waiting_board()
+
+
+func _update_waiting_board() -> void:
+	if _waiting_lines.is_empty():
+		return
+	for line_index in BOARD_LINES:
+		var text := _called[line_index] if line_index < _called.size() else ""
+		SignBoard.set_text(_waiting_lines[line_index + 1], text)
+	SignBoard.set_text(_waiting_lines[BOARD_LINES + 1], "WACHTEND: %d" % _queue.size())
+
+
+## What the waiting board says now (for the checks): its lines top to bottom.
+func waiting_board_lines() -> Array[String]:
+	var lines: Array[String] = []
+	for board in _waiting_lines:
+		var label := board.get_node_or_null("Tekst") as Label3D
+		lines.append(label.text if label else "")
+	return lines
+
+
+func _think(text: String) -> void:
+	var hud := _hud()
+	if hud and hud.has_method("show_story"):
+		hud.show_story([{"kind": "gedachte", "text": text}])
+
+
+func _process(delta: float) -> void:
+	_advance_queue(delta)
 
 
 func _hud() -> Node:

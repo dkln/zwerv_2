@@ -116,6 +116,7 @@ const CANS_ALONE_WITHIN := 160.0
 @export var use_shroud := true
 
 var missions: Array[Dictionary] = []   # the data of every mission, in order
+var _waiting_from_talk: Array[String] = []   # missions a conversation started, once it is over
 var shroud := Shroud.new()
 var _player: Node
 var _hud: Node
@@ -157,6 +158,8 @@ func _ready() -> void:
 	if _player.has_signal("talked"):
 		# done once the conversation is over: its "klaar_paginas" come after it, not under it
 		_player.talk_ended.connect(func(persona: String) -> void: _goal_met.call_deferred("praten_met", {"persoon": persona}))
+		# missions a conversation started (start_from_conversation): once it is over
+		_player.talk_ended.connect(func(_persona: String) -> void: _start_waiting_from_talk.call_deferred())
 	if _player.has_signal("checked"):
 		_player.checked.connect(_on_checked)
 	if _player.has_signal("inventory_changed"):
@@ -169,6 +172,7 @@ func _ready() -> void:
 	if characters and characters.has_signal("arrived"):
 		characters.arrived.connect(func(who: String) -> void: _goal_met("begeleiden", {"persoon": who}))
 		characters.got_past.connect(func(who: String) -> void: _goal_met("werver", {"persoon": who}))
+		characters.chase_near.connect(func(_who: String) -> void: _update_tracker())
 	_apply_unlocks()
 
 
@@ -302,6 +306,26 @@ func _start_missions(trigger: String) -> void:
 			if trigger.begins_with("na:") and not followed and _hud and _hud.has_method("track_quest"):
 				_hud.track_quest(str(data.id))
 				followed = true
+
+
+## A conversation brings about a mission (a node's "gevolg": "missie:<id>", Conversations): it
+## starts once the conversation is over (its pages and notice after it, not under it). A
+## mission meant to start this way has "start": "gesprek" (nothing else starts it).
+func start_from_conversation(mission_id: String) -> void:
+	if mission(mission_id).is_empty():
+		push_warning("verhaal: een gesprek start missie '%s', die bestaat niet" % mission_id)
+		return
+	if not _started.has(mission_id) and not _waiting_from_talk.has(mission_id):
+		_waiting_from_talk.append(mission_id)
+
+
+func _start_waiting_from_talk() -> void:
+	var waiting := _waiting_from_talk.duplicate()
+	_waiting_from_talk.clear()
+	for mission_id: String in waiting:
+		start_mission(mission(mission_id))
+		if _hud and _hud.has_method("track_quest"):
+			_hud.track_quest(mission_id)
 
 
 ## Starts a mission: in the tracker, its first pages (unless `with_pages` is off: they were
@@ -569,22 +593,53 @@ func _meets(data: Dictionary, step: Dictionary, goal: Dictionary, what: Dictiona
 	return false
 
 
-## Marks a step done in the step of a test or a tool (as if its goal was met).
+## Marks a step done in the step of a test or a tool (as if its goal was met), with all that
+## the step opens on the way (_grant_what_it_opens: skipped in debug, the menu, the merchants,
+## the areas are open as if it was played).
 func complete_step(id: String, step_id: String) -> void:
 	var data := mission(id)
 	for step: Dictionary in data.get("stappen", []):
 		if str(step.id) == step_id and not step_done(id, step_id):
+			_grant_what_it_opens(data, step)
 			_complete(data, step)
 
 
-## Finishes a whole mission at once (tests and tools): every step that is not done.
+## Finishes a whole mission at once (tests and tools; the mission jump of debug): every step
+## that is not done, with what each opens (_grant_what_it_opens).
 func complete_mission(id: String) -> void:
 	var data := mission(id)
 	if not _started.has(id):
 		start_mission(data, false)
 	for step: Dictionary in data.get("stappen", []):
 		if not step.get("optioneel", false) and not step_done(id, str(step.id)):
+			_grant_what_it_opens(data, step)
 			_complete(data, step)
+
+
+## Everything `step` opens while it is played, given at once (a step skipped by complete_step
+## or complete_mission: the mission jump of debug): what it unlocks as it begins ("ontgrendelt":
+## the menu, the merchants, begging), the areas it opens ("opent", "opent_tot"), the area grown
+## all the way ("groeit"), and what coming into a building unlocks ("bij_binnenkomst": jumping;
+## its pages then never show). The rest (pages, rewards) as _complete does it.
+func _grant_what_it_opens(data: Dictionary, step: Dictionary) -> void:
+	for what in step.get("ontgrendelt", []):
+		unlock(str(what))
+	var coming_in: Dictionary = step.get("bij_binnenkomst", {})
+	for what in coming_in.get("ontgrendelt", []):
+		unlock(str(what))
+	if not coming_in.is_empty():
+		_flags["binnenkomst:%s" % _key(data, step)] = true
+	var opened := false
+	for area in step.get("opent", []):
+		opened = shroud.open_area(str(area)) or opened
+	var grow: Dictionary = step.get("groeit", {})
+	var grow_to := str(grow.get("tot", step.get("opent_tot", "")))
+	if grow_to != "":
+		var target := _grow_target(grow_to, 0)
+		if target != Vector2.INF and shroud.set_start_radius(shroud.radius_to(target)):
+			opened = true
+	if opened:
+		shroud_changed.emit()
 
 
 func _complete(data: Dictionary, step: Dictionary) -> void:
@@ -1086,7 +1141,8 @@ func _step_text(data: Dictionary, step: Dictionary) -> String:
 
 
 ## The mission as the tracker and the quest log have it (GameHud.set_quests). A step
-## "verborgen_tot_open" is left out until it can be done (or is done): not even locked.
+## "verborgen_tot_open" is left out until it can be done (or is done): not even locked; one
+## that sends someone after you ("achtervolgen") until they are near you (_chasers_near).
 ## Every step keeps its "index" in the mission (the XP given for it, _award_xp).
 func _quest(data: Dictionary) -> Dictionary:
 	var id := str(data.id)
@@ -1099,7 +1155,7 @@ func _quest(data: Dictionary) -> Dictionary:
 		var step: Dictionary = all_steps[index]
 		var done := step_done(id, str(step.id))
 		var can_do := open.has(step)
-		if step.get("verborgen_tot_open", false) and not done and not can_do:
+		if step.get("verborgen_tot_open", false) and not done and (not can_do or not _chasers_near(step)):
 			hidden_left += 1
 			continue
 		steps.append({"text": _fill(_step_text(data, step), data, step), "done": done,
@@ -1115,6 +1171,16 @@ func _quest(data: Dictionary) -> Dictionary:
 		"xp": int(data.get("xp", 0)), "label": str(data.get("label", "")), "title": str(data.get("titel", "")),
 		"distance": "", "giver": str(data.get("gever", "")), "description": str(data.get("beschrijving", "")),
 		"rewards": rewards, "steps": steps, "hidden_left": hidden_left, "done": is_finished(id)}
+
+
+## Whether those a step sends after you ("achtervolgen") have come near you (always true for a
+## step without them).
+func _chasers_near(step: Dictionary) -> bool:
+	var who := str(step.get("achtervolgen", {}).get("persoon", ""))
+	if who == "":
+		return true
+	var characters := get_node_or_null(characters_path)
+	return characters == null or not characters.has_method("is_chase_near") or bool(characters.is_chase_near(who))
 
 
 ## Gives the XP of every step done and every quest done (all its steps) that has not had it.

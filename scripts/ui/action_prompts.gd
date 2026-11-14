@@ -10,6 +10,7 @@ extends VBoxContainer
 ##   prompts.set_actions([["SPATIE", "Overslaan"], ["ENTER", "Sneller"]])
 
 const UiStyle = preload("res://scripts/ui/ui_style.gd")
+const PadInput = preload("res://scripts/ui/pad_input.gd")
 ## Pixels between the panels, and between a key cap and its text.
 const PANEL_GAP := 8
 const KEY_GAP := 10
@@ -83,7 +84,8 @@ static func _panel(key_text: String, action_text: String) -> PanelContainer:
 	return panel
 
 
-## A key cap: the key's name in ink on a light cap with a hard shadow under it.
+## A key cap: the key's name in ink on a light cap with a hard shadow under it (the
+## controller's button instead while it is used: PadInput.label).
 static func _key_cap(key_text: String) -> PanelContainer:
 	var key := PanelContainer.new()
 	var key_style := UiStyle.box_style(UiStyle.TEXT, UiStyle.TEXT, 0)
@@ -97,7 +99,7 @@ static func _key_cap(key_text: String) -> PanelContainer:
 	key.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	key.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	var key_label := Label.new()
-	key_label.text = key_text
+	key_label.text = PadInput.label(key_text)
 	key_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	key_label.add_theme_font_override("font", UiStyle.font(UiStyle.FONT_PIXEL_BOLD))
 	key_label.add_theme_font_size_override("font_size", 14)

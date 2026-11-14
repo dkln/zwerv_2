@@ -4,6 +4,7 @@ extends RefCounted
 ## again from its text, as a player would, for many cards of every kind of riddle).
 
 const BankCards = preload("res://scripts/player/bank_cards.gd")
+const PlayerCharacter = preload("res://scripts/player/player_character.gd")
 const CARDS_TRIED := 400
 
 
@@ -72,3 +73,18 @@ func test_riddles_come_in_several_kinds(test) -> void:
 	for card: Dictionary in _cards():
 		kinds[String(card.raadsel).substr(0, 6)] = true
 	test.check(kinds.size() >= 3, "verschillende soorten raadsels (%d)" % kinds.size())
+
+
+## Sjaan has her own card from the start (her archetype's "bankpas"): € 25 on her own account,
+## the PIN known by heart on its back, and no cash.
+func test_sjaan_has_her_own_card(test) -> void:
+	var sjaan: Dictionary = PlayerCharacter.ARCHETYPES["sjaan"]
+	test.check(sjaan.has("bankpas") and is_equal_approx(float(sjaan.bankpas.saldo), 25.0), "Sjaan: € 25 op haar rekening")
+	test.check(float(sjaan.get("start_money", 0)) == 0.0, "en geen contant geld")
+	var player := PlayerController.new()
+	test.check(BankCards.give_own_card(player, sjaan.bankpas), "haar pas in de zakken")
+	var card: Dictionary = BankCards.cards_of(player)[0]
+	test.check(bool(card.get("eigen", false)) and String(card.raadsel).contains(String(sjaan.bankpas.pin)), "eigen pas, de pincode weet ze (%s)" % card.raadsel)
+	test.check(int(player.inventory.get(BankCards.ITEM, 0)) == 1, "een pinpas in de inventaris")
+	test.check(BankCards.withdraw(player, card, 20.0) and is_equal_approx(player.money, 20.0), "pinnen van haar eigen rekening")
+	player.free()

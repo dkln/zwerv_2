@@ -666,11 +666,6 @@ func _car(root: Node3D) -> void:
 	loose_change.set_script(load("res://scripts/world/things/loose_change.gd"))
 	root.add_child(loose_change)
 	loose_change.owner = root
-	var backpacks := Node3D.new()
-	backpacks.name = "Rugzakken"   # rucksacks to pick up, more room (scripts/world/things/backpacks.gd)
-	backpacks.set_script(load("res://scripts/world/things/backpacks.gd"))
-	root.add_child(backpacks)
-	backpacks.owner = root
 	var pedestrians := Node3D.new()
 	pedestrians.name = "Voetgangers"   # people walking the pavements (scripts/world/people/pedestrians.gd)
 	pedestrians.set_script(load("res://scripts/world/people/pedestrians.gd"))

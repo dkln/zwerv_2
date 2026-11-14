@@ -13,9 +13,15 @@ extends CanvasLayer
 ## key; hotspot_pressed). The camera comes in close on the part you use (machine_parts
 ## "focus"). A key pressed lights up at its keypad (press_feedback); what comes out (the bon,
 ## the money, the card: show_tray) slides out of its slot as a little thing of its own, and
-## is listed in the panel on the left, under it what you carry (pocket_lines) and the keys. In the pixel look of
+## is listed in the one small panel bottom left (INFO_*), under it what you carry (pocket_lines); the
+## keys along the bottom. In the pixel look of
 ## the HUD (UiStyle: hard panels, the pixel fonts, the CRT over it). The game is paused
 ## meanwhile (the scene keeps moving). Esc leaves (cancel), then the swipe back and `finished`.
+## Without a mouse (a controller, the Steam Deck): a cursor over everything you can use, the
+## buttons on its screen and its parts (hotspots): the arrows, WASD, the D-pad or the left stick
+## move it to the nearest one that way (in the plane of the machine's front), A (ui_accept,
+## also Enter and Space once the cursor shows) uses it, B (ui_cancel) leaves. The button under
+## it gets its hover look, a part a frame round it (_cursor_frame). The mouse hides it again.
 ## The machines: DepositMachineScreen (statiegeld, the supermarkets), OvMachineScreen
 ## (OV-chipkaart, Den Haag Centraal and tram stops), CashMachineScreen (the cash machines in
 ## the town); their sounds are MachineSounds.
@@ -39,8 +45,13 @@ const NODE_NAME := "Automaatscherm"
 const DISPLAY_SHADER := preload("res://scripts/ui/machines/machine_display.gdshader")
 const DESIGN_SIZE := Vector2(1280, 720)
 const LAYER := 90
-const TRAY_RECT := Rect2(40, 40, 300, 330)
-const POCKETS_RECT := Rect2(40, 390, 300, 270)
+## The one panel bottom left: what came out of the machine (only once something did) over what
+## you carry. Its width, its distance from the left and the bottom (over the key hints), and
+## the font sizes of its lines and headings; it grows upwards with what is in it.
+const INFO_WIDTH := 260.0
+const INFO_MARGIN := Vector2(32, 44)
+const INFO_LINE_SIZE := 13
+const INFO_HEADING_SIZE := 11
 const CONTROLS_RECT := Rect2(920, 40, 320, 620)
 const GLASS := Color("#0A1410")
 ## The scene (metres, the machine's front at its origin facing +z): where you stand before it
@@ -102,6 +113,10 @@ var backdrop := "straat"
 var font_title: Font
 var font_pixel: Font
 var font_body: Font
+## The font of the machine's screen, its buttons and the headings: Pixelify Sans, a pixel font
+## with lower case that reads well at any size (Silkscreen, all capitals on an 8 px grid, was
+## hard to read on the screen at the sizes it needs).
+var font_screen: Font
 var _root: Control
 var _stage: SubViewport                # the 3D scene
 var _camera: Camera3D
@@ -124,12 +139,22 @@ var screen_controls_width := SCREEN_CONTROLS_WIDTH
 var _display_holder: Node3D
 var _display_mesh: MeshInstance3D
 var _tray: VBoxContainer
+var _tray_section: VBoxContainer          # the tray and its heading, hidden while empty
+var _info_rule: Control                   # the line between the tray and the pockets
 var _tray_title: Label
 var _pockets: VBoxContainer
 var _keys_label: Label
 var _was_paused := false
 var _closing := false
 var _busy := false
+## The cursor (see the top): what it is on ({"button": Button} or {"hotspot": name}; empty =
+## not shown), its spot in the plane of the machine's front (metres) to find the next one from,
+## the frame round a part under it, and the button that has its hover look now.
+var _cursor := {}
+var _cursor_at := Vector2.ZERO
+var _cursor_frame: Panel
+var _cursor_lit: Button
+const PadInput = preload("res://scripts/ui/pad_input.gd")
 var _crt_layer: CanvasLayer
 
 
@@ -160,6 +185,7 @@ func _ready() -> void:
 	font_body = UiStyle.weighted(body, 400)
 	font_pixel = UiStyle.font(UiStyle.FONT_PIXEL)
 	font_title = UiStyle.weighted(UiStyle.font(UiStyle.FONT_TITLE), 700)
+	font_screen = UiStyle.font(UiStyle.FONT_TITLE)
 	if body is FontFile:
 		var fallbacks: Array[Font] = [body]
 		for font: Font in [font_pixel]:
@@ -266,6 +292,11 @@ func key_hints() -> String:
 	return "[ESC] WEG"
 
 
+## The hints along the bottom with a controller connected (the cursor: see the top).
+func pad_hints() -> String:
+	return "[D-PAD] KIES   [A] GEBRUIK   [B] WEG"
+
+
 func show_display(title: String, lines: Array, colour := Color(0, 0, 0, 0)) -> void:
 	if _display_title == null:
 		return
@@ -285,7 +316,9 @@ func show_tray(title: String, lines: Array, colour := UiStyle.TEXT) -> void:
 	_slide_out(colour if title != "" else Color(0, 0, 0, 0))
 	_tray_title.text = title
 	for line: String in lines:
-		_tray.add_child(label(line, font_body, 15, colour))
+		_tray.add_child(label(line, font_body, INFO_LINE_SIZE, colour))
+	_tray_section.visible = title != "" or not lines.is_empty()
+	_info_rule.visible = _tray_section.visible
 	if animate:
 		_tray.modulate.a = 0.0
 		_tray.position.y = -40.0
@@ -303,10 +336,10 @@ func refresh_pockets() -> void:
 		return
 	for child in _pockets.get_children():
 		child.queue_free()
-	_pockets.add_child(label("JE ZAKKEN", font_pixel, 14, UiStyle.ACCENT))
+	_pockets.add_child(label("Je zakken", font_title, INFO_HEADING_SIZE + 3, UiStyle.ACCENT))
 	for line: Array in pocket_lines():
-		_pockets.add_child(label(String(line[0]), font_body, 15, line[1]))
-	_keys_label.text = key_hints()
+		_pockets.add_child(label(String(line[0]), font_body, INFO_LINE_SIZE, line[1]))
+	_keys_label.text = key_hints() if Input.get_connected_joypads().is_empty() else pad_hints()
 
 
 ## Waits `seconds` (not in the checks).
@@ -336,8 +369,8 @@ func button(text: String, action: Callable, wide := 0.0, colour := Color(0, 0, 0
 	made.text = text
 	made.focus_mode = Control.FOCUS_NONE
 	made.custom_minimum_size = Vector2(wide, 40)
-	made.add_theme_font_override("font", font_pixel)
-	made.add_theme_font_size_override("font_size", 14)
+	made.add_theme_font_override("font", font_screen)
+	made.add_theme_font_size_override("font_size", 16)
 	var face := colour if colour.a > 0.0 else body_colour.darkened(0.35)
 	for state in ["normal", "pressed", "hover", "focus", "disabled"]:
 		var style := UiStyle.box_style(face.lightened(0.15) if state == "hover" else face,
@@ -380,7 +413,12 @@ func _input(event: InputEvent) -> void:
 	if not visible or _closing:
 		return
 	if event is InputEventMouse:
+		if event is InputEventMouseMotion and not _cursor.is_empty():
+			_show_cursor({})   # the mouse takes over
 		_mouse(event as InputEventMouse)
+		return
+	if _cursor_input(event):
+		get_viewport().set_input_as_handled()
 		return
 	if event is InputEventKey:
 		get_viewport().set_input_as_handled()
@@ -391,6 +429,171 @@ func _input(event: InputEvent) -> void:
 			cancel()
 		elif _key(key_event.physical_keycode):
 			press_feedback()
+
+
+## The cursor's share of the input (see the top): true when it used `event`.
+func _cursor_input(event: InputEvent) -> bool:
+	var direction := PadInput.direction(event)
+	if direction != Vector2.ZERO:
+		if not _busy:
+			move_cursor(direction)
+		return true
+	var from_pad := PadInput.is_pad(event)
+	if PadInput.is_accept(event) and (from_pad or not _cursor.is_empty()):
+		if not _busy:
+			use_cursor()
+		return true
+	if from_pad and PadInput.is_back(event):
+		if not _busy:
+			cancel()
+		return true
+	return false
+
+
+## What the cursor can be on now: every button on the screen that shows and can be pressed,
+## and every part (hotspot); each with its spot in the plane of the machine's front (metres,
+## y up), to go from one to the next.
+func cursor_targets() -> Array[Dictionary]:
+	var targets: Array[Dictionary] = []
+	var screen: Rect2 = _parts.get("screen", Rect2(-0.25, 1.0, 0.5, 0.32))
+	var picture_size := Vector2(_display_viewport.size) if _display_viewport else Vector2.ONE
+	for found in (_controls.find_children("*", "Button", true, false) if _controls else []):
+		var button_found := found as Button
+		if not button_found.is_visible_in_tree() or button_found.disabled:
+			continue
+		var uv := button_found.get_global_rect().get_center() / picture_size
+		targets.append({"button": button_found,
+			"at": Vector2(screen.position.x + uv.x * screen.size.x, screen.position.y + screen.size.y - uv.y * screen.size.y)})
+	for hotspot: Dictionary in _parts.get("hotspots", []):
+		targets.append({"hotspot": String(hotspot.name), "at": (hotspot.rect as Rect2).get_center()})
+	return targets
+
+
+## The cursor to the nearest target that way (`direction` as on the screen: Vector2.DOWN is
+## down); the first time onto the first one (the top button, else the first part).
+func move_cursor(direction: Vector2) -> void:
+	var targets := cursor_targets()
+	if targets.is_empty():
+		return
+	if not _cursor_is_valid(targets):
+		_show_cursor(targets[0])
+		return
+	var way := Vector2(direction.x, -direction.y)   # the plane of the front has y up
+	var best := {}
+	var best_score := INF
+	for target in targets:
+		var offset: Vector2 = (target.at as Vector2) - _cursor_at
+		var along := offset.dot(way)
+		if along <= 0.001:
+			continue
+		# straight on counts more than to the side
+		var score := along + 2.0 * absf(offset.dot(Vector2(-way.y, way.x)))
+		if score < best_score:
+			best_score = score
+			best = target
+	if not best.is_empty():
+		_show_cursor(best)
+		sound("toets", -6.0)
+
+
+## Uses what the cursor is on: the button pressed, or the part (as a click on it).
+func use_cursor() -> void:
+	var targets := cursor_targets()
+	if not _cursor_is_valid(targets):
+		move_cursor(Vector2.DOWN)
+		return
+	if _cursor.has("button"):
+		(_cursor.button as Button).pressed.emit()
+	elif _cursor.has("hotspot"):
+		press_feedback()
+		hotspot_pressed(String(_cursor.hotspot))
+
+
+## What the cursor is on (for the checks): the button's text or the part's name, "" when hidden.
+func cursor_label() -> String:
+	if _cursor.has("button") and is_instance_valid(_cursor.button):
+		return (_cursor.button as Button).text
+	return String(_cursor.get("hotspot", ""))
+
+
+func _cursor_is_valid(targets: Array[Dictionary]) -> bool:
+	if _cursor.is_empty():
+		return false
+	for target in targets:
+		if (target.has("button") and _cursor.has("button") and target.button == _cursor.button) \
+				or (target.has("hotspot") and String(target.hotspot) == String(_cursor.get("hotspot", ""))):
+			_cursor_at = target.at
+			return true
+	return false
+
+
+## Shows the cursor on `target` (empty: hidden): a button gets its hover look, a part the frame.
+func _show_cursor(target: Dictionary) -> void:
+	if is_instance_valid(_cursor_lit):
+		_cursor_lit.remove_theme_stylebox_override("normal")
+		_cursor_lit.add_theme_stylebox_override("normal", _cursor_lit.get_meta("normal_style"))
+	_cursor_lit = null
+	_cursor = target
+	if _cursor_frame:
+		_cursor_frame.visible = false
+	if target.is_empty():
+		return
+	_cursor_at = target.at
+	if target.has("button"):
+		var lit := target.button as Button
+		if not lit.has_meta("normal_style"):
+			lit.set_meta("normal_style", lit.get_theme_stylebox("normal"))
+		lit.add_theme_stylebox_override("normal", lit.get_theme_stylebox("hover"))
+		_cursor_lit = lit
+	else:
+		_frame_hotspot(String(target.hotspot))
+
+
+## The frame round the part `hotspot_name`, where it is in the window (its corners projected).
+func _frame_hotspot(hotspot_name: String) -> void:
+	if _camera == null or _display_holder == null:
+		return
+	for hotspot: Dictionary in _parts.get("hotspots", []):
+		if String(hotspot.name) != hotspot_name:
+			continue
+		var rect: Rect2 = hotspot.rect
+		var front := float(_parts.get("front", 0.25))
+		var corners: Array[Vector2] = []
+		for corner in [rect.position, rect.end, Vector2(rect.position.x, rect.end.y), Vector2(rect.end.x, rect.position.y)]:
+			corners.append(_camera.unproject_position(_display_holder.global_position + Vector3(corner.x, corner.y, front)))
+		var window_rect := Rect2(corners[0], Vector2.ZERO)
+		for corner in corners:
+			window_rect = window_rect.expand(corner)
+		if _cursor_frame == null:
+			_cursor_frame = Panel.new()
+			_cursor_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			var style := StyleBoxFlat.new()
+			style.draw_center = false
+			style.border_color = trim_colour
+			style.set_border_width_all(4)
+			_cursor_frame.add_theme_stylebox_override("panel", style)
+			_root.add_child(_cursor_frame)
+		_cursor_frame.position = window_rect.position - Vector2(6, 6)
+		_cursor_frame.size = window_rect.size + Vector2(12, 12)
+		_cursor_frame.visible = true
+
+
+func _process(_delta: float) -> void:
+	# the buttons change (another page of choices): the cursor stays on what is still there,
+	# else goes to the nearest; a part's frame follows the camera sliding in
+	if _cursor.is_empty() or not visible:
+		return
+	var targets := cursor_targets()
+	if targets.is_empty():
+		_show_cursor({})
+	elif not _cursor_is_valid(targets):
+		var nearest: Dictionary = targets[0]
+		for target in targets:
+			if (target.at as Vector2).distance_to(_cursor_at) < (nearest.at as Vector2).distance_to(_cursor_at):
+				nearest = target
+		_show_cursor(nearest)
+	elif _cursor.has("hotspot"):
+		_frame_hotspot(String(_cursor.hotspot))
 
 
 ## The mouse over the machine: on its screen the event goes into the screen's picture (its
@@ -484,15 +687,12 @@ func _build() -> void:
 	add_child(_root)
 	_build_display()
 	_build_stage()
-	# the tray and your pockets on the left; the buttons of the machine are on its screen
-	_tray = _side_panel(TRAY_RECT, "UIT DE AUTOMAAT" + ("  ·  " + place_name if place_name != "" else ""))
-	_tray_title = label("", font_pixel, 16, UiStyle.ACCENT)
-	_tray.add_child(_tray_title)
-	_pockets = _side_panel(POCKETS_RECT, "")
+	# the tray and your pockets in one panel bottom left; the buttons of the machine are on its screen
+	_build_info_panel()
 	build_controls(_controls)
 	_controls.visible = _controls.get_child_count() > 0
 	_style_screen_buttons(_controls)
-	_keys_label = label("", font_pixel, 11, UiStyle.TEXT)
+	_keys_label = label("", font_screen, 15, UiStyle.TEXT)
 	_keys_label.position = Vector2(0, DESIGN_SIZE.y - 32)
 	_keys_label.size = Vector2(DESIGN_SIZE.x, 24)
 	_keys_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -518,7 +718,7 @@ func _build_display() -> void:
 	_display_viewport.size = Vector2i(DISPLAY_WIDTH, maxi(roundi(DISPLAY_WIDTH * screen.size.y / maxf(screen.size.x, 0.01)), 180))
 	_display_viewport.disable_3d = true
 	_display_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
-	_display_viewport.canvas_item_default_texture_filter = Viewport.DEFAULT_CANVAS_ITEM_TEXTURE_FILTER_NEAREST
+	_display_viewport.canvas_item_default_texture_filter = Viewport.DEFAULT_CANVAS_ITEM_TEXTURE_FILTER_LINEAR
 	_root.add_child(_display_viewport)
 	var glass := PanelContainer.new()
 	var glass_style := UiStyle.box_style(GLASS, Color("#1A1C22"), 6)
@@ -532,8 +732,8 @@ func _build_display() -> void:
 	_display_viewport.add_child(glass)
 	var glass_column := VBoxContainer.new()
 	glass_column.add_theme_constant_override("separation", 10)
-	_display_title = label("", font_pixel, display_title_size, screen_colour)
-	_display_text = label("", font_pixel, display_text_size, screen_colour)
+	_display_title = label("", font_title, display_title_size, screen_colour)
+	_display_text = label("", font_screen, display_text_size, screen_colour)
 	glass_column.add_child(_display_title)
 	# the text, and on a touch screen the column of its buttons beside it
 	var body := HBoxContainer.new()
@@ -745,7 +945,6 @@ func _make_stand_in() -> void:
 	model.name = "Speler"
 	model.archetype_id = PlayerCharacter.current_id()
 	model.figure_scale = float(player.get("FIGURE_SCALE")) if player and player.get("FIGURE_SCALE") != null else 0.78
-	model.backpack = bool(player.get("has_backpack")) if player and player.get("has_backpack") != null else false
 	model.coat = player.wears_coat() if player and player.has_method("wears_coat") else true
 	model.idle = true
 	_stage.add_child(model)
@@ -820,27 +1019,50 @@ func stage_parts() -> Dictionary:
 		"display": _display_viewport}
 
 
-func _side_panel(rect: Rect2, heading: String) -> VBoxContainer:
+## The one panel bottom left (INFO_*): the tray (its heading with the place, the title and lines
+## of what came out: show_tray; hidden while empty), a line, and your pockets (refresh_pockets).
+func _build_info_panel() -> void:
 	var panel := PanelContainer.new()
+	panel.name = "Info"
 	var style := UiStyle.box_style(UiStyle.PANEL, UiStyle.BORDER, 3)
-	style.content_margin_left = 16
-	style.content_margin_right = 16
-	style.content_margin_top = 14
-	style.content_margin_bottom = 14
+	style.content_margin_left = 14
+	style.content_margin_right = 14
+	style.content_margin_top = 12
+	style.content_margin_bottom = 12
 	style.shadow_color = Color.BLACK
 	style.shadow_offset = Vector2(UiStyle.SHADOW_OFFSET, UiStyle.SHADOW_OFFSET)
 	panel.add_theme_stylebox_override("panel", style)
-	panel.position = rect.position
-	panel.size = rect.size
-	panel.custom_minimum_size = rect.size
+	# anchored to the bottom left, growing upwards with what is in it
+	panel.anchor_top = 1.0
+	panel.anchor_bottom = 1.0
+	panel.offset_left = INFO_MARGIN.x
+	panel.offset_right = INFO_MARGIN.x + INFO_WIDTH
+	panel.offset_top = -INFO_MARGIN.y
+	panel.offset_bottom = -INFO_MARGIN.y
+	panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	panel.clip_contents = true
 	_root.add_child(panel)
 	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 6)
+	column.add_theme_constant_override("separation", 8)
 	panel.add_child(column)
-	if heading != "":
-		column.add_child(label(heading, font_pixel, 11, UiStyle.MUTED))
-	var contents := VBoxContainer.new()
-	contents.add_theme_constant_override("separation", 6)
-	column.add_child(contents)
-	return contents
+	_tray_section = VBoxContainer.new()
+	_tray_section.add_theme_constant_override("separation", 4)
+	column.add_child(_tray_section)
+	var heading := label("Uit de automaat" + ("  ·  " + place_name if place_name != "" else ""), font_screen, INFO_HEADING_SIZE + 2, UiStyle.MUTED)
+	heading.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_tray_section.add_child(heading)
+	_tray = VBoxContainer.new()
+	_tray.add_theme_constant_override("separation", 4)
+	_tray_section.add_child(_tray)
+	_tray_title = label("", font_title, INFO_HEADING_SIZE + 4, UiStyle.ACCENT)
+	_tray.add_child(_tray_title)
+	_tray_section.visible = false
+	var rule := ColorRect.new()
+	rule.color = UiStyle.BORDER
+	rule.custom_minimum_size = Vector2(0, 2)
+	rule.visible = false
+	column.add_child(rule)
+	_info_rule = rule
+	_pockets = VBoxContainer.new()
+	_pockets.add_theme_constant_override("separation", 4)
+	column.add_child(_pockets)

@@ -63,7 +63,7 @@ Wat een stap verder kan (het meeste gebeurt zodra de stap begint):
 | `blikjes_buiten`, `blikjes_station` | bij een stap met `"plekken": {"soort": "blikjes"}`: precies zoveel blikjes in de prullenbakken rond de start (de andere daar leeg, en niets bijgevuld zolang de stap loopt), de rest (hoogstens 2) in Den Haag Centraal, achter de poortjes: elk in een eigen prullenbak op een perron (de tweede bij voorkeur op een ander perron); als de blikjes buiten op zijn, wijst het kaartje buiten naar de ingang van Centraal en binnen naar de blikjes zelf |
 | `tussen_paginas` | `[{"bij": 3, "paginas": [...]}]`: pagina's zodra je er zoveel van het doel hebt (eenmalig) |
 | `bij_binnenkomst` | `{"binnen": "centraal", "vanaf": 4, "ontgrendelt": ["springen"], "paginas": [...]}`: pagina's (bv. de verteller) zodra je tijdens de stap een binnenruimte van die soort binnenkomt (`centraal`, `snackbar`, `derrek`, `alfred_steyhn`, `stadhuis`) met minstens `vanaf` van het doel op zak; eenmalig per spel, en wat `ontgrendelt` gaat dan open. Missie 1: in het station de twee blikjes op de perrons, een manier verzinnen om erop te komen, de conducteurs (€ 50 boete; niet betalen = eruit gezet, en `terug_na` seconden niet meer naar binnen) |
-| `eerste_scherm` | `{"kop": "GEVONDEN", "titel": "Je eerste blikje"}`: het eerste item van het doel dat je oppakt (uit een prullenbak, in het station) komt in het **beloningsscherm** in plaats van als tekstje boven je hoofd; eenmalig per spel (onthouden in de save), de volgende krijgen weer het tekstje |
+| `eerste_scherm` | `{"kop": "GEVONDEN", "titel": "Je eerste blikje"}`: het eerste item van het doel dat je krijgt (oppakt uit een prullenbak of in het station, of koopt: de eerste kroket) komt in het **beloningsscherm** in plaats van als tekstje boven je hoofd; eenmalig per spel (onthouden in de save), de volgende krijgen weer het tekstje |
 | `storing` | `{"tekst": "TIJDELIJK BUITEN GEBRUIK", "paginas": [...]}`: de eerste statiegeldautomaat die je probeert is stuk; de stap toont dan `tekst_storing`, wijst naar een andere supermarkt en het gebied groeit tot daar. Met `"persoon": "bertus"` (een personage met `zwerft`) komt dat personage op dat moment de stad in en blijft daar voorgoed rondlopen; het kaartje wijst (en volgt) hem in plaats van een andere supermarkt, en het gebied groeit niet. Missie 1: Blikken Bertus koopt je blikjes, voor minder dan de automaat |
 | `gesprekken` | welk gesprek een personage nu heeft: `{"ome_wim": "rondje"}` |
 
@@ -202,8 +202,9 @@ gaan: met `"kans": 100` en `"verborgen": true` (geen `[LABEL 100%]` ervoor, geen
 het gewoon het goede antwoord; zijn `gelukt` is hun laatste woord.
 
 Een stap kan iemand **achter je aan sturen**: `"achtervolgen": {"persoon": "telefoonverkoper",
-"groep": ["telefoonverkoper_kevin", ...]}`. Een paar seconden later verschijnen ze achter je, lopen
-op je af, blijven je volgen en de `persoon` begint zelf het gesprek (na afloop opnieuw);
+"groep": ["telefoonverkoper_kevin", ...]}`. Een paar seconden later verschijnen ze een meter of
+tien achter je (met `verborgen_tot_open` staat de stap pas in de takenlijst als ze binnen zes meter
+zijn), lopen op je af, blijven je volgen en de `persoon` begint zelf het gesprek (na afloop opnieuw);
 `eerst_paginas` (zoals `klaar_paginas`) komen één keer vlak daarvoor, bv. de verteller die je waarschuwt. Is de
 stap klaar (doel `check` met het id van die verborgen check), dan lopen ze weg.
 

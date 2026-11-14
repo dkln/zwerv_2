@@ -33,6 +33,10 @@ extends RefCounted
 ## A topic ("onderwerp") is a little tree: after its "antwoord" you can ask its "doorvraag"
 ## (answered by "doorantwoord") and/or one of its "verder" (each {"vraag", "antwoord",
 ## "stemming", "verder"}, as deep as you like); lines may be a list, one is picked at random.
+## A node may have a "gevolg" (what its answer brings about, _consequence): "missie:<id>" starts
+## that mission (a task, a side quest: Story.start_from_conversation, after the conversation);
+## anything else is handed to the person's meta "talk_consequence" ("doorverwezen" at a counter
+## of the city hall: a new number and another clerk).
 ## A node may hold a "beloning" (_reward_for): now and then they give you something that fits
 ## what they just said (a sandwich, a can, food; very rarely a bank card they found), with
 ## some experience (its "xp", else REWARD_XP); shown in the reward screen once the
@@ -65,7 +69,7 @@ const PASSED_CHECKS_META := "geslaagde_checks"
 ## name plate in their colours, their emblem): the NS and enforcement at Den Haag Centraal,
 ## the staff of the supermarkets, the people of the city hall.
 const OFFICIAL_ROLES := ["conducteur", "handhaver", "agent", "medewerker_derrek", "medewerker_alfred_steyhn",
-	"receptioniste", "beveiliger", "ambtenaar", "raadslid", "burgemeester"]
+	"receptioniste", "beveiliger", "ambtenaar", "loketmedewerker", "raadslid", "burgemeester"]
 ## Who you talk to when nothing else fits, and the mood of a line with none set.
 const FALLBACK_PERSONA := "forens"
 const FALLBACK_MOOD := "neutraal"
@@ -500,6 +504,10 @@ func _answer(option: Array) -> Array:
 				return [_try_check(node)]
 			var follow_ups := follow_ups_of(node)
 			var text := _pick(node.get("antwoord"))
+			# what the answer brings about ("gevolg"): told to who is talked to (its meta
+			# "talk_consequence", a Callable(String): the clerks of the city hall send you on)
+			if node.has("gevolg"):
+				_consequence(str(node.gevolg))
 			var reward_line := _reward_for(node)
 			if node.has("koopt_blikjes"):
 				reward_line = (reward_line + " " + _buy_cans(node)).strip_edges()
@@ -523,6 +531,17 @@ func _answer(option: Array) -> Array:
 			return [_page(_pick(data.get(line_kind)) + " " + _again(), line_kind)]
 	# goodbye: their last word, then the box closes
 	return [_with_mood({"kind": "gesprek", "speaker": speaker(), "text": _pick(data.get("dag"))}, "dag")]
+
+
+## What an answer brings about (a node's "gevolg", see the top).
+func _consequence(gevolg: String) -> void:
+	if gevolg.begins_with("missie:"):
+		var story := person.get_tree().get_first_node_in_group("verhaal") if person and person.is_inside_tree() else null
+		if story and story.has_method("start_from_conversation"):
+			story.start_from_conversation(gevolg.trim_prefix("missie:"))
+		return
+	if person and person.has_meta("talk_consequence"):
+		(person.get_meta("talk_consequence") as Callable).call(gevolg)
 
 
 ## A skill check on a question ("check": {"id", "label", "kans" in 100, "gelukt", "mislukt"}):

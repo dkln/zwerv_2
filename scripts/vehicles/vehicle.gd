@@ -446,13 +446,15 @@ const DODGE_SPEED := 3.0
 const HORN_WITHIN := 2.5
 const HORN_STANDING := 3.0
 const HORN_PAUSE := 5.0
-## Honking at the other traffic: after this many seconds held up by another vehicle, and on a
-## hard brake for one (a near crash: braking this hard, at this speed or more).
-const HONK_AT_VEHICLE_AFTER := 3.0
+## Honking at the other traffic (not quick to it): after this many seconds held up by another
+## vehicle, then at most every VEHICLE_HORN_PAUSE seconds, and on a hard brake for one (a near
+## crash: braking this hard, at this speed or more).
+const HONK_AT_VEHICLE_AFTER := 8.0
+const VEHICLE_HORN_PAUSE := 12.0
 ## Below this speed it may go (m/s) it counts as waiting (is_waiting): not honked at.
 const WAITING_BELOW := 1.0
-const NEAR_CRASH_BRAKING := 1.2
-const NEAR_CRASH_SPEED := 4.0
+const NEAR_CRASH_BRAKING := 1.6
+const NEAR_CRASH_SPEED := 6.0
 ## Held up longer (the same one not getting out of the way): from the HOLD_HORN_FROM-th honk
 ## on it holds its horn (the long horn of its kind, LONG_HORNS); moving on again
 ## (INSISTENCE_RESET_SPEED) starts it over.
@@ -736,6 +738,7 @@ func _physics_process(delta: float) -> void:
 	if wanted <= -braking * NEAR_CRASH_BRAKING and speed > NEAR_CRASH_SPEED and _blocked_by != null \
 			and _horn_clock <= 0.0 and not unseen and not self is RailVehicle and not _blocked_by.is_waiting():
 		_sound_horn("waarschuwen")
+		_horn_clock = VEHICLE_HORN_PAUSE
 	if speed > INSISTENCE_RESET_SPEED:
 		_horn_insistence = 0
 	var rate := brake_rate if wanted < acceleration_now else throttle_rate
@@ -2483,6 +2486,7 @@ func _watch_for_gridlock(delta: float) -> void:
 	if _blocked_clock > HONK_AT_VEHICLE_AFTER and _horn_clock <= 0.0 and not unseen and not self is RailVehicle \
 			and not _blocked_by.is_waiting():
 		_sound_horn("wachten")
+		_horn_clock = VEHICLE_HORN_PAUSE
 	# stuck too long at the front of a queue that waits for nothing (no light, no zebra, no
 	# one on the road): it barges through, ramming the one in its way aside (see the top)
 	if _blocked_clock > BARGE_AFTER and _may_barge():

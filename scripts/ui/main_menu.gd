@@ -22,13 +22,15 @@ extends "res://scripts/ui/menu/menu_map.gd"
 const SwipeTransition = preload("res://scripts/ui/swipe_transition.gd")
 const UiSounds = preload("res://scripts/ui/ui_sounds.gd")
 const QuickStart = preload("res://scripts/debug/quick_start.gd")
+const CameraTurning = preload("res://scripts/camera/camera_turning.gd")
+const MusicFade = preload("res://scripts/audio/music_fade.gd")
 const GraphicsSettings = preload("res://scripts/ui/graphics_settings.gd")
 
 const CHARACTER_SCENE := "res://scenes/karakter.tscn"
 ## The music of the menu (its own piece, "Nachtstad", not the intro's theme going on),
 ## played whole and looped, at full volume from the first moment
-## the menu opens (no fade in: it starts with a bang); its volume (dB) and the seconds it
-## fades out when the town opens.
+## the menu opens, fading in as the intro's music fades out (MusicFade); its volume (dB) and
+## the seconds before the character choice opens while it fades out.
 const MUSIC := "res://assets/audio/muziek/nachtstad_menu_loop.ogg"
 const MUSIC_VOLUME_DB := -4.0
 const MUSIC_FADE_OUT := 2.0
@@ -118,15 +120,11 @@ func _ready() -> void:
 func _fade_out_music() -> void:
 	if _music == null or not _music.playing:
 		return
-	var music := _music
+	MusicFade.fade_out(_music)   # into the next screen's music (MusicFade)
 	_music = null
-	music.reparent(get_tree().root)
-	var fade := get_tree().create_tween()
-	fade.tween_property(music, "volume_db", -60.0, MUSIC_FADE_OUT)
-	fade.tween_callback(music.queue_free)
 
 
-## Plays the menu music, looped as a whole, at once at full volume (imported by the editor; if it has not
+## Plays the menu music, looped as a whole, fading in as the intro's fades out (imported by the editor; if it has not
 ## been imported yet, read straight from the file).
 func _start_music() -> void:
 	var stream: AudioStream = null
@@ -145,9 +143,9 @@ func _start_music() -> void:
 	_music = AudioStreamPlayer.new()
 	_music.name = "Muziek"
 	_music.stream = stream
-	_music.volume_db = MUSIC_VOLUME_DB
 	add_child(_music)
-	_music.play()
+	# in as the intro's goes out (MusicFade), not over it
+	MusicFade.fade_in(_music, MUSIC_VOLUME_DB)
 
 
 ## The menu comes in, slowly, in two parts: first the logo (the title column) slides in from
@@ -401,6 +399,7 @@ func _open_settings() -> void:
 			settings[setting] = not settings[setting]
 			_write_settings(settings)
 			_apply_crt(settings))
+	_add_panel_item(column, CameraTurning.label, func() -> void: CameraTurning.set_manual(not CameraTurning.is_manual()))
 	_add_panel_item(column, func() -> String: return "TERUG", _close_panel)
 	_select_in_panel(0, false)
 

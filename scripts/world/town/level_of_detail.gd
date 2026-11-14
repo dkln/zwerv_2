@@ -480,6 +480,20 @@ func _apply(index: int, gm: GridMap, extra_grids: Array[GridMap], result: Array)
 
 ## What the streamed levels keep their regions round (global positions): what the camera
 ## looks at, and the player.
+## Whether the streamed finest level (RegionStream) is there round `points` (global) as well as
+## round the camera and the player: a swipe waits for it under its still (Interiors._go_out).
+## The streams are told to load round `points` at once. True without streams.
+func is_ready_around(points: Array) -> bool:
+	var anchors := _anchors() + points
+	for stream in _streams:
+		if not is_instance_valid(stream):
+			continue
+		stream.call("update", anchors)
+		if not bool(stream.call("is_ready_around", anchors)):
+			return false
+	return true
+
+
 func _anchors() -> Array:
 	var anchors: Array = []
 	if _cam and is_instance_valid(_cam) and _cam.is_inside_tree():

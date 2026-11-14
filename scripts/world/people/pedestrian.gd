@@ -79,6 +79,10 @@ const SIDE_STEP_AFTER := 0.4
 const SIDE_STEP_SPEED := 0.7
 const GHOST_AFTER := 4.0
 const GHOST_SECONDS := 1.5
+## Someone the story sends somewhere (story_goal: Ome Wim leading you) never turns back when
+## held up (that made his way endless): it waits a moment, steps aside, and walks through the
+## others after this long (they wait for it); for the player it still stops.
+const STORY_GHOST_AFTER := 1.0
 ## Radius of the figure for the way to a spot, and from how high above the feet it looks
 ## (over the kerbs and steps).
 const BODY_RADIUS := 0.22
@@ -450,12 +454,14 @@ func _physics_process(delta: float) -> void:
 			_turn_on_the_spot(atan2(towards.x, towards.y), delta)
 		if _blocked > SIDE_STEP_AFTER:
 			_step_aside(looking, delta)
-		if _held_up > GHOST_AFTER:
+		var on_story_way := story_goal != NO_STORY_GOAL
+		if _held_up > (STORY_GHOST_AFTER if on_story_way else GHOST_AFTER):
 			_held_up = 0.0
 			_ghost_left = GHOST_SECONDS
 		if _blocked > BLOCKED_TIME * (2.0 if aid else 1.0):
 			_blocked = 0.0
-			_go_elsewhere()
+			if not on_story_way:
+				_go_elsewhere()
 		_follow_ground()
 		_update_cell()
 		_walk_figure(delta, 0.3 if _blocked > SIDE_STEP_AFTER else 0.0)

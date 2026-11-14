@@ -47,7 +47,10 @@ extends Node3D
 ##   at `exhausted_until` of the maximum;
 ## - gezondheid: at 0 the player is dead (died, the HUD shows the death screen);
 ## - overprikkeldheid: starts at 0 (of 100); items change it, and a conversation that holds on
-##   ("klampt_vast": the telephone sellers) raises it with every answer ("prikkels").
+##   ("klampt_vast": the telephone sellers) raises it with every answer ("prikkels"); it ebbs
+##   away slowly by itself (`calm_per_minute`).
+## For a while a stat can be above its maximum (boost_stat: coffee, Items "tijdelijk"): the
+## maximum goes up by as much and back again when it wears off.
 ## Every hurt makes the figure blink as in old games (`hurt_blink_time`), but not the one it
 ## dies of: dying (the slow motion, the fall) and dead it never blinks.
 ##
@@ -79,9 +82,7 @@ extends Node3D
 ## a stat to raise (raise_stat: its maximum up by LEVEL_UP_RAISE).
 ## Inventory: `inventory` (item id -> count, scripts/player/items.gd), use_item applies an
 ## item's effect to the stats. Room for only Items.BASE_SLOTS kinds of item (inventory_slots);
-## a rucksack picked up in the town (pick_up_backpack, scripts/world/things/backpacks.gd) adds
-## Items.BACKPACK_SLOTS and is worn on the figure's back (PlayerModel.backpack; the collider
-## grows with it). Nobody starts with one.
+## wearing a coat (Items "worn": Wim's old coat, mission 2) adds Items.COAT_SLOTS (its pockets).
 
 signal stats_changed
 signal inventory_changed
@@ -115,6 +116,7 @@ const Items = preload("res://scripts/player/items.gd")
 const UiSounds = preload("res://scripts/ui/ui_sounds.gd")
 const WaterSplash = preload("res://scripts/effects/water_splash.gd")
 const Iso = preload("res://scripts/camera/iso_camera.gd")
+const PadKeys = preload("res://scripts/ui/pad_keys.gd")
 const Conversations = preload("res://scripts/story/conversations.gd")
 ## Who can be talked to (InteriorPerson.TALKABLE_GROUP) and the doors (Interiors.DOORS_GROUP).
 const TALKABLE_GROUP := "aanspreekbaar"
@@ -122,8 +124,8 @@ const DOORS_GROUP := "deuren"
 ## The player alone (what the world looks for to show things near it: InteractionMark).
 const PLAYER_GROUP := "speler"
 ## XP the first level up takes (level 1 -> 2); each next level takes XP_GROWTH times as
-## much (rounded to 50): 300, 450, 700, 1050, ... And the colour of "+50 XP".
-const XP_FIRST_LEVEL := 300.0
+## much (rounded to 50): 500, 750, 1150, 1750, ... And the colour of "+50 XP".
+const XP_FIRST_LEVEL := 500.0
 const XP_GROWTH := 1.5
 const XP_TEXT_COLOUR := Color("#47D6C2")
 ## How much the maximum of a stat goes up when it is chosen on the level-up screen. Health,
@@ -189,6 +191,8 @@ const TALK_TURN_SECONDS := 0.35
 @export var run_stamina_per_second := 10.0
 @export var stamina_recovery_per_second := 12.0
 @export var stamina_recovery_delay := 0.8
+## How much the overstimulation ebbs away by itself per minute (of 100).
+@export var calm_per_minute := 4.0
 @export_range(0.0, 1.0) var exhausted_until := 0.25
 @export var hurt_blink_time := 0.8
 @export_group("Being hit")
@@ -234,11 +238,11 @@ var xp_for_level := XP_FIRST_LEVEL
 ## Item id -> how many (scripts/player/items.gd).
 var inventory := {}
 ## Wears a rucksack (picked up in the town): more room in the inventory.
-var has_backpack := false
 ## Metres a second it moved over the last physics step.
 var velocity := Vector3.ZERO
 
 var _stats := {}                 # stat name -> Vector2(value, maximum)
+var _boosts := {}                # stat name -> {"amount", "left"}: above its maximum for a while (boost_stat)
 var _shown_stats := {}           # stat name -> Vector2 last given to the HUD
 var _model: Node3D
 var _figure_box := AABB(Vector3(-0.3, 0.0, -0.2), Vector3(0.6, 1.9, 0.4))
@@ -298,6 +302,9 @@ func _ready() -> void:
 			var maximum := float(archetype.stats.get(stat_name, 100))
 			_stats[stat_name] = Vector2(maximum, maximum)
 	inventory = Items.START_ITEMS.get(archetype_id, {}).duplicate()
+	# a character with a bank account of its own (Sjaan) has its card from the start
+	if archetype.has("bankpas"):
+		(load("res://scripts/player/bank_cards.gd") as GDScript).call("give_own_card", self, archetype.bankpas, true)
 	_model = PlayerModel.new()
 	_model.name = "Figuur"
 	_model.archetype_id = archetype_id
@@ -333,6 +340,39 @@ func _ready() -> void:
 ## (value, maximum) of a stat ("gezondheid", "uithoudingsvermogen", "honger", "overprikkeldheid").
 func stat(stat_name: String) -> Vector2:
 	return _stats.get(stat_name, Vector2.ZERO)
+
+
+## `amount` above the maximum of a stat for `seconds` (coffee: Items "tijdelijk"): its maximum
+## and its value go up by as much; when it wears off the maximum goes back (and the value with
+## it, if it is above). Again while it lasts: only the time starts over.
+func boost_stat(stat_name: String, amount: float, seconds: float) -> void:
+	if not _stats.has(stat_name) or _dead or amount <= 0.0:
+		return
+	if _boosts.has(stat_name):
+		_boosts[stat_name].left = seconds
+		var topped: Vector2 = _stats[stat_name]
+		_stats[stat_name] = Vector2(topped.y, topped.y)
+	else:
+		var current: Vector2 = _stats[stat_name]
+		_stats[stat_name] = Vector2(current.x + amount, current.y + amount)
+		_boosts[stat_name] = {"amount": amount, "left": seconds}
+	_push_stats(true)
+
+
+## Whether a stat is above its own maximum now (boost_stat), and for how many seconds still.
+func boost_left(stat_name: String) -> float:
+	return float(_boosts[stat_name].left) if _boosts.has(stat_name) else 0.0
+
+
+func _wear_off_boosts(delta: float) -> void:
+	for stat_name: String in _boosts.keys():
+		_boosts[stat_name].left = float(_boosts[stat_name].left) - delta
+		if float(_boosts[stat_name].left) > 0.0:
+			continue
+		var amount: float = _boosts[stat_name].amount
+		var current: Vector2 = _stats[stat_name]
+		_stats[stat_name] = Vector2(minf(current.x, current.y - amount), current.y - amount)
+		_boosts.erase(stat_name)
 
 
 ## A stat chosen on the level-up screen: its maximum up by LEVEL_UP_RAISE (and health, stamina
@@ -415,9 +455,9 @@ func is_dead() -> bool:
 	return _dead
 
 
-## How many kinds of item it can carry: its pockets, and more with a rucksack.
+## How many kinds of item it can carry: its pockets, and more with a coat on (its pockets).
 func inventory_slots() -> int:
-	return Items.BASE_SLOTS + (Items.BACKPACK_SLOTS if has_backpack else 0)
+	return Items.BASE_SLOTS + (Items.COAT_SLOTS if _wears_something() else 0)
 
 
 ## True if there is room for one more of `item_id`: it has some already, or a slot is free.
@@ -465,18 +505,6 @@ func add_item(item_id: String, count := 1, quiet := false) -> bool:
 ## then gets no rising note and no chime of its own.
 func announced_elsewhere() -> void:
 	_announced = true
-
-
-## Puts on a rucksack found in the town: more room (Items.BACKPACK_SLOTS), worn on the back,
-## the collider round the figure grown with it. False if it wears one already.
-func pick_up_backpack() -> bool:
-	if has_backpack or _dead:
-		return false
-	has_backpack = true
-	_model.backpack = true
-	_fit_collider(_with_pose_room(_model.rest_bounds()))
-	inventory_changed.emit()
-	return true
 
 
 ## A found bank card in the pockets ("pinpas"): its own account, a modest balance, a PIN and
@@ -528,6 +556,9 @@ func use_item(item_id: String) -> bool:
 	var effect: Dictionary = Items.item(item_id).effect
 	for stat_name: String in effect:
 		change_stat(stat_name, float(effect[stat_name]))
+	var for_a_while: Dictionary = Items.item(item_id).get("tijdelijk", {})
+	for stat_name: String in for_a_while:
+		boost_stat(stat_name, float(for_a_while[stat_name][0]), float(for_a_while[stat_name][1]))
 	drop_item(item_id)
 	used.emit(item_id)
 	return true
@@ -608,6 +639,8 @@ func _walk(delta: float) -> void:
 		input.y -= 1.0
 	if Input.is_physical_key_pressed(KEY_S) or Input.is_physical_key_pressed(KEY_DOWN):
 		input.y += 1.0
+	# the left stick of a controller (pad_keys.gd: its buttons come as keys)
+	input = (input + PadKeys.move_vector()).limit_length(1.0) if input == Vector2.ZERO else input
 	var start := global_position
 	var direction := Vector3.ZERO
 	var backwards := false
@@ -751,9 +784,17 @@ func teleport(at: Vector3, yaw: float) -> void:
 ## A conversation with `person` (Conversations) in the story box, or with someone who sells
 ## (Conversations.is_merchant) the shop screen (GameHud.show_shop); they stand still and
 ## straight first (stand_neutral), then turn to face you.
+## Someone with the meta "talk_gate" (a Callable -> Array of pages) decides first: an empty
+## Array, the conversation goes on; else those pages instead (a clerk of the city hall when it
+## is not your turn: CityHall._talk_gate).
 func talk_to(person: Node3D) -> void:
 	if _hud == null or not _hud.has_method("show_story"):
 		return
+	if person.has_meta("talk_gate"):
+		var instead: Array = (person.get_meta("talk_gate") as Callable).call()
+		if not instead.is_empty():
+			_hud.show_story(instead)
+			return
 	# whoever was walking stands still and straight first (no leg left in the air)
 	if person.has_method("stand_neutral"):
 		person.stand_neutral()
@@ -1158,8 +1199,8 @@ func _update_sleep(delta: float) -> void:
 		town_ready = false
 	if town_ready:
 		_sleep_left -= delta
-	var key_pressed := false
-	for key in [KEY_W, KEY_A, KEY_S, KEY_D, KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT, KEY_SPACE, KEY_ENTER]:
+	var key_pressed := PadKeys.move_vector() != Vector2.ZERO
+	for key in [KEY_W, KEY_A, KEY_S, KEY_D, KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT, KEY_SPACE, KEY_ENTER, KEY_E]:
 		if Input.is_physical_key_pressed(key):
 			key_pressed = true
 	if _sleep_left <= 0.0 or (town_ready and key_pressed):
@@ -1241,6 +1282,9 @@ func _update_stats(delta: float) -> void:
 		if _exhausted and stamina.x >= stamina.y * exhausted_until:
 			_exhausted = false
 	_stats.uithoudingsvermogen = stamina
+	var calm: Vector2 = _stats.overprikkeldheid
+	_stats.overprikkeldheid = Vector2(maxf(calm.x - calm_per_minute / 60.0 * delta, 0.0), calm.y)
+	_wear_off_boosts(delta)
 	_push_stats()
 
 

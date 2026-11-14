@@ -1459,7 +1459,7 @@ const BACKPACK := {
 }
 
 
-## The rucksack (picked up in the town: PlayerController.pick_up_backpack): a plain canvas
+## A rucksack (no longer picked up in the game; kept as a look): a plain canvas
 ## block on the back, x 4..9 (between the arms), from just behind the back `depth` voxels
 ## deep, its flap on top in a darker shade.
 ## `place`: Vector3i(z of the first voxel behind the back, lowest y, highest y).

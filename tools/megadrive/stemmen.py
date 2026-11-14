@@ -369,7 +369,7 @@ BABBLE_MOODS = {
     "vraag": {"pitch": (1.0, 1.02), "syllable": 0.08, "swing": 0.03, "drive": 3.0, "growl": 0.0, "breath": 0.05,
               "rise": 0.65},
 }
-BABBLE_VARIANTS = 16
+BABBLE_VARIANTS = 32
 ## The syllables babble is made of: a consonant (or none), a vowel or a gliding one (two
 ## vowels: "ei", "au", "ui"), and now and then a consonant closing it ("dam", "kos", "pil").
 ## "t" is a short sharp "d", "b" a soft voiced "p", "n" the nasal "ng" open, "h" breath only.

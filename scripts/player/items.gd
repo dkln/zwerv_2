@@ -9,17 +9,18 @@ extends RefCounted
 ## - "effect": what using it does to the stats ({"honger": 30} fills the hunger meter by 30,
 ##   "gezondheid" heals, "uithoudingsvermogen" gives stamina back, "overprikkeldheid" calms
 ##   with a negative number); no "effect" = it cannot be used;
+## - "tijdelijk": more than the maximum for a while ({"uithoudingsvermogen": [30, 90]}: 30 above
+##   the maximum for 90 seconds, PlayerController.boost_stat; coffee);
 ## - "action": the verb on the menu's button when it can be used ("ETEN", "DRINKEN", "GEBRUIKEN").
 ## What each archetype starts with: START_ITEMS (id -> count).
 ## Room: every kind of item takes one slot ("vakje", however many of it; not the cans and
 ## bottles in the plastic bag, "bag", nor the clothes worn, "worn": takes_slot), and a zwerver has
-## only BASE_SLOTS of them in his pockets; a rucksack picked up in the town
-## (scripts/world/things/backpacks.gd) adds BACKPACK_SLOTS. Nobody starts with a rucksack.
+## only BASE_SLOTS of them in his pockets; a coat worn ("worn") adds COAT_SLOTS (its pockets).
 const BASE_SLOTS := 4
 ## An effect of this much fills the stat to its maximum, whatever that is for the character
 ## (the kroket: your stomach full again); shown as "VOL".
 const FULL := 999
-const BACKPACK_SLOTS := 8
+const COAT_SLOTS := 4
 
 const ITEMS := {
 	"brood": {"name": "Oud brood", "kind": "eten", "rarity": "gewoon", "icon": "brood",
@@ -73,7 +74,8 @@ const ITEMS := {
 	# from the shops of Den Haag Centraal (data/gesprekken/winkels.json, the shop screen)
 	"koffie": {"name": "Bekertje koffie", "kind": "drinken", "rarity": "gewoon", "icon": "beker",
 		"text": "Zwart en heet, in een kartonnen beker. Het eerste dat warm is vandaag.",
-		"effect": {"uithoudingsvermogen": 30, "overprikkeldheid": 5}, "action": "DRINKEN"},
+		"effect": {"uithoudingsvermogen": 30, "overprikkeldheid": 15}, "tijdelijk": {"uithoudingsvermogen": [30, 90]},
+		"action": "DRINKEN"},
 	"cappuccino": {"name": "Cappuccino", "kind": "drinken", "rarity": "bijzonder", "icon": "beker",
 		"text": "Met een schuimkraag en cacao erop. Duwus Bertus weet hoe het moet.",
 		"effect": {"uithoudingsvermogen": 30, "honger": 5, "overprikkeldheid": -5}, "action": "DRINKEN"},
@@ -171,13 +173,17 @@ const ITEMS := {
 	# this text (BankCards.description)
 	"pinpas": {"name": "Gevonden pinpas", "kind": "sleutel", "rarity": "zeldzaam", "icon": "pinpas",
 		"text": "Iemand is zijn pinpas kwijt. Op de achterkant staat met balpen een raadsel gekrabbeld."},
+	# the slip from the number machine of Burgerzaken (scripts/world/interiors/city_hall.gd): its
+	# number on the player (CityHall.TICKET_META), shown by the menu; a slip of paper, no slot
+	"wachtnummer": {"name": "Wachtnummer", "kind": "spullen", "rarity": "gewoon", "icon": "", "bag": true,
+		"text": "Een strookje van de nummerautomaat van Burgerzaken. Bewaren tot je wordt omgeroepen."},
 	# your own identity card: stolen in your sleep at the start of the game (the first mission);
 	# the inventory always keeps a slot for it, empty while you have not got it (GameMenu)
 	"id_kaart": {"name": "ID-kaart", "kind": "sleutel", "rarity": "legendarisch", "icon": "pinpas",
 		"text": "Je eigen ID-kaart. Zonder ben je niemand: geen postadres, geen uitkering, geen kamer.",
 		"missing_text": "Gestolen terwijl je sliep. Iemand loopt nu rond met jouw gezicht in zijn zak."},
 	# from Ome Wim (the second mission): worn as soon as you have it ("worn": the player keeps
-	# warmer, hunger runs out slower: PlayerController.WORN_HUNGER_FACTOR)
+	# warmer, hunger runs out slower: PlayerController.WORN_HUNGER_FACTOR; its pockets: COAT_SLOTS)
 	"oude_jas": {"name": "Oude jas", "kind": "spullen", "rarity": "zeldzaam", "icon": "",
 		"text": "Van Ome Wim. De voering is kapot, maar hij houdt de wind tegen. Ruikt naar sigaren en natte hond.",
 		"worn": true},

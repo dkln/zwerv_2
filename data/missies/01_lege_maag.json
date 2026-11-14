@@ -161,6 +161,10 @@
 		{
 			"id": "kroket",
 			"tekst": "Koop een kroket bij de frietkar op het Stationsplein en eet hem op [F]",
+			"eerste_scherm": {
+				"kop": "GEKOCHT",
+				"titel": "Je eerste kroket"
+			},
 			"xp": 60,
 			"doel": {
 				"soort": "gebruiken",

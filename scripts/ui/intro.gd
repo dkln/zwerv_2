@@ -40,11 +40,10 @@ const MENU_SCENE := "res://scenes/hoofdmenu.tscn"
 ## Debug: straight into the game (scripts/debug/quick_start.gd), with `-- --snel`.
 const QUICK_START_SCENE := "res://scenes/snel_starten.tscn"
 const QuickStart = preload("res://scripts/debug/quick_start.gd")
-## The music of the intro, its volume (dB), and the seconds it fades out in when the intro
-## ends or is broken off.
+const MusicFade = preload("res://scripts/audio/music_fade.gd")
+## The music of the intro and its volume (dB); it fades into the menu's (MusicFade).
 const MUSIC := "res://assets/audio/muziek/zwervr_intro.ogg"
 const MUSIC_VOLUME_DB := -2.0
-const MUSIC_FADE_OUT := 2.0
 const DESIGN_SIZE := Vector2(1280, 720)
 const OPENING_LINE := "Niet zo lang geleden, in een stad hier niet ver vandaan…"
 ## The story that rolls away after the logo, a paragraph per entry (an optional "\n"
@@ -229,9 +228,10 @@ func _input(event: InputEvent) -> void:
 	# debug: F8 straight into the town as Martin (scripts/debug/quick_start.gd)
 	if QuickStart.skip_on_key(self, event):
 		return
-	# only the space bar skips (other keys, such as the volume keys, do nothing)
+	# only the space bar (or Enter: A on a controller, pad_keys.gd) skips (other keys, such as
+	# the volume keys, do nothing)
 	var pressed: bool = event is InputEventKey and event.pressed and not event.echo \
-			and (event as InputEventKey).keycode == KEY_SPACE
+			and (event as InputEventKey).keycode in [KEY_SPACE, KEY_ENTER, KEY_KP_ENTER]
 	if pressed:
 		get_viewport().set_input_as_handled()
 		if not _leaving:
@@ -337,13 +337,9 @@ func _to_menu() -> void:
 	_leaving = true
 	# the music goes on into the menu, fading out there (the menu's own fades in meanwhile):
 	# it moves to the root of the tree, which stays, and is freed when it is silent
-	if _music and _music.playing:
-		var music := _music
-		_music = null
-		music.reparent(get_tree().root)
-		var fade := get_tree().create_tween()
-		fade.tween_property(music, "volume_db", -60.0, MUSIC_FADE_OUT)
-		fade.tween_callback(music.queue_free)
+	# (MusicFade: equal power, so it runs into the menu's music instead of over it)
+	MusicFade.fade_out(_music)
+	_music = null
 	# the swipe (the one transition of the game) over it, the menu behind it
 	await SwipeTransition.swipe(get_tree()).covered
 	while ResourceLoader.exists(MainMenu.MAP_SCENE) \

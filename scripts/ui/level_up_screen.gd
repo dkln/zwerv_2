@@ -2,7 +2,8 @@ extends Control
 ## The level-up screen of the HUD (GameHud.show_level_up): a level up is a screen of its own in
 ## which you choose one of your stats to make stronger. Over the dimmed world (the game
 ## paused), in the style of the reward screen (UiStyle: INK panel, ACCENT frame, pixel fonts):
-## - at the top "LEVEL OMHOOG" and the new level big ("LEVEL 3");
+## - at the top "LEVEL OMHOOG" and the new level big ("LEVEL 3"), with the XP that did it
+##   ("+150 XP") when it came with a reward (GameHud.show_reward: one screen for both);
 ## - one row per stat (OPTIONS): its icon and colour (GameHud.STATS / PIXEL_ICONS), its name,
 ##   what it does for you and its maximum now -> after;
 ## - at the bottom the keys.
@@ -18,6 +19,8 @@ const PixelIcon = preload("res://scripts/ui/widgets/pixel_icon.gd")
 const LightRays = preload("res://scripts/ui/widgets/light_rays.gd")
 
 const PANEL_SIZE := Vector2(600, 0)
+## The colour of the XP that did it (as the XP of the reward screen).
+const XP_COLOUR := Color("#8BE36B")
 const PADDING := 24.0
 ## Seconds before a key counts (a key still held from the game must not pick at once).
 const KEYS_AFTER := 0.5
@@ -47,6 +50,7 @@ var _selected := 0
 var _since := 0.0
 var _was_paused := false
 var _level_label: Label
+var _xp_label: Label
 var _rows: Array[PanelContainer] = []
 var _row_values: Array[Label] = []
 
@@ -65,8 +69,10 @@ func is_showing() -> bool:
 
 ## Opens for `level`: `choose` gets the stat chosen, `current` gives (value, maximum) of a stat,
 ## `raise` how much each stat goes up (stat name -> amount).
-func open(level: int, choose: Callable, current: Callable, raise: Dictionary) -> void:
+func open(level: int, choose: Callable, current: Callable, raise: Dictionary, xp_gained := 0) -> void:
 	_level = level
+	_xp_label.text = "+%d XP" % xp_gained
+	_xp_label.visible = xp_gained > 0
 	_choose = choose
 	_current = current
 	_raise = raise
@@ -219,6 +225,10 @@ func _build() -> void:
 	_level_label.add_theme_constant_override("shadow_offset_x", 4)
 	_level_label.add_theme_constant_override("shadow_offset_y", 4)
 	stage.add_child(_level_label)
+	_xp_label = _make_label("", font_pixel, 16, XP_COLOUR)
+	_xp_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_xp_label.visible = false
+	column.add_child(_xp_label)
 	var ask := _make_label("Waar word je sterker in?", font_body, 16, UiStyle.TEXT)
 	ask.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(ask)

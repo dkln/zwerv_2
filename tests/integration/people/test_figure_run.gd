@@ -3,16 +3,13 @@ extends "res://tests/integration/support/town_test.gd"
 ## (scripts/world/people/townsfolk_figure.gd): few details (colours, lone voxels), Martin's jacket one
 ## colour, nobody with a rucksack; the run (walking above 1) a run of its own and not the
 ## walk sped up: leaning forward, the knees driven up and bent deep, the elbows bent, off the
-## ground between the steps, the feet never under the ground; the rucksack (picked up:
-## PlayerController.pick_up_backpack) on the back clear of the figure, more room in the
-## inventory, and the collider grown round it. Without the town: a figure or a player on
-## its own in the tree.
+## ground between the steps, the feet never under the ground; four kinds of things in the
+## pockets, more with a coat on. Without the town: a figure or a player on its own in the tree.
 ##   tests/run_integration_tests.sh figure_run
 
 const PlayerModel = preload("res://scripts/player/player_model.gd")
 const PlayerController = preload("res://scripts/player/player_controller.gd")
 const Items = preload("res://scripts/player/items.gd")
-const Backpacks = preload("res://scripts/world/things/backpacks.gd")
 const NEIGHBOURS: Array[Vector3i] = [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0), Vector3i(0, -1, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1)]
 
 
@@ -193,38 +190,23 @@ func test_the_run_is_a_run_of_its_own(test) -> void:
 		model.queue_free()
 
 
-## Without a rucksack only the pockets: four kinds of things and no fifth, but more of a
+## Without a coat only the pockets: four kinds of things and no fifth, but more of a
 ## kind you already have.
 func test_pockets_hold_four_kinds(test) -> void:
 	var lone_player := await _player_alone()
-	test.check(not lone_player.has_backpack and lone_player.inventory_slots() == Items.BASE_SLOTS, "zonder rugzak %d vakjes" % lone_player.inventory_slots())
+	test.check(lone_player.inventory_slots() == Items.BASE_SLOTS, "zonder jas %d vakjes" % lone_player.inventory_slots())
 	for item_id: String in ["brood", "appel", "water", "bier"]:
 		lone_player.add_item(item_id)
 	test.check(not lone_player.add_item("vis") and not lone_player.inventory.has("vis"), "zakken vol: geen vijfde soort")
 	test.check(lone_player.add_item("brood") and int(lone_player.inventory.brood) == 2, "wel meer van wat je al hebt")
 
 
-## A rucksack picked up is worn (only one), gives more room in the inventory, and the
-## collider grows round it and still matches the figure.
-func test_rucksack_picked_up_gives_room_and_a_bigger_collider(test) -> void:
+## A coat worn (Wim's old coat) gives room: its pockets (Items.COAT_SLOTS).
+func test_a_coat_gives_room(test) -> void:
 	var lone_player := await _player_alone()
 	for item_id: String in ["brood", "appel", "water", "bier"]:
 		lone_player.add_item(item_id)
-	var before: AABB = lone_player._figure_box
-	test.check(_collider_matches(lone_player), "botsvorm om het figuur zonder rugzak (%s)" % [before])
-	test.check(lone_player.pick_up_backpack() and lone_player.has_backpack and lone_player._model.backpack, "rugzak opgepakt en om")
-	test.check(not lone_player.pick_up_backpack(), "geen tweede rugzak")
-	test.check(lone_player.inventory_slots() == Items.BASE_SLOTS + Items.BACKPACK_SLOTS, "met rugzak %d vakjes" % lone_player.inventory_slots())
-	test.check(lone_player.add_item("vis"), "met rugzak past er meer in")
-	await frames(1)
-	var after: AABB = lone_player._figure_box
-	print("botsvorm zonder rugzak ", before, ", met ", after)
-	test.check(after.position.z <= before.position.z + 0.001 and is_equal_approx(after.size.y, before.size.y), "botsvorm niet kleiner met de rugzak")
-	test.check(_collider_matches(lone_player), "botsvorm om het figuur met rugzak (%s)" % [after])
-
-
-## The rucksack lying in the town is the size of the one worn.
-func test_rucksack_on_the_street_is_as_big_as_on_the_back(test) -> void:
-	var lying: AABB = Backpacks.backpack_mesh().get_aabb()
-	print("rugzak op straat ", lying)
-	test.check(lying.size.y > 0.3 and lying.size.y < 0.5, "rugzak op straat zo groot als op de rug (%.2f m)" % lying.size.y)
+	test.check(not lone_player.add_item("vis"), "zonder jas: zakken vol")
+	lone_player.inventory["oude_jas"] = 1
+	test.check(lone_player.inventory_slots() == Items.BASE_SLOTS + Items.COAT_SLOTS, "met een jas aan %d vakjes" % lone_player.inventory_slots())
+	test.check(lone_player.add_item("vis"), "met een jas past er meer in")

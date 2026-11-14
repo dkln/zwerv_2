@@ -170,6 +170,7 @@
 		{
 			"id": "werver",
 			"tekst": "Een goededoelenwerver staat in de weg: praat je eruit of loop om",
+			"verborgen_tot_open": true,
 			"xp": 30,
 			"doel": {
 				"soort": "werver",
@@ -189,6 +190,7 @@
 		{
 			"id": "jas",
 			"tekst": "Neem zijn oude jas aan",
+			"verborgen_tot_open": true,
 			"xp": 20,
 			"gesprekken": {
 				"ome_wim": "jas"

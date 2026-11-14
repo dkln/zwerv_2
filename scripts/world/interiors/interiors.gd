@@ -408,8 +408,9 @@ func show_plan(points: Array[Vector3]) -> void:
 
 
 ## Out through door `door_index` (0: the one of the way in): the swipe, and under it onto
-## the pavement before it, the camera, light and minimap back as outside. Returns the way in
-## it came out of (its "door" and "outward").
+## the pavement before it, the camera, light and minimap back as outside; the swipe holds its
+## still until the street there is loaded again (LevelOfDetail.is_ready_around). Returns the
+## way in it came out of (its "door" and "outward").
 func _go_out(door_index: int) -> Dictionary:
 	_play_sound(DOOR_OUT_SOUND)
 	var swipe := SwipeTransition.swipe(get_tree())
@@ -430,10 +431,16 @@ func _go_out(door_index: int) -> Dictionary:
 	if _interior and _interior.has_method("player_went_out"):
 		_interior.call("player_went_out")
 	_rest(_interior, true)
-	_put_player(bar.door + (bar.outward as Vector3) * 0.6, bar.outward)
+	var out_at: Vector3 = bar.door + (bar.outward as Vector3) * 0.6
+	_put_player(out_at, bar.outward)
 	_camera_indoors(false)
 	_light_indoors(false)
 	_minimap_indoors([])
+	# the street round the door was dropped while inside (far off the map): the swipe waits
+	# under its still until it is loaded again and drawn with the player on it
+	var detail := get_node_or_null(DETAIL_PATH)
+	if detail and detail.has_method("is_ready_around"):
+		swipe.set("hold_until", func() -> bool: return bool(detail.call("is_ready_around", [out_at])))
 	return bar
 
 
@@ -456,6 +463,13 @@ func _throw_outs() -> Dictionary:
 func _rule(kind: String, offence: String) -> Dictionary:
 	var places: Dictionary = _throw_outs().get("plekken", {})
 	return ((places.get(kind, {}) as Dictionary).get("overtredingen", {}) as Dictionary).get(offence, {})
+
+
+## Whether the player is inside an interior now (for what belongs to the town outside and must
+## not go on over an interior: the helicopter, HelicopterFlights), without a path to Interiors.
+static func player_inside(tree: SceneTree) -> bool:
+	var interiors := tree.get_first_node_in_group(GROUP) if tree else null
+	return interiors != null and interiors.has_method("is_inside") and bool(interiors.call("is_inside"))
 
 
 ## Someone reports an offence of the player (anywhere: it only counts inside an interior

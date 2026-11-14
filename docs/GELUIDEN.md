@@ -133,7 +133,7 @@ want twee dingen wijken af van de bestanden:
 | intro-muziek | -18 | `intro.gd` MUSIC_VOLUME_DB -2 |
 | menumuziek | -20 | `main_menu.gd` -4 |
 | laden, karakterkeuze | -22 | `loading_screen.gd`, `character_creation.gd` -6 |
-| muziek in de stad | -26 (pauze -32) | `hud.gd` CITY_MUSIC_VOLUME_DB -7, CITY_LOOP_SOFTER_DB 3 |
+| muziek in de stad | -30 (pauze -32) | `hud.gd` CITY_MUSIC_VOLUME_DB -11, CITY_LOOP_SOFTER_DB 3 (rustiger arrangement: `derive.py` CITY_*) |
 | muziek van een gebouw (handelaar) / muzak | -23 / -29 | `hud.gd` |
 | deuntjes | -19 tot -21 (muziek 6 dB omlaag eronder) | `hud.gd` *_JINGLE_VOLUME_DB |
 | klap, botsing, kreet, plons | -18 | `spatial_audio.gd` EVENT_DB +1 |

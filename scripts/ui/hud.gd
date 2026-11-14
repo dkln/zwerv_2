@@ -62,7 +62,7 @@ const CITY_MUSIC := "spel_loop.ogg"
 ## Inside a building: how fast its music takes over; how much softer the music is under a jingle.
 const INDOOR_MUSIC_FADE := 1.2
 const JINGLE_DUCK_DB := 6.0
-const CITY_MUSIC_VOLUME_DB := -7.0
+const CITY_MUSIC_VOLUME_DB := -11.0
 const CITY_MUSIC_PAUSED_DB := -13.0
 ## The city's own loop (CITY_MUSIC) plays this much softer still: it runs quietly in the
 ## background, under the sounds of the town; music of a building (the merchant's) does not.
@@ -290,6 +290,7 @@ func _ready() -> void:
 	# it keeps running while the game is paused (the pause menu, the CRT picture)
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_day = start_day
+	_crt_as_made = Vector3(crt_curvature, crt_ui_curvature, crt_corner)
 	_read_menu_settings()
 	GraphicsSettings.apply(get_tree())   # also when the town is started on its own
 	_load_fonts()
@@ -585,7 +586,8 @@ func show_level_up(level: int, choose := Callable(), current := Callable()) -> v
 		_queue_notice({"heading": "— LEVEL OMHOOG —", "name": "Level %d" % level, "seconds": 3.5, "jingle": LEVEL_JINGLE})
 		return
 	_level_ups_waiting.append({"level": level, "choose": choose, "current": current})
-	_open_waiting_level_up()
+	# a frame later: a reward given with the XP (the same frame) joins it (show_reward)
+	_open_waiting_level_up.call_deferred()
 
 
 func is_showing_level_up() -> bool:
@@ -1357,14 +1359,23 @@ func _build_money() -> void:
 # ------------------------------------------------------------------ pause menu
 
 ## The pause menu (Escape): the game stands still (the tree paused) and a panel in the
-## middle offers these; up/down, Enter, Escape (back to the game) or the mouse.
-const PAUSE_ITEMS := [["VERDER SPELEN", "resume"], ["HOOFDMENU", "menu"], ["AFSLUITEN", "quit"]]
+## middle offers these; up/down, Enter, Escape (back to the game) or the mouse. INSTELLINGEN
+## shows the settings in the same panel (as in the main menu: anti-aliasing, render scale, the
+## CRT look, how the camera turns), changed at once; TERUG or Escape back.
+const PAUSE_ITEMS := [["VERDER SPELEN", "resume"], ["INSTELLINGEN", "settings"], ["HOOFDMENU", "menu"], ["AFSLUITEN", "quit"]]
+const CameraTurning = preload("res://scripts/camera/camera_turning.gd")
 const MAIN_MENU_SCENE := "res://scenes/hoofdmenu.tscn"
 const PAUSE_WIDTH := 300.0
 
 var _pause_layer: Control
 var _pause_buttons: Array[Button] = []
 var _pause_selected := 0
+var _pause_column: VBoxContainer
+## What the pause panel shows now: per item {"label": Callable -> String, "do": Callable};
+## the pause menu itself or the settings (_show_pause_page).
+var _pause_entries: Array[Dictionary] = []
+var _pause_in_settings := false
+var _crt_as_made := Vector3.ZERO   # crt_curvature, crt_ui_curvature, crt_corner before the settings
 
 
 func _build_pause_menu() -> void:
@@ -1396,21 +1407,75 @@ func _build_pause_menu() -> void:
 	var title := _label("— PAUZE —", _font_pixel, 12, UiStyle.ACCENT, 2)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(title)
-	for index in PAUSE_ITEMS.size():
+	_pause_column = VBoxContainer.new()
+	_pause_column.add_theme_constant_override("separation", 6)
+	column.add_child(_pause_column)
+	var keys := _label("[↑↓] KIEZEN   [ENTER] KIES   [ESC] TERUG", _font_pixel, 10, UiStyle.MUTED, 0)
+	keys.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	column.add_child(keys)
+	_show_pause_page(false)
+
+
+## The pause menu itself, or (`settings`) the settings in its place.
+func _show_pause_page(settings: bool) -> void:
+	_pause_in_settings = settings
+	_pause_entries.clear()
+	if settings:
+		_pause_entries.append({"label": func() -> String: return "ANTI-ALIASING: %s" % GraphicsSettings.anti_aliasing(),
+			"do": func() -> void: GraphicsSettings.next_anti_aliasing(get_tree())})
+		_pause_entries.append({"label": func() -> String: return "RENDERSCHAAL: %s" % GraphicsSettings.render_scale_text(),
+			"do": func() -> void: GraphicsSettings.next_render_scale(get_tree())})
+		_pause_entries.append({"label": func() -> String: return "CRT-BEELD: %s" % ("AAN" if _crt_on() else "UIT"),
+			"do": _toggle_crt})
+		_pause_entries.append({"label": CameraTurning.label, "do": _toggle_camera_turning})
+		_pause_entries.append({"label": func() -> String: return "TERUG", "do": func() -> void: _show_pause_page(false)})
+	else:
+		for item: Array in PAUSE_ITEMS:
+			var label_text: String = item[0]
+			var action: String = item[1]
+			_pause_entries.append({"label": func() -> String: return label_text, "do": _pause_action.bind(action)})
+	for button in _pause_buttons:
+		button.queue_free()
+	_pause_buttons.clear()
+	for index in _pause_entries.size():
 		var button := Button.new()
-		button.custom_minimum_size = Vector2(PAUSE_WIDTH, 44)
+		button.custom_minimum_size = Vector2(PAUSE_WIDTH + (100.0 if settings else 0.0), 44)
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		button.focus_mode = Control.FOCUS_NONE
 		button.add_theme_font_override("font", _font_title_medium)
 		button.add_theme_font_size_override("font_size", 22)
 		button.mouse_entered.connect(func() -> void: _select_pause_item(index))
 		button.pressed.connect(func() -> void: _choose_pause_item(index))
-		column.add_child(button)
+		_pause_column.add_child(button)
 		_pause_buttons.append(button)
-	var keys := _label("[↑↓] KIEZEN   [ENTER] KIES   [ESC] TERUG", _font_pixel, 10, UiStyle.MUTED, 0)
-	keys.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	column.add_child(keys)
+	_pause_selected = -1
 	_select_pause_item(0)
+
+
+func _crt_on() -> bool:
+	var config := ConfigFile.new()
+	config.load(MainMenu.SETTINGS_PATH)
+	return bool(config.get_value("beeld", "crt", true))
+
+
+## The CRT look on or off (the setting of the main menu too), at once.
+func _toggle_crt() -> void:
+	var on := not _crt_on()
+	var config := ConfigFile.new()
+	config.load(MainMenu.SETTINGS_PATH)
+	config.set_value("beeld", "crt", on)
+	config.save(MainMenu.SETTINGS_PATH)
+	crt_curvature = _crt_as_made.x if on else 0.0
+	crt_ui_curvature = _crt_as_made.y if on else 0.0
+	_update_crt()
+
+
+## The camera turning by itself or by hand (CameraTurning), at once for the follow camera.
+func _toggle_camera_turning() -> void:
+	CameraTurning.set_manual(not CameraTurning.is_manual())
+	var follow := get_tree().current_scene.get_node_or_null("Volgcamera") if get_tree().current_scene else null
+	if follow and follow.has_method("set_manual_turning"):
+		follow.set_manual_turning(CameraTurning.is_manual())
 
 
 func _input(event: InputEvent) -> void:
@@ -1451,13 +1516,17 @@ func _unhandled_input(event: InputEvent) -> void:
 		_death_input(event)
 		return
 	if event.is_action_pressed("ui_cancel"):
-		set_paused(not _pause_layer.visible)
+		if _pause_layer.visible and _pause_in_settings:
+			UiSounds.play(self, "terug")
+			_show_pause_page(false)   # the settings: back to the pause menu
+		else:
+			set_paused(not _pause_layer.visible)
 	elif not _pause_layer.visible:
 		return
 	elif event.is_action_pressed("ui_down"):
-		_select_pause_item(posmod(_pause_selected + 1, PAUSE_ITEMS.size()))
+		_select_pause_item(posmod(_pause_selected + 1, _pause_entries.size()))
 	elif event.is_action_pressed("ui_up"):
-		_select_pause_item(posmod(_pause_selected - 1, PAUSE_ITEMS.size()))
+		_select_pause_item(posmod(_pause_selected - 1, _pause_entries.size()))
 	elif event.is_action_pressed("ui_accept"):
 		_choose_pause_item(_pause_selected)
 	else:
@@ -1475,7 +1544,7 @@ func set_paused(on: bool) -> void:
 	_ui_viewport.gui_disable_input = not on
 	get_tree().paused = on   # the city music follows by itself (_update_city_music)
 	if on:
-		_select_pause_item(0)
+		_show_pause_page(false)
 
 
 func _select_pause_item(index: int) -> void:
@@ -1490,15 +1559,27 @@ func _select_pause_item(index: int) -> void:
 			button.add_theme_stylebox_override(state, style)
 		for colour_name in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
 			button.add_theme_color_override(colour_name, UiStyle.INK if on else UiStyle.TEXT)
-		button.text = ("→  " if on else "    ") + PAUSE_ITEMS[button_index][0]
+		button.text = ("→  " if on else "    ") + String((_pause_entries[button_index].label as Callable).call())
 
 
 func _choose_pause_item(index: int) -> void:
-	if PAUSE_ITEMS[index][1] != "resume":   # going on sounds as closing the menu (set_paused)
+	if index < 0 or index >= _pause_entries.size():
+		return
+	var page_before := _pause_in_settings
+	await (_pause_entries[index].do as Callable).call()
+	# a setting changed: its label again (a page that changed is drawn anew already)
+	if is_inside_tree() and _pause_in_settings == page_before and _pause_layer.visible:
+		_select_pause_item(_pause_selected)
+
+
+func _pause_action(action: String) -> void:
+	if action != "resume":   # going on sounds as closing the menu (set_paused)
 		UiSounds.play(self, "doe")
-	match PAUSE_ITEMS[index][1]:
+	match action:
 		"resume":
 			set_paused(false)
+		"settings":
+			_show_pause_page(true)
 		"menu":
 			# the swipe (the one transition of the game) over it, then the menu
 			await SwipeTransition.swipe(get_tree()).covered
@@ -1575,6 +1656,13 @@ func _build_reward_screen() -> void:
 ## pause menu, the game menu, a machine's screen: the game is not paused), one after another;
 ## `done` is called once it is pressed away (at once when there is nothing to show).
 func show_reward(reward: Dictionary, done := Callable()) -> void:
+	# the XP that made a level up waiting goes onto the level-up screen (one screen for both):
+	# a reward of only XP is then not shown on its own
+	if int(reward.get("xp", 0)) > 0 and not _level_ups_waiting.is_empty():
+		var level_up: Dictionary = _level_ups_waiting.back()
+		level_up["xp"] = int(level_up.get("xp", 0)) + int(reward.xp)
+		reward = reward.duplicate()
+		reward["xp"] = 0
 	if RewardScreen.pages_of(reward).is_empty():
 		if done.is_valid():
 			done.call()
@@ -1651,7 +1739,7 @@ func _open_waiting_level_up() -> void:
 		return
 	var waiting: Dictionary = _level_ups_waiting.pop_front()
 	var raise: Dictionary = PlayerController.LEVEL_UP_RAISE
-	_level_up_screen.open(int(waiting.level), waiting.choose, waiting.get("current", Callable()), raise)
+	_level_up_screen.open(int(waiting.level), waiting.choose, waiting.get("current", Callable()), raise, int(waiting.get("xp", 0)))
 	_play_jingle(LEVEL_JINGLE, LEVEL_JINGLE_VOLUME_DB, "LevelDeuntje")
 
 

@@ -13,6 +13,8 @@ extends "res://tests/integration/support/town_test.gd"
 const MENU_SCENE := "res://scenes/hoofdmenu.tscn"
 ## Seconds of the clock one test may take (the whole intro lasts as long as its music).
 const TEST_SECONDS := 250.0
+## Seconds of the clock the menu's 3D map may take to load (on a thread).
+const MAP_SECONDS := 60.0
 ## The nodes of the menu map that hold a column of vehicles.
 const COLUMNS := ["Trekkers", "Politie"]
 
@@ -38,7 +40,11 @@ func _menu_with_map() -> Node:
 		add_to_root(menu_scene)
 		tree.current_scene = menu_scene
 	var menu_scene := tree.current_scene
-	await wait_until(func() -> bool: return menu_scene.has_node("Menukaart"), 120.0)
+	# the map is loaded on a thread of its own, in clock time: a wait in game time (wait_until)
+	# can be over in a blink when the frames are empty (--fixed-fps ran 120 s of them in 80 ms)
+	var give_up_at := Time.get_ticks_msec() + int(MAP_SECONDS * 1000.0)
+	while not menu_scene.has_node("Menukaart") and Time.get_ticks_msec() < give_up_at:
+		await tree.process_frame
 	await frames(1)
 	return menu_scene.get_node_or_null("Menukaart")
 

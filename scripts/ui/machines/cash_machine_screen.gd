@@ -290,7 +290,8 @@ func withdraw(amount: float) -> bool:
 	sound("geld")
 	await pause_for(1.1)
 	var notes := _notes_for(amount)
-	show_tray("NEEM UW GELD", [euros(amount)] + notes + ["", "Nieuw saldo: " + euros(float(card.saldo))], GOOD)
+	# (the balance is on the machine's screen, not in the panel too)
+	show_tray("NEEM UW GELD", [euros(amount)] + notes, GOOD)
 	refresh_pockets()
 	await pause_for(0.8)
 	_busy = false

@@ -13,13 +13,15 @@ func test_name_has_voice_mood_and_variant(test) -> void:
 	test.check(variant >= 1 and variant <= Babble.VARIANTS, "variant tussen 1 en %d (%d)" % [Babble.VARIANTS, variant])
 
 
-## The same voice and mood never give the same variant twice in a row.
-func test_never_the_same_variant_twice(test) -> void:
-	var last := Babble.sound_name("man", "blij")
-	for attempt in 50:
+## The same voice and mood never give one of the last RECENT variants again.
+func test_no_variant_again_soon(test) -> void:
+	var recent: Array[String] = []
+	for attempt in 80:
 		var next := Babble.sound_name("man", "blij")
-		test.check(next != last, "niet twee keer %s achter elkaar" % next)
-		last = next
+		test.check(not next in recent, "%s niet binnen %d keer opnieuw" % [next, Babble.RECENT])
+		recent.append(next)
+		if recent.size() > Babble.RECENT:
+			recent.pop_front()
 
 
 ## An unknown voice or mood falls back to "man" and "neutraal".
@@ -27,43 +29,30 @@ func test_unknown_voice_and_mood_fall_back(test) -> void:
 	test.check(Babble.sound_name("robot", "verveeld").begins_with("brabbel_man_neutraal_"), "onbekend wordt man, neutraal")
 
 
-## A word always sounds the same: the same variant and pitch for the same word, whatever
-## signs or capitals are round it, and different words spread over the variants.
-func test_a_word_has_its_own_sound(test) -> void:
-	test.check(Babble.sound_name("vrouw", "blij", "kroket") == Babble.sound_name("vrouw", "blij", "kroket"), "hetzelfde woord: hetzelfde geluid")
-	test.check(Babble.variant_of("Kroket!") == Babble.variant_of("kroket"), "hoofdletters en leestekens tellen niet")
-	test.check(is_equal_approx(Babble.pitch_of("kroket"), Babble.pitch_of("kroket")), "en dezelfde toonhoogte")
-	test.check(absf(Babble.pitch_of("kroket") - 1.0) <= Babble.PITCH_SPREAD + 0.0001, "binnen de spreiding")
-	var variants := {}
-	for word: String in ["ja", "nee", "kroket", "tram", "geld", "morgen", "station", "fiets", "koffie", "weer",
-			"hallo", "dag", "brood", "kaas", "fiets", "bus", "trein", "stad", "huis", "markt", "regen", "zon",
-			"water", "brug", "plein", "kerk", "winkel", "snoep", "patat", "friet", "jas", "hond", "kat",
-			"boom", "auto", "school", "werk", "baas", "vriend", "buurman"]:
-		variants[Babble.variant_of(word)] = true
-		test.check(Babble.variant_of(word) >= 1 and Babble.variant_of(word) <= Babble.VARIANTS, "%s: een bestaande variant" % word)
-	test.check(variants.size() == Babble.VARIANTS, "verschillende woorden gebruiken alle varianten")
-
-
-## A line plays one sound per word, in the order of its words: the same text, the same
-## conversation to hear.
-func test_a_line_sounds_the_same_every_time(test) -> void:
+## Every word a random sound: the same word (or line) does not always sound the same, and in
+## a while every variant comes by.
+func test_every_word_a_random_sound(test) -> void:
 	var line := "Heb je misschien wat kleingeld voor me?"
 	var first: Array[String] = []
 	var second: Array[String] = []
 	for index in 9:
 		first.append(Babble.sound_name("man", "neutraal", Babble.word_at(line, index)))
 		second.append(Babble.sound_name("man", "neutraal", Babble.word_at(line, index)))
-	test.check(first == second, "dezelfde regel: dezelfde reeks geluiden")
+	test.check(first != second, "dezelfde regel klinkt elke keer anders")
+	var heard := {}
+	for attempt in 400:
+		heard[Babble.sound_name("vrouw", "vraag", "kroket")] = true
+	test.check(heard.size() == Babble.VARIANTS, "alle %d varianten komen langs (%d)" % [Babble.VARIANTS, heard.size()])
 	test.check(Babble.word_at(line, 0) == "Heb" and Babble.word_at(line, 2) == "misschien", "het zoveelste geluid is het zoveelste woord")
 	test.check(Babble.word_at(line, 50) == "me?", "na het laatste woord: dat woord nog eens")
-	test.check(Babble.word_at("", 0) == "" and Babble.sound_name("man", "blij", "").begins_with("brabbel_man_blij_"), "zonder woord: zomaar een variant")
+	test.check(Babble.word_at("", 0) == "", "zonder woorden: geen woord")
 
 
-## Played twice, a word is a little higher or lower each time, but near its own pitch.
-func test_a_word_wobbles_in_pitch_each_time(test) -> void:
+## Every word at its own random pitch, within PITCH_SPREAD of 1.
+func test_every_word_a_random_pitch(test) -> void:
 	var pitches := {}
-	for play_index in 12:
+	for play_index in 30:
 		var pitch := Babble.played_pitch("kroket")
 		pitches[snappedf(pitch, 0.0001)] = true
-		test.check(absf(pitch / Babble.pitch_of("kroket") - 1.0) <= Babble.PITCH_WOBBLE + 0.0001, "dicht bij de toon van het woord (%.3f)" % pitch)
-	test.check(pitches.size() > 1, "niet elke keer precies even hoog (%d toonhoogtes)" % pitches.size())
+		test.check(absf(pitch - 1.0) <= Babble.PITCH_SPREAD + 0.0001, "binnen de spreiding (%.3f)" % pitch)
+	test.check(pitches.size() > 10, "steeds een andere toonhoogte (%d)" % pitches.size())

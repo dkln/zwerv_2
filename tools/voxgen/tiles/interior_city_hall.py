@@ -385,6 +385,18 @@ def painting():
     return model
 
 
+@tile("binnen/stadhuis/prullenbak")
+def waste_bin():
+    """A waste bin by the coffee machine and the benches (0.5 m, 0.875 m high): a white bin
+    with a swing lid in the city's green and a dark slot."""
+    model = V(4, 4, 7)
+    model.box(0, 0, 0, 4, 4, 6, "lak_wit1")
+    model.box(0, 0, 0, 4, 4, 1, "metaal_donker")
+    model.box(0, 0, 6, 4, 4, 7, "bord_groen")
+    model.box(1, 0, 5, 3, 1, 6, "bord_zwart")
+    return model
+
+
 @tile("binnen/stadhuis/infozuil")
 def info_pillar():
     """An information pillar in the hall (0.5 m, 1.75 m high): white with a screen and the

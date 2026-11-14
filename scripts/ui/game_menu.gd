@@ -669,8 +669,14 @@ func _slot_count() -> int:
 	return Items.BASE_SLOTS
 
 
-func _has_backpack() -> bool:
-	return _player != null and _player.get("has_backpack") == true
+## Whether the player wears a coat (Items "worn"): its pockets give more room.
+func _has_coat() -> bool:
+	if _player == null or not ("inventory" in _player):
+		return false
+	for item_id: String in _player.inventory:
+		if Items.is_worn(item_id):
+			return true
+	return false
 
 
 func _item_total() -> int:
@@ -1065,19 +1071,23 @@ func _refresh_inventory() -> void:
 	if not _shown_items.has(_selected_item):
 		_selected_item = _shown_items[0] if not _shown_items.is_empty() else ""
 	var inventory := _inventory()
+	# what takes no room (the slip of Burgerzaken, the cans and bottles in the bag) gets a slot
+	# of its own for as long as it is there, on top of the room (not counted as room)
+	var lit_slots := _slot_count() + _shown_items.filter(func(item_id: String) -> bool:
+		return int(inventory.get(item_id, 0)) > 0 and not Items.takes_slot(item_id)).size()
 	for slot_index in _slots.size():
 		var slot := _slots[slot_index]
 		var icon := _slot_icons[slot_index]
 		var count := _slot_counts[slot_index]
-		# the slots beyond the room it has (no rucksack: only the pockets) are shut
-		slot.modulate.a = 1.0 if slot_index < _slot_count() else LOCKED_SLOT_ALPHA
+		# the slots beyond the room it has (no coat: only the pockets) are shut
+		slot.modulate.a = 1.0 if slot_index < lit_slots else LOCKED_SLOT_ALPHA
 		if slot_index >= _shown_items.size():
 			slot.style = _style(EMPTY_SLOT, EMPTY_BORDER, 2, 4, 1)
 			slot.shadow_offset = 0.0
 			icon.bitmap = []
 			icon.modulate.a = 1.0
 			count.text = ""
-			slot.tooltip_text = "" if slot_index < _slot_count() else "Meer ruimte met een rugzak"
+			slot.tooltip_text = "" if slot_index < _slot_count() else "Meer ruimte met een jas aan"
 			continue
 		var item_id := _shown_items[slot_index]
 		var rarity_colour := _rarity_colour(item_id)
@@ -1099,7 +1109,7 @@ func _refresh_inventory() -> void:
 		if item_id == BankCards.ITEM:
 			slot.tooltip_text = BankCards.description(_player, _item_name(item_id))
 	var used := _items_in_category("").filter(func(item_id: String) -> bool: return int(inventory.get(item_id, 0)) > 0 and Items.takes_slot(item_id)).size()
-	_slots_used_label.text = "%d / %d VAKJES" % [used, _slot_count()] + ("  · RUGZAK" if _has_backpack() else "")
+	_slots_used_label.text = "%d / %d VAKJES" % [used, _slot_count()] + ("  · JAS" if _has_coat() else "")
 	_refresh_item_detail()
 
 
@@ -1139,6 +1149,8 @@ func _refresh_item_detail() -> void:
 	if _selected_item == BankCards.ITEM:
 		# every card found: its holder and the riddle of its PIN (BankCards)
 		text = BankCards.description(_player, text)
+	if _selected_item == "wachtnummer" and _player and _player.has_meta("wachtnummer"):
+		text += "\nNummer B %03d." % int(_player.get_meta("wachtnummer"))   # (CityHall.TICKET_META)
 	if amount <= 0 and item.has("missing_text"):
 		text = String(item.missing_text)   # the slot kept for your ID card, empty
 		_detail_rarity.text = "KWIJT"

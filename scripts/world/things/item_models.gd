@@ -108,6 +108,7 @@ static func _build(item_id: String, figure: PlayerModel.VoxelFigure) -> bool:
 		"banaan": _build_banana(figure)
 		"ov_chipkaart": _build_transit_card(figure)
 		"los_kaartje": _build_paper_ticket(figure)
+		"wachtnummer": _build_queue_ticket(figure)
 		"blikje": _build_empty_can(figure)
 		"pinpas": _build_bank_card(figure)
 		"id_kaart": _build_id_card(figure)
@@ -1008,6 +1009,26 @@ static func _build_bank_card(figure: PlayerModel.VoxelFigure) -> void:
 			_box(figure, Vector3i(column, 3, 1), Vector3i(column, 3, 1), Color("#2A4AC8"), "plastic")
 	_round_card_corners(figure, 15, 9)
 
+
+
+## The slip from the number machine of Burgerzaken: thin white thermal paper, a torn top edge,
+## the city's green band, a big black number and a little line of print under it.
+static func _build_queue_ticket(figure: PlayerModel.VoxelFigure) -> void:
+	var paper := Color("#F6F4EE")
+	_box(figure, Vector3i(0, 0, 0), Vector3i(9, 15, 0), paper, "skin")
+	# the torn top: every other voxel gone
+	for column in range(0, 10, 2):
+		figure.clear(column, 15, 0)
+	_box(figure, Vector3i(0, 12, 0), Vector3i(9, 13, 0), Color("#2E7D32"), "skin")
+	# "B" and two digits, big and black
+	for voxel: Vector2i in [Vector2i(1, 9), Vector2i(1, 8), Vector2i(1, 7), Vector2i(1, 6), Vector2i(1, 5),
+			Vector2i(2, 9), Vector2i(2, 7), Vector2i(2, 5), Vector2i(3, 8), Vector2i(3, 6),
+			Vector2i(5, 9), Vector2i(5, 8), Vector2i(5, 7), Vector2i(6, 9), Vector2i(6, 7), Vector2i(6, 5), Vector2i(5, 6), Vector2i(5, 5),
+			Vector2i(8, 9), Vector2i(8, 8), Vector2i(8, 7), Vector2i(8, 6), Vector2i(8, 5)]:
+		_box(figure, Vector3i(voxel.x, voxel.y, 0), Vector3i(voxel.x, voxel.y, 0), DARK, "skin")
+	for column in range(1, 9):
+		if _speckle(Vector3i(column, 2, 0)) < 70:
+			_box(figure, Vector3i(column, 2, 0), Vector3i(column, 2, 0), Color("#8A8A86"), "skin")
 
 
 ## A Dutch identity card: light blue-grey, the photo on the left, lines of text, the red-white-

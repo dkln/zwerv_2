@@ -139,8 +139,9 @@ func test_walking_over_a_lost_bank_card(test) -> void:
 	var start: Vector3 = player.global_position
 	var card_at: Vector3 = cards._cards[0].global_position if cards.cards_left() > 0 else start
 	test.check(Vector2(card_at.x - start.x, card_at.z - start.z).length() > cards.near, "niet vlak bij de start")
-	var had_backpack: bool = player.get("has_backpack")
-	player.set("has_backpack", true)
+	# room in the pockets: a coat on (its pockets, Items.COAT_SLOTS)
+	var had_coat: bool = player.inventory.has("oude_jas")
+	player.inventory["oude_jas"] = 1
 	var cards_before := BankCards.cards_of(player).size()
 	var card: Node3D = cards._cards[0]
 	player.global_position = card.global_position - Vector3.UP * 0.12
@@ -148,7 +149,8 @@ func test_walking_over_a_lost_bank_card(test) -> void:
 		await tree.physics_frame
 	test.check(BankCards.cards_of(player).size() == cards_before + 1, "over een pinpas lopen: een pas met eigen rekening erbij")
 	BankCards.cards_of(player).clear()
-	player.set("has_backpack", had_backpack)
+	if not had_coat:
+		player.inventory.erase("oude_jas")
 
 
 ## Loose change is very rare: one coin in the whole town (once the story allows it), none by the start.

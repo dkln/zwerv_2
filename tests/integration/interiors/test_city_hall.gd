@@ -47,8 +47,10 @@ func _ride_and_check(test, hall: Node3D, number: int) -> void:
 	test.check(hall.plan_root() == floor_node, "  het kaartje toont deze etage")
 	match number:
 		1:
-			var at_counters := _people_with_role(floor_node, "ambtenaar").filter(func(person: Node) -> bool: return person.sitting)
-			test.check(at_counters.size() == 4, "  ambtenaren achter de vier loketten (%d)" % at_counters.size())
+			var at_counters := _people_with_role(floor_node, "loketmedewerker").filter(func(person: Node) -> bool: return person.sitting)
+			test.check(at_counters.size() == Layout.COUNTERS_X.size(), "  loketmedewerkers achter de %d loketten (%d)" % [Layout.COUNTERS_X.size(), at_counters.size()])
+			var waiting := _people_with_role(floor_node, "klant")
+			test.check(waiting.size() >= 25, "  druk: %d wachtenden" % waiting.size())
 		2:
 			var at_desks := _people_with_role(floor_node, "ambtenaar")
 			test.check(at_desks.size() >= 12, "  de kantoortuin bemand (%d)" % at_desks.size())
@@ -163,8 +165,66 @@ func test_taking_a_number_at_burgerzaken(test) -> void:
 	await _ride_and_check(test, hall, 1)
 	await stand_at((hall.floor_node(1).get_node("Nummerautomaat") as Node3D).global_position)
 	test.check(prompts() == [["E", "Nummertje trekken"]], "bij de automaat: [E] Nummertje trekken")
+	var board_before: Array = hall.waiting_board_lines()
 	use_prompt()
-	test.check(hall.number_taken() > 0, "een nummertje: B %03d" % hall.number_taken())
+	await frames(2)
+	var ticket: int = hall.player_ticket()
+	test.check(ticket > 0 and hall.number_taken() == ticket, "een nummertje: B %03d" % ticket)
+	test.check(int(player.inventory.get("wachtnummer", 0)) == 1, "het strookje in je inventory")
+	var thought: Array = hud._story_box._pages if hud.is_showing_story() else []
+	test.check(not thought.is_empty() and String(thought[0].get("text", "")).contains("B %03d" % ticket), "je gedachte noemt je nummer (%s)" % [thought])
+	await close_screens()
+	test.check(hall._queue.size() > 20 and hall._queue.back().who == "speler", "achteraan in een lange rij (%d wachtend)" % hall._queue.size())
+	test.check(hall.waiting_board_lines().size() == hall.BOARD_LINES + 2 and hall.waiting_board_lines()[0] == "AAN DE BEURT",
+		"het wachtbord aan de wand (%s, eerst %s)" % [hall.waiting_board_lines(), board_before])
+	# a clerk while it is not your turn: cross, and an offence (three times: the guard)
+	var clerk: Node3D = hall._counters[0].clerk
+	var refusal: Array = clerk.get_meta("talk_gate").call()
+	test.check(not refusal.is_empty() and String(refusal[0].get("mood", "")) == "boos", "niet aan de beurt: de medewerker wordt boos")
+	await frames(2)
+	test.check(int(interiors._offences.get("voordringen", 0)) == 1, "voordringen telt (%s)" % [interiors._offences])
+	interiors._offences.erase("voordringen")
+	# a visitor called: up from the bench and to the counter
+	var counter: Dictionary = hall._counters[1]
+	while not (hall._queue[0].who is InteriorPerson):
+		hall._queue.pop_front()
+	var visitor: InteriorPerson = hall._queue[0].who
+	var seat_at := visitor.global_position
+	counter.state = "vrij"
+	counter.clock = 0.0
+	await frames(3)
+	test.check(counter.state == "lopen" and counter.visitor == visitor, "een bezoeker wordt omgeroepen (%s)" % counter.state)
+	test.check(hall.waiting_board_lines()[1].ends_with("→ %d" % int(counter.number)), "het bord: %s" % hall.waiting_board_lines()[1])
+	await seconds(4.0)
+	test.check(visitor.global_position.distance_to(seat_at) > 1.0, "hij loopt naar het loket (%.1f m)" % visitor.global_position.distance_to(seat_at))
+	# your number called: then the clerk talks to you, and after it the slip is used
+	hall._queue.push_front({"number": ticket, "who": "speler"})
+	var yours: Dictionary = hall._counters[2]
+	yours.state = "vrij"
+	yours.clock = 0.0
+	await frames(3)
+	test.check(yours.state == "speler", "jouw nummer bij loket %d" % int(yours.number))
+	test.check((yours.clerk.get_meta("talk_gate") as Callable).call().is_empty(), "nu praat de medewerker met je")
+	player.talk_ended.emit("loketmedewerker")
+	await frames(2)
+	test.check(hall.player_ticket() == 0 and int(player.inventory.get("wachtnummer", 0)) == 0 and yours.state == "vrij",
+		"geholpen: het strookje is op, het loket vrij")
+	# sent on ("gevolg" "doorverwezen" in the clerk's tree): a new number, and that counter not again
+	(yours.clerk.get_meta("talk_consequence") as Callable).call("doorverwezen")
+	test.check(hall.sent_away_from().has(int(yours.number)), "doorverwezen door loket %d" % int(yours.number))
+	for each_counter: Dictionary in hall._counters:
+		each_counter.state = "niemand"
+		each_counter.clock = 999.0
+	hall._queue.push_front({"number": ticket + 100, "who": "speler"})
+	yours.state = "vrij"
+	yours.clock = 0.0
+	await frames(3)
+	test.check(yours.state == "vrij", "dat loket roept je niet meer om")
+	var other: Dictionary = hall._counters[(hall._counters.find(yours) + 1) % hall._counters.size()]
+	other.state = "vrij"
+	other.clock = 0.0
+	await frames(3)
+	test.check(other.state == "speler", "een ander loket wel (loket %d)" % int(other.number))
 
 
 ## Back on the ground floor after a ride, the door inside offers [E] Naar buiten and puts
@@ -176,8 +236,16 @@ func test_down_again_and_out_of_the_door(test) -> void:
 	if hall == null or not hall.has_method("ride"):
 		return
 	await _ride_and_check(test, hall, 1)
+	hall._take_number()
+	var first: int = hall.player_ticket()
+	hall._take_number()
+	test.check(hall.player_ticket() != first and int(player.inventory.get("wachtnummer", 0)) == 1
+		and hall._queue.filter(func(ticket: Dictionary) -> bool: return ticket.who is String and ticket.who == "speler").size() == 1,
+		"een nieuw nummer vervangt het oude (B %03d -> B %03d)" % [first, hall.player_ticket()])
+	await close_screens()
 	await _ride_and_check(test, hall, 0)
 	await stand_at((hall.get_node("Deur") as Node3D).global_position)
 	test.check(prompts() == [["E", "Naar buiten"]], "bij de deur binnen: [E] Naar buiten")
 	await use_door()
 	test.check(not interiors.is_inside() and player.global_position.distance_to(way_in.door) < 2.0, "weer buiten op het Spui")
+	test.check(int(player.inventory.get("wachtnummer", 0)) == 0 and hall.player_ticket() == 0, "het nummertje is weg als je naar buiten loopt")

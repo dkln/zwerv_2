@@ -374,8 +374,13 @@ func test_the_kroket_and_the_stolen_id(test) -> void:
 	test.check(not story.is_unlocked("snackkaart"), "de frietkar verkoopt nog alleen kroketten")
 	var plein: Vector2 = story._place("plein")
 	test.check(plein != Vector2.INF and not story.shroud.is_open(plein.x, plein.y), "het Plein is nog dicht")
-	player.add_item("kroket", 1, true)
+	player.add_money(5.0)
+	test.check(player.buy("kroket", 2.5) == "ok", "een kroket gekocht")
 	await frames(2)
+	var first_kroket: Dictionary = hud._reward_screen.current_page() if hud.is_showing_reward() else {}
+	test.check(String(first_kroket.get("title", "")) == "Je eerste kroket" and String(first_kroket.get("item", "")) == "kroket",
+		"de eerste kroket: het item-verkregen-scherm (%s)" % [first_kroket])
+	await close_screens()
 	test.check(not _step_done("kroket"), "een kroket op zak telt nog niet")
 	test.check(player.eat_something(), "F: de kroket opgegeten")
 	await frames(2)
@@ -506,8 +511,19 @@ func test_ome_wim_and_his_coat(test) -> void:
 ## again), wears you out, and only two answers in the whole tree let you go.
 func _phone_sellers(test, characters: Node) -> void:
 	test.check(characters.is_chasing("telefoonverkoper"), "de telefoonverkopers komen achter je aan")
+	var story := _story()
+	var sellers_listed := func() -> bool:
+		return (story._quest(story.mission(MISSION_2)).steps as Array).any(func(step: Dictionary) -> bool: return str(step.text).contains("telefoonverkopers"))
+	test.check(not sellers_listed.call(), "zolang ze er niet zijn: de taak nog niet in de lijst")
 	characters._chasing["telefoonverkoper"].wait = 0.0   # now, not after CHASE_DELAY
 	await frames(3)
+	var first_seller := characters.person_of("telefoonverkoper") as Node3D
+	if first_seller:
+		var start_gap := Vector2(first_seller.global_position.x - player.global_position.x, first_seller.global_position.z - player.global_position.z).length()
+		test.check(start_gap <= characters.CHASE_FROM + 4.0, "ze verschijnen dichtbij (%.1f m)" % start_gap)
+	await wait_until(func() -> bool: return characters.is_chase_near("telefoonverkoper"), 20.0)
+	await frames(2)
+	test.check(sellers_listed.call(), "bij je: nu staat de taak in de lijst")
 	var seller := characters.person_of("telefoonverkoper") as Pedestrian
 	test.check(seller != null and characters.person_of("telefoonverkoper_kevin") != null and characters.person_of("telefoonverkoper_sanne") != null,
 		"een groepje van drie")
@@ -571,3 +587,51 @@ func _phone_sellers(test, characters: Node) -> void:
 	test.check(_step_done("verkopers", MISSION_2), "van de verkopers af")
 	await frames(2)
 	test.check(not characters.is_chasing("telefoonverkoper"), "ze lopen weg")
+
+
+## A step skipped (complete_step, complete_mission: the mission jump of debug) still opens what
+## it opens when played: what it unlocks as it begins, what coming into a building unlocks
+## (its pages then not shown later), the areas it opens.
+func test_a_skipped_step_still_opens_things(test) -> void:
+	await _past_the_prologue()
+	var story := _story()
+	var data: Dictionary = story.mission(MISSION_1)
+	var step := {"id": "proef_overgeslagen", "ontgrendelt": ["proef_menu"],
+		"bij_binnenkomst": {"binnen": "centraal", "ontgrendelt": ["proef_springen"]}, "opent": ["station"]}
+	story._grant_what_it_opens(data, step)
+	test.check(story.is_unlocked("proef_menu"), "wat de stap bij het begin ontgrendelt")
+	test.check(story.is_unlocked("proef_springen"), "wat binnenkomen ontgrendelt")
+	test.check(story._flags.has("binnenkomst:%s" % story._key(data, step)), "en die pagina's komen later niet meer")
+	test.check(story.shroud.open_names.has("station"), "het gebied gaat open")
+	for flag in ["proef_menu", "proef_springen"]:
+		story._flags.erase(flag)
+	story._flags.erase("binnenkomst:%s" % story._key(data, step))
+	if not story.is_finished(MISSION_1):
+		story.complete_mission(MISSION_1)
+		await close_screens()
+		await frames(3)
+		await close_screens()
+	for what in ["menu", "handelaars", "bedelen", "snackkaart", "springen"]:
+		test.check(story.is_unlocked(what), "missie 1 overgeslagen: %s open" % what)
+
+
+## A conversation can start a mission (a node's "gevolg": "missie:<id>"): once it is over, the
+## mission is under way and followed; a mission with "start": "gesprek" starts no other way.
+func test_a_conversation_starts_a_mission(test) -> void:
+	await _past_the_prologue()
+	var story := _story()
+	var side := {"id": "proef_uit_gesprek", "label": "ZIJMISSIE", "titel": "Proef uit een gesprek", "soort": "zij",
+		"start": "gesprek", "stappen": [{"id": "iets", "tekst": "Doe iets", "doel": {"soort": "check", "check": "proef_iets"}}]}
+	story.missions.append(side)
+	story._start_missions("na_proloog")
+	test.check(not story.is_started("proef_uit_gesprek"), "\"start\": \"gesprek\": niet vanzelf")
+	story.start_from_conversation("proef_uit_gesprek")
+	test.check(not story.is_started("proef_uit_gesprek"), "nog niet tijdens het gesprek")
+	player.talk_ended.emit("proef")
+	await frames(3)
+	test.check(story.is_started("proef_uit_gesprek"), "na het gesprek: de missie loopt")
+	test.check(hud.tracked_quest_id() == "proef_uit_gesprek", "en je volgt hem (%s)" % hud.tracked_quest_id())
+	await close_screens()
+	story._started.erase("proef_uit_gesprek")
+	story.missions.erase(side)
+	story._update_tracker()

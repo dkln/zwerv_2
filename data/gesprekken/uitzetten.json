@@ -245,6 +245,22 @@
 						"Bezoeker na bezoeker had je om geld gevraagd, in de wachtrij, bij de lift, zelfs bij de koffieautomaat. De beveiliger van het stadhuis had het gezien.",
 						"\"Meneer, mevrouw, wat het ook is: niet hier.\" Hij bracht je naar de draaideur en duwde. Hard. Het Spui lag ineens heel dichtbij."
 					]
+				},
+				"voordringen": {
+					"na": 3,
+					"waarschuwing": [
+						"Beveiliging. U bent niet aan de beurt. Gaat u maar rustig zitten tot uw nummer wordt omgeroepen.",
+						"Laatste waarschuwing. Nog één keer voordringen en ik zet u buiten."
+					],
+					"roep": [
+						"Beveiliging! Niet steeds voordringen. U gaat met mij mee.",
+						"U daar! Iedereen wacht op zijn beurt, u ook. Meekomen.",
+						"Zo is het genoeg. Blijft u even staan?"
+					],
+					"tekst": [
+						"Steeds weer liep je naar een loket terwijl je niet aan de beurt was. De mensen op de wachtbanken keken je aan, de ambtenaren ook.",
+						"De beveiliger van het stadhuis bracht je zonder een woord naar de draaideur. Je nummertje mocht je houden. Binnenkomen even niet."
+					]
 				}
 			}
 		}

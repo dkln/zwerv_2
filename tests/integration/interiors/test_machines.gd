@@ -54,7 +54,7 @@ func _player_in_stand_in_town() -> Node:
 	town.add_child(stand_in_player)
 	add_to_root(town)
 	await frames(1)
-	stand_in_player.set("has_backpack", true)
+	stand_in_player.inventory["oude_jas"] = 1   # room in the pockets: a coat on (Items.COAT_SLOTS)
 	return stand_in_player
 
 
@@ -217,3 +217,52 @@ func test_single_ticket_is_gone_at_check_out(test) -> void:
 	test.check(OvCard.check_in(traveller) == "kaartje" and OvCard.check_out(traveller) == "kaartje" and not OvCard.has_ticket(traveller),
 		"met een los kaartje in en uit, bij het uitchecken is hij weg")
 	test.check(OvCard.check_in(traveller) == "geen", "zonder kaart of kaartje: nee")
+
+
+## Without a mouse (a controller): the cursor goes over the keypad by direction, A (a joypad
+## button, ui_accept) presses the key under it; at the deposit machine it also reaches the
+## hole and the BON key (its parts), and B (ui_cancel) leaves.
+func test_machines_with_a_controller(test) -> void:
+	var card_owner := await _player_in_stand_in_town()
+	card_owner.give_found_bank_card()
+	var card: Dictionary = BankCards.cards_of(card_owner)[0]
+	var screen: Node = CashMachineScreen.show_for(card_owner, "", false)
+	await frames(1)
+	await screen.insert_card(card)
+	await frames(2)
+	var labels: Array = screen.cursor_targets().map(func(target: Dictionary) -> String:
+		return (target.button as Button).text if target.has("button") else String(target.hotspot))
+	test.check("1" in labels and "OK" in labels and "STOP" in labels, "de cursor kan op de toetsen (%s)" % [labels])
+	screen.move_cursor(Vector2.DOWN)
+	test.check(screen.cursor_label() == "1", "eerst op de eerste toets (%s)" % screen.cursor_label())
+	screen.move_cursor(Vector2.RIGHT)
+	test.check(screen.cursor_label() == "2", "rechts: 2 (%s)" % screen.cursor_label())
+	screen.move_cursor(Vector2.DOWN)
+	test.check(screen.cursor_label() == "5", "omlaag: 5 (%s)" % screen.cursor_label())
+	var press := InputEventJoypadButton.new()
+	press.button_index = JOY_BUTTON_A
+	press.pressed = true
+	tree.root.push_input(press)
+	await frames(2)
+	test.check(screen.entered == "5", "A drukt de toets in (%s)" % screen.entered)
+	var down := InputEventJoypadButton.new()
+	down.button_index = JOY_BUTTON_DPAD_LEFT
+	down.pressed = true
+	tree.root.push_input(down)
+	await frames(1)
+	test.check(screen.cursor_label() == "4", "D-pad links: 4 (%s)" % screen.cursor_label())
+	await _close(screen)
+	var returner := await _player_in_stand_in_town()
+	var deposit: Node = DepositMachineScreen.show_for(returner, "DERREK", false)
+	await frames(2)
+	var parts: Array = deposit.cursor_targets().filter(func(target: Dictionary) -> bool: return target.has("hotspot")).map(
+			func(target: Dictionary) -> String: return String(target.hotspot))
+	test.check("gat" in parts and "bon" in parts, "bij de statiegeldautomaat: het gat en de BON-knop (%s)" % [parts])
+	var back := InputEventJoypadButton.new()
+	back.button_index = JOY_BUTTON_B
+	back.pressed = true
+	tree.root.push_input(back)
+	await frames(3)
+	test.check(not is_instance_valid(deposit) or not deposit.visible or deposit._closing, "B: weg bij de automaat")
+	if is_instance_valid(deposit) and deposit.visible:
+		await _close(deposit)

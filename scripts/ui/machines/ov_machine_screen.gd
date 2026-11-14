@@ -80,7 +80,7 @@ func build_controls(box: VBoxContainer) -> void:
 func pocket_lines() -> Array:
 	var lines: Array = [["GELD  " + euros(_money()), UiStyle.TEXT]]
 	if OvCard.has_card(player):
-		lines.append(["OV-chipkaart  saldo " + euros(OvCard.balance(player)), UiStyle.ACCENT])
+		lines.append(["OV-chipkaart", UiStyle.ACCENT])   # its balance is on the machine's screen
 	else:
 		lines.append(["Geen OV-chipkaart", UiStyle.MUTED])
 	if OvCard.has_ticket(player):
@@ -123,7 +123,7 @@ func _show_menu(note := "", note_colour := Color(0, 0, 0, 0)) -> void:
 
 func buy_card() -> String:
 	var result := OvCard.buy_card(player)
-	await _after_payment(result, "OV-CHIPKAART", ["Anoniem, blauw.", "Saldo: " + euros(OvCard.START_BALANCE)])
+	await _after_payment(result, "OV-CHIPKAART", ["Anoniem, blauw."])
 	return result
 
 
@@ -135,7 +135,7 @@ func buy_ticket() -> String:
 
 func top_up(amount: float) -> String:
 	var result := OvCard.top_up(player, amount)
-	await _after_payment(result, "OPGELADEN", ["+ " + euros(amount), "Nieuw saldo: " + euros(OvCard.balance(player))])
+	await _after_payment(result, "OPGELADEN", ["+ " + euros(amount)])
 	return result
 
 

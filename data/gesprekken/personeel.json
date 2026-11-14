@@ -1,5 +1,5 @@
 {
-	"uitleg": "Mensen in dienst: de conducteurs van de NS en de handhavers in Den Haag Centraal (scripts/world/station/station_person.gd, 'role'), de medewerkers van DERREK en ALFRED STEYHN (scripts/world/interiors/supermarket.gd) en de mensen in het stadhuis (receptioniste, beveiliger, ambtenaar, raadslid, burgemeester: scripts/world/interiors/city_hall.gd). Dezelfde velden als een persoon in voorbijgangers.json, plus hoe het gespreksvak ze laat zien ('titel', 'embleem', 'kleur', 'naamkaartje', 'tekstkleur', 'stemhoogte') en voor de conducteur 'betrapt': wat hij zegt als je met hem praat terwijl hij je achternazit omdat je zwart reed ({boete}: het bedrag), en 'betrapt_uitchecken': hetzelfde als hij je achternazit omdat je zonder uit te checken over de poortjes naar buiten ging (zonder die regel: 'betrapt'). Zie data/LEESMIJ.md.",
+	"uitleg": "Mensen in dienst: de conducteurs van de NS en de handhavers in Den Haag Centraal (scripts/world/station/station_person.gd, 'role'), de medewerkers van DERREK en ALFRED STEYHN (scripts/world/interiors/supermarket.gd) en de mensen in het stadhuis (receptioniste, beveiliger, ambtenaar, loketmedewerker (de balies van Burgerzaken: een nieuwe ID-kaart aanvragen, wat nooit lukt), raadslid, burgemeester: scripts/world/interiors/city_hall.gd). Dezelfde velden als een persoon in voorbijgangers.json, plus hoe het gespreksvak ze laat zien ('titel', 'embleem', 'kleur', 'naamkaartje', 'tekstkleur', 'stemhoogte') en voor de conducteur 'betrapt': wat hij zegt als je met hem praat terwijl hij je achternazit omdat je zwart reed ({boete}: het bedrag), en 'betrapt_uitchecken': hetzelfde als hij je achternazit omdat je zonder uit te checken over de poortjes naar buiten ging (zonder die regel: 'betrapt'). Zie data/LEESMIJ.md.",
 	"personen": {
 		"conducteur": {
 			"spreker": "CONDUCTEUR NS",
@@ -703,6 +703,182 @@
 					}
 				}
 			]
+		},
+		"loketmedewerker": {
+			"spreker": "GEMEENTE DEN HAAG",
+			"embleem": "DH",
+			"kleur": "#2E7D32",
+			"naamkaartje": "#2E7D32",
+			"tekstkleur": "#FFFFFF",
+			"stemhoogte": 0.95,
+			"begroetingen": [
+				"Nummer... ja. Goedemiddag. Waarmee kan ik u helpen?",
+				"Zo, u bent aan de beurt. Zegt u het maar. Heeft u uw formulieren bij u?",
+				"Goedemiddag. Even mijn scherm wakker maken. Zo. Waar gaat het om?"
+			],
+			"onderwerp": {
+				"vraag": "Ik wil een nieuwe ID-kaart aanvragen. De mijne is gestolen.",
+				"antwoord": "Vervelend voor u. Dan heb ik eerst een proces-verbaal van aangifte nodig. Van de politie.",
+				"doorvraag": "Kunt u niet een uitzondering maken?",
+				"doorantwoord": "Ik maak al eenendertig jaar geen uitzonderingen. Daar ben ik eerlijk gezegd best trots op.",
+				"verder": [
+					{
+						"vraag": "Die aangifte heb ik niet.",
+						"antwoord": "Dan doet u eerst aangifte. Bij de politie, op het bureau aan de Jan Hendrikstraat. Neemt u wel een geldig identiteitsbewijs mee.",
+						"stemming": "neutraal",
+						"verder": [
+							{
+								"vraag": "Maar dat is nou net gestolen.",
+								"antwoord": "Ja. Dat is... een lastige. Daar heeft het formulier geen vakje voor.",
+								"stemming": "verdrietig",
+								"verder": [
+									{
+										"vraag": "Kan het niet zonder legitimatie?",
+										"antwoord": "Zonder legitimatie weet ik niet wie u bent. En als ik niet weet wie u bent, weet ik ook niet wiens kaart ik maak.",
+										"stemming": "neutraal",
+										"verder": [
+											{
+												"vraag": "Ik ben het gewoon. Kijk maar.",
+												"antwoord": "Dat zeggen ze allemaal, meneer, mevrouw. Heeft u een paspoort? Een rijbewijs? Iets met een foto erop?",
+												"stemming": "neutraal",
+												"verder": [
+													{
+														"vraag": "Nee. Niks.",
+														"antwoord": "Dan raad ik u aan eerst een paspoort aan te vragen. Daar heeft u wel een geldig identiteitsbewijs voor nodig.",
+														"stemming": "neutraal",
+														"verder": [
+															{
+																"vraag": "Een ID-kaart, zeker.",
+																"antwoord": "Precies. U begrijpt het systeem. Dat komt niet vaak voor. Maar paspoorten doet mijn collega. Trekt u maar een nieuw nummertje.",
+																"stemming": "blij",
+																"gevolg": "doorverwezen"
+															}
+														]
+													}
+												]
+											},
+											{
+												"vraag": "Ik heb een oude bibliotheekpas.",
+												"antwoord": "Zonder foto. Verlopen in 2009. Op naam van ene Ria. Nee.",
+												"stemming": "boos"
+											}
+										]
+									},
+									{
+										"vraag": "Kan iemand voor me instaan?",
+										"antwoord": "Dat kan. Twee getuigen met een geldig identiteitsbewijs, die u minstens vijf jaar kennen, met een uittreksel uit de Basisregistratie Personen.",
+										"stemming": "neutraal",
+										"verder": [
+											{
+												"vraag": "Ome Wim kent me al jaren.",
+												"antwoord": "Staat meneer Wim ingeschreven in de BRP?",
+												"stemming": "neutraal",
+												"verder": [
+													{
+														"vraag": "Hij heeft ook geen adres.",
+														"antwoord": "Dan bestaat meneer Wim voor ons helaas niet. Voor zichzelf ongetwijfeld wel. Getuigenverklaringen doet trouwens mijn collega. Nieuw nummertje, graag.",
+														"stemming": "verdrietig",
+														"gevolg": "doorverwezen"
+													}
+												]
+											},
+											{
+												"vraag": "De man van de frietkar dan?",
+												"antwoord": "Weet hij uw achternaam?",
+												"stemming": "neutraal",
+												"verder": [
+													{
+														"vraag": "Hij noemt me 'kroket'.",
+														"antwoord": "Dat ga ik niet invullen.",
+														"stemming": "boos"
+													}
+												]
+											}
+										]
+									}
+								]
+							}
+						]
+					},
+					{
+						"vraag": "Ik heb geen adres.",
+						"antwoord": "Voor een ID-kaart moet u ingeschreven staan in de BRP. Op een woonadres. Of op een briefadres.",
+						"stemming": "neutraal",
+						"verder": [
+							{
+								"vraag": "Hoe kom ik aan een briefadres?",
+								"antwoord": "Bij de daklozenopvang. Daar krijgt u eerst een intakegesprek.",
+								"stemming": "neutraal",
+								"verder": [
+									{
+										"vraag": "En wat heb ik nodig voor die intake?",
+										"antwoord": "Een geldig identiteitsbewijs.",
+										"stemming": "neutraal",
+										"verder": [
+											{
+												"vraag": "Dus ik heb een ID-kaart nodig om een ID-kaart te krijgen.",
+												"antwoord": "Zo zou ik het zelf niet zeggen. Zo staat het er wel.",
+												"stemming": "verdrietig",
+												"verder": [
+													{
+														"vraag": "En nu?",
+														"antwoord": "Nu trekt u een nieuw nummertje. Briefadressen doet mijn collega, verderop. Misschien is die milder.",
+														"stemming": "neutraal",
+														"gevolg": "doorverwezen"
+													}
+												]
+											}
+										]
+									}
+								]
+							},
+							{
+								"vraag": "Kan ik hier niet ingeschreven worden? Op het stadhuis?",
+								"antwoord": "Op het stadhuis wonen alleen de duiven op het dak. En die staan ook niet ingeschreven.",
+								"stemming": "blij"
+							}
+						]
+					},
+					{
+						"vraag": "Wat kost zo'n kaart?",
+						"antwoord": "Zevenenveertig euro vijfenvijftig. Contant kan niet, alleen pinnen.",
+						"stemming": "neutraal",
+						"verder": [
+							{
+								"vraag": "Ik heb geen bankrekening.",
+								"antwoord": "Voor een bankrekening heeft u een geldig identiteitsbewijs nodig.",
+								"stemming": "verdrietig",
+								"verder": [
+									{
+										"vraag": "Dat dacht ik al.",
+										"antwoord": "U leert snel. Het spijt me, echt waar. Voor betalingen moet u bij een collega zijn. Trekt u een nieuw nummertje?",
+										"stemming": "verdrietig",
+										"gevolg": "doorverwezen"
+									}
+								]
+							},
+							{
+								"vraag": "Kan het niet op de pof?",
+								"antwoord": "De gemeente Den Haag doet niet aan de pof. Sinds 1987 niet meer.",
+								"stemming": "boos"
+							}
+						]
+					}
+				]
+			},
+			"kleingeld_nee": "Ik mag niets aannemen en niets geven, meneer, mevrouw. Regels. Maar het formulier voor bijzondere bijstand is gratis.",
+			"nog_iets": [
+				"Was er nog iets?",
+				"Kan ik verder nog iets niet voor u doen?"
+			],
+			"dag": "Ik kan u vandaag helaas niet helpen. U kunt altijd een nieuw nummertje trekken.",
+			"stemmingen": {
+				"begroeting": "blij",
+				"onderwerp": "neutraal",
+				"doorvraag": "neutraal",
+				"kleingeld_nee": "neutraal",
+				"dag": "blij"
+			}
 		},
 		"raadslid": {
 			"spreker": "RAADSLID",

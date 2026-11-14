@@ -20,6 +20,8 @@ extends Node3D
 
 signal arrived(who: String)
 signal got_past(who: String)
+## Someone chasing the player (chase) has come within CHASE_SHOW of it the first time.
+signal chase_near(who: String)
 
 const PedestrianScript = preload("res://scripts/world/people/pedestrian.gd")
 const MachineModels = preload("res://scripts/world/things/machine_models.gd")
@@ -328,7 +330,9 @@ func _at(person: Pedestrian, goal: Vector2) -> bool:
 ## player; how near they come (the one who talks, the others round it); seconds between two
 ## conversations; how often (s) they look again where the player is.
 const CHASE_DELAY := 4.0
-const CHASE_FROM := 22.0
+const CHASE_FROM := 10.0
+## How near (m) they are when they count as there (chase_near: the step shows in the task list).
+const CHASE_SHOW := 6.0
 const CHASE_REACH := 2.2
 const CHASE_GROUP_REACH := 3.4
 const CHASE_AGAIN := 6.0
@@ -350,6 +354,11 @@ func chase(who: String, group: Array = [], first_pages: Array = []) -> void:
 
 func is_chasing(who: String) -> bool:
 	return _chasing.has(who)
+
+
+## Whether who chases the player has been near it (CHASE_SHOW) yet.
+func is_chase_near(who: String) -> bool:
+	return bool(_chasing.get(who, {}).get("near", false))
 
 
 ## They give up: they walk off into the crowd, the marker of the chase gone.
@@ -384,6 +393,9 @@ func _chase_step(who: String, player: Node3D, feet: Vector2, delta: float) -> vo
 		_chasing.erase(who)
 		return
 	var leader_at := Vector2(leader.global_position.x, leader.global_position.z)
+	if not chase_state.get("near", false) and leader_at.distance_to(feet) <= CHASE_SHOW:
+		chase_state["near"] = true
+		chase_near.emit(who)
 	if leader_at.distance_to(feet) > CHASE_LOST:
 		# lost you: they turn up behind you again
 		_come_after(who, chase_state, player)

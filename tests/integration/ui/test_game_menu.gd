@@ -505,3 +505,105 @@ func test_debug_keys(test) -> void:
 	menu.close()
 	wallet.queue_free()
 	stand_in_story.queue_free()
+
+
+## A controller button pressed and let go (as from a Steam Deck), through the Controller
+## autoload (scripts/ui/pad_keys.gd), which makes it the key the screens know.
+func _press_pad(button: JoyButton) -> void:
+	for pressed in [true, false]:
+		var event := InputEventJoypadButton.new()
+		event.button_index = button
+		event.pressed = pressed
+		tree.root.push_input(event)
+	# the key made of it goes through Input.parse_input_event: it arrives a few frames later
+	await frames(6)
+
+
+## With a controller: Back (Select) opens the game menu in the town, RB goes to the next tab,
+## B closes it; Godot's ui_accept has no controller button left (it comes as Enter).
+func test_game_menu_with_a_controller(test) -> void:
+	await _build_world()
+	test.check(tree.root.has_node("Controller"), "de controller-vertaler draait (autoload)")
+	var accept_has_pad := InputMap.action_get_events("ui_accept").any(func(event: InputEvent) -> bool: return event is InputEventJoypadButton)
+	test.check(not accept_has_pad, "ui_accept zonder controllerknop (die komt als Enter)")
+	var game_menu: Node = menu   # the menu of this small world (it takes the keys first)
+	await _press_pad(JOY_BUTTON_BACK)
+	test.check(game_menu.is_open() and game_menu.current_tab() == "inventaris", "Select opent het menu op de inventaris")
+	await _press_pad(JOY_BUTTON_RIGHT_SHOULDER)
+	test.check(game_menu.current_tab() == "quests", "RB: het volgende tabblad (%s)" % game_menu.current_tab())
+	await _press_pad(JOY_BUTTON_LEFT_SHOULDER)
+	test.check(game_menu.current_tab() == "inventaris", "LB: terug (%s)" % game_menu.current_tab())
+	await _press_pad(JOY_BUTTON_B)
+	test.check(not game_menu.is_open() and not tree.paused, "B sluit het menu")
+
+
+## XP that makes a level up and the reward it came with: one screen, the level up with the
+## XP on it ("+150 XP"); a reward of only XP is not shown on its own.
+func test_xp_and_level_up_in_one_screen(test) -> void:
+	await _build_world()
+	var chosen: Array[String] = []
+	small_hud.show_level_up(2, func(stat_name: String) -> void: chosen.append(stat_name), stand_in.stat)
+	small_hud.show_reward({"heading": "TAAK VOLBRACHT", "title": "Blikjes", "xp": 150})
+	await frames(3)
+	test.check(not small_hud.is_showing_reward() and small_hud.rewards_waiting().is_empty(), "geen los XP-scherm")
+	test.check(small_hud.is_showing_level_up(), "het level-up-scherm")
+	var xp_label: Label = small_hud._level_up_screen._xp_label
+	test.check(xp_label.visible and xp_label.text == "+150 XP", "met de XP erop (%s)" % xp_label.text)
+	small_hud._level_up_screen._since = 1.0
+	small_hud._level_up_screen.take()
+	await frames(2)
+	small_hud.show_level_up(3, func(stat_name: String) -> void: chosen.append(stat_name), stand_in.stat)
+	small_hud.show_reward({"heading": "TAAK VOLBRACHT", "title": "Statiegeld", "xp": 40, "items": [{"item": "brood", "count": 1}]})
+	await frames(3)
+	var page: Dictionary = small_hud._reward_screen.current_page() if small_hud.is_showing_reward() else {}
+	test.check(String(page.get("item", "")) == "brood" and int(page.get("xp", -1)) == 0, "met spullen: eerst de spullen, zonder XP (%s)" % [page])
+	small_hud._reward_screen.next_page()
+	await frames(3)
+	test.check(small_hud.is_showing_level_up() and small_hud._level_up_screen._xp_label.text == "+40 XP", "dan het level up met de XP")
+	small_hud._level_up_screen._since = 1.0
+	small_hud._level_up_screen.take()
+	await frames(2)
+
+
+## The pause menu has INSTELLINGEN: the settings in its panel (anti-aliasing, render scale,
+## CRT, the camera); the camera setting changes at once, Escape goes back to the pause menu.
+func test_settings_in_the_pause_menu(test) -> void:
+	await _build_world()
+	var CameraTurning: GDScript = load("res://scripts/camera/camera_turning.gd")
+	var was_manual: bool = CameraTurning.is_manual()
+	small_hud.set_paused(true)
+	var actions: Array = small_hud.PAUSE_ITEMS.map(func(item: Array) -> String: return item[1])
+	small_hud._choose_pause_item(actions.find("settings"))
+	await frames(2)
+	var labels: Array = small_hud._pause_buttons.map(func(button: Button) -> String: return button.text.strip_edges().trim_prefix("→").strip_edges())
+	test.check(small_hud._pause_in_settings and labels.any(func(text: String) -> bool: return text.begins_with("CAMERA")), "instellingen in het pauzemenu (%s)" % [labels])
+	var camera_index: int = labels.map(func(text: String) -> bool: return text.begins_with("CAMERA")).find(true)
+	small_hud._choose_pause_item(camera_index)
+	await frames(1)
+	test.check(CameraTurning.is_manual() != was_manual, "camera omgezet (%s)" % CameraTurning.label())
+	test.check(small_hud._pause_buttons[camera_index].text.contains(CameraTurning.label()), "het knopje zegt het meteen")
+	var back := InputEventKey.new()
+	back.keycode = KEY_ESCAPE
+	back.physical_keycode = KEY_ESCAPE
+	back.pressed = true
+	tree.root.push_input(back)
+	await frames(2)
+	test.check(not small_hud._pause_in_settings and tree.paused, "Escape: terug naar het pauzemenu, nog gepauzeerd")
+	CameraTurning.set_manual(was_manual)
+	small_hud.set_paused(false)
+
+
+## Pockets full and a number from the machine of Burgerzaken: the slip gets a slot of its own on
+## top (lit, not shut), and it does not count as room.
+func test_a_slip_with_full_pockets(test) -> void:
+	await _build_world()
+	stand_in.inventory = {"brood": 1, "bier": 1, "hoed": 1, "statiegeld": 1, "appel": 1, "wachtnummer": 1}
+	menu.open("inventaris")
+	await frames(2)
+	var at: int = menu._shown_items.find("wachtnummer")
+	test.check(at >= 0, "het nummertje staat in de inventory")
+	if at >= 0:
+		test.check(menu._slots[at].modulate.a == 1.0, "in een gewoon vakje, niet op slot (vakje %d van %d)" % [at + 1, menu._slot_count()])
+	test.check(menu._slots_used_label.text.begins_with("%d / " % menu._slot_count()) or menu._slots_used_label.text.begins_with("4 / "),
+		"telt niet als ruimte (%s)" % menu._slots_used_label.text)
+	menu.close()

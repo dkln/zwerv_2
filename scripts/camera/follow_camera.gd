@@ -24,10 +24,16 @@ extends Node
 ## after a turn it holds that view for `turn_hold_time` s, so walking past a row of buildings
 ## never swings it round several times in a row; once the usual view is free again for
 ## `turn_back_after` s it turns back (`view_yaw` is the turned view, for the walking keys).
+## Or the player turns it (the setting CameraTurning: `manual_turning`): then it never turns
+## by itself, and Z / X or the right stick of a controller (pad_keys.gd: as Z / X) turn it a
+## `turn_step` (a quarter: four views) left or right (turn_by), C or pressing the right stick
+## back to the usual view (turn_back); not inside. It still looks down steeper when buildings
+## hide the player.
 
 const CloudShroud = preload("res://scripts/effects/cloud_shroud.gd")
 const LoadingScreenScript = preload("res://scripts/ui/loading_screen.gd")
 const Iso = preload("res://scripts/camera/iso_camera.gd")
+const CameraTurning = preload("res://scripts/camera/camera_turning.gd")
 ## Above this speed (m/s) between two frames the vehicle did not drive but jumped.
 const JUMP_SPEED := 80.0
 ## The arrival: its speed in the clouds (share of the speed outside them), and the steps of
@@ -43,8 +49,9 @@ const ARRIVAL_STEPS := 128
 @export var target: NodePath = ^"../Speler"
 ## Metres in view when the target stands still (closer, so the figure shows well).
 @export var zoom_still := 18.0
-## Metres in view at `walk_pace` (walking), and the speed (m/s) that is.
-@export var zoom_walk := 38.0
+## Metres in view at `walk_pace` (walking: well in from the running zoom_fast, so walking stays
+## close), and the speed (m/s) that is.
+@export var zoom_walk := 26.0
 @export var walk_pace := 3.0
 ## Metres in view at `fast_speed` and above.
 @export var zoom_fast := 44.0
@@ -83,6 +90,8 @@ const ARRIVAL_STEPS := 128
 @export_range(15.0, 180.0, 15.0) var turn_step := 90.0
 ## Seconds the turn takes (about), and how long the usual view has to be free before it turns back.
 @export var turn_glide_time := 4.0
+## Seconds a turn takes when the player turns the view (manual_turning): brisk.
+@export var manual_turn_glide_time := 0.2
 ## Whether the view also turns round the player to the street side (turn_step, turn_most).
 ## Off: it never turns; when buildings hide the player it only goes over to the view from
 ## above (steep_pitch) after `top_down_after` s, and back to the usual view once that is free
@@ -188,6 +197,8 @@ var _arrival_clock := -1.0           # seconds into the arrival (< 0: waiting fo
 var _arriving := false               # the arrival is still to come or going on
 var _clouds: Node                    # the cloud layer of the arrival
 var _buildings: GridMap
+## Turned by the player only (CameraTurning, the settings): no turning by itself.
+var manual_turning := false
 var _turn := 0.0                     # degrees the view is turned from Iso.ROTATION.y now
 var _turn_velocity := 0.0
 var _turn_goal := 0.0                # degrees it turns to
@@ -207,6 +218,7 @@ var target_node: Node3D:
 
 func _ready() -> void:
 	_turn_round_buildings_default = turn_round_buildings
+	manual_turning = CameraTurning.is_manual()
 	_cam = get_viewport().get_camera_3d()
 	_followed = get_node_or_null(target) as Node3D
 	if _cam == null or _followed == null:
@@ -479,7 +491,7 @@ func _advance_turn(target_position: Vector3, view_size: float, delta: float) -> 
 		if _turn_check_clock <= 0.0:
 			_turn_check_clock = turn_check_interval
 			_choose_turn(target_position, view_size)
-	var glided := _glide(_turn, _turn_goal, _turn_velocity, turn_glide_time, delta)
+	var glided := _glide(_turn, _turn_goal, _turn_velocity, manual_turn_glide_time if manual_turning else turn_glide_time, delta)
 	_turn = glided.x
 	_turn_velocity = glided.y
 	# turned round once more: the same view in smaller numbers
@@ -502,7 +514,7 @@ func _choose_turn(target_position: Vector3, view_size: float) -> void:
 		_wanted_for = 0.0
 	else:
 		_wanted_for += turn_check_interval
-	if turn_to_streets and not is_nan(wanted) and _turn_held_for >= turn_hold_time and _wanted_for >= turn_after:
+	if turn_to_streets and not manual_turning and not is_nan(wanted) and _turn_held_for >= turn_hold_time and _wanted_for >= turn_after:
 		# how far round, the one way (TURN_DIRECTION): never the short way back
 		var ahead := wrapf((wanted - _turn_goal) * TURN_DIRECTION, 0.0, 360.0)
 		if ahead > 1.0 and ahead < 359.0:
@@ -519,6 +531,44 @@ func _choose_turn(target_position: Vector3, view_size: float) -> void:
 			_usual_free_for = 0.0
 	else:
 		_usual_free_for = 0.0
+
+
+## Turned by the player (manual_turning) or by itself (the setting changed in the pause menu).
+func set_manual_turning(manual: bool) -> void:
+	manual_turning = manual
+
+
+## The player turns the view `steps` quarter turns (turn_step; -1 left, 1 right), gliding there;
+## only when turned by hand, outside, while it follows.
+func turn_by(steps: int) -> void:
+	if not manual_turning or _indoors or not turn_round_buildings or _arriving:
+		return
+	_turn_goal += steps * turn_step
+	_turn_held_for = 0.0
+
+
+## Back to the usual view (the nearest whole turn: never round further than half), gliding.
+func turn_back() -> void:
+	if not manual_turning or _indoors or _arriving:
+		return
+	_turn_goal = roundf(_turn_goal / 360.0) * 360.0
+	_turn_held_for = 0.0
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if not manual_turning or get_tree().paused:
+		return
+	if event is InputEventKey and event.pressed and not event.echo:
+		var key := (event as InputEventKey).physical_keycode
+		if key == CameraTurning.KEY_LEFT_TURN:
+			turn_by(-1)
+			get_viewport().set_input_as_handled()
+		elif key == CameraTurning.KEY_RIGHT_TURN:
+			turn_by(1)
+			get_viewport().set_input_as_handled()
+		elif key == CameraTurning.KEY_TURN_BACK:
+			turn_back()
+			get_viewport().set_input_as_handled()
 
 
 ## Turns to `turn` (degrees from the usual view), looking down steeply if `steep`; held for

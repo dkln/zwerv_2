@@ -20,12 +20,11 @@ const TITLE := "ZWERVR"
 ## Seconds of the fade when it is done.
 const FADE_SECONDS := 0.35
 const MUSIC := "res://assets/audio/muziek/laden_loop.ogg"
+const MusicFade = preload("res://scripts/audio/music_fade.gd")
 ## While a loading screen is up (this group) only its waiting music plays: the sounds of the
 ## town (RuimtelijkGeluid, scripts/audio/spatial_audio.gd) and its music (the HUD) wait.
 const GROUP := "laadscherm"
-const MUSIC_VOLUME_DB := -6.0
-const MUSIC_FADE_IN := 1.2
-const MUSIC_FADE_OUT := 0.7
+const MUSIC_VOLUME_DB := -6.0   # in and out as MusicFade does it
 
 ## What is loading (shown in capitals, without the ellipsis).
 var text := "Stad laden…"
@@ -105,7 +104,8 @@ func fade_out() -> void:
 	var crt_material := _crt.material as ShaderMaterial
 	tween.tween_method(func(value: float) -> void: crt_material.set_shader_parameter("opacity", value), 1.0, 0.0, FADE_SECONDS)
 	if _music:
-		tween.tween_property(_music, "volume_db", -60.0, MUSIC_FADE_OUT)
+		MusicFade.fade_out(_music)   # into the city's music (MusicFade)
+		_music = null
 	tween.chain().tween_callback(queue_free)
 
 
@@ -123,11 +123,9 @@ func _start_music() -> void:
 	_music = AudioStreamPlayer.new()
 	_music.name = "Wachtmuziek"
 	_music.stream = stream
-	_music.volume_db = -40.0
 	_music.process_mode = Node.PROCESS_MODE_ALWAYS
 	add_child(_music)
-	_music.play()
-	create_tween().tween_property(_music, "volume_db", MUSIC_VOLUME_DB, MUSIC_FADE_IN)
+	MusicFade.fade_in(_music, MUSIC_VOLUME_DB)   # as the character choice's goes out
 
 
 ## A setting of the HUD, or `default` without a HUD (or without that setting).

@@ -649,28 +649,40 @@ def fight_loop(score: Score) -> Piece:
 ## bass, drum patterns of their own). GROOVE_VARIANTS: which piece of ALL each one replaces.
 
 def in_groove(bar: Bar, with_lead: bool, drums_softer: float = 0.75, chords_softer: float = 0.6,
-              arp_softer: float = 0.6, lead_softer: float = 0.75) -> Bar:
-    """The bar with its own bass and drums, its stabs and arp softer, its melody (or none)."""
-    result = keep(bar, ("bas", "brass", "arp") + (("lead",) if with_lead else ()))
+              arp_softer: float = 0.6, lead_softer: float = 0.75, with_arp: bool = True) -> Bar:
+    """The bar with its own bass and drums, its stabs and arp softer (or no arp), its melody (or none)."""
+    result = keep(bar, ("bas", "brass") + (("arp",) if with_arp else ()) + (("lead",) if with_lead else ()))
     result = softer(result, "drums", drums_softer)
     result = softer(result, "brass", chords_softer)
     result = softer(result, "arp", arp_softer)
     return softer(result, "lead", lead_softer)
 
 
+## How calm the city's loop is (game_loop_in_groove): how loud its drums, stabs and arp are
+## against the composition (the groove itself, its bass and drum hits, stays; no melody).
+CITY_DRUMS = 0.4
+CITY_CHORDS = 0.35
+CITY_ARP = 0.22
+CITY_LEAD = 0.45
+
+
 def game_loop_in_groove(score: Score) -> Piece:
-    """The city's loop, in the composition's own groove and in the background: its intro as the
-    groove alone; the theme as groove, then with its melody; the lift (opbouw) with its melody;
-    the theme as groove again, back to the start. The finale (the climax) stays out: too loud for
-    roaming."""
+    """The city's loop, in the composition's own groove and calm, in the background, without
+    its high lead (the melody stays out altogether): its intro and the theme as the groove alone
+    (bass, drums and stabs, all soft, no running arp); the theme once more with the arp, softer
+    still, for a change; the theme as groove again, back to the start. The lift and the finale
+    stay out: too busy for roaming."""
     opening = score.first_section("intro", "thema")
     theme = score.first_section("thema")
-    lift = score.first_section("opbouw", "thema")
-    bars = [in_groove(bar, False) for bar in opening] + [in_groove(bar, False) for bar in theme]
-    bars += [in_groove(bar, True) for bar in theme] + [in_groove(bar, True) for bar in lift]
-    bars += [in_groove(bar, False, arp_softer=0.45) for bar in theme]
+
+    def calm(bar: Bar, with_arp: bool) -> Bar:
+        return in_groove(bar, False, drums_softer=CITY_DRUMS, chords_softer=CITY_CHORDS,
+                         arp_softer=CITY_ARP, lead_softer=CITY_LEAD, with_arp=with_arp)
+
+    bars = [calm(bar, False) for bar in opening] + [calm(bar, False) for bar in theme]
+    bars += [calm(bar, True) for bar in theme] + [calm(bar, False) for bar in theme]
     return Piece("spel_loop", score.tempo, score.beats_per_bar, bars, score.sounds,
-                 part_gains={"drums": 0.85, "brass": 0.9})
+                 part_gains={"drums": 0.6, "brass": 0.75})
 
 
 def character_loop_in_groove(score: Score) -> Piece:

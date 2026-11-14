@@ -11,7 +11,8 @@ extends RefCounted
 ##   BankCards.check_pin(card, "4232")
 ##   BankCards.withdraw(player, card, 20.0)
 ## A card: {"pin": "4232", "saldo": 23.45, "raadsel": "...", "houder": "M. JANSEN",
-## "nummer": 3, "pogingen": 0 (wrong PINs in a row)}.
+## "nummer": 3, "pogingen": 0 (wrong PINs in a row)}; "eigen": true for the character's own
+## card (give_own_card: an archetype's "bankpas", Sjaan), whose PIN you know.
 
 const ITEM := "pinpas"
 const CARDS_META := "pinpassen"
@@ -65,6 +66,25 @@ static func give_found_bank_card(player: Node, random: RandomNumberGenerator = n
 	var cards := cards_of(player)
 	# stored before the item is added, so whoever hears inventory_changed sees the card
 	card["nummer"] = _next_number(player)
+	cards.append(card)
+	player.set_meta(CARDS_META, cards)
+	if not bool(player.call("add_item", ITEM, 1, quiet)):
+		cards.erase(card)
+		player.set_meta(CARDS_META, cards)
+		return false
+	return true
+
+
+## Gives `player` its own card from the start (an archetype's "bankpas": {"saldo", "pin",
+## "houder"}): its account, the PIN on the back as known by heart. False if the pockets are full.
+static func give_own_card(player: Node, own: Dictionary, quiet := true) -> bool:
+	if player == null or not player.has_method("add_item"):
+		return false
+	var pin := String(own.get("pin", "0000"))
+	var card := {"pin": pin, "saldo": float(own.get("saldo", 0.0)), "houder": String(own.get("houder", "")),
+		"raadsel": "Je eigen pas. De pincode weet je uit je hoofd: %s." % pin, "nummer": _next_number(player),
+		"pogingen": 0, "eigen": true}
+	var cards := cards_of(player)
 	cards.append(card)
 	player.set_meta(CARDS_META, cards)
 	if not bool(player.call("add_item", ITEM, 1, quiet)):

@@ -9,7 +9,7 @@ const Player = preload("res://scripts/player/player_controller.gd")
 func test_xp_adds_up(test) -> void:
 	var player := Player.new()
 	player.add_xp(150.0)
-	player.add_xp(50.0)   # under the 300 of the first level
+	player.add_xp(50.0)   # under the 500 of the first level
 	test.check(is_equal_approx(player.xp, 200.0) and player.level == 1, "200 XP, nog level 1")
 	player.free()
 
@@ -17,13 +17,13 @@ func test_xp_adds_up(test) -> void:
 ## A full bar is a level up, the rest counts on, and the next level takes more.
 func test_a_full_bar_is_a_level_up(test) -> void:
 	var player := Player.new()
-	test.check(is_equal_approx(player.xp_for_level, 300.0), "level 2 kost 300 XP (%.0f)" % player.xp_for_level)
-	player.add_xp(400.0)
+	test.check(is_equal_approx(player.xp_for_level, 500.0), "level 2 kost 500 XP (%.0f)" % player.xp_for_level)
+	player.add_xp(600.0)
 	test.check(player.level == 2, "level 2 (%d)" % player.level)
 	test.check(is_equal_approx(player.xp, 100.0), "de rest telt door (%.0f)" % player.xp)
-	test.check(is_equal_approx(player.xp_for_level, 450.0), "het volgende level kost meer (%.0f)" % player.xp_for_level)
-	player.add_xp(450.0)
-	test.check(player.level == 3 and is_equal_approx(player.xp_for_level, 700.0), "en het level daarna nog meer (%.0f)" % player.xp_for_level)
+	test.check(is_equal_approx(player.xp_for_level, 750.0), "het volgende level kost meer (%.0f)" % player.xp_for_level)
+	player.add_xp(750.0)
+	test.check(player.level == 3 and is_equal_approx(player.xp_for_level, 1150.0), "en het level daarna nog meer (%.0f)" % player.xp_for_level)
 	player.free()
 
 

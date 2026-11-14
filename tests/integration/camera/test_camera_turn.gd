@@ -96,3 +96,55 @@ func test_player_rim_is_on_and_follows_the_figure(test) -> void:
 	test.check(model.rim, "de rand blijft aan als het beeld van bovenaf kijkt")
 	camera._steep = 0.0
 	camera._steep_goal = 0.0
+
+
+## Turned by hand (the setting CameraTurning): Z / X a quarter each way (four views), C back
+## to the usual one (the near way round), the street never turns it; inside it does not turn.
+func test_turned_by_hand(test) -> void:
+	var camera: Node = scene.get_node("Volgcamera")
+	set_for_test(camera, "manual_turning", true)
+	set_for_test(camera, "turn_to_streets", true)
+	camera._turn = 0.0
+	camera._turn_goal = 0.0
+	for key: Key in [KEY_X, KEY_X]:
+		var press := InputEventKey.new()
+		press.keycode = key
+		press.physical_keycode = key
+		press.pressed = true
+		tree.root.push_input(press)
+		await frames(1)
+	test.check(is_equal_approx(camera._turn_goal, 180.0), "X twee keer: een halve slag (%.0f)" % camera._turn_goal)
+	camera.turn_by(-1)
+	test.check(is_equal_approx(camera._turn_goal, 90.0), "Z: een kwart terug (%.0f)" % camera._turn_goal)
+	camera.turn_by(1)
+	camera.turn_by(1)
+	camera.turn_by(1)
+	camera.turn_back()
+	test.check(is_equal_approx(fmod(camera._turn_goal, 360.0), 0.0), "C: terug naar de gewone stand (%.0f)" % camera._turn_goal)
+	var goal_before: float = camera._turn_goal
+	camera._wanted_turn = 90.0
+	camera._wanted_for = camera.turn_after
+	camera._turn_held_for = camera.turn_hold_time
+	camera._choose_turn(player.global_position, camera.zoom_still)
+	test.check(is_equal_approx(camera._turn_goal, goal_before), "de straat draait hem niet meer zelf")
+	camera.set_indoors(true)
+	camera.turn_by(1)
+	test.check(is_equal_approx(camera._turn_goal, 0.0), "binnen draait hij niet")
+	camera.set_indoors(false)
+	camera._turn = 0.0
+	camera._turn_goal = 0.0
+
+
+## Turned by hand the view is round quickly (manual_turn_glide_time), not in the slow glide of
+## turning by itself.
+func test_turned_by_hand_is_quick(test) -> void:
+	var camera: Node = scene.get_node("Volgcamera")
+	set_for_test(camera, "manual_turning", true)
+	camera._turn = 0.0
+	camera._turn_goal = 0.0
+	camera._turn_velocity = 0.0
+	camera.turn_by(1)
+	await seconds(camera.manual_turn_glide_time * 4.0)
+	test.check(absf(camera._turn - 90.0) < 3.0, "na %.1f s al rond (%.1f graden)" % [camera.manual_turn_glide_time * 4.0, camera._turn])
+	camera._turn = 0.0
+	camera._turn_goal = 0.0

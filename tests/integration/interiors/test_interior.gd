@@ -113,7 +113,8 @@ func test_kroket_bought_at_the_counter_and_eaten_ticks_off_mission_1(test) -> vo
 
 
 ## At the door inside [E] Naar buiten puts you back before the door outside: the street's
-## murmur again, the camera turning round buildings again.
+## murmur again, the camera turning round buildings again, and the swipe only through once the
+## street round the door is loaded again (Interiors._go_out, SwipeTransition.hold_until).
 func test_going_out_puts_you_before_the_door(test) -> void:
 	var bar := _the_bar()
 	var follow: Node = scene.get_node("Volgcamera")
@@ -128,3 +129,38 @@ func test_going_out_puts_you_before_the_door(test) -> void:
 	test.check(not interiors.is_inside() and player.global_position.distance_to(bar.door) < 2.0, "weer buiten voor de deur")
 	test.check(_ambience_is("straat"), "buiten weer het geroezemoes van de straat")
 	test.check(follow.turn_round_buildings, "buiten draait de camera weer om gebouwen")
+	# the swipe waits under its still until the street round the door is loaded again
+	# (the test town has no DetailNiveau: then only that the swipe gets through; the holding
+	# itself: tests/integration/ui/test_swipe.gd)
+	var give_up_at := Time.get_ticks_msec() + 10000
+	while tree.root.has_node("Swipe") and Time.get_ticks_msec() < give_up_at:
+		await tree.process_frame
+	var detail: Node = scene.get_node_or_null("DetailNiveau")
+	var ready_now := detail == null or bool(detail.call("is_ready_around", [player.global_position]))
+	test.check(not tree.root.has_node("Swipe") and ready_now, "de swipe is door, de straat is er (DetailNiveau: %s)" % (detail != null))
+
+
+## Inside a building no helicopter flies over (the interiors lie off the map, roofless): a
+## flight under way ends, none starts; outside again they come back.
+func test_no_helicopter_while_inside(test) -> void:
+	var flights: Node = scene.get_node_or_null("Helikoptervluchten")
+	test.check(flights != null, "de helikoptervluchten staan in de stad")
+	if flights == null:
+		return
+	flights._next_at = flights._clock   # a flight at once
+	await frames(2)
+	test.check(not flights._flight.is_empty(), "buiten: een vlucht begint")
+	var bar := _the_bar()
+	await interiors.enter(bar)
+	await frames(10)
+	test.check(interiors.is_inside(), "binnen")
+	test.check(flights._flight.is_empty() and not flights._helicopter.visible, "binnen: de vlucht is afgebroken, de helikopter weg")
+	flights._next_at = flights._clock
+	await frames(10)
+	test.check(flights._flight.is_empty(), "binnen begint er geen nieuwe")
+	await stand_at((interiors._exit as Node3D).global_position)
+	await use_door()
+	await frames(5)
+	flights._next_at = flights._clock
+	await frames(2)
+	test.check(not flights._flight.is_empty(), "buiten weer: de vluchten komen terug")

@@ -26,6 +26,7 @@ extends Control
 
 const SoundVariation = preload("res://scripts/audio/sound_variation.gd")
 const QuickStart = preload("res://scripts/debug/quick_start.gd")
+const MusicFade = preload("res://scripts/audio/music_fade.gd")
 const SwipeTransition = preload("res://scripts/ui/swipe_transition.gd")
 const UiStyle = preload("res://scripts/ui/ui_style.gd")
 const UiSounds = preload("res://scripts/ui/ui_sounds.gd")
@@ -39,10 +40,8 @@ const Typewriter = preload("res://scripts/ui/widgets/typewriter.gd")
 const CITY_SCENE := "res://scenes/stad.tscn"
 const MENU_SCENE := "res://scenes/hoofdmenu.tscn"
 const MUSIC := "res://assets/audio/muziek/karakterkeuze_loop.ogg"
-## Soft, in the background; it fades in over MUSIC_FADE_IN seconds.
+## Soft, in the background; in and out as MusicFade does it.
 const MUSIC_VOLUME_DB := -6.0
-const MUSIC_FADE_IN := 2.5
-const MUSIC_FADE_OUT := 1.6
 const SHOUT_FOLDER := "res://assets/audio/kreten/"
 const SHOUT_VOLUME_DB := -6.0
 const SHOUT_FIRST_DELAY := 0.6
@@ -656,22 +655,16 @@ func _start_music() -> void:
 	_music = AudioStreamPlayer.new()
 	_music.name = "Muziek"
 	_music.stream = stream
-	_music.volume_db = -60.0
 	add_child(_music)
-	_music.play()
-	create_tween().tween_property(_music, "volume_db", MUSIC_VOLUME_DB, MUSIC_FADE_IN).set_trans(Tween.TRANS_SINE)
+	MusicFade.fade_in(_music, MUSIC_VOLUME_DB)   # as the menu's goes out
 
 
 ## Fades the music out as the screen is left (it moves to the root so it outlives the scene).
 func _fade_out_music() -> void:
 	if _music == null or not _music.playing:
 		return
-	var music := _music
+	MusicFade.fade_out(_music)   # into the loading screen's music (MusicFade)
 	_music = null
-	music.reparent(get_tree().root)
-	var fade := get_tree().create_tween()
-	fade.tween_property(music, "volume_db", -60.0, MUSIC_FADE_OUT)
-	fade.tween_callback(music.queue_free)
 
 
 # ------------------------------------------------------------------ helpers

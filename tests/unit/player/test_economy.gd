@@ -30,19 +30,19 @@ func test_buying(test) -> void:
 
 
 ## With full pockets nothing is bought or paid, except more of what is already carried;
-## a backpack gives more slots.
+## a coat worn gives more slots (its pockets).
 func test_full_pockets(test) -> void:
 	var player := PlayerController.new()
 	player.add_money(100.0)
-	var kinds: Array = Items.ITEMS.keys()
+	var kinds: Array = Items.ITEMS.keys().filter(func(item_id: String) -> bool: return not Items.is_worn(item_id))
 	for index in player.inventory_slots():
 		player.inventory[kinds[index]] = 1
 	var other: String = kinds[player.inventory_slots()]
 	test.check(player.buy(other, 1.0) == "vol", "zakken vol: niet gekocht")
 	test.check(is_equal_approx(player.money, 100.0), "en niet betaald")
 	test.check(player.add_item(kinds[0]), "van wat het al heeft past er nog bij")
-	player.has_backpack = true
-	test.check(player.inventory_slots() == Items.BASE_SLOTS + Items.BACKPACK_SLOTS, "met een rugzak meer vakken")
+	player.inventory["oude_jas"] = 1
+	test.check(player.inventory_slots() == Items.BASE_SLOTS + Items.COAT_SLOTS, "met een jas aan meer vakken")
 	test.check(player.buy(other, 1.0) == "ok", "en dan past het wel")
 	player.free()
 

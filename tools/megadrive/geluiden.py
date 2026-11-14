@@ -689,27 +689,33 @@ def scooter_beep() -> numpy.ndarray:
 
 
 ## The thumb bell of a Dutch bicycle: two little domes a hair apart, struck fast by the
-## spinning clapper (BIKE_BELL_STRIKES a second) for a moment, twice.
+## spinning clapper (BIKE_BELL_STRIKES a second) for a while (BIKE_BELL_STRIKES_PER_BURST: a
+## real trill, "trrringeling"), twice.
 BIKE_BELL_HZ = (2650.0, 2790.0)
-BIKE_BELL_PARTIALS = ((1.0, 1.0, 0.45), (1.51, 0.4, 0.22), (2.14, 0.25, 0.12))
-BIKE_BELL_STRIKES = 26.0
+BIKE_BELL_PARTIALS = ((1.0, 1.0, 0.5), (1.51, 0.4, 0.25), (2.14, 0.25, 0.14))
+BIKE_BELL_STRIKES = 30.0
+BIKE_BELL_STRIKES_PER_BURST = 10
+BIKE_BELL_BURSTS = (0.0, 0.48)
 
 
 def bike_bell() -> numpy.ndarray:
-    """A bicycle's bell: "tring-tring", two bursts of quick strikes ringing on."""
-    buffer = numpy.zeros(int(1.1 * SAMPLE_RATE))
-    times = time_axis(0.6)
+    """A bicycle's bell: "trringel-trringel", two bursts of many quick strikes ringing on."""
+    buffer = numpy.zeros(int(1.6 * SAMPLE_RATE))
+    times = time_axis(0.7)
     random = numpy.random.default_rng(71)
-    for burst_start in (0.0, 0.3):
-        for strike in range(5):
+    for burst_start in BIKE_BELL_BURSTS:
+        for strike in range(BIKE_BELL_STRIKES_PER_BURST):
             ring = numpy.zeros(len(times))
             for dome in BIKE_BELL_HZ:
                 for ratio, level, decay in BIKE_BELL_PARTIALS:
                     frequency = dome * ratio * (1.0 + random.uniform(-0.001, 0.001))
                     ring += level * numpy.exp(-times / decay) * numpy.sin(TWO_PI * frequency * times + random.uniform(0.0, TWO_PI))
             click = band_noise(len(times), 3000.0, 9000.0, 72 + strike) * numpy.exp(-times / 0.002) * 0.6
-            place(buffer, burst_start + strike / BIKE_BELL_STRIKES, (ring / 3.0 + click) * (1.0 - strike * 0.08))
-    return fade_edges(low_pass(dac(low_pass(numpy.tanh(1.4 * buffer), 9000.0)), 7000.0), 0.001, 0.2)
+            # the clapper hits a little unevenly, now harder, now softer, slowing a touch at the end
+            strength = (1.0 - strike * 0.035) * random.uniform(0.8, 1.0)
+            at = burst_start + strike / BIKE_BELL_STRIKES * (1.0 + strike * 0.012)
+            place(buffer, at, (ring / 3.0 + click) * strength)
+    return fade_edges(low_pass(dac(low_pass(numpy.tanh(1.2 * buffer), 9000.0)), 7000.0), 0.001, 0.3)
 
 
 # ----------------------------------------------------------------------------- output
