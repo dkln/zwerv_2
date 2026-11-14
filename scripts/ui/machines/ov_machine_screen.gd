@@ -78,14 +78,14 @@ func build_controls(box: VBoxContainer) -> void:
 
 
 func pocket_lines() -> Array:
-	var lines: Array = [["GELD  " + euros(_money()), UiStyle.TEXT]]
+	var lines: Array = [["GELD  " + MoneyText.euros(_money()), UiStyle.TEXT]]
 	if OvCard.has_card(player):
 		lines.append(["OV-chipkaart", UiStyle.ACCENT])   # its balance is on the machine's screen
 	else:
 		lines.append(["Geen OV-chipkaart", UiStyle.MUTED])
 	if OvCard.has_ticket(player):
 		lines.append(["Los kaartje  %d×" % int(_inventory().get(OvCard.TICKET_ITEM, 0)), UiStyle.ACCENT])
-	lines.append(["Inchecken kost %s van je saldo." % euros(OvCard.RIDE_FARE), UiStyle.MUTED])
+	lines.append(["Inchecken kost %s van je saldo." % MoneyText.euros(OvCard.RIDE_FARE), UiStyle.MUTED])
 	return lines
 
 
@@ -104,15 +104,15 @@ func _show_menu(note := "", note_colour := Color(0, 0, 0, 0)) -> void:
 	var choices: Array = []
 	var lines: Array = []
 	if OvCard.has_card(player):
-		lines.append("Saldo op uw kaart: " + euros(OvCard.balance(player)))
+		lines.append("Saldo op uw kaart: " + MoneyText.euros(OvCard.balance(player)))
 		for index in OvCard.TOP_UPS.size():
 			var amount: float = OvCard.TOP_UPS[index]
-			choices.append(["[%d] OPLADEN  %s" % [index + 1, euros(amount)], top_up.bind(amount)])
+			choices.append(["[%d] OPLADEN  %s" % [index + 1, MoneyText.euros(amount)], top_up.bind(amount)])
 	else:
 		lines.append("Houd uw kaart voor de lezer.")
 		lines.append("(Je hebt nog geen OV-chipkaart.)")
-		choices.append(["[1] OV-CHIPKAART KOPEN  %s" % euros(OvCard.CARD_PRICE), buy_card])
-	choices.append(["[%d] LOS KAARTJE  %s" % [choices.size() + 1, euros(OvCard.TICKET_PRICE)], buy_ticket])
+		choices.append(["[1] OV-CHIPKAART KOPEN  %s" % MoneyText.euros(OvCard.CARD_PRICE), buy_card])
+	choices.append(["[%d] LOS KAARTJE  %s" % [choices.size() + 1, MoneyText.euros(OvCard.TICKET_PRICE)], buy_ticket])
 	lines.append("")
 	lines.append("Betalen met munten.")
 	if note != "":
@@ -135,7 +135,7 @@ func buy_ticket() -> String:
 
 func top_up(amount: float) -> String:
 	var result := OvCard.top_up(player, amount)
-	await _after_payment(result, "OPGELADEN", ["+ " + euros(amount)])
+	await _after_payment(result, "OPGELADEN", ["+ " + MoneyText.euros(amount)])
 	return result
 
 

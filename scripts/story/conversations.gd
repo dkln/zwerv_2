@@ -92,6 +92,7 @@ const MONEY_COLOUR := Color("#E8B83A")
 const CHECK_PASSED_COLOUR := Color("#8BE36B")
 const CHECK_FAILED_COLOUR := Color("#FF4D5E")
 const UiSounds = preload("res://scripts/ui/ui_sounds.gd")
+const MoneyText = preload("res://scripts/common/money_text.gd")
 
 static var _street := {}
 static var _counter := {}
@@ -461,7 +462,7 @@ func _caught_page() -> Dictionary:
 	var reason := String(station.call("chase_reason")) if station.has_method("chase_reason") else "zwartrijden"
 	var fine := float(station.call("fine_the_player"))
 	var own: Variant = _data().get("betrapt_uitchecken") if reason == "uitchecken" else null
-	var text := _pick(own if own != null else _data().get("betrapt"), "Zwartrijden? Dat wordt {boete} boete.").replace("{boete}", _euros(fine))
+	var text := _pick(own if own != null else _data().get("betrapt"), "Zwartrijden? Dat wordt {boete} boete.").replace("{boete}", MoneyText.euros(fine))
 	return _page(text, "betrapt")
 
 
@@ -646,7 +647,7 @@ func _ask_for_money() -> bool:
 		player.add_money(euros)
 	# as a coin picked up (LooseChange): its value rising, over the open box, and the chime
 	if hud and hud.has_method("show_floating_number"):
-		hud.show_floating_number(person.global_position + Vector3.UP * 2.0, "+" + _euros(euros), MONEY_COLOUR, 18, true)
+		hud.show_floating_number(person.global_position + Vector3.UP * 2.0, "+" + MoneyText.euros(euros), MONEY_COLOUR, 18, true)
 	UiSounds.play(person, "munt", -2.0)
 	return true
 
@@ -781,7 +782,7 @@ func shop_buy(index: int) -> Dictionary:
 			line = _line(_pick(data.get("zakken_vol")) + again, "zakken_vol")
 		_:
 			result = "geld"
-			line = _line(_pick(data.get("geen_geld")).replace("{prijs}", _euros(price)), "geen_geld")
+			line = _line(_pick(data.get("geen_geld")).replace("{prijs}", MoneyText.euros(price)), "geen_geld")
 	line["result"] = result
 	return line
 
@@ -799,8 +800,6 @@ func shop_goodbye() -> Dictionary:
 	return _line(_pick(_data().get("dag"), "Dag!"), "dag")
 
 
-static func _euros(amount: float) -> String:
-	return "€ " + ("%.2f" % amount).replace(".", ",")
 
 
 ## Whether asking for change is an option: not until the story unlocks "bedelen" (Story
@@ -824,6 +823,6 @@ func _buy_cans(node: Dictionary) -> String:
 		player.call("drop_item", "blikje")
 	DepositReturn.pay_out(player, total)
 	if hud and hud.has_method("show_floating_number") and person:
-		hud.show_floating_number(person.global_position + Vector3.UP * 2.0, "+" + _euros(total), MONEY_COLOUR, 18, true)
+		hud.show_floating_number(person.global_position + Vector3.UP * 2.0, "+" + MoneyText.euros(total), MONEY_COLOUR, 18, true)
 	UiSounds.play(person, "munt", -2.0)
-	return _pick(node.get("gekocht"), "Alsjeblieft.").replace("{aantal}", str(count)).replace("{bedrag}", _euros(total))
+	return _pick(node.get("gekocht"), "Alsjeblieft.").replace("{aantal}", str(count)).replace("{bedrag}", MoneyText.euros(total))

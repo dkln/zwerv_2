@@ -120,8 +120,8 @@ func test_the_prologue_tells_of_standing_up_and_the_hunger(test) -> void:
 	test.check(hud.is_shrouded(far), "daarbuiten niet op de kaart")
 	var coins: Node = scene.get_node_or_null("Kleingeld")
 	var cards: Node = scene.get_node_or_null("Pinpassen")
-	test.check(coins != null and not coins._laid and coins.coins_left() == 0, "aan het begin geen kleingeld op straat")
-	test.check(cards != null and not cards._laid and cards.cards_left() == 0, "en geen pinpassen")
+	test.check(coins != null and not coins._laid and coins.finds_left() == 0, "aan het begin geen kleingeld op straat")
+	test.check(cards != null and not cards._laid and cards.finds_left() == 0, "en geen pinpassen")
 
 
 ## Cans: six for the step, four in the bins on the square by the start (none in the others

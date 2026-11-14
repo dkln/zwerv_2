@@ -9,6 +9,7 @@ extends Node3D
 ## and chime), worth statiegeld at the machine in every supermarket. Now and then
 ## (`refill_seconds`) an empty bin gets a new can.
 
+const RandomPick = preload("res://scripts/common/random_pick.gd")
 const MachineModels = preload("res://scripts/world/things/machine_models.gd")
 const QuestOutline = preload("res://scripts/effects/quest_outline.gd")
 const InteriorSpot = preload("res://scripts/world/interiors/interior_spot.gd")
@@ -49,11 +50,7 @@ func _ready() -> void:
 		_find_bins(props)
 		_mark_platforms(get_node_or_null(ground_path) as GridMap)
 	var order: Array = range(_bins.size())
-	for index in range(order.size() - 1, 0, -1):
-		var other := _random.randi_range(0, index)
-		var kept: Variant = order[index]
-		order[index] = order[other]
-		order[other] = kept
+	RandomPick.shuffle(_random, order)
 	var wanted := mini(most_cans, roundi(_bins.size() * can_share))
 	for index in wanted:
 		_put_can(int(order[index]))

@@ -13,6 +13,7 @@ extends "res://tests/integration/support/town_test.gd"
 
 const PlayerController = preload("res://scripts/player/player_controller.gd")
 const Story = preload("res://scripts/story/story.gd")
+const MoneyText = preload("res://scripts/common/money_text.gd")
 const GameHud = preload("res://scripts/ui/hud.gd")
 
 ## A mission of its own with a money goal first (the first missions of the game have none).
@@ -76,12 +77,12 @@ func _small_town() -> Dictionary:
 ## say `euros` (the step's text only while the step is open: it shows "(€ 1,50)").
 func _same_amount(test, parts: Dictionary, euros: float, what: String) -> void:
 	var story: Node = parts.story
-	var wallet := GameHud.money_text(parts.hud.money)
-	var wanted := GameHud.money_text(euros)
+	var wallet := MoneyText.amount(parts.hud.money)
+	var wanted := MoneyText.amount(euros)
 	var step_text := ""
 	if not parts.hud.quests.is_empty():
 		step_text = String((parts.hud.quests[0].steps[0] as Dictionary).text)
-	var goal := GameHud.money_text(story.money_towards_goal())
+	var goal := MoneyText.amount(story.money_towards_goal())
 	print("  %s: portemonnee %s, missie \"%s\", doel %s" % [what, wallet, step_text, goal])
 	test.check(wallet == wanted, "%s: portemonnee %s" % [what, wanted])
 	test.check(goal == wanted, "%s: missie telt %s" % [what, wanted])

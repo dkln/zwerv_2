@@ -37,6 +37,7 @@ const LOGO_PIXEL := 3.0
 const Typewriter = preload("res://scripts/ui/widgets/typewriter.gd")
 const Babble = preload("res://scripts/audio/babble.gd")
 const Items = preload("res://scripts/player/items.gd")
+const MoneyText = preload("res://scripts/common/money_text.gd")
 
 ## The merchant's loop (assets/audio/muziek/, the one of the snack bars: Interiors).
 const SHOP_MUSIC := "handelaar_loop.ogg"
@@ -172,7 +173,7 @@ func _fill_rows() -> void:
 		var item := Items.item(item_id)
 		var title := str(item.get("name", entry.get("naam", item_id)))
 		_add_row({"kind": "kopen", "index": good_index, "item": item_id, "price": float(entry.get("prijs", 0.0))},
-			title, _euros(float(entry.get("prijs", 0.0))), item_id)
+			title, MoneyText.euros(float(entry.get("prijs", 0.0))), item_id)
 	var question := String(_talk.call("shop_tip_question"))
 	if question != "":
 		_add_row({"kind": "tip", "index": -1}, question, "?", "")
@@ -420,7 +421,7 @@ func _refresh_detail() -> void:
 ## Your money and pockets, and the prices you cannot pay in red.
 func _refresh_money() -> void:
 	var money := float(_player.get("money")) if _player and _player.get("money") != null else 0.0
-	_money_label.text = GameHud.money_text(money)
+	_money_label.text = MoneyText.amount(money)
 	if _player and _player.has_method("inventory_slots"):
 		var used := (_player.get("inventory") as Dictionary).size()
 		_pockets_label.text = "%d / %d VAKJES" % [used, int(_player.call("inventory_slots"))]
@@ -478,8 +479,6 @@ func _update_babble() -> void:
 	_babble_count += 1
 
 
-static func _euros(amount: float) -> String:
-	return "€ " + ("%.2f" % amount).replace(".", ",")
 
 
 # ------------------------------------------------------------------ building

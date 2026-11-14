@@ -31,6 +31,7 @@ extends CanvasLayer
 signal finished
 
 const GraphicsSettings = preload("res://scripts/ui/graphics_settings.gd")
+const MoneyText = preload("res://scripts/common/money_text.gd")
 const UiStyle = preload("res://scripts/ui/ui_style.gd")
 const UiSounds = preload("res://scripts/ui/ui_sounds.gd")
 const SwipeTransition = preload("res://scripts/ui/swipe_transition.gd")
@@ -284,7 +285,7 @@ func cancel() -> void:
 
 ## What the panel on the right lists: [text, colour].
 func pocket_lines() -> Array:
-	return [["GELD  € " + _money_text(_money()), UiStyle.TEXT]]
+	return [["GELD  " + MoneyText.euros(_money()), UiStyle.TEXT]]
 
 
 ## The key hints along the bottom.
@@ -390,21 +391,12 @@ func button(text: String, action: Callable, wide := 0.0, colour := Color(0, 0, 0
 	return made
 
 
-static func euros(amount: float) -> String:
-	return "€ " + _money_text(amount)
-
-
 func _money() -> float:
 	return float(player.get("money")) if player and player.get("money") != null else 0.0
 
 
 func _inventory() -> Dictionary:
 	return player.get("inventory") if player and player.get("inventory") != null else {}
-
-
-static func _money_text(amount: float) -> String:
-	var cents := roundi(amount * 100.0)
-	return "%d,%02d" % [cents / 100, cents % 100]
 
 
 # ------------------------------------------------------------------ building

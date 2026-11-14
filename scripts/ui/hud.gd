@@ -84,6 +84,7 @@ const LOCATION_WIJK_SMALLEST_FONT_SIZE := 8
 ## The DetailNiveau of the city scene: the jingle waits until it has merged the map.
 const DETAIL_PATH := NodePath("../DetailNiveau")
 const Iso = preload("res://scripts/camera/iso_camera.gd")
+const MoneyText = preload("res://scripts/common/money_text.gd")
 const UiStyle = preload("res://scripts/ui/ui_style.gd")
 const UiSounds = preload("res://scripts/ui/ui_sounds.gd")
 const GraphicsSettings = preload("res://scripts/ui/graphics_settings.gd")
@@ -558,7 +559,7 @@ func set_xp(points: float, points_for_level: float) -> void:
 	var top := maxf(points_for_level, 1.0)
 	var clamped := clampf(points, 0.0, top)
 	_xp_bar.fill = clamped / top
-	_xp_text.text = "%s / %s" % [_thousands(roundi(clamped)), _thousands(roundi(top))]
+	_xp_text.text = "%s / %s" % [MoneyText.thousands(roundi(clamped)), MoneyText.thousands(roundi(top))]
 
 
 ## A step of a mission done (Story): a short triumph; the whole mission: the longer one.
@@ -936,13 +937,7 @@ func show_floating_number(world_position: Vector3, text: String, colour: Color, 
 ## The money in the bottom right corner, to the cent (Dutch: "1.284,50"), so a coin of
 ## 10 cents shows too.
 func set_money(euros: float) -> void:
-	_money_label.text = money_text(euros)   # the euro sign is the icon before it
-
-
-## Euros as Dutch write them, without the sign: thousands with a point, cents after a comma.
-static func money_text(euros: float) -> String:
-	var cents := roundi(euros * 100.0)
-	return ("-" if cents < 0 else "") + _thousands(absi(cents) / 100) + ",%02d" % (absi(cents) % 100)
+	_money_label.text = MoneyText.amount(euros)   # the euro sign is the icon before it
 
 
 ## The clock, when there is no Dagcyclus (or to override it): hour 0..24, and the day if >= 1.
@@ -2016,15 +2011,6 @@ func set_actions(actions: Array) -> void:
 		return
 	_action_prompts.set_actions(actions)
 	_place_action_prompts.call_deferred()
-
-
-static func _thousands(amount: int) -> String:
-	var digits := str(absi(amount))
-	var grouped := ""
-	while digits.length() > 3:
-		grouped = "." + digits.substr(digits.length() - 3) + grouped
-		digits = digits.substr(0, digits.length() - 3)
-	return ("-" if amount < 0 else "") + digits + grouped
 
 
 # ------------------------------------------------------------------ clock

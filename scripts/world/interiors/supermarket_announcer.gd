@@ -6,6 +6,7 @@ extends "res://scripts/world/interiors/announcer.gd"
 ## shelf of this branch, with this branch's price; ALFRED STEYHN's bonus in its own words) or a
 ## notice (data/gesprekken/omroep_supermarkt.json).
 
+const MoneyText = preload("res://scripts/common/money_text.gd")
 const DATA_FILE := "res://data/gesprekken/omroep_supermarkt.json"
 const MUSIC_FOLDER := "res://assets/audio/muziek/"
 const JINGLE_PREFIX := "jingle_"
@@ -109,7 +110,7 @@ func _offer() -> String:
 	if templates.is_empty():
 		return ""
 	return String(templates[_random.randi() % templates.size()]).format({
-		"naam": String(product["name"]), "prijs": GameHud.money_text(float(product["price"]))})
+		"naam": String(product["name"]), "prijs": MoneyText.amount(float(product["price"]))})
 
 
 ## A notice of every supermarket or of this chain, with a checkout of this branch and an aisle.

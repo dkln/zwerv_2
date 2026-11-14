@@ -29,6 +29,7 @@ const Layout = preload("res://scripts/world/interiors/supermarket_layout.gd")
 const Conversations = preload("res://scripts/story/conversations.gd")
 const Interiors = preload("res://scripts/world/interiors/interiors.gd")
 const UiSounds = preload("res://scripts/ui/ui_sounds.gd")
+const MoneyText = preload("res://scripts/common/money_text.gd")
 const InteriorSpot = preload("res://scripts/world/interiors/interior_spot.gd")
 const SignBoard = preload("res://scripts/world/things/sign_board.gd")
 ## The name and the emblem of the chain on the back wall: just before it, not half in it.
@@ -293,11 +294,7 @@ func _choose_bonus(seed: int) -> void:
 			kinds.append(category)
 	var random := RandomNumberGenerator.new()
 	random.seed = hash([brand, seed, "bonus"])
-	for index in range(kinds.size() - 1, 0, -1):
-		var other := random.randi_range(0, index)
-		var kept: Variant = kinds[index]
-		kinds[index] = kinds[other]
-		kinds[other] = kept
+	RandomPick.shuffle(random, kinds)
 	for index in mini(int(bonus.get("aantal", 2)), kinds.size()):
 		_bonus.append(String(kinds[index]))
 
@@ -327,7 +324,7 @@ func _make_signs() -> void:
 			board.add_child(bonus)
 	var promotion: Dictionary = (chain().get("producten", {}) as Dictionary).get("actie", {})
 	for board_place: Dictionary in plan.promotions:
-		var price: Node3D = SignBoard.create(_euros(float(promotion.get("prijs", 0.99))), _house_colour(), _ink(), 0.16, false)
+		var price: Node3D = SignBoard.create(MoneyText.euros(float(promotion.get("prijs", 0.99))), _house_colour(), _ink(), 0.16, false)
 		price.position = board_place.at
 		price.rotation.y = float(board_place.turn)
 		_layout.add_child(price)
@@ -497,7 +494,7 @@ func product(category: String) -> Dictionary:
 
 func _shelf_text(category: String) -> String:
 	var found := product(category)
-	return "Pakken: %s %s%s" % [found.name, "BONUS " if found.bonus else "", _euros(found.price)]
+	return "Pakken: %s %s%s" % [found.name, "BONUS " if found.bonus else "", MoneyText.euros(found.price)]
 
 
 ## One of this shelf's product in the trolley or basket (if there is one, and room in it).
@@ -564,7 +561,7 @@ func _pay(checkout: Dictionary) -> void:
 		return
 	var total := _total(_goods)
 	var greetings: Array = lines.get("begroetingen", [])
-	var text := String(lines.get("totaal", "{prijs}")).replace("{prijs}", _euros(total)).replace("{aantal}", str(_goods.size()))
+	var text := String(lines.get("totaal", "{prijs}")).replace("{prijs}", MoneyText.euros(total)).replace("{aantal}", str(_goods.size()))
 	if not greetings.is_empty():
 		text = String(greetings[_random.randi() % greetings.size()]) + " " + text
 	var page := _line(lines, text, "totaal", cashier, self_scan)
@@ -1032,7 +1029,3 @@ func _play_at(at: Vector3, sound_name: String) -> void:
 	var audio := get_node_or_null("/root/RuimtelijkGeluid")
 	if audio and audio.has_method("play_event"):
 		audio.play_event(global_transform * at, sound_name)
-
-
-static func _euros(amount: float) -> String:
-	return "€ " + ("%.2f" % amount).replace(".", ",")

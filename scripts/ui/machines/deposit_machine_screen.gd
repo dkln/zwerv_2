@@ -134,12 +134,12 @@ func bon() -> void:
 
 
 func pocket_lines() -> Array:
-	var lines: Array = [["GELD  " + euros(_money()), UiStyle.TEXT]]
+	var lines: Array = [["GELD  " + MoneyText.euros(_money()), UiStyle.TEXT]]
 	var found := DepositReturn.returnable(_inventory())
 	for item_id: String in DepositReturn.ORDER:
 		var count := int(found.get(item_id, 0))
 		lines.append(["%s  %d×  (%s per stuk)" % [String(Items.item(item_id).get("name", item_id)), count,
-			euros(float(DepositReturn.DEPOSIT[item_id]))], UiStyle.ACCENT if count > 0 else UiStyle.MUTED])
+			MoneyText.euros(float(DepositReturn.DEPOSIT[item_id]))], UiStyle.ACCENT if count > 0 else UiStyle.MUTED])
 	if found.is_empty():
 		lines.append(["Lege blikjes liggen soms in de prullenbakken op straat.", UiStyle.MUTED])
 	return lines
@@ -262,11 +262,11 @@ func print_bon() -> void:
 	for item_id: String in DepositReturn.ORDER:
 		var count := int(inserted.get(item_id, 0))
 		if count > 0:
-			lines.append("%d × %s   %s" % [count, String(NAMES[item_id]), euros(count * float(DepositReturn.DEPOSIT[item_id]))])
+			lines.append("%d × %s   %s" % [count, String(NAMES[item_id]), MoneyText.euros(count * float(DepositReturn.DEPOSIT[item_id]))])
 	lines.append("----------------")
-	lines.append("TOTAAL   " + euros(total))
+	lines.append("TOTAAL   " + MoneyText.euros(total))
 	show_tray("STATIEGELDBON", lines, Color("#F2F2EC"))
-	show_display("BEDANKT", [euros(total)])
+	show_display("BEDANKT", [MoneyText.euros(total)])
 	_busy = false
 
 
@@ -277,7 +277,7 @@ func take_bon() -> void:
 	state = "klaar"
 	DepositReturn.pay_out(player, total)
 	UiSounds.play(self, "munt", -2.0)
-	show_tray("UITBETAALD", [euros(total), "", "De bon is verzilverd: het geld zit in je portemonnee."], GOOD)
+	show_tray("UITBETAALD", [MoneyText.euros(total), "", "De bon is verzilverd: het geld zit in je portemonnee."], GOOD)
 	refresh_pockets()
 	_busy = true
 	await pause_for(1.3)
@@ -293,6 +293,6 @@ func _count_lines() -> Array:
 	var count := 0
 	for item_id: String in inserted:
 		count += int(inserted[item_id])
-	return ["%d STUKS" % count, euros(total)]
+	return ["%d STUKS" % count, MoneyText.euros(total)]
 
 

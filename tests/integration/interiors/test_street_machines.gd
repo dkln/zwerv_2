@@ -135,15 +135,15 @@ func test_walking_over_a_lost_bank_card(test) -> void:
 	test.check(cards != null, "Pinpassen in de stad")
 	if cards == null:
 		return
-	test.check(cards.cards_left() == 1, "zeldzaam: één pinpas op straat (%d)" % cards.cards_left())
+	test.check(cards.finds_left() == 1, "zeldzaam: één pinpas op straat (%d)" % cards.finds_left())
 	var start: Vector3 = player.global_position
-	var card_at: Vector3 = cards._cards[0].global_position if cards.cards_left() > 0 else start
+	var card_at: Vector3 = cards._finds[0].global_position if cards.finds_left() > 0 else start
 	test.check(Vector2(card_at.x - start.x, card_at.z - start.z).length() > cards.near, "niet vlak bij de start")
 	# room in the pockets: a coat on (its pockets, Items.COAT_SLOTS)
 	var had_coat: bool = player.inventory.has("oude_jas")
 	player.inventory["oude_jas"] = 1
 	var cards_before := BankCards.cards_of(player).size()
-	var card: Node3D = cards._cards[0]
+	var card: Node3D = cards._finds[0]
 	player.global_position = card.global_position - Vector3.UP * 0.12
 	for step_index in 5:
 		await tree.physics_frame
@@ -159,10 +159,10 @@ func test_loose_change_is_rare(test) -> void:
 	test.check(coins != null, "Kleingeld in de stad")
 	if coins == null:
 		return
-	print("munten op straat: ", coins.coins_left())
-	test.check(coins.coins_left() == 1, "heel zeldzaam: één munt in de hele stad (%d)" % coins.coins_left())
+	print("munten op straat: ", coins.finds_left())
+	test.check(coins.finds_left() == 1, "heel zeldzaam: één munt in de hele stad (%d)" % coins.finds_left())
 	var start: Vector3 = player.global_position
-	var near_start: Array = coins._coins.filter(func(coin: Dictionary) -> bool:
-		var at: Vector3 = (coin.node as Node3D).global_position
+	var near_start: Array = coins._finds.filter(func(coin: Node3D) -> bool:
+		var at: Vector3 = coin.global_position
 		return Vector2(at.x - start.x, at.z - start.z).length() < coins.near - 5.0)
 	test.check(near_start.is_empty(), "geen munten vlak bij de start (%d)" % near_start.size())

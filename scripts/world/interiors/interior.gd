@@ -19,6 +19,7 @@ extends Node3D
 ## were (or away, one brought in). An interior with its own people (the station) or its own
 ## floor (the supermarket) overrides what differs.
 
+const RandomPick = preload("res://scripts/common/random_pick.gd")
 const UiStyle = preload("res://scripts/ui/ui_style.gd")
 const FloorGrid = preload("res://scripts/pathfinding/floor_grid.gd")
 const WallClosure = preload("res://scripts/world/interiors/wall_closure.gd")
@@ -94,11 +95,7 @@ func dress(bar_name: String, seed: int) -> void:
 		_place(InteriorPerson.create("snackbarhouder", seed * 3 + 1, false), keeper_marker)
 	var seats: Array = get_children().filter(func(node: Node) -> bool: return node is Marker3D and node.name.begins_with("Plek"))
 	# the seats in an order of the seed, the first few taken
-	for index in range(seats.size() - 1, 0, -1):
-		var other := random.randi_range(0, index)
-		var kept: Node = seats[index]
-		seats[index] = seats[other]
-		seats[other] = kept
+	RandomPick.shuffle(random, seats)
 	var guests := mini(random.randi_range(GUESTS.x, GUESTS.y), seats.size())
 	for index in guests:
 		_place(InteriorPerson.create("klant", seed * 7 + index * 13 + 5, true), seats[index])

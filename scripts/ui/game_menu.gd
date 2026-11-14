@@ -33,6 +33,7 @@ extends CanvasLayer
 ## use_item(id), drop_item(id), is_dead(), signals inventory_changed and stats_changed);
 ## without it the menu shows the chosen archetype (PlayerCharacter) and its START_ITEMS.
 
+const MoneyText = preload("res://scripts/common/money_text.gd")
 const UiStyle = preload("res://scripts/ui/ui_style.gd")
 const UiSounds = preload("res://scripts/ui/ui_sounds.gd")
 const QuestMarks = preload("res://scripts/ui/widgets/quest_marks.gd")
@@ -596,7 +597,7 @@ func _show_tab(tab_name: String, with_sound := true) -> void:
 func _refresh() -> void:
 	if not _is_open:
 		return
-	_money_label.text = GameHud.money_text(_money())
+	_money_label.text = MoneyText.amount(_money())
 	match _current_tab:
 		"inventaris":
 			_header_info.text = "%d SPULLEN BIJ JE" % _item_total()

@@ -34,6 +34,7 @@ const DriverShout = preload("res://scripts/vehicles/driver_shout.gd")
 ## The rules of a chase (caught, given up): the same for whoever puts the player out of any
 ## interior (scripts/world/interiors/eviction.gd), here a BOA (handhaver) along the same routes.
 const Pursuit = preload("res://scripts/world/interiors/pursuit.gd")
+const MoneyText = preload("res://scripts/common/money_text.gd")
 const OvCard = preload("res://scripts/world/station/ov_card.gd")
 const OvMachineScreen = preload("res://scripts/ui/machines/ov_machine_screen.gd")
 const MachineModels = preload("res://scripts/world/things/machine_models.gd")
@@ -1706,7 +1707,7 @@ func _fine_the_player() -> void:
 		_player.set_meta(OvCard.CHECKED_IN_META, false)
 		line = "Beboet, niet uitgecheckt: € %d" % int(FINE_EUROS)
 	if paid < FINE_EUROS:
-		line += " (je had maar € %s)" % ("%.2f" % paid).replace(".", ",")
+		line += " (je had maar %s)" % MoneyText.euros(paid)
 	say(to_local(_player.global_position) + Vector3.UP * 2.2, line, FINE_COLOUR)
 	var conductor := _chaser
 	_chaser_goes_back()

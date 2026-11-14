@@ -27,6 +27,7 @@ extends Node
 ## the whole road network at the start, at random but repeatable spots at least `spacing`
 ## metres apart, and all of them kept.
 
+const RandomPick = preload("res://scripts/common/random_pick.gd")
 const Crowd = preload("res://scripts/world/people/crowd.gd")
 const Sight = preload("res://scripts/world/town/sight.gd")
 const CAR = "res://scripts/vehicles/car.gd"
@@ -230,12 +231,7 @@ func _spawn() -> void:
 		var corner := Vector2(road_cell.x, road_cell.z) * RoadNetwork.CELL
 		_map_edges = Rect2(corner, Vector2.ONE * RoadNetwork.CELL) if _map_edges.size == Vector2.ZERO \
 			else _map_edges.merge(Rect2(corner, Vector2.ONE * RoadNetwork.CELL))
-	# a shuffle of our own: Array.shuffle() does not take a seed
-	for cell_index in range(_cells.size() - 1, 0, -1):
-		var other_index := _random.randi_range(0, cell_index)
-		var kept: Vector3i = _cells[cell_index]
-		_cells[cell_index] = _cells[other_index]
-		_cells[other_index] = kept
+	RandomPick.shuffle(_random, _cells)   # Array.shuffle() does not take a seed
 	if whole_town or _player == null:
 		_spawn_whole_town()
 		return

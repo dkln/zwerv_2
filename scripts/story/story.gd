@@ -73,6 +73,7 @@ signal unlocked(what: String)
 const PlayerCharacter = preload("res://scripts/player/player_character.gd")
 const Shroud = preload("res://scripts/story/shroud.gd")
 const Conversations = preload("res://scripts/story/conversations.gd")
+const MoneyText = preload("res://scripts/common/money_text.gd")
 const MISSIONS_FOLDER := "res://data/missies/"
 const PROLOGUE_FILE := "res://data/verhaal/proloog.json"
 ## A snack bar's shop front (in the name of a Gebouwen item: "<style>/<style>_bg_snackbar").
@@ -1263,10 +1264,10 @@ func _fill(text: String, data: Dictionary, step: Dictionary) -> String:
 		match str(goal.get("soort", "")):
 			"geld_verdiend":
 				if _player:
-					progress = _euros(minf(money_towards_goal(), float(goal.get("bedrag", 0.0))))
+					progress = MoneyText.euros(minf(money_towards_goal(), float(goal.get("bedrag", 0.0))))
 			"geld_op_zak":
 				if _player:
-					progress = _euros(minf(float(_player.money), float(goal.get("bedrag", 0.0))))
+					progress = MoneyText.euros(minf(float(_player.money), float(goal.get("bedrag", 0.0))))
 			"verzamelen":
 				var wanted := int(goal.get("aantal", 1))
 				progress = "%d/%d" % [mini(_count_of(str(goal.get("item", ""))), wanted), wanted]
@@ -1274,8 +1275,6 @@ func _fill(text: String, data: Dictionary, step: Dictionary) -> String:
 	return text
 
 
-static func _euros(amount: float) -> String:
-	return "€ " + ("%.2f" % amount).replace(".", ",")
 
 
 # ------------------------------------------------------------------ tests

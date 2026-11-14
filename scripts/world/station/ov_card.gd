@@ -20,6 +20,7 @@ extends RefCounted
 ##   OvCard.refusal("saldo")     # what the reader says when it says no
 ##   OvCard.leave_open_trip(player)  # out of the station still checked in (boarding fare)
 
+const MoneyText = preload("res://scripts/common/money_text.gd")
 const CARD_ITEM := "ov_chipkaart"
 const TICKET_ITEM := "los_kaartje"
 const BALANCE_META := "ov_saldo"
@@ -166,11 +167,7 @@ static func leave_open_trip(player: Node) -> String:
 static func check_in_text(charge: float) -> String:
 	if charge <= 0.0:
 		return "Ingecheckt"
-	return "Niet uitgecheckt: %s ingehouden" % euros(charge)
-
-
-static func euros(amount: float) -> String:
-	return "€ " + ("%.2f" % amount).replace(".", ",")
+	return "Niet uitgecheckt: %s ingehouden" % MoneyText.euros(charge)
 
 
 static func _start_trip(player: Node, paid_with: String) -> void:
@@ -195,4 +192,4 @@ static func _count(player: Node, item_id: String) -> int:
 static func refusal(result: String, player: Node = null) -> String:
 	if result != "saldo":
 		return "Geen OV-chipkaart"
-	return "Saldo te laag (%s nodig)" % euros(RIDE_FARE + missed_check_out_charge(player))
+	return "Saldo te laag (%s nodig)" % MoneyText.euros(RIDE_FARE + missed_check_out_charge(player))

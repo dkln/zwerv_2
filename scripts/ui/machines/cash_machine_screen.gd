@@ -110,7 +110,7 @@ func build_controls(box: VBoxContainer) -> void:
 
 
 func pocket_lines() -> Array:
-	var lines: Array = [["GELD  " + euros(_money()), UiStyle.TEXT]]
+	var lines: Array = [["GELD  " + MoneyText.euros(_money()), UiStyle.TEXT]]
 	var cards := BankCards.cards_of(player)
 	if cards.is_empty():
 		lines.append(["Geen pinpas", UiStyle.MUTED])
@@ -259,11 +259,11 @@ func enter_pin(pin: String) -> String:
 func _show_menu() -> void:
 	state = "menu"
 	var balance := float(card.get("saldo", 0.0))
-	show_display("KIES EEN BEDRAG", ["Saldo: " + euros(balance), "", "[1]-[4] bedrag   [ESC] stoppen"])
+	show_display("KIES EEN BEDRAG", ["Saldo: " + MoneyText.euros(balance), "", "[1]-[4] bedrag   [ESC] stoppen"])
 	var choices: Array = []
 	for index in AMOUNTS.size():
 		var amount: float = AMOUNTS[index]
-		var text := "[%d] %s" % [index + 1, euros(amount)]
+		var text := "[%d] %s" % [index + 1, MoneyText.euros(amount)]
 		if amount > balance + 0.001:
 			text += "  (te weinig)"
 		choices.append([text, withdraw.bind(amount)])
@@ -276,7 +276,7 @@ func withdraw(amount: float) -> bool:
 		return false
 	if amount > float(card.get("saldo", 0.0)) + 0.001:
 		sound("fout")
-		show_display("SALDO ONTOEREIKEND", ["Saldo: " + euros(float(card.saldo)), "", "Kies een lager bedrag."], WARNING)
+		show_display("SALDO ONTOEREIKEND", ["Saldo: " + MoneyText.euros(float(card.saldo)), "", "Kies een lager bedrag."], WARNING)
 		await pause_for(1.4)
 		if state == "menu":
 			_show_menu()
@@ -291,7 +291,7 @@ func withdraw(amount: float) -> bool:
 	await pause_for(1.1)
 	var notes := _notes_for(amount)
 	# (the balance is on the machine's screen, not in the panel too)
-	show_tray("NEEM UW GELD", [euros(amount)] + notes, GOOD)
+	show_tray("NEEM UW GELD", [MoneyText.euros(amount)] + notes, GOOD)
 	refresh_pockets()
 	await pause_for(0.8)
 	_busy = false

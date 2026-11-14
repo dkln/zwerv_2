@@ -1,11 +1,11 @@
 extends RefCounted
 ## Unit tests of money and things (scripts/player/player_controller.gd, scripts/player/items.gd,
-## scripts/ui/hud.gd, scripts/world/things/loose_change.gd): amounts written as the Dutch write them,
+## scripts/common/money_text.gd): amounts written as the Dutch write them,
 ## buying (not without the money, not with full pockets), what is earned, and the items each
 ## character starts with.
 
 const Items = preload("res://scripts/player/items.gd")
-const LooseChange = preload("res://scripts/world/things/loose_change.gd")
+const MoneyText = preload("res://scripts/common/money_text.gd")
 
 
 ## Amounts are written the Dutch way (euro sign, comma), also for a loose coin.
@@ -13,8 +13,8 @@ func test_money_as_the_dutch_write_it(test) -> void:
 	var cases := {0.0: "0,00", 0.1: "0,10", 0.5: "0,50", 12.0: "12,00", 1284.5: "1.284,50",
 		1234567.0: "1.234.567,00", -3.5: "-3,50", 2.005: "2,01"}
 	for euros: float in cases:
-		test.check(GameHud.money_text(euros) == cases[euros], "%s: %s (verwacht %s)" % [euros, GameHud.money_text(euros), cases[euros]])
-	test.check(LooseChange._euros(0.5) == "€ 0,50", "een munt: € 0,50 (%s)" % LooseChange._euros(0.5))
+		test.check(MoneyText.amount(euros) == cases[euros], "%s: %s (verwacht %s)" % [euros, MoneyText.amount(euros), cases[euros]])
+	test.check(MoneyText.euros(0.5) == "€ 0,50", "een munt: € 0,50 (%s)" % MoneyText.euros(0.5))
 
 
 ## Buying: nothing without the money; with it the price goes off and the item comes in,

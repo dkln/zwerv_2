@@ -23,6 +23,7 @@ extends RefCounted
 ## `turn` (its front then faces (sin turn, 0, cos turn)).
 ##   var plan := SupermarketLayout.plan("derrek", 1234, 6)
 
+const RandomPick = preload("res://scripts/common/random_pick.gd")
 const CELL := 4.0
 const FEWEST_CELLS := 5
 const MOST_CELLS := 10
@@ -163,7 +164,7 @@ static func plan(brand: String, seed: int, front_cells: int) -> Dictionary:
 	_wall_tile(result, "logo_" + brand, Vector3(right - 2.0, 2.0, back), PI)
 	# the left wall: shelves, at ALFRED STEYHN the bakery among them
 	var wall_categories: Array = WALL_CATEGORIES[brand].duplicate()
-	_shuffle(wall_categories, random)
+	RandomPick.shuffle(random, wall_categories)
 	var bakery_row := -1
 	var wall_rows: Array[float] = []
 	for row in int(depth / CELL):
@@ -192,7 +193,7 @@ static func plan(brand: String, seed: int, front_cells: int) -> Dictionary:
 			result.lamps.append(Vector3(left + width * (column + 0.5) / lamps_across, 3.2, front + depth * (row + 0.5) / lamps_deep))
 	# shoppers at a few of the shelves, someone of the staff at one
 	var spots: Array = result.shelves.duplicate()
-	_shuffle(spots, random)
+	RandomPick.shuffle(random, spots)
 	var shoppers := mini(random.randi_range(2, 3 + cells / 2), spots.size())
 	# beside the spot where you take something (not on it: there [E] is for the shelf)
 	for index in shoppers:
@@ -309,7 +310,7 @@ static func _gondolas(result: Dictionary, brand: String, random: RandomNumberGen
 	var run := modules * MODULE + (CROSS_AISLE if cross else 0.0)
 	var start := snappedf(length_from + (length_to - length_from - run) * 0.5, 0.5)
 	var categories: Array = GONDOLA_CATEGORIES.duplicate()
-	_shuffle(categories, random)
+	RandomPick.shuffle(random, categories)
 	var freezer_row := random.randi() % rows.size() if random.randf() < 0.6 else -1
 	result["freezers"] = freezer_row >= 0
 	var turn := PI * 0.5 if along_depth else 0.0
@@ -363,11 +364,3 @@ static func _tile(result: Dictionary, tile_name: String, at: Vector3, turn: floa
 ## its inner surface, not half in it).
 static func _wall_tile(result: Dictionary, tile_name: String, at: Vector3, turn: float) -> void:
 	result.wall_tiles.append([tile_name, at, turn])
-
-
-static func _shuffle(items: Array, random: RandomNumberGenerator) -> void:
-	for index in range(items.size() - 1, 0, -1):
-		var other := random.randi_range(0, index)
-		var kept: Variant = items[index]
-		items[index] = items[other]
-		items[other] = kept
