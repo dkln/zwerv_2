@@ -42,6 +42,7 @@ extends "res://scripts/world/people/person.gd"
 const Sight = preload("res://scripts/world/town/sight.gd")
 const GroundShadow = preload("res://scripts/effects/ground_shadow.gd")
 const Crowd = preload("res://scripts/world/people/crowd.gd")
+const WayChoice = preload("res://scripts/pathfinding/way_choice.gd")
 const TOWN_LAYER := 1
 ## Metres per second walking (the slowest and the fastest), and how much faster over a zebra.
 const SLOWEST := 1.05
@@ -186,9 +187,7 @@ var story_held := false
 var drunk := 0.0
 var _sway_clock := 0.0
 var _throwing_up := 0.0              # seconds of throwing up left (0: not)
-var _story_blocked := {}             # cells found blocked on the way to the story's goal (_reroute_story)
 var _crossing_wait := 0.0            # seconds waited at a crossing now
-var _story_blocked_for := NO_STORY_GOAL
 ## Where the story sends it (a cell; NO_STORY_GOAL: nowhere, it walks about as anyone): it goes
 ## there by the route finder (Pedestrians.route_to) and stands still there (story_arrived).
 var story_goal := NO_STORY_GOAL
@@ -876,7 +875,7 @@ func _choose_next() -> void:
 	for way: Vector3i in ways:
 		if way != _came_from and not way in order:
 			others.append(way)
-	_shuffle(others)
+	WayChoice.shuffle(_random, others)
 	order.append_array(others)
 	if _came_from != cell and _came_from in ways and not _came_from in order:
 		order.append(_came_from)
@@ -888,27 +887,15 @@ func _choose_next() -> void:
 	_pause = 0.8
 
 
-## Sent by the story and the next cell of its way (`failed`) could not be got into: that cell
-## left out (_story_blocked, for this goal), a way round it (Pedestrians.route_to, avoid), up
-## to three times; true when it is on its way again.
-func _reroute_story(failed: Vector3i, ways: Array) -> bool:
-	if failed != cell:
-		_story_blocked[failed] = true
-	for attempt in 3:
-		_way = town.route_to(cell, story_goal, _story_blocked.keys())
-		if _way.is_empty():
-			return false
-		var next: Vector3i = _way[0]
-		if next in ways and _head_for(next):
-			return true
-		_story_blocked[next] = true
-	# no way round either (pinned between a lamp post and a bollard on a quay): on along its
-	# plain way, to the middle of the next cell, brushing past what stands there
-	_story_blocked.clear()
+## Sent by the story and the next cell of its way (`failed`) could not be got into with a clear
+## way (a lamp post, a bin, a bollard in it): on along its way all the same, to the middle of
+## that cell, brushing past what stands there (a way round could be a long detour: a bridge cell
+## left out sent Ome Wim round the end of the singel). True when it is on its way again.
+func _reroute_story(_failed: Vector3i, _ways: Array) -> bool:
 	_way = town.route_to(cell, story_goal)
 	if _way.is_empty():
 		return false
-	_next_cell = _way[0]
+	_next_cell = _way[0] if _way[0] != cell or _way.size() == 1 else _way[1]
 	_target = _spot_in(_next_cell, 0.0)
 	return true
 
@@ -937,9 +924,6 @@ func _next_on_the_way(ways: Array) -> Vector3i:
 	if not _way.is_empty() and not _way[0] in ways:
 		_way.clear()
 	if story_goal != NO_STORY_GOAL:
-		if _story_blocked_for != story_goal:
-			_story_blocked.clear()   # a new goal: what was blocked on the way to the last forgotten
-			_story_blocked_for = story_goal
 		# sent by the story: on to its goal, there it stands still
 		if cell == story_goal:
 			story_goal = NO_STORY_GOAL
@@ -948,7 +932,7 @@ func _next_on_the_way(ways: Array) -> Vector3i:
 			story_arrived.emit()
 			return cell
 		if _way.is_empty() and town.has_method("route_to"):
-			_way = town.route_to(cell, story_goal, _story_blocked.keys())
+			_way = town.route_to(cell, story_goal)
 		return _way[0] if not _way.is_empty() else cell
 	if _way.is_empty():
 		if _wander_left > 0:
@@ -965,14 +949,6 @@ func _next_on_the_way(ways: Array) -> Vector3i:
 ## The cells still to go to where it is going (for the checks).
 func way_ahead() -> Array[Vector3i]:
 	return _way
-
-
-func _shuffle(cells: Array[Vector3i]) -> void:
-	for index in range(cells.size() - 1, 0, -1):
-		var other := _random.randi_range(0, index)
-		var kept := cells[index]
-		cells[index] = cells[other]
-		cells[other] = kept
 
 
 ## Sets the next spot in the cell `next`, one with a clear straight way there (nearer the
@@ -1189,7 +1165,9 @@ func _update_cell() -> void:
 	if not _route_points.is_empty():
 		return   # on the stairs: it is in the cell it went for once it gets there (_arrive)
 	var now := town.cell_of(global_position)
-	if now != cell and town.may_use(now, mobility):
+	# (the cell it set out for counts too, whatever may_use says of it: a link of the route finder
+	# it may take, else it went there and kept thinking it stood in the last one, for good)
+	if now != cell and (town.may_use(now, mobility) or now == _next_cell):
 		_came_from = cell
 		cell = now
 		if _on_zebra and not town.is_zebra(now):

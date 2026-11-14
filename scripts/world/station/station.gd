@@ -25,6 +25,7 @@ extends "res://scripts/world/interiors/interior.gd"
 ## the OV posts are the props/ov/ov_incheckpaal in the GridMap Props.
 
 const Conversations = preload("res://scripts/story/conversations.gd")
+const Detour = preload("res://scripts/pathfinding/detour.gd")
 const Interiors = preload("res://scripts/world/interiors/interiors.gd")
 const Layout = preload("res://scripts/world/station/station_layout.gd")
 const OverheadLines = preload("res://scripts/world/town/overhead_lines.gd")
@@ -2015,79 +2016,13 @@ func _route(person: StationPerson, from: Vector3, to: Vector3) -> Array[Dictiona
 
 ## Walking steps through the hall from `from` to `to`, round the obstacles.
 func _hall_walk(steps: Array[Dictionary], from: Vector3, to: Vector3) -> void:
-	var points := _detour(Vector2(from.x, from.z), Vector2(to.x, to.z), 3)
+	var points := Detour.around(Vector2(from.x, from.z), Vector2(to.x, to.z), HALL_OBSTACLES, OBSTACLE_MARGIN, 3)
 	for point in points:
 		steps.append({"type": "walk", "to": Vector3(point.x, 0.0, point.y)})
 
 
-## The corners to go by from `from` to `to` (to included) so no obstacle is in the way.
-func _detour(from: Vector2, to: Vector2, depth: int) -> Array[Vector2]:
-	var blocking := _first_obstacle(from, to)
-	if blocking == Rect2() or depth <= 0:
-		return [to]
-	var grown := blocking.grow(OBSTACLE_MARGIN + 0.1)
-	var corners: Array[Vector2] = [grown.position, Vector2(grown.end.x, grown.position.y), grown.end, Vector2(grown.position.x, grown.end.y)]
-	var best: Array[Vector2] = []
-	var best_length := INF
-	for first_index in 4:
-		var corner := corners[first_index]
-		if _hits(from, corner, blocking.grow(OBSTACLE_MARGIN)):
-			continue
-		if not _hits(corner, to, blocking.grow(OBSTACLE_MARGIN)):
-			var length := from.distance_to(corner) + corner.distance_to(to)
-			if length < best_length:
-				best_length = length
-				best = [corner]
-			continue
-		for step in [-1, 1]:
-			var second := corners[(first_index + step + 4) % 4]
-			if _hits(second, to, blocking.grow(OBSTACLE_MARGIN)):
-				continue
-			var length := from.distance_to(corner) + corner.distance_to(second) + second.distance_to(to)
-			if length < best_length:
-				best_length = length
-				best = [corner, second]
-	if best.is_empty():
-		return [to]
-	var points: Array[Vector2] = []
-	var here := from
-	for corner in best:
-		points.append_array(_detour(here, corner, depth - 1))
-		here = corner
-	points.append_array(_detour(here, to, depth - 1))
-	return points
-
-
-func _first_obstacle(from: Vector2, to: Vector2) -> Rect2:
-	var nearest := Rect2()
-	var nearest_distance := INF
-	for obstacle: Rect2 in HALL_OBSTACLES:
-		var grown := obstacle.grow(OBSTACLE_MARGIN)
-		if grown.has_point(from) or grown.has_point(to):
-			continue
-		if _hits(from, to, grown):
-			var distance := from.distance_to(grown.get_center())
-			if distance < nearest_distance:
-				nearest_distance = distance
-				nearest = obstacle
-	return nearest
-
-
 func _inside_obstacle(at: Vector2) -> bool:
-	for obstacle: Rect2 in HALL_OBSTACLES:
-		if obstacle.grow(OBSTACLE_MARGIN).has_point(at):
-			return true
-	return false
-
-
-static func _hits(from: Vector2, to: Vector2, area: Rect2) -> bool:
-	if area.has_point(from) or area.has_point(to):
-		return true
-	var corners := [area.position, Vector2(area.end.x, area.position.y), area.end, Vector2(area.position.x, area.end.y)]
-	for index in 4:
-		if Geometry2D.segment_intersects_segment(from, to, corners[index], corners[(index + 1) % 4]) != null:
-			return true
-	return false
+	return Detour.inside_any(at, HALL_OBSTACLES, OBSTACLE_MARGIN)
 
 
 # ------------------------------------------------------------------ cans for the story

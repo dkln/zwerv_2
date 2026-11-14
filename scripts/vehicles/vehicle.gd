@@ -100,6 +100,8 @@ extends Node3D
 @export var top_speed_kmh := 130.0
 ## Cells it looks ahead over a crossing for whether a heading leads on (see _leads_on).
 const Sight = preload("res://scripts/world/town/sight.gd")
+const WayChoice = preload("res://scripts/pathfinding/way_choice.gd")
+const VisitMemory = preload("res://scripts/pathfinding/visit_memory.gd")
 const CROSSING_LOOKAHEAD := 4
 ## Speed through a corner (m/s).
 @export var corner_speed := 4.5
@@ -592,7 +594,7 @@ var _waited_at := {}                         # zebra cells it has already waited
 var _zebra_waiting := 0.0
 var _lights: Node
 var _random := RandomNumberGenerator.new()
-var _visits := {}                    # Vector3i cell -> times driven over (fades, VISIT_MEMORY)
+var _visits := VisitMemory.new(VISIT_MEMORY)   # how often it drove over each cell (fades)
 var _wheels: Array[Node3D] = []      # per wheel: the steering pivot, its child spins
 var _wheel_roll_ratios: Array[float] = []  # per wheel: wheel_radius over its own radius
 var _wheel_roll := 0.0               # radians the wheels have turned
@@ -1468,43 +1470,25 @@ func _may_continue(_cell: Vector3i, _arriving: Vector2i, _leaving: Vector2i) -> 
 func _choose_heading(cell: Vector3i, heading: Vector2i, options: Array[Vector2i]) -> Vector2i:
 	var turn_count := options.size() - (1 if options.has(heading) else 0)
 	var weights: Array[float] = []
-	var total := 0.0
 	for option in options:
 		var base := 1.0
 		if options.has(heading):
 			base = straight_chance if option == heading else (1.0 - straight_chance) / maxf(turn_count, 1.0)
-		var weight := base / (1.0 + variety * _visited_ahead(cell, option))
-		weights.append(weight)
-		total += weight
-	var pick := _random.randf() * total
-	for index in options.size():
-		pick -= weights[index]
-		if pick <= 0.0:
-			return options[index]
-	return options[-1]
+		weights.append(base / (1.0 + variety * _visited_ahead(cell, option)))
+	return options[WayChoice.weighted(_random, weights)]
 
 
 ## Average number of times it drove the cells along `heading` from `cell` (up to
 ## VISIT_LOOKAHEAD cells, straight on).
 func _visited_ahead(cell: Vector3i, heading: Vector2i) -> float:
-	var total := 0.0
+	var ahead: Array[Vector3i] = []
 	var here := cell
 	for step in VISIT_LOOKAHEAD:
 		here = network.step(here, heading)
 		if here == RoadNetwork.NONE:
 			break
-		total += _visits.get(here, 0)
-	return total / VISIT_LOOKAHEAD
-
-
-## Counts a cell it drove over; halves the whole memory once it holds too many cells.
-func _remember(cell: Vector3i) -> void:
-	_visits[cell] = _visits.get(cell, 0) + 1
-	if _visits.size() > VISIT_MEMORY:
-		for key in _visits.keys():
-			_visits[key] = _visits[key] / 2
-			if _visits[key] == 0:
-				_visits.erase(key)
+		ahead.append(here)
+	return _visits.average(ahead, VISIT_LOOKAHEAD)
 
 
 ## Why it must stop before driving from `from_cell` into `to_cell` ("" = it may go):
@@ -1636,7 +1620,7 @@ func _current_index() -> int:
 func _drop_passed_cells() -> void:
 	while _route_cells.size() > 2 + _cells_kept_behind and _distance > _route_distances[1 + _cells_kept_behind]:
 		_waited_at.erase(_route_cells[1])
-		_remember(_route_cells[1])
+		_visits.remember(_route_cells[1])
 		_route_cells.pop_front()
 		_route_headings.pop_front()
 		_route_distances.pop_front()

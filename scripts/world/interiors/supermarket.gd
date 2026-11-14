@@ -62,6 +62,8 @@ const CART_ARMS := Vector3(-62.0, 0.0, 0.0)
 const BASKET_ARM := Vector3(0.0, 0.0, 10.0)
 ## The shoppers: the floor grid they walk on, how fast, how long at a shelf, at the till.
 const NAV_CELL := 0.5
+## How far round a blocked cell a free one is looked for (FloorGrid.free_cell), in cells.
+const FREE_CELL_REACH := 5
 const WALK_SPEED := Vector2(1.0, 1.35)
 const LOOK_SECONDS := Vector2(1.5, 4.0)
 const PAY_SECONDS := Vector2(4.0, 7.0)
@@ -909,18 +911,9 @@ func _player_in_the_way(from: Vector3, direction: Vector3) -> bool:
 ## The free floor of `a_plan` as a grid of NAV_CELL m (AStarGrid2D): every tile and prop below
 ## head height blocks the cells under it (and a little round it).
 static func make_floor_grid(a_plan: Dictionary, library: MeshLibrary, props_library: MeshLibrary) -> AStarGrid2D:
-	var grid := AStarGrid2D.new()
-	grid.region = Rect2i(0, 0, int(float(a_plan.width) / NAV_CELL), int(float(a_plan.depth) / NAV_CELL))
-	grid.cell_size = Vector2.ONE
-	grid.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_ONLY_IF_NO_OBSTACLES
-	grid.update()
+	var grid := FloorGrid.make(int(float(a_plan.width) / NAV_CELL), int(float(a_plan.depth) / NAV_CELL))
 	for box in footprints(a_plan, library, props_library):
-		var low := cell_of(a_plan, box.position - Vector3(0.15, 0.0, 0.15))
-		var high := cell_of(a_plan, box.end + Vector3(0.15, 0.0, 0.15))
-		for column in range(low.x, high.x + 1):
-			for row in range(low.y, high.y + 1):
-				if grid.is_in_boundsv(Vector2i(column, row)):
-					grid.set_point_solid(Vector2i(column, row), true)
+		FloorGrid.block(grid, cell_of(a_plan, box.position - Vector3(0.15, 0.0, 0.15)), cell_of(a_plan, box.end + Vector3(0.15, 0.0, 0.15)))
 	return grid
 
 
@@ -995,15 +988,7 @@ static func cell_middle(a_plan: Dictionary, cell: Vector2i) -> Vector3:
 
 ## The nearest free cell of `grid` to `cell` (itself when free).
 static func free_cell(grid: AStarGrid2D, cell: Vector2i) -> Vector2i:
-	if grid.is_in_boundsv(cell) and not grid.is_point_solid(cell):
-		return cell
-	for reach in range(1, 6):
-		for column in range(cell.x - reach, cell.x + reach + 1):
-			for row in range(cell.y - reach, cell.y + reach + 1):
-				var other := Vector2i(column, row)
-				if grid.is_in_boundsv(other) and not grid.is_point_solid(other):
-					return other
-	return cell
+	return FloorGrid.free_cell(grid, cell, FREE_CELL_REACH)
 
 
 func _make_floor_grid(library: MeshLibrary, props_library: MeshLibrary) -> void:
@@ -1016,9 +1001,7 @@ func _path(from: Vector3, to: Vector3) -> PackedVector3Array:
 	if _grid == null:
 		points.append(to)
 		return points
-	var start := free_cell(_grid, cell_of(plan, from))
-	var goal := free_cell(_grid, cell_of(plan, to))
-	for cell in _grid.get_id_path(start, goal):
+	for cell in FloorGrid.cell_path(_grid, cell_of(plan, from), cell_of(plan, to), FREE_CELL_REACH):
 		points.append(cell_middle(plan, cell))
 	if points.size() > 1:
 		points.remove_at(0)
@@ -1028,9 +1011,7 @@ func _path(from: Vector3, to: Vector3) -> PackedVector3Array:
 
 ## True if one can walk from `from` to `to` over the free floor of `grid` (the checks).
 static func reachable_on(grid: AStarGrid2D, a_plan: Dictionary, from: Vector3, to: Vector3) -> bool:
-	var start := free_cell(grid, cell_of(a_plan, from))
-	var goal := free_cell(grid, cell_of(a_plan, to))
-	return start == goal or not grid.get_id_path(start, goal).is_empty()
+	return FloorGrid.reachable(grid, cell_of(a_plan, from), cell_of(a_plan, to), FREE_CELL_REACH)
 
 
 # ------------------------------------------------------------------ helpers

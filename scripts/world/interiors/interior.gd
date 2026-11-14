@@ -20,6 +20,7 @@ extends Node3D
 ## floor (the supermarket) overrides what differs.
 
 const UiStyle = preload("res://scripts/ui/ui_style.gd")
+const FloorGrid = preload("res://scripts/pathfinding/floor_grid.gd")
 const SnackBarLayout = preload("res://scripts/world/interiors/snack_bar_layout.gd")
 const TILE_FOLDER := "snackbar/"
 const VARIANTS := ["zwartwit", "roodwit", "geel", "blauw"]
@@ -315,9 +316,7 @@ func floor_path(from: Vector3, to: Vector3) -> PackedVector3Array:
 		points.append(to)
 		return points
 	var grid: AStarGrid2D = floor_grid.grid
-	var start := _free_floor_cell(grid, _floor_cell(floor_grid, root.to_local(from)))
-	var goal := _free_floor_cell(grid, _floor_cell(floor_grid, root.to_local(to)))
-	var cells := grid.get_id_path(start, goal)
+	var cells := FloorGrid.cell_path(grid, _floor_cell(floor_grid, root.to_local(from)), _floor_cell(floor_grid, root.to_local(to)))
 	for cell in cells:
 		points.append(root.to_global(_floor_cell_middle(floor_grid, cell, root.to_local(from).y)))
 	if points.size() > 1:
@@ -386,11 +385,7 @@ func _floor_grid_of(root: Node3D) -> Dictionary:
 	var bounds: AABB = floors[0]
 	for box in floors:
 		bounds = bounds.merge(box)
-	var grid := AStarGrid2D.new()
-	grid.region = Rect2i(0, 0, ceili(bounds.size.x / FLOOR_CELL), ceili(bounds.size.z / FLOOR_CELL))
-	grid.cell_size = Vector2.ONE
-	grid.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_ONLY_IF_NO_OBSTACLES
-	grid.update()
+	var grid := FloorGrid.make(ceili(bounds.size.x / FLOOR_CELL), ceili(bounds.size.z / FLOOR_CELL))
 	var found := {"grid": grid, "origin": Vector2(bounds.position.x, bounds.position.z)}
 	for column in grid.region.size.x:
 		for row in grid.region.size.y:
@@ -400,10 +395,7 @@ func _floor_grid_of(root: Node3D) -> Dictionary:
 	for box in obstacles:
 		var low := _floor_cell(found, box.position - Vector3(FLOOR_OBSTACLE_MARGIN, 0.0, FLOOR_OBSTACLE_MARGIN))
 		var high := _floor_cell(found, box.end + Vector3(FLOOR_OBSTACLE_MARGIN, 0.0, FLOOR_OBSTACLE_MARGIN))
-		for column in range(low.x, high.x + 1):
-			for row in range(low.y, high.y + 1):
-				if grid.is_in_boundsv(Vector2i(column, row)):
-					grid.set_point_solid(Vector2i(column, row), true)
+		FloorGrid.block(grid, low, high)
 	_floor_grids[key] = found
 	return found
 
@@ -439,16 +431,3 @@ static func _floor_cell(floor_grid: Dictionary, at: Vector3) -> Vector2i:
 static func _floor_cell_middle(floor_grid: Dictionary, cell: Vector2i, height: float) -> Vector3:
 	var origin: Vector2 = floor_grid.origin
 	return Vector3(origin.x + (cell.x + 0.5) * FLOOR_CELL, height, origin.y + (cell.y + 0.5) * FLOOR_CELL)
-
-
-## The nearest free cell of `grid` to `cell` (itself when free).
-static func _free_floor_cell(grid: AStarGrid2D, cell: Vector2i) -> Vector2i:
-	if grid.is_in_boundsv(cell) and not grid.is_point_solid(cell):
-		return cell
-	for reach in range(1, 8):
-		for column in range(cell.x - reach, cell.x + reach + 1):
-			for row in range(cell.y - reach, cell.y + reach + 1):
-				var other := Vector2i(column, row)
-				if grid.is_in_boundsv(other) and not grid.is_point_solid(other):
-					return other
-	return cell

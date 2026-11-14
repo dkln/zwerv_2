@@ -24,7 +24,7 @@ extends Node3D
 ## interior (Binnenruimtes) it all stands still.
 ## Going somewhere (route_to_somewhere): most of the time someone on foot is on the way to a
 ## place a few blocks off (a walkable cell DESTINATION_CELLS away, picked at random), along
-## the shortest way over the pavements, the zebras and the stairs (an AStar3D over _links,
+## the shortest way over the pavements, the zebras and the stairs (CellRoutes over _links,
 ## _find_routes), so they walk on from block to block and cross the roads on purpose; there
 ## they pick the next. Now and then (Pedestrian.WANDER_CHANCE) they just wander.
 ## The zebras: a pedestrian about to cross or crossing claims the zebra cells
@@ -51,6 +51,8 @@ extends Node3D
 const PedestrianScript = preload("res://scripts/world/people/pedestrian.gd")
 const Crowd = preload("res://scripts/world/people/crowd.gd")
 const Sight = preload("res://scripts/world/town/sight.gd")
+const CellRoutes = preload("res://scripts/pathfinding/cell_routes.gd")
+const StepField = preload("res://scripts/pathfinding/step_field.gd")
 ## Ground tile folders people walk on.
 ## (the pavements of the bridges over the singel and the footbridges in the parks too: without
 ## them the centre was cut off from the station's side, and no route led across the water)
@@ -123,8 +125,7 @@ var network: RoadNetwork
 var _walkable := {}          # cell -> true: pavement and square cells
 var _walkable_cells: Array[Vector3i] = []
 var _links := {}             # cell -> Array[Vector3i] of the cells one can walk on to
-var _routes: AStar3D                 # the route finder over _links (_find_routes)
-var _route_ids := {}                 # cell -> its point in _routes
+var _routes: CellRoutes              # the route finder over _links (_find_routes)
 var _ride := {}              # cell -> true: bicycle paths (only for mobility scooters)
 var _decks := {}             # Vector2i (x, z) -> the level of the footbridge deck there
 var _stair_routes := {}      # [from cell, to cell] -> PackedVector3Array: the points up or down the stairs
@@ -228,84 +229,38 @@ func is_walkable(cell: Vector3i) -> bool:
 
 ## Every cell someone can be on gets a point in the route finder, linked as _links says.
 func _find_routes() -> void:
-	_routes = AStar3D.new()
-	_route_ids.clear()
-	for cell: Vector3i in _links:
-		var id := _route_ids.size()
-		_route_ids[cell] = id
-		_routes.add_point(id, Vector3(cell))
-	for cell: Vector3i in _links:
-		for next: Vector3i in _links[cell]:
-			if _route_ids.has(next):
-				_routes.connect_points(int(_route_ids[cell]), int(_route_ids[next]), false)
+	_routes = CellRoutes.new(_links)
 
 
 ## The cells to walk from `from` to a place a few blocks off (a walkable cell between
 ## DESTINATION_CELLS.x and .y cells away as the crow flies, where `mobility` may go),
 ## without `from` itself; empty when no such place can be reached from here.
 func route_to_somewhere(from: Vector3i, mobility: String) -> Array[Vector3i]:
-	var route: Array[Vector3i] = []
-	if _routes == null or not _route_ids.has(from) or _walkable_cells.is_empty():
-		return route
-	var routes_tried := 0
-	for attempt in DESTINATION_ATTEMPTS:
-		var goal: Vector3i = _walkable_cells[_random.randi() % _walkable_cells.size()]
-		var far := maxi(absi(goal.x - from.x), absi(goal.z - from.z))
-		if far < DESTINATION_CELLS.x or far > DESTINATION_CELLS.y or not _route_ids.has(goal):
-			continue
-		routes_tried += 1
-		if routes_tried > 3:
-			break
-		for point in _routes.get_point_path(int(_route_ids[from]), int(_route_ids[goal])):
-			route.append(Vector3i(roundi(point.x), roundi(point.y), roundi(point.z)))
-		# (a way far round, over a bridge at the other end of town, is no walk: another place)
-		if route.size() > 1 and route.size() <= LONGEST_WAY:
-			route.remove_at(0)
-			if mobility != "" and route.any(func(cell: Vector3i) -> bool: return not may_use(cell, mobility)):
-				route.clear()
-				continue
-			return route
-		route.clear()
-	return route
+	var nowhere: Array[Vector3i] = []
+	if _routes == null:
+		return nowhere
+	var accept := Callable()
+	if mobility != "":
+		accept = func(cell: Vector3i) -> bool: return may_use(cell, mobility)
+	return _routes.route_somewhere(from, _walkable_cells, _random, DESTINATION_CELLS, LONGEST_WAY,
+			DESTINATION_ATTEMPTS, accept)
 
 
 ## The cells to walk from `from` to `to` (the story sends someone somewhere:
-## Pedestrian.story_goal), without `from`; empty when it cannot get there.
+## Pedestrian.story_goal), without `from`; empty when it cannot get there. The cells of
+## `avoid` are kept out of this one route.
 func route_to(from: Vector3i, to: Vector3i, avoid: Array = []) -> Array[Vector3i]:
-	var route: Array[Vector3i] = []
-	if _routes == null or not _route_ids.has(from):
-		return route
-	var goal := to if _route_ids.has(to) else nearest_walkable(to)
-	if not _route_ids.has(goal):
-		return route
-	# cells someone found it could not get into (a lamp post, a bin in the way: Pedestrian
-	# _reroute_story) left out of this one route only
-	var left_out: Array[int] = []
-	for cell: Vector3i in avoid:
-		if _route_ids.has(cell) and cell != from and cell != goal:
-			left_out.append(int(_route_ids[cell]))
-			_routes.set_point_disabled(int(_route_ids[cell]), true)
-	for point in _routes.get_point_path(int(_route_ids[from]), int(_route_ids[goal])):
-		route.append(Vector3i(roundi(point.x), roundi(point.y), roundi(point.z)))
-	for id in left_out:
-		_routes.set_point_disabled(id, false)
-	if not route.is_empty():
-		route.remove_at(0)
-	return route
+	var nowhere: Array[Vector3i] = []
+	if _routes == null:
+		return nowhere
+	return _routes.route(from, nearest_walkable(to), avoid)
 
 
 ## The walkable cell nearest to `cell` (itself when it is one).
 func nearest_walkable(cell: Vector3i) -> Vector3i:
-	if _route_ids.has(cell):
+	if _routes == null:
 		return cell
-	var best := cell
-	var best_distance := INF
-	for other: Vector3i in _walkable_cells:
-		var distance := Vector2(other.x - cell.x, other.z - cell.z).length_squared()
-		if distance < best_distance and _route_ids.has(other):
-			best = other
-			best_distance = distance
-	return best
+	return _routes.nearest(cell, _walkable_cells)
 
 
 func links(cell: Vector3i) -> Array:
@@ -875,24 +830,7 @@ func _find_station() -> void:
 ## How many cells' walk from each walkable cell to the nearest door (breadth first, over the
 ## links not found blocked).
 func _walk_to_station() -> void:
-	_station_steps.clear()
-	var frontier: Array[Vector3i] = []
-	for cell in _station_door_cells:
-		if not _station_steps.has(cell):
-			_station_steps[cell] = 0
-			frontier.append(cell)
-	while not frontier.is_empty():
-		var next_frontier: Array[Vector3i] = []
-		for cell in frontier:
-			var steps: int = _station_steps[cell] + 1
-			if steps > STATION_PULL_STEPS * 2:
-				continue
-			for way: Vector3i in links(cell):
-				# walked backwards from the doors: someone goes from `way` to `cell`
-				if not _station_steps.has(way) and not _station_blocked.has([way, cell]):
-					_station_steps[way] = steps
-					next_frontier.append(way)
-		frontier = next_frontier
+	_station_steps = StepField.measure(_station_door_cells, links, STATION_PULL_STEPS * 2, _station_blocked)
 
 
 ## The hour's share of the station's coming and going (0..1; the rush hours most).
@@ -910,7 +848,7 @@ func _near_station(spot: Vector3) -> bool:
 
 ## Cells to walk from `cell` to the nearest station door (0 at a door), -1 out of reach.
 func station_steps(cell: Vector3i) -> int:
-	return int(_station_steps.get(cell, -1))
+	return StepField.steps_at(_station_steps, cell)
 
 
 ## The station door nearest `spot` (where someone going in disappears).
