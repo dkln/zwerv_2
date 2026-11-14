@@ -14,6 +14,8 @@ extends Node
 ## complete_mission) and presses their last pages and reward screens away, until the target
 ## has started; with --stap it then does its steps before that one (Story.complete_step) and
 ## presses their pages away. What the target (or that step) shows itself, you see. Then it goes.
+## In the game (a debug build) F8 opens the mission picker (scripts/debug/mission_picker.gd),
+## which starts the same jump without arguments: start_in_game (the town loaded again).
 
 var target := ""
 var step := ""
@@ -22,10 +24,26 @@ var place := ""
 const NEAR_THE_PERSON := 5.0
 var _chain: Array[String] = []      # the missions before the target, the first first
 var _resolved := false
+var _old_scene_id := 0              # the scene being left (start_in_game): not acted on
+
+
+## Jumps from the game to mission `mission_id` (at step `step_id`, "" = its start): the town is
+## loaded again (a clean start, so also back to an earlier mission) and the jump goes on in it.
+static func start_in_game(tree: SceneTree, mission_id: String, step_id := "") -> void:
+	var jump := new()
+	jump.name = "Missiesprong"
+	jump.target = mission_id
+	jump.step = step_id
+	jump._old_scene_id = tree.current_scene.get_instance_id() if tree.current_scene else 0
+	tree.root.add_child(jump)
+	tree.paused = false
+	tree.reload_current_scene()
 
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	if target != "":
+		return   # given in the game (start_in_game)
 	var args := OS.get_cmdline_user_args()
 	var at := args.find("--missie")
 	if at != -1 and at + 1 < args.size():
@@ -45,7 +63,7 @@ static func wanted() -> bool:
 
 func _process(_delta: float) -> void:
 	var scene := get_tree().current_scene
-	if scene == null:
+	if scene == null or scene.get_instance_id() == _old_scene_id:
 		return
 	var story := scene.get_node_or_null("Verhaal")
 	var hud := scene.get_node_or_null("HUD")

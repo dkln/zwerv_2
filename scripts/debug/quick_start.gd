@@ -4,12 +4,33 @@ extends Node
 ## scenes/snel_starten.tscn (F6 in the editor), or start the game with `-- --snel`
 ## (scripts/ui/intro.gd hands over to this scene then); `-- --snel --missie 2 [--stap <id>]` goes on
 ## to a mission or a step of it (scripts/debug/mission_jump.gd).
+## In a debug build F8 in the intro, the main menu or the character choice comes here too
+## (skip_on_key; in the town F8 is the mission picker).
 
 const CITY_SCENE := "res://scenes/stad.tscn"
 const CHARACTER := "martin"
 const PlayerCharacter = preload("res://scripts/player/player_character.gd")
 const FrameMeter = preload("res://scripts/debug/frame_meter.gd")
 const MissionJump = preload("res://scripts/debug/mission_jump.gd")
+const QUICK_START_SCENE := "res://scenes/snel_starten.tscn"
+const KEY_SKIP := KEY_F8
+
+
+## True for F8 pressed (not held, not let go): the key that skips to here.
+static func is_skip_key(event: InputEvent) -> bool:
+	return event is InputEventKey and event.pressed and not event.echo and (event as InputEventKey).keycode == KEY_SKIP
+
+
+## For the intro, the main menu and the character choice: true (and on its way here) when
+## `event` is F8 in a debug build; the caller then does nothing more with it.
+static func skip_on_key(node: Node, event: InputEvent) -> bool:
+	if not OS.is_debug_build() or not is_skip_key(event):
+		return false
+	node.get_viewport().set_input_as_handled()
+	print("snel starten: F8, meteen de stad in als Martin")
+	node.get_tree().paused = false
+	node.get_tree().change_scene_to_file.call_deferred(QUICK_START_SCENE)
+	return true
 
 
 func _ready() -> void:

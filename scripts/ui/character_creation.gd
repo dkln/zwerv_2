@@ -25,6 +25,7 @@ extends Control
 ## Laid out at 1280 x 720, scaled with the window.
 
 const SoundVariation = preload("res://scripts/audio/sound_variation.gd")
+const QuickStart = preload("res://scripts/debug/quick_start.gd")
 const SwipeTransition = preload("res://scripts/ui/swipe_transition.gd")
 const UiStyle = preload("res://scripts/ui/ui_style.gd")
 const UiSounds = preload("res://scripts/ui/ui_sounds.gd")
@@ -150,6 +151,9 @@ func _ready() -> void:
 # ------------------------------------------------------------------ choosing
 
 func _unhandled_input(event: InputEvent) -> void:
+	# debug: F8 straight into the town as Martin (scripts/debug/quick_start.gd)
+	if QuickStart.skip_on_key(self, event):
+		return
 	if _leaving:
 		return
 	if event.is_action_pressed("ui_cancel"):

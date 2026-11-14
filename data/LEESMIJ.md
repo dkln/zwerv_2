@@ -145,6 +145,17 @@ missie (voor `--missie`), en/of bij een stap (voor `--stap`). Het is een plek va
 de missie, en anders sta je bij het personage van de stap. In het spel zelf doet het niets. De missies ervoor worden afgerond en hun pagina's weggeklikt; wat de missie of de stap
 zelf laat zien, zie je gewoon (`scripts/debug/mission_jump.gd`).
 
+Tijdens het spelen kan het ook (alleen in een debug-build, dus vanuit de editor): **F8** opent
+de missiekiezer met alle missies en hun stappen (✓ klaar, ▶ bezig, · nog niet). Kies met W/S
+of de pijltjes (Page Up/Down springt per missie) en druk Enter: de stad laadt opnieuw en je
+gaat naar het begin van die missie, of naar die stap, net als met `--missie`/`--stap`. Zo kun
+je ook terug naar een eerdere missie. Escape of F8 sluit hem (`scripts/debug/mission_picker.gd`).
+Geld nodig om iets te testen: **F7** geeft je €10, Shift+F7 €100 (telt niet als verdiend).
+Ervaring: **F9** geeft 100 XP, Shift+F9 precies genoeg voor het volgende level (het
+level-up-scherm). Gezondheid: **F5** vol, Shift+F5 20 eraf (echte schade). Honger: **F6** vol,
+Shift+F6 20 eraf. Uithoudingsvermogen: **F2** vol, Shift+F2 20 eraf. Overprikkeldheid: **F4**
+rustig (0), Shift+F4 20 erbij. Allemaal in `scripts/debug/debug_keys.gd`.
+
 ## Personages — `gesprekken/personages.json`
 
 De vaste mensen van het verhaal (Ome Wim, de goededoelenwerver, Blikken Bertus). Elk staat op een `plek`, ziet

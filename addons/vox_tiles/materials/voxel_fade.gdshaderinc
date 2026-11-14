@@ -16,8 +16,10 @@
 // CUSTOM0, so it fades with its own building, as a whole. Shaders decode it in vertex()
 // with fade_owner_from(CUSTOM0) into a varying; vec4(0.0) = none, then the cell the
 // pixel is in is used.
-// Nothing below this height fades: the street, and for the Grond layer (whose decks fade,
-// building_fade.gd compiles it with a higher floor) also the foundations under buildings.
+// Nothing below this height fades: the street. For the Grond layer (whose decks and tunnel
+// roofs fade; building_fade.gd compiles it with ZWERVR_FADE_GROUND) the height is in the
+// texture (last row, pixel 1): deck height, so the foundations under buildings stay, or a
+// little above the followed in a tunnel, so the tunnel floor stays.
 #ifndef ZWERVR_FADE_FLOOR
 #define ZWERVR_FADE_FLOOR 0.3
 #endif
@@ -57,9 +59,11 @@ bool faded_out(vec3 view_position, vec3 view_normal, mat4 inv_view, mat4 project
 	}
 	// a little inwards, so a wall on a cell border belongs to its own cell
 	vec3 world = (inv_view * vec4(view_position - view_normal * 0.02, 1.0)).xyz;
+#ifndef ZWERVR_FADE_GROUND
 	if (world.y < ZWERVR_FADE_FLOOR) {
 		return false;   // the ground and everything below it never fades
 	}
+#endif
 	vec2 cell_point = owner.w > 0.5 ? owner.xz : world.xz;
 	vec2 uv = (cell_point - zwervr_fade_area.xy) / zwervr_fade_area.zw;
 	if (uv.x < 0.0 || uv.y < 0.0 || uv.x >= 1.0 || uv.y >= 1.0) {
@@ -70,6 +74,11 @@ bool faded_out(vec3 view_position, vec3 view_normal, mat4 inv_view, mat4 project
 	if (texel.y >= size.y - 1) {
 		return false;   // the last row holds the hole, not buildings
 	}
+#ifdef ZWERVR_FADE_GROUND
+	if (world.y < texelFetch(zwervr_fade_map, ivec2(1, size.y - 1), 0).r) {
+		return false;   // below the deck (or the tunnel floor round the followed)
+	}
+#endif
 	float amount = texelFetch(zwervr_fade_map, texel, 0).r;
 	if (amount <= 0.0) {
 		return false;

@@ -151,3 +151,7 @@ zwervr_sky_horizon={
 "type": "color",
 "value": Color(0.78, 0.85, 0.92, 1)
 }
+
+[zwervr]
+
+camera/orthografisch=true

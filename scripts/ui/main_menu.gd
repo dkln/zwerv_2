@@ -21,6 +21,7 @@ extends "res://scripts/ui/menu/menu_map.gd"
 
 const SwipeTransition = preload("res://scripts/ui/swipe_transition.gd")
 const UiSounds = preload("res://scripts/ui/ui_sounds.gd")
+const QuickStart = preload("res://scripts/debug/quick_start.gd")
 const GraphicsSettings = preload("res://scripts/ui/graphics_settings.gd")
 
 const CHARACTER_SCENE := "res://scenes/karakter.tscn"
@@ -211,6 +212,9 @@ func _process(delta: float) -> void:
 # ------------------------------------------------------------------ the sun and the moon
 
 func _unhandled_input(event: InputEvent) -> void:
+	# debug: F8 straight into the town as Martin (scripts/debug/quick_start.gd)
+	if QuickStart.skip_on_key(self, event):
+		return
 	if _loading:
 		return
 	if _panel != null:

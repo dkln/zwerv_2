@@ -302,3 +302,206 @@ func test_menu_without_a_player(test) -> void:
 	test.check(int(menu._inventory().get(first_item, 0)) == count_before - 1 or not Items.can_use(first_item), "gebruikt zonder speler")
 	menu.close()
 	await frames(2)
+
+
+## A key pressed until `done` holds (a story box: first the rest of the page, then on), at
+## most `tries` times, with game time between the presses.
+func _press_until(keycode: Key, done: Callable, tries := 8) -> void:
+	for attempt in tries:
+		if done.call():
+			return
+		await tree.create_timer(0.6, true, false, true).timeout
+		await _press(keycode)
+
+
+## A thought (the story box) while the inventory is open lies over the menu: the menu goes
+## under the HUD, the rest of the HUD hides, the keys go to the story box; after it all is back
+## and the game stays paused while the menu is open.
+func test_story_box_lies_over_the_open_menu(test) -> void:
+	await _build_world()
+	var game_menu: CanvasLayer = small_hud.get_node("Spelmenu")
+	game_menu.open("inventaris")
+	await frames(2)
+	var menu_layer := game_menu.layer
+	small_hud.show_story([{"kind": "gedachte", "text": "Wat zit er allemaal in mijn zakken?"}])
+	await frames(3)
+	test.check(small_hud.is_showing_story(), "het gedachtevak staat open")
+	test.check(game_menu.layer < small_hud.layer, "het menu ligt onder de HUD (%d < %d)" % [game_menu.layer, small_hud.layer])
+	test.check(not small_hud._hidden_for_modal.is_empty(), "de rest van de HUD is weg (%d delen)" % small_hud._hidden_for_modal.size())
+	await _press_until(KEY_SPACE, func() -> bool: return not small_hud.is_showing_story())
+	await frames(2)
+	test.check(not small_hud.is_showing_story(), "Spatie sluit het gedachtevak, niet het menu")
+	test.check(game_menu.is_open() and tree.paused, "het menu staat nog open en het spel blijft gepauzeerd")
+	test.check(game_menu.layer == menu_layer and small_hud._hidden_for_modal.is_empty(), "menu weer boven, HUD terug")
+	game_menu.close()
+
+
+## A level up shows the level-up screen (also over the open menu): S chooses the next stat,
+## Enter takes it (once the keys count), the choice goes to the player, then it closes.
+func test_level_up_screen_chooses_a_stat(test) -> void:
+	await _build_world()
+	var game_menu: CanvasLayer = small_hud.get_node("Spelmenu")
+	game_menu.open("inventaris")
+	await frames(2)
+	var chosen: Array[String] = []
+	small_hud.show_level_up(4, func(stat_name: String) -> void: chosen.append(stat_name), stand_in.stat)
+	await frames(3)
+	test.check(small_hud.is_showing_level_up() and tree.paused, "het level-up-scherm staat open, het spel gepauzeerd")
+	test.check(game_menu.layer < small_hud.layer, "ook over het open menu")
+	test.check(small_hud._level_up_screen._row_values[0].text == "80 → %d" % roundi(80.0 + PlayerController.LEVEL_UP_RAISE["gezondheid"]),
+			"maximum nu → straks: " + small_hud._level_up_screen._row_values[0].text)
+	await _press(KEY_S)
+	test.check(small_hud._level_up_screen.selected_stat() == "uithoudingsvermogen", "S kiest de volgende")
+	await _press_until(KEY_ENTER, func() -> bool: return not small_hud.is_showing_level_up())
+	test.check(chosen.size() == 1 and chosen[0] == "uithoudingsvermogen", "Enter neemt hem (%s)" % [chosen])
+	test.check(not small_hud.is_showing_level_up() and game_menu.is_open() and tree.paused, "dicht; het menu staat nog open")
+	game_menu.close()
+	await frames(2)
+	test.check(not tree.paused, "menu dicht: het spel loopt weer")
+
+
+## A Story with the API the mission picker uses (scripts/story/story.gd): two missions, the
+## first under way at its second step.
+const STAND_IN_STORY := """extends Node
+var missions: Array[Dictionary] = [
+	{"id": "missie_1", "label": "MISSIE 1", "titel": "Lege maag",
+		"stappen": [{"id": "blikjes", "tekst": "Zoek blikjes"}, {"id": "kroket", "tekst": "Koop een kroket"}]},
+	{"id": "missie_2", "label": "MISSIE 2", "titel": "Bekend gezicht",
+		"stappen": [{"id": "praten", "tekst": "Praat met Ome Wim"}]},
+]
+func is_started(id: String) -> bool:
+	return id == "missie_1"
+func is_finished(_id: String) -> bool:
+	return false
+func step_done(id: String, step_id: String) -> bool:
+	return id == "missie_1" and step_id == "blikjes"
+"""
+
+
+## F8 opens the mission picker (debug builds) on the step under way, also over the open menu;
+## S and Page Down choose, Escape closes it and the menu stays open.
+func test_mission_picker(test) -> void:
+	await _build_world()
+	var picker: CanvasLayer = small_hud.get_node_or_null("Missiekiezer")
+	test.check(picker != null, "de missiekiezer hangt onder de HUD (debug)")
+	if picker == null:
+		return
+	var stand_in_story := Node.new()
+	var story_script := GDScript.new()
+	story_script.source_code = STAND_IN_STORY
+	story_script.reload()
+	stand_in_story.set_script(story_script)
+	small_hud.add_child(stand_in_story)
+	picker.story = stand_in_story
+	var game_menu: CanvasLayer = small_hud.get_node("Spelmenu")
+	game_menu.open("quests")
+	await frames(2)
+	await _press(KEY_F8)
+	test.check(picker.is_open() and tree.paused, "F8 opent de kiezer, het spel gepauzeerd")
+	test.check(picker._rows.size() == 5, "twee missies en drie taken (%d rijen)" % picker._rows.size())
+	test.check(picker.selected_entry() == {"mission": "missie_1", "step": "kroket"}, "op de taak die loopt: %s" % picker.selected_entry())
+	await _press(KEY_PAGEDOWN)
+	test.check(picker.selected_entry() == {"mission": "missie_2", "step": ""}, "Page Down: de volgende missie (%s)" % picker.selected_entry())
+	await _press(KEY_S)
+	test.check(picker.selected_entry() == {"mission": "missie_2", "step": "praten"}, "S: zijn eerste taak (%s)" % picker.selected_entry())
+	await _press(KEY_ESCAPE)
+	test.check(not picker.is_open() and game_menu.is_open() and tree.paused, "Escape sluit de kiezer, het menu blijft open")
+	game_menu.close()
+	stand_in_story.queue_free()
+
+
+## A player with what the debug keys use (scripts/debug/debug_keys.gd).
+const DEBUG_PLAYER := """extends Node3D
+var money := 5.0
+var earned := []
+var xp := 0.0
+var xp_for_level := 300.0
+var level := 1
+var stats := {"gezondheid": Vector2(30, 80), "honger": Vector2(50, 140),
+		"uithoudingsvermogen": Vector2(10, 60), "overprikkeldheid": Vector2(70, 100)}
+func add_money(euros: float, counts := true) -> void:
+	money += euros
+	earned.append(counts)
+func add_xp(points: float) -> void:
+	xp += points
+	while xp >= xp_for_level:
+		xp -= xp_for_level
+		level += 1
+func stat(stat_name: String) -> Vector2:
+	return stats[stat_name]
+func change_stat(stat_name: String, amount: float) -> void:
+	var value: Vector2 = stats[stat_name]
+	stats[stat_name] = Vector2(clampf(value.x + amount, 0.0, value.y), value.y)
+"""
+
+
+## A debug key pressed, with Shift or without.
+func _press_debug(keycode: Key, shift := false) -> void:
+	var event := InputEventKey.new()
+	event.keycode = keycode
+	event.pressed = true
+	event.shift_pressed = shift
+	tree.root.push_input(event)
+	await frames(2)
+
+
+## F7 gives €10 (Shift: €100), also with the menu open; it does not count as earned. F9 gives
+## 100 XP, Shift+F9 just enough for a level; F5 / F6 / F2 fill health, hunger and stamina, with
+## Shift 20 off; F4 empties overstimulation, with Shift 20 more.
+func test_debug_keys(test) -> void:
+	await _build_world()
+	var money_key: Node = small_hud.get_node_or_null("Debugtoetsen")
+	test.check(money_key != null, "de debugtoetsen hangen onder de HUD (debug)")
+	if money_key == null:
+		return
+	var player_script := GDScript.new()
+	player_script.source_code = DEBUG_PLAYER
+	player_script.reload()
+	var wallet := Node3D.new()
+	wallet.set_script(player_script)
+	small_hud.add_child(wallet)
+	money_key.player = wallet
+	menu.open("inventaris")
+	await frames(2)
+	await _press(KEY_F7)
+	test.check(is_equal_approx(wallet.money, 15.0), "F7: €10 erbij (%.2f)" % wallet.money)
+	await _press_debug(KEY_F7, true)
+	test.check(is_equal_approx(wallet.money, 115.0), "Shift+F7: €100 erbij (%.2f)" % wallet.money)
+	test.check(not wallet.earned.has(true), "telt niet als verdiend")
+	await _press_debug(KEY_F9)
+	test.check(is_equal_approx(wallet.xp, 100.0), "F9: 100 XP (%.0f)" % wallet.xp)
+	await _press_debug(KEY_F9, true)
+	test.check(wallet.level == 2 and is_equal_approx(wallet.xp, 0.0), "Shift+F9: precies een level (level %d, %.0f XP)" % [wallet.level, wallet.xp])
+	# the rest with the mission picker open, which lists these keys
+	var picker: CanvasLayer = small_hud.get_node("Missiekiezer")
+	var stand_in_story := Node.new()
+	var story_script := GDScript.new()
+	story_script.source_code = STAND_IN_STORY
+	story_script.reload()
+	stand_in_story.set_script(story_script)
+	small_hud.add_child(stand_in_story)
+	picker.story = stand_in_story
+	await _press(KEY_F8)
+	test.check(picker.is_open(), "missiekiezer open")
+	var help_lines := picker.find_children("*", "Label", true, false).filter(func(label: Label) -> bool: return label.text.begins_with("F5"))
+	test.check(help_lines.size() == 1, "de kiezer toont de debugtoetsen (F5: %d regel)" % help_lines.size())
+	await _press_debug(KEY_F5)
+	test.check(wallet.stats.gezondheid == Vector2(80, 80), "F5 (kiezer open): gezondheid vol (%s)" % wallet.stats.gezondheid)
+	await _press_debug(KEY_F5, true)
+	test.check(wallet.stats.gezondheid == Vector2(60, 80), "Shift+F5: 20 eraf (%s)" % wallet.stats.gezondheid)
+	await _press_debug(KEY_F6)
+	test.check(wallet.stats.honger == Vector2(140, 140), "F6: honger vol (%s)" % wallet.stats.honger)
+	await _press_debug(KEY_F6, true)
+	test.check(wallet.stats.honger == Vector2(120, 140), "Shift+F6: 20 eraf (%s)" % wallet.stats.honger)
+	await _press_debug(KEY_F2)
+	test.check(wallet.stats.uithoudingsvermogen == Vector2(60, 60), "F2: uithoudingsvermogen vol (%s)" % wallet.stats.uithoudingsvermogen)
+	await _press_debug(KEY_F2, true)
+	test.check(wallet.stats.uithoudingsvermogen == Vector2(40, 60), "Shift+F2: 20 eraf (%s)" % wallet.stats.uithoudingsvermogen)
+	await _press_debug(KEY_F4)
+	test.check(wallet.stats.overprikkeldheid == Vector2(0, 100), "F4: overprikkeldheid leeg (%s)" % wallet.stats.overprikkeldheid)
+	await _press_debug(KEY_F4, true)
+	test.check(wallet.stats.overprikkeldheid == Vector2(20, 100), "Shift+F4: 20 erbij (%s)" % wallet.stats.overprikkeldheid)
+	await _press(KEY_ESCAPE)
+	menu.close()
+	wallet.queue_free()
+	stand_in_story.queue_free()

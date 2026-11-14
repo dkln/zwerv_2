@@ -40,6 +40,11 @@ func _init() -> void:
 		if only != "" and not file_name.contains(only) and path.get_base_dir().get_file() != only:
 			continue
 		var script: GDScript = load(path)
+		# a file that does not load (a parse error) is a failure, not nothing
+		if script == null or not script.can_instantiate():
+			failed += 1
+			print("FOUT  %s: laadt niet (scriptfout)" % file_name.get_basename())
+			continue
 		for method: Dictionary in script.get_script_method_list():
 			var test_name := str(method.name)
 			if not test_name.begins_with("test_"):

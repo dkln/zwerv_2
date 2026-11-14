@@ -14,11 +14,8 @@ extends Node
 ## behind a moving point, so the point lies that much further ahead.
 ## Optionally (`closeups`, off by default) it moves in for a close-up now and then: it zooms
 ## in, drops a little lower and swings round the target, then glides back (`closeup_*`).
-## Under the ground the iso view would only show the roof of the tunnel. So when the target
-## is about to go into a covered tunnel tile (on layer -6 of the ground layer), the camera
-## comes down into the open trough behind it and follows it as a chase camera; once out
-## in the open again it glides back up (`tunnel_*`). A target that jumps (a respawn) gets a
-## glide over (`switch_time`).
+## Under the ground it stays the iso view: the Doorkijk (building_fade.gd) leaves out the roof
+## of the tunnel over the target. A target that jumps (a respawn) gets a glide over (`switch_time`).
 ## When buildings stand between the player and the camera, the view turns round the player
 ## in whole steps of `turn_step` degrees (a quarter turn by default, so it stays isometric;
 ## at most `turn_most` either way) to where they no longer hide it,
@@ -31,9 +28,6 @@ extends Node
 const CloudShroud = preload("res://scripts/effects/cloud_shroud.gd")
 const LoadingScreenScript = preload("res://scripts/ui/loading_screen.gd")
 const Iso = preload("res://scripts/camera/iso_camera.gd")
-const TunnelLights = preload("res://scripts/world/town/tunnel_lights.gd")
-## Layer of the ground layer that tunnel tiles are placed on.
-const TUNNEL_LEVEL := -6
 ## Above this speed (m/s) between two frames the vehicle did not drive but jumped.
 const JUMP_SPEED := 80.0
 ## The arrival: its speed in the clouds (share of the speed outside them), and the steps of
@@ -75,25 +69,6 @@ const ARRIVAL_STEPS := 128
 ## over you still see where you are going.
 @export var switch_zoom_out := 0.5
 @export var switch_zoom_out_most := 150.0
-@export_group("Tunnels")
-## The ground layer, whose tiles tell where a tunnel is covered.
-@export var ground_path: NodePath = ^"../Grond"
-## Below this height (metres) the vehicle can be in a tunnel.
-@export var tunnel_below_height := -0.5
-## Seconds ahead of the vehicle that are checked for cover: the camera should be down
-## behind the vehicle before it reaches the portal.
-@export var tunnel_anticipation := 2.5
-## Seconds the glide into the tunnel and back up takes (about).
-@export var tunnel_glide_time := 0.9
-## Metres behind the vehicle and above it (the tunnel has 4.75 m of headroom).
-@export var tunnel_chase_distance := 9.0
-@export var tunnel_chase_height := 3.0
-## Metres ahead of the vehicle and above it that the camera looks at.
-@export var tunnel_look_ahead := 8.0
-@export var tunnel_look_height := 0.6
-## Field of view of the chase camera (degrees) and its near plane (metres).
-@export var tunnel_fov := 62.0
-@export var tunnel_near := 0.2
 @export_group("Turning round buildings")
 ## Turn away from buildings that hide the player (see the top).
 @export var turn_round_buildings := true
@@ -200,11 +175,6 @@ var _closeup_wait := 0.0             # seconds until the next close-up
 var _closeup_clock := -1.0           # seconds into the current close-up (< 0: none)
 var _closeup_side := 1.0             # which way it swings round
 var _random := RandomNumberGenerator.new()
-var _ground: GridMap
-var _underground := 0.0              # 0 = the iso view .. 1 = the chase camera in the tunnel
-var _underground_velocity := 0.0
-var _chase_heading := Vector3.FORWARD  # last driving direction of the vehicle, for the chase camera
-var _covered_items := {}             # ground item -> is it a covered tunnel tile
 var _view_focus := Vector3.ZERO      # the point the view was placed around last frame
 var _glide_over_left := 0.0          # seconds left of gliding over to the vehicle
 var _glide_over_from := Vector3.ZERO # where the view started, as seen from the vehicle
@@ -242,7 +212,6 @@ func _ready() -> void:
 	if _cam == null or _followed == null:
 		set_process(false)
 		return
-	_ground = get_node_or_null(ground_path) as GridMap
 	_buildings = get_node_or_null(buildings_path) as GridMap
 	_focus = _followed.global_position
 	_zoom = zoom_still
@@ -270,8 +239,6 @@ func start() -> void:
 	_closeup_wait = _random.randf_range(closeup_every.x, closeup_every.y)
 	_target_last = _focus
 	_target_velocity = Vector3.ZERO
-	_underground = 0.0
-	_underground_velocity = 0.0
 	_view_focus = _focus
 	_glide_over_left = 0.0
 
@@ -427,7 +394,7 @@ func _process(delta: float) -> void:
 	var target_position := _target_position()
 	if delta > 0.0 and target_position.distance_to(_target_last) / delta > JUMP_SPEED:
 		_glide_over(target_position)
-	var closeness := _advance_closeup(delta) * (1.0 - _underground)   # 0 = iso view .. 1 = closest
+	var closeness := _advance_closeup(delta)   # 0 = iso view .. 1 = closest
 	if delta > 0.0:
 		var frame_velocity := (target_position - _target_last) / delta
 		_target_velocity = _target_velocity.lerp(frame_velocity, 1.0 - exp(-delta / maxf(velocity_smoothing, 0.01)))
@@ -482,7 +449,6 @@ func _process(delta: float) -> void:
 		var swing := closeup_orbit * (progress - 0.5) * _closeup_side * closeness
 		_cam.rotation_degrees = Vector3(lerpf(Iso.ROTATION.x, closeup_pitch, closeness), view_yaw() + swing, 0.0)
 		_cam.global_position = _view_focus + _cam.global_basis.z * Iso.distance(view_size)
-	_place_in_tunnel(target_position, way_to_go, delta)
 	_shake_for_crash(view_size)
 
 
@@ -505,7 +471,7 @@ func view_yaw() -> float:
 ## rest. Then glides there.
 func _advance_turn(target_position: Vector3, view_size: float, delta: float) -> void:
 	var may_turn := turn_round_buildings and _buildings != null and not _arriving and not _dramatic \
-			and _underground < 0.001 and _glide_over_left <= 0.0
+			and _glide_over_left <= 0.0
 	if not may_turn:
 		_steep_goal = 0.0
 	else:
@@ -675,53 +641,6 @@ func _shake_for_crash(view_size: float) -> void:
 	var amount: float = crash_shake * Vehicle.last_crash["strength"] * fade * fade * clampf(view_size / 40.0, 0.4, 1.5)
 	_cam.global_position += (_cam.global_basis.x * _random.randf_range(-1.0, 1.0)
 			+ _cam.global_basis.y * _random.randf_range(-1.0, 1.0)) * amount
-
-
-## Blends the camera, just placed for the normal view, towards the chase camera as far
-## as the vehicle is under the ground. While gliding over to a vehicle it leaves the tunnel
-## (it may have to go down again at the other end), still looking the way it did.
-func _place_in_tunnel(target_position: Vector3, way_to_go: Vector3, delta: float) -> void:
-	var flat_velocity := Vector3(_target_velocity.x, 0.0, _target_velocity.z)
-	var gliding_over := _glide_over_left > 0.0
-	if flat_velocity.length() > 1.0 and not gliding_over:
-		_chase_heading = flat_velocity.normalized()
-	var goal := 1.0 if not gliding_over and _wants_chase_view(target_position, flat_velocity) else 0.0
-	var glided := _glide(_underground, goal, _underground_velocity, tunnel_glide_time, delta)
-	_underground = clampf(glided.x, 0.0, 1.0)
-	_underground_velocity = glided.y
-	if _underground < 0.001:
-		return
-	var blend := smoothstep(0.0, 1.0, _underground)
-	var chased := target_position + way_to_go
-	var chase := Transform3D.IDENTITY.translated(
-		chased - _chase_heading * tunnel_chase_distance + Vector3.UP * tunnel_chase_height)
-	chase = chase.looking_at(chased + _chase_heading * tunnel_look_ahead + Vector3.UP * tunnel_look_height, Vector3.UP)
-	_cam.global_position = _cam.global_position.lerp(chase.origin, blend)
-	_cam.global_basis = _cam.global_basis.slerp(chase.basis, blend).orthonormalized()
-	_cam.fov = lerpf(_cam.fov, tunnel_fov, blend)
-	_cam.near = lerpf(_cam.near, tunnel_near, blend)
-
-
-## True while the chase camera is wanted: the vehicle is low and it, the point it reaches
-## soon or the spot of the chase camera behind it lies under cover.
-func _wants_chase_view(target_position: Vector3, flat_velocity: Vector3) -> bool:
-	if target_position.y >= tunnel_below_height:
-		return false
-	return _is_covered(target_position) or _is_covered(target_position + flat_velocity * tunnel_anticipation) \
-		or _is_covered(target_position - _chase_heading * tunnel_chase_distance)
-
-
-## True if a covered tunnel tile (not an open trough or a ramp) lies at this spot.
-func _is_covered(point: Vector3) -> bool:
-	if _ground == null:
-		return false
-	var cell := _ground.local_to_map(_ground.to_local(point))
-	var item := _ground.get_cell_item(Vector3i(cell.x, TUNNEL_LEVEL, cell.z))
-	if item == GridMap.INVALID_CELL_ITEM:
-		return false
-	if not _covered_items.has(item):
-		_covered_items[item] = TunnelLights.is_covered_tile(_ground.mesh_library.get_item_name(item))
-	return _covered_items[item]
 
 
 ## Runs the close-up clock; returns how close in the view is now (0 = the normal iso

@@ -75,7 +75,8 @@ extends Node3D
 ## (`wake_time`). Asleep it cannot walk, and hunger and stamina stand still.
 ## Experience: add_xp (missions and their steps give it, scripts/story/story.gd); a full
 ## bar (`xp_for_level`) is a level up: the next level takes XP_GROWTH times as much, the HUD
-## shows the new level and plays the level jingle (GameHud.show_level_up).
+## shows the level-up screen (GameHud.show_level_up, one per level gained), where you choose
+## a stat to raise (raise_stat: its maximum up by LEVEL_UP_RAISE).
 ## Inventory: `inventory` (item id -> count, scripts/player/items.gd), use_item applies an
 ## item's effect to the stats. Room for only Items.BASE_SLOTS kinds of item (inventory_slots);
 ## a rucksack picked up in the town (pick_up_backpack, scripts/world/things/backpacks.gd) adds
@@ -120,9 +121,14 @@ const TALKABLE_GROUP := "aanspreekbaar"
 const DOORS_GROUP := "deuren"
 ## The player alone (what the world looks for to show things near it: InteractionMark).
 const PLAYER_GROUP := "speler"
-## How much more XP each next level takes, and the colour of "+50 XP".
+## XP the first level up takes (level 1 -> 2); each next level takes XP_GROWTH times as
+## much (rounded to 50): 300, 450, 700, 1050, ... And the colour of "+50 XP".
+const XP_FIRST_LEVEL := 300.0
 const XP_GROWTH := 1.5
 const XP_TEXT_COLOUR := Color("#47D6C2")
+## How much the maximum of a stat goes up when it is chosen on the level-up screen. Health,
+## stamina and hunger also fill up by as much; overstimulation (how much you can take) does not.
+const LEVEL_UP_RAISE := {"gezondheid": 10.0, "uithoudingsvermogen": 10.0, "honger": 20.0, "overprikkeldheid": 15.0}
 
 ## Hunger runs out this much slower while wearing clothes (Items "worn": the coat of Ome Wim).
 const WORN_HUNGER_FACTOR := 0.85
@@ -224,7 +230,7 @@ var money := 0.0
 ## Euros found or earned since the start (not what it started with).
 var money_earned := 0.0
 var xp := 0.0
-var xp_for_level := 1000.0
+var xp_for_level := XP_FIRST_LEVEL
 ## Item id -> how many (scripts/player/items.gd).
 var inventory := {}
 ## Wears a rucksack (picked up in the town): more room in the inventory.
@@ -329,6 +335,18 @@ func stat(stat_name: String) -> Vector2:
 	return _stats.get(stat_name, Vector2.ZERO)
 
 
+## A stat chosen on the level-up screen: its maximum up by LEVEL_UP_RAISE (and health, stamina
+## and hunger fill up by as much).
+func raise_stat(stat_name: String) -> void:
+	if not _stats.has(stat_name) or not LEVEL_UP_RAISE.has(stat_name):
+		return
+	var amount: float = LEVEL_UP_RAISE[stat_name]
+	var current: Vector2 = _stats[stat_name]
+	var filled := current.x if stat_name == "overprikkeldheid" else current.x + amount
+	_stats[stat_name] = Vector2(filled, current.y + amount)
+	_push_stats(true)
+
+
 ## Changes a stat by `amount`, kept between 0 and its maximum (health going down hurts).
 func change_stat(stat_name: String, amount: float) -> void:
 	if not _stats.has(stat_name) or _dead:
@@ -354,19 +372,20 @@ func add_xp(points: float, quiet := false) -> void:
 	if points <= 0.0:
 		return
 	xp += points
-	var levelled := false
+	var levels_gained: Array[int] = []
 	while xp >= xp_for_level:
 		xp -= xp_for_level
 		level += 1
 		xp_for_level = roundf(xp_for_level * XP_GROWTH / 50.0) * 50.0
-		levelled = true
+		levels_gained.append(level)
 	if _hud:
 		if not quiet and _hud.has_method("show_floating_number"):
 			_hud.show_floating_number(global_position + Vector3.UP * 2.3, "+%d XP" % roundi(points), XP_TEXT_COLOUR, 18)
 		if _hud.has_method("set_xp"):
 			_hud.set_xp(xp, xp_for_level)
-		if levelled and _hud.has_method("show_level_up"):
-			_hud.show_level_up(level)
+		if _hud.has_method("show_level_up"):
+			for new_level in levels_gained:
+				_hud.show_level_up(new_level, raise_stat, stat)
 
 
 ## Buys `item_id` for `price` euros (a snack bar: Conversations): "ok" (paid, in the pockets,
@@ -381,9 +400,11 @@ func buy(item_id: String, price: float) -> String:
 	return "ok"
 
 
-func add_money(euros: float) -> void:
+## `earned`: false for money that was not earned in the game (the debug key F7, debug_keys.gd),
+## so it does not count towards money_earned.
+func add_money(euros: float, earned := true) -> void:
 	money = maxf(money + euros, 0.0)
-	if euros > 0.0:
+	if euros > 0.0 and earned:
 		money_earned += euros
 	if _hud and _hud.has_method("set_money"):
 		_hud.set_money(money)

@@ -39,6 +39,7 @@ const GraphicsSettings = preload("res://scripts/ui/graphics_settings.gd")
 const MENU_SCENE := "res://scenes/hoofdmenu.tscn"
 ## Debug: straight into the game (scripts/debug/quick_start.gd), with `-- --snel`.
 const QUICK_START_SCENE := "res://scenes/snel_starten.tscn"
+const QuickStart = preload("res://scripts/debug/quick_start.gd")
 ## The music of the intro, its volume (dB), and the seconds it fades out in when the intro
 ## ends or is broken off.
 const MUSIC := "res://assets/audio/muziek/zwervr_intro.ogg"
@@ -225,6 +226,9 @@ func _process(delta: float) -> void:
 
 
 func _input(event: InputEvent) -> void:
+	# debug: F8 straight into the town as Martin (scripts/debug/quick_start.gd)
+	if QuickStart.skip_on_key(self, event):
+		return
 	# only the space bar skips (other keys, such as the volume keys, do nothing)
 	var pressed: bool = event is InputEventKey and event.pressed and not event.echo \
 			and (event as InputEventKey).keycode == KEY_SPACE

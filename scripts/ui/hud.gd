@@ -325,6 +325,7 @@ func _ready() -> void:
 	_build_shop_screen()
 	_build_story_box()
 	_build_reward_screen()
+	_build_level_up_screen()
 	# over the story box: money given in a conversation, seen while it is still open
 	_numbers_over_story = FloatingNumbers.new()
 	_numbers_over_story.name = "ZwevendeGetallenOverVerhaal"
@@ -333,6 +334,15 @@ func _ready() -> void:
 	_numbers_over_story.lifetime = NUMBER_OVER_STORY_SECONDS
 	_root.add_child(_numbers_over_story)
 	_build_crt()
+	# debug builds: F8, to a mission or a step of it (scripts/debug/mission_picker.gd)
+	if OS.is_debug_build():
+		var picker: CanvasLayer = preload("res://scripts/debug/mission_picker.gd").new()
+		picker.name = "Missiekiezer"
+		add_child(picker)
+		# and F7 money, F9 experience (scripts/debug/debug_keys.gd)
+		var debug_keys: Node = preload("res://scripts/debug/debug_keys.gd").new()
+		debug_keys.name = "Debugtoetsen"
+		add_child(debug_keys)
 	# the game menu (Tab/I inventory, J quests, M map; scripts/ui/game_menu.gd)
 	var game_menu: CanvasLayer = preload("res://scripts/ui/game_menu.gd").new()
 	game_menu.name = "Spelmenu"
@@ -347,7 +357,7 @@ func _ready() -> void:
 		var maximum := float(archetype.stats.get(stat_name, 100))
 		set_stat(stat_name, 0.0 if stat_name == "overprikkeldheid" else maximum, maximum)
 	set_player(player_name, player_level)
-	set_xp(0.0, 1000.0)
+	set_xp(0.0, PlayerController.XP_FIRST_LEVEL)
 	set_money(float(archetype.get("start_money", 0)))
 	set_quests(EXAMPLE_QUESTS if show_example_quests else [])
 	get_viewport().size_changed.connect(_fit_to_window)
@@ -482,6 +492,7 @@ static func _load_loop(file: String) -> AudioStream:
 
 
 func _process(delta: float) -> void:
+	_lay_modal_over_menu()
 	_update_city_music(delta)
 	_update_clock()
 	_update_minimap()
@@ -491,6 +502,7 @@ func _process(delta: float) -> void:
 		_update_location()
 		_update_quest_distance()
 	_open_waiting_reward()
+	_open_waiting_level_up()
 
 
 # ------------------------------------------------------------------ API
@@ -563,10 +575,26 @@ const LEVEL_JINGLE := "res://assets/audio/muziek/deuntje_level_omhoog.ogg"
 const LEVEL_JINGLE_VOLUME_DB := -3.0
 
 
-## A level up: the new level on the badge, "LEVEL 3" announced at the top with the jingle.
-func show_level_up(level: int) -> void:
+## A level up: the new level on the badge, and the level-up screen (scripts/ui/level_up_screen.gd)
+## with the jingle, where you choose a stat to raise: `choose` gets its name (the player's
+## raise_stat), `current` gives (value, maximum) of a stat. It waits as a reward does
+## (_open_waiting_level_up), and after the rewards waiting. Without `choose` only the notice.
+func show_level_up(level: int, choose := Callable(), current := Callable()) -> void:
 	set_player(player_name, level)
-	_queue_notice({"heading": "— LEVEL OMHOOG —", "name": "Level %d" % level, "seconds": 3.5, "jingle": LEVEL_JINGLE})
+	if not choose.is_valid():
+		_queue_notice({"heading": "— LEVEL OMHOOG —", "name": "Level %d" % level, "seconds": 3.5, "jingle": LEVEL_JINGLE})
+		return
+	_level_ups_waiting.append({"level": level, "choose": choose, "current": current})
+	_open_waiting_level_up()
+
+
+func is_showing_level_up() -> bool:
+	return _level_up_screen != null and _level_up_screen.is_showing()
+
+
+## The level ups still waiting for their screen.
+func level_ups_waiting() -> Array[Dictionary]:
+	return _level_ups_waiting
 
 
 func set_player(new_name: String, level: int) -> void:
@@ -1386,6 +1414,20 @@ func _build_pause_menu() -> void:
 
 
 func _input(event: InputEvent) -> void:
+	# a story box or reward screen over the game menu gets every key and click first (else the
+	# menu, which takes all input while open, would keep them)
+	# the level-up screen always takes the input itself (its rows answer the mouse too)
+	if is_showing_level_up():
+		_level_up_screen.handle_input(event)
+		get_viewport().set_input_as_handled()
+		return
+	if _modal_over_menu():
+		if is_showing_reward():
+			_reward_screen.handle_input(event)
+		else:
+			_story_box.handle_input(event)
+		get_viewport().set_input_as_handled()
+		return
 	# the HUD's picture takes no input of its own; while the pause menu is open the mouse
 	# is handed to it (the picture has the size of the window)
 	if ((_pause_layer and _pause_layer.visible) or is_showing_shop()) and event is InputEventMouse:
@@ -1516,15 +1558,16 @@ func _build_reward_screen() -> void:
 	# closing, the game stays paused only while another of these screens is still up (never
 	# paused again from a state remembered when it opened: the town would stand still)
 	_reward_screen.keep_paused = func() -> bool:
-		return is_showing_story() or is_showing_shop() or (_pause_layer != null and _pause_layer.visible)
+		return is_showing_story() or is_showing_shop() or is_showing_level_up() or (_pause_layer != null and _pause_layer.visible) or _is_game_menu_open()
 	if _story_box:
 		_story_box.keep_paused = func() -> bool:
-			return is_showing_reward() or is_showing_shop() or (_pause_layer != null and _pause_layer.visible)
+			return is_showing_reward() or is_showing_level_up() or is_showing_shop() or (_pause_layer != null and _pause_layer.visible) or _is_game_menu_open()
 		# a conversation waits under the reward screen and goes on where it was after it
-		_story_box.on_hold = is_showing_reward
+		_story_box.on_hold = func() -> bool:
+			return is_showing_reward() or is_showing_level_up()
 	if _shop_screen:
 		_shop_screen.keep_paused = func() -> bool:
-			return is_showing_reward() or is_showing_story() or (_pause_layer != null and _pause_layer.visible)
+			return is_showing_reward() or is_showing_level_up() or is_showing_story() or (_pause_layer != null and _pause_layer.visible)
 
 
 ## A reward got (scripts/ui/reward_screen.gd: {"heading", "title", "xp", "items": [{"item",
@@ -1553,23 +1596,104 @@ func rewards_waiting() -> Array[Dictionary]:
 
 ## A reward comes at once, also over a conversation or the shop (which wait under it and go
 ## on after); not over the pages of a story or a mission (its own pages come first), the
-## pause menu, the game menu, a machine's close-up, the loading screen or the death screen
-## (it waits for those).
+## pause menu, a machine's close-up, the loading screen or the death screen (it waits for
+## those). Over the game menu it comes too (_lay_modal_over_menu).
 func _open_waiting_reward() -> void:
-	if _rewards_waiting.is_empty() or is_showing_reward() or not is_inside_tree():
+	if _rewards_waiting.is_empty() or is_showing_reward() or is_showing_level_up() or not is_inside_tree():
 		return
 	if is_showing_story() and not _story_box.is_conversation():
 		return
 	if (_death_layer and _death_layer.visible) or (_pause_layer and _pause_layer.visible):
-		return
-	var game_menu := get_node_or_null("Spelmenu")
-	if game_menu and game_menu.has_method("is_open") and game_menu.call("is_open"):
 		return
 	if get_tree().root.has_node("Automaatscherm") or LoadingScreenScript.showing(get_tree()):
 		return
 	var reward: Dictionary = _rewards_waiting.pop_front()
 	_reward_screen.open(reward, reward.get("done", Callable()))
 	_play_jingle(REWARD_JINGLE, REWARD_JINGLE_VOLUME_DB, "Beloningsdeuntje")
+
+
+# ------------------------------------------------------------------ level-up screen
+
+const LevelUpScreen = preload("res://scripts/ui/level_up_screen.gd")
+
+var _level_up_screen: Control
+var _level_ups_waiting: Array[Dictionary] = []
+
+
+## Over the reward screen.
+func _build_level_up_screen() -> void:
+	_level_up_screen = LevelUpScreen.new()
+	_level_up_screen.name = "LevelOmhoogScherm"
+	_level_up_screen.font_title = _font_title
+	_level_up_screen.font_pixel = _font_pixel
+	_level_up_screen.font_body = _font_body
+	_level_up_screen.stat_looks = STATS
+	_level_up_screen.pixel_icons = PIXEL_ICONS
+	_root.add_child(_level_up_screen)
+	_level_up_screen.keep_paused = func() -> bool:
+		return is_showing_reward() or is_showing_story() or is_showing_shop() \
+				or (_pause_layer != null and _pause_layer.visible) or _is_game_menu_open()
+
+
+## The next level up, when nothing else needs the screen: as a reward (_open_waiting_reward:
+## over a conversation, the shop and the game menu; not over story pages, the pause menu, a
+## machine, the loading or death screen) and only once the rewards waiting have been shown.
+func _open_waiting_level_up() -> void:
+	if _level_ups_waiting.is_empty() or is_showing_level_up() or is_showing_reward() or not is_inside_tree():
+		return
+	if not _rewards_waiting.is_empty():
+		return
+	if is_showing_story() and not _story_box.is_conversation():
+		return
+	if (_death_layer and _death_layer.visible) or (_pause_layer and _pause_layer.visible):
+		return
+	if get_tree().root.has_node("Automaatscherm") or LoadingScreenScript.showing(get_tree()):
+		return
+	var waiting: Dictionary = _level_ups_waiting.pop_front()
+	var raise: Dictionary = PlayerController.LEVEL_UP_RAISE
+	_level_up_screen.open(int(waiting.level), waiting.choose, waiting.get("current", Callable()), raise)
+	_play_jingle(LEVEL_JINGLE, LEVEL_JINGLE_VOLUME_DB, "LevelDeuntje")
+
+
+# ------------------------------------------------------------------ over the game menu
+
+var _game_menu_layer := -1                  # the game menu's own layer (over the HUD)
+var _hidden_for_modal: Array[CanvasItem] = []   # HUD parts hidden while a screen lies over the game menu
+
+
+func _is_game_menu_open() -> bool:
+	var game_menu := get_node_or_null("Spelmenu")
+	return game_menu != null and game_menu.has_method("is_open") and game_menu.call("is_open")
+
+
+## True while the story box (a conversation, a thought, a mission) or the reward screen shows
+## with the game menu open (a thought about opening the inventory, a reward got meanwhile).
+func _modal_over_menu() -> bool:
+	return _is_game_menu_open() and (is_showing_story() or is_showing_reward() or is_showing_level_up())
+
+
+## The game menu is a layer over the HUD; the story box and reward screen are part of the HUD.
+## While one of them shows with the menu open the menu goes under the HUD, and the rest of
+## the HUD (the bars, the minimap, the tracker) hides, so only that screen lies over the menu;
+## after it all goes back.
+func _lay_modal_over_menu() -> void:
+	var game_menu := get_node_or_null("Spelmenu") as CanvasLayer
+	if game_menu == null:
+		return
+	if _game_menu_layer == -1:
+		_game_menu_layer = game_menu.layer
+	var over := _modal_over_menu()
+	game_menu.layer = layer - 1 if over else _game_menu_layer
+	if over and _hidden_for_modal.is_empty():
+		for part in _root.get_children():
+			if part is CanvasItem and part.visible and not part in [_story_box, _reward_screen, _level_up_screen, _numbers_over_story]:
+				part.visible = false
+				_hidden_for_modal.append(part)
+	elif not over and not _hidden_for_modal.is_empty():
+		for part in _hidden_for_modal:
+			if is_instance_valid(part):
+				part.visible = true
+		_hidden_for_modal.clear()
 
 
 # ------------------------------------------------------------------ shop screen

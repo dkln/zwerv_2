@@ -13,7 +13,8 @@ extends Node
 ##   While merging, an optional loading screen is shown; `merge_finished` fires when done.
 ## - Distance culling: the Details and Props layers (and their LOD copies) are hidden
 ##   when zoomed out.
-## - The shadow distance follows the camera distance.
+## - The shadow distance follows the camera distance; with an orthographic view one shadow map
+##   instead of cascades (_shadow_for_the_projection).
 ##
 ## You just edit the normal GridMaps; all copies are created automatically. When the
 ## layers are replaced, clear() drops everything made for the old layers and setup() starts over.
@@ -561,6 +562,7 @@ func _process(_delta: float) -> void:
 				if gm:
 					gm.visible = not culled[layer_name]
 	if _sun:
+		_shadow_for_the_projection()
 		# at least MIN_SHADOW_DISTANCE: below street level (a chase camera in a tunnel) both are negative
 		var needed := maxf(distance + zoom * shadow_factor, MIN_SHADOW_DISTANCE)
 		var current := _sun.directional_shadow_max_distance
@@ -570,10 +572,29 @@ func _process(_delta: float) -> void:
 			# the cascades round what is in view: the camera looks from far off (a narrow
 			# field of view), so the default splits would spend the sharp ones on the empty
 			# air before it and leave the town in the coarsest one (stripes of "shadow acne")
+			if _sun.directional_shadow_mode == DirectionalLight3D.SHADOW_ORTHOGONAL:
+				return   # one map, no cascades to divide
 			var nearest_in_view := clampf((distance - zoom) / shadow_distance, 0.0, MAX_FIRST_SPLIT)
 			_sun.directional_shadow_split_1 = maxf(nearest_in_view, 0.05)
 			_sun.directional_shadow_split_2 = nearest_in_view + (1.0 - nearest_in_view) * 0.25
 			_sun.directional_shadow_split_3 = nearest_in_view + (1.0 - nearest_in_view) * 0.55
+
+
+## With an orthographic (truly isometric) view (Iso.orthographic) the cascades of the sun's
+## shadow do not work: Godot divides them by the depth from a perspective camera. Then one
+## shadow map over what is in view (SHADOW_ORTHOGONAL): every shadow equally sharp, and as the
+## sun stands still, always falling the same slanting way. Back to the cascades of the scene
+## (`_sun_mode`) with a perspective view (also the chase camera in a tunnel).
+var _sun_mode := -1
+
+
+func _shadow_for_the_projection() -> void:
+	if _sun_mode == -1:
+		_sun_mode = _sun.directional_shadow_mode
+	var wanted: int = DirectionalLight3D.SHADOW_ORTHOGONAL if _cam.projection == Camera3D.PROJECTION_ORTHOGONAL else _sun_mode
+	if _sun.directional_shadow_mode != wanted:
+		_sun.directional_shadow_mode = wanted
+		_sun.directional_shadow_max_distance = 0.0   # worked out again (needed > current)
 
 
 ## Reports a frame longer than HITCH_MS (debug builds only; not while merging under the

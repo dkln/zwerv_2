@@ -28,6 +28,16 @@ extends Node
 ## Only the Grond chunks under a fading deck get a fading material, and nothing in them fades
 ## below `deck_level`: the street and the foundations under buildings stay.
 ##
+## Tunnels fade the same way, also when the view hole for buildings is off (view_hole_wanted):
+## while the followed is in a covered tunnel (below `tunnel_below_height`, a covered tunnel tile
+## on layer TUNNEL_LEVEL of the Grond layer, TunnelLights.is_covered_tile) the iso view would
+## only show the street on the roof, so every tunnel column on the view lines from round it
+## (`tunnel_reach`) opens its hole: the roof over it and the wall on the camera's side, from
+## `tunnel_clearance` above it up. For the Grond chunks that height is the second pixel of the
+## last row of the texture (deck_level when it is not in a tunnel), so the tunnel floor and the
+## lower walls stay. The Props over it (lamp posts, trees, benches: the merged Props chunks) go
+## with the roof; people and vehicles on the street above stay.
+##
 ## Blocking is tested along the view direction of the camera (also while the follow
 ## camera swings round for a close-up) from a few points around the vehicle as seen in
 ## the picture, up to the camera: the Gebouwen cells those lines pass through block it,
@@ -35,6 +45,7 @@ extends Node
 ## you see it standing in front of, stays.
 
 const Iso = preload("res://scripts/camera/iso_camera.gd")
+const TunnelLights = preload("res://scripts/world/town/tunnel_lights.gd")
 
 ## The follow camera; buildings only fade while it follows.
 @export var follow_camera_path := NodePath("../Volgcamera")
@@ -42,10 +53,19 @@ const Iso = preload("res://scripts/camera/iso_camera.gd")
 @export var buildings_path := NodePath("../Gebouwen")
 ## The Grond GridMap whose viaducts fade.
 @export var ground_path := NodePath("../Grond")
+## The Props GridMap whose props over a tunnel fade with its roof.
+@export var props_path := NodePath("../Props")
 ## Lowest level of the Grond layer (metres) that counts as a deck over the street.
 @export var deck_level := 3
 ## How far (metres) a deck has to lie above the vehicle to fade.
 @export var deck_clearance := 2.5
+## Below this height (metres) the followed can be in a tunnel.
+@export var tunnel_below_height := -0.5
+## Metres above the followed's feet from which the roof and wall of a tunnel fade.
+@export var tunnel_clearance := 2.0
+## Half the size (metres) of the square of test points round the followed for the tunnel roof
+## (across the picture): the whole view hole should open, not only the columns right over it.
+@export var tunnel_reach := 5.0
 ## Seconds a building takes to fade out or back in.
 @export var fade_time := 0.35
 ## How far a blocking building fades (1 = gone entirely; lower leaves a faint ghost of
@@ -75,19 +95,29 @@ const STEP := 1.0
 const RETEST_FRAMES := 3
 const RETEST_MOVE := 0.25
 const LOWEST_CELL := -1000000
+## Which layer a merged chunk belongs to: its buildings fade from the street up, the Grond and
+## Props chunks from the height in the texture (deck height, or over the followed in a tunnel).
+enum ChunkKind { BUILDINGS, GROUND, PROPS }
+## Layer of the Grond layer that tunnel tiles are placed on.
+const TUNNEL_LEVEL := -6
+## Height (metres) above which a view line has left the tunnel roof.
+const ROOF_TOP := 1.0
 
 var _follow: Node
 var _buildings: GridMap
 var _ground: GridMap
+var _props_name := ""               # name of the Props layer ("" without one)
 var _building_of := {}              # Vector2i cell (x, z) -> building index
 var _building_cells: Array = []     # building index -> Array[Vector2i] of its cells
 var _building_area: Array[Rect2] = []   # building index -> its ground area (x, z metres)
-var _chunks: Array = []             # [MeshInstance3D, Rect2 ground area] of the merged buildings
+var _chunks: Array = []             # [MeshInstance3D, Rect2 ground area, ChunkKind] of the merged layers
 var _chunk_users := {}              # MeshInstance3D -> number of fading buildings on it
 var _variants := {}                 # Material or Shader -> its copy with ZWERVR_FADE
 var _ground_variants := {}          # the same for the Grond chunks: fading only from deck height
 var _is_variant := {}               # the copies themselves (never copied again)
-var _with_deck := {}                # building index -> true if a deck fades with it
+var _with_deck := {}                # building index -> true if a deck or tunnel roof (Grond) fades with it
+var _tunnel_columns := {}           # Vector2i cell (x, z) -> true under a covered tunnel tile
+var _with_tunnel := {}              # building index -> true if a tunnel roof (and its props) fades with it
 var _fade := {}                     # building index -> current fade (0..1), only while > 0
 var _image: Image
 var _texture: ImageTexture
@@ -102,6 +132,8 @@ func _ready() -> void:
 	_follow = get_node_or_null(follow_camera_path)
 	_buildings = get_node_or_null(buildings_path) as GridMap
 	_ground = get_node_or_null(ground_path) as GridMap
+	var props := get_node_or_null(props_path)
+	_props_name = str(props.name) if props else ""
 	if Engine.is_editor_hint() or _follow == null or _buildings == null or _buildings.get_used_cells().is_empty():
 		set_process(false)
 		return
@@ -164,6 +196,21 @@ func _find_buildings() -> void:
 				_building_cells.append([flat] as Array[Vector2i])
 				_building_area.append(Rect2(Vector2(flat) * CELL, Vector2.ONE * CELL))
 			_with_deck[_building_of[flat]] = true
+		for cell in _ground.get_used_cells():
+			if cell.y != TUNNEL_LEVEL:
+				continue
+			if not TunnelLights.is_covered_tile(_ground.mesh_library.get_item_name(_ground.get_cell_item(cell))):
+				continue
+			var flat := Vector2i(cell.x, cell.z)
+			lowest = Vector2i(mini(lowest.x, flat.x), mini(lowest.y, flat.y))
+			highest = Vector2i(maxi(highest.x, flat.x), maxi(highest.y, flat.y))
+			_tunnel_columns[flat] = true
+			if not _building_of.has(flat):
+				_building_of[flat] = _building_cells.size()
+				_building_cells.append([flat] as Array[Vector2i])
+				_building_area.append(Rect2(Vector2(flat) * CELL, Vector2.ONE * CELL))
+			_with_deck[_building_of[flat]] = true
+			_with_tunnel[_building_of[flat]] = true
 	_origin = lowest
 	if top_cell > LOWEST_CELL:
 		var top_local := _buildings.map_to_local(Vector3i(0, top_cell + 1, 0))
@@ -173,14 +220,56 @@ func _find_buildings() -> void:
 			if cell.y >= deck_level:
 				_top_height = maxf(_top_height, (_ground.global_transform * _ground.map_to_local(cell)).y + _ground.cell_size.y)
 	var size := highest - lowest + Vector2i.ONE
-	# floats: the last row holds the centre and radius of the hole in metres
+	size.x = maxi(size.x, 2)
+	# floats: the last row holds the centre and radius of the hole in metres (pixel 0) and the
+	# height from which the Grond chunks fade (pixel 1)
 	_image = Image.create(size.x, size.y + 1, false, Image.FORMAT_RGBAF)
+	_image.set_pixel(1, _image.get_height() - 1, Color(float(deck_level), 0, 0))
 	_texture = ImageTexture.create_from_image(_image)
 
 
-## Buildings and decks on the view lines from around the vehicle to the camera.
-func _blocking() -> Dictionary:
+## True while the followed is in a covered tunnel (under its roof).
+func _in_tunnel() -> bool:
+	var followed: Node3D = _follow.get("target_node")
+	if followed == null or _ground == null or _tunnel_columns.is_empty():
+		return false
+	var at := followed.global_position
+	if at.y >= tunnel_below_height:
+		return false
+	var cell := _ground.local_to_map(_ground.to_local(at))
+	return _tunnel_columns.has(Vector2i(cell.x, cell.z))
+
+
+## The tunnel columns on the view lines from round the followed up through the roof.
+func _tunnel_roof() -> Dictionary:
 	var found := {}
+	var followed: Node3D = _follow.get("target_node")
+	if followed == null:
+		return found
+	var centre: Vector3 = followed.call("drawn_position") if followed.has_method("drawn_position") else followed.global_position
+	var to_ground := _ground.global_transform.affine_inverse()
+	var camera := get_viewport().get_camera_3d()
+	var towards_camera: Vector3 = camera.global_basis.z if camera else Iso.DIRECTION
+	var across: Vector3 = camera.global_basis.x if camera else Vector3.RIGHT
+	var upwards: Vector3 = camera.global_basis.y if camera else Vector3.UP
+	for row in 3:
+		for column in 3:
+			var start := centre + Vector3.UP * test_heights[0] + (across * (column - 1) + upwards * (row - 1)) * tunnel_reach
+			var point := start
+			while point.y < ROOF_TOP:
+				var cell := _ground.local_to_map(to_ground * point)
+				var flat := Vector2i(cell.x, cell.z)
+				if _tunnel_columns.has(flat):
+					found[_building_of[flat]] = true
+				point += towards_camera * STEP
+	return found
+
+
+## Buildings and decks on the view lines from around the vehicle to the camera.
+func _blocking(with_buildings := true, in_tunnel := false) -> Dictionary:
+	var found := _tunnel_roof() if in_tunnel else {}
+	if not with_buildings:
+		return found
 	var vehicle: Node3D = _follow.get("target_node")
 	if vehicle == null:
 		return found
@@ -257,18 +346,19 @@ func _in_front(cell: Vector3i, centre: Vector3, towards_camera: Vector3) -> bool
 func _process(delta: float) -> void:
 	var following: bool = _follow.call("is_following")
 	var blocking := {}
-	# a hole only when the camera cannot turn to a view that shows the player (it turns instead):
-	# follow_camera.gd view_hole_wanted, from the view table
+	# a hole in buildings only when the camera cannot turn to a view that shows the player (it
+	# turns instead): follow_camera.gd view_hole_wanted, from the view table; a tunnel roof always
+	var in_tunnel := following and _in_tunnel()
 	if following and _follow.has_method("view_hole_wanted") and not _follow.call("view_hole_wanted"):
 		following = false
-	if following:
+	if following or in_tunnel:
 		# looked again only when something changed, or every few frames
 		_frames_since += 1
 		var key := _view_key()
 		if key != _last_key or _frames_since >= RETEST_FRAMES:
 			_last_key = key
 			_frames_since = 0
-			_last_blocking = _blocking()
+			_last_blocking = _blocking(following, in_tunnel)
 		blocking = _last_blocking
 	var change := delta / maxf(fade_time, 0.01)
 	var changed := false
@@ -304,8 +394,12 @@ func _place_hole() -> void:
 	if followed == null:
 		return
 	var centre: Vector3 = followed.call("drawn_position") if followed.has_method("drawn_position") else followed.global_position
+	var ground_floor := float(deck_level)
+	if centre.y < tunnel_below_height:
+		ground_floor = centre.y + tunnel_clearance   # in (or near) a tunnel: its roof and wall
 	centre += Vector3.UP * 0.9
 	_image.set_pixel(0, _image.get_height() - 1, Color(centre.x, centre.y, centre.z, hole_radius))
+	_image.set_pixel(1, _image.get_height() - 1, Color(ground_floor, 0, 0))
 
 
 ## Gives the merged chunk meshes on building `index` the materials that can fade (on),
@@ -317,8 +411,10 @@ func _use_fade_materials(index: int, on: bool) -> void:
 	var area := _building_area[index].grow(2.0)
 	for entry in _chunks:
 		var chunk: MeshInstance3D = entry[0]
-		var is_ground: bool = entry[2]
-		if not is_instance_valid(chunk) or not (entry[1] as Rect2).intersects(area) or (is_ground and not _with_deck.has(index)):
+		var kind: int = entry[2]
+		if not is_instance_valid(chunk) or not (entry[1] as Rect2).intersects(area):
+			continue
+		if (kind == ChunkKind.GROUND and not _with_deck.has(index)) or (kind == ChunkKind.PROPS and not _with_tunnel.has(index)):
 			continue
 		var users: int = _chunk_users.get(chunk, 0) + (1 if on else -1)
 		if users > 0:
@@ -327,32 +423,38 @@ func _use_fade_materials(index: int, on: bool) -> void:
 			_chunk_users.erase(chunk)
 		if on and users == 1:
 			for surface in chunk.mesh.get_surface_count():
-				chunk.set_surface_override_material(surface, _variant(chunk.mesh.surface_get_material(surface), is_ground))
+				chunk.set_surface_override_material(surface, _variant(chunk.mesh.surface_get_material(surface), kind != ChunkKind.BUILDINGS))
 		elif not on and users <= 0:
 			for surface in chunk.mesh.get_surface_count():
 				chunk.set_surface_override_material(surface, null)
 
 
-## The chunk meshes of the merged Gebouwen and Grond layers (all LOD levels), with their ground area.
+## The chunk meshes of the merged Gebouwen, Grond and Props layers (all LOD levels), with their ground area and kind.
 func _find_chunks() -> void:
 	_chunks.clear()
 	_chunk_users.clear()
 	for layer in get_parent().get_children():
 		var layer_name := str(layer.name)
-		var is_ground := _ground != null and layer_name.begins_with(str(_ground.name) + "_merged")
-		if not is_ground and not layer_name.begins_with(str(_buildings.name) + "_merged"):
+		var kind: int
+		if layer_name.begins_with(str(_buildings.name) + "_merged"):
+			kind = ChunkKind.BUILDINGS
+		elif _ground != null and layer_name.begins_with(str(_ground.name) + "_merged"):
+			kind = ChunkKind.GROUND
+		elif _props_name != "" and layer_name.begins_with(_props_name + "_merged"):
+			kind = ChunkKind.PROPS
+		else:
 			continue
 		# (a streamed level holds its chunks per region: RegionStream)
 		for chunk in layer.find_children("*", "MeshInstance3D", true, false):
 			# the shadow-only blocks (layer_baker.gd) are never seen, so they don't fade
 			if chunk.mesh and chunk.cast_shadow != GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY:
 				var box: AABB = chunk.global_transform * chunk.get_aabb()
-				_chunks.append([chunk, Rect2(box.position.x, box.position.z, box.size.x, box.size.z), is_ground])
+				_chunks.append([chunk, Rect2(box.position.x, box.position.z, box.size.x, box.size.z), kind])
 
 
 ## Copy of `material` whose shader is compiled with ZWERVR_FADE, made once per material;
 ## the material itself if its shader has no fading (not a voxel shader). for_ground: it only
-## fades from deck height up.
+## fades from the height in the texture up (deck height, or over the followed in a tunnel).
 func _variant(material: Material, for_ground := false) -> Material:
 	if not material is ShaderMaterial or _is_variant.has(material):
 		return material
@@ -367,7 +469,7 @@ func _variant(material: Material, for_ground := false) -> Material:
 			var lines := shader.code.split("\n")
 			lines.insert(1, "#define ZWERVR_FADE")
 			if for_ground:
-				lines.insert(2, "#define ZWERVR_FADE_FLOOR %.1f" % float(deck_level))
+				lines.insert(2, "#define ZWERVR_FADE_GROUND")
 			fading.code = "\n".join(lines)
 			variants[shader] = fading
 		result = material.duplicate()
