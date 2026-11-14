@@ -251,10 +251,10 @@ func test_announcement_types_out_with_the_cursor(test) -> void:
 		return
 	station._announcement_pause = 0.0
 	station._announcements.clear()
-	station._announcing = false
+	station._announcer.stop()
 	station._speak("Spoor 5: de Intercity naar Venlo, vertrekt om 12:34.")
 	await seconds(2.6)
-	test.check(station._subtitle_layer.visible and not station._subtitle_typewriter.is_done() and String(station._subtitle.text).contains("[bgcolor"), "omroeptekst typt uit met cursor")
+	test.check(station._announcer.is_typing() and station._announcer.shown_text().contains("[bgcolor"), "omroeptekst typt uit met cursor")
 
 
 ## A gate stays shut without an OV-chipkaart; a card bought at a machine (7,50) opens it,

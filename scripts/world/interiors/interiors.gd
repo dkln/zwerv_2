@@ -57,6 +57,7 @@ extends Node3D
 const SwipeTransition = preload("res://scripts/ui/swipe_transition.gd")
 ## No longer welcome: someone of the place comes after the player first (offence, Eviction).
 const Eviction = preload("res://scripts/world/interiors/eviction.gd")
+const WallClosure = preload("res://scripts/world/interiors/wall_closure.gd")
 const SoundVariation = preload("res://scripts/audio/sound_variation.gd")
 const SNACK_BAR_SCENE := "res://scenes/binnen/snackbar.tscn"
 const SNACK_BAR_FRONT := "_bg_snackbar"
@@ -343,6 +344,7 @@ func enter(bar: Dictionary) -> void:
 		_interior.call("dress_way_in", bar)
 	else:
 		_interior.call("dress", String(bar.name), int(bar.seed))
+	WallClosure.close(_interior)   # the low walls on the camera's side hold as full ones
 	_place_exits(kind)
 	var exits: Array = _exits[kind]
 	var door_index := clampi(int(bar.get("door_index", 1)), 1, exits.size())

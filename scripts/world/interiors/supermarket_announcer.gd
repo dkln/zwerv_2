@@ -1,86 +1,77 @@
-extends Node
+extends "res://scripts/world/interiors/announcer.gd"
 ## The loudspeakers of a supermarket (scripts/world/interiors/supermarket.gd makes one): while the
-## player is inside, now and then an announcement, the way the station does it
-## (scripts/world/station/station.gd _speak): the muzak goes down (GameHud.duck_music), the chain's
-## jingle plays (assets/audio/muziek/jingle_<brand>.ogg, tools/muziek/derive.py), then the
-## babble of the announcer's voice over the loudspeakers (StationAudio "Omroep") while the
-## words type out at the bottom of the screen. What is said: an offer (a product of a shelf
-## of this branch, with this branch's price; ALFRED STEYHN's bonus in its own words) or a
+## player is inside, now and then an announcement (the Announcer this extends: the muzak down,
+## the chain's jingle, assets/audio/muziek/jingle_<brand>.ogg from tools/muziek/derive.py, then
+## the announcer's voice while the words type out). What is said: an offer (a product of a
+## shelf of this branch, with this branch's price; ALFRED STEYHN's bonus in its own words) or a
 ## notice (data/gesprekken/omroep_supermarkt.json).
 
-const Typewriter = preload("res://scripts/ui/widgets/typewriter.gd")
-const UiStyle = preload("res://scripts/ui/ui_style.gd")
 const DATA_FILE := "res://data/gesprekken/omroep_supermarkt.json"
 const MUSIC_FOLDER := "res://assets/audio/muziek/"
 const JINGLE_PREFIX := "jingle_"
-## Levels (dB) of the jingle and the voice on the loudspeakers.
-const JINGLE_DB := -6.0
-const VOICE_DB := -3.0
-## A breath between the jingle and the voice (seconds).
-const AFTER_JINGLE_SECONDS := 0.3
-## As the station: the words type out at this share of the story box's speed, the whole
-## line stays a little when it is all there; the voice talks at most this many clips.
-const TYPE_SPEED := 0.4
-const HOLD_SECONDS := 2.5
-const MOST_CLIPS := 12
 ## The aisles a notice can name ({gang}).
 const AISLES := 6
 
 var _market: Node                    # the supermarket (brand, plan, chain(), product())
 var _data := {}
-var _random := RandomNumberGenerator.new()
 var _clock := 0.0                    # seconds until the next announcement
 var _inside := false
-var _announcing := false
-var _ducked := false
-var _run := 0                        # which visit an announcement belongs to (stop() ends it)
 var _last_text := ""
-var _subtitle_layer: CanvasLayer
-var _subtitle: RichTextLabel
-var _typewriter: Typewriter
 
 
 func _init(market: Node) -> void:
+	super(_hud_of_market.bind(market))
 	_market = market
-	name = "Omroep"
+	intro_db = -6.0
+	after_intro_seconds = 0.3
+	voice_clips = 3
+	clip_gap = 0.06
+	missing_clip_seconds = 0.6
+	most_clips = 12
+	type_speed = 0.4
+	hold_seconds = 2.5
+	finished.connect(_on_finished)
 
 
 func _ready() -> void:
-	_random.randomize()
+	super()
 	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(DATA_FILE))
 	_data = parsed if parsed is Dictionary else {}
-	_make_subtitle()
 
 
 ## The player came in: the first announcement after a little while ("eerste").
 func start() -> void:
 	_inside = true
-	_run += 1
 	_clock = _seconds_between("eerste", Vector2(12.0, 30.0))
 
 
 ## The player went out: quiet, the text gone, the music up again.
 func stop() -> void:
 	_inside = false
-	_run += 1
-	_announcing = false
-	if _subtitle_layer:
-		_subtitle_layer.visible = false
-	_set_ducked(false)
-
-
-func _exit_tree() -> void:
-	_set_ducked(false)
+	super()
 
 
 func _process(delta: float) -> void:
-	if _announcing and _typewriter:
-		_typewriter.update(delta * TYPE_SPEED)
-	if not _inside or _announcing:
+	super(delta)
+	if not _inside or is_speaking():
 		return
 	_clock -= delta
 	if _clock <= 0.0:
-		_speak(_next_text())
+		_announce(_next_text())
+
+
+## The chain's jingle, then `text` (none: the next try a while later).
+func _announce(text: String) -> void:
+	_clock = _seconds_between("tussen", Vector2(45.0, 100.0))
+	if text == "":
+		return
+	voice = String(_chain_lines().get("stem", "vrouw"))
+	intro_stream = _jingle_stream()
+	say(text)
+
+
+func _on_finished(_text: String) -> void:
+	_clock = _seconds_between("tussen", Vector2(45.0, 100.0))
 
 
 # ------------------------------------------------------------------ what is said
@@ -141,47 +132,7 @@ func _seconds_between(key: String, fallback: Vector2) -> float:
 	return _random.randf_range(fallback.x, fallback.y)
 
 
-# ------------------------------------------------------------------ saying it
-
-## The music down, the chain's jingle, then the voice talking while the words type out at the
-## bottom of the screen; the line stays a little; the music up again.
-func _speak(text: String) -> void:
-	if text == "":
-		_clock = _seconds_between("tussen", Vector2(45.0, 100.0))
-		return
-	_announcing = true
-	var run := _run
-	StationAudio.ensure_buses()
-	_set_ducked(true)
-	var jingle := _play_on_speakers(_jingle_stream(), JINGLE_DB)
-	if jingle:
-		await jingle.finished
-	await get_tree().create_timer(AFTER_JINGLE_SECONDS, false).timeout
-	if run != _run:
-		return
-	_typewriter.start(text)
-	_subtitle_layer.visible = true
-	var voice := String(_chain_lines().get("stem", "vrouw"))
-	var clips_left := MOST_CLIPS
-	while run == _run and is_inside_tree() and clips_left > 0 and not _typewriter.is_done():
-		clips_left -= 1
-		var babble := _play_on_speakers(StationAudio.stream("brabbel_%s_neutraal_%d" % [voice, _random.randi_range(1, 3)]), VOICE_DB)
-		if babble:
-			await babble.finished
-		else:
-			await get_tree().create_timer(0.6, false).timeout
-		await get_tree().create_timer(0.06, false).timeout
-	if run != _run:
-		return
-	_typewriter.finish()
-	await get_tree().create_timer(HOLD_SECONDS, false).timeout
-	if run != _run:
-		return
-	_subtitle_layer.visible = false
-	_set_ducked(false)
-	_clock = _seconds_between("tussen", Vector2(45.0, 100.0))
-	_announcing = false
-
+# ------------------------------------------------------------------ the jingle
 
 func _jingle_stream() -> AudioStream:
 	var path := MUSIC_FOLDER + JINGLE_PREFIX + String(_market.get("brand")) + ".ogg"
@@ -196,55 +147,8 @@ func _jingle_stream() -> AudioStream:
 	return stream
 
 
-## Plays `stream` once over the loudspeakers (the announcer's bus); null without a stream.
-func _play_on_speakers(stream: AudioStream, volume_db: float) -> AudioStreamPlayer:
-	if stream == null or not is_inside_tree():
-		return null
-	var player := AudioStreamPlayer.new()
-	player.stream = stream
-	player.bus = StationAudio.ANNOUNCER_BUS
-	player.volume_db = volume_db
-	add_child(player)
-	player.finished.connect(player.queue_free)
-	player.play()
-	return player
-
-
-func _set_ducked(ducked: bool) -> void:
-	if ducked == _ducked:
-		return
-	_ducked = ducked
-	var hud := _hud()
-	if hud and hud.has_method("duck_music"):
-		hud.duck_music(ducked)
-
-
-func _hud() -> Node:
-	var interiors := _market.get_parent() if _market else null
+## The HUD of the town the supermarket `market` stands in (Interiors.hud_path).
+static func _hud_of_market(market: Node) -> Node:
+	var interiors := market.get_parent() if market else null
 	var hud_path: Variant = interiors.get("hud_path") if interiors else null
 	return interiors.get_node_or_null(hud_path) if hud_path is NodePath else null
-
-
-## The line at the bottom of the screen, as the station's (station.gd _make_subtitle).
-func _make_subtitle() -> void:
-	_subtitle_layer = CanvasLayer.new()
-	_subtitle_layer.name = "Omroeptekst"
-	_subtitle_layer.layer = 4
-	_subtitle_layer.visible = false
-	add_child(_subtitle_layer)
-	_subtitle = RichTextLabel.new()
-	_subtitle.add_theme_font_override("normal_font", UiStyle.font(UiStyle.FONT_PIXEL_BOLD))
-	_subtitle.add_theme_font_size_override("normal_font_size", UiStyle.ANNOUNCEMENT_FONT_SIZE)
-	_subtitle.add_theme_color_override("default_color", Color("#FFE9B8"))
-	UiStyle.faux_3d(_subtitle, 4)
-	_subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_subtitle.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_subtitle.scroll_active = false
-	_subtitle.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_subtitle.anchor_left = 0.08
-	_subtitle.anchor_right = 0.92
-	_subtitle.anchor_top = 0.74
-	_subtitle.anchor_bottom = 0.95
-	_subtitle_layer.add_child(_subtitle)
-	_typewriter = Typewriter.new(_subtitle, self)
-	_typewriter.sound = false

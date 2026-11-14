@@ -21,6 +21,7 @@ extends Node3D
 
 const UiStyle = preload("res://scripts/ui/ui_style.gd")
 const FloorGrid = preload("res://scripts/pathfinding/floor_grid.gd")
+const WallClosure = preload("res://scripts/world/interiors/wall_closure.gd")
 const SnackBarLayout = preload("res://scripts/world/interiors/snack_bar_layout.gd")
 const TILE_FOLDER := "snackbar/"
 const VARIANTS := ["zwartwit", "roodwit", "geel", "blauw"]
@@ -410,17 +411,7 @@ static func _over_any(boxes: Array[AABB], point: Vector3) -> bool:
 
 ## The boxes the tiles of `grid_map` take up, in the space of `root`.
 static func _tile_boxes(grid_map: GridMap, root: Node3D) -> Array[AABB]:
-	var boxes: Array[AABB] = []
-	var library := grid_map.mesh_library
-	var to_root := root.global_transform.affine_inverse() * grid_map.global_transform
-	for cell in grid_map.get_used_cells():
-		var item := grid_map.get_cell_item(cell)
-		var mesh := library.get_item_mesh(item)
-		if mesh == null:
-			continue
-		var placed := Transform3D(grid_map.get_basis_with_orthogonal_index(grid_map.get_cell_item_orientation(cell)), grid_map.map_to_local(cell))
-		boxes.append(to_root * placed * library.get_item_mesh_transform(item) * mesh.get_aabb())
-	return boxes
+	return WallClosure.tile_boxes(grid_map, root)
 
 
 static func _floor_cell(floor_grid: Dictionary, at: Vector3) -> Vector2i:

@@ -29,7 +29,7 @@ const Detour = preload("res://scripts/pathfinding/detour.gd")
 const Interiors = preload("res://scripts/world/interiors/interiors.gd")
 const Layout = preload("res://scripts/world/station/station_layout.gd")
 const OverheadLines = preload("res://scripts/world/town/overhead_lines.gd")
-const Typewriter = preload("res://scripts/ui/widgets/typewriter.gd")
+const Announcer = preload("res://scripts/world/interiors/announcer.gd")
 const DriverShout = preload("res://scripts/vehicles/driver_shout.gd")
 ## The rules of a chase (caught, given up): the same for whoever puts the player out of any
 ## interior (scripts/world/interiors/eviction.gd), here a BOA (handhaver) along the same routes.
@@ -258,9 +258,7 @@ var _announcement_random := RandomNumberGenerator.new()
 var _last_notice := -1
 var _announcement_pause := 0.0       # seconds the loudspeakers stay quiet still
 var _announcements: Array[Dictionary] = []   # {"text", "queued_at"} (minutes of the station clock)
-var _announcing := false
-var _subtitle_layer: CanvasLayer
-var _subtitle: RichTextLabel
+var _announcer: Announcer             # the loudspeakers (the shared Announcer)
 ## Fare dodging (FARE_CHECK_CHANCE): which side of the gate line the player was on (-1 the
 ## hall, 1 the platforms, 0 not known yet), the conductor after them and for how long.
 var _player_side := 0
@@ -289,7 +287,6 @@ var inspections := 0
 var chases_started := 0
 var fines := 0
 var chases_given_up := 0
-var _subtitle_typewriter: Typewriter
 
 
 ## The player, while inside (the gates, machines and posts ask for them).
@@ -343,8 +340,8 @@ func _top_up() -> void:
 
 
 func player_went_out() -> void:
-	if _subtitle_layer:
-		_subtitle_layer.visible = false
+	if _announcer:
+		_announcer.hide_subtitle()
 	_tell_story_cans(false)   # the cans no longer marked: the town's map again
 	# out of the station: the conductor has lost them
 	_end_chase()
@@ -386,7 +383,7 @@ func _ensure_setup() -> void:
 	_make_displays()
 	_make_clock()
 	_make_overhead_lines()
-	_make_subtitle()
+	_make_announcer()
 	_plan_start()
 	_spawn_staff()
 
@@ -779,30 +776,22 @@ func _add_wall_mast(foot: Vector3, number: int) -> void:
 	add_child(mast)
 
 
-func _make_subtitle() -> void:
-	_subtitle_layer = CanvasLayer.new()
-	_subtitle_layer.name = "Omroeptekst"
-	_subtitle_layer.layer = 4
-	_subtitle_layer.visible = false
-	add_child(_subtitle_layer)
-	_subtitle = RichTextLabel.new()
-	_subtitle.add_theme_font_override("normal_font", UiStyle.font(UiStyle.FONT_PIXEL_BOLD))
-	_subtitle.add_theme_font_size_override("normal_font_size", UiStyle.ANNOUNCEMENT_FONT_SIZE)
-	_subtitle.add_theme_color_override("default_color", Color("#FFE9B8"))
-	# the faux 3D of the game's texts (a darker copy straight under it), no outline
-	UiStyle.faux_3d(_subtitle, 4)
-	_subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_subtitle.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_subtitle.scroll_active = false
-	_subtitle.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_subtitle.anchor_left = 0.08
-	_subtitle.anchor_right = 0.92
-	_subtitle.anchor_top = 0.74
-	_subtitle.anchor_bottom = 0.95
-	_subtitle_layer.add_child(_subtitle)
-	# typed out as the other spoken lines, with the block cursor; the voice is the babble
-	_subtitle_typewriter = Typewriter.new(_subtitle, self)
-	_subtitle_typewriter.sound = false
+## The loudspeakers (Announcer): the gong, two seconds, the voice while the words type out,
+## the line shown only while the player is inside; no music to duck.
+func _make_announcer() -> void:
+	_announcer = Announcer.new()
+	_announcer.voice = ANNOUNCER_VOICE
+	_announcer.voice_clips = 3
+	_announcer.intro_seconds = 2.0
+	_announcer.clip_gap = 0.06
+	_announcer.missing_clip_seconds = 0.6
+	_announcer.most_clips = 12
+	_announcer.type_speed = ANNOUNCEMENT_TYPE_SPEED
+	_announcer.hold_seconds = ANNOUNCEMENT_HOLD_SECONDS
+	_announcer.subtitle_wanted = func() -> bool: return _player != null and is_visible_in_tree()
+	_announcer.finished.connect(func(_text: String) -> void:
+		_announcement_pause = _announcement_random.randf_range(ANNOUNCEMENT_PAUSE_SECONDS.x, ANNOUNCEMENT_PAUSE_SECONDS.y))
+	add_child(_announcer)
 
 
 func _label(text: String, font_size: int, pixel_size: float, colour: Color, left := false) -> Label3D:
@@ -1054,11 +1043,10 @@ func _process(delta: float) -> void:
 	if _notice_clock <= 0.0:
 		_notice_clock = _announcement_random.randf_range(NOTICE_SECONDS.x, NOTICE_SECONDS.y)
 		_announce(NOTICES[_pick_notice()])
-	if _announcing and _subtitle_typewriter:
-		_subtitle_typewriter.update(delta * ANNOUNCEMENT_TYPE_SPEED)
-	if not _announcing:
+	var announcing := _announcer != null and _announcer.is_speaking()
+	if not announcing:
 		_announcement_pause -= delta
-	if not _announcing and _announcement_pause <= 0.0 and not _announcements.is_empty():
+	if not announcing and _announcement_pause <= 0.0 and not _announcements.is_empty():
 		var next: Dictionary = _announcements.pop_front()
 		if (_minutes - float(next.queued_at)) * 60.0 <= ANNOUNCEMENT_STALE_SECONDS:
 			_speak(String(next.text))
@@ -1135,32 +1123,10 @@ func _pick_notice() -> int:
 
 
 ## The chime, then the voice (the babble of the game, through the loudspeakers) talking
-## while its words type out at the bottom of the screen, with the cursor; the line stays a
-## little when it is all there.
+## while its words type out at the bottom of the screen, with the cursor (Announcer).
 func _speak(text: String) -> void:
-	_announcing = true
-	StationAudio.play_everywhere(self, "omroep_gong", -4.0)
-	await get_tree().create_timer(2.0, false).timeout
-	if _subtitle:
-		_subtitle_typewriter.start(text)
-		_subtitle_layer.visible = _player != null and is_visible_in_tree()
-	# the voice talks on, clip after clip, until the last word has appeared
-	var clips_left := 12
-	while is_inside_tree() and clips_left > 0 and _subtitle_typewriter and not _subtitle_typewriter.is_done():
-		clips_left -= 1
-		var player := StationAudio.play_everywhere(self, "brabbel_%s_neutraal_%d" % [ANNOUNCER_VOICE, _announcement_random.randi_range(1, 3)], -3.0)
-		if player:
-			await player.finished
-		else:
-			await get_tree().create_timer(0.6, false).timeout
-		await get_tree().create_timer(0.06, false).timeout
-	if _subtitle_typewriter:
-		_subtitle_typewriter.finish()
-	await get_tree().create_timer(ANNOUNCEMENT_HOLD_SECONDS, false).timeout
-	if _subtitle_layer:
-		_subtitle_layer.visible = false
-	_announcement_pause = _announcement_random.randf_range(ANNOUNCEMENT_PAUSE_SECONDS.x, ANNOUNCEMENT_PAUSE_SECONDS.y)
-	_announcing = false
+	if _announcer:
+		_announcer.say(text)
 
 
 # ------------------------------------------------------------------ people

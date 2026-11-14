@@ -7,6 +7,8 @@ extends "res://tests/integration/support/town_test.gd"
 ## buiten" takes you back onto the pavement before the door.
 ##   tests/run_integration_tests.sh interior
 
+const WallClosure = preload("res://scripts/world/interiors/wall_closure.gd")
+
 
 ## The snack bars near the deer camp in the Koekamp (within 6 m of the place on the map).
 func _bars_by_the_deer_camp() -> Array:
@@ -164,3 +166,31 @@ func test_no_helicopter_while_inside(test) -> void:
 	flights._next_at = flights._clock
 	await frames(2)
 	test.check(not flights._flight.is_empty(), "buiten weer: de vluchten komen terug")
+
+
+## Every interior is closed all round: the low walls on the camera's side (drawn cut off at
+## 1 m) hold as full walls (WallClosure: Muurbotsing), so at 2 m high a line through one hits it.
+func test_every_interior_is_closed_by_walls(test) -> void:
+	for kind: String in ["snackbar", "centraal", "derrek", "stadhuis"]:
+		var way := await enter(kind)
+		test.check(not way.is_empty(), "%s: naar binnen" % kind)
+		if way.is_empty():
+			continue
+		var room: Node3D = interiors._interior
+		var holder := room.get_node_or_null(WallClosure.NODE_NAME)
+		var shapes: Array = []
+		if holder:
+			for body in holder.get_children():
+				shapes.append_array(body.get_children())
+		test.check(not shapes.is_empty(), "%s: lage muren dicht (%d)" % [kind, shapes.size()])
+		if not shapes.is_empty():
+			var wall := shapes[0] as CollisionShape3D
+			var size := (wall.shape as BoxShape3D).size
+			var across := (wall.global_basis * (Vector3.RIGHT if size.x < size.z else Vector3.BACK)).normalized()
+			var middle := wall.global_position
+			middle.y = wall.global_position.y - size.y * 0.5 + 2.0
+			var query := PhysicsRayQueryParameters3D.create(middle - across * 2.0, middle + across * 2.0, (wall.get_parent() as StaticBody3D).collision_layer)
+			var hit := room.get_world_3d().direct_space_state.intersect_ray(query)
+			test.check(not hit.is_empty(), "%s: op 2 m hoogte houdt de muur" % kind)
+		await leave_interior()
+
