@@ -82,6 +82,7 @@ const SUPERMARKET_SCENE := "res://scenes/binnen/supermarkt.tscn"
 ## MUZAK_SOFTER_DB): every branch plays one of them, chosen by its seed.
 const SUPERMARKET_MUZAK := ["supermarkt_muzak_1.ogg", "supermarkt_muzak_2.ogg", "supermarkt_muzak_3.ogg"]
 const SOUND_FOLDER := "res://assets/audio/geluiden/"
+const SoundFiles = preload("res://scripts/audio/sound_files.gd")
 const DOOR_IN_SOUND := "deur_binnen"
 const DOOR_OUT_SOUND := "deur_buiten"
 const DOOR_SOUND_DB := -8.0
@@ -663,7 +664,7 @@ func _set_location(wijk: String) -> void:
 
 ## A sound of the door, not placed in the world (you are going through it).
 func _play_sound(sound_name: String) -> void:
-	var path := SOUND_FOLDER + sound_name + ".ogg"
+	var path := SoundFiles.path_of(sound_name)   # in its category's folder
 	var stream: AudioStream = load(path) if ResourceLoader.exists(path) else null
 	if stream == null and FileAccess.file_exists(path):
 		stream = AudioStreamOggVorbis.load_from_file(path)   # not imported yet

@@ -155,8 +155,19 @@ Ervaring: **F9** geeft 100 XP, Shift+F9 precies genoeg voor het volgende level (
 level-up-scherm). Gezondheid: **F5** vol, Shift+F5 20 eraf (echte schade). Honger: **F6** vol,
 Shift+F6 20 eraf. Uithoudingsvermogen: **F2** vol, Shift+F2 20 eraf. Overprikkeldheid: **F4**
 rustig (0), Shift+F4 20 erbij. Allemaal in `scripts/debug/debug_keys.gd`.
+**F1** laat de tijd 20× sneller gaan, of weer normaal. Op de kaart in het spelmenu (Tab, KAART)
+zet **T** je bij de gekozen plek en **Shift+klik** op elk punt van de kaart (op de dichtstbijzijnde
+stoep of straat).
 
 ## Personages — `gesprekken/personages.json`
+
+Na missie 2 komen er overdag af en toe groepjes op je af (`scripts/story/street_pitches.gd`): de
+telefoonverkopers, de wervers van de Stichting Rotonde in Nood (`werver_rotonde`) en twee Jehova's
+getuigen (`getuige`), vooral rond de stations, de pleinen en de winkelstraten. Hun gesprek klampt
+vast; alleen het goede antwoord (een verborgen `check`: `verkopers_af`, `rotonde_af`,
+`getuigen_af`) laat je gaan. Bij de supermarkten scharrelt soms een Straatnieuws-verkoper rond
+(`straatnieuws_ans`, `straatnieuws_henk`, `scripts/story/street_paper_sellers.gd`) die er net zo goed
+weer kan zijn verdwenen.
 
 De vaste mensen van het verhaal (Ome Wim, de goededoelenwerver, Blikken Bertus). Elk staat op een `plek`, ziet
 er altijd hetzelfde uit (`uiterlijk`: kleuren als `#RRGGBB`, `hair_style` `kort`, `lang`,
@@ -462,7 +473,7 @@ een groter getal komt vaker voor, `0` nooit; een soort die niet genoemd wordt te
 | deel | wat |
 |---|---|
 | `uren` | momenten van de dag, op volgorde van `uur` (0 tot 24). Elk: `voetgangers` en `verkeer` (hoe druk: 1,0 = normaal, 0,1 = bijna niemand; het verkeer gaat in de spits tot 1,7; de spits zijn twee momenten met dezelfde waarden, zodat hij een tijd aanhoudt), `station` (hoeveel mensen er bij Den Haag Centraal uit de deuren komen en erin verdwijnen: 1,0 = de spits, 0 = niemand), `mensen` (welke soorten mensen er dan zijn) en `voertuigen` (welke voertuigsoorten). Tussen twee momenten loopt het geleidelijk over. |
-| `gebieden` | per wijk (de namen die de HUD linksonder toont, bv. `"Centraal Station"`, `"Binckhorst"`, `"A12"`): `voetgangers` en `verkeer` keer zoveel als het uur zegt, en `mensen` en `voertuigen` als extra gewichten. Een wijk die er niet in staat telt als 1. |
+| `gebieden` | per wijk (de namen die de HUD linksonder toont, bv. `"Centraal Station"`, `"Binckhorst"`, `"A12"`): `voetgangers` en `verkeer` keer zoveel als het uur zegt, en `mensen` en `voertuigen` als extra gewichten. Een wijk die er niet in staat telt als 1. Met `avond` (`van`, `tot` in uren, mag over middernacht; `voetgangers`, `mensen`) wordt het er 's avonds nog drukker met ander volk: het Plein en de Grote Markt vol uitgaanspubliek en nachtbrakers. |
 | `voertuig_basis` | hoe vaak elke voertuigsoort voorkomt voor uur en wijk erbij komen. |
 | `mensen` | de soorten mensen (zie hieronder). |
 

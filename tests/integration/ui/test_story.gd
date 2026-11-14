@@ -463,7 +463,8 @@ func test_ome_wim_and_his_coat(test) -> void:
 	test.check(Vector2(goal_cell.x, goal_cell.z).distance_to(edge / 4.0) < 2.5, "hij loopt naar het voetpad aan de vijver, tegenover het Plein")
 	test.check(not characters._leading["ome_wim"].waits, "hij loopt in één keer door, zonder op je te wachten")
 	test.check(wim.get_node_or_null("Meeloopmarkering") != null, "een markering boven Ome Wim als je met hem meeloopt")
-	test.check(absf(float(wim.get("_pace")) - 2.2) < 0.01, "Ome Wim loopt op zijn tempo_meelopen")
+	var wim_pace: float = Conversations.characters().get("ome_wim", {}).get("tempo_meelopen", 0.0)
+	test.check(absf(float(wim.get("_pace")) - wim_pace) < 0.01 and wim_pace >= 3.0, "Ome Wim loopt op zijn tempo_meelopen (%.1f)" % wim_pace)
 	var listed := (story._quest(story.mission(MISSION_2)).steps as Array).map(func(step: Dictionary) -> String: return str(step.text))
 	test.check(not listed.any(func(text: String) -> bool: return text.contains("telefoonverkopers")), "de verkopers nog niet in de lijst")
 	player.global_position = wim.global_position + Vector3(40.0, 0.0, 0.0)
@@ -635,3 +636,91 @@ func test_a_conversation_starts_a_mission(test) -> void:
 	story._started.erase("proef_uit_gesprek")
 	story.missions.erase(side)
 	story._update_tracker()
+
+
+## Mission 3 (Wie ben jij?): after mission 2, to the city hall for a new ID card; the number,
+## the counter, sent on (a new number), stuck (no fixed abode: no card), and back to Wim.
+func test_mission_3_stuck_in_the_city_hall(test) -> void:
+	await _past_the_prologue()
+	var story := _story()
+	const MISSION_3 := "missie_3_wie_ben_jij"
+	for id: String in [MISSION_1, MISSION_2]:
+		if not story.is_finished(id):
+			story.complete_mission(id)
+			await close_screens()
+			await frames(3)
+			await close_screens()
+	await frames(5)
+	await close_screens()
+	test.check(story.is_started(MISSION_3), "na missie 2 begint missie 3")
+	var listed := func() -> Array:
+		return (story._quest(story.mission(MISSION_3)).steps as Array).map(func(step: Dictionary) -> String: return str(step.text))
+	test.check(not (listed.call() as Array).any(func(text: String) -> bool: return text.begins_with("Doorverwezen")), "doorverwezen staat er nog niet")
+	story.complete_step(MISSION_3, "stadhuis")
+	await close_screens()
+	player.add_item("wachtnummer", 1, true)
+	await frames(3)
+	test.check(_step_done("nummertje", MISSION_3), "een nummertje getrokken")
+	await close_screens()
+	player.talk_ended.emit("loketmedewerker")
+	await frames(3)
+	test.check(_step_done("loket", MISSION_3), "aan het loket geweest")
+	await close_screens()
+	player.checked.emit("doorverwezen", true)
+	await frames(3)
+	test.check(_step_done("doorverwezen", MISSION_3), "doorverwezen naar een collega")
+	await close_screens()
+	player.checked.emit("id_onmogelijk", true)
+	await frames(3)
+	test.check(_step_done("vastgelopen", MISSION_3), "vastgelopen: zonder adres geen kaart")
+	var thought: Array = hud._story_box._pages if hud.is_showing_story() else []
+	test.check(thought.any(func(page: Dictionary) -> bool: return String(page.get("text", "")).contains("nette jas")), "en de man in de nette jas, net als Wim zei")
+	await close_screens()
+	var personages := Conversations.characters()
+	test.check(personages.get("ome_wim", {}).get("gesprekken", {}).has("stadhuis"), "Wim heeft er iets over te zeggen")
+	var staff: Dictionary = Conversations.staff().get("personen", {}).get("loketmedewerker", {})
+	test.check(str(staff).contains("id_onmogelijk") and str(staff).contains("nette jas"), "de loketmedewerker kent het einde en de dief")
+
+
+## Ome Wim leading you (Characters.lead, "wacht": false) a long way, from Centraal through the
+## centre to the Grote Markt: with the player right behind him he keeps going, hardly ever
+## standing still (lights at a crossing aside), and gets there.
+func test_ome_wim_walks_on_without_stopping(test) -> void:
+	await _past_the_prologue()
+	var characters: Node = scene.get_node("Personages")
+	var story := _story()
+	var wim := characters.appear("ome_wim") as Pedestrian
+	test.check(wim != null, "Ome Wim staat in de stad")
+	if wim == null:
+		return
+	var start: Vector2 = story._place("centraal")
+	var goal: Vector2 = story._place("grote_markt")
+	wim.restart_at(wim.town.nearest_walkable(wim.town.cell_of(Vector3(start.x, 0.0, start.y))))
+	await frames(2)
+	characters.lead("ome_wim", [goal], false)
+	var still := 0.0
+	var walked := 0.0
+	var last := wim.global_position
+	var arrived := false
+	while walked < 240.0:
+		await tree.physics_frame
+		var step := 1.0 / 60.0
+		walked += step
+		# the player right behind him, as when you follow him
+		var back := Vector3(-sin(wim.rotation.y), 0.0, -cos(wim.rotation.y))
+		player.global_position = wim.global_position + back * 1.2
+		var moved := Vector2(wim.global_position.x - last.x, wim.global_position.z - last.z).length()
+		if moved < 0.2 * step:
+			still += step
+			pass
+		if tree.paused:
+			await close_screens()   # a screen of the story (as the player would close it)
+		last = wim.global_position
+		if Vector2(wim.global_position.x, wim.global_position.z).distance_to(goal) < 8.0:
+			arrived = true
+			break
+	print("Wim: %.1f s onderweg, %.1f s stil, %.0f m van de Grote Markt" % [walked, still,
+		Vector2(wim.global_position.x, wim.global_position.z).distance_to(goal)])
+	test.check(arrived, "Wim komt bij de Grote Markt (%.0f s, %.0f m hemelsbreed)" % [walked, start.distance_to(goal)])
+	test.check(still < walked * 0.2, "hij staat bijna niet stil (%.1f van %.1f s)" % [still, walked])
+	characters._stop_leading("ome_wim")

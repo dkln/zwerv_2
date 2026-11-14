@@ -3,12 +3,12 @@
 [ext_resource type="Script" path="res://scripts/world/interiors/city_hall.gd" id="1_487kp"]
 [ext_resource type="MeshLibrary" path="res://assets/libraries/binnen.res" id="2_u8mmr"]
 
-[node name="Stadhuis" type="Node3D" unique_id=1740625788]
+[node name="Stadhuis" type="Node3D" unique_id=2115036987]
 script = ExtResource("1_487kp")
 
-[node name="Etage0" type="Node3D" parent="." unique_id=1648186187]
+[node name="Etage0" type="Node3D" parent="." unique_id=1909956694]
 
-[node name="Vloer" type="GridMap" parent="Etage0" unique_id=126955614]
+[node name="Vloer" type="GridMap" parent="Etage0" unique_id=1792997637]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.125, 0)
 mesh_library = ExtResource("2_u8mmr")
 cell_size = Vector3(0.5, 0.5, 0.5)
@@ -19,17 +19,17 @@ data = {
 "cells": PackedInt32Array(65500, 65512, 72, 65500, 65520, 72, 65500, 65528, 72, 65500, 0, 72, 65500, 8, 72, 65500, 16, 72, 65500, 24, 72, 65508, 65512, 72, 65508, 65520, 72, 65508, 65528, 72, 65508, 0, 72, 65508, 8, 72, 65508, 16, 72, 65508, 24, 72, 65516, 65512, 72, 65516, 65520, 72, 65516, 65528, 72, 65516, 0, 72, 65516, 8, 72, 65516, 16, 72, 65516, 24, 72, 65524, 65512, 72, 65524, 65520, 72, 65524, 65528, 72, 65524, 0, 72, 65524, 8, 72, 65524, 16, 72, 65524, 24, 72, 65532, 65512, 72, 65532, 65520, 72, 65532, 65528, 72, 65532, 0, 72, 65532, 8, 72, 65532, 16, 72, 65532, 24, 72, 4, 65512, 72, 4, 65520, 72, 4, 65528, 72, 4, 0, 72, 4, 8, 72, 4, 16, 72, 4, 24, 72, 12, 65512, 72, 12, 65520, 72, 12, 65528, 72, 12, 0, 72, 12, 8, 72, 12, 16, 72, 12, 24, 72, 20, 65512, 72, 20, 65520, 72, 20, 65528, 72, 20, 0, 72, 20, 8, 72, 20, 16, 72, 20, 24, 72, 28, 65512, 72, 28, 65520, 72, 28, 65528, 72, 28, 0, 72, 28, 8, 72, 28, 16, 72, 28, 24, 72, 36, 65512, 72, 36, 65520, 72, 36, 65528, 72, 36, 0, 72, 36, 8, 72, 36, 16, 72, 36, 24, 72)
 }
 
-[node name="Inrichting" type="GridMap" parent="Etage0" unique_id=1886704268]
+[node name="Inrichting" type="GridMap" parent="Etage0" unique_id=1255658552]
 mesh_library = ExtResource("2_u8mmr")
 cell_size = Vector3(0.5, 0.5, 0.5)
 cell_center_x = false
 cell_center_y = false
 cell_center_z = false
 data = {
-"cells": PackedInt32Array(65520, 26, 655416, 65500, 28, 655419, 65500, 65508, 60, 65508, 28, 655419, 65508, 65508, 60, 65516, 28, 655419, 65516, 65508, 60, 65524, 28, 655419, 65524, 65508, 60, 65532, 28, 655419, 65532, 65508, 60, 4, 28, 655419, 4, 65508, 60, 12, 28, 655419, 12, 65508, 60, 20, 28, 655419, 20, 65508, 60, 28, 28, 655419, 28, 65508, 60, 36, 28, 655419, 36, 65508, 60, 65496, 65512, 1048635, 40, 65512, 1441852, 65496, 65520, 1048635, 40, 65520, 1441852, 65496, 65528, 1048635, 40, 65528, 1441852, 65496, 0, 1048635, 40, 0, 1441852, 65496, 8, 1048635, 40, 8, 1441852, 65496, 16, 1048635, 40, 16, 1441852, 65496, 24, 1048635, 40, 24, 1441852, 65533, 65508, 61, 3, 65508, 61, 0, 65509, 50, 65532, 1, 655426, 4, 1, 655426, 65530, 27, 655430, 6, 27, 655430, 20, 65520, 75, 28, 65520, 75, 20, 65526, 75, 28, 65526, 75, 20, 65532, 75, 28, 65532, 75, 20, 2, 75, 28, 2, 75, 37, 65511, 63, 37, 25, 63, 65499, 65511, 63, 65529, 65514, 53, 65512, 65528, 53)
+"cells": PackedInt32Array(65520, 26, 655416, 65500, 28, 655419, 65500, 65508, 60, 65508, 28, 655419, 65508, 65508, 60, 65516, 28, 655419, 65516, 65508, 60, 65524, 28, 655419, 65524, 65508, 60, 65532, 28, 655419, 65532, 65508, 60, 4, 28, 655419, 4, 65508, 60, 12, 28, 655419, 12, 65508, 60, 20, 28, 655419, 20, 65508, 60, 28, 28, 655419, 28, 65508, 60, 36, 28, 655419, 36, 65508, 60, 65496, 65512, 1048635, 40, 65512, 1441852, 65496, 65520, 1048635, 40, 65520, 1441852, 65496, 65528, 1048635, 40, 65528, 1441852, 65496, 0, 1048635, 40, 0, 1441852, 65496, 8, 1048635, 40, 8, 1441852, 65496, 16, 1048635, 40, 16, 1441852, 65496, 24, 1048635, 40, 24, 1441852, 65533, 65508, 61, 3, 65508, 61, 0, 65509, 50, 65532, 1, 655426, 4, 1, 655426, 65530, 27, 655430, 6, 27, 655430, 20, 65520, 75, 28, 65520, 75, 20, 65526, 75, 28, 65526, 75, 20, 65532, 75, 28, 65532, 75, 20, 2, 75, 28, 2, 75, 37, 65511, 63, 37, 25, 63, 65499, 65511, 63)
 }
 
-[node name="Wand_180_145" type="GridMap" parent="Etage0" unique_id=2050293071]
+[node name="Wand_180_145" type="GridMap" parent="Etage0" unique_id=2015007248]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.2676303e-08, 0, -0.145)
 mesh_library = ExtResource("2_u8mmr")
 cell_size = Vector3(0.5, 0.5, 0.5)
@@ -40,7 +40,7 @@ data = {
 "cells": PackedInt32Array(196608, 28, 655436)
 }
 
-[node name="Wand_90_208" type="GridMap" parent="Etage0" unique_id=761842726]
+[node name="Wand_90_208" type="GridMap" parent="Etage0" unique_id=1366075690]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.2075, 0, -9.070113e-09)
 mesh_library = ExtResource("2_u8mmr")
 cell_size = Vector3(0.5, 0.5, 0.5)
@@ -51,249 +51,249 @@ data = {
 "cells": PackedInt32Array(262104, 65524, 1048643, 262104, 0, 1048643, 262104, 12, 1048643)
 }
 
-[node name="Lift" type="Marker3D" parent="Etage0" unique_id=1991938700]
+[node name="Lift" type="Marker3D" parent="Etage0" unique_id=1955950749]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, -8, 0, 10.9)
 
-[node name="Liftdeur" type="Marker3D" parent="Etage0" unique_id=1669060722]
+[node name="Liftdeur" type="Marker3D" parent="Etage0" unique_id=1208336154]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, -8, 0, 12.06)
 
-[node name="Persoon_1" type="Marker3D" parent="Etage0" unique_id=1374099459]
+[node name="Persoon_1" type="Marker3D" parent="Etage0" unique_id=1776606325]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, -1.5, 0, 1.6)
 metadata/role = "receptioniste"
 metadata/sit = false
 metadata/seat = 0.0
 
-[node name="Persoon_2" type="Marker3D" parent="Etage0" unique_id=738843829]
+[node name="Persoon_2" type="Marker3D" parent="Etage0" unique_id=954518476]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 2.5, 0, 1.6)
 metadata/role = "receptioniste"
 metadata/sit = false
 metadata/seat = 0.0
 
-[node name="Persoon_3" type="Marker3D" parent="Etage0" unique_id=8297251]
+[node name="Persoon_3" type="Marker3D" parent="Etage0" unique_id=769164366]
 transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, 3, 0, -12)
 metadata/role = "beveiliger"
 metadata/sit = false
 metadata/seat = 0.0
 
-[node name="Persoon_4" type="Marker3D" parent="Etage0" unique_id=1256666085]
+[node name="Persoon_4" type="Marker3D" parent="Etage0" unique_id=602209067]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9.25, 0, -8)
 metadata/role = "klant"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_5" type="Marker3D" parent="Etage0" unique_id=1160928252]
+[node name="Persoon_5" type="Marker3D" parent="Etage0" unique_id=804383516]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10.25, 0, -8)
 metadata/role = "klant"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_6" type="Marker3D" parent="Etage0" unique_id=1626550403]
+[node name="Persoon_6" type="Marker3D" parent="Etage0" unique_id=45385451]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14.25, 0, -8)
 metadata/role = "klant"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_7" type="Marker3D" parent="Etage0" unique_id=1957298556]
+[node name="Persoon_7" type="Marker3D" parent="Etage0" unique_id=156837376]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9.25, 0, -5)
 metadata/role = "klant"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_8" type="Marker3D" parent="Etage0" unique_id=1711526678]
+[node name="Persoon_8" type="Marker3D" parent="Etage0" unique_id=721788296]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 13.25, 0, -5)
 metadata/role = "klant"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_9" type="Marker3D" parent="Etage0" unique_id=577869277]
+[node name="Persoon_9" type="Marker3D" parent="Etage0" unique_id=810819266]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14.25, 0, -5)
 metadata/role = "klant"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_10" type="Marker3D" parent="Etage0" unique_id=2030369288]
+[node name="Persoon_10" type="Marker3D" parent="Etage0" unique_id=13117848]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10.25, 0, -2)
 metadata/role = "klant"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_11" type="Marker3D" parent="Etage0" unique_id=464184121]
+[node name="Persoon_11" type="Marker3D" parent="Etage0" unique_id=168374552]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 13.25, 0, -2)
 metadata/role = "klant"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_12" type="Marker3D" parent="Etage0" unique_id=1421174074]
+[node name="Persoon_12" type="Marker3D" parent="Etage0" unique_id=1664987456]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9.25, 0, 1)
 metadata/role = "klant"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_13" type="Marker3D" parent="Etage0" unique_id=924915645]
+[node name="Persoon_13" type="Marker3D" parent="Etage0" unique_id=602170742]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10.25, 0, 1)
 metadata/role = "klant"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_14" type="Marker3D" parent="Etage0" unique_id=1237358059]
+[node name="Persoon_14" type="Marker3D" parent="Etage0" unique_id=684772411]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14.25, 0, 1)
 metadata/role = "klant"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_15" type="Marker3D" parent="Etage0" unique_id=2075308650]
+[node name="Persoon_15" type="Marker3D" parent="Etage0" unique_id=675332203]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1, 0, -2.2)
 metadata/role = "klant"
 metadata/sit = false
 metadata/seat = 0.0
 
-[node name="Persoon_16" type="Marker3D" parent="Etage0" unique_id=1104102339]
+[node name="Persoon_16" type="Marker3D" parent="Etage0" unique_id=1379679979]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, -8, 0, 7.5)
 metadata/role = "klant"
 metadata/sit = false
 metadata/seat = 0.0
 
-[node name="Persoon_17" type="Marker3D" parent="Etage0" unique_id=812250704]
+[node name="Persoon_17" type="Marker3D" parent="Etage0" unique_id=594499163]
 transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, 6, 0, -9)
 metadata/role = "klant"
 metadata/sit = false
 metadata/seat = 0.0
 
-[node name="Bord_1" type="Marker3D" parent="Etage0" unique_id=918783262]
+[node name="Bord_1" type="Marker3D" parent="Etage0" unique_id=1565571327]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 0, 2.9, 0)
 metadata/text = "RECEPTIE"
 
-[node name="Bord_2" type="Marker3D" parent="Etage0" unique_id=37839304]
+[node name="Bord_2" type="Marker3D" parent="Etage0" unique_id=945212452]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, -8, 3.3, 11.9)
 metadata/text = "LIFT"
 
-[node name="Lamp1" type="OmniLight3D" parent="Etage0" unique_id=108117082]
+[node name="Lamp1" type="OmniLight3D" parent="Etage0" unique_id=111723134]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -16, 3.6, -10.5)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp2" type="OmniLight3D" parent="Etage0" unique_id=1815001472]
+[node name="Lamp2" type="OmniLight3D" parent="Etage0" unique_id=2008820187]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -16, 3.6, -3.5)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp3" type="OmniLight3D" parent="Etage0" unique_id=802280206]
+[node name="Lamp3" type="OmniLight3D" parent="Etage0" unique_id=710135929]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -16, 3.6, 3.5)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp4" type="OmniLight3D" parent="Etage0" unique_id=910338604]
+[node name="Lamp4" type="OmniLight3D" parent="Etage0" unique_id=158183832]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -16, 3.6, 10.5)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp5" type="OmniLight3D" parent="Etage0" unique_id=1683198454]
+[node name="Lamp5" type="OmniLight3D" parent="Etage0" unique_id=38268636]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 3.6, -10.5)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp6" type="OmniLight3D" parent="Etage0" unique_id=311014628]
+[node name="Lamp6" type="OmniLight3D" parent="Etage0" unique_id=824542568]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 3.6, -3.5)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp7" type="OmniLight3D" parent="Etage0" unique_id=976554450]
+[node name="Lamp7" type="OmniLight3D" parent="Etage0" unique_id=1931645030]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 3.6, 3.5)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp8" type="OmniLight3D" parent="Etage0" unique_id=1366739579]
+[node name="Lamp8" type="OmniLight3D" parent="Etage0" unique_id=5325971]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 3.6, 10.5)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp9" type="OmniLight3D" parent="Etage0" unique_id=378094703]
+[node name="Lamp9" type="OmniLight3D" parent="Etage0" unique_id=985006514]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.6, -10.5)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp10" type="OmniLight3D" parent="Etage0" unique_id=1410678394]
+[node name="Lamp10" type="OmniLight3D" parent="Etage0" unique_id=1507849275]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.6, -3.5)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp11" type="OmniLight3D" parent="Etage0" unique_id=1170631164]
+[node name="Lamp11" type="OmniLight3D" parent="Etage0" unique_id=1956149155]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.6, 3.5)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp12" type="OmniLight3D" parent="Etage0" unique_id=999583590]
+[node name="Lamp12" type="OmniLight3D" parent="Etage0" unique_id=397046253]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.6, 10.5)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp13" type="OmniLight3D" parent="Etage0" unique_id=2008375318]
+[node name="Lamp13" type="OmniLight3D" parent="Etage0" unique_id=122461443]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 3.6, -10.5)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp14" type="OmniLight3D" parent="Etage0" unique_id=1704332973]
+[node name="Lamp14" type="OmniLight3D" parent="Etage0" unique_id=1657617085]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 3.6, -3.5)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp15" type="OmniLight3D" parent="Etage0" unique_id=451418059]
+[node name="Lamp15" type="OmniLight3D" parent="Etage0" unique_id=2141185933]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 3.6, 3.5)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp16" type="OmniLight3D" parent="Etage0" unique_id=255428754]
+[node name="Lamp16" type="OmniLight3D" parent="Etage0" unique_id=1942137251]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 3.6, 10.5)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp17" type="OmniLight3D" parent="Etage0" unique_id=626283251]
+[node name="Lamp17" type="OmniLight3D" parent="Etage0" unique_id=2079691608]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16, 3.6, -10.5)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp18" type="OmniLight3D" parent="Etage0" unique_id=1805265375]
+[node name="Lamp18" type="OmniLight3D" parent="Etage0" unique_id=1969914045]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16, 3.6, -3.5)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp19" type="OmniLight3D" parent="Etage0" unique_id=1195146743]
+[node name="Lamp19" type="OmniLight3D" parent="Etage0" unique_id=774158563]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16, 3.6, 3.5)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp20" type="OmniLight3D" parent="Etage0" unique_id=1265834124]
+[node name="Lamp20" type="OmniLight3D" parent="Etage0" unique_id=1039694640]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16, 3.6, 10.5)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Deur" type="Marker3D" parent="." unique_id=707516901]
+[node name="Deur" type="Marker3D" parent="." unique_id=1509752404]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -13.1)
 
-[node name="Etage1" type="Node3D" parent="." unique_id=2088377602]
+[node name="Etage1" type="Node3D" parent="." unique_id=801672102]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 80, 0, 0)
 
-[node name="Vloer" type="GridMap" parent="Etage1" unique_id=1025791259]
+[node name="Vloer" type="GridMap" parent="Etage1" unique_id=1261212736]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.125, 0)
 mesh_library = ExtResource("2_u8mmr")
 cell_size = Vector3(0.5, 0.5, 0.5)
@@ -304,17 +304,17 @@ data = {
 "cells": PackedInt32Array(65492, 65510, 72, 65492, 65518, 72, 65492, 65526, 72, 65492, 65534, 72, 65492, 6, 72, 65492, 14, 72, 65492, 22, 72, 65500, 65510, 72, 65500, 65518, 72, 65500, 65526, 72, 65500, 65534, 72, 65500, 6, 72, 65500, 14, 72, 65500, 22, 72, 65508, 65510, 72, 65508, 65518, 72, 65508, 65526, 72, 65508, 65534, 72, 65508, 6, 72, 65508, 14, 72, 65508, 22, 72, 65516, 65510, 72, 65516, 65518, 72, 65516, 65526, 72, 65516, 65534, 72, 65516, 6, 72, 65516, 14, 72, 65516, 22, 72, 65524, 65510, 72, 65524, 65518, 72, 65524, 65526, 72, 65524, 65534, 72, 65524, 6, 72, 65524, 14, 72, 65524, 22, 72, 65532, 65510, 72, 65532, 65518, 72, 65532, 65526, 72, 65532, 65534, 72, 65532, 6, 72, 65532, 14, 72, 65532, 22, 72, 4, 65510, 72, 4, 65518, 72, 4, 65526, 72, 4, 65534, 72, 4, 6, 72, 4, 14, 72, 4, 22, 72, 12, 65510, 72, 12, 65518, 72, 12, 65526, 72, 12, 65534, 72, 12, 6, 72, 12, 14, 72, 12, 22, 72, 20, 65510, 72, 20, 65518, 72, 20, 65526, 72, 20, 65534, 72, 20, 6, 72, 20, 14, 72, 20, 22, 72, 28, 65510, 72, 28, 65518, 72, 28, 65526, 72, 28, 65534, 72, 28, 6, 72, 28, 14, 72, 28, 22, 72, 36, 65510, 72, 36, 65518, 72, 36, 65526, 72, 36, 65534, 72, 36, 6, 72, 36, 14, 72, 36, 22, 72, 44, 65510, 72, 44, 65518, 72, 44, 65526, 72, 44, 65534, 72, 44, 6, 72, 44, 14, 72, 44, 22, 72)
 }
 
-[node name="Inrichting" type="GridMap" parent="Etage1" unique_id=1910134371]
+[node name="Inrichting" type="GridMap" parent="Etage1" unique_id=1986737438]
 mesh_library = ExtResource("2_u8mmr")
 cell_size = Vector3(0.5, 0.5, 0.5)
 cell_center_x = false
 cell_center_y = false
 cell_center_z = false
 data = {
-"cells": PackedInt32Array(65520, 28, 655416, 65492, 30, 655419, 65492, 65506, 60, 65500, 30, 655419, 65500, 65506, 60, 65508, 30, 655419, 65508, 65506, 60, 65516, 30, 655419, 65516, 65506, 60, 65524, 30, 655419, 65524, 65506, 60, 65532, 30, 655419, 65532, 65506, 60, 4, 30, 655419, 4, 65506, 60, 12, 30, 655419, 12, 65506, 60, 20, 30, 655419, 20, 65506, 60, 28, 30, 655419, 28, 65506, 60, 36, 30, 655419, 36, 65506, 60, 44, 30, 655419, 44, 65506, 60, 65488, 65510, 1048635, 48, 65510, 1441852, 65488, 65518, 1048635, 48, 65518, 1441852, 65488, 65526, 1048635, 48, 65526, 1441852, 65488, 65534, 1048635, 48, 65534, 1441852, 65488, 6, 1048635, 48, 6, 1441852, 65488, 14, 1048635, 48, 14, 1441852, 65488, 22, 1048635, 48, 22, 1441852, 65496, 28, 655418, 65505, 28, 655418, 65529, 28, 655418, 2, 28, 655418, 11, 28, 655418, 20, 28, 655418, 29, 28, 655418, 38, 28, 655418, 65512, 65514, 75, 65524, 65514, 75, 0, 65514, 75, 12, 65514, 75, 24, 65514, 75, 65512, 65519, 75, 65524, 65519, 75, 0, 65519, 75, 12, 65519, 75, 24, 65519, 75, 65512, 65524, 75, 65524, 65524, 75, 0, 65524, 75, 12, 65524, 75, 24, 65524, 75, 65512, 65529, 75, 65524, 65529, 75, 0, 65529, 75, 12, 65529, 75, 24, 65529, 75, 65512, 65534, 75, 65524, 65534, 75, 0, 65534, 75, 12, 65534, 75, 24, 65534, 75, 65496, 65510, 62, 46, 65514, 1441847, 39, 65514, 48, 39, 65510, 75, 39, 65518, 655435, 46, 65511, 139, 65499, 65510, 139, 65506, 65524, 139, 30, 65524, 139, 65506, 65534, 139, 30, 65534, 139, 65512, 18, 53, 65490, 65524, 1048651, 65490, 65534, 1048651, 65490, 8, 1048651, 45, 65509, 63, 65491, 65509, 63, 65525, 28, 63, 65515, 28, 63, 46, 12, 63, 46, 65534, 63, 65490, 18, 63, 0, 65508, 63, 65508, 65508, 63, 28, 65508, 63, 65489, 25, 1048630)
+"cells": PackedInt32Array(65520, 28, 655416, 65492, 30, 655419, 65492, 65506, 60, 65500, 30, 655419, 65500, 65506, 60, 65508, 30, 655419, 65508, 65506, 60, 65516, 30, 655419, 65516, 65506, 60, 65524, 30, 655419, 65524, 65506, 60, 65532, 30, 655419, 65532, 65506, 60, 4, 30, 655419, 4, 65506, 60, 12, 30, 655419, 12, 65506, 60, 20, 30, 655419, 20, 65506, 60, 28, 30, 655419, 28, 65506, 60, 36, 30, 655419, 36, 65506, 60, 44, 30, 655419, 44, 65506, 60, 65488, 65510, 1048635, 48, 65510, 1441852, 65488, 65518, 1048635, 48, 65518, 1441852, 65488, 65526, 1048635, 48, 65526, 1441852, 65488, 65534, 1048635, 48, 65534, 1441852, 65488, 6, 1048635, 48, 6, 1441852, 65488, 14, 1048635, 48, 14, 1441852, 65488, 22, 1048635, 48, 22, 1441852, 65496, 28, 655418, 65505, 28, 655418, 65529, 28, 655418, 2, 28, 655418, 11, 28, 655418, 20, 28, 655418, 29, 28, 655418, 38, 28, 655418, 65512, 65514, 75, 65524, 65514, 75, 0, 65514, 75, 12, 65514, 75, 24, 65514, 75, 65512, 65519, 75, 65524, 65519, 75, 0, 65519, 75, 12, 65519, 75, 24, 65519, 75, 65512, 65524, 75, 65524, 65524, 75, 0, 65524, 75, 12, 65524, 75, 24, 65524, 75, 65512, 65529, 75, 65524, 65529, 75, 0, 65529, 75, 12, 65529, 75, 24, 65529, 75, 65512, 65534, 75, 65524, 65534, 75, 0, 65534, 75, 12, 65534, 75, 24, 65534, 75, 65526, 20, 655422, 46, 65514, 1441847, 39, 65514, 48, 39, 65510, 75, 39, 65518, 655435, 46, 65511, 139, 65529, 20, 139, 65506, 65524, 139, 30, 65524, 139, 65506, 65534, 139, 30, 65534, 139, 65490, 65524, 1048651, 65490, 65534, 1048651, 65490, 8, 1048651, 45, 65509, 63, 65491, 65509, 63, 65525, 28, 63, 65515, 28, 63, 46, 12, 63, 46, 65534, 63, 65490, 18, 63, 0, 65508, 63, 65508, 65508, 63, 28, 65508, 63, 65489, 25, 1048630)
 }
 
-[node name="Wand_90_208" type="GridMap" parent="Etage1" unique_id=236922692]
+[node name="Wand_90_208" type="GridMap" parent="Etage1" unique_id=2091609019]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.2075, 0, -9.070113e-09)
 mesh_library = ExtResource("2_u8mmr")
 cell_size = Vector3(0.5, 0.5, 0.5)
@@ -325,501 +325,501 @@ data = {
 "cells": PackedInt32Array(262096, 65528, 1048643)
 }
 
-[node name="Lift" type="Marker3D" parent="Etage1" unique_id=332631299]
+[node name="Lift" type="Marker3D" parent="Etage1" unique_id=1248195233]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, -8, 0, 11.9)
 
-[node name="Liftdeur" type="Marker3D" parent="Etage1" unique_id=232954931]
+[node name="Liftdeur" type="Marker3D" parent="Etage1" unique_id=1053456204]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, -8, 0, 13.06)
 
-[node name="Persoon_1" type="Marker3D" parent="Etage1" unique_id=1108118464]
+[node name="Persoon_1" type="Marker3D" parent="Etage1" unique_id=1764672925]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, -20, 0, 14.6)
 metadata/role = "loketmedewerker"
 metadata/sit = true
 metadata/seat = 0.5
 
-[node name="Persoon_2" type="Marker3D" parent="Etage1" unique_id=894114915]
+[node name="Persoon_2" type="Marker3D" parent="Etage1" unique_id=475979805]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, -15.5, 0, 14.6)
 metadata/role = "loketmedewerker"
 metadata/sit = true
 metadata/seat = 0.5
 
-[node name="Persoon_3" type="Marker3D" parent="Etage1" unique_id=374271255]
+[node name="Persoon_3" type="Marker3D" parent="Etage1" unique_id=2072017500]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, -3.5, 0, 14.6)
 metadata/role = "loketmedewerker"
 metadata/sit = true
 metadata/seat = 0.5
 
-[node name="Persoon_4" type="Marker3D" parent="Etage1" unique_id=1941942056]
+[node name="Persoon_4" type="Marker3D" parent="Etage1" unique_id=2095059166]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 1, 0, 14.6)
 metadata/role = "loketmedewerker"
 metadata/sit = true
 metadata/seat = 0.5
 
-[node name="Persoon_5" type="Marker3D" parent="Etage1" unique_id=1691116743]
+[node name="Persoon_5" type="Marker3D" parent="Etage1" unique_id=1928263641]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 5.5, 0, 14.6)
 metadata/role = "loketmedewerker"
 metadata/sit = true
 metadata/seat = 0.5
 
-[node name="Persoon_6" type="Marker3D" parent="Etage1" unique_id=2074164840]
+[node name="Persoon_6" type="Marker3D" parent="Etage1" unique_id=1173869166]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 10, 0, 14.6)
 metadata/role = "loketmedewerker"
 metadata/sit = true
 metadata/seat = 0.5
 
-[node name="Persoon_7" type="Marker3D" parent="Etage1" unique_id=1642665693]
+[node name="Persoon_7" type="Marker3D" parent="Etage1" unique_id=122175053]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 14.5, 0, 14.6)
 metadata/role = "loketmedewerker"
 metadata/sit = true
 metadata/seat = 0.5
 
-[node name="Persoon_8" type="Marker3D" parent="Etage1" unique_id=488544839]
+[node name="Persoon_8" type="Marker3D" parent="Etage1" unique_id=837207244]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 19, 0, 14.6)
 metadata/role = "loketmedewerker"
 metadata/sit = true
 metadata/seat = 0.5
 
-[node name="Persoon_9" type="Marker3D" parent="Etage1" unique_id=723463594]
+[node name="Persoon_9" type="Marker3D" parent="Etage1" unique_id=1590630988]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12.75, 0, -11)
 metadata/role = "klant"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_10" type="Marker3D" parent="Etage1" unique_id=658660739]
+[node name="Persoon_10" type="Marker3D" parent="Etage1" unique_id=2050907839]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -11.75, 0, -11)
 metadata/role = "klant"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_11" type="Marker3D" parent="Etage1" unique_id=964758682]
+[node name="Persoon_11" type="Marker3D" parent="Etage1" unique_id=2114350689]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.75, 0, -11)
 metadata/role = "klant"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_12" type="Marker3D" parent="Etage1" unique_id=1453650631]
+[node name="Persoon_12" type="Marker3D" parent="Etage1" unique_id=1282447872]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.75, 0, -11)
 metadata/role = "klant"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_13" type="Marker3D" parent="Etage1" unique_id=1004505790]
+[node name="Persoon_13" type="Marker3D" parent="Etage1" unique_id=269829471]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.25, 0, -11)
 metadata/role = "klant"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_14" type="Marker3D" parent="Etage1" unique_id=315613592]
+[node name="Persoon_14" type="Marker3D" parent="Etage1" unique_id=927634360]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.25, 0, -11)
 metadata/role = "klant"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_15" type="Marker3D" parent="Etage1" unique_id=2035715216]
+[node name="Persoon_15" type="Marker3D" parent="Etage1" unique_id=1196257806]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 11.25, 0, -11)
 metadata/role = "klant"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_16" type="Marker3D" parent="Etage1" unique_id=849389616]
+[node name="Persoon_16" type="Marker3D" parent="Etage1" unique_id=1633228655]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12.25, 0, -11)
 metadata/role = "klant"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_17" type="Marker3D" parent="Etage1" unique_id=129310266]
+[node name="Persoon_17" type="Marker3D" parent="Etage1" unique_id=579203984]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12.75, 0, -8.5)
 metadata/role = "klant"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_18" type="Marker3D" parent="Etage1" unique_id=180849185]
+[node name="Persoon_18" type="Marker3D" parent="Etage1" unique_id=272404964]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.75, 0, -8.5)
 metadata/role = "klant"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_19" type="Marker3D" parent="Etage1" unique_id=635209290]
+[node name="Persoon_19" type="Marker3D" parent="Etage1" unique_id=557549777]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.75, 0, -8.5)
 metadata/role = "klant"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_20" type="Marker3D" parent="Etage1" unique_id=1365444305]
+[node name="Persoon_20" type="Marker3D" parent="Etage1" unique_id=659065736]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.75, 0, -8.5)
 metadata/role = "klant"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_21" type="Marker3D" parent="Etage1" unique_id=1964874592]
+[node name="Persoon_21" type="Marker3D" parent="Etage1" unique_id=832204366]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.25, 0, -8.5)
 metadata/role = "klant"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_22" type="Marker3D" parent="Etage1" unique_id=93299779]
+[node name="Persoon_22" type="Marker3D" parent="Etage1" unique_id=1561023550]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.25, 0, -8.5)
 metadata/role = "klant"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_23" type="Marker3D" parent="Etage1" unique_id=465527260]
+[node name="Persoon_23" type="Marker3D" parent="Etage1" unique_id=1099185871]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 11.25, 0, -8.5)
 metadata/role = "klant"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_24" type="Marker3D" parent="Etage1" unique_id=335299272]
+[node name="Persoon_24" type="Marker3D" parent="Etage1" unique_id=841013036]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12.75, 0, -6)
 metadata/role = "klant"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_25" type="Marker3D" parent="Etage1" unique_id=1417894238]
+[node name="Persoon_25" type="Marker3D" parent="Etage1" unique_id=1174131297]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -11.75, 0, -6)
 metadata/role = "klant"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_26" type="Marker3D" parent="Etage1" unique_id=28934463]
+[node name="Persoon_26" type="Marker3D" parent="Etage1" unique_id=77075222]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.75, 0, -6)
 metadata/role = "klant"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_27" type="Marker3D" parent="Etage1" unique_id=305620453]
+[node name="Persoon_27" type="Marker3D" parent="Etage1" unique_id=1584657326]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.75, 0, -6)
 metadata/role = "klant"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_28" type="Marker3D" parent="Etage1" unique_id=1573160645]
+[node name="Persoon_28" type="Marker3D" parent="Etage1" unique_id=873014821]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.25, 0, -6)
 metadata/role = "klant"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_29" type="Marker3D" parent="Etage1" unique_id=1799273450]
+[node name="Persoon_29" type="Marker3D" parent="Etage1" unique_id=1600288702]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.25, 0, -6)
 metadata/role = "klant"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_30" type="Marker3D" parent="Etage1" unique_id=1220524989]
+[node name="Persoon_30" type="Marker3D" parent="Etage1" unique_id=1462665816]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 11.25, 0, -6)
 metadata/role = "klant"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_31" type="Marker3D" parent="Etage1" unique_id=17455578]
+[node name="Persoon_31" type="Marker3D" parent="Etage1" unique_id=445964458]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12.25, 0, -6)
 metadata/role = "klant"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_32" type="Marker3D" parent="Etage1" unique_id=142362687]
+[node name="Persoon_32" type="Marker3D" parent="Etage1" unique_id=628673263]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12.75, 0, -3.5)
 metadata/role = "klant"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_33" type="Marker3D" parent="Etage1" unique_id=1075491713]
+[node name="Persoon_33" type="Marker3D" parent="Etage1" unique_id=1229553498]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.75, 0, -3.5)
 metadata/role = "klant"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_34" type="Marker3D" parent="Etage1" unique_id=1791757052]
+[node name="Persoon_34" type="Marker3D" parent="Etage1" unique_id=754709721]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.75, 0, -3.5)
 metadata/role = "klant"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_35" type="Marker3D" parent="Etage1" unique_id=1091752748]
+[node name="Persoon_35" type="Marker3D" parent="Etage1" unique_id=921389901]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.75, 0, -3.5)
 metadata/role = "klant"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_36" type="Marker3D" parent="Etage1" unique_id=965194382]
+[node name="Persoon_36" type="Marker3D" parent="Etage1" unique_id=319217296]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.25, 0, -3.5)
 metadata/role = "klant"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_37" type="Marker3D" parent="Etage1" unique_id=1820880247]
+[node name="Persoon_37" type="Marker3D" parent="Etage1" unique_id=804585445]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.25, 0, -3.5)
 metadata/role = "klant"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_38" type="Marker3D" parent="Etage1" unique_id=1847885629]
+[node name="Persoon_38" type="Marker3D" parent="Etage1" unique_id=1914963893]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 11.25, 0, -3.5)
 metadata/role = "klant"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_39" type="Marker3D" parent="Etage1" unique_id=952525696]
+[node name="Persoon_39" type="Marker3D" parent="Etage1" unique_id=772834762]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12.75, 0, -1)
 metadata/role = "klant"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_40" type="Marker3D" parent="Etage1" unique_id=1890192714]
+[node name="Persoon_40" type="Marker3D" parent="Etage1" unique_id=1707972369]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -11.75, 0, -1)
 metadata/role = "klant"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_41" type="Marker3D" parent="Etage1" unique_id=1126699214]
+[node name="Persoon_41" type="Marker3D" parent="Etage1" unique_id=1505850675]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.75, 0, -1)
 metadata/role = "klant"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_42" type="Marker3D" parent="Etage1" unique_id=1883086679]
+[node name="Persoon_42" type="Marker3D" parent="Etage1" unique_id=1294076340]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.75, 0, -1)
 metadata/role = "klant"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_43" type="Marker3D" parent="Etage1" unique_id=1707333579]
+[node name="Persoon_43" type="Marker3D" parent="Etage1" unique_id=1593550418]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.25, 0, -1)
 metadata/role = "klant"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_44" type="Marker3D" parent="Etage1" unique_id=1653308637]
+[node name="Persoon_44" type="Marker3D" parent="Etage1" unique_id=244774780]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.25, 0, -1)
 metadata/role = "klant"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_45" type="Marker3D" parent="Etage1" unique_id=291312405]
+[node name="Persoon_45" type="Marker3D" parent="Etage1" unique_id=1054735782]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 11.25, 0, -1)
 metadata/role = "klant"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_46" type="Marker3D" parent="Etage1" unique_id=1099108724]
+[node name="Persoon_46" type="Marker3D" parent="Etage1" unique_id=442176951]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12.25, 0, -1)
 metadata/role = "klant"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_47" type="Marker3D" parent="Etage1" unique_id=725890924]
+[node name="Persoon_47" type="Marker3D" parent="Etage1" unique_id=886079250]
 transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -18, 0, -2)
 metadata/role = "klant"
 metadata/sit = false
 metadata/seat = 0.0
 
-[node name="Persoon_48" type="Marker3D" parent="Etage1" unique_id=1058415472]
+[node name="Persoon_48" type="Marker3D" parent="Etage1" unique_id=1105106086]
 transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, 18.5, 0, -4)
 metadata/role = "klant"
 metadata/sit = false
 metadata/seat = 0.0
 
-[node name="Persoon_49" type="Marker3D" parent="Etage1" unique_id=525270483]
+[node name="Persoon_49" type="Marker3D" parent="Etage1" unique_id=1765180620]
 transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, 17, 0, -9)
 metadata/role = "klant"
 metadata/sit = false
 metadata/seat = 0.0
 
-[node name="Persoon_50" type="Marker3D" parent="Etage1" unique_id=1830361195]
+[node name="Persoon_50" type="Marker3D" parent="Etage1" unique_id=151134544]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 19.25, 0, -13)
 metadata/role = "klant"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_51" type="Marker3D" parent="Etage1" unique_id=1788321836]
+[node name="Persoon_51" type="Marker3D" parent="Etage1" unique_id=1983373689]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 20.5, 0, -8.75)
 metadata/role = "klant"
 metadata/sit = false
 metadata/seat = 0.0
 
-[node name="Bord_1" type="Marker3D" parent="Etage1" unique_id=427325163]
-transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, -20, 2.2, -13)
+[node name="Bord_1" type="Marker3D" parent="Etage1" unique_id=1789755086]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, -5, 2.2, 10)
 metadata/text = "NUMMERTJE"
 
-[node name="Bord_2" type="Marker3D" parent="Etage1" unique_id=1430369209]
-transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 5.5, 3.2, 8)
+[node name="Bord_2" type="Marker3D" parent="Etage1" unique_id=1227874157]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, -17.75, 3.4, 14.8)
 metadata/text = "BURGERZAKEN"
 
-[node name="Loket_1" type="Marker3D" parent="Etage1" unique_id=1019884153]
+[node name="Loket_1" type="Marker3D" parent="Etage1" unique_id=1278907819]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, -20, 2, 13.38)
 
-[node name="Loket_2" type="Marker3D" parent="Etage1" unique_id=1477407173]
+[node name="Loket_2" type="Marker3D" parent="Etage1" unique_id=1287085208]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, -15.5, 2, 13.38)
 
-[node name="Loket_3" type="Marker3D" parent="Etage1" unique_id=489494175]
+[node name="Loket_3" type="Marker3D" parent="Etage1" unique_id=2091775680]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, -3.5, 2, 13.38)
 
-[node name="Loket_4" type="Marker3D" parent="Etage1" unique_id=1265391131]
+[node name="Loket_4" type="Marker3D" parent="Etage1" unique_id=449461335]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 1, 2, 13.38)
 
-[node name="Loket_5" type="Marker3D" parent="Etage1" unique_id=25929942]
+[node name="Loket_5" type="Marker3D" parent="Etage1" unique_id=360426637]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 5.5, 2, 13.38)
 
-[node name="Loket_6" type="Marker3D" parent="Etage1" unique_id=2134616163]
+[node name="Loket_6" type="Marker3D" parent="Etage1" unique_id=134159223]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 10, 2, 13.38)
 
-[node name="Loket_7" type="Marker3D" parent="Etage1" unique_id=1691231968]
+[node name="Loket_7" type="Marker3D" parent="Etage1" unique_id=1398244970]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 14.5, 2, 13.38)
 
-[node name="Loket_8" type="Marker3D" parent="Etage1" unique_id=1537109447]
+[node name="Loket_8" type="Marker3D" parent="Etage1" unique_id=1046546951]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 19, 2, 13.38)
 
-[node name="Nummerautomaat" type="Marker3D" parent="Etage1" unique_id=408969205]
-transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, -20, 0, -12.1)
+[node name="Nummerautomaat" type="Marker3D" parent="Etage1" unique_id=1622700692]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, -5, 0, 9.1)
 
-[node name="Lamp1" type="OmniLight3D" parent="Etage1" unique_id=1268182883]
+[node name="Lamp1" type="OmniLight3D" parent="Etage1" unique_id=429005944]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -20, 3.6, -11.25)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp2" type="OmniLight3D" parent="Etage1" unique_id=1454579211]
+[node name="Lamp2" type="OmniLight3D" parent="Etage1" unique_id=1505387063]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -20, 3.6, -3.75)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp3" type="OmniLight3D" parent="Etage1" unique_id=858399519]
+[node name="Lamp3" type="OmniLight3D" parent="Etage1" unique_id=1513324062]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -20, 3.6, 3.75)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp4" type="OmniLight3D" parent="Etage1" unique_id=487715543]
+[node name="Lamp4" type="OmniLight3D" parent="Etage1" unique_id=901074346]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -20, 3.6, 11.25)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp5" type="OmniLight3D" parent="Etage1" unique_id=1589023495]
+[node name="Lamp5" type="OmniLight3D" parent="Etage1" unique_id=1060610819]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12, 3.6, -11.25)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp6" type="OmniLight3D" parent="Etage1" unique_id=1576083418]
+[node name="Lamp6" type="OmniLight3D" parent="Etage1" unique_id=1445006418]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12, 3.6, -3.75)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp7" type="OmniLight3D" parent="Etage1" unique_id=1419421413]
+[node name="Lamp7" type="OmniLight3D" parent="Etage1" unique_id=632444603]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12, 3.6, 3.75)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp8" type="OmniLight3D" parent="Etage1" unique_id=1187948996]
+[node name="Lamp8" type="OmniLight3D" parent="Etage1" unique_id=1016935342]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12, 3.6, 11.25)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp9" type="OmniLight3D" parent="Etage1" unique_id=672551089]
+[node name="Lamp9" type="OmniLight3D" parent="Etage1" unique_id=73952189]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 3.6, -11.25)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp10" type="OmniLight3D" parent="Etage1" unique_id=638343596]
+[node name="Lamp10" type="OmniLight3D" parent="Etage1" unique_id=1081578556]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 3.6, -3.75)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp11" type="OmniLight3D" parent="Etage1" unique_id=792806464]
+[node name="Lamp11" type="OmniLight3D" parent="Etage1" unique_id=1337640363]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 3.6, 3.75)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp12" type="OmniLight3D" parent="Etage1" unique_id=158050486]
+[node name="Lamp12" type="OmniLight3D" parent="Etage1" unique_id=2047907497]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 3.6, 11.25)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp13" type="OmniLight3D" parent="Etage1" unique_id=846372266]
+[node name="Lamp13" type="OmniLight3D" parent="Etage1" unique_id=1302339067]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 3.6, -11.25)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp14" type="OmniLight3D" parent="Etage1" unique_id=296023975]
+[node name="Lamp14" type="OmniLight3D" parent="Etage1" unique_id=1010538112]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 3.6, -3.75)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp15" type="OmniLight3D" parent="Etage1" unique_id=1690580376]
+[node name="Lamp15" type="OmniLight3D" parent="Etage1" unique_id=2134571073]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 3.6, 3.75)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp16" type="OmniLight3D" parent="Etage1" unique_id=1858077950]
+[node name="Lamp16" type="OmniLight3D" parent="Etage1" unique_id=758845725]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 3.6, 11.25)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp17" type="OmniLight3D" parent="Etage1" unique_id=1227310489]
+[node name="Lamp17" type="OmniLight3D" parent="Etage1" unique_id=602043450]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 3.6, -11.25)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp18" type="OmniLight3D" parent="Etage1" unique_id=632337747]
+[node name="Lamp18" type="OmniLight3D" parent="Etage1" unique_id=151987529]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 3.6, -3.75)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp19" type="OmniLight3D" parent="Etage1" unique_id=958836661]
+[node name="Lamp19" type="OmniLight3D" parent="Etage1" unique_id=38283561]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 3.6, 3.75)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp20" type="OmniLight3D" parent="Etage1" unique_id=1543906174]
+[node name="Lamp20" type="OmniLight3D" parent="Etage1" unique_id=1640526582]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 3.6, 11.25)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp21" type="OmniLight3D" parent="Etage1" unique_id=605460212]
+[node name="Lamp21" type="OmniLight3D" parent="Etage1" unique_id=1449743287]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 20, 3.6, -11.25)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp22" type="OmniLight3D" parent="Etage1" unique_id=323870467]
+[node name="Lamp22" type="OmniLight3D" parent="Etage1" unique_id=1991385369]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 20, 3.6, -3.75)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp23" type="OmniLight3D" parent="Etage1" unique_id=1355981405]
+[node name="Lamp23" type="OmniLight3D" parent="Etage1" unique_id=1489086646]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 20, 3.6, 3.75)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp24" type="OmniLight3D" parent="Etage1" unique_id=1287548344]
+[node name="Lamp24" type="OmniLight3D" parent="Etage1" unique_id=1682760976]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 20, 3.6, 11.25)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Etage2" type="Node3D" parent="." unique_id=1428203140]
+[node name="Etage2" type="Node3D" parent="." unique_id=330611515]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 160, 0, 0)
 
-[node name="Vloer" type="GridMap" parent="Etage2" unique_id=191947055]
+[node name="Vloer" type="GridMap" parent="Etage2" unique_id=1099437073]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.125, 0)
 mesh_library = ExtResource("2_u8mmr")
 cell_size = Vector3(0.5, 0.5, 0.5)
@@ -830,7 +830,7 @@ data = {
 "cells": PackedInt32Array(65500, 65508, 73, 65500, 65516, 73, 65500, 65524, 73, 65500, 65532, 73, 65500, 4, 73, 65500, 12, 73, 65500, 20, 73, 65500, 28, 73, 65508, 65508, 73, 65508, 65516, 73, 65508, 65524, 73, 65508, 65532, 73, 65508, 4, 73, 65508, 12, 73, 65508, 20, 73, 65508, 28, 73, 65516, 65508, 73, 65516, 65516, 73, 65516, 65524, 73, 65516, 65532, 73, 65516, 4, 73, 65516, 12, 73, 65516, 20, 73, 65516, 28, 73, 65524, 65508, 73, 65524, 65516, 73, 65524, 65524, 73, 65524, 65532, 73, 65524, 4, 73, 65524, 12, 73, 65524, 20, 73, 65524, 28, 73, 65532, 65508, 73, 65532, 65516, 73, 65532, 65524, 73, 65532, 65532, 73, 65532, 4, 73, 65532, 12, 73, 65532, 20, 73, 65532, 28, 73, 4, 65508, 73, 4, 65516, 73, 4, 65524, 73, 4, 65532, 73, 4, 4, 73, 4, 12, 73, 4, 20, 73, 4, 28, 73, 12, 65508, 73, 12, 65516, 73, 12, 65524, 73, 12, 65532, 73, 12, 4, 73, 12, 12, 73, 12, 20, 73, 12, 28, 73, 20, 65508, 73, 20, 65516, 73, 20, 65524, 73, 20, 65532, 73, 20, 4, 73, 20, 12, 73, 20, 20, 73, 20, 28, 73, 28, 65508, 73, 28, 65516, 73, 28, 65524, 73, 28, 65532, 73, 28, 4, 73, 28, 12, 73, 28, 20, 73, 28, 28, 73, 36, 65508, 73, 36, 65516, 73, 36, 65524, 73, 36, 65532, 73, 36, 4, 73, 36, 12, 73, 36, 20, 73, 36, 28, 73)
 }
 
-[node name="Inrichting" type="GridMap" parent="Etage2" unique_id=920598992]
+[node name="Inrichting" type="GridMap" parent="Etage2" unique_id=1867594498]
 mesh_library = ExtResource("2_u8mmr")
 cell_size = Vector3(0.5, 0.5, 0.5)
 cell_center_x = false
@@ -840,308 +840,308 @@ data = {
 "cells": PackedInt32Array(65520, 30, 655416, 65500, 32, 655419, 65500, 65504, 60, 65508, 32, 655419, 65508, 65504, 60, 65516, 32, 655419, 65516, 65504, 60, 65524, 32, 655419, 65524, 65504, 60, 65532, 32, 655419, 65532, 65504, 60, 4, 32, 655419, 4, 65504, 60, 12, 32, 655419, 12, 65504, 60, 20, 32, 655419, 20, 65504, 60, 28, 32, 655419, 28, 65504, 60, 36, 32, 655419, 36, 65504, 60, 65496, 65508, 1048635, 40, 65508, 1441852, 65496, 65516, 1048635, 40, 65516, 1441852, 65496, 65524, 1048635, 40, 65524, 1441852, 65496, 65532, 1048635, 40, 65532, 1441852, 65496, 4, 1048635, 40, 4, 1441852, 65496, 12, 1048635, 40, 12, 1441852, 65496, 20, 1048635, 40, 20, 1441852, 65496, 28, 1048635, 40, 28, 1441852, 65530, 65517, 655408, 65530, 65519, 48, 65530, 65515, 49, 65530, 65521, 655409, 65534, 65517, 655408, 65534, 65519, 48, 65534, 65515, 49, 65534, 65521, 655409, 65530, 65533, 655408, 65530, 65535, 48, 65530, 65531, 49, 65530, 1, 655409, 65534, 65533, 655408, 65534, 65535, 48, 65534, 65531, 49, 65534, 1, 655409, 65530, 13, 655408, 65530, 15, 48, 65530, 11, 49, 65530, 17, 655409, 65534, 13, 655408, 65534, 15, 48, 65534, 11, 49, 65534, 17, 655409, 10, 65517, 655408, 10, 65519, 48, 10, 65515, 49, 10, 65521, 655409, 14, 65517, 655408, 14, 65519, 48, 14, 65515, 49, 14, 65521, 655409, 10, 65533, 655408, 10, 65535, 48, 10, 65531, 49, 10, 1, 655409, 14, 65533, 655408, 14, 65535, 48, 14, 65531, 49, 14, 1, 655409, 10, 13, 655408, 10, 15, 48, 10, 11, 49, 10, 17, 655409, 14, 13, 655408, 14, 15, 48, 14, 11, 49, 14, 17, 655409, 26, 65517, 655408, 26, 65519, 48, 26, 65515, 49, 26, 65521, 655409, 30, 65517, 655408, 30, 65519, 48, 30, 65515, 49, 30, 65521, 655409, 26, 65533, 655408, 26, 65535, 48, 26, 65531, 49, 26, 1, 655409, 30, 65533, 655408, 30, 65535, 48, 30, 65531, 49, 30, 1, 655409, 26, 13, 655408, 26, 15, 48, 26, 11, 49, 26, 17, 655409, 30, 13, 655408, 30, 15, 48, 30, 11, 49, 30, 17, 655409, 65497, 65512, 1048630, 65497, 65520, 1048630, 65497, 65528, 1048630, 65497, 0, 1048630, 65520, 65507, 64, 65504, 29, 655415, 37, 65507, 63, 37, 29, 63, 65513, 65507, 63)
 }
 
-[node name="Lift" type="Marker3D" parent="Etage2" unique_id=1136958761]
+[node name="Lift" type="Marker3D" parent="Etage2" unique_id=408790780]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, -8, 0, 12.9)
 
-[node name="Liftdeur" type="Marker3D" parent="Etage2" unique_id=36524244]
+[node name="Liftdeur" type="Marker3D" parent="Etage2" unique_id=1437863735]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, -8, 0, 14.06)
 
-[node name="Persoon_1" type="Marker3D" parent="Etage2" unique_id=1941331920]
+[node name="Persoon_1" type="Marker3D" parent="Etage2" unique_id=1365448691]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 0, -10.5)
 metadata/role = "ambtenaar"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_2" type="Marker3D" parent="Etage2" unique_id=777322019]
+[node name="Persoon_2" type="Marker3D" parent="Etage2" unique_id=1641214302]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1, 0, -10.5)
 metadata/role = "ambtenaar"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_3" type="Marker3D" parent="Etage2" unique_id=1083087035]
+[node name="Persoon_3" type="Marker3D" parent="Etage2" unique_id=1183842528]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, -1, 0, -7.5)
 metadata/role = "ambtenaar"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_4" type="Marker3D" parent="Etage2" unique_id=767083443]
+[node name="Persoon_4" type="Marker3D" parent="Etage2" unique_id=267499824]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 0, -2.5)
 metadata/role = "ambtenaar"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_5" type="Marker3D" parent="Etage2" unique_id=171088784]
+[node name="Persoon_5" type="Marker3D" parent="Etage2" unique_id=1861153198]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, -3, 0, 0.5)
 metadata/role = "ambtenaar"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_6" type="Marker3D" parent="Etage2" unique_id=83601117]
+[node name="Persoon_6" type="Marker3D" parent="Etage2" unique_id=489553855]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 0, 5.5)
 metadata/role = "ambtenaar"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_7" type="Marker3D" parent="Etage2" unique_id=1608925393]
+[node name="Persoon_7" type="Marker3D" parent="Etage2" unique_id=472570208]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, -3, 0, 8.5)
 metadata/role = "ambtenaar"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_8" type="Marker3D" parent="Etage2" unique_id=504217496]
+[node name="Persoon_8" type="Marker3D" parent="Etage2" unique_id=2055565682]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1, 0, 5.5)
 metadata/role = "ambtenaar"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_9" type="Marker3D" parent="Etage2" unique_id=1885625493]
+[node name="Persoon_9" type="Marker3D" parent="Etage2" unique_id=1301152288]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, -1, 0, 8.5)
 metadata/role = "ambtenaar"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_10" type="Marker3D" parent="Etage2" unique_id=364150115]
+[node name="Persoon_10" type="Marker3D" parent="Etage2" unique_id=969219762]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 0, -10.5)
 metadata/role = "ambtenaar"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_11" type="Marker3D" parent="Etage2" unique_id=1040522605]
+[node name="Persoon_11" type="Marker3D" parent="Etage2" unique_id=752238143]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 7, 0, -7.5)
 metadata/role = "ambtenaar"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_12" type="Marker3D" parent="Etage2" unique_id=1394615995]
+[node name="Persoon_12" type="Marker3D" parent="Etage2" unique_id=990412872]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 0, -2.5)
 metadata/role = "ambtenaar"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_13" type="Marker3D" parent="Etage2" unique_id=482534896]
+[node name="Persoon_13" type="Marker3D" parent="Etage2" unique_id=1309824399]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 5, 0, 0.5)
 metadata/role = "ambtenaar"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_14" type="Marker3D" parent="Etage2" unique_id=1875283993]
+[node name="Persoon_14" type="Marker3D" parent="Etage2" unique_id=1447001267]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7, 0, -2.5)
 metadata/role = "ambtenaar"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_15" type="Marker3D" parent="Etage2" unique_id=1166762631]
+[node name="Persoon_15" type="Marker3D" parent="Etage2" unique_id=1359753797]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 0, 5.5)
 metadata/role = "ambtenaar"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_16" type="Marker3D" parent="Etage2" unique_id=684882482]
+[node name="Persoon_16" type="Marker3D" parent="Etage2" unique_id=264238382]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 5, 0, 8.5)
 metadata/role = "ambtenaar"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_17" type="Marker3D" parent="Etage2" unique_id=2075724658]
+[node name="Persoon_17" type="Marker3D" parent="Etage2" unique_id=492089107]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 7, 0, 8.5)
 metadata/role = "ambtenaar"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_18" type="Marker3D" parent="Etage2" unique_id=463411711]
+[node name="Persoon_18" type="Marker3D" parent="Etage2" unique_id=5332276]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 13, 0, -10.5)
 metadata/role = "ambtenaar"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_19" type="Marker3D" parent="Etage2" unique_id=653479138]
+[node name="Persoon_19" type="Marker3D" parent="Etage2" unique_id=1349528046]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15, 0, -10.5)
 metadata/role = "ambtenaar"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_20" type="Marker3D" parent="Etage2" unique_id=983052435]
+[node name="Persoon_20" type="Marker3D" parent="Etage2" unique_id=1756323778]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 15, 0, -7.5)
 metadata/role = "ambtenaar"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_21" type="Marker3D" parent="Etage2" unique_id=1977587476]
+[node name="Persoon_21" type="Marker3D" parent="Etage2" unique_id=1717417190]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 13, 0, -2.5)
 metadata/role = "ambtenaar"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_22" type="Marker3D" parent="Etage2" unique_id=126067074]
+[node name="Persoon_22" type="Marker3D" parent="Etage2" unique_id=1937131407]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 13, 0, 0.5)
 metadata/role = "ambtenaar"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_23" type="Marker3D" parent="Etage2" unique_id=1515551223]
+[node name="Persoon_23" type="Marker3D" parent="Etage2" unique_id=1005814525]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 13, 0, 5.5)
 metadata/role = "ambtenaar"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_24" type="Marker3D" parent="Etage2" unique_id=741305891]
+[node name="Persoon_24" type="Marker3D" parent="Etage2" unique_id=1712038646]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 13, 0, 8.5)
 metadata/role = "ambtenaar"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_25" type="Marker3D" parent="Etage2" unique_id=2025614709]
+[node name="Persoon_25" type="Marker3D" parent="Etage2" unique_id=315783072]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15, 0, 5.5)
 metadata/role = "ambtenaar"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_26" type="Marker3D" parent="Etage2" unique_id=206950490]
+[node name="Persoon_26" type="Marker3D" parent="Etage2" unique_id=716480501]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 15, 0, 8.5)
 metadata/role = "ambtenaar"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_27" type="Marker3D" parent="Etage2" unique_id=219696172]
+[node name="Persoon_27" type="Marker3D" parent="Etage2" unique_id=540043792]
 transform = Transform3D(-0.80901706, 0, 0.5877852, 0, 1, 0, -0.5877852, 0, -0.80901706, -15.5, 0, 12.8)
 metadata/role = "ambtenaar"
 metadata/sit = false
 metadata/seat = 0.0
 
-[node name="Persoon_28" type="Marker3D" parent="Etage2" unique_id=1830881822]
+[node name="Persoon_28" type="Marker3D" parent="Etage2" unique_id=1766506052]
 transform = Transform3D(-0.30901703, 0, 0.9510565, 0, 1, 0, -0.9510565, 0, -0.30901703, -16.6, 0, 12.4)
 metadata/role = "ambtenaar"
 metadata/sit = false
 metadata/seat = 0.0
 
-[node name="Bord_1" type="Marker3D" parent="Etage2" unique_id=430513337]
+[node name="Bord_1" type="Marker3D" parent="Etage2" unique_id=390126952]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, -16, 2.3, 14.6)
 metadata/text = "KOFFIE"
 
-[node name="Lamp1" type="OmniLight3D" parent="Etage2" unique_id=1509071077]
+[node name="Lamp1" type="OmniLight3D" parent="Etage2" unique_id=926110310]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -16, 3.6, -12)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp2" type="OmniLight3D" parent="Etage2" unique_id=1106430526]
+[node name="Lamp2" type="OmniLight3D" parent="Etage2" unique_id=187106731]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -16, 3.6, -4)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp3" type="OmniLight3D" parent="Etage2" unique_id=2011240374]
+[node name="Lamp3" type="OmniLight3D" parent="Etage2" unique_id=1493804317]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -16, 3.6, 4)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp4" type="OmniLight3D" parent="Etage2" unique_id=76699741]
+[node name="Lamp4" type="OmniLight3D" parent="Etage2" unique_id=1875955293]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -16, 3.6, 12)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp5" type="OmniLight3D" parent="Etage2" unique_id=652252644]
+[node name="Lamp5" type="OmniLight3D" parent="Etage2" unique_id=2119692994]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 3.6, -12)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp6" type="OmniLight3D" parent="Etage2" unique_id=459368322]
+[node name="Lamp6" type="OmniLight3D" parent="Etage2" unique_id=724806541]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 3.6, -4)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp7" type="OmniLight3D" parent="Etage2" unique_id=421451883]
+[node name="Lamp7" type="OmniLight3D" parent="Etage2" unique_id=165274883]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 3.6, 4)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp8" type="OmniLight3D" parent="Etage2" unique_id=8044809]
+[node name="Lamp8" type="OmniLight3D" parent="Etage2" unique_id=1867371749]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 3.6, 12)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp9" type="OmniLight3D" parent="Etage2" unique_id=570297740]
+[node name="Lamp9" type="OmniLight3D" parent="Etage2" unique_id=428250705]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.6, -12)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp10" type="OmniLight3D" parent="Etage2" unique_id=508651105]
+[node name="Lamp10" type="OmniLight3D" parent="Etage2" unique_id=1134714923]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.6, -4)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp11" type="OmniLight3D" parent="Etage2" unique_id=478585876]
+[node name="Lamp11" type="OmniLight3D" parent="Etage2" unique_id=528176626]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.6, 4)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp12" type="OmniLight3D" parent="Etage2" unique_id=1484752561]
+[node name="Lamp12" type="OmniLight3D" parent="Etage2" unique_id=935870673]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.6, 12)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp13" type="OmniLight3D" parent="Etage2" unique_id=1222465103]
+[node name="Lamp13" type="OmniLight3D" parent="Etage2" unique_id=304276492]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 3.6, -12)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp14" type="OmniLight3D" parent="Etage2" unique_id=1977656533]
+[node name="Lamp14" type="OmniLight3D" parent="Etage2" unique_id=1866162592]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 3.6, -4)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp15" type="OmniLight3D" parent="Etage2" unique_id=1108334533]
+[node name="Lamp15" type="OmniLight3D" parent="Etage2" unique_id=1448569521]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 3.6, 4)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp16" type="OmniLight3D" parent="Etage2" unique_id=2063881764]
+[node name="Lamp16" type="OmniLight3D" parent="Etage2" unique_id=25896278]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 3.6, 12)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp17" type="OmniLight3D" parent="Etage2" unique_id=1827112788]
+[node name="Lamp17" type="OmniLight3D" parent="Etage2" unique_id=1558773035]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16, 3.6, -12)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp18" type="OmniLight3D" parent="Etage2" unique_id=635496152]
+[node name="Lamp18" type="OmniLight3D" parent="Etage2" unique_id=2089013442]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16, 3.6, -4)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp19" type="OmniLight3D" parent="Etage2" unique_id=646804043]
+[node name="Lamp19" type="OmniLight3D" parent="Etage2" unique_id=131817832]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16, 3.6, 4)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp20" type="OmniLight3D" parent="Etage2" unique_id=1722864145]
+[node name="Lamp20" type="OmniLight3D" parent="Etage2" unique_id=1141338869]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16, 3.6, 12)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Etage3" type="Node3D" parent="." unique_id=317814977]
+[node name="Etage3" type="Node3D" parent="." unique_id=1734716107]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 240, 0, 0)
 
-[node name="Vloer" type="GridMap" parent="Etage3" unique_id=1993557746]
+[node name="Vloer" type="GridMap" parent="Etage3" unique_id=1295872969]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.125, 0)
 mesh_library = ExtResource("2_u8mmr")
 cell_size = Vector3(0.5, 0.5, 0.5)
@@ -1152,7 +1152,7 @@ data = {
 "cells": PackedInt32Array(65500, 65512, 73, 65500, 65520, 73, 65500, 65528, 73, 65500, 0, 73, 65500, 8, 73, 65500, 16, 73, 65500, 24, 73, 65508, 65512, 73, 65508, 65520, 73, 65508, 65528, 73, 65508, 0, 73, 65508, 8, 73, 65508, 16, 73, 65508, 24, 73, 65516, 65512, 73, 65516, 65520, 73, 65516, 65528, 73, 65516, 0, 73, 65516, 8, 73, 65516, 16, 73, 65516, 24, 73, 65524, 65512, 73, 65524, 65520, 73, 65524, 65528, 73, 65524, 0, 73, 65524, 8, 73, 65524, 16, 73, 65524, 24, 73, 65532, 65512, 73, 65532, 65520, 73, 65532, 65528, 73, 65532, 0, 73, 65532, 8, 73, 65532, 16, 73, 65532, 24, 73, 4, 65512, 73, 4, 65520, 73, 4, 65528, 73, 4, 0, 73, 4, 8, 73, 4, 16, 73, 4, 24, 73, 12, 65512, 73, 12, 65520, 73, 12, 65528, 73, 12, 0, 73, 12, 8, 73, 12, 16, 73, 12, 24, 73, 20, 65512, 73, 20, 65520, 73, 20, 65528, 73, 20, 0, 73, 20, 8, 73, 20, 16, 73, 20, 24, 73, 28, 65512, 73, 28, 65520, 73, 28, 65528, 73, 28, 0, 73, 28, 8, 73, 28, 16, 73, 28, 24, 73, 36, 65512, 73, 36, 65520, 73, 36, 65528, 73, 36, 0, 73, 36, 8, 73, 36, 16, 73, 36, 24, 73)
 }
 
-[node name="Inrichting" type="GridMap" parent="Etage3" unique_id=1671511550]
+[node name="Inrichting" type="GridMap" parent="Etage3" unique_id=857090857]
 mesh_library = ExtResource("2_u8mmr")
 cell_size = Vector3(0.5, 0.5, 0.5)
 cell_center_x = false
@@ -1162,194 +1162,194 @@ data = {
 "cells": PackedInt32Array(65520, 26, 655416, 65500, 28, 655419, 65500, 65508, 60, 65508, 28, 655419, 65508, 65508, 60, 65516, 28, 655419, 65516, 65508, 60, 65524, 28, 655419, 65524, 65508, 60, 65532, 28, 655419, 65532, 65508, 60, 4, 28, 655419, 4, 65508, 60, 12, 28, 655419, 12, 65508, 60, 20, 28, 655419, 20, 65508, 60, 28, 28, 655419, 28, 65508, 60, 36, 28, 655419, 36, 65508, 60, 65496, 65512, 1048635, 40, 65512, 1441852, 65496, 65520, 1048635, 40, 65520, 1441852, 65496, 65528, 1048635, 40, 65528, 1441852, 65496, 0, 1048635, 40, 0, 1441852, 65496, 8, 1048635, 40, 8, 1441852, 65496, 16, 1048635, 40, 16, 1441852, 65496, 24, 1048635, 40, 24, 1441852, 65532, 8, 51, 1, 8, 52, 7, 8, 52, 12, 8, 51, 17, 8, 52, 23, 8, 52, 28, 8, 51, 33, 8, 52, 39, 8, 52, 65528, 12, 1048627, 65528, 20, 1048627, 8, 12, 1048627, 8, 20, 1048627, 24, 12, 1048627, 24, 20, 1048627, 0, 16, 69, 65533, 14, 49, 65533, 19, 655409, 0, 14, 49, 0, 19, 655409, 3, 14, 49, 3, 19, 655409, 16, 16, 69, 13, 14, 49, 13, 19, 655409, 16, 14, 49, 16, 19, 655409, 19, 14, 49, 19, 19, 655409, 32, 16, 69, 29, 14, 49, 29, 19, 655409, 32, 14, 49, 32, 19, 655409, 35, 14, 49, 35, 19, 655409, 4, 65513, 54, 12, 65513, 54, 20, 65513, 54, 28, 65513, 54, 4, 65519, 655414, 12, 65519, 655414, 20, 65519, 655414, 28, 65519, 655414, 4, 65520, 54, 12, 65520, 54, 20, 65520, 54, 28, 65520, 54, 4, 65527, 54, 12, 65527, 54, 20, 65527, 54, 28, 65527, 54, 65500, 65509, 54, 65499, 65532, 1048640, 65523, 5, 63, 37, 2, 63)
 }
 
-[node name="Lift" type="Marker3D" parent="Etage3" unique_id=968257503]
+[node name="Lift" type="Marker3D" parent="Etage3" unique_id=802962290]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, -8, 0, 10.9)
 
-[node name="Liftdeur" type="Marker3D" parent="Etage3" unique_id=1660119691]
+[node name="Liftdeur" type="Marker3D" parent="Etage3" unique_id=503856632]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, -8, 0, 12.06)
 
-[node name="Persoon_1" type="Marker3D" parent="Etage3" unique_id=448011613]
+[node name="Persoon_1" type="Marker3D" parent="Etage3" unique_id=799422820]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.5, 0, 6.75)
 metadata/role = "ambtenaar"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_2" type="Marker3D" parent="Etage3" unique_id=895145829]
+[node name="Persoon_2" type="Marker3D" parent="Etage3" unique_id=21662571]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 6.75)
 metadata/role = "ambtenaar"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_3" type="Marker3D" parent="Etage3" unique_id=1038263491]
+[node name="Persoon_3" type="Marker3D" parent="Etage3" unique_id=150235854]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.5, 0, 6.75)
 metadata/role = "ambtenaar"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_4" type="Marker3D" parent="Etage3" unique_id=1997093222]
+[node name="Persoon_4" type="Marker3D" parent="Etage3" unique_id=1680018045]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, -1.5, 0, 9.25)
 metadata/role = "ambtenaar"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_5" type="Marker3D" parent="Etage3" unique_id=1699883618]
+[node name="Persoon_5" type="Marker3D" parent="Etage3" unique_id=2051095141]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 1.5, 0, 9.25)
 metadata/role = "ambtenaar"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_6" type="Marker3D" parent="Etage3" unique_id=646866245]
+[node name="Persoon_6" type="Marker3D" parent="Etage3" unique_id=592568363]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 9.5, 0, 9.25)
 metadata/role = "ambtenaar"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_7" type="Marker3D" parent="Etage3" unique_id=747130407]
+[node name="Persoon_7" type="Marker3D" parent="Etage3" unique_id=57012720]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 8, 0, -10)
 metadata/role = "ambtenaar"
 metadata/sit = false
 metadata/seat = 0.0
 
-[node name="Bord_1" type="Marker3D" parent="Etage3" unique_id=1472966454]
+[node name="Bord_1" type="Marker3D" parent="Etage3" unique_id=1056493499]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 0, 2.95, 3.9)
 metadata/text = "ZAAL HOFVIJVER"
 
-[node name="Bord_2" type="Marker3D" parent="Etage3" unique_id=764971507]
+[node name="Bord_2" type="Marker3D" parent="Etage3" unique_id=1092949411]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 8, 2.95, 3.9)
 metadata/text = "ZAAL SPUI"
 
-[node name="Bord_3" type="Marker3D" parent="Etage3" unique_id=1271146766]
+[node name="Bord_3" type="Marker3D" parent="Etage3" unique_id=313793795]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 16, 2.95, 3.9)
 metadata/text = "ZAAL PLEIN"
 
-[node name="Bord_4" type="Marker3D" parent="Etage3" unique_id=1379989350]
+[node name="Bord_4" type="Marker3D" parent="Etage3" unique_id=427020531]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 8, 2.8, -10)
 metadata/text = "ARCHIEF"
 
-[node name="Lamp1" type="OmniLight3D" parent="Etage3" unique_id=1888914029]
+[node name="Lamp1" type="OmniLight3D" parent="Etage3" unique_id=2086252222]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -16, 3.6, -10.5)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp2" type="OmniLight3D" parent="Etage3" unique_id=1230294882]
+[node name="Lamp2" type="OmniLight3D" parent="Etage3" unique_id=723101649]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -16, 3.6, -3.5)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp3" type="OmniLight3D" parent="Etage3" unique_id=263510694]
+[node name="Lamp3" type="OmniLight3D" parent="Etage3" unique_id=743975796]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -16, 3.6, 3.5)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp4" type="OmniLight3D" parent="Etage3" unique_id=566536855]
+[node name="Lamp4" type="OmniLight3D" parent="Etage3" unique_id=357364730]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -16, 3.6, 10.5)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp5" type="OmniLight3D" parent="Etage3" unique_id=1303084076]
+[node name="Lamp5" type="OmniLight3D" parent="Etage3" unique_id=226656524]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 3.6, -10.5)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp6" type="OmniLight3D" parent="Etage3" unique_id=1841842286]
+[node name="Lamp6" type="OmniLight3D" parent="Etage3" unique_id=802018760]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 3.6, -3.5)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp7" type="OmniLight3D" parent="Etage3" unique_id=2124464964]
+[node name="Lamp7" type="OmniLight3D" parent="Etage3" unique_id=1868102874]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 3.6, 3.5)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp8" type="OmniLight3D" parent="Etage3" unique_id=290884943]
+[node name="Lamp8" type="OmniLight3D" parent="Etage3" unique_id=1435764743]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 3.6, 10.5)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp9" type="OmniLight3D" parent="Etage3" unique_id=43427430]
+[node name="Lamp9" type="OmniLight3D" parent="Etage3" unique_id=1697557336]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.6, -10.5)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp10" type="OmniLight3D" parent="Etage3" unique_id=120168350]
+[node name="Lamp10" type="OmniLight3D" parent="Etage3" unique_id=1938613864]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.6, -3.5)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp11" type="OmniLight3D" parent="Etage3" unique_id=705584991]
+[node name="Lamp11" type="OmniLight3D" parent="Etage3" unique_id=1402700975]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.6, 3.5)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp12" type="OmniLight3D" parent="Etage3" unique_id=1069170693]
+[node name="Lamp12" type="OmniLight3D" parent="Etage3" unique_id=791128398]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.6, 10.5)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp13" type="OmniLight3D" parent="Etage3" unique_id=2143188149]
+[node name="Lamp13" type="OmniLight3D" parent="Etage3" unique_id=1169595270]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 3.6, -10.5)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp14" type="OmniLight3D" parent="Etage3" unique_id=997356476]
+[node name="Lamp14" type="OmniLight3D" parent="Etage3" unique_id=2145877089]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 3.6, -3.5)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp15" type="OmniLight3D" parent="Etage3" unique_id=2086025356]
+[node name="Lamp15" type="OmniLight3D" parent="Etage3" unique_id=68897085]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 3.6, 3.5)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp16" type="OmniLight3D" parent="Etage3" unique_id=2056534162]
+[node name="Lamp16" type="OmniLight3D" parent="Etage3" unique_id=1105662407]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 3.6, 10.5)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp17" type="OmniLight3D" parent="Etage3" unique_id=1073958344]
+[node name="Lamp17" type="OmniLight3D" parent="Etage3" unique_id=420217211]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16, 3.6, -10.5)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp18" type="OmniLight3D" parent="Etage3" unique_id=452938156]
+[node name="Lamp18" type="OmniLight3D" parent="Etage3" unique_id=1469025495]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16, 3.6, -3.5)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp19" type="OmniLight3D" parent="Etage3" unique_id=1718818847]
+[node name="Lamp19" type="OmniLight3D" parent="Etage3" unique_id=1198274104]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16, 3.6, 3.5)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp20" type="OmniLight3D" parent="Etage3" unique_id=148453362]
+[node name="Lamp20" type="OmniLight3D" parent="Etage3" unique_id=219983126]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16, 3.6, 10.5)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Etage4" type="Node3D" parent="." unique_id=391265185]
+[node name="Etage4" type="Node3D" parent="." unique_id=1883579914]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 320, 0, 0)
 
-[node name="Vloer" type="GridMap" parent="Etage4" unique_id=2074194231]
+[node name="Vloer" type="GridMap" parent="Etage4" unique_id=20498609]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.125, 0)
 mesh_library = ExtResource("2_u8mmr")
 cell_size = Vector3(0.5, 0.5, 0.5)
@@ -1360,7 +1360,7 @@ data = {
 "cells": PackedInt32Array(65512, 65512, 71, 65512, 65520, 71, 65512, 65528, 71, 65512, 0, 71, 65512, 8, 71, 65512, 16, 71, 65512, 24, 71, 65520, 65512, 71, 65520, 65520, 71, 65520, 65528, 71, 65520, 0, 71, 65520, 8, 71, 65520, 16, 71, 65520, 24, 71, 65528, 65512, 71, 65528, 65520, 71, 65528, 65528, 71, 65528, 0, 71, 65528, 8, 71, 65528, 16, 71, 65528, 24, 71, 0, 65512, 71, 0, 65520, 71, 0, 65528, 71, 0, 0, 71, 0, 8, 71, 0, 16, 71, 0, 24, 71, 8, 65512, 71, 8, 65520, 71, 8, 65528, 71, 8, 0, 71, 8, 8, 71, 8, 16, 71, 8, 24, 71, 16, 65512, 71, 16, 65520, 71, 16, 65528, 71, 16, 0, 71, 16, 8, 71, 16, 16, 71, 16, 24, 71, 24, 65512, 71, 24, 65520, 71, 24, 65528, 71, 24, 0, 71, 24, 8, 71, 24, 16, 71, 24, 24, 71)
 }
 
-[node name="Inrichting" type="GridMap" parent="Etage4" unique_id=257121012]
+[node name="Inrichting" type="GridMap" parent="Etage4" unique_id=960177762]
 mesh_library = ExtResource("2_u8mmr")
 cell_size = Vector3(0.5, 0.5, 0.5)
 cell_center_x = false
@@ -1370,7 +1370,7 @@ data = {
 "cells": PackedInt32Array(65520, 26, 655416, 65512, 28, 655419, 65512, 65508, 60, 65520, 65508, 60, 65528, 28, 655419, 65528, 65508, 60, 0, 28, 655419, 0, 65508, 60, 8, 28, 655419, 8, 65508, 60, 16, 28, 655419, 16, 65508, 60, 24, 28, 655419, 24, 65508, 60, 65508, 65512, 1048635, 28, 65512, 1441852, 65508, 65520, 1048635, 28, 65520, 1441852, 65508, 65528, 1048635, 28, 65528, 1441852, 65508, 0, 1048635, 28, 0, 1441852, 65508, 8, 1048635, 28, 8, 1441852, 65508, 16, 1048635, 28, 16, 1441852, 65508, 24, 1048635, 28, 24, 1441852, 0, 24, 655434, 65529, 27, 655430, 7, 27, 655430, 65523, 65535, 1048641, 13, 65535, 1441857, 65521, 65532, 1048625, 15, 65532, 1441841, 65521, 65535, 1048625, 15, 65535, 1441841, 65521, 2, 1048625, 15, 2, 1441841, 65523, 7, 1048641, 13, 7, 1441857, 65521, 4, 1048625, 15, 4, 1441841, 65521, 7, 1048625, 15, 7, 1441841, 65521, 10, 1048625, 15, 10, 1441841, 65523, 15, 1048641, 13, 15, 1441857, 65521, 12, 1048625, 15, 12, 1441841, 65521, 15, 1048625, 15, 15, 1441841, 65521, 18, 1048625, 15, 18, 1441841, 65528, 65529, 65, 65525, 65527, 49, 65528, 65527, 49, 65531, 65527, 49, 0, 65529, 65, 65533, 65527, 49, 0, 65527, 49, 3, 65527, 49, 8, 65529, 65, 5, 65527, 49, 8, 65527, 49, 11, 65527, 49, 65520, 65516, 68, 65528, 65516, 68, 0, 65516, 68, 8, 65516, 68, 16, 65516, 68)
 }
 
-[node name="Wand_180_145" type="GridMap" parent="Etage4" unique_id=1047741411]
+[node name="Wand_180_145" type="GridMap" parent="Etage4" unique_id=1354842233]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.2676303e-08, 0, -0.145)
 mesh_library = ExtResource("2_u8mmr")
 cell_size = Vector3(0.5, 0.5, 0.5)
@@ -1381,7 +1381,7 @@ data = {
 "cells": PackedInt32Array(196608, 28, 655436)
 }
 
-[node name="Wand_90_208" type="GridMap" parent="Etage4" unique_id=1200310307]
+[node name="Wand_90_208" type="GridMap" parent="Etage4" unique_id=1854646817]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.2075, 0, -9.070113e-09)
 mesh_library = ExtResource("2_u8mmr")
 cell_size = Vector3(0.5, 0.5, 0.5)
@@ -1392,312 +1392,446 @@ data = {
 "cells": PackedInt32Array(262116, 4, 1048643, 262116, 16, 1048643)
 }
 
-[node name="Lift" type="Marker3D" parent="Etage4" unique_id=1414061645]
+[node name="Lift" type="Marker3D" parent="Etage4" unique_id=534048928]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, -8, 0, 10.9)
 
-[node name="Liftdeur" type="Marker3D" parent="Etage4" unique_id=199139214]
+[node name="Liftdeur" type="Marker3D" parent="Etage4" unique_id=100479750]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, -8, 0, 12.06)
 
-[node name="Persoon_1" type="Marker3D" parent="Etage4" unique_id=1085786676]
+[node name="Persoon_1" type="Marker3D" parent="Etage4" unique_id=869433765]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 0, 0.25, 12.1)
 metadata/role = "burgemeester"
 metadata/sit = false
 metadata/seat = 0.0
 
-[node name="Persoon_2" type="Marker3D" parent="Etage4" unique_id=1354740326]
+[node name="Persoon_2" type="Marker3D" parent="Etage4" unique_id=271028395]
 transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -7.5, 0, -1.875)
 metadata/role = "raadslid"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_3" type="Marker3D" parent="Etage4" unique_id=670660082]
+[node name="Persoon_3" type="Marker3D" parent="Etage4" unique_id=1644880149]
 transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, 7.5, 0, -1.875)
 metadata/role = "raadslid"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_4" type="Marker3D" parent="Etage4" unique_id=896986857]
+[node name="Persoon_4" type="Marker3D" parent="Etage4" unique_id=423066328]
 transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -7.5, 0, -0.5)
 metadata/role = "raadslid"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_5" type="Marker3D" parent="Etage4" unique_id=1281895168]
+[node name="Persoon_5" type="Marker3D" parent="Etage4" unique_id=704948687]
 transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, 7.5, 0, -0.5)
 metadata/role = "raadslid"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_6" type="Marker3D" parent="Etage4" unique_id=1831882497]
+[node name="Persoon_6" type="Marker3D" parent="Etage4" unique_id=1703264423]
 transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -7.5, 0, 0.875)
 metadata/role = "raadslid"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_7" type="Marker3D" parent="Etage4" unique_id=391340352]
+[node name="Persoon_7" type="Marker3D" parent="Etage4" unique_id=1004808708]
 transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, 7.5, 0, 0.875)
 metadata/role = "raadslid"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_8" type="Marker3D" parent="Etage4" unique_id=253327747]
+[node name="Persoon_8" type="Marker3D" parent="Etage4" unique_id=198498042]
 transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -7.5, 0, 2.125)
 metadata/role = "raadslid"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_9" type="Marker3D" parent="Etage4" unique_id=1780380021]
+[node name="Persoon_9" type="Marker3D" parent="Etage4" unique_id=1072328539]
 transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, 7.5, 0, 2.125)
 metadata/role = "raadslid"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_10" type="Marker3D" parent="Etage4" unique_id=1054395681]
+[node name="Persoon_10" type="Marker3D" parent="Etage4" unique_id=311065303]
 transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -7.5, 0, 3.5)
 metadata/role = "raadslid"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_11" type="Marker3D" parent="Etage4" unique_id=284824254]
+[node name="Persoon_11" type="Marker3D" parent="Etage4" unique_id=1479830188]
 transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, 7.5, 0, 3.5)
 metadata/role = "raadslid"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_12" type="Marker3D" parent="Etage4" unique_id=139779706]
+[node name="Persoon_12" type="Marker3D" parent="Etage4" unique_id=1922943816]
 transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -7.5, 0, 4.875)
 metadata/role = "raadslid"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_13" type="Marker3D" parent="Etage4" unique_id=1879123406]
+[node name="Persoon_13" type="Marker3D" parent="Etage4" unique_id=1889347666]
 transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, 7.5, 0, 4.875)
 metadata/role = "raadslid"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_14" type="Marker3D" parent="Etage4" unique_id=1322145944]
+[node name="Persoon_14" type="Marker3D" parent="Etage4" unique_id=407639723]
 transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -7.5, 0, 6.125)
 metadata/role = "raadslid"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_15" type="Marker3D" parent="Etage4" unique_id=1787515150]
+[node name="Persoon_15" type="Marker3D" parent="Etage4" unique_id=1179016566]
 transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, 7.5, 0, 6.125)
 metadata/role = "raadslid"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_16" type="Marker3D" parent="Etage4" unique_id=777820596]
+[node name="Persoon_16" type="Marker3D" parent="Etage4" unique_id=588187510]
 transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -7.5, 0, 7.5)
 metadata/role = "raadslid"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_17" type="Marker3D" parent="Etage4" unique_id=1017911255]
+[node name="Persoon_17" type="Marker3D" parent="Etage4" unique_id=1545270924]
 transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, 7.5, 0, 7.5)
 metadata/role = "raadslid"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_18" type="Marker3D" parent="Etage4" unique_id=1458629255]
+[node name="Persoon_18" type="Marker3D" parent="Etage4" unique_id=1789420879]
 transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -7.5, 0, 8.875)
 metadata/role = "raadslid"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_19" type="Marker3D" parent="Etage4" unique_id=971505530]
+[node name="Persoon_19" type="Marker3D" parent="Etage4" unique_id=1975992465]
 transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, 7.5, 0, 8.875)
 metadata/role = "raadslid"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_20" type="Marker3D" parent="Etage4" unique_id=1793619582]
+[node name="Persoon_20" type="Marker3D" parent="Etage4" unique_id=584056267]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.375, 0, -4.5)
 metadata/role = "raadslid"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_21" type="Marker3D" parent="Etage4" unique_id=23702000]
+[node name="Persoon_21" type="Marker3D" parent="Etage4" unique_id=75049085]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 0, -4.5)
 metadata/role = "raadslid"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_22" type="Marker3D" parent="Etage4" unique_id=1548632680]
+[node name="Persoon_22" type="Marker3D" parent="Etage4" unique_id=1387771266]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.375, 0, -4.5)
 metadata/role = "raadslid"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_23" type="Marker3D" parent="Etage4" unique_id=1331248510]
+[node name="Persoon_23" type="Marker3D" parent="Etage4" unique_id=20578569]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -4.5)
 metadata/role = "raadslid"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_24" type="Marker3D" parent="Etage4" unique_id=917087833]
+[node name="Persoon_24" type="Marker3D" parent="Etage4" unique_id=876930532]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.375, 0, -4.5)
 metadata/role = "raadslid"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_25" type="Marker3D" parent="Etage4" unique_id=560900864]
+[node name="Persoon_25" type="Marker3D" parent="Etage4" unique_id=1227135302]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 0, -4.5)
 metadata/role = "raadslid"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_26" type="Marker3D" parent="Etage4" unique_id=772241486]
+[node name="Persoon_26" type="Marker3D" parent="Etage4" unique_id=1090032925]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.375, 0, -4.5)
 metadata/role = "raadslid"
 metadata/sit = true
 metadata/seat = 0.625
 
-[node name="Persoon_27" type="Marker3D" parent="Etage4" unique_id=549996229]
+[node name="Persoon_27" type="Marker3D" parent="Etage4" unique_id=373778091]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -9, 0, -9.25)
 metadata/role = "klant"
 metadata/sit = true
 metadata/seat = 0.5
 
-[node name="Persoon_28" type="Marker3D" parent="Etage4" unique_id=61827442]
+[node name="Persoon_28" type="Marker3D" parent="Etage4" unique_id=584769662]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.4, 0, -10.25)
 metadata/role = "klant"
 metadata/sit = true
 metadata/seat = 0.75
 
-[node name="Persoon_29" type="Marker3D" parent="Etage4" unique_id=894699755]
+[node name="Persoon_29" type="Marker3D" parent="Etage4" unique_id=1439404915]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.8, 0, -9.25)
 metadata/role = "klant"
 metadata/sit = true
 metadata/seat = 0.5
 
-[node name="Persoon_30" type="Marker3D" parent="Etage4" unique_id=987712683]
+[node name="Persoon_30" type="Marker3D" parent="Etage4" unique_id=1266307434]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.2, 0, -10.25)
 metadata/role = "klant"
 metadata/sit = true
 metadata/seat = 0.75
 
-[node name="Persoon_31" type="Marker3D" parent="Etage4" unique_id=1667315684]
+[node name="Persoon_31" type="Marker3D" parent="Etage4" unique_id=685127614]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.4, 0, -9.25)
 metadata/role = "klant"
 metadata/sit = true
 metadata/seat = 0.5
 
-[node name="Persoon_32" type="Marker3D" parent="Etage4" unique_id=957821997]
+[node name="Persoon_32" type="Marker3D" parent="Etage4" unique_id=2012762457]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 0, -10.25)
 metadata/role = "klant"
 metadata/sit = true
 metadata/seat = 0.75
 
-[node name="Persoon_33" type="Marker3D" parent="Etage4" unique_id=141404346]
+[node name="Persoon_33" type="Marker3D" parent="Etage4" unique_id=341993408]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.6, 0, -9.25)
 metadata/role = "klant"
 metadata/sit = true
 metadata/seat = 0.5
 
-[node name="Persoon_34" type="Marker3D" parent="Etage4" unique_id=725782373]
+[node name="Persoon_34" type="Marker3D" parent="Etage4" unique_id=1478596560]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9.2, 0, -10.25)
 metadata/role = "klant"
 metadata/sit = true
 metadata/seat = 0.75
 
-[node name="Bord_1" type="Marker3D" parent="Etage4" unique_id=938794393]
+[node name="Bord_1" type="Marker3D" parent="Etage4" unique_id=249313669]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 0, 3.4, -8.9)
 metadata/text = "PUBLIEKE TRIBUNE"
 
-[node name="Lamp1" type="OmniLight3D" parent="Etage4" unique_id=1540500868]
+[node name="Lamp1" type="OmniLight3D" parent="Etage4" unique_id=2111620674]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10.5, 3.6, -10.5)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp2" type="OmniLight3D" parent="Etage4" unique_id=1186803368]
+[node name="Lamp2" type="OmniLight3D" parent="Etage4" unique_id=1354011210]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10.5, 3.6, -3.5)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp3" type="OmniLight3D" parent="Etage4" unique_id=394437759]
+[node name="Lamp3" type="OmniLight3D" parent="Etage4" unique_id=1871579297]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10.5, 3.6, 3.5)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp4" type="OmniLight3D" parent="Etage4" unique_id=660011796]
+[node name="Lamp4" type="OmniLight3D" parent="Etage4" unique_id=661813003]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10.5, 3.6, 10.5)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp5" type="OmniLight3D" parent="Etage4" unique_id=1371507552]
+[node name="Lamp5" type="OmniLight3D" parent="Etage4" unique_id=1543000961]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.5, 3.6, -10.5)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp6" type="OmniLight3D" parent="Etage4" unique_id=30298221]
+[node name="Lamp6" type="OmniLight3D" parent="Etage4" unique_id=2025915408]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.5, 3.6, -3.5)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp7" type="OmniLight3D" parent="Etage4" unique_id=1469681083]
+[node name="Lamp7" type="OmniLight3D" parent="Etage4" unique_id=161871041]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.5, 3.6, 3.5)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp8" type="OmniLight3D" parent="Etage4" unique_id=65165433]
+[node name="Lamp8" type="OmniLight3D" parent="Etage4" unique_id=288843104]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.5, 3.6, 10.5)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp9" type="OmniLight3D" parent="Etage4" unique_id=1230783571]
+[node name="Lamp9" type="OmniLight3D" parent="Etage4" unique_id=1114127787]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.5, 3.6, -10.5)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp10" type="OmniLight3D" parent="Etage4" unique_id=789872041]
+[node name="Lamp10" type="OmniLight3D" parent="Etage4" unique_id=374151307]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.5, 3.6, -3.5)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp11" type="OmniLight3D" parent="Etage4" unique_id=1483347310]
+[node name="Lamp11" type="OmniLight3D" parent="Etage4" unique_id=870988004]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.5, 3.6, 3.5)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp12" type="OmniLight3D" parent="Etage4" unique_id=2024271047]
+[node name="Lamp12" type="OmniLight3D" parent="Etage4" unique_id=250890563]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.5, 3.6, 10.5)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp13" type="OmniLight3D" parent="Etage4" unique_id=885381156]
+[node name="Lamp13" type="OmniLight3D" parent="Etage4" unique_id=297361177]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10.5, 3.6, -10.5)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp14" type="OmniLight3D" parent="Etage4" unique_id=1823307602]
+[node name="Lamp14" type="OmniLight3D" parent="Etage4" unique_id=1509686532]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10.5, 3.6, -3.5)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp15" type="OmniLight3D" parent="Etage4" unique_id=1935901110]
+[node name="Lamp15" type="OmniLight3D" parent="Etage4" unique_id=528520464]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10.5, 3.6, 3.5)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0
 
-[node name="Lamp16" type="OmniLight3D" parent="Etage4" unique_id=900821446]
+[node name="Lamp16" type="OmniLight3D" parent="Etage4" unique_id=415226651]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10.5, 3.6, 10.5)
+light_color = Color(1, 0.9647059, 0.9098039, 1)
+light_energy = 1.2
+omni_range = 10.0
+
+[node name="Etage5" type="Node3D" parent="." unique_id=2110705260]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 400, 0, 0)
+
+[node name="Vloer" type="GridMap" parent="Etage5" unique_id=1832159561]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.125, 0)
+mesh_library = ExtResource("2_u8mmr")
+cell_size = Vector3(0.5, 0.5, 0.5)
+cell_center_x = false
+cell_center_y = false
+cell_center_z = false
+data = {
+"cells": PackedInt32Array(65500, 65516, 72, 65500, 65524, 72, 65500, 65532, 72, 65500, 4, 72, 65500, 12, 72, 65500, 20, 72, 65508, 65516, 72, 65508, 65524, 72, 65508, 65532, 72, 65508, 4, 72, 65508, 12, 72, 65508, 20, 72, 65516, 65516, 72, 65516, 65524, 72, 65516, 65532, 72, 65516, 4, 72, 65516, 12, 72, 65516, 20, 72, 65524, 65516, 72, 65524, 65524, 72, 65524, 65532, 72, 65524, 4, 72, 65524, 12, 72, 65524, 20, 72, 65532, 65516, 72, 65532, 65524, 72, 65532, 65532, 72, 65532, 4, 72, 65532, 12, 72, 65532, 20, 72, 4, 65516, 72, 4, 65524, 72, 4, 65532, 72, 4, 4, 72, 4, 12, 72, 4, 20, 72, 12, 65516, 72, 12, 65524, 72, 12, 65532, 72, 12, 4, 72, 12, 12, 72, 12, 20, 72, 20, 65516, 72, 20, 65524, 72, 20, 65532, 72, 20, 4, 72, 20, 12, 72, 20, 20, 72, 28, 65516, 72, 28, 65524, 72, 28, 65532, 72, 28, 4, 72, 28, 12, 72, 28, 20, 72, 36, 65516, 72, 36, 65524, 72, 36, 65532, 72, 36, 4, 72, 36, 12, 72, 36, 20, 72)
+}
+
+[node name="Inrichting" type="GridMap" parent="Etage5" unique_id=753880017]
+mesh_library = ExtResource("2_u8mmr")
+cell_size = Vector3(0.5, 0.5, 0.5)
+cell_center_x = false
+cell_center_y = false
+cell_center_z = false
+data = {
+"cells": PackedInt32Array(65520, 22, 655416, 65500, 24, 655419, 65500, 65512, 60, 65508, 24, 655419, 65508, 65512, 60, 65516, 24, 655419, 65516, 65512, 60, 65524, 24, 655419, 65524, 65512, 60, 65532, 24, 655419, 65532, 65512, 60, 4, 24, 655419, 4, 65512, 60, 12, 24, 655419, 12, 65512, 60, 20, 24, 655419, 20, 65512, 60, 28, 24, 655419, 28, 65512, 60, 36, 24, 655419, 36, 65512, 60, 65496, 65516, 1048635, 40, 65516, 1441852, 65496, 65524, 1048635, 40, 65524, 1441852, 65496, 65532, 1048635, 40, 65532, 1441852, 65496, 4, 1048635, 40, 4, 1441852, 65496, 12, 1048635, 40, 12, 1441852, 65496, 20, 1048635, 40, 20, 1441852, 65508, 65520, 141, 65513, 65520, 141, 65532, 65520, 141, 1, 65520, 141, 6, 65520, 141, 11, 65520, 141, 65508, 65528, 141, 65513, 65528, 141, 65532, 65528, 141, 1, 65528, 141, 6, 65528, 141, 11, 65528, 141, 65508, 0, 141, 65513, 0, 141, 65532, 0, 141, 1, 0, 141, 6, 0, 141, 11, 0, 141, 65508, 8, 141, 65513, 8, 141, 65532, 8, 141, 1, 8, 141, 6, 8, 141, 11, 8, 141, 65497, 65518, 1048630, 65497, 65522, 1048630, 65497, 65526, 1048630, 65497, 65530, 1048630, 65497, 65534, 1048630, 65497, 2, 1048630, 65497, 6, 1048630, 65497, 10, 1048630, 65497, 14, 1048630, 32, 65518, 48, 32, 65516, 49, 38, 65523, 1441847, 38, 65519, 139, 38, 8, 1441856, 39, 16, 1441846)
+}
+
+[node name="Lift" type="Marker3D" parent="Etage5" unique_id=2047178108]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, -8, 0, 8.9)
+
+[node name="Liftdeur" type="Marker3D" parent="Etage5" unique_id=39805981]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, -8, 0, 10.06)
+
+[node name="Persoon_1" type="Marker3D" parent="Etage5" unique_id=1908147912]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -16.5, 0, -10)
+metadata/role = "concierge"
+metadata/sit = false
+metadata/seat = 0.0
+
+[node name="Bord_1" type="Marker3D" parent="Etage5" unique_id=1531702403]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, -6.5, 2.4, 11.8)
+metadata/text = "OPSLAG"
+
+[node name="Bord_2" type="Marker3D" parent="Etage5" unique_id=554757467]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16, 2.4, -11.8)
+metadata/text = "CONCIERGE"
+
+[node name="Lamp1" type="OmniLight3D" parent="Etage5" unique_id=835776770]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -16, 3.6, -8)
+light_color = Color(1, 0.9647059, 0.9098039, 1)
+light_energy = 1.2
+omni_range = 10.0
+
+[node name="Lamp2" type="OmniLight3D" parent="Etage5" unique_id=1541595474]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -16, 3.6, 0)
+light_color = Color(1, 0.9647059, 0.9098039, 1)
+light_energy = 1.2
+omni_range = 10.0
+
+[node name="Lamp3" type="OmniLight3D" parent="Etage5" unique_id=332443594]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -16, 3.6, 8)
+light_color = Color(1, 0.9647059, 0.9098039, 1)
+light_energy = 1.2
+omni_range = 10.0
+
+[node name="Lamp4" type="OmniLight3D" parent="Etage5" unique_id=1737258678]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 3.6, -8)
+light_color = Color(1, 0.9647059, 0.9098039, 1)
+light_energy = 1.2
+omni_range = 10.0
+
+[node name="Lamp5" type="OmniLight3D" parent="Etage5" unique_id=1926033123]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 3.6, 0)
+light_color = Color(1, 0.9647059, 0.9098039, 1)
+light_energy = 1.2
+omni_range = 10.0
+
+[node name="Lamp6" type="OmniLight3D" parent="Etage5" unique_id=1364494806]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 3.6, 8)
+light_color = Color(1, 0.9647059, 0.9098039, 1)
+light_energy = 1.2
+omni_range = 10.0
+
+[node name="Lamp7" type="OmniLight3D" parent="Etage5" unique_id=1063006036]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.6, -8)
+light_color = Color(1, 0.9647059, 0.9098039, 1)
+light_energy = 1.2
+omni_range = 10.0
+
+[node name="Lamp8" type="OmniLight3D" parent="Etage5" unique_id=456674367]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.6, 0)
+light_color = Color(1, 0.9647059, 0.9098039, 1)
+light_energy = 1.2
+omni_range = 10.0
+
+[node name="Lamp9" type="OmniLight3D" parent="Etage5" unique_id=1461519254]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.6, 8)
+light_color = Color(1, 0.9647059, 0.9098039, 1)
+light_energy = 1.2
+omni_range = 10.0
+
+[node name="Lamp10" type="OmniLight3D" parent="Etage5" unique_id=1736041739]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 3.6, -8)
+light_color = Color(1, 0.9647059, 0.9098039, 1)
+light_energy = 1.2
+omni_range = 10.0
+
+[node name="Lamp11" type="OmniLight3D" parent="Etage5" unique_id=1694994535]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 3.6, 0)
+light_color = Color(1, 0.9647059, 0.9098039, 1)
+light_energy = 1.2
+omni_range = 10.0
+
+[node name="Lamp12" type="OmniLight3D" parent="Etage5" unique_id=207023514]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 3.6, 8)
+light_color = Color(1, 0.9647059, 0.9098039, 1)
+light_energy = 1.2
+omni_range = 10.0
+
+[node name="Lamp13" type="OmniLight3D" parent="Etage5" unique_id=732019091]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16, 3.6, -8)
+light_color = Color(1, 0.9647059, 0.9098039, 1)
+light_energy = 1.2
+omni_range = 10.0
+
+[node name="Lamp14" type="OmniLight3D" parent="Etage5" unique_id=376884276]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16, 3.6, 0)
+light_color = Color(1, 0.9647059, 0.9098039, 1)
+light_energy = 1.2
+omni_range = 10.0
+
+[node name="Lamp15" type="OmniLight3D" parent="Etage5" unique_id=1554562433]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16, 3.6, 8)
 light_color = Color(1, 0.9647059, 0.9098039, 1)
 light_energy = 1.2
 omni_range = 10.0

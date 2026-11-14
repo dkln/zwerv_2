@@ -40,7 +40,7 @@ var _bend_outsides := []   # the outside cell of every bend in a street, see _ro
 ## The neighbourhoods of the map for the HUD (where the player is): name and first and last
 ## column and row (cells), the first that holds a spot wins (so the small ones come first).
 const WIJKEN := [
-	["Paleis Noordeinde", 15, 12, 20, 21], ["Lange Voorhout", 26, 7, 47, 28], ["Grote Markt", 10, 61, 22, 70],
+	["Paleistuin", 8, 8, 14, 19], ["Koninklijke Stallen", 8, 20, 13, 27], ["Plein", 51, 32, 58, 51], ["Paleis Noordeinde", 15, 12, 20, 21], ["Lange Voorhout", 26, 7, 47, 28], ["Grote Markt", 10, 61, 22, 70],
 	["Centraal Station", 72, 61, 94, 77], ["De Resident", 75, 78, 97, 91], ["Malieveld", 72, 32, 87, 56],
 	["Koekamp", 88, 32, 97, 56], ["Bezuidenhout", 98, 18, 127, 57], ["Beatrixkwartier", 98, 58, 127, 91],
 	["Bezuidenhout-Oost", 128, 58, 175, 91], ["Prins Clauslaan", 128, 0, 175, 17], ["Schilderswijk", 0, 109, 68, 175],

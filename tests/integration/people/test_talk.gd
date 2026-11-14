@@ -79,7 +79,7 @@ func test_every_babble_sound_is_there(test) -> void:
 	for mood: String in Babble.MOODS:
 		for voice: String in Babble.VOICES:
 			var sound_name := "brabbel_%s_%s_1" % [voice, mood]
-			if not ResourceLoader.exists(Babble.FOLDER + sound_name + ".ogg"):
+			if not ResourceLoader.exists(Babble.SoundFiles.path_of(sound_name)):
 				missing.append(sound_name)
 	test.check(missing.is_empty(), "alle brabbelgeluiden er%s" % ("" if missing.is_empty() else " (geen %s)" % ", ".join(missing)))
 

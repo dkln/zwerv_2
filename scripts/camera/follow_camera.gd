@@ -197,8 +197,14 @@ var _arrival_clock := -1.0           # seconds into the arrival (< 0: waiting fo
 var _arriving := false               # the arrival is still to come or going on
 var _clouds: Node                    # the cloud layer of the arrival
 var _buildings: GridMap
-## Turned by the player only (CameraTurning, the settings): no turning by itself.
+## Turned by the player only (CameraTurning, the settings): no turning by itself, no looking
+## down steeper; and the player zooms too (user_zoom: + / -, the mouse wheel, the right stick
+## up and down; ZOOM_STEP a press, between ZOOM_MOST.x and .y times the view).
 var manual_turning := false
+var user_zoom := 1.0
+var _user_zoom_now := 1.0
+const ZOOM_STEP := 1.15
+const ZOOM_MOST := Vector2(0.5, 2.0)
 var _turn := 0.0                     # degrees the view is turned from Iso.ROTATION.y now
 var _turn_velocity := 0.0
 var _turn_goal := 0.0                # degrees it turns to
@@ -446,7 +452,9 @@ func _process(delta: float) -> void:
 		_focus = target_position
 		_focus_velocity = Vector3.ZERO
 		_glide_over_left = 0.0
-	var view_size := lerpf(_zoom, closeup_zoom, closeness)
+	# the player's own zoom (turned by hand), gliding there
+	_user_zoom_now = lerpf(_user_zoom_now, user_zoom if manual_turning and not _indoors else 1.0, 1.0 - exp(-delta * 8.0))
+	var view_size := lerpf(_zoom, closeup_zoom, closeness) * _user_zoom_now
 	var way_to_go := _glide_over_from * smoothstep(0.0, 1.0, _glide_over_left / maxf(switch_time, 0.01))
 	_view_focus = _focus + way_to_go
 	_advance_turn(target_position, view_size, delta)
@@ -522,7 +530,8 @@ func _choose_turn(target_position: Vector3, view_size: float) -> void:
 	# buildings still before the player in this view for a while: look down steeper
 	var hidden := _hidden_points(target_position, _turn_goal, Iso.distance(view_size))
 	_hidden_for = _hidden_for + turn_check_interval if hidden > 0 else 0.0
-	if _steep_goal < 0.5 and _hidden_for >= (turn_after * 2.0 if turn_to_streets else top_down_after):
+	# turned by hand: no looking down steeper either (the player chooses the view)
+	if not manual_turning and _steep_goal < 0.5 and _hidden_for >= (turn_after * 2.0 if turn_to_streets else top_down_after):
 		_steep_goal = 1.0
 	elif _steep_goal > 0.5 and hidden == 0:
 		_usual_free_for += turn_check_interval
@@ -555,9 +564,22 @@ func turn_back() -> void:
 	_turn_held_for = 0.0
 
 
+## The player zooms in (`steps` < 0) or out (> 0), when the view is the player's (manual_turning).
+func zoom_by(steps: int) -> void:
+	if not manual_turning:
+		return
+	user_zoom = clampf(user_zoom * pow(ZOOM_STEP, steps), ZOOM_MOST.x, ZOOM_MOST.y)
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if not manual_turning or get_tree().paused:
 		return
+	if event is InputEventMouseButton and event.pressed:
+		var wheel := (event as InputEventMouseButton).button_index
+		if wheel == MOUSE_BUTTON_WHEEL_UP or wheel == MOUSE_BUTTON_WHEEL_DOWN:
+			zoom_by(-1 if wheel == MOUSE_BUTTON_WHEEL_UP else 1)
+			get_viewport().set_input_as_handled()
+			return
 	if event is InputEventKey and event.pressed and not event.echo:
 		var key := (event as InputEventKey).physical_keycode
 		if key == CameraTurning.KEY_LEFT_TURN:
@@ -568,6 +590,12 @@ func _unhandled_input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 		elif key == CameraTurning.KEY_TURN_BACK:
 			turn_back()
+			get_viewport().set_input_as_handled()
+		elif key in CameraTurning.KEYS_ZOOM_IN:
+			zoom_by(-1)
+			get_viewport().set_input_as_handled()
+		elif key in CameraTurning.KEYS_ZOOM_OUT:
+			zoom_by(1)
 			get_viewport().set_input_as_handled()
 
 

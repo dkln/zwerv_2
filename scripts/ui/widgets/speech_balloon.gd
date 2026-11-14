@@ -23,14 +23,14 @@ const UiStyle = preload("res://scripts/ui/ui_style.gd")
 const Typewriter = preload("res://scripts/ui/widgets/typewriter.gd")
 
 ## The widest the text runs before it wraps (px), the font size, the padding.
-const MAX_TEXT_WIDTH := 320.0
-const TEXT_SIZE := 18
-const PADDING := Vector2(12, 8)
+const MAX_TEXT_WIDTH := 270.0
+const TEXT_SIZE := 15
+const PADDING := Vector2(10, 6)
 ## How far the darker copy under the balloon sits lower (px).
-const BALLOON_DEPTH := 4
+const BALLOON_DEPTH := 3
 ## The tail: how high and how wide at the panel.
-const TAIL_HEIGHT := 12.0
-const TAIL_WIDTH := 14.0
+const TAIL_HEIGHT := 10.0
+const TAIL_WIDTH := 12.0
 const BORDER_WIDTH := 2
 ## The space between wrapped rows (px).
 const LINE_SEPARATION := 4

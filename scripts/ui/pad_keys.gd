@@ -12,6 +12,7 @@ extends Node
 ##     right trigger or L3  Shift (run)       Start  Escape (pause)   Back  Tab (game menu)
 ##     right stick left / right  Z / X (turn the view, when it is turned by hand: CameraTurning)
 ##     right stick pressed (R3)  C (the view back to the usual one)
+##     right stick up / down     + / - (zoom in / out, when the view is turned by hand)
 ## A key made from a button carries the meta FROM_PAD, so a screen can tell (PadInput.is_pad).
 ## What handles the controller itself (the machines' cursor: machine_screen.gd) takes the
 ## button first, and then nothing is made of it here. Godot's own ui_* actions lose their
@@ -118,6 +119,20 @@ func _motion(event: InputEventJoypadMotion) -> void:
 		elif _trigger_held and value < LET_GO_AT:
 			_trigger_held = false
 			_send(KEY_SHIFT, false)
+		return
+	if event.axis == JOY_AXIS_RIGHT_Y:
+		# the right stick up and down zooms (in the town)
+		for side: String in ["-", "+"]:
+			var direction := "ry" + side
+			var pushed := (value < -PRESS_AT) if side == "-" else (value > PRESS_AT)
+			var released := (value > -LET_GO_AT) if side == "-" else (value < LET_GO_AT)
+			if pushed and not _stick_pressed.get(direction, false) and not menu_context():
+				_stick_pressed[direction] = true
+				last_was_pad = true
+				_send(KEY_EQUAL if side == "-" else KEY_MINUS, true)
+			elif released and _stick_pressed.get(direction, false):
+				_stick_pressed[direction] = false
+				_send(KEY_EQUAL if side == "-" else KEY_MINUS, false)
 		return
 	if event.axis == JOY_AXIS_RIGHT_X:
 		# the right stick turns the view (in the town)

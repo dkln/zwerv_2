@@ -9,6 +9,7 @@ extends "res://tests/integration/support/town_test.gd"
 ##   tests/run_integration_tests.sh spatial_audio
 
 const Babble = preload("res://scripts/audio/babble.gd")
+const SoundFiles = preload("res://scripts/audio/sound_files.gd")
 const PlayerController = preload("res://scripts/player/player_controller.gd")
 ## Where the code that plays sounds is looked for (every script under it).
 const SCRIPTS_FOLDER := "res://scripts/"
@@ -122,12 +123,9 @@ func test_every_sound_is_imported_loads_and_is_used(test) -> void:
 	var not_imported: Array[String] = []
 	var broken: Array[String] = []
 	var count := 0
-	for file_name in DirAccess.get_files_at(spatial.SOUND_FOLDER):
-		if not file_name.ends_with(".ogg"):
-			continue
+	for sound_name: String in SoundFiles.all_names():   # every category folder (SoundFiles)
 		count += 1
-		var sound_name := file_name.get_basename()
-		if not ResourceLoader.exists(spatial.SOUND_FOLDER + file_name):
+		if not ResourceLoader.exists(SoundFiles.path_of(sound_name)):
 			not_imported.append(sound_name)
 		var stream: AudioStream = spatial._stream(sound_name, false)
 		if stream == null or stream.get_length() <= 0.0:
@@ -146,7 +144,7 @@ func test_every_voice_has_its_cries_of_pain(test) -> void:
 	var spatial := await _spatial()
 	for voice in _voices():
 		for cry: String in _cries():
-			test.check(FileAccess.file_exists(spatial.SOUND_FOLDER + "pijn_%s_%s.ogg" % [voice, cry]), "kreet pijn_%s_%s bestaat" % [voice, cry])
+			test.check(FileAccess.file_exists(SoundFiles.path_of("pijn_%s_%s" % [voice, cry])), "kreet pijn_%s_%s bestaat" % [voice, cry])
 
 
 ## A fast car heading straight for the ear (the ear put 10 m in front of it) gets its

@@ -13,6 +13,7 @@ extends RefCounted
 ##   Babble.play_at(vehicle.global_position, "man", "boos")   # in the world
 
 const FOLDER := "res://assets/audio/geluiden/"
+const SoundFiles = preload("res://scripts/audio/sound_files.gd")
 const VOICES := ["man", "oude_man", "vrouw"]
 ## Voices of one person only (a character's "stem", data/gesprekken/personages.json): never handed
 ## out to anyone else (DriverShout.voice_of picks from VOICES).
@@ -62,7 +63,7 @@ static func word_at(text: String, index: int) -> String:
 ## Plays babble on `owner` (not in the world; it plays while the game stands still too);
 ## returns the player (freed when done), or null when the sound is missing.
 static func play_near(owner: Node, voice: String, mood: String, word := "") -> AudioStreamPlayer:
-	var path := FOLDER + sound_name(voice, mood, word) + ".ogg"
+	var path := SoundFiles.path_of(sound_name(voice, mood, word))   # brabbel/<voice>/
 	if owner == null:
 		return null
 	var stream: AudioStream = null

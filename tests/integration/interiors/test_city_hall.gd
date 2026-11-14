@@ -56,6 +56,10 @@ func _ride_and_check(test, hall: Node3D, number: int) -> void:
 			test.check(at_desks.size() >= 12, "  de kantoortuin bemand (%d)" % at_desks.size())
 		4:
 			test.check(not _people_with_role(floor_node, "burgemeester").is_empty(), "  de burgemeester in de raadzaal")
+		Layout.BASEMENT:
+			test.check(not _people_with_role(floor_node, "concierge").is_empty(), "  de conciërge in de kelder")
+			var display: Node3D = floor_node.get_node_or_null("Etagedisplay")
+			test.check(display != null and (display.get_node("Tekst") as Label3D).text == "K", "  boven de liftdeur: K")
 
 
 ## The way in is the glass door of the atrium on the Spuiplein (under the letters STADHUIS,
@@ -102,7 +106,8 @@ func test_lift_asks_which_floor(test) -> void:
 	use_prompt()
 	await frames(1)
 	var box: Control = hud._story_box
-	test.check(box.is_showing() and box._current_choices().size() == 5, "de lift vraagt welke etage (5 keuzes)")
+	test.check(box.is_showing() and box._current_choices().size() == 6, "de lift vraagt welke etage (6 keuzes, ook de kelder)")
+	test.check(String(box._current_choices()[Layout.BASEMENT]).begins_with("Kelder"), "de kelder: %s" % box._current_choices()[Layout.BASEMENT])
 	print("  ", box._current_choices())
 	# the question away without choosing a floor
 	box.hide()
@@ -152,7 +157,7 @@ func test_every_floor_is_shown_with_its_people(test) -> void:
 	test.check(hall != null, "binnen in het stadhuis")
 	if hall == null:
 		return
-	for floor_number: int in [2, 1, 4, 2, 3, 0]:
+	for floor_number: int in [2, 1, 4, 2, 3, Layout.BASEMENT, 0]:
 		await _ride_and_check(test, hall, floor_number)
 
 
@@ -194,6 +199,13 @@ func test_taking_a_number_at_burgerzaken(test) -> void:
 	counter.clock = 0.0
 	await frames(3)
 	test.check(counter.state == "lopen" and counter.visitor == visitor, "een bezoeker wordt omgeroepen (%s)" % counter.state)
+	var now_label := hall._now_board.get_node("Tekst") as Label3D if hall._now_board else null
+	test.check(now_label != null and now_label.text.contains("LOKET %d" % int(counter.number)), "het grote bord: %s" % (now_label.text if now_label else "geen"))
+	test.check(hall._announcer != null and hall._announcer.is_speaking(), "en het wordt omgeroepen (de omroep)")
+	# the clerk is talked to from before the counter (where the visitor stands)
+	var clerk_there: InteriorPerson = counter.clerk
+	test.check(clerk_there.talk_position().distance_to(counter.stand) <= clerk_there.reach() + 0.3,
+		"de medewerker is van voor de balie aan te spreken (%.1f m, reikwijdte %.1f)" % [clerk_there.talk_position().distance_to(counter.stand), clerk_there.reach()])
 	test.check(hall.waiting_board_lines()[1].ends_with("→ %d" % int(counter.number)), "het bord: %s" % hall.waiting_board_lines()[1])
 	await seconds(4.0)
 	test.check(visitor.global_position.distance_to(seat_at) > 1.0, "hij loopt naar het loket (%.1f m)" % visitor.global_position.distance_to(seat_at))
@@ -249,3 +261,23 @@ func test_down_again_and_out_of_the_door(test) -> void:
 	await use_door()
 	test.check(not interiors.is_inside() and player.global_position.distance_to(way_in.door) < 2.0, "weer buiten op het Spui")
 	test.check(int(player.inventory.get("wachtnummer", 0)) == 0 and hall.player_ticket() == 0, "het nummertje is weg als je naar buiten loopt")
+
+
+## The basement: down in the lift (the display counting down to K), the storage, and the
+## caretaker going round with his cart, stopping now and then.
+func test_the_basement_and_its_caretaker(test) -> void:
+	var hall := await _into_the_hall()
+	test.check(hall != null, "binnen in het stadhuis")
+	if hall == null:
+		return
+	await _ride_and_check(test, hall, Layout.BASEMENT)
+	test.check(hall.display_text() == "K", "de lift staat op K (%s)" % hall.display_text())
+	await frames(3)
+	var caretaker: Node3D = hall.caretaker()
+	test.check(caretaker != null and caretaker.has_node("Schoonmaakkar"), "de conciërge met zijn schoonmaakkar")
+	if caretaker == null:
+		return
+	var start := caretaker.global_position
+	await seconds(6.0)
+	test.check(caretaker.global_position.distance_to(start) > 1.0, "hij loopt zijn rondje (%.1f m)" % caretaker.global_position.distance_to(start))
+	await _ride_and_check(test, hall, 0)

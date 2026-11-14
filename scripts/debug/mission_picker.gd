@@ -237,6 +237,12 @@ func _build_key_help() -> Control:
 	grid.add_theme_constant_override("h_separation", 24)
 	grid.add_theme_constant_override("v_separation", 2)
 	box.add_child(grid)
+	var map_line := Label.new()
+	map_line.text = DebugKeys.MAP_HELP
+	map_line.add_theme_font_override("font", _font_body)
+	map_line.add_theme_font_size_override("font_size", 13)
+	map_line.add_theme_color_override("font_color", UiStyle.MUTED)
+	box.add_child(map_line)
 	for entry: Array in DebugKeys.HELP:
 		var line := Label.new()
 		line.text = "%s  %s   ⇧ %s" % entry

@@ -768,6 +768,33 @@ func tracked_quest_id() -> String:
 	return _tracked_quest_id
 
 
+## The steps the tracker shows of `quest`: not all of them (the quest log in the game menu has
+## those), only the last one done and the one open now (the first not done and not locked, an
+## optional one only when nothing else is open), in their order.
+static func tracker_steps(quest: Dictionary) -> Array:
+	var all_steps: Array = quest.get("steps", [])
+	var last_done := {}
+	var open_now := {}
+	var optional_open := {}
+	for step: Dictionary in all_steps:
+		var done: bool = step.get("done", false)
+		if done:
+			last_done = step
+		elif not step.get("locked", false):
+			if step.get("optional", false):
+				if optional_open.is_empty():
+					optional_open = step
+			elif open_now.is_empty():
+				open_now = step
+	if open_now.is_empty():
+		open_now = optional_open
+	var shown: Array = []
+	for step: Dictionary in all_steps:
+		if step == last_done or step == open_now:
+			shown.append(step)
+	return shown
+
+
 ## Where the tracked quest sends the player now: the targets of its first step not done
 ## (none while that step is locked), as world x, z.
 func quest_targets() -> Array:
@@ -1283,7 +1310,7 @@ func _main_quest_panel(quest: Dictionary) -> Control:
 	var steps := VBoxContainer.new()
 	steps.add_theme_constant_override("separation", 6)
 	steps.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	for step: Dictionary in quest.get("steps", []):
+	for step: Dictionary in tracker_steps(quest):
 		var done: bool = step.get("done", false)
 		var locked: bool = step.get("locked", false) and not done
 		var row := HBoxContainer.new()

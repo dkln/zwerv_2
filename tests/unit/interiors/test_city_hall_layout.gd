@@ -15,9 +15,14 @@ static func _furnishing(plan: Dictionary) -> Array:
 	return kinds.keys()
 
 
-## The city hall has five floors.
-func test_five_floors(test) -> void:
-	test.check(Layout.floors().size() == 5, "vijf etages")
+## The city hall has five floors and a basement (the last in the list, level -1).
+func test_five_floors_and_a_basement(test) -> void:
+	test.check(Layout.floors().size() == 6, "vijf etages en een kelder")
+	test.check(Layout.level_of(Layout.BASEMENT) == -1 and Layout.level_of(0) == 0 and Layout.level_of(4) == 4, "de kelder ligt onder de begane grond")
+	var basement: Dictionary = Layout.floors()[Layout.BASEMENT]
+	var racks: int = (basement.tiles as Array).filter(func(entry: Array) -> bool: return entry[0] == "stelling").size()
+	test.check(racks >= 20, "opslag: %d stellingen" % racks)
+	test.check((basement.people as Array).any(func(person: Dictionary) -> bool: return person.role == "concierge"), "een conciërge")
 
 
 ## No two floors are furnished with the same kinds of tile.
@@ -25,7 +30,7 @@ func test_every_floor_has_its_own_layout(test) -> void:
 	var layouts := {}
 	for plan: Dictionary in Layout.floors():
 		layouts[str(_furnishing(plan))] = true
-	test.check(layouts.size() == 5, "elke etage een andere inrichting (%d)" % layouts.size())
+	test.check(layouts.size() == Layout.floors().size(), "elke etage een andere inrichting (%d)" % layouts.size())
 
 
 ## The floors come in at least three different sizes.

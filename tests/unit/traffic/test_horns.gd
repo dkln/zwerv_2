@@ -21,4 +21,4 @@ func test_each_kind_has_its_own_horn(test) -> void:
 func test_the_sound_of_every_horn_exists(test) -> void:
 	for script_name: String in HORNS:
 		var horn: String = HORNS[script_name]
-		test.check(ResourceLoader.exists("res://assets/audio/geluiden/%s.ogg" % horn), "geluid %s bestaat" % horn)
+		test.check(ResourceLoader.exists((load("res://scripts/audio/sound_files.gd") as GDScript).call("path_of", horn)), "geluid %s bestaat" % horn)

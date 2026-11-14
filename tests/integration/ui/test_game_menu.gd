@@ -45,6 +45,10 @@ func drop_item(item_id: String) -> void:
 
 func is_dead() -> bool:
 	return dead
+
+func teleport(at: Vector3, yaw: float) -> void:
+	global_position = at
+	rotation.y = yaw
 """
 
 ## The HUD, the stand-in player and the menu of the small world built by _build_world.
@@ -607,3 +611,17 @@ func test_a_slip_with_full_pockets(test) -> void:
 	test.check(menu._slots_used_label.text.begins_with("%d / " % menu._slot_count()) or menu._slots_used_label.text.begins_with("4 / "),
 		"telt niet als ruimte (%s)" % menu._slots_used_label.text)
 	menu.close()
+
+
+## Debug: from the map to anywhere (GameMenu.teleport_to): the map's point and the town's agree
+## both ways, and T on a chosen place puts the player there and closes the menu.
+func test_teleport_from_the_map(test) -> void:
+	await _open_on("kaart")
+	var spot := Vector2(140, 60)
+	var back: Vector2 = menu._map_to_world(menu._world_to_map(spot))
+	test.check(back.distance_to(spot) < 0.01, "kaart en stad rekenen terug (%s)" % back)
+	menu._choose_place("het_plein")
+	await _press(KEY_T)
+	test.check(Vector2(stand_in.global_position.x, stand_in.global_position.z).distance_to(Vector2(140, 60)) < 0.01,
+		"T: de speler staat op Het Plein (%s)" % stand_in.global_position)
+	test.check(not menu.is_open(), "en het menu is dicht")

@@ -10,14 +10,15 @@ extends Node3D
 ##   head.add_child(smoke)
 ##   smoke.exhale()
 
-const PUFF_COLOUR := Color(0.8, 0.8, 0.82, 0.55)
-## The wisp from the tip: how many puffs at once and how long each lives (s).
-const WISP_AMOUNT := 7
-const WISP_LIFE := 2.2
+const PUFF_COLOUR := Color(0.82, 0.82, 0.84, 0.7)
+## The wisp from the tip: how many puffs at once and how long each lives (s): plenty and long,
+## so it is seen from the iso camera.
+const WISP_AMOUNT := 16
+const WISP_LIFE := 4.0
 ## A breath out: how many puffs, how long they live, how fast they go out forward (m/s).
-const EXHALE_AMOUNT := 6
-const EXHALE_LIFE := 2.6
-const EXHALE_SPEED := 0.6
+const EXHALE_AMOUNT := 14
+const EXHALE_LIFE := 4.5
+const EXHALE_SPEED := 0.7
 ## The drift of the smoke (world space, m/s²): a little wind.
 const DRIFT := Vector3(0.25, 0.0, -0.12)
 
@@ -26,7 +27,7 @@ var _breath: CPUParticles3D
 
 
 func _ready() -> void:
-	_wisp = _emitter(WISP_AMOUNT, WISP_LIFE, 0.025, 0.06)
+	_wisp = _emitter(WISP_AMOUNT, WISP_LIFE, 0.03, 0.1)
 	_wisp.name = "Sliert"
 	_wisp.direction = Vector3.UP
 	_wisp.spread = 12.0
@@ -34,7 +35,7 @@ func _ready() -> void:
 	_wisp.initial_velocity_max = 0.22
 	_wisp.emitting = true
 	add_child(_wisp)
-	_breath = _emitter(EXHALE_AMOUNT, EXHALE_LIFE, 0.05, 0.12)
+	_breath = _emitter(EXHALE_AMOUNT, EXHALE_LIFE, 0.06, 0.2)
 	_breath.name = "Uitblazen"
 	_breath.one_shot = true
 	_breath.explosiveness = 0.7

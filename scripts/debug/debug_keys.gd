@@ -7,6 +7,7 @@ extends Node
 ## - F6: hunger full (fed), Shift+F6 STAT_STEP hungrier.
 ## - F2: stamina full, Shift+F2 STAT_STEP off.
 ## - F4: overstimulation empty (calm), Shift+F4 STAT_STEP more (full is the bad end).
+## - F1: time faster (TIME_FASTER times the day cycle's speed) or normal again, toggled.
 ## (F3 is the stutter meter, frame_meter.gd; F10 and F11 are left alone: macOS takes them.)
 ## The HUD puts it in the town (GameHud._ready, debug builds only), next to the mission picker
 ## (F8, mission_picker.gd).
@@ -21,6 +22,9 @@ const KEY_HUNGER := KEY_F6
 const KEY_STAMINA := KEY_F2
 const KEY_OVERSTIMULATION := KEY_F4
 const STAT_STEP := 20.0
+const KEY_TIME := KEY_F1
+## How much faster the day goes with F1.
+const TIME_FASTER := 20.0
 ## What the keys do, as the mission picker shows them (mission_picker.gd): key, without Shift,
 ## with Shift.
 const HELP := [
@@ -30,7 +34,10 @@ const HELP := [
 	["F6", "honger vol", "-20"],
 	["F7", "+€10", "+€100"],
 	["F9", "+100 XP", "naar volgend level"],
+	["F1", "tijd sneller / normaal", "-"],
 ]
+## The debug of the map (GameMenu.teleport_to), shown under the keys by the mission picker.
+const MAP_HELP := "Kaart (Tab): T = naar de gekozen plek, Shift+klik = naar dat punt"
 const MONEY_COLOUR := Color("#FFD447")
 
 ## The player (scripts/player/player_controller.gd); found in the current scene when empty.
@@ -61,6 +68,9 @@ func _input(event: InputEvent) -> void:
 		KEY_STAMINA:
 			get_viewport().set_input_as_handled()
 			change_stat("uithoudingsvermogen", -STAT_STEP if key_event.shift_pressed else INF)
+		KEY_TIME:
+			get_viewport().set_input_as_handled()
+			toggle_time()
 		KEY_OVERSTIMULATION:
 			get_viewport().set_input_as_handled()
 			change_stat("overprikkeldheid", STAT_STEP if key_event.shift_pressed else -INF)
@@ -86,6 +96,32 @@ func give_xp(points: float) -> void:
 		points = maxf(float(player.xp_for_level) - float(player.xp), 1.0)
 	player.add_xp(points)
 	print("debug: +%d XP (level %d, %d / %d)" % [roundi(points), int(player.level), roundi(float(player.xp)), roundi(float(player.xp_for_level))])
+
+
+var _normal_speed := -1.0   # the day cycle's own speed while time goes faster (-1: normal now)
+
+
+## The day TIME_FASTER times faster, or back to its own speed (the Dagcyclus of the town).
+func toggle_time() -> void:
+	var scene := get_tree().current_scene
+	var day := scene.get_node_or_null("Dagcyclus") if scene else null
+	if day == null or not "speed" in day:
+		push_warning("debugtoetsen: geen dagcyclus")
+		return
+	if _normal_speed < 0.0:
+		_normal_speed = float(day.speed)
+		day.speed = _normal_speed * TIME_FASTER
+	else:
+		day.speed = _normal_speed
+		_normal_speed = -1.0
+	var hud := get_parent()
+	if hud and hud.has_method("show_notice"):
+		hud.show_notice("— DEBUG —", "Tijd %s" % ("%d× sneller" % roundi(TIME_FASTER) if is_time_faster() else "normaal"), 2.0)
+	print("debug: tijd %s (snelheid %.2f)" % ["sneller" if is_time_faster() else "normaal", float(day.speed)])
+
+
+func is_time_faster() -> bool:
+	return _normal_speed >= 0.0
 
 
 ## Changes a stat of the player by `amount` (PlayerController.change_stat); INF fills it up,

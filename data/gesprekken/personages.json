@@ -5,7 +5,7 @@
 			"spreker": "OME WIM",
 			"plek": "plein",
 			"tempo": 0.8,
-			"tempo_meelopen": 2.2,
+			"tempo_meelopen": 3.0,
 			"lengte": 1.15,
 			"uiterlijk": {
 				"skin": "#E8B896",
@@ -124,6 +124,24 @@
 					"onderwerp": {
 						"vraag": "Bedankt voor alles, Wim.",
 						"antwoord": "Niks te danken. Wij moeten op elkaar letten. Niemand anders doet het."
+					}
+				},
+				"stadhuis": {
+					"begroetingen": [
+						"En? Heb je een nieuwe pas? Nee, natuurlijk niet. Zeg het maar.",
+						"Daar ben je weer. Je kijkt als iemand die bij Burgerzaken is geweest."
+					],
+					"onderwerp": {
+						"vraag": "Ze zeggen dat er iemand passen pikt van daklozen. Een man in een nette jas.",
+						"antwoord": "Wat zei ik je? Een nette jas, om drie uur 's nachts. Nu zegt de gemeente het ook. Dan is het waar, want de gemeente liegt alleen op papier.",
+						"stemming": "boos",
+						"verder": [
+							{
+								"vraag": "Wat moet ik nou? Zonder pas kan ik niks.",
+								"antwoord": "Dan gaan we die pas terughalen. Die vent slaapt niet, dus wij ook niet. Maar eerst een kroket. Met een lege maag vang je niemand.",
+								"stemming": "neutraal"
+							}
+						]
 					}
 				}
 			}
@@ -564,6 +582,506 @@
 					"onderwerp": {
 						"vraag": "Waarom heet het eigenlijk Lebaarmoeder?",
 						"antwoord": "Omdat wij je verzorgen van begin tot eind! Zegt de folder. Ik heb het ook nooit helemaal begrepen."
+					}
+				}
+			}
+		},
+		"werver_rotonde": {
+			"spreker": "ROTONDE IN NOOD",
+			"tempo": 1.25,
+			"uiterlijk": {
+				"skin": "#F0C8A8",
+				"hair": "#A0602A",
+				"hair_style": "kort",
+				"coat": "#F2C200",
+				"trim": "#1E2024",
+				"trousers": "#2A2C34",
+				"skirt": false,
+				"shoes": "#E8E6E0",
+				"cap": "#F2C200",
+				"helmet": "#22242A",
+				"opdruk": "R",
+				"opdruk_kleur": "#1E2024"
+			},
+			"stemmingen": {
+				"begroeting": "opgewonden",
+				"onderwerp": "opgewonden",
+				"doorvraag": "opgewonden",
+				"kleingeld_nee": "opgewonden",
+				"dag": "blij"
+			},
+			"dag": [
+				"Fijne dag! Groet een rotonde van ons!"
+			],
+			"kleingeld_nee": [
+				"Kleingeld? Nee hoor, wij werken alleen met een machtiging. Maandelijks. Rotondes houden van regelmaat."
+			],
+			"gulheid": {
+				"kans": 0,
+				"bedrag": 0.0
+			},
+			"nog_iets": [
+				"En verder?"
+			],
+			"standaard": "werven",
+			"gesprekken": {
+				"werven": {
+					"klampt_vast": true,
+					"begroetingen": [
+						"Hoi! Hé! Heb jij een hart voor rotondes? Ik zie het aan je, jij hebt een hart voor rotondes!",
+						"Goedemiddag! Mag ik je één minuutje? Het gaat over rotondes. Ze hebben het zwaar."
+					],
+					"opnieuw": [
+						"Oké, oké, ik begin even opnieuw, want ik merk dat het nog niet binnenkomt.",
+						"Weet je wat, ik vertel het nog één keer. De rotondes rekenen op je."
+					],
+					"prikkels": 4.0,
+					"onderwerp": {
+						"vraag": "Wat is er met rotondes?",
+						"antwoord": "Elke dag rijden er duizenden auto's rondjes over ze heen en niemand zegt dankjewel. Stichting Rotonde in Nood zorgt voor een bloembakje, een opgeveegd middeneiland en heel af en toe een complimentje.",
+						"verder": [
+							{
+								"vraag": "Rotondes hebben toch geen gevoelens?",
+								"antwoord": "Dat zeiden ze ook over parkeermeters! Voor maar vier euro per maand adopteer je een rotonde. Je krijgt een certificaat en een foto van je rotonde.",
+								"stemming": "opgewonden",
+								"verder": [
+									{
+										"vraag": "Welke rotonde krijg ik dan?",
+										"antwoord": "Rotonde De Uithof, bij de afrit van de A4. Hij is erg verlegen. Machtiging graag!",
+										"stemming": "opgewonden",
+										"verder": [
+											{
+												"vraag": "Ik heb geen bankrekening.",
+												"antwoord": "Geen probleem! Dan schrijven we je in voor de nieuwsbrief. Per post. Wat is je adres?",
+												"stemming": "opgewonden",
+												"verder": [
+													{
+														"vraag": "Ik woon op een rotonde.",
+														"check": {
+															"id": "rotonde_af",
+															"label": "AFWIMPELEN",
+															"kans": 100,
+															"verborgen": true,
+															"gelukt": "Je... woont... op een rotonde? Dus jíj bent wat er met ze aan de hand is. Kom, Sanne. We gaan.",
+															"stemming_gelukt": "verdrietig"
+														}
+													},
+													{
+														"vraag": "Onder de brug bij het station.",
+														"antwoord": "Een brug! Bruggen hebben een eigen stichting. Daar kunnen we je niet helpen. Maar rotondes wel! Even terug naar het begin.",
+														"stemming": "boos"
+													}
+												]
+											},
+											{
+												"vraag": "Mag ik er een uitzoeken?",
+												"antwoord": "Nee, de rotonde kiest jou. Dat werkt via een algoritme. En via Sanne.",
+												"stemming": "blij"
+											}
+										]
+									},
+									{
+										"vraag": "Vier euro? Dat is een kroket.",
+										"antwoord": "Een kroket is na vijf minuten op. Een rotonde gaat zestig jaar mee!",
+										"stemming": "opgewonden"
+									}
+								]
+							},
+							{
+								"vraag": "Ik heb zelf niet eens een dak.",
+								"antwoord": "Daar hebben we een samenwerking voor! Bij elke tien adopties krijgt een rotonde een afdakje. Niet voor jou, voor de rotonde. Maar toch!",
+								"stemming": "opgewonden"
+							}
+						]
+					}
+				},
+				"klaar": {
+					"begroetingen": [
+						"Jij weer. Jij met je rotonde. We hebben je in het systeem gezet als 'rotonde, bewoond'."
+					],
+					"onderwerp": {
+						"vraag": "Hoe gaat het met de rotondes?",
+						"antwoord": "Ze draaien. Dat is al heel wat, zegt mijn coördinator."
+					}
+				}
+			}
+		},
+		"werver_rotonde_2": {
+			"spreker": "ROTONDE IN NOOD",
+			"tempo": 1.25,
+			"uiterlijk": {
+				"skin": "#8A5A3C",
+				"hair": "#1E1610",
+				"hair_style": "lang",
+				"coat": "#F2C200",
+				"trim": "#1E2024",
+				"trousers": "#2A2C34",
+				"skirt": false,
+				"shoes": "#E8E6E0",
+				"cap": "#F2C200",
+				"helmet": "#22242A",
+				"opdruk": "R",
+				"opdruk_kleur": "#1E2024"
+			},
+			"stemmingen": {
+				"begroeting": "opgewonden",
+				"onderwerp": "opgewonden",
+				"doorvraag": "opgewonden",
+				"kleingeld_nee": "opgewonden",
+				"dag": "blij"
+			},
+			"dag": [
+				"Doei! Zwaai als je een rotonde ziet!"
+			],
+			"kleingeld_nee": [
+				"Daar moet je bij Jesse zijn, die doet de machtigingen."
+			],
+			"gulheid": {
+				"kans": 0,
+				"bedrag": 0.0
+			},
+			"nog_iets": [
+				"En verder?"
+			],
+			"standaard": "meelopen",
+			"gesprekken": {
+				"meelopen": {
+					"begroetingen": [
+						"Ik sta hier voor de rotondes. En voor de bonus. Maar vooral voor de rotondes."
+					],
+					"onderwerp": {
+						"vraag": "Heb jij zelf een rotonde geadopteerd?",
+						"antwoord": "Twee. Een bij mijn moeder in de straat en een op de Utrechtsebaan. Die laatste zie ik nooit, die is altijd druk.",
+						"stemming": "verdrietig"
+					}
+				}
+			}
+		},
+		"getuige": {
+			"spreker": "GETUIGE",
+			"tempo": 1.25,
+			"uiterlijk": {
+				"skin": "#E8C0A0",
+				"hair": "#5A4A3A",
+				"hair_style": "kort",
+				"coat": "#3A3E48",
+				"trim": "#E8E6E0",
+				"trousers": "#2A2C32",
+				"skirt": false,
+				"shoes": "#1E1A18",
+				"cap": "#3A3E48",
+				"helmet": "#22242A"
+			},
+			"stemmingen": {
+				"begroeting": "blij",
+				"onderwerp": "blij",
+				"doorvraag": "neutraal",
+				"kleingeld_nee": "neutraal",
+				"dag": "blij"
+			},
+			"dag": [
+				"Het ga u goed! Tot volgende week!"
+			],
+			"kleingeld_nee": [
+				"Geld? Nee hoor, het tijdschrift is gratis. Net als de hoop."
+			],
+			"gulheid": {
+				"kans": 0,
+				"bedrag": 0.0
+			},
+			"nog_iets": [
+				"En verder?"
+			],
+			"standaard": "bekeren",
+			"gesprekken": {
+				"bekeren": {
+					"klampt_vast": true,
+					"begroetingen": [
+						"Goedemiddag! Wat een mooie dag, hè? Mogen wij u iets vragen? Denkt u wel eens na over de toekomst?",
+						"Dag meneer. Heeft u even? Wij hebben iets voor u. Gratis. De Wachttoren."
+					],
+					"opnieuw": [
+						"Weet u, laten we het rustig nog eens doornemen. Er is geen haast. Wij hebben alle tijd.",
+						"Zullen we even teruggaan naar het begin? Dat doen we vaker. Vaak helpt dat."
+					],
+					"prikkels": 3.0,
+					"onderwerp": {
+						"vraag": "Wat voor toekomst?",
+						"antwoord": "Een betere. Waar niemand meer op straat hoeft te slapen. Het staat allemaal hierin. Mogen wij u de Wachttoren geven?",
+						"verder": [
+							{
+								"vraag": "Kan ik daar een nacht in slapen, in die toren?",
+								"antwoord": "Ha! Nee, het is een tijdschrift, meneer. Maar er staat wel een mooi stuk in over hoop.",
+								"stemming": "blij",
+								"verder": [
+									{
+										"vraag": "Hoop is mooi, maar een slaapzak is warmer.",
+										"antwoord": "Daar heeft u een punt. Zullen we het daar volgende week verder over hebben? Waar kunnen we u vinden?",
+										"stemming": "neutraal",
+										"verder": [
+											{
+												"vraag": "Overal en nergens.",
+												"check": {
+													"id": "getuigen_af",
+													"label": "AFWIMPELEN",
+													"kans": 100,
+													"verborgen": true,
+													"gelukt": "Overal en nergens. Dat is... eigenlijk heel mooi gezegd. Dat ga ik onthouden. Wij lopen verder. Het ga u goed.",
+													"stemming_gelukt": "blij"
+												}
+											},
+											{
+												"vraag": "Bij de frietkar op het Stationsplein.",
+												"antwoord": "Wat fijn! Dan komen we langs. Elke week. Mogen we u nu alvast iets voorlezen?",
+												"stemming": "blij"
+											}
+										]
+									}
+								]
+							},
+							{
+								"vraag": "Ik heb geen tijd.",
+								"antwoord": "Tijd is het mooiste wat we hebben! Daarom staan wij hier ook al sinds acht uur vanochtend.",
+								"stemming": "blij",
+								"verder": [
+									{
+										"vraag": "Staan jullie hier echt al zo lang?",
+										"antwoord": "Ja! En gisteren ook. En morgen weer. Het geeft ons rust. U mag ook gewoon even bij ons staan.",
+										"stemming": "blij"
+									}
+								]
+							},
+							{
+								"vraag": "Ik geloof niet zo in dingen.",
+								"antwoord": "Dat geeft niets. Wij geloven genoeg voor twee. Mag ik u één vraag stellen?",
+								"stemming": "neutraal",
+								"verder": [
+									{
+										"vraag": "Eén dan.",
+										"antwoord": "Waar haalt u de hoop vandaan, als u 's nachts op een bankje ligt?",
+										"stemming": "neutraal",
+										"verder": [
+											{
+												"vraag": "Van de broodjes van de kantine.",
+												"antwoord": "Dat is een eerlijk antwoord. Mogen we daar een stukje over voorlezen? Er staat iets in over brood.",
+												"stemming": "blij"
+											}
+										]
+									}
+								]
+							}
+						]
+					}
+				},
+				"klaar": {
+					"begroetingen": [
+						"Ach, daar is onze vriend van overal en nergens! Fijne dag, hoor."
+					],
+					"onderwerp": {
+						"vraag": "Nog veel Wachttorens weggegeven?",
+						"antwoord": "Zeven vandaag. Eén aan een duif, maar die vloog weg voordat we konden uitleggen wat erin stond.",
+						"stemming": "blij"
+					}
+				}
+			}
+		},
+		"getuige_2": {
+			"spreker": "GETUIGE",
+			"tempo": 1.25,
+			"uiterlijk": {
+				"skin": "#C8906A",
+				"hair": "#2A2018",
+				"hair_style": "lang",
+				"coat": "#4A3A5A",
+				"trim": "#E8E6E0",
+				"trousers": "#2A2C32",
+				"skirt": true,
+				"shoes": "#1E1A18",
+				"cap": "#3A3E48",
+				"helmet": "#22242A"
+			},
+			"stemmingen": {
+				"begroeting": "blij",
+				"onderwerp": "blij",
+				"doorvraag": "neutraal",
+				"kleingeld_nee": "neutraal",
+				"dag": "blij"
+			},
+			"dag": [
+				"Dag! Bewaart u de Wachttoren goed?"
+			],
+			"kleingeld_nee": [
+				"Nee, we vragen niets. We geven alleen."
+			],
+			"gulheid": {
+				"kans": 0,
+				"bedrag": 0.0
+			},
+			"nog_iets": [
+				"En verder?"
+			],
+			"standaard": "meelopen",
+			"gesprekken": {
+				"meelopen": {
+					"begroetingen": [
+						"Mijn collega praat het liefst. Ik draag de tijdschriften."
+					],
+					"onderwerp": {
+						"vraag": "Zijn ze zwaar, die tijdschriften?",
+						"antwoord": "Op maandag wel. Op vrijdag niet meer. Dan heeft iedereen er een. Of ze liggen in de prullenbak bij de tram.",
+						"stemming": "neutraal"
+					}
+				}
+			}
+		},
+		"straatnieuws_ans": {
+			"spreker": "STRAATNIEUWS",
+			"tempo": 0.9,
+			"uiterlijk": {
+				"skin": "#E8C0A0",
+				"hair": "#9A9AA0",
+				"hair_style": "lang",
+				"coat": "#C83A2A",
+				"trim": "#F2C200",
+				"trousers": "#3A3A44",
+				"skirt": false,
+				"shoes": "#3A2A20",
+				"cap": "#C83A2A",
+				"helmet": "#22242A"
+			},
+			"zwerft": {
+				"tempo": 0.6,
+				"rookpauze": [
+					3.0,
+					8.0
+				]
+			},
+			"stemmingen": {
+				"begroeting": "blij",
+				"onderwerp": "neutraal",
+				"doorvraag": "neutraal",
+				"kleingeld_nee": "neutraal",
+				"dag": "blij"
+			},
+			"dag": [
+				"Hou je haaks, hè. Misschien zie ik je weer. Misschien ook niet."
+			],
+			"kleingeld_nee": [
+				"Kleingeld? Jongen, ik sta hier zelf om kleingeld. We zitten in hetzelfde schuitje."
+			],
+			"gulheid": {
+				"kans": 0,
+				"bedrag": 0.0
+			},
+			"nog_iets": [
+				"Nog wat?"
+			],
+			"standaard": "verkopen",
+			"gesprekken": {
+				"verkopen": {
+					"begroetingen": [
+						"Hé! Straatnieuws? Ah, jij bent er ook een van mij, hè. Dat zie ik aan je schoenen.",
+						"Goedemiddag! Nieuwe editie! O, jij. Jij koopt niks, maar jij mag blijven staan."
+					],
+					"onderwerp": {
+						"vraag": "Hoe gaat de verkoop?",
+						"antwoord": "Wisselend. Bij de DERREK kopen ze meer dan bij de ALFRED STEYHN. Die van de ALFRED STEYHN hebben allemaal al een abonnement op hun eigen gelijk.",
+						"doorvraag": "Waar sta je meestal?",
+						"doorantwoord": "Overal en nergens. Als de bedrijfsleider me wegstuurt, sta ik bij de volgende. Ik ken alle supermarkten van Den Haag van de buitenkant.",
+						"verder": [
+							{
+								"vraag": "Mag ik er eentje lezen? Ik heb geen geld.",
+								"antwoord": "Natuurlijk.",
+								"stemming": "blij",
+								"beloning": {
+									"item": "straatnieuws",
+									"kans": 100,
+									"xp": 0,
+									"tekst": "Hier. De editie van vorige maand. Die verkoop ik toch niet meer. Lezen is gratis."
+								}
+							},
+							{
+								"vraag": "Slaap jij ook buiten?",
+								"antwoord": "Soms. In de winter in de opvang, als er plek is. In de zomer onder de Hoftoren. Daar waait het niet, en de bewaker kijkt de andere kant op.",
+								"stemming": "verdrietig"
+							}
+						]
+					}
+				}
+			}
+		},
+		"straatnieuws_henk": {
+			"spreker": "STRAATNIEUWS",
+			"tempo": 0.9,
+			"uiterlijk": {
+				"skin": "#C8906A",
+				"hair": "#5A5048",
+				"hair_style": "kort",
+				"coat": "#2A4A3A",
+				"trim": "#F2C200",
+				"trousers": "#3A3228",
+				"skirt": false,
+				"shoes": "#2A2018",
+				"cap": "#5A4A3A",
+				"helmet": "#22242A"
+			},
+			"zwerft": {
+				"tempo": 0.6,
+				"rookpauze": [
+					3.0,
+					8.0
+				]
+			},
+			"stemmingen": {
+				"begroeting": "blij",
+				"onderwerp": "neutraal",
+				"doorvraag": "neutraal",
+				"kleingeld_nee": "neutraal",
+				"dag": "blij"
+			},
+			"dag": [
+				"Hou je haaks, hè. Misschien zie ik je weer. Misschien ook niet."
+			],
+			"kleingeld_nee": [
+				"Kleingeld? Jongen, ik sta hier zelf om kleingeld. We zitten in hetzelfde schuitje."
+			],
+			"gulheid": {
+				"kans": 0,
+				"bedrag": 0.0
+			},
+			"nog_iets": [
+				"Nog wat?"
+			],
+			"standaard": "verkopen",
+			"gesprekken": {
+				"verkopen": {
+					"begroetingen": [
+						"Straatnieuws? Nee? Ook goed. Kom je even bij me staan? Dan lijkt het drukker.",
+						"Hé, collega. Ga niet voor mijn supermarkt staan bedelen, hè. Grapje. Een beetje."
+					],
+					"onderwerp": {
+						"vraag": "Wat staat er deze maand in?",
+						"antwoord": "Een stuk over de opvang aan de Zuidwal, een puzzel, en een gedicht van mij. Over duiven. Ze hebben het niet geplaatst, maar ik draag het je voor als je wilt.",
+						"doorvraag": "Draag maar voor.",
+						"doorantwoord": "'Duif op het Spui, je loopt alsof het van jou is. Dat is het ook.' Einde. Vond de redactie te kort. Ik vind het precies goed.",
+						"verder": [
+							{
+								"vraag": "Kan ik er eentje krijgen? Ik heb niks.",
+								"antwoord": "Een oude, voor jou. Wij moeten elkaar een beetje helpen.",
+								"stemming": "blij",
+								"beloning": {
+									"item": "straatnieuws",
+									"kans": 100,
+									"xp": 0,
+									"tekst": "Hier. De editie van vorige maand. Die verkoop ik toch niet meer. Lezen is gratis."
+								}
+							},
+							{
+								"vraag": "Hoeveel houd je over van een krant?",
+								"antwoord": "De helft. Een euro vijfentwintig. Op een goede dag twintig kranten. Op een slechte dag regent het.",
+								"stemming": "neutraal"
+							}
+						]
 					}
 				}
 			}

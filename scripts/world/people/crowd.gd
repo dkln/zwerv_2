@@ -75,7 +75,20 @@ static func area_at(world: Node, spot: Vector3) -> String:
 ## The share of Pedestrians.count out at `hour` in `area` (the hour's share times the area's
 ## factor).
 static func pedestrian_share(hour: float, area: String) -> float:
-	return _hour_value(hour, "voetgangers") * float(_area(area).get("voetgangers", 1.0))
+	return _hour_value(hour, "voetgangers") * float(_area(area).get("voetgangers", 1.0)) * float(_evening(area, hour).get("voetgangers", 1.0))
+
+
+## An area's evening ("avond": {"van", "tot" (hours, may run past midnight), "voetgangers",
+## "mensen"}: the Plein and the Grote Markt fill up with the night's crowd), when `hour` is in
+## it; else empty.
+static func _evening(area: String, hour: float) -> Dictionary:
+	var evening: Dictionary = _area(area).get("avond", {})
+	if evening.is_empty():
+		return {}
+	var from := float(evening.get("van", 20.0))
+	var to := float(evening.get("tot", 4.0))
+	var inside := (hour >= from and hour < to) if from < to else (hour >= from or hour < to)
+	return evening if inside else {}
 
 
 ## The same for Traffic.vehicle_count.
@@ -104,14 +117,28 @@ static func vehicle_weight(category: String, hour: float, area: String) -> float
 	return maxf(weight, 0.0)
 
 
+## How drunk someone of `kind` is at `hour` (0 sober .. 1 very): the night revellers from ten
+## at night to six in the morning (most of them), the people going out after eleven (some);
+## nobody else, nobody in the daytime.
+static func drunkenness(kind: String, hour: float, random: RandomNumberGenerator) -> float:
+	var late := hour >= 22.0 or hour < 6.0
+	var very_late := hour >= 23.0 or hour < 6.0
+	if kind == "nachtbraker" and late and random.randf() < 0.75:
+		return random.randf_range(0.45, 1.0)
+	if kind == "uitgaanspubliek" and very_late and random.randf() < 0.35:
+		return random.randf_range(0.35, 0.85)
+	return 0.0
+
+
 ## A kind of person out at `hour` in `area`, drawn by their weights; "" when the table has none.
 static func person_kind(hour: float, area: String, random: RandomNumberGenerator) -> String:
 	var weights := _hour_weights(hour, "mensen")
 	var area_weights: Dictionary = _area(area).get("mensen", {})
+	var evening_weights: Dictionary = _evening(area, hour).get("mensen", {})
 	var total := 0.0
 	var chosen := {}
 	for kind: String in weights:
-		var weight := maxf(float(weights[kind]) * float(area_weights.get(kind, 1.0)), 0.0)
+		var weight := maxf(float(weights[kind]) * float(area_weights.get(kind, 1.0)) * float(evening_weights.get(kind, 1.0)), 0.0)
 		if weight > 0.0:
 			chosen[kind] = weight
 			total += weight

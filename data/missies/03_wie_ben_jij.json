@@ -1,0 +1,132 @@
+{
+	"uitleg": "Missie 3: een nieuwe ID-kaart aanvragen op het stadhuis, en vastlopen in de ambtenarij. Zie data/LEESMIJ.md.",
+	"id": "missie_3_wie_ben_jij",
+	"label": "MISSIE 3",
+	"titel": "Wie ben jij?",
+	"gever": "Ome Wim",
+	"beschrijving": "Zonder ID-kaart ben je niemand: geen uitkering, geen bed, geen bankrekening. Ome Wim zegt: ga naar het stadhuis en vraag een nieuwe aan. Hoe moeilijk kan het zijn?",
+	"start": "na:missie_2_bekend_gezicht",
+	"xp": 250,
+	"beloningen": [
+		"EEN STAPEL FORMULIEREN"
+	],
+	"start_paginas": [
+		{
+			"soort": "gesprek",
+			"spreker": "OME WIM",
+			"tekst": "Je pas, jong. Die krijg je niet terug door hier te staan. Ga naar het stadhuis aan het Spui, dat grote witte ding. Burgerzaken, eerste etage. Trek een nummertje en vraag om een nieuwe."
+		},
+		{
+			"soort": "gesprek",
+			"spreker": "OME WIM",
+			"tekst": "En neem de tijd. Ik ben daar in 2009 eens geweest. Ik zit nog steeds in de wachtrij, geloof ik."
+		},
+		{
+			"soort": "missie",
+			"tekst": "Een nieuwe ID-kaart aanvragen. Bij het stadhuis aan het Spui, Burgerzaken op de eerste etage. Hoe moeilijk kan het zijn?"
+		}
+	],
+	"stappen": [
+		{
+			"id": "stadhuis",
+			"tekst": "Ga naar het stadhuis aan het Spui",
+			"xp": 20,
+			"doel": {
+				"soort": "naar_plek",
+				"plek": "stadhuis",
+				"straal": 14
+			},
+			"plekken": {
+				"soort": "plek",
+				"plek": "stadhuis"
+			},
+			"klaar_paginas": [
+				{
+					"soort": "gedachte",
+					"tekst": "Het IJspaleis. Alles wit, alles glas. Ik zie mezelf erin weerspiegeld. Ik zie er niet uit als iemand die een ID-kaart komt halen."
+				}
+			]
+		},
+		{
+			"id": "nummertje",
+			"tekst": "Trek een nummertje bij Burgerzaken (1e etage, met de lift)",
+			"xp": 20,
+			"doel": {
+				"soort": "verzamelen",
+				"item": "wachtnummer",
+				"aantal": 1
+			}
+		},
+		{
+			"id": "loket",
+			"tekst": "Vraag aan het loket hoe je aan een nieuwe ID-kaart komt",
+			"xp": 40,
+			"doel": {
+				"soort": "praten_met",
+				"persoon": "loketmedewerker"
+			}
+		},
+		{
+			"id": "doorverwezen",
+			"tekst": "Doorverwezen. Trek een nieuw nummertje en probeer het bij een ander loket",
+			"xp": 20,
+			"optioneel": true,
+			"verborgen_tot_open": true,
+			"doel": {
+				"soort": "check",
+				"check": "doorverwezen"
+			},
+			"klaar_paginas": [
+				{
+					"soort": "gedachte",
+					"tekst": "Een collega. Een ander loket. Een nieuw nummertje. Ik ben net zo ver als een uur geleden, maar dan met een strookje minder."
+				}
+			]
+		},
+		{
+			"id": "vastgelopen",
+			"tekst": "Blijf vragen tot je weet hoe het zit met je ID-kaart",
+			"xp": 80,
+			"doel": {
+				"soort": "check",
+				"check": "id_onmogelijk"
+			},
+			"klaar_paginas": [
+				{
+					"soort": "gedachte",
+					"tekst": "Geen vaste woon- of verblijfplaats, dus geen inschrijving. Geen inschrijving, dus geen ID-kaart. Geen ID-kaart, dus geen opvang, geen bankrekening, geen adres. Een cirkel. Een rotonde. Ik draai al rondjes sinds ik wakker werd."
+				},
+				{
+					"soort": "gedachte",
+					"tekst": "En een man in een nette jas die 's nachts langs de slapers gaat. Precies wat Ome Wim zei."
+				}
+			]
+		},
+		{
+			"id": "wim",
+			"tekst": "Vertel Ome Wim wat ze op het stadhuis zeiden",
+			"xp": 40,
+			"gesprekken": {
+				"ome_wim": "stadhuis"
+			},
+			"doel": {
+				"soort": "praten_met",
+				"persoon": "ome_wim"
+			}
+		}
+	],
+	"einde_paginas": [
+		{
+			"soort": "gesprek",
+			"spreker": "OME WIM",
+			"tekst": "Welkom in het systeem, jong. Of eigenlijk: welkom erbuiten. Daar zitten we met z'n allen."
+		},
+		{
+			"soort": "gedachte",
+			"tekst": "Een nette jas. Ergens in deze stad loopt iemand rond met mijn gezicht in zijn zak."
+		}
+	],
+	"gesprekken_na_afloop": {
+		"ome_wim": "klaar"
+	}
+}

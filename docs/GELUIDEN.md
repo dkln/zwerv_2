@@ -5,6 +5,22 @@ van `tools/megadrive/megadrive.py` (FM en PSG), door de "DAC" (22 kHz, 8 bits). 
 `tools/megadrive/render.sh geluiden` of `tools/megadrive/render.sh stemmen`. De muziek staat hier
 niet in: de muziekgeneratoren en de muzikale huisstijl zijn weggehaald (nov. 2026, opnieuw beginnen).
 
+## Mappen
+
+Elk geluid staat in de map van zijn categorie onder `assets/audio/geluiden/` (de indeling op naam
+staat in `scripts/audio/sound_files.gd` en, gelijk daaraan, `tools/megadrive/categorieen.py`; de
+generatoren schrijven er vanzelf in, de code noemt alleen de naam van een geluid):
+
+| map | wat |
+|---|---|
+| `brabbel/<stem>/` | het gebrabbel van de gesprekken, per stem (`man`, `oude_man`, `vrouw`, `rasperig`) |
+| `mensen/` | pijnkreten, klappen, springen, een plons, overgeven |
+| `voertuigen/` | auto, bus, tram, trein, brommer, fiets, sirenes, de helikopter |
+| `ov/` | poortjes, in- en uitchecken, de fluit van de conducteur, de gong van de omroep |
+| `binnen/` | deuren, de lift, de kassa, het winkelalarm |
+| `effecten/` | explosies, brand |
+| `overig/` | wat nergens bij past (een nieuw voorvoegsel: zet het in beide indelingen) |
+
 ## Geluidseffecten van het verkeer en de hulpdiensten
 
 Ook de verkeersgeluiden volgen de Mega Drive-klank: FM voor motoren (een draaggolf gebogen door

@@ -40,6 +40,7 @@ extends Node
 const SoundVariation = preload("res://scripts/audio/sound_variation.gd")
 const LoadingScreen = preload("res://scripts/ui/loading_screen.gd")
 const SOUND_FOLDER := "res://assets/audio/geluiden/"
+const SoundFiles = preload("res://scripts/audio/sound_files.gd")
 const BUS_NAME := "Verkeer"
 ## The one-shots (horns, bells, cries, hits, splashes) have a bus of their own, with only a
 ## limiter: through the compressor of the traffic bus the engines around would squash them
@@ -599,7 +600,7 @@ func _one_shot(at: Vector3, sound_name: String, unit: float, volume_db: float) -
 func _stream(sound_name: String, looping: bool) -> AudioStream:
 	if _streams.has(sound_name):
 		return _streams[sound_name]
-	var path := SOUND_FOLDER + sound_name + ".ogg"
+	var path := SoundFiles.path_of(sound_name)   # in its category's folder
 	var stream: AudioStream = null
 	if ResourceLoader.exists(path):
 		stream = load(path)

@@ -69,7 +69,7 @@ const PASSED_CHECKS_META := "geslaagde_checks"
 ## name plate in their colours, their emblem): the NS and enforcement at Den Haag Centraal,
 ## the staff of the supermarkets, the people of the city hall.
 const OFFICIAL_ROLES := ["conducteur", "handhaver", "agent", "medewerker_derrek", "medewerker_alfred_steyhn",
-	"receptioniste", "beveiliger", "ambtenaar", "loketmedewerker", "raadslid", "burgemeester"]
+	"receptioniste", "beveiliger", "ambtenaar", "loketmedewerker", "raadslid", "burgemeester", "concierge"]
 ## Who you talk to when nothing else fits, and the mood of a line with none set.
 const FALLBACK_PERSONA := "forens"
 const FALLBACK_MOOD := "neutraal"

@@ -15,6 +15,7 @@ const SoundVariation = preload("res://scripts/audio/sound_variation.gd")
 const HALL_BUS := "Stationshal"
 const ANNOUNCER_BUS := "Omroep"
 const SOUND_FOLDER := "res://assets/audio/geluiden/"
+const SoundFiles = preload("res://scripts/audio/sound_files.gd")
 ## The reverb of the hall.
 const HALL_ROOM_SIZE := 0.9
 const HALL_DAMPING := 0.3
@@ -76,7 +77,7 @@ static func ensure_buses() -> void:
 static func stream(sound_name: String) -> AudioStream:
 	if _streams.has(sound_name):
 		return _streams[sound_name]
-	var path := SOUND_FOLDER + sound_name + ".ogg"
+	var path := SoundFiles.path_of(sound_name)   # in its category's folder
 	var found: AudioStream = null
 	if ResourceLoader.exists(path):
 		found = load(path)

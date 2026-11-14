@@ -68,6 +68,7 @@ import sys
 import numpy
 
 import loudness
+import categorieen
 import megadrive
 from megadrive import FmPatch, Operator
 
@@ -739,6 +740,8 @@ def write_mono(name: str, signal: numpy.ndarray, loop: bool, folder: str = OUTPU
         signal = loudness.level(signal - signal.mean(), one_shot=False)
     elif not levelled:
         signal = level_one_shot(signal)
+    if folder == OUTPUT_FOLDER:
+        folder = categorieen.folder_for(OUTPUT_FOLDER, name)   # its category's folder (sound_files.gd)
     os.makedirs(folder, exist_ok=True)
     path = os.path.join(folder, name + ".ogg")
     with soundfile.SoundFile(path, "w", SAMPLE_RATE, 1, format="OGG", subtype="VORBIS", compression_level=0.3) as ogg_file:

@@ -57,6 +57,7 @@ func test_turned_camera_keeps_the_iso_pitch(test) -> void:
 ## to the view from above.
 func test_behind_buildings_the_view_goes_over_to_above(test) -> void:
 	var camera: Node = scene.get_node("Volgcamera")
+	set_for_test(camera, "manual_turning", false)   # turned by itself (whatever the settings say)
 	test.check(not camera.turn_to_streets, "het beeld draait niet mee met de straten")
 	var turns := _turns_behind_buildings(camera)
 	test.check(turns.keys() == [0.0], "achter gebouwen geen andere kijkrichting (%s)" % [turns])
@@ -148,3 +149,30 @@ func test_turned_by_hand_is_quick(test) -> void:
 	test.check(absf(camera._turn - 90.0) < 3.0, "na %.1f s al rond (%.1f graden)" % [camera.manual_turn_glide_time * 4.0, camera._turn])
 	camera._turn = 0.0
 	camera._turn_goal = 0.0
+
+
+## Turned by hand: + and - (and the mouse wheel, the right stick) zoom in and out, within
+## ZOOM_MOST; it does not look down steeper by itself; turned by itself, + does nothing.
+func test_zoom_and_no_tilt_by_hand(test) -> void:
+	var camera: Node = scene.get_node("Volgcamera")
+	set_for_test(camera, "manual_turning", true)
+	camera.user_zoom = 1.0
+	for key: Key in [KEY_EQUAL, KEY_EQUAL]:
+		var press := InputEventKey.new()
+		press.keycode = key
+		press.physical_keycode = key
+		press.pressed = true
+		tree.root.push_input(press)
+		await frames(1)
+	test.check(camera.user_zoom < 0.8, "+ twee keer: ingezoomd (%.2f)" % camera.user_zoom)
+	for step in 20:
+		camera.zoom_by(1)
+	test.check(is_equal_approx(camera.user_zoom, camera.ZOOM_MOST.y), "niet verder uit dan %.1f×" % camera.ZOOM_MOST.y)
+	camera._steep_goal = 0.0
+	camera._hidden_for = 100.0
+	camera._choose_turn(player.global_position, camera.zoom_still)
+	test.check(camera._steep_goal < 0.5, "zelf draaien: hij kantelt niet vanzelf")
+	camera.user_zoom = 1.0
+	set_for_test(camera, "manual_turning", false)
+	camera.zoom_by(-1)
+	test.check(is_equal_approx(camera.user_zoom, 1.0), "automatisch: zoomen met + doet niets")

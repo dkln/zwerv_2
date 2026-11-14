@@ -57,6 +57,9 @@ const PAGE_MARGIN_Y := 22
 const PLAYER_NODE := "Speler"
 
 const TABS := ["inventaris", "quests", "kaart"]
+## Debug (debug builds only): on the map T takes the player to the chosen place (teleport_to);
+## Shift+click anywhere on the map does the same for that spot.
+const KEY_TELEPORT := KEY_T
 const TAB_TITLES := {"inventaris": "INVENTARIS", "quests": "QUESTS", "kaart": "KAART"}
 
 ## Colours of the designs beyond the shared palette (UiStyle).
@@ -538,6 +541,11 @@ func _tracked_id() -> String:
 
 func _map_key(key: Key) -> void:
 	var direction := _direction(key)
+	if key == KEY_TELEPORT and OS.is_debug_build():
+		var place := _place(_selected_place)
+		if not place.is_empty():
+			teleport_to(place.position)
+		return
 	if direction != Vector2i.ZERO:
 		_move_place_selection(Vector2(direction))
 	elif _is_accept(key):
@@ -1913,6 +1921,31 @@ func _world_to_map(world_position: Vector2) -> Vector2:
 	return _map_offset + (world_position - _map_origin()) / _metres_per_pixel() * _map_scale
 
 
+## The spot of the town (world x, z) under `map_point` (a point of the map overlay).
+func _map_to_world(map_point: Vector2) -> Vector2:
+	return _map_origin() + (map_point - _map_offset) / _map_scale * _metres_per_pixel()
+
+
+## Debug (debug builds: T on the chosen place, Shift+click anywhere on the map): the player to
+## `spot` (world x, z), on the nearest walkable cell there (not into a building or the water),
+## the menu closed. Not inside a building.
+func teleport_to(spot: Vector2) -> void:
+	var interiors := get_tree().get_first_node_in_group("binnenruimtes")
+	if _player == null or not _player.has_method("teleport") or (interiors and interiors.has_method("is_inside") and interiors.is_inside()):
+		return
+	var at := Vector3(spot.x, _player.global_position.y + 2.0, spot.y)
+	var world := _world()
+	var walkers: Node = world.get_node_or_null("Voetgangers") if world else null
+	if walkers and walkers.has_method("nearest_walkable"):
+		var cell: Vector3i = walkers.nearest_walkable(walkers.cell_of(Vector3(spot.x, 0.0, spot.y)))
+		var middle: Vector3 = walkers.cell_middle(cell)
+		at = Vector3(middle.x, middle.y + 2.0, middle.z)
+	_player.teleport(at, _player.rotation.y)
+	print("debug: naar %.0f, %.0f" % [at.x, at.z])
+	UiSounds.play(self, "doe")
+	close()
+
+
 ## The markers of the places (the chosen one larger, ringed white, on top) and the names of
 ## the visited neighbourhoods.
 func _draw_map_overlay() -> void:
@@ -2100,6 +2133,11 @@ func _on_map_input(event: InputEvent) -> void:
 		if distance < nearest_distance:
 			nearest_distance = distance
 			nearest = place.key
+	# debug: Shift+click puts the player there, anywhere on the map
+	if button == MOUSE_BUTTON_LEFT and (event as InputEventMouseButton).shift_pressed and OS.is_debug_build():
+		_map_overlay.accept_event()
+		teleport_to(_map_to_world((event as InputEventMouseButton).position))
+		return
 	_choose_place(nearest)
 	if button == MOUSE_BUTTON_RIGHT and nearest != "":
 		toggle_marker()

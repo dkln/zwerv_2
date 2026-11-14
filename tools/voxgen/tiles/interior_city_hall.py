@@ -397,6 +397,48 @@ def waste_bin():
     return model
 
 
+@tile("binnen/stadhuis/stelling")
+def storage_rack():
+    """A steel storage rack in the basement (2 m wide, 0.5 m deep, 2.25 m high): galvanised
+    uprights, four shelves, cardboard archive boxes on them (some gaps, some boxes turned)."""
+    model = V(16, 4, 18)
+    for x in (0, 15):
+        for y in (0, 3):
+            model.box(x, y, 0, x + 1, y + 1, 18, "gegalvaniseerd")
+    for z in (1, 6, 11, 16):
+        model.box(0, 0, z, 16, 4, z + 1, "metaal1")
+    for shelf, z in enumerate((2, 7, 12)):
+        x = 1
+        while x < 15:
+            width = 3 if (x + shelf) % 4 else 2
+            if (x * 7 + shelf * 3) % 5 != 0:
+                colour = ("hout1", "paal_bruin", "hout3")[(x + shelf) % 3]
+                model.box(x, 0, z, min(x + width, 15), 4, z + 3 + (x % 2), colour)
+                model.box(x, 0, z + 1, min(x + width, 15), 1, z + 2, "lak_wit1")   # the label
+            x += width + 1
+    return model
+
+
+@tile("binnen/stadhuis/schoonmaakkar")
+def cleaning_cart():
+    """The caretaker's cleaning cart (1 m long, 0.5 m wide, 1.125 m high): a grey frame on little
+    wheels, a yellow mop bucket with the wringer, a bin bag on the side and a few bottles."""
+    model = V(8, 4, 9)
+    model.box(0, 0, 0, 1, 1, 1, "metaal_donker")
+    model.box(7, 0, 0, 8, 1, 1, "metaal_donker")
+    model.box(0, 3, 0, 1, 4, 1, "metaal_donker")
+    model.box(7, 3, 0, 8, 4, 1, "metaal_donker")
+    model.box(0, 0, 1, 8, 4, 2, "metaal1")
+    model.box(1, 0, 2, 4, 4, 5, "lak_geel1")       # the bucket
+    model.box(1, 1, 5, 4, 3, 6, "lak_geel2")       # the wringer
+    model.box(5, 0, 2, 8, 4, 7, "bord_zwart")       # the bin bag
+    model.box(2, 1, 6, 3, 2, 9, "hout2")            # the mop handle
+    model.box(4, 0, 6, 5, 1, 8, "bord_blauw")       # a bottle
+    model.box(4, 3, 6, 5, 4, 7, "bord_groen")       # another
+    model.box(7, 1, 2, 8, 3, 8, "metaal1")          # the push bar
+    return model
+
+
 @tile("binnen/stadhuis/infozuil")
 def info_pillar():
     """An information pillar in the hall (0.5 m, 1.75 m high): white with a screen and the

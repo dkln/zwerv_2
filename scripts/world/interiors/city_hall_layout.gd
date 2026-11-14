@@ -20,7 +20,7 @@ extends RefCounted
 ## at its spot before its doors. Tiles of the library binnen (without "stadhuis/"), on the
 ## 0.5 m grid, turned by `turn` (their front then faces (sin turn, 0, cos turn)).
 
-const FLOORS := 5
+const FLOORS := 6   # with the basement (the lift cabin stands beyond the last: CABIN_AT)
 ## Where the floors lie in the scene, side by side (one is shown at a time): floor n at
 ## x = n * FLOOR_SPACING.
 const FLOOR_SPACING := 80.0
@@ -35,7 +35,10 @@ const BENCH_SEAT := 0.625
 const CHAIR_SEAT := 0.625
 const COUNTER_SEAT := 0.5
 const GALLERY_SEATS := [0.5, 0.75]
-const NAMES := ["Hal en receptie", "Burgerzaken", "Kantoortuin", "Vergaderzalen en archief", "Raadzaal"]
+const NAMES := ["Hal en receptie", "Burgerzaken", "Kantoortuin", "Vergaderzalen en archief", "Raadzaal", "Opslag"]
+## The basement is the last floor in the list (BASEMENT: Etage5 in the scene), but lies under
+## the ground floor: its level -1 (level_of: the lift rides down to it, its display says "K").
+const BASEMENT := 5
 
 
 ## Every floor: {"number", "name", "width", "depth", "floor" (its tile), "tiles": [[tile, at,
@@ -46,8 +49,45 @@ const NAMES := ["Hal en receptie", "Burgerzaken", "Kantoortuin", "Vergaderzalen 
 ## Vector3 (where you take a number, or none), "door": Vector3 (floor 0: inside the
 ## entrance, facing in), "lamps": [Vector3]}.
 static func floors() -> Array[Dictionary]:
-	var all: Array[Dictionary] = [_hall(), _civil_affairs(), _office(), _meeting_rooms(), _council_chamber()]
+	var all: Array[Dictionary] = [_hall(), _civil_affairs(), _office(), _meeting_rooms(), _council_chamber(), _basement()]
 	return all
+
+
+## The level of floor `number` (the order of the building): the basement -1, the others their number.
+static func level_of(number: int) -> int:
+	return -1 if number == BASEMENT else number
+
+
+## The basement, 40 x 24 m, bare stone: the storage (rows of steel racks with archive boxes,
+## filing cabinets along the left wall), the caretaker's corner (a desk, a coffee machine, a
+## bin) and the caretaker going round with his cleaning cart along CARETAKER_ROUND.
+const STORAGE_ROWS_Z := [-8.0, -4.0, 0.0, 4.0]
+const STORAGE_RACKS_X := [-14.0, -11.5, -2.0, 0.5, 3.0, 5.5]
+## The caretaker's round (metres, in the floor's space): the aisles between the racks.
+const CARETAKER_ROUND := [Vector3(-16.5, 0.0, -10.0), Vector3(-16.5, 0.0, 6.0), Vector3(-6.5, 0.0, 6.0),
+	Vector3(-6.5, 0.0, -10.0), Vector3(8.5, 0.0, -10.0), Vector3(8.5, 0.0, 6.0), Vector3(-6.5, 0.0, 2.0)]
+static func _basement() -> Dictionary:
+	var plan := _floor(BASEMENT, 40.0, 24.0, "vloer_steen")
+	var left := -20.0
+	var right := 20.0
+	var front := -12.0
+	var back := 12.0
+	for z: float in STORAGE_ROWS_Z:
+		for x: float in STORAGE_RACKS_X:
+			_tile(plan, "stelling", Vector3(x, 0.0, z), 0.0)
+	for z in range(-9, 9, 2):
+		_tile(plan, "kast", Vector3(left + 0.5, 0.0, float(z)), PI * 0.5)
+	# the caretaker's corner, at the front on the right
+	_tile(plan, "bureau", Vector3(right - 4.0, 0.0, front + 3.0), 0.0)
+	_tile(plan, "bureaustoel", Vector3(right - 4.0, 0.0, front + 1.8), 0.0)
+	_tile(plan, "koffieautomaat", Vector3(right - 1.0, 0.0, front + 5.5), -PI * 0.5)
+	_tile(plan, "prullenbak", Vector3(right - 1.0, 0.0, front + 3.5), 0.0)
+	_tile(plan, "printer", Vector3(right - 1.0, 0.0, 4.0), -PI * 0.5)
+	_tile(plan, "kast", Vector3(right - 0.5, 0.0, 8.0), -PI * 0.5)
+	_person(plan, "concierge", CARETAKER_ROUND[0], 0.0)
+	plan.signs.append({"at": Vector3(-6.5, 2.4, back - 0.2), "turn": PI, "text": "OPSLAG"})
+	plan.signs.append({"at": Vector3(right - 4.0, 2.4, front + 0.2), "turn": 0.0, "text": "CONCIERGE"})
+	return plan
 
 
 static func _floor(number: int, width: float, depth: float, floor_tile: String) -> Dictionary:
@@ -114,8 +154,6 @@ static func _hall() -> Dictionary:
 					_person(plan, "klant", Vector3(x + seat, 0.0, z), 0.0, true, BENCH_SEAT)
 	for corner in [Vector3(right - 1.5, 0.0, front + 1.5), Vector3(right - 1.5, 0.0, back - 1.5), Vector3(left + 1.5, 0.0, front + 1.5)]:
 		_tile(plan, "plant", corner, 0.0)
-	_tile(plan, "infozuil", Vector3(-3.5, 0.0, front + 3.0), 0.0)
-	_tile(plan, "infozuil", Vector3(-12.0, 0.0, -4.0), 0.0)
 	for z in [-6.0, 0.0, 6.0]:
 		_wall_tile(plan, "schilderij", Vector3(left, 1.5, z), PI * 0.5)
 	# visitors about in the hall
@@ -159,10 +197,13 @@ static func _civil_affairs() -> Dictionary:
 	_person(plan, "klant", Vector3(-18.0, 0.0, -2.0), PI * 0.5)
 	_person(plan, "klant", Vector3(18.5, 0.0, -4.0), -PI * 0.5)
 	_person(plan, "klant", Vector3(17.0, 0.0, -9.0), -PI * 0.5)
-	plan["dispenser"] = Vector3(-20.0, 0.0, -12.1)
-	_tile(plan, "nummerautomaat", Vector3(-20.0, 0.0, -13.0), 0.0)
-	plan.signs.append({"at": Vector3(-20.0, 2.2, -13.0), "turn": PI, "text": "NUMMERTJE"})
-	plan.signs.append({"at": Vector3(5.5, 3.2, 8.0), "turn": PI, "text": "BURGERZAKEN"})
+	# the number machine right by the lift (where you come onto the floor), facing the room
+	plan["dispenser"] = Vector3(-5.0, 0.0, 9.1)
+	_tile(plan, "nummerautomaat", Vector3(-5.0, 0.0, 10.0), PI)
+	plan.signs.append({"at": Vector3(-5.0, 2.2, 10.0), "turn": PI, "text": "NUMMERTJE"})
+	# over the counters on the back wall: BURGERZAKEN over the left ones (the big board of the
+	# number called now hangs over the right ones: CityHall.NOW_BOARD_AT)
+	plan.signs.append({"at": Vector3(-17.75, 3.4, back - 0.2), "turn": PI, "text": "BURGERZAKEN"})
 	# a coffee corner at the front on the right: the machine, a table, benches round it
 	_tile(plan, "koffieautomaat", Vector3(right - 1.0, 0.0, front + 4.0), -PI * 0.5)
 	_tile(plan, "bureau", Vector3(right - 4.5, 0.0, front + 4.0), 0.0)
@@ -171,11 +212,9 @@ static func _civil_affairs() -> Dictionary:
 	_person(plan, "klant", Vector3(right - 4.75, 0.0, front + 2.0), 0.0, true, BENCH_SEAT)
 	_person(plan, "klant", Vector3(right - 3.5, 0.0, front + 6.25), PI)
 	# bins: by the coffee machine, by the number machine and at the ends of the bench rows
-	for spot: Vector3 in [Vector3(right - 1.0, 0.0, front + 2.5), Vector3(-18.5, 0.0, -13.0),
+	for spot: Vector3 in [Vector3(right - 1.0, 0.0, front + 2.5), Vector3(-3.5, 0.0, 9.8),
 			Vector3(-15.0, 0.0, -6.0), Vector3(15.0, 0.0, -6.0), Vector3(-15.0, 0.0, -1.0), Vector3(15.0, 0.0, -1.0)]:
 		_tile(plan, "prullenbak", spot, 0.0)
-	# an information pillar by the way in from the lift, where you look for your way
-	_tile(plan, "infozuil", Vector3(-12.0, 0.0, 9.0), PI * 0.75)
 	# more benches along the left wall, empty: room enough to wait
 	for z: float in [-6.0, -1.0, 4.0]:
 		_tile(plan, "wachtbank", Vector3(left + 1.2, 0.0, z), PI * 0.5)

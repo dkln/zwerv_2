@@ -776,9 +776,14 @@
 												"verder": [
 													{
 														"vraag": "Hij heeft ook geen adres.",
-														"antwoord": "Dan bestaat meneer Wim voor ons helaas niet. Voor zichzelf ongetwijfeld wel. Getuigenverklaringen doet trouwens mijn collega. Nieuw nummertje, graag.",
-														"stemming": "verdrietig",
-														"gevolg": "doorverwezen"
+														"check": {
+															"id": "id_onmogelijk",
+															"label": "VASTGELOPEN",
+															"kans": 100,
+															"verborgen": true,
+															"gelukt": "Dan bestaat meneer Wim voor ons helaas niet. En u eigenlijk ook niet, zolang u nergens staat ingeschreven. Weet u, u bent niet de eerste deze maand. Er komen er steeds meer zonder pas. Ze zeggen dat er 's nachts een man in een nette jas langs de slapers gaat. Doet u daar maar aangifte van, bij de politie. Met uw ID-kaart.",
+															"stemming_gelukt": "verdrietig"
+														}
 													}
 												]
 											},
@@ -817,16 +822,14 @@
 										"verder": [
 											{
 												"vraag": "Dus ik heb een ID-kaart nodig om een ID-kaart te krijgen.",
-												"antwoord": "Zo zou ik het zelf niet zeggen. Zo staat het er wel.",
-												"stemming": "verdrietig",
-												"verder": [
-													{
-														"vraag": "En nu?",
-														"antwoord": "Nu trekt u een nieuw nummertje. Briefadressen doet mijn collega, verderop. Misschien is die milder.",
-														"stemming": "neutraal",
-														"gevolg": "doorverwezen"
-													}
-												]
+												"check": {
+													"id": "id_onmogelijk",
+													"label": "VASTGELOPEN",
+													"kans": 100,
+													"verborgen": true,
+													"gelukt": "Zo zou ik het zelf niet zeggen. Zo staat het er wel. Zonder vaste woon- of verblijfplaats geen inschrijving, zonder inschrijving geen kaart, zonder kaart geen verblijfplaats. Weet u, u bent niet de eerste deze maand. Er komen er steeds meer zonder pas. Ze zeggen dat er 's nachts een man in een nette jas langs de slapers gaat. Doet u daar maar aangifte van, bij de politie. Met uw ID-kaart.",
+													"stemming_gelukt": "verdrietig"
+												}
 											}
 										]
 									}
@@ -872,6 +875,63 @@
 				"Kan ik verder nog iets niet voor u doen?"
 			],
 			"dag": "Ik kan u vandaag helaas niet helpen. U kunt altijd een nieuw nummertje trekken.",
+			"stemmingen": {
+				"begroeting": "blij",
+				"onderwerp": "neutraal",
+				"doorvraag": "neutraal",
+				"kleingeld_nee": "neutraal",
+				"dag": "blij"
+			}
+		},
+		"concierge": {
+			"spreker": "CONCIËRGE",
+			"embleem": "DH",
+			"kleur": "#2A3E5C",
+			"naamkaartje": "#2A3E5C",
+			"tekstkleur": "#FFFFFF",
+			"stemhoogte": 0.85,
+			"begroetingen": [
+				"Hé. Jij hoort hier eigenlijk niet, hè? Ach, ik zeg niks.",
+				"Pas op, net gedweild. Wat moet je?",
+				"Kelder is van mij, jongen. Maar je mag even kijken.",
+				"Welkom in Maison Kelder. Zo noemen ze het boven, op de vierde. Klinkt chique, hè? Het is een kelder. Met dozen. En mij."
+			],
+			"onderwerp": {
+				"vraag": "Wat ligt hier allemaal opgeslagen?",
+				"antwoord": "Dossiers. Van iedereen die ooit iets bij de gemeente wilde. Formulieren, aanvragen, bezwaren. Alles in dozen. Niks gaat weg.",
+				"doorvraag": "Ligt er ook iets van mij?",
+				"doorantwoord": "Als je hier ooit een nummertje hebt getrokken: vast. Maar zoek het maar eens op. Ik weet niet eens wat er in rij vier staat.",
+				"verder": [
+					{
+						"vraag": "Hoe lang werk je hier al?",
+						"antwoord": "Sinds ze het gebouw neerzetten. Dat witte ijspaleis. Weet je hoeveel ramen dat zijn? Ik wel.",
+						"stemming": "blij"
+					},
+					{
+						"vraag": "Mag ik hier slapen? Het is droog.",
+						"antwoord": "Officieel niet. Om tien uur gaan de deuren dicht en loopt de bewaking een rondje. Maar de kantine boven gooit om vijf uur de broodjes weg. Bij de achteringang. Heb je niet van mij.",
+						"stemming": "neutraal"
+					},
+					{
+						"vraag": "Maison Kelder?",
+						"antwoord": "Ja. Iemand van de raad zei het een keer voor de grap en nu staat het op het rooster. 'Inspectie Maison Kelder.' Dan komt er een man met een klembord, kijkt naar mijn dweil en gaat weer naar boven.",
+						"stemming": "blij",
+						"verder": [
+							{
+								"vraag": "En de wijnkaart?",
+								"antwoord": "Koffie uit de automaat, jongen. Zwart of zwart. Huiswijn is het sop in mijn emmer. Niet drinken.",
+								"stemming": "blij"
+							}
+						]
+					}
+				]
+			},
+			"kleingeld_nee": "Ik heb zelf niks, jongen. Alleen een sleutelbos en een dweil.",
+			"nog_iets": [
+				"Nog wat?",
+				"Moet je nog wat? Anders ga ik door met dweilen."
+			],
+			"dag": "Doei. En loop niet over mijn natte vloer.",
 			"stemmingen": {
 				"begroeting": "blij",
 				"onderwerp": "neutraal",

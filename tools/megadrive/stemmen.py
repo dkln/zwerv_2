@@ -442,7 +442,34 @@ def _babble_consonant(segments: list, consonant: str, pitch: float) -> None:
         segments.append((0.035, "uh", "uh", 1.0, 1.0, 0.0, 0.7))
 
 
-SOUNDS = {"lichaam_klap": body_hit}
+## Someone throwing up in the street at night (a drunk, scripts/world/people/pedestrian.gd
+## throw_up): two retches (a strained "hrk", the voice of a rough young man), then the gush (a
+## gurgling low noise) and its splash on the stones.
+RETCHER = {"pitch": 120.0, "formants": 1.0, "growl": 0.7, "jitter": 0.05, "drive": 5.0, "crackle": 0.4}
+
+
+def throw_up() -> numpy.ndarray:
+    """"Hrrk... hrrk... bleuargh" and the splash on the street."""
+    retch = say(RETCHER, [(0.06, "-", "-", 1.0, 1.0, 0.0, 0.0), (0.16, "uh", "uh", 0.9, 1.3, 1.0, 0.5),
+                          (0.18, "-", "-", 1.0, 1.0, 0.0, 0.0), (0.14, "uh", "e", 1.0, 1.4, 1.0, 0.6),
+                          (0.1, "-", "-", 1.0, 1.0, 0.0, 0.0), (0.42, "e", "uh", 1.3, 0.7, 1.0, 0.9)], 4431)
+    gush_length = int(0.9 * SAMPLE_RATE)
+    times = numpy.arange(gush_length) / SAMPLE_RATE
+    gurgle = 1.0 + 0.6 * numpy.sin(TWO_PI * 11.0 * times) * numpy.sin(TWO_PI * 3.0 * times)
+    gush = band_noise(gush_length, 180.0, 1400.0, 4432) * gurgle * numpy.minimum(times / 0.05, 1.0) * numpy.exp(-times / 0.5)
+    splash_length = int(0.5 * SAMPLE_RATE)
+    splash_times = numpy.arange(splash_length) / SAMPLE_RATE
+    splash = band_noise(splash_length, 900.0, 6000.0, 4433) * numpy.exp(-splash_times / 0.08) * 0.8
+    total = numpy.zeros(len(retch) + int(0.25 * SAMPLE_RATE) + splash_length)
+    total[:len(retch)] += retch * 0.9
+    start = len(retch) - int(0.35 * SAMPLE_RATE)
+    total[start:start + gush_length] += gush[:len(total) - start] * 0.8
+    splash_at = start + int(0.3 * SAMPLE_RATE)
+    total[splash_at:splash_at + splash_length] += splash[:len(total) - splash_at]
+    return fade_edges(numpy.tanh(1.6 * total), 0.002, 0.08)
+
+
+SOUNDS = {"lichaam_klap": body_hit, "overgeven": throw_up}
 for _voice_name in VOICES:
     for _mood in BABBLE_MOODS:
         for _variant in range(1, BABBLE_VARIANTS + 1):

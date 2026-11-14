@@ -52,7 +52,9 @@ const PedestrianScript = preload("res://scripts/world/people/pedestrian.gd")
 const Crowd = preload("res://scripts/world/people/crowd.gd")
 const Sight = preload("res://scripts/world/town/sight.gd")
 ## Ground tile folders people walk on.
-const WALK_GROUND := ["stoep/", "plein/"]
+## (the pavements of the bridges over the singel and the footbridges in the parks too: without
+## them the centre was cut off from the station's side, and no route led across the water)
+const WALK_GROUND := ["stoep/", "plein/", "brug/brug_dek_stoep", "brug/voetbrug_"]
 ## Platform tiles at street level people walk and wait on too (a tram stop, the station's):
 ## from them they get on a tram or a train and onto them they get off (door_open_at).
 const PLATFORM_GROUND := ["tram/tram_halte_perron", "tram/tramhalte_middenperron", "spoor/perron", "spoor/perron_midden"]
@@ -269,15 +271,24 @@ func route_to_somewhere(from: Vector3i, mobility: String) -> Array[Vector3i]:
 
 ## The cells to walk from `from` to `to` (the story sends someone somewhere:
 ## Pedestrian.story_goal), without `from`; empty when it cannot get there.
-func route_to(from: Vector3i, to: Vector3i) -> Array[Vector3i]:
+func route_to(from: Vector3i, to: Vector3i, avoid: Array = []) -> Array[Vector3i]:
 	var route: Array[Vector3i] = []
 	if _routes == null or not _route_ids.has(from):
 		return route
 	var goal := to if _route_ids.has(to) else nearest_walkable(to)
 	if not _route_ids.has(goal):
 		return route
+	# cells someone found it could not get into (a lamp post, a bin in the way: Pedestrian
+	# _reroute_story) left out of this one route only
+	var left_out: Array[int] = []
+	for cell: Vector3i in avoid:
+		if _route_ids.has(cell) and cell != from and cell != goal:
+			left_out.append(int(_route_ids[cell]))
+			_routes.set_point_disabled(int(_route_ids[cell]), true)
 	for point in _routes.get_point_path(int(_route_ids[from]), int(_route_ids[goal])):
 		route.append(Vector3i(roundi(point.x), roundi(point.y), roundi(point.z)))
+	for id in left_out:
+		_routes.set_point_disabled(id, false)
 	if not route.is_empty():
 		route.remove_at(0)
 	return route
@@ -513,6 +524,8 @@ func _dress_for_now(person: Pedestrian, rebuild: bool, spot := Vector3.INF) -> v
 	var item := Crowd.carried_for(kind, _random) if aid == "" else ""
 	var pace := Crowd.pace_of(kind)
 	_leaves_at[person] = _clock + _random.randf_range(renew_after.x, renew_after.y)
+	# the night's crowd may be drunk (they weave and sway, and some throw up: Pedestrian)
+	person.drunk = Crowd.drunkenness(kind, Crowd.hour_of(world), _random) if aid == "" else 0.0
 	if rebuild:
 		person.become(look_seed, look, aid, pace, item, kind)
 	else:
@@ -522,6 +535,8 @@ func _dress_for_now(person: Pedestrian, rebuild: bool, spot := Vector3.INF) -> v
 		person.pace_factor = pace
 		person.carried = item
 		person.crowd_kind = kind
+		# someone on duty (police, enforcement) is it from the start too, as after become()
+		person.role = kind if kind in Pedestrian.ON_DUTY_KINDS else ""
 
 
 ## Whether the next person of `kind` rides: each kind owes its share of riders (Crowd.ride_share)

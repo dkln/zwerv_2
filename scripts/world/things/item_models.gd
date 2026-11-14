@@ -109,6 +109,7 @@ static func _build(item_id: String, figure: PlayerModel.VoxelFigure) -> bool:
 		"ov_chipkaart": _build_transit_card(figure)
 		"los_kaartje": _build_paper_ticket(figure)
 		"wachtnummer": _build_queue_ticket(figure)
+		"straatnieuws": _build_street_paper(figure)
 		"blikje": _build_empty_can(figure)
 		"pinpas": _build_bank_card(figure)
 		"id_kaart": _build_id_card(figure)
@@ -1009,6 +1010,20 @@ static func _build_bank_card(figure: PlayerModel.VoxelFigure) -> void:
 			_box(figure, Vector3i(column, 3, 1), Vector3i(column, 3, 1), Color("#2A4AC8"), "plastic")
 	_round_card_corners(figure, 15, 9)
 
+
+
+## Straatnieuws folded once: newsprint, the red masthead with its white letters, columns of
+## grey text and a photo block.
+static func _build_street_paper(figure: PlayerModel.VoxelFigure) -> void:
+	_box(figure, Vector3i(0, 0, 0), Vector3i(11, 15, 1), Color("#ECE8DC"), "skin")
+	_box(figure, Vector3i(0, 12, 0), Vector3i(11, 15, 0), Color("#C83A2A"), "skin")
+	for column in range(1, 11, 2):
+		_box(figure, Vector3i(column, 13, 0), Vector3i(column, 14, 0), Color("#F4F4F0"), "skin")
+	_box(figure, Vector3i(1, 6, 0), Vector3i(5, 10, 0), Color("#6A6A70"), "skin")
+	for row in range(1, 11, 2):
+		_box(figure, Vector3i(7, row, 0), Vector3i(10, row, 0), Color("#8A8A86"), "skin")
+	for row in range(1, 5, 2):
+		_box(figure, Vector3i(1, row, 0), Vector3i(5, row, 0), Color("#8A8A86"), "skin")
 
 
 ## The slip from the number machine of Burgerzaken: thin white thermal paper, a torn top edge,

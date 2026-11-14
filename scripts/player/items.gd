@@ -177,6 +177,9 @@ const ITEMS := {
 	# number on the player (CityHall.TICKET_META), shown by the menu; a slip of paper, no slot
 	"wachtnummer": {"name": "Wachtnummer", "kind": "spullen", "rarity": "gewoon", "icon": "", "bag": true,
 		"text": "Een strookje van de nummerautomaat van Burgerzaken. Bewaren tot je wordt omgeroepen."},
+	# Straatnieuws, the paper sold by the homeless (street_paper_sellers.gd: an old copy, given)
+	"straatnieuws": {"name": "Straatnieuws", "kind": "spullen", "rarity": "bijzonder", "icon": "",
+		"text": "De straatkrant van Den Haag. Vorige maand, met een puzzel die al is ingevuld. In potlood, gelukkig."},
 	# your own identity card: stolen in your sleep at the start of the game (the first mission);
 	# the inventory always keeps a slot for it, empty while you have not got it (GameMenu)
 	"id_kaart": {"name": "ID-kaart", "kind": "sleutel", "rarity": "legendarisch", "icon": "pinpas",

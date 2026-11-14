@@ -83,6 +83,28 @@ const GHOST_SECONDS := 1.5
 ## held up (that made his way endless): it waits a moment, steps aside, and walks through the
 ## others after this long (they wait for it); for the player it still stops.
 const STORY_GHOST_AFTER := 1.0
+const STORY_CROSSING_PATIENCE := 5.0
+## Drunk (`drunk` 0..1, Crowd.drunkenness: the night's crowd): its way weaves from side to
+## side (up to DRUNK_WEAVE radians off, slowly), it goes slower (DRUNK_PACE at the most drunk),
+## its body sways and hangs forward (_sway_drunk). Very drunk (THROW_UP_FROM) and near the
+## player, now and then (THROW_UP_CHANCE a second; in the whole town at most one every
+## THROW_UP_EVERY seconds) it stops and throws up (throw_up): a balloon, bent over, the retch
+## (the sound "overgeven"), a gush of chunks, and a puddle on the ground that fades after
+## PUDDLE_SECONDS (at most PUDDLES_MOST about).
+const DRUNK_WEAVE := 0.45
+const DRUNK_PACE := 0.7
+const THROW_UP_FROM := 0.6
+const THROW_UP_CHANCE := 0.03
+const THROW_UP_EVERY := 40.0
+const THROW_UP_NEAR := 25.0
+const THROW_UP_SECONDS := 3.2
+const PUDDLE_SECONDS := 150.0
+const PUDDLES_MOST := 6
+const PUDDLE_COLOUR := Color("#B8A548")
+const SICK_LINES := ["Ik voel me niet zo lekker...", "Oei. Oei oei.", "Die laatste was er één te veel...", "Hou m'n jas even vast...",
+	"Niet naar kijken, hè.", "Wie heeft die shotjes besteld..."]
+static var _last_throw_up := -1000.0
+static var _puddles: Array[Node3D] = []
 ## Radius of the figure for the way to a spot, and from how high above the feet it looks
 ## (over the kerbs and steps).
 const BODY_RADIUS := 0.22
@@ -160,6 +182,13 @@ var crowd_kind := ""
 ## door, at the door it is gone (Pedestrians.into_station).
 ## Held still by the story (scripts/story/characters.gd: Ome Wim waiting for you): it stands.
 var story_held := false
+## How drunk it is (0 sober .. 1 very; Pedestrians sets it, Crowd.drunkenness): see DRUNK_WEAVE.
+var drunk := 0.0
+var _sway_clock := 0.0
+var _throwing_up := 0.0              # seconds of throwing up left (0: not)
+var _story_blocked := {}             # cells found blocked on the way to the story's goal (_reroute_story)
+var _crossing_wait := 0.0            # seconds waited at a crossing now
+var _story_blocked_for := NO_STORY_GOAL
 ## Where the story sends it (a cell; NO_STORY_GOAL: nowhere, it walks about as anyone): it goes
 ## there by the route finder (Pedestrians.route_to) and stands still there (story_arrived).
 var story_goal := NO_STORY_GOAL
@@ -417,6 +446,12 @@ func _physics_process(delta: float) -> void:
 			return
 		delta = _saved_delta
 	_saved_delta = 0.0
+	_sway_clock += delta
+	if _throwing_up > 0.0:
+		_throwing_up -= delta
+		_pause = maxf(_pause, 0.1)
+	elif drunk >= THROW_UP_FROM and not aid and _near_player(THROW_UP_NEAR) and randf() < THROW_UP_CHANCE * delta:
+		throw_up()
 	if _pause > 0.0:
 		_pause -= delta
 		_walk_figure(delta, 0.0)
@@ -428,8 +463,17 @@ func _physics_process(delta: float) -> void:
 		_walk_figure(delta, 0.0)
 		return
 	if not is_daredevil() and not _may_go():
-		_walk_figure(delta, 0.0)
-		return
+		# who the story sends somewhere waits at a crossing STORY_CROSSING_PATIENCE seconds at
+		# most (a busy road never looked clear and held Ome Wim there for good), then goes over:
+		# the traffic stops for someone on a zebra
+		_crossing_wait += delta
+		if story_goal != NO_STORY_GOAL and _crossing_wait > STORY_CROSSING_PATIENCE:
+			_on_zebra = true
+			Pedestrians.claim_zebra(self, _crossing, true)
+		else:
+			_walk_figure(delta, 0.0)
+			return
+	_crossing_wait = 0.0
 	var towards := flat_to.normalized()
 	# a rider looks the way it faces, but while it still has to turn the way it is going
 	var looking := towards
@@ -474,6 +518,10 @@ func _physics_process(delta: float) -> void:
 	if is_running():
 		_speed = maxf(_speed, RUN_SPEED * pace_factor)
 	var direction := flat_to.normalized()
+	if drunk > 0.0 and not aid:
+		# drunk: weaving from side to side about the way, and slower
+		direction = direction.rotated(sin(_sway_clock * 0.9) * DRUNK_WEAVE * drunk)
+		_speed *= lerpf(1.0, DRUNK_PACE, drunk)
 	var heading := atan2(direction.x, direction.y)
 	if aid:
 		_ride_towards(heading, flat_to.length(), delta)
@@ -554,8 +602,109 @@ func _walk_figure(delta: float, walking: float) -> void:
 	# running: the run of the player (TownsfolkFigure.walk `run`), blended in and out
 	_run_share = move_toward(_run_share, 1.0 if is_running() and walking > 0.0 else 0.0, delta * 4.0)
 	figure.walk(_phase, minf(_walking, 1.0), _run_share)
+	_sway_drunk(delta)
 	if _carried_pose and _carried_item:
 		Crowd.carried_items().call("pose", figure, carried)
+
+
+## The body of someone drunk: swaying side to side and hanging forward a little; bent far over
+## while throwing up; straight again when sober.
+func _sway_drunk(delta: float) -> void:
+	if _drawn == null:
+		return
+	var tilt := Vector3.ZERO
+	if _throwing_up > 0.0:
+		tilt = Vector3(0.75, 0.0, sin(_sway_clock * 3.0) * 0.05)
+	elif drunk > 0.0:
+		tilt = Vector3(0.06 * drunk + sin(_sway_clock * 1.3) * 0.04 * drunk, 0.0, sin(_sway_clock * 1.7) * 0.14 * drunk)
+	_drawn.rotation.x = lerpf(_drawn.rotation.x, tilt.x, 1.0 - exp(-delta * 6.0))
+	_drawn.rotation.z = lerpf(_drawn.rotation.z, tilt.z, 1.0 - exp(-delta * 6.0))
+
+
+## Throws up where it stands (see DRUNK_WEAVE): a balloon first, then bent over, the retch, the
+## gush and the puddle. Not twice in the town within THROW_UP_EVERY seconds.
+func throw_up() -> void:
+	var now := Time.get_ticks_msec() / 1000.0
+	if now - _last_throw_up < THROW_UP_EVERY or _throwing_up > 0.0 or not is_inside_tree():
+		return
+	_last_throw_up = now
+	_throwing_up = THROW_UP_SECONDS
+	_pause = THROW_UP_SECONDS
+	var shout: GDScript = load("res://scripts/vehicles/driver_shout.gd")
+	shout.call("shout_line", self, SICK_LINES[randi() % SICK_LINES.size()], 2.2, "verdrietig")
+	get_tree().create_timer(1.0, false).timeout.connect(_retch)
+
+
+func _retch() -> void:
+	if not is_inside_tree():
+		return
+	var forward := Vector3(sin(rotation.y), 0.0, cos(rotation.y))
+	var audio := get_node_or_null("/root/RuimtelijkGeluid")
+	if audio and audio.has_method("play_event"):
+		audio.play_event(global_position + Vector3.UP * 1.2, "overgeven")
+	var gush := CPUParticles3D.new()
+	gush.name = "Kots"
+	gush.one_shot = true
+	gush.amount = 28
+	gush.lifetime = 0.9
+	gush.explosiveness = 0.35
+	gush.direction = Vector3(0.0, -0.4, 1.0)
+	gush.spread = 18.0
+	gush.initial_velocity_min = 1.0
+	gush.initial_velocity_max = 1.8
+	gush.gravity = Vector3(0.0, -9.0, 0.0)
+	var chunk := BoxMesh.new()
+	chunk.size = Vector3.ONE * 0.05
+	var chunk_material := StandardMaterial3D.new()
+	chunk_material.albedo_color = PUDDLE_COLOUR
+	chunk.material = chunk_material
+	gush.mesh = chunk
+	gush.color = PUDDLE_COLOUR
+	add_child(gush)
+	gush.position = Vector3(0.0, 1.15, 0.35)
+	gush.emitting = true
+	get_tree().create_timer(2.0, false).timeout.connect(gush.queue_free)
+	get_tree().create_timer(0.7, false).timeout.connect(func() -> void:
+		if is_inside_tree():
+			_leave_puddle(global_position + forward * 0.6))
+
+
+## The puddle on the ground at `at`: flat, uneven, glistening; fades and goes after PUDDLE_SECONDS.
+func _leave_puddle(at: Vector3) -> void:
+	var puddle := MeshInstance3D.new()
+	puddle.name = "Kotsplas"
+	var mesh := CylinderMesh.new()
+	mesh.top_radius = 0.38
+	mesh.bottom_radius = 0.38
+	mesh.height = 0.02
+	mesh.radial_segments = 9
+	var material := StandardMaterial3D.new()
+	material.albedo_color = PUDDLE_COLOUR
+	material.roughness = 0.25
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mesh.material = material
+	puddle.mesh = mesh
+	puddle.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	puddle.scale = Vector3(randf_range(0.8, 1.3), 1.0, randf_range(0.6, 1.0))
+	puddle.rotation.y = randf() * TAU
+	get_parent().add_child(puddle)
+	puddle.global_position = Vector3(at.x, _ground_height(at, at.y + 0.5) + 0.012, at.z)
+	_puddles.append(puddle)
+	while _puddles.size() > PUDDLES_MOST:
+		var oldest: Node3D = _puddles.pop_front()
+		if is_instance_valid(oldest):
+			oldest.queue_free()
+	var fade := puddle.create_tween()
+	fade.tween_interval(PUDDLE_SECONDS)
+	fade.tween_property(material, "albedo_color:a", 0.0, 8.0)
+	fade.tween_callback(func() -> void:
+		_puddles.erase(puddle)
+		puddle.queue_free())
+
+
+## Whether it is throwing up now (for the checks).
+func is_throwing_up() -> bool:
+	return _throwing_up > 0.0
 
 
 ## Standing still and straight at once (both feet on the ground, the arms down), as when the
@@ -674,7 +823,8 @@ func _arrive() -> void:
 	if heading_to_station:
 		_choose_next()
 		return
-	if not town.is_zebra(cell) and _random.randf() < PAUSE_CHANCE:
+	# (who the story sends somewhere does not stop to look about on the way)
+	if story_goal == NO_STORY_GOAL and not town.is_zebra(cell) and _random.randf() < PAUSE_CHANCE:
 		_pause = _random.randf_range(0.6, PAUSE_LONGEST)
 	_choose_next()
 
@@ -714,6 +864,11 @@ func _choose_next() -> void:
 			if _head_for(next_on_the_way):
 				return
 			_way.clear()   # blocked (a fence, a bike rack): another way, another place
+		if story_goal != NO_STORY_GOAL and cell != story_goal:
+			# sent by the story: never wandering off; the next cell of its way blocked (a lamp
+			# post, a bin), a way round it; no way at all, the neighbour nearest its goal
+			if _reroute_story(next_on_the_way, ways) or _toward_story_goal(ways):
+				return
 	var straight := cell + (cell - _came_from)
 	if straight != cell and straight in ways and _random.randf() < STRAIGHT_CHANCE:
 		order.append(straight)
@@ -733,6 +888,46 @@ func _choose_next() -> void:
 	_pause = 0.8
 
 
+## Sent by the story and the next cell of its way (`failed`) could not be got into: that cell
+## left out (_story_blocked, for this goal), a way round it (Pedestrians.route_to, avoid), up
+## to three times; true when it is on its way again.
+func _reroute_story(failed: Vector3i, ways: Array) -> bool:
+	if failed != cell:
+		_story_blocked[failed] = true
+	for attempt in 3:
+		_way = town.route_to(cell, story_goal, _story_blocked.keys())
+		if _way.is_empty():
+			return false
+		var next: Vector3i = _way[0]
+		if next in ways and _head_for(next):
+			return true
+		_story_blocked[next] = true
+	# no way round either (pinned between a lamp post and a bollard on a quay): on along its
+	# plain way, to the middle of the next cell, brushing past what stands there
+	_story_blocked.clear()
+	_way = town.route_to(cell, story_goal)
+	if _way.is_empty():
+		return false
+	_next_cell = _way[0]
+	_target = _spot_in(_next_cell, 0.0)
+	return true
+
+
+## Sent by the story with its way blocked or not found: to the neighbour of `ways` nearest its
+## goal (not back where it came from unless that is all there is); false if none can be gone to.
+func _toward_story_goal(ways: Array) -> bool:
+	var goal := town.cell_middle(story_goal)
+	var options: Array = ways.filter(func(way: Vector3i) -> bool: return way != _came_from)
+	options.sort_custom(func(first: Vector3i, second: Vector3i) -> bool:
+		return town.cell_middle(first).distance_squared_to(goal) < town.cell_middle(second).distance_squared_to(goal))
+	if _came_from in ways and _came_from != cell:
+		options.append(_came_from)
+	for way: Vector3i in options:
+		if _head_for(way):
+			return true
+	return false
+
+
 ## The next cell of the way to where it is going (one of `ways`), or its own cell when it
 ## is wandering now. Arrived, or strayed from the way: it wanders a while (WANDER_CHANCE) or
 ## sets off for the next place (Pedestrians.route_to_somewhere).
@@ -742,6 +937,9 @@ func _next_on_the_way(ways: Array) -> Vector3i:
 	if not _way.is_empty() and not _way[0] in ways:
 		_way.clear()
 	if story_goal != NO_STORY_GOAL:
+		if _story_blocked_for != story_goal:
+			_story_blocked.clear()   # a new goal: what was blocked on the way to the last forgotten
+			_story_blocked_for = story_goal
 		# sent by the story: on to its goal, there it stands still
 		if cell == story_goal:
 			story_goal = NO_STORY_GOAL
@@ -750,7 +948,7 @@ func _next_on_the_way(ways: Array) -> Vector3i:
 			story_arrived.emit()
 			return cell
 		if _way.is_empty() and town.has_method("route_to"):
-			_way = town.route_to(cell, story_goal)
+			_way = town.route_to(cell, story_goal, _story_blocked.keys())
 		return _way[0] if not _way.is_empty() else cell
 	if _way.is_empty():
 		if _wander_left > 0:
@@ -866,6 +1064,10 @@ func _player_ahead(direction: Vector2) -> bool:
 	if distance < 0.0001:
 		return true
 	var ahead := offset.dot(direction) / distance
+	if story_goal != NO_STORY_GOAL:
+		# sent by the story (Ome Wim leading you): the player walking with it beside or behind
+		# never holds it up, only one standing right in its way
+		return distance < _keep_clear() and ahead > 0.6
 	# right ahead, or close beside its way (it would brush past the player)
 	return (distance < _keep_clear() + 0.2 and ahead > 0.2) or (distance < PLAYER_BRUSH and ahead > -0.3)
 

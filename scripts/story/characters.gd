@@ -61,6 +61,16 @@ var _random := RandomNumberGenerator.new()
 
 func _ready() -> void:
 	_random.randomize()
+	# who comes up to you in the street once the second mission is done (street_pitches.gd)
+	var pitches: Node = load("res://scripts/story/street_pitches.gd").new()
+	pitches.name = "Straatwerving"
+	pitches.set("characters", self)
+	add_child(pitches)
+	# sellers of Straatnieuws by the supermarkets, coming and going (street_paper_sellers.gd)
+	var paper_sellers: Node = load("res://scripts/story/street_paper_sellers.gd").new()
+	paper_sellers.name = "Straatnieuws"
+	paper_sellers.set("characters", self)
+	add_child(paper_sellers)
 	var player := get_node_or_null(player_path)
 	if player and player.has_signal("talked"):
 		player.talked.connect(_on_talked)
@@ -534,6 +544,40 @@ func wander(who: String) -> Node3D:
 ## Whether `who` wanders about (wander).
 func is_wandering(who: String) -> bool:
 	return _wandering.has(who)
+
+
+## `who` wanders about `home` (world x, z) along `points` (offsets from it, metres) instead of
+## round its "plek": someone without a fixed place (a seller of Straatnieuws by a supermarket,
+## street_paper_sellers.gd). Made now, as wander does it otherwise.
+func wander_round(who: String, home: Vector2, points: Array) -> Node3D:
+	if _wandering.has(who):
+		return person_of(who)
+	var entry: Dictionary = data().get(who, {})
+	var roam: Dictionary = entry.get("zwerft", {})
+	var round_points: Array[Vector2] = []
+	for point: Vector2 in points:
+		round_points.append(home + point)
+	if round_points.is_empty():
+		round_points.append(home)
+	var person := appear(who, round_points[0]) as Pedestrian
+	if person == null:
+		return null
+	person.story_held = true
+	person.global_position = Vector3(round_points[0].x, person.global_position.y, round_points[0].y)
+	_wandering[who] = {"points": round_points, "index": 0, "pause": 1.0, "phase": 0.0, "puff": 2.0,
+		"speed": float(roam.get("tempo", 0.6)), "rest": roam.get("rookpauze", [3.0, 7.0]), "smoke": null, "trolley": null}
+	return person
+
+
+## `who` gone from the town (someone who comes and goes: a seller of Straatnieuws); made
+## again the next time it appears.
+func dismiss(who: String) -> void:
+	_wandering.erase(who)
+	_chasing.erase(who)
+	var person := person_of(who)
+	_people.erase(who)
+	if person and is_instance_valid(person):
+		person.queue_free()
 
 
 ## Metres from the player at which the one wandering stops and turns to them.

@@ -25,6 +25,10 @@ extends "res://scripts/world/interiors/interior.gd"
 ## places on (random: TICKET_GAP; who has the ones between does not come: NO_SHOW_SECONDS),
 ## the slip in your pockets (Items "wachtnummer", the number on it: TICKET_META) and a thought
 ## saying it. The clerks at the counters only talk to you when your number is called at theirs
+## The basement (Layout.BASEMENT, level -1: the lift rides down to it, "K" on its displays):
+## the storage, and the caretaker going round with his cleaning cart (_advance_caretaker: along
+## Layout.CARETAKER_ROUND, now and then standing still to mop), who can be talked to
+## (personeel.json "concierge").
 ## (talk_gate): before that they send you to the machine or tell you to wait, crosser every
 ## time, and it is an offence ("voordringen", data/gesprekken/uitzetten.json: the guard warns
 ## you, the third time puts you out); not there within PLAYER_WAIT seconds, the turn is gone
@@ -35,6 +39,7 @@ const SwipeTransition = preload("res://scripts/ui/swipe_transition.gd")
 const UiSounds = preload("res://scripts/ui/ui_sounds.gd")
 const InteriorSpot = preload("res://scripts/world/interiors/interior_spot.gd")
 const SignBoard = preload("res://scripts/world/things/sign_board.gd")
+const Announcer = preload("res://scripts/world/interiors/announcer.gd")
 const LIBRARY := "res://assets/libraries/binnen.res"
 const LIFT_SOUND := "lift_ding"
 ## The doors: how far each leaf slides aside (metres) and how long that takes (seconds).
@@ -62,6 +67,21 @@ const TICKET_ITEM := "wachtnummer"
 const WAITING_BOARD_AT := Vector3(-23.8, 3.2, 3.0)
 const WAITING_BOARD_LINE := 0.42
 const COUNTER_FLOOR := 1
+## The big board of the number called now (Burgerzaken's floor space: on the back wall over the
+## right counters, readable from the room) and how the people behind a counter are talked to:
+## from this far before them, within this reach (InteriorPerson.talk_ahead, talk_reach).
+const NOW_BOARD_AT := Vector3(8.0, 3.2, 14.8)
+const COUNTER_TALK_AHEAD := 1.4
+const COUNTER_TALK_REACH := 1.6
+## A visitor is at its spot when within this (metres), or when its path there is used up (the
+## spot itself in a cell the floor's path finder counts as taken: a bench, a counter).
+const AT_SPOT := 0.6
+## The caretaker of the basement: his pace (m/s), how long he stops to mop at a point of his
+## round (s, from .. to), and where his cart is (before him, metres).
+const CARETAKER_PACE := 0.9
+const CARETAKER_MOP := Vector2(2.0, 6.0)
+const CART_AHEAD := 0.85
+const CART_TILE := "stadhuis/schoonmaakkar"
 ## What a clerk says, crosser every time, when you come to the counter out of turn: without a
 ## number, and with one that is not called yet.
 const CROSS_NO_TICKET := ["Eerst een nummertje trekken, bij de automaat bij de ingang.",
@@ -95,6 +115,12 @@ var _waiting_lines: Array[Node3D] = []
 var _talking_at := -1                # the counter whose clerk the player talks to now
 var _cut_in_line := 0                # times the player came to a counter out of turn
 var _sent_away_from: Array[int] = []  # counters whose clerk sent you on ("doorverwezen"): not there again
+var _caretaker: InteriorPerson       # the caretaker of the basement, with his cart
+var _announcer: Node                 # the loudspeakers of Burgerzaken (Announcer)
+var _now_board: Node3D               # the big board of the number called now, over the counters
+var _seats: Array[Transform3D] = []  # the seats of the visitors of Burgerzaken (floor space)
+var _caretaker_point := 1            # the point of his round he walks to
+var _caretaker_rest := 0.0           # seconds he still stands mopping
 var _random := RandomNumberGenerator.new()
 
 
@@ -145,6 +171,8 @@ func player_came_in(player: Node3D) -> void:
 
 func player_went_out() -> void:
 	_riding = false
+	if _announcer:
+		_announcer.call("stop")
 	_drop_ticket()   # the slip does not go out of the door with you
 
 
@@ -194,7 +222,7 @@ func _dress_floor(floor_node: Node3D) -> void:
 		_doors[number] = leaves
 		_set_doors(number, false, false)
 		# the floor display over the doors
-		var display: Node3D = SignBoard.create(str(number) if number > 0 else "0", Color("#101418"), DISPLAY_INK, 0.2, false, 0.9)
+		var display: Node3D = SignBoard.create(level_text(Layout.level_of(number)), Color("#101418"), DISPLAY_INK, 0.2, false, 0.9)
 		display.name = "Etagedisplay"
 		display.transform = door_marker.transform
 		display.position += Vector3(0.0, 2.6, 0.0) + door_marker.transform.basis.z * -0.02
@@ -231,6 +259,10 @@ func _make_people(number: int) -> void:
 		var person := InteriorPerson.create(role, 7000 + number * 100 + index, sit, seat, _outfit(role))
 		person.name = role.capitalize().replace(" ", "")
 		person.role = role
+		if role in ["loketmedewerker", "receptioniste"]:
+			# behind a counter: talked to across it, from before it
+			person.talk_ahead = COUNTER_TALK_AHEAD
+			person.talk_reach = COUNTER_TALK_REACH
 		floor_node.add_child(person)
 		person.transform = (child as Node3D).transform
 		_people.append(person)
@@ -249,6 +281,8 @@ static func _outfit(role: String) -> Dictionary:
 			return {"jas": "#1A2440", "rand": "#C9A23A", "broek": "#1A2440"}
 		"raadslid":
 			return {"jas": "#3A3E48", "rand": "#E8E6E0", "broek": "#2A2C32"}
+		"concierge":
+			return {"jas": "#2A3E5C", "rand": "#C8CCD2", "broek": "#2A3E5C"}
 	return {}
 
 
@@ -275,7 +309,9 @@ func _call_lift(from: int) -> void:
 		return
 	var choices: Array = []
 	for index in _floors.size():
-		var label := ("Begane grond" if index == 0 else "%de etage" % index) + " · " + String(Layout.NAMES[index] if index < Layout.NAMES.size() else "")
+		var level := Layout.level_of(index)
+		var where := "Begane grond" if level == 0 else ("Kelder" if level < 0 else "%de etage" % level)
+		var label := where + " · " + String(Layout.NAMES[index] if index < Layout.NAMES.size() else "")
 		choices.append(label + ("  (hier)" if index == from else ""))
 	var chosen := [-1]
 	var page := {"kind": "verhaal", "speaker": "LIFT", "text": "Ding. De liftdeuren gaan open. Naar welke etage?", "choices": choices}
@@ -301,7 +337,8 @@ func ride(to: int, animate := true) -> void:
 		_ding(floor_node(from).get_node_or_null("Lift") as Node3D)
 		_set_doors(from, true, true)
 		await get_tree().create_timer(DOOR_SLIDE + 0.1).timeout
-	await _lift.ride(from, to, _player, _arrive.bind(to), animate)
+	# the lift counts in levels (the basement is -1, under the ground floor)
+	await _lift.ride(Layout.level_of(from), Layout.level_of(to), _player, _arrive.bind(to), animate)
 	_riding = false
 
 
@@ -314,7 +351,9 @@ func _arrive(to: int) -> void:
 	_move_player(lift)
 	var hud := _hud()
 	if hud and hud.has_method("show_notice"):
-		hud.show_notice(NOTICE_HEADING % to if to > 0 else "— BEGANE GROND —", String(Layout.NAMES[to]))
+		var level := Layout.level_of(to)
+		var heading := NOTICE_HEADING % level if level > 0 else ("— BEGANE GROND —" if level == 0 else "— KELDER —")
+		hud.show_notice(heading, String(Layout.NAMES[to]))
 
 
 func _ding(where: Node3D) -> void:
@@ -465,7 +504,20 @@ func _set_up_queue() -> void:
 	visitors.shuffle()
 	for visitor in visitors:
 		_queue.append({"number": _issue(), "who": visitor})
+		if visitor.sitting:
+			_seats.append(visitor.transform)
 	_make_waiting_board(floor_node)
+	_now_board = SignBoard.create("B ---", Color("#101418"), DISPLAY_INK, 0.3, false, 4.6)
+	_now_board.name = "NuAanDeBeurt"
+	_now_board.position = NOW_BOARD_AT
+	_now_board.rotation.y = PI   # facing the room
+	floor_node.add_child(_now_board)
+	var heading: Node3D = SignBoard.create("NU AAN DE BEURT", SIGN_PLATE, SIGN_INK, 0.13, false, 4.6)
+	heading.name = "NuAanDeBeurtKop"
+	heading.position = NOW_BOARD_AT + Vector3(0.0, 0.62, 0.0)
+	heading.rotation.y = PI
+	floor_node.add_child(heading)
+
 
 
 ## The queue moves on (on Burgerzaken only): every counter calls, waits, serves, sends back.
@@ -489,8 +541,9 @@ func _advance_queue(delta: float) -> void:
 					continue
 				walk_evictor(visitor, counter.stand, VISITOR_PACE, delta)
 				var gap := Vector2(visitor.global_position.x - counter.stand.x, visitor.global_position.z - counter.stand.z)
-				if gap.length() < 0.25:
+				if gap.length() < AT_SPOT or _path_used_up(visitor):
 					evictor_stops(visitor)
+					visitor.global_position = Vector3(counter.stand.x, visitor.global_position.y, counter.stand.z)
 					visitor.global_rotation.y = 0.0   # facing the counter
 					counter.state = "bediend"
 					counter.clock = _random.randf_range(SERVE_SECONDS.x, SERVE_SECONDS.y)
@@ -498,6 +551,7 @@ func _advance_queue(delta: float) -> void:
 				counter.clock = float(counter.clock) - delta
 				if float(counter.clock) <= 0.0:
 					counter.state = "terug"
+					_to_a_free_seat(visitor)
 			"terug":
 				if not is_instance_valid(visitor):
 					_free_counter(counter)
@@ -505,7 +559,7 @@ func _advance_queue(delta: float) -> void:
 				var home: Dictionary = visitor.get_meta(HOME_META, {})
 				var home_at: Vector3 = visitor.get_parent().to_global((home.get("transform", visitor.transform) as Transform3D).origin)
 				walk_evictor(visitor, home_at, VISITOR_PACE, delta)
-				if Vector2(visitor.global_position.x - home_at.x, visitor.global_position.z - home_at.z).length() < 0.3:
+				if Vector2(visitor.global_position.x - home_at.x, visitor.global_position.z - home_at.z).length() < AT_SPOT or _path_used_up(visitor):
 					evictor_done(visitor)
 					_queue.append({"number": _issue(), "who": visitor})   # a new number: waits again
 					_free_counter(counter)
@@ -518,6 +572,35 @@ func _advance_queue(delta: float) -> void:
 				if float(counter.clock) <= 0.0 and _talking_at != int(counter.number):
 					_player_missed(counter)
 	_update_waiting_board()
+
+
+## Whether `person`'s path (Interior.walk_evictor) is used up: at the end of where it could go.
+func _path_used_up(person: Node3D) -> bool:
+	return person.has_meta("uitzetter_pad") and (person.get_meta("uitzetter_pad") as PackedVector3Array).is_empty() \
+		and float(person.get_meta("uitzetter_klok", 1.0)) < EVICTOR_REPLAN - 0.05
+
+
+## After its turn a visitor goes to sit on a free seat, any of them (not its own one per se):
+## its home (Interior HOME_META, where evictor_done seats it) becomes that seat.
+func _to_a_free_seat(visitor: InteriorPerson) -> void:
+	if _seats.is_empty() or not visitor.has_meta(HOME_META):
+		return
+	var taken: Array[Vector3] = []
+	for person in _people:
+		if person != visitor and person.sitting and person.get_parent() == visitor.get_parent():
+			taken.append(person.position)
+		if person != visitor and person.has_meta(HOME_META):
+			taken.append(((person.get_meta(HOME_META) as Dictionary).transform as Transform3D).origin)
+	var free: Array[Transform3D] = []
+	for seat in _seats:
+		if not taken.any(func(spot: Vector3) -> bool: return spot.distance_to(seat.origin) < 0.3):
+			free.append(seat)
+	if free.is_empty():
+		return
+	var home: Dictionary = visitor.get_meta(HOME_META)
+	home["transform"] = free[_random.randi() % free.size()]
+	home["sitting"] = true
+	visitor.set_meta(HOME_META, home)
 
 
 ## Calls the first number of the queue at `counter`: its board, the waiting board, the gong
@@ -552,17 +635,16 @@ func _free_counter(counter: Dictionary) -> void:
 
 ## The gong, the number at the top of the screen, the voice over the loudspeakers.
 func _announce(number: int, counter_number: int) -> void:
-	var audio := get_node_or_null("/root/RuimtelijkGeluid")
-	var hud := _hud()
-	if audio and audio.has_method("play_event") and _player:
-		audio.play_event(_player.global_position + Vector3.UP * 3.0, "omroep_gong")
-	if hud and hud.has_method("show_notice"):
-		hud.show_notice("— BURGERZAKEN —", "Nummer B %03d, loket %d" % [number, counter_number], 3.5)
-	var babble: GDScript = load("res://scripts/audio/babble.gd")
-	for word_index in 3:
-		get_tree().create_timer(0.9 + word_index * 0.32).timeout.connect(func() -> void:
-			if is_inside_tree() and current_floor == COUNTER_FLOOR:
-				babble.call("play_near", self, "vrouw", "neutraal"))
+	# the big board over the counters at once; the words over the loudspeakers (Announcer: the
+	# gong, the voice, the line typing out at the bottom, as at the station and in the shops)
+	if _now_board:
+		SignBoard.set_text(_now_board, "B %03d  →  LOKET %d" % [number, counter_number])
+	if current_floor != COUNTER_FLOOR or not _player:
+		return
+	if _announcer == null:
+		_announcer = Announcer.new(_hud)
+		add_child(_announcer)
+	_announcer.say("Nummer B %03d, loket %d." % [number, counter_number])
 
 
 ## Your number called but you did not come in time: the turn and the slip are gone.
@@ -629,6 +711,9 @@ func _talk_consequence(gevolg: String, counter_number: int) -> void:
 		return
 	if not _sent_away_from.has(counter_number):
 		_sent_away_from.append(counter_number)
+	# the story hears of it (missie 3: a goal "check" "doorverwezen")
+	if _player and _player.has_signal("checked"):
+		_player.emit_signal("checked", "doorverwezen", true)
 	if _sent_away_from.size() >= _counters.size():
 		_sent_away_from.pop_front()
 
@@ -693,6 +778,59 @@ func _think(text: String) -> void:
 
 func _process(delta: float) -> void:
 	_advance_queue(delta)
+	_advance_caretaker(delta)
+
+
+## The text of a level on the displays: "K" for the basement, else its number.
+static func level_text(level: int) -> String:
+	return "K" if level < 0 else str(level)
+
+
+# ------------------------------------------------------------------ the basement
+
+## The caretaker goes round the basement with his cart (see the top): to the next point of his
+## round, stands still there a moment to mop, on to the next; only while you are down there.
+func _advance_caretaker(delta: float) -> void:
+	if current_floor != Layout.BASEMENT or _floors.size() <= Layout.BASEMENT:
+		return
+	if _caretaker == null:
+		_caretaker = _find_caretaker()
+		if _caretaker == null:
+			return
+	if _caretaker_rest > 0.0:
+		_caretaker_rest -= delta
+		if _caretaker_rest <= 0.0:
+			_caretaker_point = (_caretaker_point + 1) % Layout.CARETAKER_ROUND.size()
+		return
+	var floor_node := floor_node(Layout.BASEMENT)
+	var target := floor_node.to_global(Layout.CARETAKER_ROUND[_caretaker_point])
+	walk_evictor(_caretaker, target, CARETAKER_PACE, delta)
+	if Vector2(_caretaker.global_position.x - target.x, _caretaker.global_position.z - target.z).length() < 0.3:
+		evictor_stops(_caretaker)
+		_caretaker_rest = _random.randf_range(CARETAKER_MOP.x, CARETAKER_MOP.y)
+
+
+## The caretaker of the basement (made with its people), his cart before him.
+func _find_caretaker() -> InteriorPerson:
+	for person in _people:
+		if person.role == "concierge" and person.get_parent() == floor_node(Layout.BASEMENT):
+			if not person.has_node("Schoonmaakkar"):
+				var library: MeshLibrary = load(LIBRARY)
+				var item := library.find_item_by_name(CART_TILE)
+				if item >= 0:
+					var cart := MeshInstance3D.new()
+					cart.name = "Schoonmaakkar"
+					cart.mesh = library.get_item_mesh(item)
+					cart.position = Vector3(0.0, 0.0, CART_AHEAD)
+					cart.rotation.y = PI * 0.5   # its long side across his way, the push bar at him
+					person.add_child(cart)
+			return person
+	return null
+
+
+## The caretaker (for the checks): null before the basement was visited.
+func caretaker() -> InteriorPerson:
+	return _caretaker
 
 
 func _hud() -> Node:

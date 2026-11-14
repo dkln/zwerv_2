@@ -15,6 +15,10 @@ const KEY := "camera_zelf_draaien"
 const KEY_LEFT_TURN := KEY_Z
 const KEY_RIGHT_TURN := KEY_X
 const KEY_TURN_BACK := KEY_C
+## Zooming when the view is turned by hand (FollowCamera.zoom_by): + and - (also on the number
+## pad); the right stick up and down comes as these too (pad_keys.gd).
+const KEYS_ZOOM_IN := [KEY_EQUAL, KEY_PLUS, KEY_KP_ADD]
+const KEYS_ZOOM_OUT := [KEY_MINUS, KEY_KP_SUBTRACT]
 
 
 static func is_manual() -> bool:

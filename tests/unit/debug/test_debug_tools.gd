@@ -128,7 +128,7 @@ func test_debug_stats(test) -> void:
 ## none that the picker (F8) or the stutter meter (F3) use.
 func test_debug_key_help_matches_the_keys(test) -> void:
 	var keys := [DebugKeys.KEY_MONEY, DebugKeys.KEY_XP, DebugKeys.KEY_HEALTH, DebugKeys.KEY_HUNGER,
-			DebugKeys.KEY_STAMINA, DebugKeys.KEY_OVERSTIMULATION]
+			DebugKeys.KEY_STAMINA, DebugKeys.KEY_OVERSTIMULATION, DebugKeys.KEY_TIME]
 	var names: Array[String] = []
 	for keycode: Key in keys:
 		names.append(OS.get_keycode_string(keycode))

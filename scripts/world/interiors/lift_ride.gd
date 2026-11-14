@@ -185,7 +185,7 @@ func _make_stand_in(player: Node3D) -> void:
 
 func _show_display(number: int, direction: int) -> void:
 	var arrow := "▲ " if direction > 0 else ("▼ " if direction < 0 else "")
-	SignBoard.set_text(_display, arrow + str(number))
+	SignBoard.set_text(_display, arrow + ("K" if number < 0 else str(number)))   # the basement: K
 
 
 func _jolt() -> void:
@@ -217,7 +217,7 @@ func _ding() -> void:
 
 ## A sound of assets/audio/geluiden/ (looping or not), also when not imported yet.
 static func _sound(sound_name: String, looping: bool) -> AudioStream:
-	var path := "res://assets/audio/geluiden/" + sound_name + ".ogg"
+	var path: String = (load("res://scripts/audio/sound_files.gd") as GDScript).call("path_of", sound_name)
 	var stream: AudioStream = load(path) if ResourceLoader.exists(path) else null
 	if stream == null and FileAccess.file_exists(path):
 		stream = AudioStreamOggVorbis.load_from_file(path)

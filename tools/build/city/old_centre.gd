@@ -7,28 +7,59 @@ extends "res://tools/build/city/streets.gd"
 # ------------------------------------------------------------------ north: Noordeinde, Lange Voorhout, Denneweg
 
 ## Paleis Noordeinde (x 15..20, z 12..21) facing the street Noordeinde (x 24) behind a
-## gravel forecourt with a railing and the equestrian statue; the Paleistuin west of it;
-## shops along Noordeinde north and south of the palace.
+## gravel forecourt with a railing and the equestrian statue; west of it, between the palace
+## and the Hogewal (x 5), the Paleistuin (x 8..14, z 8..19: lawns, gravel paths, old trees, a
+## fountain, benches, a railing with gates along the Hogewal and the Mauritskade) and south of
+## it, at the Hogewal as in the real town, the Koninklijke Stallen (x 8..13, z 22..27: the
+## royal stables round a gravel yard, their gate onto the Hogewal); shops along Noordeinde
+## north and south of the palace.
+const PALACE_GARDEN := Rect2i(8, 8, 7, 12)      # x 8..14, z 8..19
+const ROYAL_STABLES := Rect2i(8, 22, 6, 6)      # x 8..13, z 22..27
 func _noordeinde() -> void:
-	# Paleistuin: lawns, gravel paths, trees, a fountain and a railing along the street
-	for x in range(8, 14):
-		for z in range(8, 28):
+	# Paleistuin: lawns, a cross of gravel paths, trees, a fountain in the middle
+	var garden := PALACE_GARDEN
+	var path_x := garden.position.x + 3
+	var path_z := garden.position.y + 6
+	for x in range(garden.position.x, garden.end.x):
+		for z in range(garden.position.y, garden.end.y):
 			var t := "natuur/gras"
-			if z == 17 or x == 10:
+			if z == path_z or x == path_x:
 				t = "natuur/pad_grind"
-			_g(x, z, t, "S" if x == 10 else "E")
-	_g(10, 17, "plein/plein_grind")
-	Pr(10 * 4 + 2.0, 17 * 4 + 2.0, "straat/fontein")
-	for x in range(8, 14):
-		for z in range(8, 28):
-			if x == 10 or z == 17 or (x + z) % 3 != 0:
+			_g(x, z, t, "S" if x == path_x else "E")
+	_g(path_x, path_z, "plein/plein_grind")
+	Pr(path_x * 4 + 2.0, path_z * 4 + 2.0, "straat/fontein")
+	var trees := ["bomen/eik", "bomen/kastanje", "bomen/linde", "bomen/treurwilg", "bomen/bloesemboom"]
+	for x in range(garden.position.x, garden.end.x):
+		for z in range(garden.position.y, garden.end.y):
+			if x == path_x or z == path_z or abs(x - path_x) + abs(z - path_z) <= 1 or (x + z) % 3 != 0:
 				continue
-			Pr(x * 4 + 2.0, z * 4 + 2.0, ["bomen/eik", "bomen/kastanje", "bomen/linde", "bomen/treurwilg", "bomen/bloesemboom"][(x * 5 + z) % 5])
-	for z in range(8, 28):
-		Pr(8 * 4 + 0.5, z * 4 + 2.0, "hekken/hek_ijzer" if z != 17 else "hekken/hek_ijzer_poort", "E")
-	_kerb_path(7, 17, "W")
-	Pr(11 * 4 + 2.0, 12 * 4 + 2.0, "straat/bank_hout", "E")
-	Pr(11 * 4 + 2.0, 22 * 4 + 2.0, "straat/bank_hout", "E")
+			Pr(x * 4 + 2.0, z * 4 + 2.0, trees[(x * 5 + z) % trees.size()])
+	# benches round the fountain, flower beds at the path ends
+	for spot: Vector2i in [Vector2i(path_x - 1, path_z - 1), Vector2i(path_x + 1, path_z + 1), Vector2i(path_x - 1, path_z + 1),
+			Vector2i(path_x + 1, path_z - 1)]:
+		Pr(spot.x * 4 + 2.0, spot.y * 4 + 2.0, "straat/bank_hout", "E" if spot.x < path_x else "W")
+	for spot: Vector2i in [Vector2i(path_x, garden.position.y), Vector2i(path_x, garden.end.y - 1)]:
+		Pr(spot.x * 4 + 1.0, spot.y * 4 + 2.0, "planten/buxus_bol")
+		Pr(spot.x * 4 + 3.0, spot.y * 4 + 2.0, "planten/buxus_bol")
+	# the railing along the Hogewal (west) and the Mauritskade (north), gates where the paths come out
+	for z in range(garden.position.y, garden.end.y):
+		Pr(garden.position.x * 4 + 0.5, z * 4 + 2.0, "hekken/hek_ijzer_poort" if z == path_z else "hekken/hek_ijzer", "E")
+	for x in range(garden.position.x, garden.end.x):
+		Pr(x * 4 + 2.0, garden.position.y * 4 + 0.5, "hekken/hek_ijzer_poort" if x == path_x else "hekken/hek_ijzer", "S")
+	_kerb_path(garden.position.x - 1, path_z, "W")
+	# the Koninklijke Stallen: the stables round a gravel yard, the gate onto the Hogewal
+	var stables := ROYAL_STABLES
+	_fill(stables.position.x, stables.position.y - 2, stables.end.x, stables.position.y - 1, "plein/plein_grind")
+	block(stables.position.x, stables.position.y, stables.size.x, stables.size.y, "klassiek_geel", 2,
+		{"front": "W", "gf": ["bg_raam", "bg_poort", "bg_raam"], "gf_side": "bg_raam", "gf_corner": "bg_raam_hoek",
+		"upper": ["verd_raam", "verd_luiken"], "upper_corner": "verd_raam_hoek", "roof": "sloped",
+		"roof_extra": ["dak_schuin_dakkapel", "dak_schuin_schoorsteen"]})
+	_kerb_path(stables.position.x - 1, stables.position.y + 2, "W")
+	for x in range(stables.position.x, stables.end.x):
+		Pr(x * 4 + 2.0, (stables.position.y - 2) * 4 + 0.5, "hekken/hek_ijzer_poort" if x == stables.position.x + 2 else "hekken/hek_ijzer", "S")
+	Pr((stables.position.x - 1) * 4 + 2.0, (stables.position.y - 1) * 4 + 2.0, "straat/vlaggenmast_nl")
+	places["paleistuin"] = Vector2((path_x + 0.5) * 4.0, (path_z + 0.5) * 4.0)
+	places["koninklijke_stallen"] = Vector2((stables.position.x + 0.5) * 4.0, (stables.position.y + 2.5) * 4.0)
 	# the palace: three storeys, a pediment over the middle, flags
 	block(15, 12, 6, 10, "overheid", 3, {"front": "E", "gf": ["bg_raam", "bg_entree", "bg_raam"], "gf_side": "bg_raam",
 		"gf_corner": "bg_raam_hoek", "upper": ["verd_raam_hoog", "verd_raam_hoog", "verd_balkon"], "upper_corner": "verd_raam_hoog_hoek",
